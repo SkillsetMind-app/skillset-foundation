@@ -36,7 +36,9 @@ import {
   automaticRefundProgressCap,
   automaticRefundWindowDays,
   canonicalPlatformFeeBpsForPlan,
+  claimStripeEvent,
   createReleasedRefundTransferReversal,
+  markStripeEventDone,
   paidOrderRefundQuerySpec,
   payoutReleaseDelayDays,
   resolvePayoutReleaseDelayDays,
@@ -2852,10 +2854,19 @@ export const stripeWebhook = onRequest(
     }
 
     try {
-      // Idempotency: short-circuit on redelivered events. Stripe retries
-      // on any non-2xx, so we MUST acknowledge duplicates with 200.
-      const shouldProcess = await markStripeEventProcessed(event.id);
-      if (!shouldProcess) {
+      // Idempotency (two-phase): claim the event as "processing", then promote
+      // it to "done" only AFTER every handler below succeeds. Stripe retries on
+      // any non-2xx, so a failed attempt leaves a "processing" marker that the
+      // retry reprocesses — a single-phase claim-before-commit marker would
+      // short-circuit the retry as a duplicate and silently lose the event.
+      // See claimStripeEvent / markStripeEventDone in payment-rules.ts.
+      const eventMarkerRef = db
+        .collection("processedStripeEvents")
+        .doc(event.id);
+      const claim = await claimStripeEvent(eventMarkerRef, () =>
+        FieldValue.serverTimestamp(),
+      );
+      if (claim === "duplicate") {
         response.json({ received: true, duplicate: true });
         return;
       }
@@ -2909,6 +2920,13 @@ export const stripeWebhook = onRequest(
         await handleInvoicePaymentFailed(event.data.object);
       }
 
+      // Promote the idempotency marker to "done" ONLY after every handler ran
+      // without throwing; a throw skips this and leaves the marker at
+      // "processing", so the Stripe retry reprocesses the event instead of
+      // mistaking it for an already-handled duplicate.
+      await markStripeEventDone(eventMarkerRef, () =>
+        FieldValue.serverTimestamp(),
+      );
       response.json({ received: true });
     } catch (error) {
       logger.error("Stripe webhook handling failed", error);
@@ -2984,7 +3002,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       | null;
   } = { value: null };
 
-  // Payout clearance window is platform-configurable (7/10/15/30 days, default 7).
+  // Payout clearance window is platform-configurable (7/10/15/30 days, default 30).
   // Read outside the transaction (Firestore requires reads before writes) and fall
   // back to the default so a config miss can never block the money path.
   let payoutDelayDays: number = payoutReleaseDelayDays;
@@ -3674,24 +3692,6 @@ async function uidFromCustomer(
 function secondsToIso(seconds: number | null | undefined): string | null {
   if (typeof seconds !== "number" || !Number.isFinite(seconds)) return null;
   return new Date(seconds * 1000).toISOString();
-}
-
-/**
- * Idempotency gate for Stripe webhook events. Stripe will redeliver on
- * any non-2xx response, so the same event id can hit our handler many
- * times. The first invocation creates the document; subsequent ones
- * short-circuit. Atomic via create() — fails if the doc already exists.
- */
-async function markStripeEventProcessed(eventId: string): Promise<boolean> {
-  const ref = db.collection("processedStripeEvents").doc(eventId);
-  try {
-    await ref.create({
-      processedAt: FieldValue.serverTimestamp(),
-    });
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 /* ---------------------------------------------------------------------- *

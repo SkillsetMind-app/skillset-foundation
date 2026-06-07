@@ -2,12 +2,42 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   canonicalPlatformFeeBpsForPlan,
+  claimStripeEvent,
   createReleasedRefundTransferReversal,
+  decideStripeEventClaim,
+  markStripeEventDone,
   paidOrderRefundQuerySpec,
   payoutReleaseDelayDays,
   releasedRefundReversalAmountMinor,
   stripeProcessingFeeMinor,
+  type StripeEventMarkerRef,
 } from "./payment-rules";
+
+/**
+ * In-memory stand-in for a Firestore DocumentReference that reproduces the two
+ * semantics the idempotency gate relies on: `.create()` rejects when the doc
+ * already exists, and `.set(..., {merge:true})` shallow-merges onto it.
+ */
+function makeFakeMarkerRef(): StripeEventMarkerRef {
+  let doc: { status?: string } | undefined;
+  return {
+    create: async (data) => {
+      if (doc !== undefined) {
+        throw new Error("ALREADY_EXISTS");
+      }
+      doc = { ...(data as { status?: string }) };
+      return undefined;
+    },
+    get: async () => ({
+      exists: doc !== undefined,
+      data: () => doc,
+    }),
+    set: async (data) => {
+      doc = { ...(doc ?? {}), ...(data as { status?: string }) };
+      return undefined;
+    },
+  };
+}
 
 describe("functions payment rules", () => {
   it("uses a 30 day payout release delay", () => {
@@ -98,5 +128,55 @@ describe("functions payment rules", () => {
         idempotencyKey: "transfer_reversal_order_123_ch_123_2220",
       },
     );
+  });
+});
+
+describe("stripe webhook idempotency (B1)", () => {
+  const stamp = () => "ts";
+
+  it("only treats a completed ('done') marker as a duplicate", () => {
+    expect(decideStripeEventClaim("done")).toBe("duplicate");
+    expect(decideStripeEventClaim("processing")).toBe("process");
+    expect(decideStripeEventClaim(null)).toBe("process");
+    expect(decideStripeEventClaim(undefined)).toBe("process");
+  });
+
+  it("claims an unseen event for processing", async () => {
+    const ref = makeFakeMarkerRef();
+    expect(await claimStripeEvent(ref, stamp)).toBe("process");
+  });
+
+  it("REPROCESSES an event whose prior attempt failed before completion", async () => {
+    const ref = makeFakeMarkerRef();
+    // First delivery: claimed as "processing", then the handler throws — so it
+    // is never promoted to "done".
+    expect(await claimStripeEvent(ref, stamp)).toBe("process");
+    // Stripe retries the SAME event id. The marker is still "processing", so we
+    // MUST reprocess. The old claim-before-commit gate returned a false
+    // "duplicate" here and silently dropped the enrollment/payout — this is the
+    // exact B1 regression guard.
+    expect(await claimStripeEvent(ref, stamp)).toBe("process");
+    expect(await claimStripeEvent(ref, stamp)).toBe("process");
+  });
+
+  it("short-circuits a redelivered event once it completed", async () => {
+    const ref = makeFakeMarkerRef();
+    expect(await claimStripeEvent(ref, stamp)).toBe("process");
+    await markStripeEventDone(ref, stamp);
+    expect(await claimStripeEvent(ref, stamp)).toBe("duplicate");
+    // Stays a duplicate on every further redelivery.
+    expect(await claimStripeEvent(ref, stamp)).toBe("duplicate");
+  });
+
+  it("promotes to done via merge without clobbering the original claim", async () => {
+    const ref = makeFakeMarkerRef();
+    await claimStripeEvent(ref, () => "claim-ts");
+    await markStripeEventDone(ref, () => "done-ts");
+    const snapshot = await ref.get();
+    expect(snapshot.data()).toMatchObject({
+      status: "done",
+      claimedAt: "claim-ts",
+      processedAt: "done-ts",
+    });
   });
 });
