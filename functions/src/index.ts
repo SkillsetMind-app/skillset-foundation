@@ -3614,6 +3614,7 @@ async function handleCourseSubscriptionInvoicePaid(invoice: Stripe.Invoice) {
         courseImage: course.coverImageUrl || "/brand/logo-mark.png",
         status: "active",
         source: "subscription",
+        subscriptionId,
         progressPercent: 0,
         lastLessonId: null,
         createdAt: FieldValue.serverTimestamp(),
@@ -3623,6 +3624,7 @@ async function handleCourseSubscriptionInvoicePaid(invoice: Stripe.Invoice) {
       transaction.update(enrollmentRef, {
         status: "active",
         source: "subscription",
+        subscriptionId,
         updatedAt: FieldValue.serverTimestamp(),
       });
     }
@@ -3754,6 +3756,7 @@ async function handleCourseSubscriptionLifecycle(
       transaction.update(enrollmentRef, {
         status: "active",
         source: "subscription",
+        subscriptionId: subscription.id,
         updatedAt: FieldValue.serverTimestamp(),
       });
     }
@@ -4227,6 +4230,86 @@ export const createBillingPortalSession = onCall(
     });
 
     return { url: portal.url };
+  },
+);
+
+// Learner-facing course-subscription management. Cancels at period end (the
+// learner keeps access through the period they already paid for — the market
+// norm) or resumes a pending cancellation. The subscriptionId is read from the
+// buyer's own enrollment doc (deterministic id, no query/index), then verified
+// against the Stripe subscription metadata before any mutation.
+export const cancelCourseSubscription = onCall(
+  { secrets: [stripeSecretKey] },
+  async (
+    request: CallableRequest<{ courseId?: string; resume?: boolean }>,
+  ) => {
+    if (!request.auth) {
+      throw new HttpsError(
+        "unauthenticated",
+        "Sign in to manage your subscription.",
+      );
+    }
+
+    const uid = request.auth.uid;
+    const courseId = String(request.data?.courseId || "").trim();
+    if (!courseId || courseId.length > 160) {
+      throw new HttpsError("invalid-argument", "A valid courseId is required.");
+    }
+    const resume = request.data?.resume === true;
+
+    await enforceRateLimit(`course_sub_cancel_${uid}`, 20, 60 * 60 * 1000);
+
+    const enrollmentSnapshot = await db
+      .collection("enrollments")
+      .doc(`${uid}__${courseId}`)
+      .get();
+    const subscriptionId = enrollmentSnapshot.data()?.subscriptionId;
+
+    if (typeof subscriptionId !== "string" || !subscriptionId) {
+      throw new HttpsError(
+        "failed-precondition",
+        "No course subscription is attached to your enrollment.",
+      );
+    }
+
+    const stripe = getStripeClient();
+    // Defensive ownership check: the subscription must be a course subscription
+    // owned by this user, regardless of what the enrollment doc claims.
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    if (
+      subscription.metadata?.purpose !== "course_subscription" ||
+      subscription.metadata?.userId !== uid
+    ) {
+      throw new HttpsError(
+        "permission-denied",
+        "This subscription is not yours to manage.",
+      );
+    }
+
+    const updated = await stripe.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: !resume,
+    });
+
+    // Reflect immediately; customer.subscription.updated re-syncs the mirror.
+    await db.collection("courseSubscriptions").doc(subscriptionId).set(
+      {
+        cancelAtPeriodEnd: !resume,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    const item = updated.items.data[0];
+    const currentPeriodEnd = secondsToIso(
+      (item as { current_period_end?: number })?.current_period_end ??
+        (updated as { current_period_end?: number }).current_period_end,
+    );
+
+    return {
+      cancelAtPeriodEnd: !resume,
+      currentPeriodEnd,
+      status: updated.status,
+    };
   },
 );
 

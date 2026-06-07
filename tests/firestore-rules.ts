@@ -651,3 +651,55 @@ function createCourse(ownerId: string, status: "draft" | "published" | "in_revie
     updatedAt: Timestamp.now(),
   };
 }
+
+describe("Firestore courseSubscriptions rules", () => {
+  const subscriptionId = "sub_test_course";
+
+  async function seedCourseSubscription(ownerUid: string) {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), `courseSubscriptions/${subscriptionId}`), {
+        id: subscriptionId,
+        userId: ownerUid,
+        courseId: "course-1",
+        teacherId: "teacher-1",
+        stripeSubscriptionId: subscriptionId,
+        stripeCustomerId: "cus_test",
+        status: "active",
+        interval: "month",
+        currentPeriodEnd: new Date().toISOString(),
+        cancelAtPeriodEnd: false,
+        pastDue: false,
+        latestInvoiceId: "in_test",
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      });
+    });
+  }
+
+  it("lets the buyer read their own course subscription", async () => {
+    await seedCourseSubscription("student-1");
+    const db = testEnv.authenticatedContext("student-1", verifiedAuth).firestore();
+
+    await assertSucceeds(getDoc(doc(db, `courseSubscriptions/${subscriptionId}`)));
+  });
+
+  it("blocks a different user from reading someone else's subscription", async () => {
+    await seedCourseSubscription("student-1");
+    const db = testEnv.authenticatedContext("student-2", verifiedAuth).firestore();
+
+    await assertFails(getDoc(doc(db, `courseSubscriptions/${subscriptionId}`)));
+  });
+
+  it("blocks all client writes (Admin SDK / webhook only)", async () => {
+    await seedCourseSubscription("student-1");
+    const db = testEnv.authenticatedContext("student-1", verifiedAuth).firestore();
+
+    // Even the owner cannot mutate their subscription from the client — cancel
+    // flows go through the cancelCourseSubscription callable.
+    await assertFails(
+      updateDoc(doc(db, `courseSubscriptions/${subscriptionId}`), {
+        cancelAtPeriodEnd: true,
+      }),
+    );
+  });
+});

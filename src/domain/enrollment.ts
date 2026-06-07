@@ -7,7 +7,12 @@ export type EnrollmentStatus =
   | "revoked"
   | "expired";
 
-export type EnrollmentSource = "manual_demo" | "free_course" | "payment" | "admin";
+export type EnrollmentSource =
+  | "manual_demo"
+  | "free_course"
+  | "payment"
+  | "subscription"
+  | "admin";
 
 export type Enrollment = {
   id: string;
@@ -19,6 +24,9 @@ export type Enrollment = {
   courseImage: string;
   status: EnrollmentStatus;
   source: EnrollmentSource;
+  // Set only for source === "subscription": the Stripe subscription backing the
+  // access, used by the learner cancel UI + cancelCourseSubscription function.
+  subscriptionId?: string | null;
   progressPercent: number;
   lastLessonId: string | null;
   createdAt?: unknown;

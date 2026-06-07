@@ -15,6 +15,7 @@ import {
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { CourseReviewPanel } from "@/components/learn/course-review-panel";
+import { CourseSubscriptionCard } from "@/components/learn/course-subscription-card";
 import { WatermarkedVideoPlayer } from "@/components/learn/watermarked-video-player";
 import type { CourseAsset } from "@/domain/course-asset";
 import { courseAssetKindLabels, formatCourseAssetSize } from "@/domain/course-asset";
@@ -495,6 +496,15 @@ export function EnrolledCourseWorkspace({
               </div>
             </div>
           </div>
+          {!previewMode
+            && workspaceEnrollment.source === "subscription"
+            && workspaceEnrollment.subscriptionId ? (
+            <CourseSubscriptionCard
+              key={workspaceEnrollment.subscriptionId}
+              courseId={course.id}
+              subscriptionId={workspaceEnrollment.subscriptionId}
+            />
+          ) : null}
           <div className="member-sidebar-card">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
               Continue learning

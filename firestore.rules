@@ -1555,6 +1555,16 @@ service cloud.firestore {
       }
     }
 
+    match /courseSubscriptions/{subscriptionId} {
+      // The buyer reads their own course-subscription state (status, renewal,
+      // cancelAtPeriodEnd, pastDue) for the learner cancel UI. All writes are
+      // Admin-SDK only — the Stripe webhook and the cancelCourseSubscription
+      // callable own this collection; clients never write it.
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow write: if false;
+    }
+
     match /wishlists/{wishlistId} {
       allow read: if isAdmin()
         || (signedIn() && resource.data.userId == request.auth.uid);
