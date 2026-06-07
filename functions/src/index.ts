@@ -19,6 +19,13 @@ import {
   buildCoursePublishedProperties,
   isCoursePublishTransition,
 } from "./course-analytics";
+import {
+  TRENDING_WINDOW_DAYS,
+  aggregateTrendingCounts,
+  readEnrollmentCourseId,
+  resolveTrendingScore,
+  trendingWriteNeeded,
+} from "./course-trending";
 import { setGlobalOptions } from "firebase-functions/v2";
 import {
   HttpsError,
@@ -1651,6 +1658,93 @@ export const rebuildLeaderboards = onSchedule(
       allTime: allTime.length,
       last30: last30.length,
       last7: last7.length,
+    });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Course trending signal (C5-cont Phase 2). Two server-only fields on the
+// course doc feed the marketplace "Trending now" sort:
+//  - enrollmentCount: lifetime denormalized counter, bumped by the trigger on
+//    every NEW enrollment (re-activations are updates, not creates, so they do
+//    not double-count). Best-effort (at-least-once), never gates the money path.
+//  - trendingScore: enrollments in the last TRENDING_WINDOW_DAYS, recomputed
+//    from source by the schedule. The recount is the source of truth, so a
+//    missed/duplicated trigger can never corrupt the ranking (see
+//    course-trending.ts). Both are written by the Admin SDK (rules-bypass);
+//    teachers cannot touch them (absent from their courseChangedOnly lists).
+// ---------------------------------------------------------------------------
+async function incrementCourseEnrollmentCount(courseId: string): Promise<void> {
+  if (!courseId) {
+    return;
+  }
+  await db
+    .collection("courses")
+    .doc(courseId)
+    .set({ enrollmentCount: FieldValue.increment(1) }, { merge: true })
+    .catch((error) => {
+      // A social-proof counter bump must NEVER surface to the enrollment write.
+      logger.error("enrollmentCount increment failed", { courseId, error });
+    });
+}
+
+export const onEnrollmentCreated = onDocumentCreated(
+  "enrollments/{enrollmentId}",
+  async (event) => {
+    const courseId = readEnrollmentCourseId(event.data?.data());
+    if (!courseId) {
+      return;
+    }
+    await incrementCourseEnrollmentCount(courseId);
+  },
+);
+
+// Courses worth scoring: anything that can appear (or return) to the catalog.
+// Drafts / needs_changes never list, so they are skipped.
+const TRENDING_COURSE_STATUSES = ["published", "in_review", "inactive"];
+
+export const rebuildTrending = onSchedule(
+  {
+    schedule: "every 6 hours",
+    timeZone: "Etc/UTC",
+  },
+  async () => {
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const cutoff = Timestamp.fromMillis(now - TRENDING_WINDOW_DAYS * dayMs);
+
+    const recentSnap = await db
+      .collection("enrollments")
+      .where("createdAt", ">=", cutoff)
+      .get();
+
+    const counts = aggregateTrendingCounts(
+      recentSnap.docs.map((docSnap) => docSnap.get("courseId")),
+    );
+
+    // Iterate every listable course (not only ones with recent activity) so a
+    // course that fell out of the window is reset to 0.
+    const coursesSnap = await db
+      .collection("courses")
+      .where("status", "in", TRENDING_COURSE_STATUSES)
+      .get();
+
+    let writes = 0;
+    await Promise.all(
+      coursesSnap.docs.map(async (courseDoc) => {
+        const nextScore = resolveTrendingScore(counts, courseDoc.id);
+        if (!trendingWriteNeeded(courseDoc.get("trendingScore"), nextScore)) {
+          return;
+        }
+        writes += 1;
+        await courseDoc.ref.set({ trendingScore: nextScore }, { merge: true });
+      }),
+    );
+
+    logger.info("trending rebuilt", {
+      recentEnrollments: recentSnap.size,
+      courses: coursesSnap.size,
+      writes,
     });
   },
 );

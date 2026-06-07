@@ -29,6 +29,8 @@ function card(partial: Partial<CourseCard> & { title: string }): CourseCard {
     ratingCount: partial.ratingCount,
     featured: partial.featured,
     featuredRank: partial.featuredRank,
+    trendingScore: partial.trendingScore,
+    enrollmentCount: partial.enrollmentCount,
   };
 }
 
@@ -157,6 +159,50 @@ describe("course-sort", () => {
     ];
     const before = titles(input);
     sortCourseCards(input, "featured");
+    expect(titles(input)).toEqual(before);
+  });
+
+  it("offers a 'trending' option (marketplace surfaces it after featured)", () => {
+    const trending = courseSortOptions.find((o) => o.value === "trending");
+    expect(trending).toBeDefined();
+    // Featured stays the default (index 0); trending is the next discovery mode.
+    const trendingKey: CourseSortKey = "trending";
+    expect(courseSortOptions[1].value).toBe(trendingKey);
+  });
+
+  it("ranks by trendingScore descending, with zero-activity courses last", () => {
+    const input = [
+      card({ title: "Cold" }), // trendingScore undefined -> 0
+      card({ title: "Warm", trendingScore: 4 }),
+      card({ title: "Hot", trendingScore: 19 }),
+    ];
+    expect(titles(sortCourseCards(input, "trending"))).toEqual(["Hot", "Warm", "Cold"]);
+  });
+
+  it("breaks trending ties by lifetime enrollmentCount, then title", () => {
+    const input = [
+      card({ title: "Bravo", trendingScore: 5, enrollmentCount: 10 }),
+      card({ title: "Alpha", trendingScore: 5, enrollmentCount: 10 }),
+      card({ title: "Charlie", trendingScore: 5, enrollmentCount: 999 }),
+    ];
+    // Charlie wins on lifetime count; Alpha before Bravo on the title tiebreaker.
+    expect(titles(sortCourseCards(input, "trending"))).toEqual(["Charlie", "Alpha", "Bravo"]);
+  });
+
+  it("trending collapses to A->Z when no course has activity (graceful no-op)", () => {
+    const input = [card({ title: "Zebra" }), card({ title: "Alpha" }), card({ title: "Mango" })];
+    expect(titles(sortCourseCards(input, "trending"))).toEqual(
+      titles(sortCourseCards(input, "alpha")),
+    );
+  });
+
+  it("trending mode is pure — does not mutate the input array", () => {
+    const input = [
+      card({ title: "B", trendingScore: 9 }),
+      card({ title: "A", trendingScore: 1 }),
+    ];
+    const before = titles(input);
+    sortCourseCards(input, "trending");
     expect(titles(input)).toEqual(before);
   });
 });

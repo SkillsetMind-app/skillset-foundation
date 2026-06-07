@@ -31,6 +31,12 @@ export type CourseCard = {
   // these, so the sort treats them as not-featured (no change to today's order).
   featured?: boolean;
   featuredRank?: number | null;
+  // Server-computed popularity signals feeding the "Trending now" sort.
+  // `trendingScore` = enrollments in the last 7 days; `enrollmentCount` =
+  // lifetime enrollments (trending tiebreaker). Missing → treated as 0, so a
+  // course with no activity (or a demo card) sinks under any with momentum.
+  trendingScore?: number;
+  enrollmentCount?: number;
 };
 
 export function getCourses(): Course[] {

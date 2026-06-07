@@ -3,12 +3,14 @@ import type { CourseCard } from "@/lib/data/catalog";
 // Marketplace sort. "featured" is the default discovery mode: editorial picks
 // (ops-curated `featured` flag) lead, then the rest A->Z — when nothing is
 // featured it is byte-identical to plain alphabetical, so it is a no-op until
-// ops curate. The explicit data sorts (rating / price) stay PURE: a user who
-// picks "Price: low to high" gets exactly that, with no featured pinning jumping
-// the order. "trending" (activity-metric aggregation) is still a separate
-// follow-up and intentionally absent here.
+// ops curate. "trending" ranks by `trendingScore` (server-computed enrollments
+// in the last 7 days) — when no course has activity it collapses to A->Z, so it
+// too is a graceful no-op until the rebuild populates scores. The explicit data
+// sorts (rating / price) stay PURE: a user who picks "Price: low to high" gets
+// exactly that, with no featured/trending pinning jumping the order.
 export type CourseSortKey =
   | "featured"
+  | "trending"
   | "alpha"
   | "rating"
   | "price-asc"
@@ -16,6 +18,7 @@ export type CourseSortKey =
 
 export const courseSortOptions: { value: CourseSortKey; label: string }[] = [
   { value: "featured", label: "Featured & top picks" },
+  { value: "trending", label: "Trending now" },
   { value: "alpha", label: "Alphabetical (A–Z)" },
   { value: "rating", label: "Top rated" },
   { value: "price-asc", label: "Price: low to high" },
@@ -52,6 +55,8 @@ function sortFeaturedFirst(courses: CourseCard[]): CourseCard[] {
 /**
  * Return a new array of cards ordered by the chosen key. Pure and total:
  * - "featured" leads with ops-curated picks (by rank, then A->Z), rest A->Z;
+ * - "trending" ranks by `trendingScore` desc (enrollments in the last 7 days),
+ *   tiebroken by lifetime `enrollmentCount` then title; zero-activity → A->Z;
  * - missing rating (`ratingAverage` undefined) sorts below any rated course;
  * - missing price ("Enrollment opening soon") sinks to the end in BOTH price
  *   directions, so the priced catalog always leads;
@@ -66,6 +71,14 @@ export function sortCourseCards(
   switch (sortKey) {
     case "featured":
       return sortFeaturedFirst(next);
+    case "trending":
+      return next.sort((left, right) => {
+        const scoreDelta = (right.trendingScore ?? 0) - (left.trendingScore ?? 0);
+        if (scoreDelta !== 0) return scoreDelta;
+        const enrollDelta = (right.enrollmentCount ?? 0) - (left.enrollmentCount ?? 0);
+        if (enrollDelta !== 0) return enrollDelta;
+        return compareCourseTitle(left, right);
+      });
     case "rating":
       return next.sort((left, right) => {
         const ratingDelta = (right.ratingAverage ?? -1) - (left.ratingAverage ?? -1);

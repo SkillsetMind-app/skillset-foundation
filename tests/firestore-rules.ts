@@ -442,6 +442,33 @@ describe("Firestore course featured curation rules (C5)", () => {
       }),
     );
   });
+
+  it("keeps trendingScore/enrollmentCount server-only (no teacher OR ops write)", async () => {
+    await seedTeacher("teacher-1");
+    await seedUser("ops-1", ["student", "ops"]);
+    await seedPublishedCourse("course-trend", "teacher-1");
+
+    const teacherDb = testEnv
+      .authenticatedContext("teacher-1", verifiedAuth)
+      .firestore();
+    const opsDb = testEnv.authenticatedContext("ops-1", verifiedAuth).firestore();
+
+    // Neither field is in any teacher courseChangedOnly list, nor in the
+    // ops featured/status scoped lists -> only the Admin SDK (trigger + cron,
+    // rules-bypass) can write them. A direct client write must fail.
+    await assertFails(
+      updateDoc(doc(teacherDb, "courses/course-trend"), {
+        trendingScore: 999,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(opsDb, "courses/course-trend"), {
+        enrollmentCount: 999,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
 });
 
 describe("Firestore course review rules", () => {

@@ -107,6 +107,12 @@ export type TeacherCourse = {
   // featured courses among themselves (lower = higher placement).
   featured?: boolean;
   featuredRank?: number | null;
+  // Server-only popularity signals (Admin SDK writes only; absent from every
+  // teacher courseChangedOnly list). `enrollmentCount` = lifetime enrollments
+  // (onEnrollmentCreated trigger); `trendingScore` = enrollments in the last 7
+  // days (rebuildTrending schedule). Feed the marketplace "Trending now" sort.
+  enrollmentCount?: number;
+  trendingScore?: number;
   createdAt?: unknown;
   updatedAt?: unknown;
 };

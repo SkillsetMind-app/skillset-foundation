@@ -120,6 +120,8 @@ export function teacherCourseToCourseCard(course: TeacherCourse): CourseCard {
     ratingCount: course.ratingCount,
     featured: course.featured ?? false,
     featuredRank: course.featuredRank ?? null,
+    trendingScore: course.trendingScore ?? 0,
+    enrollmentCount: course.enrollmentCount ?? 0,
   };
 }
 
