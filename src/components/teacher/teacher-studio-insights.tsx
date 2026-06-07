@@ -8,7 +8,6 @@ import {
   Flag,
   MessageSquareText,
   Sparkles,
-  WalletCards,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -103,12 +102,6 @@ export function TeacherStudioInsights() {
 
   const paidOrders = orders.filter((order) => order.status === "paid");
   const grossMinor = paidOrders.reduce((sum, order) => sum + order.amountMinor, 0);
-  const platformFeeMinor = paidOrders.reduce(
-    (sum, order) =>
-      sum + Math.floor((order.amountMinor * order.platformFeeBps) / 10000),
-    0,
-  );
-  const netMinor = Math.max(0, grossMinor - platformFeeMinor);
   const monthlyRevenue = useMemo(
     () => buildMonthlyRevenue(paidOrders, revenueRange),
     [paidOrders, revenueRange],
@@ -250,31 +243,6 @@ export function TeacherStudioInsights() {
         </div>
 
         <aside className="grid gap-5">
-          <div className="studio-payout-card">
-            <div className="relative z-[1]">
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[rgba(255,255,255,0.62)]">
-                Next payout
-              </p>
-              <p className="mt-4 text-5xl font-bold tracking-[-0.05em] text-white">
-                {money.format(netMinor / 100)}
-              </p>
-              <p className="mt-3 text-sm leading-6 text-[rgba(255,255,255,0.72)]">
-                {payoutsReady
-                  ? "Estimated creator net after platform fee."
-                  : "Connect Stripe before paid sales can pay out."}
-              </p>
-              <div className="mt-6 flex flex-wrap gap-2">
-                <Link href="/account/payments#stripe-connect" className="button-solid-light px-4 py-2 text-xs">
-                  Payout settings
-                </Link>
-                <Link href="/account/payments" className="button-outline-light px-4 py-2 text-xs">
-                  View statements
-                </Link>
-              </div>
-            </div>
-            <WalletCards aria-hidden="true" className="absolute right-5 top-5 text-white/28" size={36} />
-          </div>
-
           <div className="dash-card p-5">
             <div className="flex items-center justify-between gap-3">
               <h3 className="display-title text-2xl text-[var(--color-primary)]">

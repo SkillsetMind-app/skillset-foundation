@@ -1740,17 +1740,20 @@ p {
 .platform-sidebar > button[aria-label="Collapse sidebar"],
 .platform-sidebar > button[aria-label="Expand sidebar"] {
   position: absolute;
-  top: 1.75rem;
-  right: -1rem;
+  top: 1.6rem;
+  right: -1.1rem;
   z-index: 4;
-  width: 1.875rem;
-  height: 1.875rem;
+  width: 2.25rem;
+  height: 2.25rem;
   margin: 0 !important;
   border: 2px solid #ffffff;
   border-radius: 999px;
   background: var(--color-primary);
   color: #ffffff !important;
-  box-shadow: 0 6px 18px rgba(7, 23, 42, 0.42), 0 0 0 1px rgba(15, 39, 68, 0.18);
+  box-shadow:
+    0 8px 22px rgba(7, 23, 42, 0.5),
+    0 0 0 1px rgba(15, 39, 68, 0.2),
+    0 0 0 5px rgba(26, 54, 93, 0.08);
 }
 
 .platform-sidebar > button[aria-label="Collapse sidebar"]:hover,
@@ -3608,6 +3611,59 @@ button:hover > .dash-card,
   height: 18rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.1);
+}
+
+/* Compact payout chip — the relocated, shrunk form of .studio-payout-card that
+   now lives in the Studio hero (top-right, above the action buttons). Same dark
+   gradient identity, a fraction of the height: label + figure + one-line hint,
+   no embedded buttons. The whole chip is a link to payout settings. */
+.studio-payout-chip {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 11rem;
+  border-radius: 14px;
+  padding: 0.7rem 1rem;
+  background:
+    radial-gradient(circle at 88% 30%, rgba(178, 34, 52, 0.36), transparent 7rem),
+    linear-gradient(135deg, #0f2744 0%, var(--color-primary) 100%);
+  box-shadow: 0 10px 22px rgba(15, 39, 68, 0.18);
+  text-decoration: none;
+  transition:
+    transform 180ms ease,
+    box-shadow 200ms ease;
+}
+
+.studio-payout-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(15, 39, 68, 0.24);
+}
+
+.studio-payout-chip:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.studio-payout-chip__label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.studio-payout-chip__value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: #ffffff;
+}
+
+.studio-payout-chip__hint {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .studio-course-row {

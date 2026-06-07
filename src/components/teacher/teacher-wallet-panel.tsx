@@ -106,8 +106,16 @@ export function TeacherWalletPanel() {
           ? "Stripe charges and payouts are ready for this teacher account."
           : "Stripe still requires more information before paid checkout and payouts are enabled.",
       );
-    } catch {
-      setError("We could not refresh Stripe payout status.");
+    } catch (cause) {
+      // Surface the real reason (e.g. missing STRIPE_SECRET_KEY secret or a
+      // permission error) rather than a mute status string, so a stuck Connect
+      // account is diagnosable instead of silently failing.
+      const detail = cause instanceof Error ? cause.message.trim() : "";
+      setError(
+        detail
+          ? `We could not refresh Stripe payout status: ${detail}`
+          : "We could not refresh Stripe payout status.",
+      );
     } finally {
       setIsRefreshingStripe(false);
     }

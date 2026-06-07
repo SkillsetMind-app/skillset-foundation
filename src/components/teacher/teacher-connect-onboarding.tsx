@@ -103,8 +103,19 @@ export function TeacherConnectOnboarding({
 
     try {
       await startTeacherStripeOnboarding();
-    } catch {
-      setError("We could not open Stripe onboarding. Please try again.");
+    } catch (cause) {
+      // Surface the underlying reason instead of a mute "try again". The
+      // callable throws a FirebaseError whose message carries the server-side
+      // HttpsError detail — e.g. "Stripe secret key is not configured." when
+      // the STRIPE_SECRET_KEY secret is unset, or a permission error when the
+      // account lacks the teacher role. A silent catch made payout-setup
+      // failures undiagnosable (they looked like a dead button).
+      const detail = cause instanceof Error ? cause.message.trim() : "";
+      setError(
+        detail
+          ? `We could not open Stripe onboarding: ${detail}`
+          : "We could not open Stripe onboarding. Please try again.",
+      );
       setIsOpeningHosted(false);
     }
   }
