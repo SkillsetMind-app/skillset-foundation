@@ -810,6 +810,21 @@ service cloud.firestore {
         && request.resource.data.body.size() <= 5000;
     }
 
+    // A community "like" is a presence doc at
+    // communityPosts/{postId}/likes/{likerId} — the doc id IS the liker's uid,
+    // so a user can like a post at most once (no double-count) and unlike by
+    // deleting it. Server triggers award the post author +1/-1 point; the like
+    // doc itself carries no point/score field a client could inflate.
+    function validCommunityLikeShape(postId) {
+      return request.resource.data.keys().hasOnly([
+          'likerId',
+          'postId',
+          'createdAt'
+        ])
+        && request.resource.data.likerId == request.auth.uid
+        && request.resource.data.postId == postId;
+    }
+
     function communityPostExists(postId) {
       return exists(/databases/$(database)/documents/communityPosts/$(postId));
     }
@@ -1565,6 +1580,30 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Gamification aggregate per member (points, derived level, likes
+    // received). Written EXCLUSIVELY by the like triggers via the Admin SDK —
+    // never by a client. Signed-in members may read (powers post/comment level
+    // badges and the all-time leaderboard); points cannot be self-set.
+    match /memberStats/{uid} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // Append-only points ledger (one row per like awarded/removed). Server
+    // (Admin SDK) writes it; the scheduled leaderboard job reads it to build
+    // the 7d/30d windows. Clients cannot read or write it.
+    match /pointsEvents/{eventId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Precomputed leaderboard per window (7d / 30d / all-time), rebuilt by the
+    // scheduled function. Signed-in members read; only the server writes.
+    match /leaderboards/{window} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
     match /wishlists/{wishlistId} {
       allow read: if isAdmin()
         || (signedIn() && resource.data.userId == request.auth.uid);
@@ -1614,6 +1653,27 @@ service cloud.firestore {
           );
         allow delete: if isAdmin()
           || (signedIn() && resource.data.authorId == request.auth.uid);
+      }
+
+      // Gamification likes. Doc id = liker uid (one like per user, unlike =
+      // delete). Only the liker can create/delete their own like, and only on
+      // a post in a course they're enrolled in. No update (a like has no
+      // mutable state). Points are awarded server-side by the like triggers
+      // (memberStats is write:false), so the client never touches a score.
+      match /likes/{likerId} {
+        allow read: if isAdmin()
+          || (
+            signedIn()
+            && communityPostExists(postId)
+            && hasEnrollmentForCourseSlug(communityPostData(postId).courseSlug)
+          );
+        allow create: if signedIn()
+          && likerId == request.auth.uid
+          && communityPostExists(postId)
+          && hasEnrollmentForCourseSlug(communityPostData(postId).courseSlug)
+          && validCommunityLikeShape(postId);
+        allow delete: if isAdmin()
+          || (signedIn() && likerId == request.auth.uid);
       }
     }
 

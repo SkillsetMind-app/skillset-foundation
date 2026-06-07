@@ -703,3 +703,152 @@ describe("Firestore courseSubscriptions rules", () => {
     );
   });
 });
+
+describe("Firestore community gamification rules (C1)", () => {
+  const courseSlug = "course-gamified";
+  const postId = "post-1";
+
+  async function seedPostAndEnrollments() {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const adminDb = context.firestore();
+      // Author and liker are both enrolled in the course.
+      for (const uid of ["author-1", "liker-1"]) {
+        await setDoc(doc(adminDb, `enrollments/${uid}__${courseSlug}`), {
+          id: `${uid}__${courseSlug}`,
+          userId: uid,
+          courseId: courseSlug,
+          courseSlug,
+          courseTitle: "Gamified Course",
+          courseCategory: "Leadership",
+          courseImage: "/brand/logo-mark.png",
+          status: "active",
+          source: "admin",
+          progressPercent: 0,
+          lastLessonId: null,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        });
+      }
+      await setDoc(doc(adminDb, `communityPosts/${postId}`), {
+        courseSlug,
+        authorId: "author-1",
+        authorName: "Author One",
+        authorRole: "student",
+        category: "discussion",
+        body: "A thoughtful post that may earn likes.",
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      });
+    });
+  }
+
+  const likeDoc = (likerId: string) => ({
+    likerId,
+    postId,
+    createdAt: Timestamp.now(),
+  });
+
+  it("lets an enrolled member like a post (own like id) and unlike it", async () => {
+    await seedPostAndEnrollments();
+    const db = testEnv.authenticatedContext("liker-1", verifiedAuth).firestore();
+
+    await assertSucceeds(
+      setDoc(
+        doc(db, `communityPosts/${postId}/likes/liker-1`),
+        likeDoc("liker-1"),
+      ),
+    );
+  });
+
+  it("blocks liking on behalf of another user (like id != uid)", async () => {
+    await seedPostAndEnrollments();
+    const db = testEnv.authenticatedContext("liker-1", verifiedAuth).firestore();
+
+    // Doc id is someone else's uid → cannot inflate another member's likes.
+    await assertFails(
+      setDoc(
+        doc(db, `communityPosts/${postId}/likes/author-1`),
+        likeDoc("author-1"),
+      ),
+    );
+  });
+
+  it("blocks a non-enrolled user from liking", async () => {
+    await seedPostAndEnrollments();
+    const db = testEnv.authenticatedContext("outsider-1", verifiedAuth).firestore();
+
+    await assertFails(
+      setDoc(
+        doc(db, `communityPosts/${postId}/likes/outsider-1`),
+        likeDoc("outsider-1"),
+      ),
+    );
+  });
+
+  it("blocks a like doc carrying an extra (score) field", async () => {
+    await seedPostAndEnrollments();
+    const db = testEnv.authenticatedContext("liker-1", verifiedAuth).firestore();
+
+    await assertFails(
+      setDoc(doc(db, `communityPosts/${postId}/likes/liker-1`), {
+        ...likeDoc("liker-1"),
+        points: 9999,
+      }),
+    );
+  });
+
+  it("blocks all client writes to memberStats (server-only)", async () => {
+    await seedPostAndEnrollments();
+    const db = testEnv.authenticatedContext("author-1", verifiedAuth).firestore();
+
+    // Points/level are server-authoritative — a member cannot set their own.
+    await assertFails(
+      setDoc(doc(db, "memberStats/author-1"), {
+        uid: "author-1",
+        displayName: "Author One",
+        points: 99999,
+        level: 9,
+        totalLikesReceived: 99999,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("lets a signed-in member read memberStats and leaderboards", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "memberStats/author-1"), {
+        uid: "author-1",
+        displayName: "Author One",
+        points: 25,
+        level: 3,
+        totalLikesReceived: 25,
+        updatedAt: Timestamp.now(),
+      });
+      await setDoc(doc(context.firestore(), "leaderboards/all-time"), {
+        window: "all-time",
+        entries: [],
+        updatedAt: Timestamp.now(),
+      });
+    });
+    const db = testEnv.authenticatedContext("liker-1", verifiedAuth).firestore();
+
+    await assertSucceeds(getDoc(doc(db, "memberStats/author-1")));
+    await assertSucceeds(getDoc(doc(db, "leaderboards/all-time")));
+  });
+
+  it("blocks reading the points ledger from a client", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "pointsEvents/evt-1"), {
+        uid: "author-1",
+        kind: "like_received",
+        delta: 1,
+        postId,
+        likerId: "liker-1",
+        createdAt: Timestamp.now(),
+      });
+    });
+    const db = testEnv.authenticatedContext("author-1", verifiedAuth).firestore();
+
+    await assertFails(getDoc(doc(db, "pointsEvents/evt-1")));
+  });
+});

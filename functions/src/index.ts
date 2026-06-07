@@ -28,6 +28,8 @@ import {
 } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import {
+  onDocumentCreated,
+  onDocumentDeleted,
   onDocumentUpdated,
   onDocumentWritten,
 } from "firebase-functions/v2/firestore";
@@ -1389,6 +1391,139 @@ export const syncPublicTeacherProfile = onDocumentWritten(
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },
+    );
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Community gamification — points & levels (server-authoritative).
+//
+// Points come ONLY from likes RECEIVED on community posts (1 like = 1 point),
+// the Skool-standard model. A like is a doc at
+// communityPosts/{postId}/likes/{likerId} (client own-write). These two
+// triggers are the ONLY writer of memberStats/{uid} (firestore.rules ->
+// memberStats write: if false), so points/levels can never be self-awarded.
+//
+// GAMIFICATION_LEVEL_THRESHOLDS mirrors src/domain/gamification.ts (the
+// functions package cannot import from the app). The app module is canonical —
+// keep both in sync. Skool ladder: L1 0, L2 5, L3 20, L4 65, L5 155, L6 515,
+// L7 2015, L8 8015, L9 33015.
+// ---------------------------------------------------------------------------
+const GAMIFICATION_LEVEL_THRESHOLDS = [
+  0, 5, 20, 65, 155, 515, 2015, 8015, 33015,
+];
+
+function gamificationLevelForPoints(points: number): number {
+  const safe = Number.isFinite(points) && points > 0 ? Math.floor(points) : 0;
+  let level = 1;
+  for (
+    let index = 0;
+    index < GAMIFICATION_LEVEL_THRESHOLDS.length;
+    index += 1
+  ) {
+    if (safe >= GAMIFICATION_LEVEL_THRESHOLDS[index]) {
+      level = index + 1;
+    }
+  }
+  return level;
+}
+
+/**
+ * Apply one like delta (+1 on like, -1 on unlike) to the post author's
+ * memberStats. Reads the post for the author, skips self-likes, and derives
+ * the level transactionally so points and level never drift. Appends an
+ * immutable pointsEvents ledger row (used by the leaderboard window
+ * aggregation).
+ *
+ * Trigger delivery is at-least-once, so a delta can in rare cases double-apply;
+ * points are engagement signal (not money) and totals clamp at 0, so this is an
+ * accepted MVP tradeoff.
+ */
+async function applyCommunityLikeDelta(
+  postId: string,
+  likerId: string,
+  delta: 1 | -1,
+): Promise<void> {
+  if (!postId || !likerId) {
+    return;
+  }
+
+  const postSnap = await db.collection("communityPosts").doc(postId).get();
+  const post = postSnap.data();
+  const authorId = typeof post?.authorId === "string" ? post.authorId : "";
+  if (!authorId) {
+    return;
+  }
+  // No points for liking your own post.
+  if (authorId === likerId) {
+    return;
+  }
+  const authorName =
+    typeof post?.authorName === "string" && post.authorName.trim()
+      ? post.authorName.trim()
+      : "Member";
+
+  const statsRef = db.collection("memberStats").doc(authorId);
+
+  await db.runTransaction(async (transaction) => {
+    const statsSnap = await transaction.get(statsRef);
+    const prev = statsSnap.data();
+    const prevPoints =
+      typeof prev?.points === "number" && Number.isFinite(prev.points)
+        ? prev.points
+        : 0;
+    const prevLikes =
+      typeof prev?.totalLikesReceived === "number"
+        && Number.isFinite(prev.totalLikesReceived)
+        ? prev.totalLikesReceived
+        : 0;
+
+    const points = Math.max(0, prevPoints + delta);
+    const totalLikesReceived = Math.max(0, prevLikes + delta);
+
+    transaction.set(
+      statsRef,
+      {
+        uid: authorId,
+        displayName: authorName,
+        points,
+        level: gamificationLevelForPoints(points),
+        totalLikesReceived,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  });
+
+  await db
+    .collection("pointsEvents")
+    .add({
+      uid: authorId,
+      kind: delta > 0 ? "like_received" : "like_removed",
+      delta,
+      postId,
+      likerId,
+      createdAt: FieldValue.serverTimestamp(),
+    })
+    .catch((error) => {
+      logger.error("pointsEvents append failed", { postId, likerId, error });
+    });
+}
+
+export const onCommunityLikeCreated = onDocumentCreated(
+  "communityPosts/{postId}/likes/{likerId}",
+  async (event) => {
+    await applyCommunityLikeDelta(event.params.postId, event.params.likerId, 1);
+  },
+);
+
+export const onCommunityLikeDeleted = onDocumentDeleted(
+  "communityPosts/{postId}/likes/{likerId}",
+  async (event) => {
+    await applyCommunityLikeDelta(
+      event.params.postId,
+      event.params.likerId,
+      -1,
     );
   },
 );
