@@ -14,7 +14,7 @@ const promises = [
   {
     number: "02",
     title: "Feature parity across all plans",
-    body: "No add-ons. No premium tier locking certificates, quizzes, drip content, or community. Every Skillset feature is on every plan. The plan you pick only changes the commission rate Skillset takes per sale — never what you can build.",
+    body: "No add-ons. No premium tier locking certificates, drip content, or community. Every Skillset feature is on every plan. The plan you pick only changes the commission rate Skillset takes per sale — never what you can build.",
     practice:
       "A creator on Free and a creator on Plus get the same product surface. Skillset does not tax growth with feature paywalls.",
   },
