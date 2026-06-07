@@ -25,7 +25,7 @@ novos; manteve os IDs ja presentes no projeto.
 **Desbloqueio:** seguir `STRIPE_CHECKLIST.md` itens 1 e 2. Em resumo:
 1. dashboard.stripe.com → Developers → API keys → copiar Secret key
 2. terminal do projeto: `firebase functions:secrets:set STRIPE_SECRET_KEY`
-3. Developers → Webhooks → criar endpoint `https://us-central1-skillsetusaofficial.cloudfunctions.net/stripeWebhook` com os 4 eventos listados
+3. Developers → Webhooks → criar endpoint `https://us-central1-skillsetusaofficial.cloudfunctions.net/stripeWebhook` com os 9 eventos listados em `STRIPE_CHECKLIST.md` (4 one-time/refund + 5 de assinatura — estes últimos obrigatórios p/ R1 assinatura de curso)
 4. copiar Signing secret → `firebase functions:secrets:set STRIPE_WEBHOOK_SECRET`
 **Status código:** pronto. Só falta o segredo.
 

@@ -33,13 +33,24 @@ Onde: **Developers → Webhooks → + Add endpoint**.
 |---|---|
 | **Endpoint URL** | `https://us-central1-skillsetusaofficial.cloudfunctions.net/stripeWebhook` |
 | **Description** | `Skillset marketplace — orders & payouts` |
-| **Events to send** | selecione exatamente os 4 abaixo |
+| **Events to send** | selecione exatamente os 9 abaixo |
 
-Eventos a assinar (clique **Select events** e marque só estes — é o que o código trata):
+Eventos a assinar (clique **Select events** e marque só estes — é o que o código trata).
+
+**Compra one-time + reembolso** (rail original):
 - [ ] `checkout.session.completed`
 - [ ] `checkout.session.expired`
 - [ ] `payment_intent.payment_failed`
 - [ ] `charge.refunded`
+
+**Assinatura** (curso recorrente + plano SaaS do professor) — **obrigatórios p/ R1**:
+- [ ] `invoice.paid` — fulfillment do ciclo: grava `payoutLedger` (held) + concede/reativa enrollment (`handleCourseSubscriptionInvoicePaid`, `index.ts:3199,3456`)
+- [ ] `invoice.payment_failed` — período de graça (`past_due`, mantém acesso durante o dunning do Stripe) p/ curso; dunning do plano caso contrário (`handleInvoicePaymentFailed`, `index.ts:3195,4415`)
+- [ ] `customer.subscription.created` — lifecycle (`handleCourseSubscriptionLifecycle` → fallback `syncSubscriptionFromStripe`, `index.ts:3168`)
+- [ ] `customer.subscription.updated` — lifecycle: cancel/resume, `past_due`→`active` (revoga/restaura enrollment), `index.ts:3169`
+- [ ] `customer.subscription.deleted` — lifecycle: revoga enrollment ativo→revogado, `index.ts:3186`
+
+> ⚠️ **Sem os 5 eventos de assinatura, uma assinatura de curso COBRA o aluno mas NÃO concede/revoga acesso** (o webhook nunca dispara o fulfillment). Os mesmos 5 também alimentam o lifecycle do plano SaaS do professor.
 
 Depois de criar o endpoint:
 - Abra o endpoint criado → **Signing secret** → **Reveal** → copie o valor `whsec_...`
