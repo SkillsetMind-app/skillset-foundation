@@ -156,15 +156,19 @@ Passe dedicado, **fora** deste backlog de produto, recomendado antes de mexer no
 
 ---
 
-## 🚦 FASE 4 — EM EXECUÇÃO (aprovado 2026-06-06). Ordem: T1 → B1 → T2.
+## 🚦 FASE 4 — EM EXECUÇÃO (aprovado 2026-06-06). Ordem: T1 → B1 → T2 → opt(a) → B2/B3 → …
 
-Sequência aprovada pelo fundador. Execução **um item por vez**.
+Sequência aprovada pelo fundador. Execução **um item por vez**. Em 2026-06-06 o
+fundador liberou deploy (@devops pode deployar) e mandou **seguir bloco a bloco
+até concluir tudo**, escolhendo o opcional mais recomendado.
 
 | Ordem | Item | Status |
 |-------|------|--------|
-| 1 | **T1 — payout truth** | ✅ **CONCLUÍDO** (2026-06-06): UI já em 30; docs/comentário reconciliados; Q1=30. |
-| 2 | **B1 — webhook idempotency** (claim-before-commit) | ✅ **CONCLUÍDO** (2026-06-06): two-phase `processing`→`done`; só short-circuita em `done`; retry reprocessa marker órfão. Lógica DI testável em `payment-rules.ts` (`claimStripeEvent`/`markStripeEventDone`/`decideStripeEventClaim`), wired em `index.ts`, função antiga removida. 5 testes de regressão + tsc + 97/97 + eslint limpos. **Não deployado** (decisão do fundador / @devops). |
-| 3 | **T2 — stubs de professor no nav** | ✅ **CONCLUÍDO** (2026-06-06): premissa do backlog estava **stale** — os 4 stubs já estavam fora do menu (`contexts: []`, filtro provado) e já rotulados "on the roadmap". Defeito real encontrado e corrigido: link enganoso no **Termos de Serviço**. |
+| 1 | **T1 — payout truth** | ✅ **CONCLUÍDO + DEPLOYADO** (2026-06-06): UI já em 30; docs/comentário reconciliados; Q1=30. |
+| 2 | **B1 — webhook idempotency** (claim-before-commit) | ✅ **CONCLUÍDO + DEPLOYADO** (2026-06-06): two-phase `processing`→`done`; só short-circuita em `done`; retry reprocessa marker órfão. Lógica DI testável em `payment-rules.ts` (`claimStripeEvent`/`markStripeEventDone`/`decideStripeEventClaim`), wired em `index.ts`, função antiga removida. 5 testes de regressão + tsc + eslint limpos. |
+| 3 | **T2 — stubs de professor no nav** | ✅ **CONCLUÍDO + DEPLOYADO** (2026-06-06): premissa do backlog estava **stale** — os 4 stubs já estavam fora do menu (`contexts: []`, filtro provado) e já rotulados "on the roadmap". Defeito real encontrado e corrigido: link enganoso no **Termos de Serviço**. |
+| 4 | **opt(a) — "Notify me" nos painéis roadmap** | ✅ **CONCLUÍDO** (2026-06-06): opcional mais recomendado vs. opt(b) (deletar `/teach/refunds` criaria 404 p/ URL digitada; redirect gracioso é melhor). `TeacherComingSoonPanel` ganhou prop `notifyFeature` → CTA `mailto:support` por feature, convertendo dead-end de roadmap em sinal de demanda mensurável. Presentational, atrás do gate `teacherStudio.access`. Commit `d5ebdca`. |
+| 5 | **B2 + B3 — overwrite fora de ordem + guard de compra duplicada** | ✅ **CONCLUÍDO** (2026-06-06): bloco de dinheiro fechado. B2: `markOrderStatus` transacional + freeze de estado terminal (`shouldApplyOrderStatusTransition`). B3: lock de checkout in-flight reivindicado **dentro de transação** (serialização OCC) + `expires_at` na sessão Stripe + release de lock com guarda de posse (`shouldReleaseCheckoutLock`). Review adversarial pegou um race de double-charge no path de takeover **antes do LIVE**; corrigido e re-verificado (SAFE-TO-DEPLOY). tsc + **106/106** vitest + eslint limpos. Commit `0ca1ecf`. |
 
 ### T2 — registro técnico (2026-06-06)
 
@@ -172,7 +176,7 @@ Sequência aprovada pelo fundador. Execução **um item por vez**.
 - **Stubs já honestos:** os 4 (`integrations`/`co-productions`/`team`/`coupons`) renderizam `TeacherComingSoonPanel` sob `ProtectedSurface` (gate `teacherStudio.access`), com texto "on the roadmap" + CTA real ("Manage payouts" → `/account/payments`). Alcançáveis só por URL direta; **zero `<Link>`** aponta para eles. Mudá-los seria **inventar trabalho** → mantidos como estão.
 - **Defeito real (corrigido):** `legal/terms/page.tsx:103-106` afirmava *"Educator payout and refund handling is described in the **educator refund policy**"* linkando `/teach/refunds` — que **não é página de política**, é `redirect("/account/payments")` (auth-gated). Um visitante deslogado lendo os Termos clicava e batia num login, não numa política. **Fix:** repontado para `/fees-and-payouts` (página **pública**, descreve refund window 7d + payout clearance 30d + fees + disputes) e relabel para "fees and payouts policy". Agora `/teach/refunds` tem **zero links inbound** (só a entrada hidden em `site.ts:154`).
 - **Verificação:** grep confirma 0 links para os 4 stubs e 0 links para `/teach/refunds` fora da entrada hidden · `eslint src/app/legal/terms/page.tsx` ✅.
-- **Aberto (opcional, fundador):** (a) capturar "notify me" nos painéis roadmap — seria um novo micro-stub, **não** feito para não criar promessa não-funcional; (b) deletar a rota órfã `/teach/refunds` — redirect inofensivo, mantido (decisão B do demo-readiness). Nenhum é bloqueador de demo.
+- **Aberto (opcional, fundador) — RESOLVIDO:** (a) ✅ **feito** (ordem 4): "Notify me" via `mailto` é um sinal de demanda honesto, não uma promessa de feature — escolhido como o opcional mais recomendado; (b) deletar a rota órfã `/teach/refunds` — **descartado**: o redirect gracioso evita 404 para URL digitada/indexada, melhor que remover (decisão B do demo-readiness mantida).
 
 ### B1 — registro técnico da correção (2026-06-06)
 
@@ -181,3 +185,12 @@ Sequência aprovada pelo fundador. Execução **um item por vez**.
 - **Fix:** two-phase. Claim grava `status:"processing"`; promoção a `status:"done"` **só após** todos os handlers rodarem sem throw; short-circuit **apenas** em `done`. Marker preso em `processing` (throw ou crash entre claim e completion) é reprocessado no retry.
 - **Arquivos:** `payment-rules.ts` (+`claimStripeEvent`, `markStripeEventDone`, `decideStripeEventClaim`, tipos `StripeEventMarkerRef`/`StripeEventMarkerStatus`/`StripeEventClaimDecision`); `index.ts` (import + handler claim/complete + remoção da `markStripeEventProcessed`); `payment-rules.test.ts` (+5 testes, incl. o guard exato da regressão "retry após falha = reprocessa, não duplicate").
 - **Verificação:** `npm --prefix functions run build` (tsc) ✅ · `vitest run` 97/97 ✅ · `eslint` (3 arquivos) ✅.
+
+### B2 + B3 — registro técnico da correção (2026-06-06)
+
+- **B2 (overwrite fora de ordem).** Stripe não garante ordem de entrega: um `checkout.session.expired`/`payment_failed` de uma tentativa antiga pode chegar **depois** do `checkout.session.completed` já ter marcado `paid`, revogando uma compra real. **Fix:** `markOrderStatus` agora roda em `db.runTransaction` e congela estados terminais (`paid`/`refunded`/`partially_refunded`) via `shouldApplyOrderStatusTransition` (puro, testado). O read do pedido precede todo write na transação.
+- **B3 (compra duplicada não-transacional).** `enrollmentRef.get()` é leitura fora de transação; dois checkouts concorrentes (duplo-clique/duas abas) passavam ambos → cobrança dupla. **Fix:** lock `checkoutLocks/${userId}__${courseId}` reivindicado **dentro de uma transação** — a concorrência otimista do Firestore serializa: exatamente um vencedor segue, perdedores re-leem o claim fresco e resolvem para `reuse` (devolve a MESMA url de sessão) ou `wait`. Decisão pura em `decideCheckoutLock` (testada); a serialização é propriedade da transação.
+- **Race pego pelo review adversarial (antes do LIVE).** A primeira versão re-reivindicava o lock no path de *takeover* com `.set({merge:true})` — que **não** falha quando o doc existe, logo dois deciders de takeover sobre um lock stale ambos seguiam para `stripe.checkout.sessions.create` → **double charge**. Movido para dentro da transação (o doc do lock entra no read-set → o perdedor aborta, re-tenta e cai em `wait`/`reuse`). Re-verificado por um segundo agente adversarial: **SAFE-TO-DEPLOY**, sem race residual.
+- **Hardening do mesmo review:** (1) a sessão Stripe agora seta `expires_at` (~31 min) para que o `sessionTtlMs` do lock (35 min) seja **honesto** — um takeover nunca corre contra uma sessão ainda pagável (antes, sem `expires_at`, a sessão real vivia ~24h); na expiração o `checkout.session.expired` cancela o pedido e libera o lock. (2) release de lock (em `markOrderStatus` **e** `handleCheckoutCompleted`) é guardado por `shouldReleaseCheckoutLock(lock.orderId === orderId)` — um evento terminal tardio de uma tentativa **antiga** nunca derruba o lock de uma **re-compra viva**. (3) o cron `expireStalePendingOrders` roteia por `markOrderStatus`, herdando o freeze e o release com guarda de posse (sem locks órfãos).
+- **Arquivos:** `payment-rules.ts` (+`shouldReleaseCheckoutLock`); `index.ts` (`createCheckoutSession` lock transacional + `expires_at`; `markOrderStatus` transacional + guarda de posse; `handleCheckoutCompleted` release guardado; cron via `markOrderStatus`); `payment-rules.test.ts` (+3 testes de posse, incl. o path exato "evento de A não derruba lock de B").
+- **Verificação:** `npm --prefix functions run build` (tsc) ✅ · `vitest run` **106/106** ✅ · `eslint .` ✅ · review adversarial 3-lentes (`fix-first`) → fixes aplicados → re-review (`SAFE-TO-DEPLOY`).
