@@ -48,7 +48,7 @@ export default function CoursesPage() {
 function MarketplaceSkeleton() {
   return (
     <section aria-hidden="true">
-      <div className="mb-8 grid gap-3 lg:grid-cols-[1fr_280px] lg:items-center">
+      <div className="mb-8 grid gap-3 lg:grid-cols-[1fr_280px] lg:items-start">
         <div className="flex flex-wrap gap-2.5">
           {[80, 110, 96, 88, 120].map((width, index) => (
             <div
@@ -58,9 +58,15 @@ function MarketplaceSkeleton() {
             />
           ))}
         </div>
-        <div className="grid gap-2">
-          <div className="h-3 w-12 animate-pulse rounded bg-[var(--color-surface-strong)]" />
-          <div className="h-11 animate-pulse rounded-[10px] bg-[var(--color-surface-soft)]" />
+        <div className="grid gap-3">
+          <div className="grid gap-2">
+            <div className="h-3 w-12 animate-pulse rounded bg-[var(--color-surface-strong)]" />
+            <div className="h-11 animate-pulse rounded-[10px] bg-[var(--color-surface-soft)]" />
+          </div>
+          <div className="grid gap-2">
+            <div className="h-3 w-10 animate-pulse rounded bg-[var(--color-surface-strong)]" />
+            <div className="h-11 animate-pulse rounded-[10px] bg-[var(--color-surface-soft)]" />
+          </div>
         </div>
       </div>
       <div className="grid gap-5 lg:grid-cols-3">

@@ -18,6 +18,13 @@ export type CourseCard = {
   freePreviewHref?: string;
   sourceLabel?: string;
   ratingLabel?: string;
+  // Raw numeric signals carried alongside the display strings so the
+  // marketplace can offer sort options (price, rating) without re-parsing the
+  // formatted labels. Optional: static/demo cards may omit them, and the sort
+  // comparators treat missing values as "lowest" so those cards sink to the end.
+  priceAmountMinor?: number | null;
+  ratingAverage?: number;
+  ratingCount?: number;
 };
 
 export function getCourses(): Course[] {

@@ -10,6 +10,11 @@ import { useAuth } from "@/components/auth/auth-provider";
 import type { CourseCard } from "@/lib/data/catalog";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import {
+  courseSortOptions,
+  sortCourseCards,
+  type CourseSortKey,
+} from "@/lib/data/course-sort";
+import {
   subscribeToPublishedTeacherCourses,
   teacherCourseToCourseCard,
 } from "@/lib/data/published-courses";
@@ -44,6 +49,9 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   // Seed from the platform header search (`/courses?q=...`) so the term is
   // honored and the input is pre-filled; the user can refine from there.
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
+  // View preference only (not URL-synced like cat/q): default "alpha" matches
+  // the catalog's long-standing A->Z order, so untouched = no behavior change.
+  const [sortKey, setSortKey] = useState<CourseSortKey>("alpha");
   const [publishedCourses, setPublishedCourses] = useState<CourseCard[]>([]);
   const [publishedCoursesError, setPublishedCoursesError] = useState("");
   const [wishlistError, setWishlistError] = useState("");
@@ -165,6 +173,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
 
     return matchesCategory && matchesQuery;
   });
+  const sortedCourses = sortCourseCards(visibleCourses, sortKey);
 
   const hasAnyCourses = marketplaceCourses.length > 0;
   const isFiltering =
@@ -172,7 +181,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
 
   return (
     <section>
-      <div className="mb-8 grid gap-3 lg:grid-cols-[1fr_280px] lg:items-center">
+      <div className="mb-8 grid gap-3 lg:grid-cols-[1fr_280px] lg:items-start">
         <div className="flex flex-wrap gap-2.5">
           {categories.map((filter) => {
             const isActive = activeCategory === filter;
@@ -194,15 +203,31 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
             );
           })}
         </div>
-        <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-          Search
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search skill, category, or outcome"
-            className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
-          />
-        </label>
+        <div className="grid gap-3">
+          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+            Search
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search skill, category, or outcome"
+              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+            />
+          </label>
+          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+            Sort
+            <select
+              value={sortKey}
+              onChange={(event) => setSortKey(event.target.value as CourseSortKey)}
+              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+            >
+              {courseSortOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
       {publishedCoursesError ? (
@@ -296,7 +321,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
         )
       ) : (
         <div className="grid gap-5 lg:grid-cols-3">
-          {visibleCourses.map((track) => {
+          {sortedCourses.map((track) => {
             const hasFreePreview = Boolean(track.freePreviewHref);
             const isWishlisted =
               status === "authenticated" && wishlistCourseIds.has(track.slug);
