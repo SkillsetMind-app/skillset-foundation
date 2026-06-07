@@ -77,7 +77,7 @@ export function CourseReviewPanel({
   return (
     <section className="member-review-panel">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           Course review
         </p>
         <h4 className="mt-2 text-lg font-semibold text-[var(--color-primary)]">

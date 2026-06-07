@@ -53,7 +53,7 @@ export function RefundButton({ enrollment }: { enrollment: Enrollment }) {
             : "Request refund"}
       </button>
       {error ? (
-        <p className="text-xs font-semibold text-[var(--color-accent)]">
+        <p className="text-xs font-semibold text-[var(--color-accent-fg)]">
           {error}
         </p>
       ) : null}

@@ -67,7 +67,7 @@ export function LearnDashboard() {
     return (
       <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="rounded-[4px] border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <p className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+          <p className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
             {error}
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
@@ -134,7 +134,7 @@ export function LearnDashboard() {
       <section className="learner-home-hero dash-card dash-card--strong p-5 sm:p-7">
         <div className="relative z-[1] grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--color-accent-fg)]">
               Learning workspace
             </p>
             <h2 className="display-title mt-3 max-w-3xl text-4xl leading-[1.03] text-[var(--color-primary)] sm:text-5xl">
@@ -166,7 +166,7 @@ export function LearnDashboard() {
             <span className="learner-continue-card__icon">
               <PlayCircle aria-hidden="true" size={20} strokeWidth={1.9} />
             </span>
-            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--color-accent-fg)]">
               Continue
             </p>
             <h3 className="display-title mt-3 text-3xl leading-tight text-[var(--color-primary)]">
@@ -198,7 +198,7 @@ export function LearnDashboard() {
       <section className="dash-card dash-card--strong p-4 shadow-[var(--shadow-soft)] sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               My courses
             </p>
             <h3 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
@@ -244,7 +244,7 @@ export function LearnDashboard() {
                 </div>
                 <div className="flex flex-col justify-between gap-4">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-accent)]">
+                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                       {enrollment.courseCategory}
                     </p>
                     <div className="mt-2 flex flex-wrap items-center gap-3">

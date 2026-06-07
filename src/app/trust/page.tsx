@@ -78,7 +78,7 @@ export default function TrustPage() {
               >
                 <Icon size={20} strokeWidth={1.7} />
               </span>
-              <p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+              <p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                 {layer.title}
               </p>
               <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">

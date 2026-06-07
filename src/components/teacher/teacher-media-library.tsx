@@ -157,7 +157,7 @@ export function TeacherMediaLibrary() {
       ) : null}
 
       {error ? (
-        <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+        <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           {error}
         </p>
       ) : null}
@@ -169,7 +169,7 @@ export function TeacherMediaLibrary() {
           </p>
         ) : courses.length === 0 ? (
           <div className="rounded-[16px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               No course container yet
             </p>
             <h4 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
@@ -191,7 +191,7 @@ export function TeacherMediaLibrary() {
           </div>
         ) : filteredAssets.length === 0 ? (
           <div className="rounded-[16px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               Library is ready
             </p>
             <h4 className="display-title mt-3 text-3xl text-[var(--color-primary)]">

@@ -38,7 +38,7 @@ export function TeacherComingSoonPanel({
   return (
     <section className="overflow-hidden rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-10">
       <div className="flex flex-wrap items-center gap-3">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {eyebrow}
         </p>
         <StatusChip status="pending" label="Planned" />

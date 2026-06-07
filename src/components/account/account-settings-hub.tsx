@@ -84,7 +84,7 @@ export function AccountSettingsHub() {
   return (
     <div className="space-y-6">
       <header className="platform-hero-card rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           Settings
         </p>
         <h1 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] lg:text-5xl">
@@ -216,7 +216,7 @@ function NotificationPreferencesPanel() {
 
   return (
     <section className="settings-section-card">
-      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         Notifications
       </p>
       <h2 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
@@ -228,7 +228,7 @@ function NotificationPreferencesPanel() {
       </p>
 
       {saveFailed ? (
-        <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+        <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           We could not save that change. Check your connection and try again.
         </p>
       ) : null}
@@ -310,7 +310,7 @@ function LearningPreferencesPanel() {
 
   return (
     <section className="settings-section-card">
-      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         Learning
       </p>
       <h2 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
@@ -322,7 +322,7 @@ function LearningPreferencesPanel() {
       </p>
 
       {saveFailed ? (
-        <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+        <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           We could not save that change. Check your connection and try again.
         </p>
       ) : null}

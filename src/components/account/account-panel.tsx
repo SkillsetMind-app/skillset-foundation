@@ -68,7 +68,7 @@ export function AccountPanel({
     <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
       <AccountNavMobile active={active} />
       <aside className="dash-card dash-card--strong hidden h-fit p-4 lg:block">
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           Settings
         </p>
         <p className="mt-2 text-xs leading-5 text-[var(--color-ink-soft)]">

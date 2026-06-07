@@ -17,7 +17,7 @@ export function SkillsetSpinner({
 }: SkillsetSpinnerProps) {
   const content = (
     <section className="text-center">
-      <div className="mx-auto mb-5 size-14 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent)] motion-safe:animate-spin" />
+      <div className="mx-auto mb-5 size-14 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
       <h1 className="display-title text-[22px] font-semibold text-[var(--color-primary)]">
         {title}
       </h1>

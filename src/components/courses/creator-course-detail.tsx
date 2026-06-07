@@ -223,7 +223,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
 
         {learningOutcomes.length > 0 ? (
           <section className="mt-8 rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               What you&apos;ll learn
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -248,7 +248,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
           id="free-preview"
           className="mt-8 rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
         >
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Free preview
           </p>
           {previewLesson ? (
@@ -310,7 +310,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
         </section>
 
         <section className="mt-8 rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Course structure
           </p>
           <div className="mt-5 grid gap-4">
@@ -390,7 +390,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
         </dl>
 
         {checkoutStatus === "cancelled" ? (
-          <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+          <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
             Checkout was cancelled. Your card was not charged.
           </p>
         ) : null}
@@ -402,7 +402,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
         ) : null}
 
         {checkoutError ? (
-          <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+          <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
             {checkoutError}
           </p>
         ) : null}

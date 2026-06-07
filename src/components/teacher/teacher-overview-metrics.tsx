@@ -196,8 +196,8 @@ export function TeacherOverviewMetrics() {
             <div
               className={`mt-2 inline-flex items-center gap-1 text-xs font-bold ${
                 card.delta.up
-                  ? "text-[var(--color-success)]"
-                  : "text-[var(--color-accent)]"
+                  ? "text-[var(--color-success-fg)]"
+                  : "text-[var(--color-accent-fg)]"
               }`}
             >
               {card.delta.up ? (

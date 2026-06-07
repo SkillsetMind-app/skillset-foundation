@@ -45,7 +45,7 @@ export function ResetPasswordForm() {
         <p
           role="alert"
           aria-live="assertive"
-          className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]"
+          className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]"
         >
           {error}
         </p>

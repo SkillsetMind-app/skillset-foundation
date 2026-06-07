@@ -22,7 +22,7 @@ export default function OnboardingPage() {
       }
     >
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           Onboarding
         </p>
         <h2 className="display-title mt-3 text-4xl text-[var(--color-primary)]">

@@ -64,7 +64,7 @@ export function PasswordStrengthChecklist({ password }: { password: string }) {
               key={requirement.id}
               className={`flex items-center gap-2 text-xs leading-5 ${
                 requirement.met
-                  ? "text-[var(--color-success)]"
+                  ? "text-[var(--color-success-fg)]"
                   : "text-[var(--color-ink-soft)]"
               }`}
             >

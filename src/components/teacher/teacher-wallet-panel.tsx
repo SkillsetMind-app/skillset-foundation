@@ -155,7 +155,7 @@ export function TeacherWalletPanel() {
     <section className="payouts-shell">
       <header className="payouts-head">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Payouts & tax
           </p>
           <h2 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)]">
@@ -179,7 +179,7 @@ export function TeacherWalletPanel() {
         </p>
       ) : null}
       {error ? (
-        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           {error}
         </p>
       ) : null}
@@ -227,7 +227,7 @@ export function TeacherWalletPanel() {
         <aside className="payout-bank-card">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                 Payout destination
               </p>
               <h3 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
@@ -290,7 +290,7 @@ export function TeacherWalletPanel() {
         <section id="stripe-connect" className="scroll-mt-24 rounded-[18px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                 {connected ? "Continue payout setup" : "Set up payouts"}
               </p>
               <h3 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
@@ -313,7 +313,7 @@ export function TeacherWalletPanel() {
       <section className="payout-statements">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               Statements
             </p>
             <h3 className="display-title mt-2 text-3xl text-[var(--color-primary)]">

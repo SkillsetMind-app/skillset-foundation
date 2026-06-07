@@ -239,7 +239,7 @@ export function CourseCommunityFeed({ space }: CourseCommunityFeedProps) {
               </button>
             </div>
             {error ? (
-              <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+              <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
                 {error}
               </p>
             ) : null}
@@ -337,7 +337,7 @@ function CommunityInfoPanel({
             key={label}
             className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-accent)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
               {label}
             </p>
             <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -492,7 +492,7 @@ function CommunityPostCard({
           }
           className={`inline-flex items-center gap-1.5 rounded-[9px] border px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-default disabled:opacity-70 ${
             liked
-              ? "border-[var(--color-accent)] text-[var(--color-accent)]"
+              ? "border-[var(--color-accent-fg)] text-[var(--color-accent-fg)]"
               : "border-[var(--color-line)] text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
           }`}
         >
@@ -575,7 +575,7 @@ function CommunityPostCard({
             className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-primary-light)]"
           />
           {commentError ? (
-            <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-accent)]">
+            <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-accent-fg)]">
               {commentError}
             </p>
           ) : null}
@@ -652,7 +652,7 @@ function ReportControl({
       <button
         type="button"
         onClick={() => setIsOpen((value) => !value)}
-        className="text-xs font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-accent)]"
+        className="text-xs font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-accent-fg)]"
       >
         Report {targetType}
       </button>

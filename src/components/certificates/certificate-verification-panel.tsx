@@ -74,14 +74,14 @@ export function CertificateVerificationPanel() {
       </form>
 
       {error ? (
-        <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+        <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           {error}
         </p>
       ) : null}
 
       {result?.valid === false ? (
         <div className="mt-6 rounded-[16px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.05)] p-5">
-          <h2 className="text-lg font-semibold text-[var(--color-accent)]">
+          <h2 className="text-lg font-semibold text-[var(--color-accent-fg)]">
             Certificate not found
           </h2>
           <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">

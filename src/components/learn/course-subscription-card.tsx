@@ -86,14 +86,14 @@ export function CourseSubscriptionCard({
 
   return (
     <div className="member-sidebar-card">
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
         Subscription
       </p>
       <div className="mt-2 flex items-center gap-2">
         {isYearly ? (
-          <CalendarClock size={16} className="text-[var(--color-accent)]" aria-hidden />
+          <CalendarClock size={16} className="text-[var(--color-accent-fg)]" aria-hidden />
         ) : (
-          <Repeat size={16} className="text-[var(--color-accent)]" aria-hidden />
+          <Repeat size={16} className="text-[var(--color-accent-fg)]" aria-hidden />
         )}
         <h4 className="text-lg font-semibold text-[var(--color-primary)]">
           {intervalLabel} access
@@ -111,7 +111,7 @@ export function CourseSubscriptionCard({
       ) : (
         <>
           {pastDue ? (
-            <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-accent)]">
+            <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-accent-fg)]">
               Last payment failed. Update your card to keep access — we are
               retrying the charge.
             </p>
@@ -128,7 +128,7 @@ export function CourseSubscriptionCard({
           )}
 
           {error ? (
-            <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-accent)]">
+            <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-accent-fg)]">
               {error}
             </p>
           ) : null}

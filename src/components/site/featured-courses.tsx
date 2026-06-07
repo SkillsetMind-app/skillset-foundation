@@ -17,7 +17,7 @@ export function FeaturedCourses() {
       <RevealSection>
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               The marketplace
             </p>
             <h2 className="display-title mt-3 text-[clamp(1.9rem,3.4vw,2.9rem)] leading-[1.1] text-[var(--color-primary)]">
@@ -63,7 +63,7 @@ export function FeaturedCourses() {
                   </span>
                 </div>
                 <div className="flex flex-1 flex-col p-5">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-accent)]">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-accent-fg)]">
                     {course.category} · {course.level}
                   </p>
                   <h3 className="display-title mt-2 text-xl leading-snug text-[var(--color-primary)]">

@@ -140,7 +140,7 @@ export function CommunityLeaderboard({
       ) : null}
 
       {error ? (
-        <p className="mt-3 text-xs font-semibold text-[var(--color-accent)]">
+        <p className="mt-3 text-xs font-semibold text-[var(--color-accent-fg)]">
           {error}
         </p>
       ) : null}

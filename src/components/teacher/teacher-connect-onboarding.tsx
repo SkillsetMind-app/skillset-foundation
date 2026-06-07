@@ -124,7 +124,7 @@ export function TeacherConnectOnboarding({
     // keeps payout setup reachable even if the publishable key is missing.
     return (
       <div className="rounded-[14px] border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           Payout setup
         </p>
         <h4 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
@@ -136,7 +136,7 @@ export function TeacherConnectOnboarding({
           you to Skillset the moment you finish.
         </p>
         {error ? (
-          <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+          <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
             {error}
           </p>
         ) : null}
@@ -226,7 +226,7 @@ function StripeConnectFallback({
 }) {
   return (
     <div className="rounded-[14px] border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.04)] p-5">
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
         Stripe embedded setup needs a fallback
       </p>
       <h4 className="display-title mt-2 text-2xl text-[var(--color-primary)]">

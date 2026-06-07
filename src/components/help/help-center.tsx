@@ -88,7 +88,7 @@ export function HelpCenter({ categories }: HelpCenterProps) {
             >
               <h2
                 id={`${category.id}-heading`}
-                className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent)]"
+                className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]"
               >
                 {category.label}
               </h2>

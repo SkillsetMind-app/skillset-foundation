@@ -81,7 +81,7 @@ export function LoadingScreen() {
   return (
     <main className="grid min-h-screen place-items-center bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-5">
       <section className="text-center">
-        <div className="mx-auto mb-5 size-14 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent)] motion-safe:animate-spin" />
+        <div className="mx-auto mb-5 size-14 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
         <h1 className="display-title text-[22px] font-semibold text-[var(--color-primary)]">
           Preparing your workspace
         </h1>
@@ -98,7 +98,7 @@ export function LoadingScreen() {
           </button>
         ) : null}
         {error ? (
-          <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+          <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
             {error}
           </p>
         ) : null}

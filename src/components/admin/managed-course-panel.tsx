@@ -106,7 +106,7 @@ export function ManagedCoursePanel() {
       </div>
 
       {error ? (
-        <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+        <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           {error}
         </p>
       ) : null}
@@ -134,7 +134,7 @@ export function ManagedCoursePanel() {
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                     {course.category}
                   </p>
                   <h4 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
@@ -192,7 +192,7 @@ export function ManagedCoursePanel() {
                     type="button"
                     onClick={() => setConfirmingDeleteId(course.id)}
                     disabled={busyCourseId === course.id}
-                    className="button-outline px-4 py-2 text-xs text-[var(--color-accent)] disabled:opacity-60"
+                    className="button-outline px-4 py-2 text-xs text-[var(--color-accent-fg)] disabled:opacity-60"
                   >
                     Delete
                   </button>

@@ -107,7 +107,7 @@ export function PlansPanel() {
     <section className="grid gap-5">
       {!checkoutReady ? (
         <div className="rounded-[4px] border border-dashed border-[rgba(178,34,52,0.32)] bg-[rgba(178,34,52,0.04)] p-4 text-sm leading-6 text-[var(--color-ink)]">
-          <p className="font-semibold text-[var(--color-accent)]">
+          <p className="font-semibold text-[var(--color-accent-fg)]">
             {priceIdsReady
               ? "Card checkout activates soon."
               : "Billing setup pending."}
@@ -122,7 +122,7 @@ export function PlansPanel() {
 
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             Current plan
           </p>
           <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
@@ -173,7 +173,7 @@ export function PlansPanel() {
       {error ? (
         <p
           role="alert"
-          className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]"
+          className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]"
         >
           {error}
         </p>
@@ -204,7 +204,7 @@ export function PlansPanel() {
               }
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                   {plan.name}
                 </p>
                 {isCurrent ? <StatusChip status="active" label="Current" /> : null}

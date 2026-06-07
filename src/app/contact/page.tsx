@@ -62,7 +62,7 @@ export default function ContactPage() {
       <SiteNav />
       <main className="mx-auto w-full max-w-6xl px-6 py-12 sm:px-8 sm:py-16">
         <section className="max-w-4xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Contact
           </p>
           <h1 className="display-title mt-4 text-6xl leading-none text-[var(--color-primary)]">
@@ -86,7 +86,7 @@ export default function ContactPage() {
               key={route.label}
               className="flex flex-col rounded-[14px] border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
             >
-              <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-accent)]">
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
                 {route.label}
               </p>
               <p className="mt-3 flex-1 text-sm leading-7 text-[var(--color-ink-soft)]">

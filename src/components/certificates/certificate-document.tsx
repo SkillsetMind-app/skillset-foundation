@@ -36,7 +36,7 @@ export function CertificateDocument({
               />
             </span>
             <div className="text-right">
-              <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-accent)]">
+              <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-accent-fg)]">
                 {certificate.authorityLabel}
               </p>
               <p className="text-xs font-semibold text-[var(--color-ink-soft)]">

@@ -16,7 +16,7 @@ export default function InstructorsPage() {
       <SiteNav />
       <main className="mx-auto w-full max-w-3xl px-6 py-20 sm:px-8 sm:py-28">
         <div className="rounded-[18px] border border-dashed border-[rgba(26,54,93,0.18)] bg-[var(--color-surface-soft)] p-10 text-center sm:p-12">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Instructors joining
           </p>
           <h1 className="display-title mt-4 text-4xl leading-tight text-[var(--color-primary)] sm:text-5xl">

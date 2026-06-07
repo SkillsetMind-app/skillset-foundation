@@ -77,7 +77,7 @@ export function AccountDataPanel() {
           type="button"
           onClick={handleDelete}
           disabled={isExporting || isDeleting}
-          className="rounded-[8px] border border-[rgba(178,34,52,0.3)] bg-white px-4 py-2 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-[rgba(178,34,52,0.06)] disabled:opacity-60"
+          className="rounded-[8px] border border-[rgba(178,34,52,0.3)] bg-white px-4 py-2 text-sm font-semibold text-[var(--color-accent-fg)] transition hover:bg-[rgba(178,34,52,0.06)] disabled:opacity-60"
         >
           {isDeleting
             ? "Requesting..."
@@ -106,7 +106,7 @@ export function AccountDataPanel() {
         </p>
       ) : null}
       {error ? (
-        <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+        <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           {error}
         </p>
       ) : null}

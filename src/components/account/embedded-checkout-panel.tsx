@@ -168,7 +168,7 @@ export function EmbeddedCheckoutPanel({
     <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
       <div className="overflow-hidden rounded-[4px] border fine-rule bg-white shadow-[var(--shadow-soft)]">
         {error ? (
-          <div className="p-6 text-sm text-[var(--color-accent)]">
+          <div className="p-6 text-sm text-[var(--color-accent-fg)]">
             <p className="font-semibold">Checkout could not start.</p>
             <p className="mt-2 text-[var(--color-ink-soft)]">{error}</p>
             <Link
@@ -194,7 +194,7 @@ export function EmbeddedCheckoutPanel({
       </div>
 
       <aside className="h-fit rounded-[4px] border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           You&apos;re subscribing to
         </p>
         <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">

@@ -44,7 +44,7 @@ export function HorizontalTabs({
               onClick={() => onChange(tab.value)}
               className={cn(
                 "shrink-0 border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition duration-[180ms] hover:text-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-50",
-                isActive && "border-[var(--color-accent)] text-[var(--color-primary)]",
+                isActive && "border-[var(--color-accent-fg)] text-[var(--color-primary)]",
               )}
             >
               {tab.label}

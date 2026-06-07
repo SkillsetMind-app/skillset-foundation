@@ -23,7 +23,7 @@ export function AuthShell({
       <div className="mx-auto grid min-h-screen w-full max-w-7xl gap-8 px-5 py-6 sm:px-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
         <section className="rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)] sm:p-7">
           <LogoWordmark compact />
-          <p className="mt-10 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+          <p className="mt-10 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {eyebrow}
           </p>
           <h1 className="display-title mt-3 text-5xl leading-tight text-[var(--color-primary)] sm:text-6xl">

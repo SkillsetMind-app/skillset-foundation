@@ -57,7 +57,7 @@ export function TeacherStudioDashboard() {
       <section className="studio-welcome-card dash-card dash-card--strong p-5 sm:p-7">
         <div className="relative z-[1] flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--color-accent-fg)]">
               Teacher Studio
             </p>
             <h1 className="display-title mt-3 text-4xl leading-[1.03] text-[var(--color-primary)] sm:text-5xl lg:text-6xl">

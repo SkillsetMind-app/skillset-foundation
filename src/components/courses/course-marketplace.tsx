@@ -231,13 +231,13 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
       </div>
 
       {publishedCoursesError ? (
-        <p className="mb-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+        <p className="mb-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           {publishedCoursesError}
         </p>
       ) : null}
 
       {wishlistError ? (
-        <p className="mb-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+        <p className="mb-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           {wishlistError}
         </p>
       ) : null}
@@ -298,7 +298,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                 <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
               </svg>
             </div>
-            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               Marketplace opening soon
             </p>
             <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)] sm:text-4xl">
@@ -378,7 +378,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
               </div>
               <div className="p-5">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-accent)]">
+                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
                     {track.category}
                   </span>
                   <span className="text-xs text-[var(--color-ink-soft)]">{track.duration}</span>

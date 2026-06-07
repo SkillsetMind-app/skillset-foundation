@@ -29,7 +29,7 @@ export default function PricingPage() {
           creator actually asks: 'which plan fits me?'. Break-even numbers
           come straight from plans.ts so they stay in sync if pricing moves. */}
       <aside className="mt-8 rounded-[18px] border fine-rule bg-[var(--color-surface-soft)] p-5">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           Which plan is for me?
         </p>
         <div className="mt-3 grid gap-3 text-sm text-[var(--color-ink-soft)] sm:grid-cols-2 lg:grid-cols-4">
@@ -72,7 +72,7 @@ export default function PricingPage() {
                   Most popular
                 </span>
               ) : null}
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                 {plan.name}
               </p>
               <div className="mt-3 flex items-baseline gap-1">
@@ -142,7 +142,7 @@ export default function PricingPage() {
       {/* Breakdown — same $100 sale across all four tiers so the user can
           see exactly where every cent goes. */}
       <section className="mt-12 rounded-[18px] border fine-rule bg-white p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           The math, on a $100 USD sale
         </p>
         <h2 className="display-title mt-3 text-3xl text-[var(--color-primary)] sm:text-4xl">
@@ -229,7 +229,7 @@ export default function PricingPage() {
       {/* Operational rules — refund window, payout clearance, plan changes. */}
       <section className="mt-8 grid gap-4 md:grid-cols-3">
         <article className="rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-5">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             Refund window
           </p>
           <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -239,7 +239,7 @@ export default function PricingPage() {
           </p>
         </article>
         <article className="rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-5">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             Payout clearance
           </p>
           <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -249,7 +249,7 @@ export default function PricingPage() {
           </p>
         </article>
         <article className="rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-5">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             Plan changes
           </p>
           <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">

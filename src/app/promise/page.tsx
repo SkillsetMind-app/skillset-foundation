@@ -103,7 +103,7 @@ export default function PromisePage() {
                     {promise.body}
                   </p>
                   <div className="mt-5 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                       What this means in practice
                     </p>
                     <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">

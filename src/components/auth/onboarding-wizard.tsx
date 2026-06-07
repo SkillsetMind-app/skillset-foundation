@@ -355,7 +355,7 @@ export function OnboardingWizard() {
     return (
       <main className="grid min-h-screen place-items-center bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-5">
         <div className="text-center">
-          <div className="mx-auto mb-5 size-14 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent)] motion-safe:animate-spin" />
+          <div className="mx-auto mb-5 size-14 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
           <p className="text-sm font-semibold text-[var(--color-primary)]">
             Preparing onboarding
           </p>
@@ -368,7 +368,7 @@ export function OnboardingWizard() {
     return (
       <main className="grid min-h-screen place-items-center bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-5">
         <section className="text-center">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Welcome aboard
           </p>
           <h1 className="display-title mt-4 text-[38px] font-semibold leading-[1.1] text-[var(--color-primary)]">
@@ -379,7 +379,7 @@ export function OnboardingWizard() {
           </p>
           <Loader2
             aria-hidden="true"
-            className="mx-auto mt-8 size-14 animate-spin text-[var(--color-accent)]"
+            className="mx-auto mt-8 size-14 animate-spin text-[var(--color-accent-fg)]"
             strokeWidth={1.6}
           />
         </section>
@@ -519,7 +519,7 @@ export function OnboardingWizard() {
                   className={[
                     "flex items-center justify-between rounded-[12px] border-[1.5px] bg-white px-5 py-4 text-left text-sm font-semibold transition hover:bg-[var(--color-surface-soft)]",
                     answers.monthlyRevenue === option
-                      ? "border-[var(--color-accent)] text-[var(--color-primary)]"
+                      ? "border-[var(--color-accent-fg)] text-[var(--color-primary)]"
                       : "border-[var(--color-line)] text-[var(--color-ink)]",
                   ].join(" ")}
                 >
@@ -595,7 +595,7 @@ export function OnboardingWizard() {
                   className={[
                     "rounded-[12px] border-[1.5px] bg-white px-5 py-4 text-left text-sm font-semibold transition hover:bg-[var(--color-surface-soft)]",
                     answers.audienceSize === option
-                      ? "border-[var(--color-accent)] text-[var(--color-primary)]"
+                      ? "border-[var(--color-accent-fg)] text-[var(--color-primary)]"
                       : "border-[var(--color-line)] text-[var(--color-ink)]",
                   ].join(" ")}
                 >
@@ -630,9 +630,9 @@ function PathCard({
       type="button"
       onClick={onClick}
       className={[
-        "group rounded-[16px] border-[1.5px] bg-white px-6 py-6 text-left transition duration-[200ms] hover:-translate-y-0.5 hover:border-[var(--color-accent)] hover:shadow-[var(--shadow-strong)]",
+        "group rounded-[16px] border-[1.5px] bg-white px-6 py-6 text-left transition duration-[200ms] hover:-translate-y-0.5 hover:border-[var(--color-accent-fg)] hover:shadow-[var(--shadow-strong)]",
         selected
-          ? "border-[var(--color-accent)] bg-[rgba(178,34,52,0.04)]"
+          ? "border-[var(--color-accent-fg)] bg-[rgba(178,34,52,0.04)]"
           : "border-[var(--color-line)]",
       ].join(" ")}
     >
@@ -640,8 +640,8 @@ function PathCard({
         className={[
           "mb-5 grid size-12 place-items-center rounded-[12px] bg-[var(--color-surface-strong)] transition",
           selected
-            ? "text-[var(--color-accent)]"
-            : "text-[var(--color-primary)] group-hover:text-[var(--color-accent)]",
+            ? "text-[var(--color-accent-fg)]"
+            : "text-[var(--color-primary)] group-hover:text-[var(--color-accent-fg)]",
         ].join(" ")}
       >
         <Icon aria-hidden="true" size={32} strokeWidth={1.6} />
@@ -672,9 +672,9 @@ function LargeRadio({
       type="button"
       onClick={onClick}
       className={[
-        "rounded-[16px] border-[1.5px] bg-white p-5 text-left transition hover:-translate-y-0.5 hover:border-[var(--color-accent)] hover:shadow-[var(--shadow-soft)]",
+        "rounded-[16px] border-[1.5px] bg-white p-5 text-left transition hover:-translate-y-0.5 hover:border-[var(--color-accent-fg)] hover:shadow-[var(--shadow-soft)]",
         selected
-          ? "border-[var(--color-accent)] bg-[rgba(178,34,52,0.04)]"
+          ? "border-[var(--color-accent-fg)] bg-[rgba(178,34,52,0.04)]"
           : "border-[var(--color-line)]",
       ].join(" ")}
     >
@@ -734,7 +734,7 @@ function ErrorMessage({ error }: { error: string }) {
   }
 
   return (
-    <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-center text-sm font-semibold text-[var(--color-accent)]">
+    <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-center text-sm font-semibold text-[var(--color-accent-fg)]">
       {error}
     </p>
   );

@@ -19,7 +19,7 @@ export default function TermsPage() {
       <SiteNav />
       <main className="mx-auto w-full max-w-5xl px-6 py-12 sm:px-8">
         <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-8 shadow-[var(--shadow-soft)] sm:p-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Legal
           </p>
           <h1 className="display-title mt-4 text-6xl leading-none text-[var(--color-primary)]">
@@ -57,7 +57,7 @@ export default function TermsPage() {
               You are responsible for the activity under your account and for
               keeping your sign-in credentials secure. Accounts are personal and
               non-transferable. Tell us promptly at{" "}
-              <a className="font-semibold text-[var(--color-accent)]" href={`mailto:${SUPPORT_EMAIL}`}>
+              <a className="font-semibold text-[var(--color-accent-fg)]" href={`mailto:${SUPPORT_EMAIL}`}>
                 {SUPPORT_EMAIL}
               </a>{" "}
               if you believe your account has been accessed without your
@@ -93,15 +93,15 @@ export default function TermsPage() {
               <strong className="text-[var(--color-ink)]">7 days</strong> of
               purchase, provided the course has not been substantially completed.
               Request a refund from your{" "}
-              <Link className="font-semibold text-[var(--color-accent)]" href="/account">
+              <Link className="font-semibold text-[var(--color-accent-fg)]" href="/account">
                 account billing page
               </Link>{" "}
               or by contacting{" "}
-              <a className="font-semibold text-[var(--color-accent)]" href={`mailto:${SUPPORT_EMAIL}`}>
+              <a className="font-semibold text-[var(--color-accent-fg)]" href={`mailto:${SUPPORT_EMAIL}`}>
                 {SUPPORT_EMAIL}
               </a>
               . Educator payout and refund handling is described in the{" "}
-              <Link className="font-semibold text-[var(--color-accent)]" href="/fees-and-payouts">
+              <Link className="font-semibold text-[var(--color-accent-fg)]" href="/fees-and-payouts">
                 fees and payouts policy
               </Link>
               .
@@ -115,7 +115,7 @@ export default function TermsPage() {
             <p className="mt-3">
               If you publish courses, additional terms apply, including payout,
               commission, and content responsibilities described in the{" "}
-              <Link className="font-semibold text-[var(--color-accent)]" href="/legal/teacher-terms">
+              <Link className="font-semibold text-[var(--color-accent-fg)]" href="/legal/teacher-terms">
                 educator terms
               </Link>
               . You are responsible for the accuracy, ownership, and lawfulness of
@@ -185,11 +185,11 @@ export default function TermsPage() {
             </h2>
             <p className="mt-3">
               Questions about these terms? Reach us at{" "}
-              <a className="font-semibold text-[var(--color-accent)]" href={`mailto:${SUPPORT_EMAIL}`}>
+              <a className="font-semibold text-[var(--color-accent-fg)]" href={`mailto:${SUPPORT_EMAIL}`}>
                 {SUPPORT_EMAIL}
               </a>{" "}
               or through the{" "}
-              <Link className="font-semibold text-[var(--color-accent)]" href="/support">
+              <Link className="font-semibold text-[var(--color-accent-fg)]" href="/support">
                 support page
               </Link>
               .

@@ -16,7 +16,7 @@ export default function AboutPage() {
       <main className="mx-auto w-full max-w-6xl px-6 py-12 sm:px-8 sm:py-16">
         <section className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
           <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             About
           </p>
           <h1 className="display-title mt-4 text-6xl leading-none text-[var(--color-primary)]">

@@ -52,7 +52,7 @@ export function PlanSelectorCards<TValue extends string>({
                 "hover:-translate-y-0.5 hover:border-[rgba(26,54,93,0.22)] hover:shadow-[var(--shadow-soft)]",
                 "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[rgba(26,54,93,0.28)]",
                 isSelected
-                  ? "border-[var(--color-accent)] bg-[rgba(178,34,52,0.04)]"
+                  ? "border-[var(--color-accent-fg)] bg-[rgba(178,34,52,0.04)]"
                   : "border-[var(--color-line)]",
                 isDisabled &&
                   "cursor-not-allowed opacity-55 hover:translate-y-0 hover:border-[var(--color-line)] hover:shadow-none",
@@ -71,7 +71,7 @@ export function PlanSelectorCards<TValue extends string>({
                   className={cn(
                     "grid size-10 shrink-0 place-items-center rounded-[10px] bg-[var(--color-surface-soft)] text-[var(--color-primary)]",
                     isSelected &&
-                      "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent)]",
+                      "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]",
                   )}
                 >
                   <Icon aria-hidden="true" size={18} />

@@ -123,7 +123,7 @@ export function MobileSidebarDrawer({
             <div className="flex items-center justify-between border-b border-[var(--color-line)] p-5">
               <div className="min-w-0">
                 <LogoWordmark nav href="/" />
-                <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-accent)]">
+                <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-accent-fg)]">
                   Beta
                 </p>
               </div>

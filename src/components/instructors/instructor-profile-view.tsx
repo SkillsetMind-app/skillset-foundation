@@ -45,7 +45,7 @@ export function InstructorProfileView({ uid }: { uid: string }) {
   if (hasError || !profile) {
     return (
       <section className="rounded-[18px] border border-dashed border-[rgba(26,54,93,0.18)] bg-[var(--color-surface-soft)] p-10 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           Profile unavailable
         </p>
         <h1 className="display-title mt-4 text-3xl leading-tight text-[var(--color-primary)]">

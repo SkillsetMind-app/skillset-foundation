@@ -159,7 +159,7 @@ export function SecuritySettingsPanel() {
               className={`rounded-[8px] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
                 emailVerified
                   ? "bg-white text-[var(--color-primary)]"
-                  : "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent)]"
+                  : "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]"
               }`}
             >
               {emailVerified ? "Verified" : "Required"}
@@ -301,7 +301,7 @@ export function SecuritySettingsPanel() {
       ) : null}
 
       {error ? (
-        <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+        <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           {error}
         </p>
       ) : null}

@@ -17,7 +17,7 @@ export function OnboardingQuestion({
 }: OnboardingQuestionProps) {
   return (
     <section className="welcome-question mx-auto w-full max-w-[560px] text-center">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         Question {String(number).padStart(2, "0")} of 07
       </p>
       <h1 className="display-title mt-4 text-4xl font-semibold leading-[1.15] text-[var(--color-primary)]">

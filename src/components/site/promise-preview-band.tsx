@@ -64,7 +64,7 @@ export function PromisePreviewBand() {
                     >
                       <Icon size={20} strokeWidth={1.7} />
                     </span>
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                       {promise.eyebrow}
                     </p>
                   </div>

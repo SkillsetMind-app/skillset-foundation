@@ -13,7 +13,7 @@ export default function AccountPlansPage() {
       >
         <section className="grid gap-5">
           <div className="platform-hero-card rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               Pricing model
             </p>
             <h2 className="display-title mt-3 text-3xl text-[var(--color-primary)] sm:text-4xl">
@@ -51,7 +51,7 @@ export default function AccountPlansPage() {
 function PolicyCard({ detail, title }: { detail: string; title: string }) {
   return (
     <article className="rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
         {title}
       </p>
       <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">

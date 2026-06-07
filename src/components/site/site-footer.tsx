@@ -50,7 +50,7 @@ export function SiteFooter() {
           <div className="grid gap-6 sm:grid-cols-3">
             {footerColumns.map((column) => (
               <div key={column.title}>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                   {column.title}
                 </p>
                 <div className="mt-3 grid gap-2">

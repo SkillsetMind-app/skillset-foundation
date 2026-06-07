@@ -1326,7 +1326,7 @@ export function CourseBuilderStudio() {
   if (!courseId) {
     return (
       <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           Choose a course from Teacher Studio before opening the builder.
         </p>
         <Link href="/teach" className="button-outline mt-5 px-4 py-2 text-sm">
@@ -1347,7 +1347,7 @@ export function CourseBuilderStudio() {
   if (error && !course) {
     return (
       <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           {error}
         </p>
         <Link href="/teach" className="button-outline mt-5 px-4 py-2 text-sm">
@@ -1370,7 +1370,7 @@ export function CourseBuilderStudio() {
               <BuilderSaveStatus state={displayedSaveStatus} />
             ) : null}
           </div>
-          <p className="mt-6 text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+          <p className="mt-6 text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Course builder
           </p>
           <h2 className="display-title mt-3 text-[clamp(2rem,4vw,3.2rem)] leading-[1.02] text-[var(--color-primary)]">
@@ -1470,7 +1470,7 @@ export function CourseBuilderStudio() {
       <section className="course-builder-panel">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--color-line)] pb-6">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                 {builderTabs[selectedTabIndex]?.label ?? "Builder"}
               </p>
               <h3 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)]">
@@ -1515,7 +1515,7 @@ export function CourseBuilderStudio() {
         ) : null}
         {course?.reviewNote ? (
           <div className="mt-5 rounded-[3px] border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.04)] p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               Skillset review note
             </p>
             <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -1572,7 +1572,7 @@ export function CourseBuilderStudio() {
               className={`text-xs font-semibold ${
                 summary.trim().length >= 20
                   ? "text-[var(--color-ink-soft)]"
-                  : "text-[var(--color-accent)]"
+                  : "text-[var(--color-accent-fg)]"
               }`}
             >
               {summary.trim().length >= 20
@@ -1627,7 +1627,7 @@ export function CourseBuilderStudio() {
                           )
                         }
                         aria-label={`Remove learning outcome ${index + 1}`}
-                        className="shrink-0 rounded-[8px] border border-[var(--color-line)] p-2.5 text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                        className="shrink-0 rounded-[8px] border border-[var(--color-line)] p-2.5 text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-accent-fg)] hover:text-[var(--color-accent-fg)]"
                       >
                         <Trash2 aria-hidden="true" size={14} strokeWidth={1.8} />
                       </button>
@@ -1672,7 +1672,7 @@ export function CourseBuilderStudio() {
             id="builder-sec-pricing"
             className="scroll-mt-24 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               Marketplace setup
             </p>
             <div className="mt-4">
@@ -1978,7 +1978,7 @@ export function CourseBuilderStudio() {
           <div className="rounded-[4px] border fine-rule bg-white p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                   Curriculum editor
                 </p>
                 <h4 className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -2045,7 +2045,7 @@ export function CourseBuilderStudio() {
                           type="button"
                           onClick={() => deleteModule(module.id)}
                           disabled={!isEditable}
-                          className="rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-accent)] disabled:opacity-50"
+                          className="rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-accent-fg)] disabled:opacity-50"
                         >
                           Delete
                         </button>
@@ -2236,7 +2236,7 @@ export function CourseBuilderStudio() {
                                 type="button"
                                 onClick={() => deleteLesson(module.id, lesson.id)}
                                 disabled={!isEditable}
-                                className="rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-accent)] disabled:opacity-50"
+                                className="rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-accent-fg)] disabled:opacity-50"
                               >
                                 Delete lesson
                               </button>
@@ -2258,7 +2258,7 @@ export function CourseBuilderStudio() {
             id="builder-sec-review"
             className="mt-6 scroll-mt-24 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-5"
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               Submit readiness
             </p>
             <h4 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
@@ -2270,7 +2270,7 @@ export function CourseBuilderStudio() {
                   key={item.label}
                   className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3"
                 >
-                  <p className={`text-sm font-semibold ${item.ready ? "text-[var(--color-primary)]" : "text-[var(--color-accent)]"}`}>
+                  <p className={`text-sm font-semibold ${item.ready ? "text-[var(--color-primary)]" : "text-[var(--color-accent-fg)]"}`}>
                     {item.label}
                   </p>
                 </div>
@@ -2349,7 +2349,7 @@ export function CourseBuilderStudio() {
                   key={module.id}
                   className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4"
                 >
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                     Module {index + 1}
                   </p>
                   <h4 className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -2414,7 +2414,7 @@ export function CourseBuilderStudio() {
             <p>{pricingModelIsReady ? "Enrollment model is ready." : "Set price or mark the course as Free."}</p>
           </div>
           {error ? (
-            <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+            <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
               {error}
             </p>
           ) : null}
@@ -2523,7 +2523,7 @@ function BuilderSaveStatus({
 
   if (state === "error") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-accent)]">
+      <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-accent-fg)]">
         <CloudOff aria-hidden="true" size={12} strokeWidth={2} />
         Save failed — use Save draft
       </span>
@@ -2599,7 +2599,7 @@ function CourseCoverField({
     <section className="grid gap-3 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             Course cover
           </p>
           <p className="mt-1 max-w-xl text-xs leading-5 text-[var(--color-ink-soft)]">
@@ -2676,7 +2676,7 @@ function CourseCoverField({
           ) : null}
 
           {error ? (
-            <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-accent)]">
+            <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-accent-fg)]">
               {error}
             </p>
           ) : null}

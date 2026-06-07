@@ -70,7 +70,7 @@ export default async function BillingReturnPage({
           </div>
         ) : (
           <div className="rounded-[4px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-8 text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               Nothing to confirm
             </p>
             <h2 className="display-title mt-3 text-3xl text-[var(--color-primary)]">

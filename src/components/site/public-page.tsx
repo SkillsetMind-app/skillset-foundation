@@ -22,7 +22,7 @@ export function PublicPage({
       <main className="mx-auto w-full max-w-7xl px-6 py-12 sm:px-8 sm:py-16">
         <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               {eyebrow}
             </p>
             <h1 className="display-title mt-4 text-5xl leading-none text-[var(--color-primary)] sm:text-6xl">

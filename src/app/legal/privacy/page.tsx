@@ -19,7 +19,7 @@ export default function PrivacyPage() {
       <SiteNav />
       <main className="mx-auto w-full max-w-5xl px-6 py-12 sm:px-8">
         <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-8 shadow-[var(--shadow-soft)] sm:p-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Legal
           </p>
           <h1 className="display-title mt-4 text-6xl leading-none text-[var(--color-primary)]">
@@ -142,7 +142,7 @@ export default function PrivacyPage() {
             <p className="mt-3">
               You can request access to, correction of, a copy of, or deletion of
               your personal data. Email{" "}
-              <a className="font-semibold text-[var(--color-accent)]" href={`mailto:${SUPPORT_EMAIL}`}>
+              <a className="font-semibold text-[var(--color-accent-fg)]" href={`mailto:${SUPPORT_EMAIL}`}>
                 {SUPPORT_EMAIL}
               </a>{" "}
               and we will respond in line with applicable law. Some records, such
@@ -191,11 +191,11 @@ export default function PrivacyPage() {
             <p className="mt-3">
               We may update this policy as the platform evolves and will revise the
               effective date above when we do. Questions or requests? Contact{" "}
-              <a className="font-semibold text-[var(--color-accent)]" href={`mailto:${SUPPORT_EMAIL}`}>
+              <a className="font-semibold text-[var(--color-accent-fg)]" href={`mailto:${SUPPORT_EMAIL}`}>
                 {SUPPORT_EMAIL}
               </a>{" "}
               or visit the{" "}
-              <Link className="font-semibold text-[var(--color-accent)]" href="/support">
+              <Link className="font-semibold text-[var(--color-accent-fg)]" href="/support">
                 support page
               </Link>
               .

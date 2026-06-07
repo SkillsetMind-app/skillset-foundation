@@ -100,7 +100,7 @@ export function LearnerWishlist() {
   if (error) {
     return (
       <div className="dash-card dash-card--strong p-5">
-        <p className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+        <p className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           {error}
         </p>
       </div>
@@ -110,7 +110,7 @@ export function LearnerWishlist() {
   if (items.length === 0) {
     return (
       <section className="dash-card dash-card--strong p-5 sm:p-7">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           Saved courses
         </p>
         <h2 className="display-title mt-3 max-w-2xl text-4xl leading-tight text-[var(--color-primary)]">
@@ -149,7 +149,7 @@ export function LearnerWishlist() {
                   />
                 </div>
                 <div className="p-5">
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent)]">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
                     {course.category}
                   </p>
                   <h3 className="display-title mt-3 text-3xl leading-tight text-[var(--color-primary)]">

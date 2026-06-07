@@ -85,7 +85,7 @@ export function PlatformShell({
                       }`}
                     >
                       {eyebrow ? (
-                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                           {eyebrow}
                         </p>
                       ) : null}

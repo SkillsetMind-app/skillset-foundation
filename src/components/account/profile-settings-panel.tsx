@@ -411,7 +411,7 @@ export function ProfileSettingsPanel() {
                     <button
                       type="button"
                       onClick={() => removeCredential(index)}
-                      className="shrink-0 rounded-[10px] border border-[var(--color-line)] px-3 py-3 text-xs font-semibold text-[var(--color-ink-soft)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                      className="shrink-0 rounded-[10px] border border-[var(--color-line)] px-3 py-3 text-xs font-semibold text-[var(--color-ink-soft)] hover:border-[var(--color-accent-fg)] hover:text-[var(--color-accent-fg)]"
                       aria-label={`Remove credential ${index + 1}`}
                     >
                       Remove
@@ -534,7 +534,7 @@ export function ProfileSettingsPanel() {
         </div>
 
         {error ? (
-          <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+          <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
             {error}
           </p>
         ) : null}

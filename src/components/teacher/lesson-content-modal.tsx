@@ -685,7 +685,7 @@ function LessonAssetList({
                 type="button"
                 onClick={() => onDelete(asset)}
                 disabled={deletingAssetId === asset.id}
-                className="button-outline px-3 py-1.5 text-xs text-[var(--color-accent)] disabled:opacity-60"
+                className="button-outline px-3 py-1.5 text-xs text-[var(--color-accent-fg)] disabled:opacity-60"
               >
                 {deletingAssetId === asset.id ? "Deleting..." : "Delete"}
               </button>

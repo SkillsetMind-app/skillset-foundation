@@ -14,7 +14,7 @@ export default function TeacherTermsPage() {
       <SiteNav />
       <main className="mx-auto w-full max-w-5xl px-6 py-12 sm:px-8">
         <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-8 shadow-[var(--shadow-soft)] sm:p-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Teacher Terms
           </p>
           <h1 className="display-title mt-4 text-6xl leading-none text-[var(--color-primary)]">

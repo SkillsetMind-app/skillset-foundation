@@ -91,7 +91,7 @@ export function CreateCourseStart({ ownerId }: CreateCourseStartProps) {
           Back to courses
         </Link>
 
-        <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+        <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--color-accent-fg)]">
           New course
         </p>
         <h2 className="display-title mt-3 text-4xl leading-[1.02] text-[var(--color-primary)] sm:text-5xl">
@@ -120,7 +120,7 @@ export function CreateCourseStart({ ownerId }: CreateCourseStartProps) {
 
       <form onSubmit={handleSubmit} className="create-course-screen__form">
         <div className="grid gap-2">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Course setup
           </p>
           <h3 className="display-title text-3xl leading-tight text-[var(--color-primary)]">
@@ -208,7 +208,7 @@ export function CreateCourseStart({ ownerId }: CreateCourseStartProps) {
         </div>
 
         {error ? (
-          <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+          <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
             {error}
           </p>
         ) : null}

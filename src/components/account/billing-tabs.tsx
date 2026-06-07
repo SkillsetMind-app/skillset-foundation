@@ -112,7 +112,7 @@ export function BillingTabs() {
   return (
     <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="mb-5 rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           Billing is not payouts
         </p>
         <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -307,7 +307,7 @@ function InvoicesTab({
         {portalError ? (
           <p
             role="alert"
-            className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]"
+            className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]"
           >
             {portalError}
           </p>
@@ -323,7 +323,7 @@ function InvoicesTab({
             Loading receipts...
           </p>
         ) : error ? (
-          <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+          <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
             {error}
           </p>
         ) : receipts.length === 0 ? (
@@ -379,7 +379,7 @@ function BillingNotice({
 }) {
   if (tone === "error") {
     return (
-      <p className="rounded-[4px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+      <p className="rounded-[4px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
         {children}
       </p>
     );

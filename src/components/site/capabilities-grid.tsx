@@ -59,7 +59,7 @@ export function CapabilitiesGrid() {
   return (
     <section className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
       <RevealSection className="max-w-2xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           Built into Skillset
         </p>
         <h2 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] sm:text-5xl">

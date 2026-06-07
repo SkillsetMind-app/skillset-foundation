@@ -21,7 +21,7 @@ export default function PromiseChangelogPage() {
         </p>
 
         <div className="mt-8 rounded-[14px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-5">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             Future entry format
           </p>
           <div className="mt-4 grid gap-2 text-sm leading-7 text-[var(--color-ink-soft)]">

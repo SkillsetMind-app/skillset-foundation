@@ -64,7 +64,7 @@ export function AuthPage() {
             </button>
           </div>
 
-          <p className="text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+          <p className="text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {isSignup ? "Join Skillset" : "Welcome back"}
           </p>
           <h1 className="display-title mt-2 text-center text-[26px] leading-[1.15] text-[var(--color-primary)]">

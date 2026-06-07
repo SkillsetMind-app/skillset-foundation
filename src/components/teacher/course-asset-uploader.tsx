@@ -168,7 +168,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
     <section className="course-upload-panel">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Course media library
           </p>
           <h3 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
@@ -226,7 +226,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
         </div>
 
         <div className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-accent)]">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
             Uploading
           </p>
           <p className="mt-2 text-sm font-bold text-[var(--color-ink)]">
@@ -328,7 +328,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
         ) : null}
 
         {error ? (
-          <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+          <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
             {error}
           </p>
         ) : null}
@@ -467,7 +467,7 @@ function AssetGroup({
                     type="button"
                     onClick={() => onDelete(asset)}
                     disabled={deletingAssetId === asset.id}
-                    className="button-outline px-3 py-1.5 text-xs text-[var(--color-accent)] disabled:opacity-60"
+                    className="button-outline px-3 py-1.5 text-xs text-[var(--color-accent-fg)] disabled:opacity-60"
                   >
                     {deletingAssetId === asset.id ? "Deleting..." : "Delete"}
                   </button>

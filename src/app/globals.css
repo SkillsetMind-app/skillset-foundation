@@ -34,6 +34,12 @@
   --color-info-soft: #ebf3fb;
   --color-danger: #b22234;
   --color-danger-soft: rgba(178, 34, 52, 0.06);
+  /* Dark-mode foreground variants. In :root they EQUAL the saturated base token
+     (zero light-mode change); [data-theme="dark"] lightens them so semantic TEXT/
+     ICON/BORDER clears WCAG AA on dark surfaces (the base tokens stay saturated
+     for white-bearing solid fills, which never use these). See A1-cont record. */
+  --color-accent-fg: #b22234;
+  --color-success-fg: #1f8a5b;
   --shadow-soft: 0 1px 2px rgba(26, 54, 93, 0.08), 0 10px 24px rgba(26, 54, 93, 0.11);
   --shadow-strong: 0 18px 44px rgba(15, 39, 68, 0.14);
   --shadow-avatar: 0 8px 18px rgba(26, 54, 93, 0.14);
@@ -64,6 +70,13 @@
   --color-info: #8fb4e4;
   --color-info-soft: rgba(143, 180, 228, 0.14);
   --color-danger-soft: rgba(178, 34, 52, 0.18);
+  /* A1-cont: lightened semantic foregrounds for dark surfaces (WCAG sRGB verified).
+     accent-fg #e36b78 = 4.65:1 on surface-strong #1c2841 (worst opaque dark
+     surface, 12px-bold normal text), 5.71:1 on surface #0f1626, 5.69:1 on base
+     #0a0f1a. success-fg #5fc99a = 5.95:1 on surface-strong, 8.86:1 on surface.
+     Base --color-accent/--color-success untouched, so white-on-fill pairs hold. */
+  --color-accent-fg: #e36b78;
+  --color-success-fg: #5fc99a;
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.20), 0 14px 34px rgba(0, 0, 0, 0.32);
   --shadow-strong: 0 22px 54px rgba(0, 0, 0, 0.42);
 }
@@ -367,7 +380,7 @@ p {
 
 .accent-chip {
   background: rgba(255, 255, 255, 0.94);
-  color: var(--color-accent);
+  color: var(--color-accent-fg);
   border: 1px solid rgba(255, 255, 255, 0.7);
   box-shadow: 0 10px 24px rgba(15, 39, 68, 0.14);
 }
@@ -410,7 +423,7 @@ p {
 
 .status-chip--danger {
   background: var(--color-danger-soft);
-  color: var(--color-accent);
+  color: var(--color-accent-fg);
   border-color: rgba(178, 34, 52, 0.22);
 }
 
@@ -655,10 +668,10 @@ p {
   align-items: center;
   gap: 6px;
   padding: 9px 16px;
-  border: 1.5px solid var(--color-accent);
+  border: 1.5px solid var(--color-accent-fg);
   border-radius: 10px;
   background: #ffffff;
-  color: var(--color-accent);
+  color: var(--color-accent-fg);
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
@@ -812,7 +825,7 @@ p {
 }
 
 .account-menu-trigger__role {
-  color: var(--color-accent);
+  color: var(--color-accent-fg);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -835,7 +848,7 @@ p {
   border-radius: 999px;
   background: rgba(178, 34, 52, 0.06);
   padding: 0.2rem 0.45rem;
-  color: var(--color-accent);
+  color: var(--color-accent-fg);
   font-size: 0.5625rem;
   font-weight: 900;
   letter-spacing: 0.14em;
@@ -889,7 +902,7 @@ p {
 
 .account-menu-icon--danger {
   background: rgba(178, 34, 52, 0.08);
-  color: var(--color-accent);
+  color: var(--color-accent-fg);
 }
 
 .account-menu-chip {
@@ -911,13 +924,13 @@ p {
 }
 
 .account-menu-item--danger {
-  color: var(--color-accent);
+  color: var(--color-accent-fg);
 }
 
 .account-menu-item--danger:hover,
 .account-menu-item--danger:focus-visible {
   background: rgba(178, 34, 52, 0.06);
-  color: var(--color-accent);
+  color: var(--color-accent-fg);
 }
 
 /* A4 — dark theming for the account/sign-in dropdown.
@@ -1073,7 +1086,7 @@ p {
 .settings-pill--danger {
   border: 1px solid rgba(178, 34, 52, 0.22);
   background: rgba(178, 34, 52, 0.07);
-  color: var(--color-accent);
+  color: var(--color-accent-fg);
 }
 
 .settings-pill--neutral {
@@ -1318,7 +1331,7 @@ p {
 }
 
 .field-input[aria-invalid="true"] {
-  border-color: var(--color-accent);
+  border-color: var(--color-accent-fg);
   background: rgba(178, 34, 52, 0.04);
 }
 
@@ -3107,7 +3120,7 @@ p {
 }
 
 .member-lesson-card--active {
-  border-color: var(--color-accent);
+  border-color: var(--color-accent-fg);
 }
 
 .member-play-badge {
@@ -3300,7 +3313,7 @@ p {
 .platform-hero-card {
   position: relative;
   overflow: hidden;
-  border-left: 3px solid var(--color-accent);
+  border-left: 3px solid var(--color-accent-fg);
   background:
     radial-gradient(circle at 92% 8%, rgba(178, 34, 52, 0.08), transparent 18rem),
     linear-gradient(135deg, #ffffff 0%, var(--color-surface-soft) 58%, var(--color-surface-strong) 100%);
@@ -3625,7 +3638,7 @@ button:hover > .dash-card,
 
 .studio-activity-card__icon.is-urgent {
   background: rgba(178, 34, 52, 0.1);
-  color: var(--color-accent);
+  color: var(--color-accent-fg);
 }
 
 .studio-activity-card__icon.is-success {
@@ -3707,7 +3720,7 @@ button:hover > .dash-card,
 
 .studio-action-card__cta {
   margin-top: 0.25rem;
-  color: var(--color-accent);
+  color: var(--color-accent-fg);
   font-size: 0.72rem;
   font-weight: 900;
   letter-spacing: 0.12em;
@@ -3901,7 +3914,7 @@ button:hover > .dash-card,
 .member-review-star.is-active {
   border-color: rgba(178, 34, 52, 0.28);
   background: rgba(178, 34, 52, 0.08);
-  color: var(--color-accent);
+  color: var(--color-accent-fg);
   transform: translateY(-1px);
 }
 

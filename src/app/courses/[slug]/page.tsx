@@ -110,7 +110,7 @@ export default async function CourseDetailPage({
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,39,68,0.8)] via-transparent to-transparent" />
             </div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               {course.category}
             </p>
             {/* Title scales smoothly from 380px phones up to desktop — the
@@ -148,7 +148,7 @@ export default async function CourseDetailPage({
               id="free-preview"
               className="mt-10 scroll-mt-24 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-5 sm:p-6"
             >
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                 Free preview
               </p>
               <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
@@ -183,7 +183,7 @@ export default async function CourseDetailPage({
             </section>
 
             <section className="mt-8">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                 Course structure
               </p>
               <div className="mt-5 grid gap-4">
@@ -221,7 +221,7 @@ export default async function CourseDetailPage({
                 six-row <dl> alongside Category and Level — buyers had to
                 scan past four neutral rows to find what it costs. Now it
                 anchors the sidebar so the cost is the first thing you see. */}
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               Access
             </p>
             <p className="display-title mt-1 text-4xl leading-none text-[var(--color-primary)]">
@@ -272,7 +272,7 @@ export default async function CourseDetailPage({
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 lg:hidden">
         <div className="pointer-events-auto flex items-center gap-3 rounded-[14px] border border-[var(--color-line)] bg-white/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-white/85">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               Access
             </p>
             <p className="display-title truncate text-xl leading-none text-[var(--color-primary)]">

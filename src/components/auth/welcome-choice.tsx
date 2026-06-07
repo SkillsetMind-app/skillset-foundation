@@ -64,7 +64,7 @@ export function WelcomeChoice() {
               type="button"
               disabled={isSaving || status !== "authenticated"}
               onClick={chooseLearner}
-              className="group flex cursor-pointer items-center gap-4 rounded-[16px] border-[1.5px] border-[rgba(26,54,93,0.10)] bg-white px-5 py-5 text-left transition duration-200 hover:-translate-y-0.5 hover:border-[var(--color-accent)] hover:shadow-[0_16px_32px_rgba(15,39,68,0.08)] disabled:cursor-not-allowed disabled:opacity-60 sm:gap-5 sm:px-6"
+              className="group flex cursor-pointer items-center gap-4 rounded-[16px] border-[1.5px] border-[rgba(26,54,93,0.10)] bg-white px-5 py-5 text-left transition duration-200 hover:-translate-y-0.5 hover:border-[var(--color-accent-fg)] hover:shadow-[0_16px_32px_rgba(15,39,68,0.08)] disabled:cursor-not-allowed disabled:opacity-60 sm:gap-5 sm:px-6"
             >
               <span className="grid size-12 shrink-0 place-items-center rounded-[12px] bg-[var(--color-surface-strong)] text-[var(--color-primary)] transition group-hover:bg-[var(--color-accent)] group-hover:text-white">
                 <GraduationCap aria-hidden="true" size={24} strokeWidth={1.7} />
@@ -82,7 +82,7 @@ export function WelcomeChoice() {
                 aria-hidden="true"
                 size={18}
                 strokeWidth={1.8}
-                className="shrink-0 -translate-x-1 text-[var(--color-ink-muted)] opacity-0 transition group-hover:translate-x-0 group-hover:text-[var(--color-accent)] group-hover:opacity-100"
+                className="shrink-0 -translate-x-1 text-[var(--color-ink-muted)] opacity-0 transition group-hover:translate-x-0 group-hover:text-[var(--color-accent-fg)] group-hover:opacity-100"
               />
             </button>
 
@@ -90,7 +90,7 @@ export function WelcomeChoice() {
               type="button"
               disabled={status !== "authenticated"}
               onClick={chooseTeacher}
-              className="group flex cursor-pointer items-center gap-4 rounded-[16px] border-[1.5px] border-[rgba(26,54,93,0.10)] bg-white px-5 py-5 text-left transition duration-200 hover:-translate-y-0.5 hover:border-[var(--color-accent)] hover:shadow-[0_16px_32px_rgba(15,39,68,0.08)] disabled:cursor-not-allowed disabled:opacity-60 sm:gap-5 sm:px-6"
+              className="group flex cursor-pointer items-center gap-4 rounded-[16px] border-[1.5px] border-[rgba(26,54,93,0.10)] bg-white px-5 py-5 text-left transition duration-200 hover:-translate-y-0.5 hover:border-[var(--color-accent-fg)] hover:shadow-[0_16px_32px_rgba(15,39,68,0.08)] disabled:cursor-not-allowed disabled:opacity-60 sm:gap-5 sm:px-6"
             >
               <span className="grid size-12 shrink-0 place-items-center rounded-[12px] bg-[var(--color-surface-strong)] text-[var(--color-primary)] transition group-hover:bg-[var(--color-accent)] group-hover:text-white">
                 <Presentation aria-hidden="true" size={24} strokeWidth={1.7} />
@@ -108,13 +108,13 @@ export function WelcomeChoice() {
                 aria-hidden="true"
                 size={18}
                 strokeWidth={1.8}
-                className="shrink-0 -translate-x-1 text-[var(--color-ink-muted)] opacity-0 transition group-hover:translate-x-0 group-hover:text-[var(--color-accent)] group-hover:opacity-100"
+                className="shrink-0 -translate-x-1 text-[var(--color-ink-muted)] opacity-0 transition group-hover:translate-x-0 group-hover:text-[var(--color-accent-fg)] group-hover:opacity-100"
               />
             </button>
           </div>
 
           {error ? (
-            <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+            <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
               {error}
             </p>
           ) : null}

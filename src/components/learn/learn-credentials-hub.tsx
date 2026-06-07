@@ -96,7 +96,7 @@ export function LearnCredentialsHub() {
   if (error) {
     return (
       <section className="rounded-[4px] border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+        <p className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           {error}
         </p>
       </section>
@@ -130,7 +130,7 @@ export function LearnCredentialsHub() {
       <section className="credential-hero dash-card dash-card--strong p-5 sm:p-7">
         <div className="relative z-[1] flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--color-accent-fg)]">
               Skillset Verified
             </p>
             <h2 className="display-title mt-3 max-w-3xl text-4xl leading-[1.03] text-[var(--color-primary)] sm:text-5xl">
@@ -164,7 +164,7 @@ export function LearnCredentialsHub() {
       <section className="dash-card dash-card--strong p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--color-line)] pb-5">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent)]">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               Credential tracks
             </p>
             <h3 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
@@ -291,7 +291,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
           <CheckCircle2
             aria-hidden="true"
             size={16}
-            className={isIssued ? "text-[var(--color-success)]" : "text-[var(--color-primary-light)]"}
+            className={isIssued ? "text-[var(--color-success-fg)]" : "text-[var(--color-primary-light)]"}
           />
         </div>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
@@ -377,7 +377,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
         </div>
       ) : null}
       {issueError ? (
-        <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent)]">
+        <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           {issueError}
         </p>
       ) : null}

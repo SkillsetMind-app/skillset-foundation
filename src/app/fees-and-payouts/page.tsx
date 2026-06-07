@@ -53,7 +53,7 @@ export default function FeesAndPayoutsPage() {
             key={title}
             className="rounded-[16px] border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
           >
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {title}
             </p>
             <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
