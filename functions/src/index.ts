@@ -3173,6 +3173,12 @@ export const stripeWebhook = onRequest(
         await handleInvoicePaymentFailed(event.data.object);
       }
 
+      if (event.type === "invoice.paid") {
+        // Course-subscription fulfilment. Plan invoices are filtered inside the
+        // handler (it no-ops unless the subscription is purpose=course_subscription).
+        await handleCourseSubscriptionInvoicePaid(event.data.object);
+      }
+
       // Promote the idempotency marker to "done" ONLY after every handler ran
       // without throwing; a throw skips this and leaves the marker at
       // "processing", so the Stripe retry reprocesses the event instead of
@@ -3415,6 +3421,229 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     ) {
       transaction.delete(settledLockRef);
     }
+  });
+}
+
+// Course-subscription fulfilment: each PAID recurring invoice is held in the
+// payoutLedger (released to the teacher by dailyReleaseTransfers after the
+// refund window — the SAME rail as one-time) and grants/refreshes the buyer's
+// enrollment. Plan-subscription invoices (purpose != course_subscription) are
+// ignored here; the platform plan is fulfilled via customer.subscription.* in
+// syncSubscriptionFromStripe.
+async function handleCourseSubscriptionInvoicePaid(invoice: Stripe.Invoice) {
+  const subscriptionField = (invoice as {
+    subscription?: string | { id: string } | null;
+  }).subscription;
+  const subscriptionId =
+    typeof subscriptionField === "string"
+      ? subscriptionField
+      : subscriptionField?.id ?? null;
+
+  if (!subscriptionId) {
+    // A non-subscription invoice (one-off / manual) — not our concern.
+    return;
+  }
+
+  const stripe = getStripeClient();
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const meta = subscription.metadata ?? {};
+
+  if (meta.purpose !== "course_subscription") {
+    // Platform-plan invoice — entitlement is driven by customer.subscription.*.
+    return;
+  }
+
+  const courseId = typeof meta.courseId === "string" ? meta.courseId : null;
+  const userId = typeof meta.userId === "string" ? meta.userId : null;
+  const teacherId = typeof meta.teacherId === "string" ? meta.teacherId : null;
+
+  if (!courseId || !userId || !teacherId) {
+    logger.error("course_subscription invoice missing required metadata", {
+      invoiceId: invoice.id,
+      subscriptionId,
+    });
+    throw new Error("course_subscription invoice is missing required metadata.");
+  }
+
+  const courseRef = db.collection("courses").doc(courseId);
+  const [courseSnapshot, ownerSnapshot] = await Promise.all([
+    courseRef.get(),
+    db.collection("users").doc(teacherId).get(),
+  ]);
+
+  if (!courseSnapshot.exists) {
+    throw new Error(`Course ${courseId} not found for subscription invoice.`);
+  }
+
+  const course = courseSnapshot.data() as TeacherCourseRecord;
+  const owner = ownerSnapshot.exists
+    ? (ownerSnapshot.data() as UserProfileRecord)
+    : null;
+
+  // Recompute the platform fee from the teacher's CURRENT plan at each invoice
+  // so a teacher who upgrades (e.g. to Plus = 0%) gets the new rate on future
+  // renewals. Falls back to the subscribe-time snapshot, then 8%.
+  const platformFeeBps = owner
+    ? canonicalPlatformFeeBpsForPlan(owner.currentPlanId)
+    : Number(meta.platformFeeBps ?? 800) || 800;
+  const connectedAccountId =
+    (typeof meta.connectedAccountId === "string" && meta.connectedAccountId) ||
+    course.stripeConnectedAccountId ||
+    owner?.stripeConnectedAccountId ||
+    null;
+
+  // Mirror the one-time path: the payout clearance window is platform-config'd
+  // (7/10/15/30, default 30), read outside the transaction with a safe default.
+  let payoutDelayDays: number = payoutReleaseDelayDays;
+  try {
+    const paymentsConfigSnapshot = await db
+      .collection("platformConfig")
+      .doc("payments")
+      .get();
+    payoutDelayDays = resolvePayoutReleaseDelayDays(
+      paymentsConfigSnapshot.data()?.payoutReleaseDelayDays,
+    );
+  } catch (error) {
+    logger.warn("Could not read payout delay config; using default", {
+      invoiceId: invoice.id,
+      defaultDays: payoutReleaseDelayDays,
+      error: error instanceof Error ? error.message : "unknown",
+    });
+  }
+
+  const grossAmountMinor = Number(invoice.amount_paid || 0);
+  const currencyUpper = String(
+    invoice.currency || defaultSkillsetCurrency,
+  ).toUpperCase();
+  const skillsetFeeMinor = Math.floor((grossAmountMinor * platformFeeBps) / 10000);
+  const stripeFeeMinor =
+    grossAmountMinor > 0
+      ? canonicalStripeProcessingFeeMinor(grossAmountMinor, currencyUpper)
+      : 0;
+  const netAmountMinor = Math.max(
+    0,
+    grossAmountMinor - skillsetFeeMinor - stripeFeeMinor,
+  );
+
+  const paymentIntentField = (invoice as {
+    payment_intent?: string | { id: string } | null;
+  }).payment_intent;
+  const paymentId =
+    typeof paymentIntentField === "string"
+      ? paymentIntentField
+      : paymentIntentField?.id ?? invoice.id;
+
+  const item = subscription.items.data[0];
+  const periodEndIso = secondsToIso(
+    (item as { current_period_end?: number })?.current_period_end ??
+      (subscription as { current_period_end?: number }).current_period_end,
+  );
+  const stripeCustomerId =
+    typeof subscription.customer === "string"
+      ? subscription.customer
+      : subscription.customer?.id ?? null;
+
+  const enrollmentRef = db.collection("enrollments").doc(`${userId}__${courseId}`);
+  // One held ledger entry per invoice (doc id = invoice id) — naturally
+  // idempotent against event retries.
+  const ledgerRef = db.collection("payoutLedger").doc(invoice.id);
+  const subRef = db.collection("courseSubscriptions").doc(subscriptionId);
+
+  await db.runTransaction(async (transaction) => {
+    const [ledgerSnapshot, enrollmentSnapshot, subSnapshot] = await Promise.all([
+      transaction.get(ledgerRef),
+      transaction.get(enrollmentRef),
+      transaction.get(subRef),
+    ]);
+
+    // Hold this invoice's net for the teacher. Skip if it already exists (retry
+    // after a partial failure — the cron may already be acting on it) or the
+    // invoice was fully discounted (gross 0) or the teacher account is missing.
+    if (!ledgerSnapshot.exists && grossAmountMinor > 0 && connectedAccountId) {
+      transaction.set(
+        ledgerRef,
+        {
+          id: ledgerRef.id,
+          teacherId,
+          teacherStripeConnectedAccountId: connectedAccountId,
+          courseId,
+          orderId: invoice.id,
+          invoiceId: invoice.id,
+          subscriptionId,
+          paymentId,
+          kind: "course_subscription",
+          grossAmountMinor,
+          skillsetFeeMinor,
+          stripeFeeMinor,
+          netAmountMinor,
+          currency: currencyUpper,
+          platformFeeBps,
+          status: "in_release",
+          releaseAt: getPayoutReleaseAt(payoutDelayDays),
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }
+
+    // Grant on first paid invoice; re-activate on renewal after a lapse. Never
+    // downgrade an already active/completed enrollment.
+    const enrollmentStatus = String(enrollmentSnapshot.data()?.status ?? "");
+    if (!enrollmentSnapshot.exists) {
+      transaction.set(enrollmentRef, {
+        id: enrollmentRef.id,
+        userId,
+        courseId,
+        courseSlug: courseId,
+        courseTitle: course.title,
+        courseCategory: course.category,
+        courseImage: course.coverImageUrl || "/brand/logo-mark.png",
+        status: "active",
+        source: "subscription",
+        progressPercent: 0,
+        lastLessonId: null,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    } else if (!["active", "completed"].includes(enrollmentStatus)) {
+      transaction.update(enrollmentRef, {
+        status: "active",
+        source: "subscription",
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+
+    // Mirror the subscription for the learner's cancel UI + lifecycle handler.
+    transaction.set(
+      subRef,
+      {
+        id: subscriptionId,
+        userId,
+        courseId,
+        teacherId,
+        stripeSubscriptionId: subscriptionId,
+        stripeCustomerId,
+        status: subscription.status,
+        interval: courseSubscriptionInterval(course.paymentType),
+        currentPeriodEnd: periodEndIso,
+        cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+        latestInvoiceId: invoice.id,
+        ...(subSnapshot.exists
+          ? {}
+          : { createdAt: FieldValue.serverTimestamp() }),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  });
+
+  logger.info("Course subscription invoice fulfilled", {
+    invoiceId: invoice.id,
+    subscriptionId,
+    courseId,
+    userId,
+    netAmountMinor,
   });
 }
 
