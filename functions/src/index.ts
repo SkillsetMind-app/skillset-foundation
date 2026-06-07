@@ -114,6 +114,18 @@ type TeacherCourseRecord = {
   ratingCount?: number;
   ratingSum?: number;
   reviewCount?: number;
+  // Cached recurring Stripe Price for course-subscription checkout. Stripe
+  // Prices are immutable, so any change to the course price/cadence mints a
+  // fresh one (see getOrCreateCourseSubscriptionPrice). Lives on the PLATFORM
+  // account — the subscription charges the platform Customer and the teacher
+  // payout is a held Transfer (separate charges & transfers), exactly like the
+  // one-time rail.
+  stripeSubscriptionPrice?: {
+    priceId: string;
+    amountMinor: number;
+    currency: string;
+    interval: "month" | "year";
+  } | null;
 };
 
 type UserProfileRecord = {
@@ -325,6 +337,17 @@ const builderPaymentTypes = new Set([
   "subscription_yearly",
   "free",
 ]);
+
+// Maps a course paymentType to a Stripe recurring interval, or null when the
+// course is not a subscription. A course is monthly XOR yearly (single
+// paymentType field), so it has at most one recurring cadence.
+function courseSubscriptionInterval(
+  paymentType?: string | null,
+): "month" | "year" | null {
+  if (paymentType === "subscription_monthly") return "month";
+  if (paymentType === "subscription_yearly") return "year";
+  return null;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -605,6 +628,64 @@ function normalizeCoursePrice(course: TeacherCourseRecord) {
     amountMinor,
     currency: normalizeSkillsetCurrency(course.currency).toLowerCase(),
   };
+}
+
+// Returns a recurring Stripe Price id for a course subscription, creating and
+// caching one on the course doc on first use. Prices are immutable in Stripe,
+// so a change to the course price/cadence mints a fresh Price and re-caches it
+// (a stale cache that no longer matches amount/currency/interval is ignored).
+// The Price lives on the PLATFORM account: the subscription charges the
+// platform Customer and the teacher payout is a held Transfer released by
+// dailyReleaseTransfers — identical economics to the one-time rail.
+async function getOrCreateCourseSubscriptionPrice(
+  stripe: Stripe,
+  courseRef: DocumentReference,
+  course: TeacherCourseRecord,
+  courseId: string,
+  amountMinor: number,
+  currency: string,
+  interval: "month" | "year",
+): Promise<string> {
+  const cached = course.stripeSubscriptionPrice;
+  if (
+    cached
+    && cached.priceId
+    && cached.amountMinor === amountMinor
+    && cached.currency === currency
+    && cached.interval === interval
+  ) {
+    return cached.priceId;
+  }
+
+  const price = await stripe.prices.create({
+    currency,
+    unit_amount: amountMinor,
+    recurring: { interval },
+    product_data: {
+      name: course.title,
+      metadata: { courseId, ownerId: course.ownerId },
+    },
+    metadata: {
+      courseId,
+      ownerId: course.ownerId,
+      kind: "course_subscription",
+    },
+  });
+
+  await courseRef.set(
+    {
+      stripeSubscriptionPrice: {
+        priceId: price.id,
+        amountMinor,
+        currency,
+        interval,
+      },
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+
+  return price.id;
 }
 
 // Canonical spec + unit tests: src/domain/payment-split.ts (kept in sync;
@@ -1392,6 +1473,78 @@ export const createCheckoutSession = onCall(
         "failed-precondition",
         "This teacher must finish Stripe onboarding before paid checkout opens.",
       );
+    }
+
+    // --- Course subscription checkout (recurring) ---------------------------
+    // When the course is a monthly/yearly subscription, open a `subscription`
+    // Checkout against a persistent platform Customer instead of the one-time
+    // `payment` flow below. Charges land on the platform balance (separate
+    // charges & transfers); the webhook's invoice.paid handler holds each paid
+    // invoice in payoutLedger and grants/refreshes the enrollment — nothing
+    // here grants access. The one-time checkout lock / orders doc are
+    // payment-mode concepts and are intentionally skipped (the enrollment-active
+    // guard above already blocks a duplicate subscribe).
+    const subscriptionInterval = courseSubscriptionInterval(course.paymentType);
+    if (subscriptionInterval) {
+      const customerId = await getOrCreateBillingStripeCustomer(
+        userId,
+        userEmail ?? null,
+      );
+      const subscriptionPriceId = await getOrCreateCourseSubscriptionPrice(
+        stripe,
+        courseRef,
+        course,
+        courseId,
+        amountMinor,
+        currency,
+        subscriptionInterval,
+      );
+
+      const subscriptionSession = await stripe.checkout.sessions.create(
+        {
+          mode: "subscription",
+          customer: customerId,
+          line_items: [{ price: subscriptionPriceId, quantity: 1 }],
+          // Carry the full fulfilment context on the SUBSCRIPTION (not just the
+          // session) so every future invoice.paid / lifecycle event can resolve
+          // the course, buyer, teacher, connected account and fee without a DB
+          // lookup. platformFeeBps is snapshotted at subscribe time.
+          subscription_data: {
+            metadata: {
+              purpose: "course_subscription",
+              courseId,
+              courseSlug: courseId,
+              userId,
+              teacherId: course.ownerId,
+              connectedAccountId,
+              platformFeeBps: String(platformFeeBps),
+              currency: currency.toUpperCase(),
+            },
+          },
+          metadata: {
+            purpose: "course_subscription",
+            courseId,
+            courseSlug: courseId,
+            userId,
+            teacherId: course.ownerId,
+          },
+          success_url: `${appUrl}/learn/courses/${encodeURIComponent(courseId)}?checkout=success`,
+          cancel_url: `${appUrl}/courses/${encodeURIComponent(courseId)}?checkout=cancelled`,
+        },
+        {
+          // Windowed idempotency: a double-click in the same minute reuses the
+          // same session instead of opening two subscription checkouts.
+          idempotencyKey: `course_sub_checkout_${userId}_${courseId}_${Math.floor(
+            Date.now() / 60000,
+          )}`,
+        },
+      );
+
+      if (!subscriptionSession.url) {
+        throw new HttpsError("internal", "Stripe did not return a Checkout URL.");
+      }
+
+      return { url: subscriptionSession.url };
     }
 
     // --- B3: in-flight checkout lock (atomic claim/takeover) ----------------
