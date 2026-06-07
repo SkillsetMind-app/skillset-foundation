@@ -38,10 +38,13 @@ import {
   canonicalPlatformFeeBpsForPlan,
   claimStripeEvent,
   createReleasedRefundTransferReversal,
+  decideCheckoutLock,
   markStripeEventDone,
   paidOrderRefundQuerySpec,
   payoutReleaseDelayDays,
   resolvePayoutReleaseDelayDays,
+  shouldApplyOrderStatusTransition,
+  shouldReleaseCheckoutLock,
   stripeProcessingFeeMinor as canonicalStripeProcessingFeeMinor,
   type TransferReversalStripeClient,
 } from "./payment-rules";
@@ -1391,6 +1394,86 @@ export const createCheckoutSession = onCall(
       );
     }
 
+    // --- B3: in-flight checkout lock (atomic claim/takeover) ----------------
+    // Claim a per-buyer+course lock so a double-click / second tab can't open
+    // two concurrent charges for the same course. The whole claim -> decide ->
+    // re-claim runs INSIDE a transaction: Firestore's optimistic concurrency
+    // serialises racing requests, so exactly ONE winner proceeds and every loser
+    // re-reads the winner's fresh claim and resolves to reuse/wait. (A plain
+    // .set(merge) gave no mutual exclusion on the takeover path — two stale-lock
+    // deciders could both proceed and double-charge.) Placed after all
+    // validation so a rejected request never holds a lock. Released by the
+    // webhook on completion/expiry; a url-less claim self-heals after the short
+    // grace window if its request died.
+    //
+    // The Stripe session below is bounded to checkoutSessionExpiresInSec, and
+    // the lock's sessionTtlMs sits a few minutes past it, so a takeover never
+    // races a still-payable session (the windowing premise is honest, not the
+    // old "assume 30 min" with no expires_at where the real session lived ~24h).
+    const checkoutSessionExpiresInSec = 31 * 60;
+    const checkoutLockRef = db
+      .collection("checkoutLocks")
+      .doc(`${userId}__${courseId}`);
+    const checkoutLockWindows = {
+      sessionTtlMs: (checkoutSessionExpiresInSec + 4 * 60) * 1000, // 35 min
+      claimGraceMs: 2 * 60 * 1000, // one Stripe call + cold start headroom
+    };
+    const lockOutcome = await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(checkoutLockRef);
+      const claim = () =>
+        transaction.set(checkoutLockRef, {
+          userId,
+          courseId,
+          orderId: orderRef.id,
+          checkoutUrl: null,
+          claimedAt: FieldValue.serverTimestamp(),
+        });
+      if (!snapshot.exists) {
+        claim();
+        return { action: "proceed" as const };
+      }
+      const lockData = snapshot.data() ?? {};
+      const claimedAt = lockData.claimedAt as
+        | { toMillis?: () => number }
+        | undefined;
+      const decision = decideCheckoutLock(
+        {
+          claimedAtMs:
+            typeof claimedAt?.toMillis === "function"
+              ? claimedAt.toMillis()
+              : null,
+          checkoutUrl:
+            typeof lockData.checkoutUrl === "string"
+              ? lockData.checkoutUrl
+              : null,
+        },
+        Date.now(),
+        checkoutLockWindows,
+      );
+      if (decision === "reuse") {
+        return { action: "reuse" as const, url: String(lockData.checkoutUrl) };
+      }
+      if (decision === "wait") {
+        return { action: "wait" as const };
+      }
+      // "takeover": the prior claim is stale (session aged out / attempt died).
+      // Re-claim inside the txn so a concurrent takeover decider loses the commit
+      // race, retries, and resolves against this fresh claim (reuse/wait).
+      claim();
+      return { action: "proceed" as const };
+    });
+
+    if (lockOutcome.action === "reuse") {
+      // A sibling request already has a live session — hand back the SAME url.
+      return { url: lockOutcome.url };
+    }
+    if (lockOutcome.action === "wait") {
+      throw new HttpsError(
+        "already-exists",
+        "A checkout for this course is already starting. Please try again in a moment.",
+      );
+    }
+
     await orderRef.set({
       id: orderRef.id,
       userId,
@@ -1447,6 +1530,10 @@ export const createCheckoutSession = onCall(
           userId,
         },
       },
+      // Bound the session (see checkoutSessionExpiresInSec) so the B3 lock window
+      // is honest and an expiry fires checkout.session.expired -> order cancel +
+      // lock release. 31 min clears Stripe's 30-min minimum after request latency.
+      expires_at: Math.floor(Date.now() / 1000) + checkoutSessionExpiresInSec,
       success_url: `${appUrl}/learn/courses/${encodeURIComponent(courseId)}?checkout=success`,
       cancel_url: `${appUrl}/courses/${encodeURIComponent(courseId)}?checkout=cancelled`,
     };
@@ -1463,6 +1550,18 @@ export const createCheckoutSession = onCall(
     if (!session.url) {
       throw new HttpsError("internal", "Stripe did not return a Checkout URL.");
     }
+
+    // Publish the live session on the lock so a concurrent sibling request
+    // reuses THIS url instead of opening a second charge. [B3]
+    await checkoutLockRef.set(
+      {
+        checkoutUrl: session.url,
+        orderId: orderRef.id,
+        checkoutSessionId: session.id,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
 
     return { url: session.url };
   },
@@ -2016,17 +2115,18 @@ export const expireStalePendingOrders = onSchedule(
         (orderDocument.data() as { createdAt?: unknown }).createdAt,
       );
 
-      // Keep recent pending orders: the buyer may still be completing Checkout
-      // (Stripe sessions live ~24h). Only sweep clearly-abandoned ones.
+      // Keep recent pending orders: the buyer may still be completing Checkout.
+      // The session's own expiry (checkout.session.expired -> markOrderStatus) is
+      // the primary cancel path; this 48h sweep is a backstop for missed events.
       if (createdAtMillis !== null && now - createdAtMillis < staleThresholdMs) {
         skippedCount += 1;
         continue;
       }
 
-      await orderDocument.ref.update({
-        status: "cancelled",
-        updatedAt: FieldValue.serverTimestamp(),
-      });
+      // Route through markOrderStatus so the sweep also releases any in-flight
+      // checkout lock still owned by this order and inherits the out-of-order
+      // guard (an order that raced to paid since the query is left untouched).
+      await markOrderStatus(orderDocument.id, "cancelled");
       cancelledCount += 1;
     }
 
@@ -3145,6 +3245,24 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       currency: checkoutAnalytics.value.currency,
     });
   }
+
+  // Release the in-flight checkout lock now that the purchase is settled, so a
+  // future legitimate re-purchase (e.g. after a refund) is never blocked — but
+  // only if the lock still belongs to THIS order, mirroring markOrderStatus so
+  // the release policy is uniform and a sibling attempt's lock is never dropped
+  // (safe today via the enrollment gate; this keeps it safe if that weakens). [B3]
+  const settledLockRef = db
+    .collection("checkoutLocks")
+    .doc(`${userId}__${courseId}`);
+  await db.runTransaction(async (transaction) => {
+    const lockSnapshot = await transaction.get(settledLockRef);
+    if (
+      lockSnapshot.exists &&
+      shouldReleaseCheckoutLock(lockSnapshot.data()?.orderId, orderId)
+    ) {
+      transaction.delete(settledLockRef);
+    }
+  });
 }
 
 async function handleChargeRefunded(charge: Stripe.Charge) {
@@ -3307,13 +3425,67 @@ async function markOrderStatus(
     return;
   }
 
-  await db.collection("orders").doc(orderId).set(
-    {
+  const orderRef = db.collection("orders").doc(orderId);
+
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(orderRef);
+
+    if (!snapshot.exists) {
+      // No order doc yet (pathological — orders are created before checkout).
+      // Preserve the prior set-merge so the terminal status still lands.
+      transaction.set(
+        orderRef,
+        { status, updatedAt: FieldValue.serverTimestamp() },
+        { merge: true },
+      );
+      return;
+    }
+
+    const order = snapshot.data() || {};
+    const currentStatus = String(order.status || "");
+
+    // The checkout is now terminal (expired/failed): release the in-flight
+    // checkout lock so a fresh attempt isn't blocked — but ONLY if the lock
+    // still belongs to THIS order. The lock is keyed by buyer+course, yet a
+    // buyer accrues many attempts over time sharing one lock doc; a late event
+    // for an OLD attempt must not drop a LIVE re-purchase's lock (which would
+    // re-open the double-charge window). Read it in-txn (a transaction requires
+    // all reads before any write) and delete only on an orderId match. [B3]
+    const lockUserId = typeof order.userId === "string" ? order.userId : null;
+    const lockCourseId =
+      typeof order.courseId === "string" ? order.courseId : null;
+    const checkoutLockRef =
+      lockUserId && lockCourseId
+        ? db.collection("checkoutLocks").doc(`${lockUserId}__${lockCourseId}`)
+        : null;
+    const lockSnapshot = checkoutLockRef
+      ? await transaction.get(checkoutLockRef)
+      : null;
+    const releaseLock =
+      Boolean(lockSnapshot?.exists) &&
+      shouldReleaseCheckoutLock(lockSnapshot?.data()?.orderId, orderId);
+
+    if (checkoutLockRef && releaseLock) {
+      transaction.delete(checkoutLockRef);
+    }
+
+    if (!shouldApplyOrderStatusTransition(currentStatus)) {
+      // Stripe does not guarantee event ordering: a late expired/failed event
+      // for an earlier attempt can arrive AFTER checkout.session.completed
+      // marked the order paid. Overwriting it would revoke a real purchase. [B2]
+      logger.info("Ignoring out-of-order order status transition", {
+        orderId,
+        attempted: status,
+        current: currentStatus,
+      });
+      return;
+    }
+
+    transaction.update(orderRef, {
       status,
       updatedAt: FieldValue.serverTimestamp(),
-    },
-    { merge: true },
-  );
+    });
+  });
 }
 
 /* ---------------------------------------------------------------------- *

@@ -4,11 +4,14 @@ import {
   canonicalPlatformFeeBpsForPlan,
   claimStripeEvent,
   createReleasedRefundTransferReversal,
+  decideCheckoutLock,
   decideStripeEventClaim,
   markStripeEventDone,
   paidOrderRefundQuerySpec,
   payoutReleaseDelayDays,
   releasedRefundReversalAmountMinor,
+  shouldApplyOrderStatusTransition,
+  shouldReleaseCheckoutLock,
   stripeProcessingFeeMinor,
   type StripeEventMarkerRef,
 } from "./payment-rules";
@@ -178,5 +181,96 @@ describe("stripe webhook idempotency (B1)", () => {
       claimedAt: "claim-ts",
       processedAt: "done-ts",
     });
+  });
+});
+
+describe("order status transitions (B2)", () => {
+  it("never overwrites a settled money outcome", () => {
+    expect(shouldApplyOrderStatusTransition("paid")).toBe(false);
+    expect(shouldApplyOrderStatusTransition("refunded")).toBe(false);
+    expect(shouldApplyOrderStatusTransition("partially_refunded")).toBe(false);
+  });
+
+  it("allows transitions from non-terminal or absent statuses", () => {
+    expect(shouldApplyOrderStatusTransition("pending")).toBe(true);
+    expect(shouldApplyOrderStatusTransition("failed")).toBe(true);
+    expect(shouldApplyOrderStatusTransition("cancelled")).toBe(true);
+    expect(shouldApplyOrderStatusTransition("")).toBe(true);
+    expect(shouldApplyOrderStatusTransition(null)).toBe(true);
+    expect(shouldApplyOrderStatusTransition(undefined)).toBe(true);
+  });
+});
+
+describe("in-flight checkout lock (B3)", () => {
+  const windows = { sessionTtlMs: 35 * 60 * 1000, claimGraceMs: 2 * 60 * 1000 };
+  const now = 10_000_000;
+
+  it("takes over when there is no usable lock", () => {
+    expect(decideCheckoutLock(null, now, windows)).toBe("takeover");
+    expect(
+      decideCheckoutLock({ claimedAtMs: null, checkoutUrl: null }, now, windows),
+    ).toBe("takeover");
+  });
+
+  it("reuses a live session url so a second tab never opens a 2nd charge", () => {
+    expect(
+      decideCheckoutLock(
+        { claimedAtMs: now - 60_000, checkoutUrl: "https://stripe/session" },
+        now,
+        windows,
+      ),
+    ).toBe("reuse");
+  });
+
+  it("takes over a url-bearing lock whose session has aged out", () => {
+    expect(
+      decideCheckoutLock(
+        {
+          claimedAtMs: now - windows.sessionTtlMs - 1,
+          checkoutUrl: "https://stripe/session",
+        },
+        now,
+        windows,
+      ),
+    ).toBe("takeover");
+  });
+
+  it("waits for a sibling mid-claim but takes over a dead claim", () => {
+    // Inside the grace window, no url yet: a sibling is mid Stripe call -> wait.
+    expect(
+      decideCheckoutLock(
+        { claimedAtMs: now - 1_000, checkoutUrl: null },
+        now,
+        windows,
+      ),
+    ).toBe("wait");
+    // Past the grace window, still no url: the claiming request died -> takeover,
+    // so a transient failure can't freeze the buyer for the full session TTL.
+    expect(
+      decideCheckoutLock(
+        { claimedAtMs: now - windows.claimGraceMs - 1, checkoutUrl: null },
+        now,
+        windows,
+      ),
+    ).toBe("takeover");
+  });
+});
+
+describe("checkout lock release ownership (B3)", () => {
+  it("releases only when the lock belongs to the order being marked", () => {
+    expect(shouldReleaseCheckoutLock("order_A", "order_A")).toBe(true);
+  });
+
+  it("never drops a sibling re-purchase's live lock", () => {
+    // The exact wrong-money path the adversarial review caught: a late terminal
+    // event for OLD attempt A must not delete LIVE attempt B's lock.
+    expect(shouldReleaseCheckoutLock("order_B", "order_A")).toBe(false);
+  });
+
+  it("never releases a lock with no recorded owner yet", () => {
+    expect(shouldReleaseCheckoutLock(undefined, "order_A")).toBe(false);
+    expect(shouldReleaseCheckoutLock(null, "order_A")).toBe(false);
+    expect(shouldReleaseCheckoutLock(123, "order_A")).toBe(false);
+    expect(shouldReleaseCheckoutLock("", "order_A")).toBe(false);
   });
 });
