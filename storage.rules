@@ -55,7 +55,15 @@ service firebase.storage {
             && request.resource.contentType != 'image/svg+xml'
           )
           || request.resource.contentType.matches('video/.*')
-          || request.resource.contentType.matches('text/.*')
+          || (
+            // Allow plain text materials (txt / markdown / csv) but never
+            // text/html: a stored HTML asset opened by an enrolled viewer via
+            // its blob URL would execute script in that viewer's context — the
+            // same active-markup risk that already bars image/svg+xml above.
+            // Negated `matches` also covers charset variants (text/html;...).
+            request.resource.contentType.matches('text/.*')
+            && !request.resource.contentType.matches('text/html.*')
+          )
           || request.resource.contentType.matches('audio/.*')
           || request.resource.contentType == 'application/pdf'
           || request.resource.contentType == 'application/msword'

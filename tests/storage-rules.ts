@@ -124,6 +124,22 @@ describe("Storage course asset rules", () => {
     )));
   });
 
+  it("blocks text/html uploads for protected course assets", async () => {
+    const storage = testEnv.authenticatedContext(teacherId, verifiedAuth).storage(bucketUrl);
+
+    await assertFails(uploadHtmlAsset(storage.ref(
+      `courses/${courseId}/assets/${teacherId}/asset-html/payload.html`,
+    )));
+  });
+
+  it("still allows plain-text lesson materials (html block is not over-broad)", async () => {
+    const storage = testEnv.authenticatedContext(teacherId, verifiedAuth).storage(bucketUrl);
+
+    await assertSucceeds(uploadTextAsset(storage.ref(
+      `courses/${courseId}/assets/${teacherId}/asset-notes/notes.txt`,
+    )));
+  });
+
   it("allows an enrolled learner to read protected lesson video assets", async () => {
     await seedProtectedAsset();
     const storage = testEnv
@@ -161,6 +177,25 @@ function uploadSvgAsset(reference: firebase.storage.Reference): Promise<unknown>
   return new Promise((resolve, reject) => {
     reference.put(new Uint8Array([60, 115, 118, 103, 62]), {
       contentType: "image/svg+xml",
+    }).then(resolve, reject);
+  });
+}
+
+function uploadHtmlAsset(reference: firebase.storage.Reference): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    // "<h1>" bytes; the rule must reject purely on the text/html contentType,
+    // regardless of payload.
+    reference.put(new Uint8Array([60, 104, 49, 62]), {
+      contentType: "text/html",
+    }).then(resolve, reject);
+  });
+}
+
+function uploadTextAsset(reference: firebase.storage.Reference): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    // "hi" bytes as a plain-text lesson note.
+    reference.put(new Uint8Array([104, 105]), {
+      contentType: "text/plain",
     }).then(resolve, reject);
   });
 }
