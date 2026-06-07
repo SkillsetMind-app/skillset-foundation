@@ -375,7 +375,9 @@ p {
 
 .status-chip--warning {
   background: rgba(192, 123, 10, 0.1);
-  color: var(--color-warning);
+  /* A5: --color-warning (#c07b0a) was 3.10:1 on this tint — below AA. Deeper
+     gold #8a5d08 = 5.16:1. Dark override below restores a light amber. */
+  color: #8a5d08;
   border-color: rgba(192, 123, 10, 0.22);
 }
 
@@ -387,7 +389,10 @@ p {
 
 .status-chip--success {
   background: var(--color-success-soft);
-  color: var(--color-success);
+  /* A5: --color-success (#1f8a5b) was 3.78:1 on success-soft — below AA (and
+     only 4.34:1 even on white, so the text itself must darken). Deep green
+     #157049 = 5.32:1. Dark override below restores a light green. */
+  color: #157049;
   border-color: rgba(31, 138, 91, 0.22);
 }
 
@@ -401,6 +406,18 @@ p {
   background: var(--color-surface-strong);
   color: var(--color-primary-light);
   border-color: rgba(44, 82, 130, 0.22);
+}
+
+/* A5: dark-mode chip text. The deep gold/green chosen for light would be near
+   black on the dark warning/success tints, so invert to a light tint there.
+   warning #e6b24f = 8.05:1, success #5fc99a = 7.85:1 on their dark tints.
+   (Other chips' dark contrast — danger/draft/inactive — belong to A1-cont.) */
+[data-theme="dark"] .status-chip--warning {
+  color: #e6b24f;
+}
+
+[data-theme="dark"] .status-chip--success {
+  color: #5fc99a;
 }
 
 .reveal-on-view {
