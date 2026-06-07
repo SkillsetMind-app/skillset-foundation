@@ -2,6 +2,8 @@
 
 ## 2026-05-25 - Fase 2 / Bloco B
 
+> ⚠️ **SUPERSEDED por D21 (2026-06-06):** payout final reconciliado para **D+30** (decisão do fundador, Q1). O "10" abaixo é histórico, mantido por rastreabilidade.
+
 **D16 - Payout release D+10.** A release automatica de payout agora usa 10
 dias, mantendo a janela de auto-refund em 7 dias. Motivo: dar folga operacional
 para atraso de webhook/refund antes de transferir dinheiro ao professor.
@@ -35,6 +37,8 @@ o valor que ja foi transferido ao professor.
 **Por quê:** mudança de arquitetura de cobrança sem sua supervisão é arriscada. Funcionalmente equivalente para o resultado financeiro. Anotado para sua revisão.
 
 ## D3 — Hold de payout = 7 dias exatos
+> ⚠️ **SUPERSEDED por D21 (2026-06-06):** o hold de payout é hoje **30 dias** (`payoutReleaseDelayDays = 30`). D3 (7) e D16 (10) foram valores intermediários; o número final é **30**. Mantido abaixo por rastreabilidade.
+
 **Decisão:** `payoutReleaseDelayDays = 7`, igual à janela de reembolso.
 **Alternativa descartada:** 7 + folga (ex.: 8-10) para garantir que o reembolso processou.
 **Por quê:** você pediu explicitamente "logo após D+7". Conservador o suficiente; revisável numa linha.
@@ -179,3 +183,18 @@ IDs configurados no servidor existem no Stripe LIVE.
 **Tradeoff:** Stripe TEST ainda nao tem Price IDs equivalentes para planos.
 Teste completo de assinatura em staging exige criar produtos/precos TEST
 separados antes de alternar um ambiente nao-producao para TEST.
+
+# D21 - Payout reconciliado em 30 dias (2026-06-06, decisão final do fundador)
+**Decisão:** `payoutReleaseDelayDays = 30` é o número canônico e final. Supersede
+D3 (7 dias) e D16 (D+10), que foram valores intermediários. Reembolso permanece em
+7 dias (`refundWindowDays = 7` no FE / `automaticRefundWindowDays = 7` no BE).
+**Por quê:** o motor já roda 30 em produção (`functions/src/payment-rules.ts:12`) e
+toda a copy de UI (capabilities-grid, how-it-works-strip, teacher-wallet-panel, help,
+trust, pricing, fees-and-payouts, for-creators, account/plans) já deriva de
+`payoutClearDays = 30` (`src/data/plans.ts:196`). 30 > 7 garante que um payout liberado
+nunca antecede uma cobrança ainda reembolsável, com folga para atraso de webhook.
+**Single source of truth:** BE `payoutReleaseDelayDays=30` + FE `payoutClearDays=30`.
+**Ação deste T1 (2026-06-06):** docs/comentários que ainda diziam 7/10 foram anotados
+como SUPERSEDED ou corrigidos para 30 (DECISIONS D3/D16, roadmap, demo-readiness,
+HANDOFF, TEST_RESULTS, benchmark Cakto, comentário em `index.ts`). A UI já estava
+correta — a auditoria que alegava "UI diz 7 dias" estava desatualizada.

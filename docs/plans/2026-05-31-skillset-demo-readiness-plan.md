@@ -16,7 +16,7 @@
 | Gêmeo do bug no toggle de ciclo de cobrança | `f810798` | FE | ✅ live |
 | **FAQ de Integrations não aponta mais pra página coming-soon** (manda pro support) | `9b4d6bb` | FE | ✅ live |
 | Theme-toggle animado (cross-fade sol/lua + micro-interação) | `7b66c58` | FE | ✅ live |
-| **Payout configurável: padrão 7 dias, selecionável {7,10,15,30}** | `784e8a7` | BE | ✅ live |
+| **Payout configurável: padrão 30 dias, selecionável {7,10,15,30}** | `784e8a7` | BE | ✅ live |
 | **/promise enxuto: removido o que não está shipado** (affiliate, custom domains, analytics) | `257ff4c` | FE | ✅ live |
 | Lint do repo 100% limpo (rename de variável `module` em functions) | `3a8dc7f` | BE | ✅ live |
 | Roadmap FE+BE + benchmark competitivo Cakto | `6f26fe9` | docs | ✅ |
@@ -27,8 +27,8 @@
 
 ## 2. Status real das suas 4 decisões
 
-### 1) Payout "a partir de 7, selecionável {7,10,15,30}" → ✅ FEITO + LIVE
-- Padrão mudou de 10 → **7 dias** (`functions/src/payment-rules.ts`). Isso, de quebra, tornou **verdadeira** toda a copy que já dizia "7-day clearance" (antes o código fazia 10 — era mentira).
+### 1) Payout selecionável {7,10,15,30}, padrão final **30** → ✅ FEITO + LIVE
+- Padrão final = **30 dias** (`functions/src/payment-rules.ts:12`, decisão do fundador 2026-06-06). Os valores intermediários (10, depois 7) ficaram para trás. Toda a copy de UI deriva de `payoutClearDays = 30` (`src/data/plans.ts:196`), então está verdadeira (mostra "30-day clearance").
 - Conjunto selecionável `{7,10,15,30}` codificado e validado (`resolvePayoutReleaseDelayDays`).
 - O valor é lido em runtime de um doc `platformConfig/payments` antes da transação de pagamento (leitura defensiva, fallback seguro pro padrão — nunca trava o fluxo de dinheiro).
 - **Resta (opcional):** uma tela no Ops pra você *clicar* e escolher 7/10/15/30. Hoje a troca é feita gravando o doc de config. Não é bloqueador de demo (investidor não muda prazo de payout).

@@ -4,7 +4,7 @@
 
 Feito:
 - Extraido `functions/src/payment-rules.ts` com regras testaveis de pagamento.
-- Payout release alterado de D+7 para D+10, mantendo auto-refund em 7 dias.
+- Payout release alterado de D+7 para D+10, mantendo auto-refund em 7 dias. _(Histórico — payout final reconciliado para **D+30** em 2026-06-06; ver DECISIONS.md D21.)_
 - Estimativa Stripe non-USD alterada para 5.4% + fixo; USD mantido em 2.9% + fixo.
 - Comissao unificada por plano no servidor: Free 800 bps, Starter 400, Pro 100, Plus 0.
 - `createTeacherCourseDraft`, `updateTeacherCourseBuilder` e checkout pago agora resolvem bps pelo plano real do professor no servidor, nao pelo cliente.
@@ -34,7 +34,7 @@ Tudo validado e no GitHub. **Nada foi deployado** (deploy/LIVE = sua decisão).
 | Item | Estado | Commit |
 |---|---|---|
 | Taxa Stripe repassada ao professor | feito + testado | `01e8d5b` |
-| Hold de payout 30 → 7 dias | feito | `01e8d5b` |
+| Hold de payout 30 → 7 dias _(histórico; valor final = **30**, ver DECISIONS D21)_ | feito | `01e8d5b` |
 | `stripeFeeMinor` persistido no ledger | feito | `01e8d5b` |
 | Módulo canônico `payment-split.ts` + 9 testes unitários | feito (obrigatório, padrão #8) | `978f63a` |
 | Bug foto: erros deixam de ser engolidos, causa observável + fallback robusto | feito | `0a48290` |

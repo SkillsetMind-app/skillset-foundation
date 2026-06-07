@@ -94,7 +94,7 @@ status: draft for founder review
 | **Order bump at checkout** | 1 toggle, +AOV | — (grep `order.?bump\|bump`: only in docs) | ❌ | Highest-AOV gap. Anchor = the course-buy flow, not the plan panel. |
 | **Upsell/Downsell 1-click post-purchase** | Thank-you page offer | — (grep `upsell\|downsell`: only in docs) | ❌ | Needs saved-PM + off-session charge support in `payment-rules.ts`/`index.ts`. |
 | **Affiliate program + affiliate marketplace** | Vitrine de Afiliação | — (grep `affiliate\|afiliad\|referral`: only marketing copy in `promise/page.tsx`) | ❌ | Distinct from co-production. Acquisition engine. |
-| Payout hold ("Saldo Reservado") | Reserved balance | `payoutReleaseDelayDays` (`payment-rules.ts`) + `dailyReleaseTransfers` (`index.ts`) | ✅ | **Direct twin.** Currently `10` days in code, UI copy says "7" — a real copy/code mismatch to settle (see Open Questions). |
+| Payout hold ("Saldo Reservado") | Reserved balance | `payoutReleaseDelayDays` (`payment-rules.ts`) + `dailyReleaseTransfers` (`index.ts`) | ✅ | **Direct twin.** Resolved 2026-06-06: **30 days** in code (`payoutReleaseDelayDays=30`) and UI (`payoutClearDays=30`); refund window stays 7. |
 | KYC / bank details | CPF + bank gate | `teacher-connect-onboarding.tsx` (Stripe Connect) | ✅ | Stripe owns KYC; SkillsetUSA never stores bank details. |
 | Withdraw button | "Efetuar Saque" | — (automatic Stripe payout, by design) | ✅ (by design) | No manual-withdraw button — Stripe auto-pays out on schedule. Intentional, not a gap. |
 
@@ -146,7 +146,7 @@ status: draft for founder review
 
 ## 5. Open questions for the founder
 
-1. **Payout hold number.** The "Saldo Reservado" twin (`payoutReleaseDelayDays`) is `10` in code but the UI says "7", and you mentioned moving toward **30 days (Hotmart-style)**. Confirm the target (30 / 14 / other) so Q3 ships one consistent number. Keep `automaticRefundWindowDays = 7` as the refund window.
+1. **Payout hold number.** ✅ **RESOLVED 2026-06-06:** the "Saldo Reservado" twin (`payoutReleaseDelayDays`) is **30** in code and the UI (`payoutClearDays=30`) — one consistent number. `automaticRefundWindowDays = 7` stays as the refund window.
 2. **`/promise` page truthfulness.** It advertises affiliate tools, community, analytics, quizzes, certificates, drip, custom domains "on every plan." Affiliate is confirmed not built. Which of the others are real vs roadmap? (This decides Q2's scope.)
 3. **Demo scope for stub routes.** Hide the 4 "coming soon" routes from nav for the investor demo (Q1), or keep them visible as a roadmap signal?
 4. **Order Bump shape.** Pre-checkout add-on toggle on the course page (cheaper, works with current Stripe Checkout — Q5), or a richer embedded-checkout custom UI (more control, more work)?

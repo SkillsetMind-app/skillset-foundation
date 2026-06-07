@@ -34,7 +34,7 @@ Objetivo: nada que envergonhe em diligence ou quebre fluxo de dinheiro live.
 | # | Item | Arquivos | Camada | Esforço | Por quê |
 |---|------|----------|--------|---------|---------|
 | 0.1 | **Decidir destino dos 4 stubs de professor** alcançáveis pelo menu (renderizam "on the roadmap") | `src/app/teach/integrations/page.tsx`, `.../co-productions/page.tsx`, `.../team/page.tsx`, `.../coupons/page.tsx` | FE | S | Investidor clicando no sidebar de professor cai em telas vazias "em breve". Opções: esconder do nav na demo, ou rotular claramente como roadmap Q3. |
-| 0.2 | **Alinhar copy de payout (diz 7 dias, código libera em 10)** | `functions/src/payment-rules.ts:3` (`payoutReleaseDelayDays=10`) vs `src/components/teacher/teacher-wallet-panel.tsx:269`, `src/components/site/capabilities-grid.tsx:45,47`, `src/components/site/how-it-works-strip.tsx:31`, `src/app/help/page.tsx:80`, `src/app/trust/page.tsx:32` | FE (+ decisão BE) | S | Professor vê "7 dias", recebe no 10º. `help` ainda diz "matching the refund window". Diligence financeira pega. **Decisão do fundador:** padronizar em 10 (corrigir copy) ou mudar o código pra 7 (ver §6 Q1). |
+| 0.2 | ✅ **RESOLVIDO (2026-06-06): payout reconciliado em 30 dias** | `functions/src/payment-rules.ts:12` (`payoutReleaseDelayDays=30`) + `src/data/plans.ts:196` (`payoutClearDays=30`) | FE+BE | ✅ | Single source of truth em 30. A UI já estava data-driven em 30; docs/comentários históricos anotados/corrigidos. Reembolso segue 7. Ver DECISIONS D21. |
 | 0.3 | **Enxugar `/promise` para o que está shipado** (promete affiliate, community, analytics, quizzes, certificates, drip, custom domains) | `src/app/promise/page.tsx:17` | FE | S | Afiliados/analytics não existem. Manter como visão é ok — mas marcar "em breve" para não virar promessa falsa em diligence. |
 | 0.4 | **Smoke test LIVE de US$1 ponta-a-ponta** (compra de curso + 1 assinatura de plano) | `createCheckoutSession`, `createBillingCheckoutSession` (`functions/src/index.ts`) | — | S | **Ação do fundador** (cartão real). Confirma webhook → enrollment → wallet com dinheiro de verdade. |
 | 0.5 | **Validar caminho feliz do aluno** na conta de demo (enroll → consumir → progresso → certificado) sem estados vazios/quebrados | `src/app/learn/*`, `recordLessonProgress`, `issueSkillsetCertificate` | FE+BE (validação) | S | É o que o investidor vê. Garantir que renderiza limpo na conta de demo. |
@@ -75,15 +75,15 @@ Objetivo: paridade competitiva e profundidade. FE **e** BE em conjunto.
 | Tema | Estado BE | Estado FE | Ação coordenada |
 |------|-----------|-----------|-----------------|
 | **Assinatura de curso** | ✅ pronto (`builderPaymentTypes`, billing callables) | ❌ desabilitado ("Coming soon") | Só destravar o FE (1.3) + testar caminho existente. Não precisa BE novo. |
-| **Prazo de payout** | `payoutReleaseDelayDays=10` (deployado) | copy diz 7 | Decisão de número (Q1). Copy deve refletir o que o BE faz; só mudar o número do BE muda o comportamento de pagamento. |
+| **Prazo de payout** | ✅ `payoutReleaseDelayDays=30` (resolvido, Q1) | ✅ copy já em 30 (`payoutClearDays=30`) | RESOLVIDO 2026-06-06: 30 dias é o número final. BE, FE e docs reconciliados. Reembolso segue 7. |
 | **Order bump / upsell / afiliados** | ❌ inexistente | ❌ inexistente | Construção conjunta. Começar pelo BE (fluxo Stripe + ledger), depois FE. |
-| **Refund window vs payout** | refund=7, payout=10 (seguro: payout libera após janela de refund) | copy mistura os dois | Manter payout ≥ refund (sem risco de clawback) e deixar a copy explícita sobre os dois prazos. |
+| **Refund window vs payout** | ✅ refund=7, payout=30 (payout libera bem após a janela de refund) | ✅ copy explícita sobre os dois prazos | RESOLVIDO: payout (30) ≥ refund (7) com folga; sem risco de clawback. |
 
 ---
 
 ## 7. Perguntas abertas para o fundador
 
-1. **Payout:** padronizar em **10 dias** (corrigir só a copy — mais seguro, payout libera após a janela de refund de 7) ou mudar o código para **7** (paga mais rápido, mas payout libera exatamente quando a janela de refund fecha)? → recomendo **10 + copy honesta**.
+1. **Payout:** ✅ **RESOLVIDO (2026-06-06):** padronizado em **30 dias** (`payoutReleaseDelayDays=30` / `payoutClearDays=30`). Refund segue 7. Toda a copy e os docs foram reconciliados para 30.
 2. **Stubs de professor na demo:** esconder os 4 do menu, ou manter com rótulo claro de "roadmap Q3 + me avise"?
 3. **`/promise`:** enxugar para o que está shipado, ou manter como visão com tag "em breve" nos itens não construídos (affiliate, analytics, quizzes, custom domains)?
 4. **Assinatura de curso:** habilitar já para a demo (backend pronto) ou segurar?

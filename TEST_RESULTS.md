@@ -21,7 +21,7 @@ $100 course (intl)     |   $100.00 |       $8.00 |      $5.70 |       $86.30 |  
 - Professor absorve a taxa Stripe; `teacherNet = gross - planFee - stripeFee`.
 - Plataforma mantém a comissão do plano cheia (`platformNet` = comissão integral).
 - USD = 2.9%+$0.30; non-USD estimado = 5.4%+$0.30.
-- Caso $100 USD no plano Free: aluno paga $100 -> professor recebe **$88.80** após D+10 -> plataforma **$8.00**.
+- Caso $100 USD no plano Free: aluno paga $100 -> professor recebe **$88.80** após **D+30** -> plataforma **$8.00**. _(payout = 30 dias, decisão final 2026-06-06; ver DECISIONS D21. O split em si independe do prazo.)_
 
 ## 2. Caso feliz manual (a fazer quando tiver chave TEST — BLOCKERS B1)
 

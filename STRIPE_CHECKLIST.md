@@ -58,7 +58,7 @@ firebase functions:secrets:set STRIPE_WEBHOOK_SECRET
 Onde: **Connect → Settings**.
 - [ ] Connect ativado na conta (se aparecer "Get started", conclua o onboarding da plataforma)
 - [ ] **Branding**: nome público "Skillset", logo, cor — aparece na tela de onboarding do professor
-- [ ] **Payout settings**: confirme schedule padrão das contas conectadas (o hold de 7 dias é nosso, no código; o payout interno da conta conectada é separado)
+- [ ] **Payout settings**: confirme schedule padrão das contas conectadas (o hold de **30 dias** é nosso, no código `payoutReleaseDelayDays=30`; o payout interno da conta conectada é separado)
 - [ ] Anote o **Connect client / platform** estar em modo LIVE quando for cutover
 
 ## 4. Test mode — validação antes do LIVE
