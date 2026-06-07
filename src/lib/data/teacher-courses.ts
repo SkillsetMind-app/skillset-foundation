@@ -90,6 +90,31 @@ export async function updateCourseReviewStatus(
   });
 }
 
+/**
+ * Editorial curation toggle, ops/admin only. Pins a course to the top of the
+ * public marketplace ("Featured & top picks" sort) and orders featured courses
+ * among themselves by `featuredRank` (lower = higher placement). Writes exactly
+ * `featured` + `featuredRank` + `updatedAt` so it matches the field-scoped
+ * `opsCanUpdateCourseFeatured()` Firestore rule — a teacher saving their own
+ * course cannot touch these fields. Passing `featured = false` clears the rank
+ * too, so an unfeatured course never carries a stale placement.
+ */
+export async function setCourseFeatured(
+  courseId: string,
+  featured: boolean,
+  featuredRank: number | null = null,
+) {
+  await updateDoc(doc(getFirestoreDb(), coursesCollection, courseId), {
+    featured,
+    featuredRank: featured
+      ? typeof featuredRank === "number" && Number.isFinite(featuredRank)
+        ? Math.max(0, Math.round(featuredRank))
+        : null
+      : null,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 export async function updateTeacherCourseBuilder(
   courseId: string,
   input: UpdateTeacherCourseBuilderInput,

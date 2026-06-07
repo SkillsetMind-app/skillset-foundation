@@ -315,6 +315,135 @@ describe("Firestore course publishing rules", () => {
   });
 });
 
+describe("Firestore course featured curation rules (C5)", () => {
+  async function seedPublishedCourse(courseId: string, ownerId: string) {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), `courses/${courseId}`),
+        createCourse(ownerId, "published"),
+      );
+    });
+  }
+
+  it("lets ops feature and unfeature a published course", async () => {
+    await seedTeacher("teacher-1");
+    await seedUser("ops-1", ["student", "ops"]);
+    await seedPublishedCourse("course-feat", "teacher-1");
+
+    const opsDb = testEnv.authenticatedContext("ops-1", verifiedAuth).firestore();
+    const courseRef = doc(opsDb, "courses/course-feat");
+
+    await assertSucceeds(
+      updateDoc(courseRef, {
+        featured: true,
+        featuredRank: 1,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+    await assertSucceeds(
+      updateDoc(courseRef, {
+        featured: false,
+        featuredRank: null,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("lets an admin feature a course", async () => {
+    await seedTeacher("teacher-1");
+    await seedUser("admin-1", ["student", "admin"]);
+    await seedPublishedCourse("course-feat-admin", "teacher-1");
+
+    const adminDb = testEnv.authenticatedContext("admin-1", verifiedAuth).firestore();
+
+    await assertSucceeds(
+      updateDoc(doc(adminDb, "courses/course-feat-admin"), {
+        featured: true,
+        featuredRank: 0,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("blocks a teacher from featuring their OWN course (self-promotion guard)", async () => {
+    await seedTeacher("teacher-1");
+    await seedPublishedCourse("course-feat-self", "teacher-1");
+
+    const teacherDb = testEnv
+      .authenticatedContext("teacher-1", verifiedAuth)
+      .firestore();
+
+    // `featured` is absent from teacherCanSaveOwnedCourse's courseChangedOnly
+    // allowlist, so a teacher write that touches it fails the hasOnly() check.
+    await assertFails(
+      updateDoc(doc(teacherDb, "courses/course-feat-self"), {
+        featured: true,
+        featuredRank: 0,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("blocks a plain student from featuring any course", async () => {
+    await seedTeacher("teacher-1");
+    await seedUser("student-1", ["student"]);
+    await seedPublishedCourse("course-feat-student", "teacher-1");
+
+    const studentDb = testEnv
+      .authenticatedContext("student-1", verifiedAuth)
+      .firestore();
+
+    await assertFails(
+      updateDoc(doc(studentDb, "courses/course-feat-student"), {
+        featured: true,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("blocks ops from smuggling other fields through the featured path", async () => {
+    await seedTeacher("teacher-1");
+    await seedUser("ops-1", ["student", "ops"]);
+    await seedPublishedCourse("course-feat-smuggle", "teacher-1");
+
+    const opsDb = testEnv.authenticatedContext("ops-1", verifiedAuth).firestore();
+
+    // priceAmountMinor is outside courseChangedOnly(['featured','featuredRank',
+    // 'updatedAt']); the scoped predicate must reject the whole write.
+    await assertFails(
+      updateDoc(doc(opsDb, "courses/course-feat-smuggle"), {
+        featured: true,
+        priceAmountMinor: 1,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("rejects a malformed featuredRank (wrong type / out of range)", async () => {
+    await seedTeacher("teacher-1");
+    await seedUser("ops-1", ["student", "ops"]);
+    await seedPublishedCourse("course-feat-bad", "teacher-1");
+
+    const opsDb = testEnv.authenticatedContext("ops-1", verifiedAuth).firestore();
+    const courseRef = doc(opsDb, "courses/course-feat-bad");
+
+    await assertFails(
+      updateDoc(courseRef, {
+        featured: true,
+        featuredRank: "1",
+        updatedAt: Timestamp.now(),
+      }),
+    );
+    await assertFails(
+      updateDoc(courseRef, {
+        featured: true,
+        featuredRank: -5,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+});
+
 describe("Firestore course review rules", () => {
   it("allows public reads for published course reviews but blocks client writes", async () => {
     await seedTeacher("teacher-1");

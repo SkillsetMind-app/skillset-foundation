@@ -25,6 +25,12 @@ export type CourseCard = {
   priceAmountMinor?: number | null;
   ratingAverage?: number;
   ratingCount?: number;
+  // Editorial curation flags (ops-set). `featured` pins the card to the top of
+  // the marketplace grid regardless of the active sort; `featuredRank` orders
+  // featured cards among themselves (lower = higher). Demo/static cards omit
+  // these, so the sort treats them as not-featured (no change to today's order).
+  featured?: boolean;
+  featuredRank?: number | null;
 };
 
 export function getCourses(): Course[] {

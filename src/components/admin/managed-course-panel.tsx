@@ -10,6 +10,7 @@ import {
 } from "@/domain/teacher-course";
 import {
   deleteCourseAsAdmin,
+  setCourseFeatured,
   subscribeToManagedCourses,
   updateCourseReviewStatus,
 } from "@/lib/data/teacher-courses";
@@ -84,6 +85,18 @@ export function ManagedCoursePanel() {
     );
   }
 
+  function handleToggleFeatured(course: TeacherCourse) {
+    const nextFeatured = !course.featured;
+    return runAction(
+      course.id,
+      () => setCourseFeatured(course.id, nextFeatured),
+      nextFeatured
+        ? "Course featured. It now leads the marketplace grid."
+        : "Course unfeatured and back in the regular catalog order.",
+      "We could not update the featured status. Please try again.",
+    );
+  }
+
   return (
     <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -144,10 +157,35 @@ export function ManagedCoursePanel() {
                     {course.modules?.length ?? 0} modules - {course.lessonCount ?? 0} lessons
                   </p>
                 </div>
-                <StatusChip status={course.status} />
+                <div className="flex flex-col items-end gap-2">
+                  <StatusChip status={course.status} />
+                  {course.featured ? (
+                    <span className="rounded-[8px] bg-[var(--color-primary)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
+                      Featured
+                    </span>
+                  ) : null}
+                </div>
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
+                {course.status === "published" ? (
+                  <button
+                    type="button"
+                    onClick={() => handleToggleFeatured(course)}
+                    disabled={busyCourseId === course.id}
+                    className={
+                      course.featured
+                        ? "button-outline px-4 py-2 text-xs disabled:opacity-60"
+                        : "button-solid px-4 py-2 text-xs disabled:opacity-60"
+                    }
+                  >
+                    {busyCourseId === course.id
+                      ? "Working..."
+                      : course.featured
+                        ? "Unfeature"
+                        : "Feature"}
+                  </button>
+                ) : null}
                 {adminCanUnpublishCourse(course.status) ? (
                   <button
                     type="button"

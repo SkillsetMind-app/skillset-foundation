@@ -118,6 +118,8 @@ export function teacherCourseToCourseCard(course: TeacherCourse): CourseCard {
     priceAmountMinor: course.priceAmountMinor ?? null,
     ratingAverage: course.ratingAverage,
     ratingCount: course.ratingCount,
+    featured: course.featured ?? false,
+    featuredRank: course.featuredRank ?? null,
   };
 }
 

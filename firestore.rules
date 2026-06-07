@@ -339,6 +339,8 @@ service cloud.firestore {
         'ratingCount',
         'ratingSum',
         'reviewCount',
+        'featured',
+        'featuredRank',
         'createdAt',
         'updatedAt'
       ]);
@@ -572,6 +574,31 @@ service cloud.firestore {
       return isOps()
         && validCourseStatus()
         && courseChangedOnly(['status', 'reviewNote', 'updatedAt']);
+    }
+
+    // Ops editorial curation: feature / unfeature a course for the marketplace
+    // "Featured" placement. Scoped to the two curation fields (+ updatedAt) and
+    // gated to the operations team — a teacher can NOT feature their own course
+    // (teacherCanSaveOwnedCourse's diff list excludes these keys, so a teacher
+    // write touching them is denied). Evaluated as a self-contained predicate
+    // before validCourseShape() to stay within the update-path expression budget,
+    // mirroring the other scoped course predicates.
+    function opsCanUpdateCourseFeatured() {
+      return isOps()
+        && courseChangedOnly(['featured', 'featuredRank', 'updatedAt'])
+        && (
+          !request.resource.data.keys().hasAny(['featured'])
+          || request.resource.data.featured is bool
+        )
+        && (
+          !request.resource.data.keys().hasAny(['featuredRank'])
+          || request.resource.data.featuredRank == null
+          || (
+            request.resource.data.featuredRank is int
+            && request.resource.data.featuredRank >= 0
+            && request.resource.data.featuredRank <= 1000000
+          )
+        );
     }
 
     function teacherCanSaveOwnedCourse() {
@@ -1477,6 +1504,7 @@ service cloud.firestore {
       allow update: if teacherCanSubmitOwnedCourseForReview()
         || teacherCanUpdateOwnedCourseCover()
         || opsCanUpdateCourseStatus()
+        || opsCanUpdateCourseFeatured()
         || (
           validCourseShape()
           && (

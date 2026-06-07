@@ -49,9 +49,10 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   // Seed from the platform header search (`/courses?q=...`) so the term is
   // honored and the input is pre-filled; the user can refine from there.
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
-  // View preference only (not URL-synced like cat/q): default "alpha" matches
-  // the catalog's long-standing A->Z order, so untouched = no behavior change.
-  const [sortKey, setSortKey] = useState<CourseSortKey>("alpha");
+  // View preference only (not URL-synced like cat/q): default "featured" leads
+  // with ops-curated picks, then A->Z. While nothing is featured it is identical
+  // to the catalog's long-standing A->Z order, so untouched = no behavior change.
+  const [sortKey, setSortKey] = useState<CourseSortKey>("featured");
   const [publishedCourses, setPublishedCourses] = useState<CourseCard[]>([]);
   const [publishedCoursesError, setPublishedCoursesError] = useState("");
   const [wishlistError, setWishlistError] = useState("");
