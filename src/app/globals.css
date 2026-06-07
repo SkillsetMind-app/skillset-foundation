@@ -667,9 +667,9 @@ p {
   z-index: 50;
   width: 280px;
   padding: 6px;
-  border: 1px solid rgba(26, 54, 93, 0.1);
+  border: 1px solid var(--color-line);
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--color-surface);
   box-shadow: 0 24px 48px rgba(15, 39, 68, 0.16);
   animation: dropdown-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -717,7 +717,7 @@ p {
   padding: 6px;
   border: 1px solid var(--color-line);
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--color-surface);
   box-shadow: var(--shadow-strong);
   animation: dropdown-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -874,6 +874,36 @@ p {
 .account-menu-item--danger:focus-visible {
   background: rgba(178, 34, 52, 0.06);
   color: var(--color-accent);
+}
+
+/* A4 — dark theming for the account/sign-in dropdown.
+   Panels now use var(--color-surface) (was hardcoded #fff), so in dark their
+   swapping-token text becomes readable. That also moves the non-swapping
+   accent-red + dark ink-muted elements onto a dark bg, so re-color them in dark
+   to clear AA (brand #b22234 = 2.73:1 on dark surface; #e06472 = 5.36:1). The
+   trigger pill (translucent white) is inverted to a translucent light tint so
+   its light-ink name/role stop sitting on near-white. Light mode untouched.
+   (#e06472 is a component-scoped dark danger red; A1-cont may promote it to a
+   --color-danger-fg token later.) */
+[data-theme="dark"] .account-menu-item--danger,
+[data-theme="dark"] .account-menu-item--danger:hover,
+[data-theme="dark"] .account-menu-item--danger:focus-visible,
+[data-theme="dark"] .account-menu-icon--danger,
+[data-theme="dark"] .account-menu-context-chip,
+[data-theme="dark"] .account-menu-trigger__role {
+  color: #e06472;
+}
+
+[data-theme="dark"] .account-menu-section-label {
+  color: var(--color-ink-soft);
+}
+
+[data-theme="dark"] .account-menu-trigger {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .account-menu-trigger:hover {
+  background: rgba(255, 255, 255, 0.10);
 }
 
 @media (max-width: 640px) {
