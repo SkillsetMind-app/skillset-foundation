@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
+import { Heart } from "lucide-react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { CommunityLeaderboard } from "@/components/learn/community-leaderboard";
+import { LevelBadge } from "@/components/learn/level-badge";
 import type { SkillsetUser } from "@/domain/auth";
 import type {
   CommunityComment,
@@ -17,6 +20,7 @@ import type {
 } from "@/domain/community-report";
 import { communityReportReasonLabels } from "@/domain/community-report";
 import type { Enrollment } from "@/domain/enrollment";
+import type { MemberStats } from "@/domain/gamification";
 import type { CommunitySpace } from "@/domain/learning";
 import {
   createCommunityComment,
@@ -26,6 +30,11 @@ import {
   subscribeToCommunityPosts,
 } from "@/lib/data/community-posts";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
+import {
+  setCommunityPostLike,
+  subscribeToMemberStatsMap,
+  subscribeToPostLikes,
+} from "@/lib/data/gamification";
 
 type CourseCommunityFeedProps = {
   space: CommunitySpace;
@@ -37,7 +46,13 @@ const categories: CommunityPostCategory[] = [
   "question",
   "resource",
 ];
-const communityTabs = ["posts", "about", "members", "events"] as const;
+const communityTabs = [
+  "posts",
+  "leaderboard",
+  "about",
+  "members",
+  "events",
+] as const;
 type CommunityTab = (typeof communityTabs)[number];
 
 export function CourseCommunityFeed({ space }: CourseCommunityFeedProps) {
@@ -57,6 +72,9 @@ export function CourseCommunityFeed({ space }: CourseCommunityFeedProps) {
   const [activeTab, setActiveTab] = useState<CommunityTab>("posts");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [memberStats, setMemberStats] = useState<Map<string, MemberStats>>(
+    () => new Map(),
+  );
 
   useEffect(() => {
     if (!user) {
@@ -70,6 +88,17 @@ export function CourseCommunityFeed({ space }: CourseCommunityFeedProps) {
       () => setError("We could not confirm your community access."),
     );
   }, [space.courseSlug, user]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    // One collection listener feeds every level badge in the feed + leaderboard
+    // (memberStats docs are tiny). A read failure leaves badges absent, never
+    // breaks the feed.
+    return subscribeToMemberStatsMap(setMemberStats, () => undefined);
+  }, [user]);
 
   useEffect(() => {
     if (!enrollment) {
@@ -232,12 +261,20 @@ export function CourseCommunityFeed({ space }: CourseCommunityFeedProps) {
                     key={post.id}
                     currentUser={user}
                     post={post}
+                    memberStats={memberStats}
                   />
                 ))
               )}
             </div>
           </section>
         </div>
+      ) : null}
+
+      {activeTab === "leaderboard" ? (
+        <CommunityLeaderboard
+          currentUserId={user?.uid ?? null}
+          currentUserStats={user ? memberStats.get(user.uid) ?? null : null}
+        />
       ) : null}
 
       {activeTab === "about" ? (
@@ -321,9 +358,11 @@ function CommunityInfoPanel({
 function CommunityPostCard({
   currentUser,
   post,
+  memberStats,
 }: {
   currentUser: SkillsetUser | null;
   post: CommunityPost;
+  memberStats: Map<string, MemberStats>;
 }) {
   const [commentsState, setCommentsState] = useState<{
     comments: CommunityComment[];
@@ -335,6 +374,11 @@ function CommunityPostCard({
   const [commentBody, setCommentBody] = useState("");
   const [isCommenting, setIsCommenting] = useState(false);
   const [commentError, setCommentError] = useState("");
+  const [likeState, setLikeState] = useState<{
+    count: number;
+    likerIds: string[];
+  }>({ count: 0, likerIds: [] });
+  const [likePending, setLikePending] = useState(false);
 
   useEffect(() => {
     return subscribeToCommunityComments(
@@ -354,6 +398,35 @@ function CommunityPostCard({
       },
     );
   }, [post.id]);
+
+  useEffect(() => {
+    return subscribeToPostLikes(
+      post.id,
+      setLikeState,
+      () => undefined,
+    );
+  }, [post.id]);
+
+  const isOwnPost = currentUser?.uid === post.authorId;
+  const liked = currentUser
+    ? likeState.likerIds.includes(currentUser.uid)
+    : false;
+  const authorLevel = memberStats.get(post.authorId)?.level ?? null;
+
+  async function handleToggleLike() {
+    if (!currentUser || isOwnPost || likePending) {
+      return;
+    }
+
+    setLikePending(true);
+    try {
+      await setCommunityPostLike(post.id, !liked, currentUser);
+    } catch {
+      // The like listener stays authoritative; a failed toggle is a no-op.
+    } finally {
+      setLikePending(false);
+    }
+  }
 
   async function handleCommentSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -390,9 +463,12 @@ function CommunityPostCard({
   return (
     <article className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-[var(--color-ink)]">
-          {post.authorName}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-semibold text-[var(--color-ink)]">
+            {post.authorName}
+          </p>
+          {authorLevel ? <LevelBadge level={authorLevel} /> : null}
+        </div>
         <span className="rounded-[8px] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
           {communityPostCategoryLabels[post.category]}
         </span>
@@ -403,6 +479,37 @@ function CommunityPostCard({
       <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
         {post.body}
       </p>
+
+      <div className="mt-4 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={handleToggleLike}
+          disabled={!currentUser || isOwnPost || likePending}
+          aria-pressed={liked}
+          aria-label={liked ? "Remove your like" : "Like this post"}
+          title={
+            isOwnPost ? "You can't like your own post" : undefined
+          }
+          className={`inline-flex items-center gap-1.5 rounded-[9px] border px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-default disabled:opacity-70 ${
+            liked
+              ? "border-[var(--color-accent)] text-[var(--color-accent)]"
+              : "border-[var(--color-line)] text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
+          }`}
+        >
+          <Heart
+            size={14}
+            fill={liked ? "currentColor" : "none"}
+            aria-hidden
+          />
+          {likeState.count}
+        </button>
+        {isOwnPost ? (
+          <span className="text-[11px] text-[var(--color-ink-soft)]">
+            Likes on your posts become points.
+          </span>
+        ) : null}
+      </div>
+
       <ReportControl
         courseSlug={post.courseSlug}
         currentUser={currentUser}
@@ -424,33 +531,38 @@ function CommunityPostCard({
               No replies yet. Keep the discussion useful and tied to the course.
             </p>
           ) : (
-            commentsState.comments.map((comment) => (
-              <div
-                key={comment.id}
-                className="rounded-[3px] border border-[var(--color-line)] bg-white p-3"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-semibold text-[var(--color-ink)]">
-                    {comment.authorName}
+            commentsState.comments.map((comment) => {
+              const commentLevel =
+                memberStats.get(comment.authorId)?.level ?? null;
+              return (
+                <div
+                  key={comment.id}
+                  className="rounded-[3px] border border-[var(--color-line)] bg-white p-3"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-[var(--color-ink)]">
+                      {comment.authorName}
+                    </p>
+                    {commentLevel ? <LevelBadge level={commentLevel} /> : null}
+                    <span className="text-[11px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
+                      {comment.authorRole}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
+                    {comment.body}
                   </p>
-                  <span className="text-[11px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                    {comment.authorRole}
-                  </span>
+                  <ReportControl
+                    commentId={comment.id}
+                    courseSlug={comment.courseSlug}
+                    currentUser={currentUser}
+                    postId={post.id}
+                    targetAuthorId={comment.authorId}
+                    targetAuthorName={comment.authorName}
+                    targetType="comment"
+                  />
                 </div>
-                <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
-                  {comment.body}
-                </p>
-                <ReportControl
-                  commentId={comment.id}
-                  courseSlug={comment.courseSlug}
-                  currentUser={currentUser}
-                  postId={post.id}
-                  targetAuthorId={comment.authorId}
-                  targetAuthorName={comment.authorName}
-                  targetType="comment"
-                />
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
