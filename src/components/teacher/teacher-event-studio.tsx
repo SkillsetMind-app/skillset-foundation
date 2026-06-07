@@ -58,6 +58,7 @@ export function TeacherEventStudio() {
   const [description, setDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [eventsLoaded, setEventsLoaded] = useState(false);
   const [error, setError] = useState("");
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [actioningEventId, setActioningEventId] = useState<string | null>(null);
@@ -87,8 +88,14 @@ export function TeacherEventStudio() {
 
     return subscribeToTeacherCourseEvents(
       user.uid,
-      setEvents,
-      () => setError("We could not load your scheduled sessions."),
+      (nextEvents) => {
+        setEvents(nextEvents);
+        setEventsLoaded(true);
+      },
+      () => {
+        setEventsLoaded(true);
+        setError("We could not load your scheduled sessions.");
+      },
     );
   }, [user]);
 
@@ -367,7 +374,11 @@ export function TeacherEventStudio() {
           </span>
         </div>
         <div className="mt-6 grid gap-3">
-          {events.length === 0 ? (
+          {!eventsLoaded ? (
+            <p className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
+              Loading scheduled sessions…
+            </p>
+          ) : events.length === 0 ? (
             <p className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
               No agenda items scheduled yet. Create one when the course has a
               class, mentorship, masterclass, office hour, webinar, or deadline.

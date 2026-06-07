@@ -33,6 +33,8 @@ export function TeacherWalletPanel() {
   const [isRefreshingStripe, setIsRefreshingStripe] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<PayoutLedgerEntry[]>([]);
+  const [ordersLoaded, setOrdersLoaded] = useState(false);
+  const [ledgerLoaded, setLedgerLoaded] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -59,8 +61,12 @@ export function TeacherWalletPanel() {
 
     return subscribeToTeacherPayoutLedger(
       user.uid,
-      setLedgerEntries,
+      (entries) => {
+        setLedgerEntries(entries);
+        setLedgerLoaded(true);
+      },
       () => {
+        setLedgerLoaded(true);
         setError("We could not load payout release reporting.");
       },
     );
@@ -73,8 +79,12 @@ export function TeacherWalletPanel() {
 
     return subscribeToTeacherOrders(
       user.uid,
-      setOrders,
+      (nextOrders) => {
+        setOrders(nextOrders);
+        setOrdersLoaded(true);
+      },
       () => {
+        setOrdersLoaded(true);
         setError("We could not load teacher order reporting.");
       },
     );
@@ -103,6 +113,11 @@ export function TeacherWalletPanel() {
     }
   }
 
+  // Orders + ledger arrive on separate subscriptions; until both have delivered
+  // at least once, the money totals below are computed from empty arrays and
+  // would briefly flash $0. Gate the figures so they render once, correctly.
+  const financialsReady = ordersLoaded && ledgerLoaded;
+  const money = (minor: number) => (financialsReady ? formatMoney(minor) : "—");
   const connected = Boolean(profile?.stripeConnectedAccountId);
   const ready = Boolean(
     profile?.stripeConnectChargesEnabled && profile?.stripeConnectPayoutsEnabled,
@@ -175,7 +190,7 @@ export function TeacherWalletPanel() {
             Creator net estimate
           </p>
           <p className="display-title mt-3 text-5xl leading-none text-white">
-            {formatMoney(teacherNetMinor)}
+            {money(teacherNetMinor)}
           </p>
           <p className="mt-2 text-sm text-[rgba(255,255,255,0.72)]">
             Paid orders after Skillset platform commission. Stripe fees and
@@ -183,9 +198,9 @@ export function TeacherWalletPanel() {
           </p>
 
           <div className="mt-6 grid gap-3">
-            <BalanceRow label="Pending release" value={formatMoney(inReleaseMinor)} />
-            <BalanceRow label="Released" value={formatMoney(releasedMinor)} />
-            <BalanceRow label="Refunded" value={formatMoney(refundedMinor)} />
+            <BalanceRow label="Pending release" value={money(inReleaseMinor)} />
+            <BalanceRow label="Released" value={money(releasedMinor)} />
+            <BalanceRow label="Refunded" value={money(refundedMinor)} />
           </div>
 
           <div className="mt-6 flex flex-wrap gap-2">
@@ -260,9 +275,9 @@ export function TeacherWalletPanel() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <MetricCard label="Paid orders" value={String(paidOrders.length)} />
-        <MetricCard label="Gross sales" value={formatMoney(grossPaidMinor)} />
-        <MetricCard label="Platform fee est." value={formatMoney(platformFeeMinor)} />
+        <MetricCard label="Paid orders" value={financialsReady ? String(paidOrders.length) : "—"} />
+        <MetricCard label="Gross sales" value={money(grossPaidMinor)} />
+        <MetricCard label="Platform fee est." value={money(platformFeeMinor)} />
       </div>
 
       <InlineHelp topic="Payout schedule" href="/help#payouts">
@@ -311,7 +326,11 @@ export function TeacherWalletPanel() {
         </div>
 
         <div className="mt-5 overflow-hidden rounded-[14px] border border-[var(--color-line)]">
-          {ledgerEntries.length === 0 ? (
+          {!ledgerLoaded ? (
+            <div className="bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink-soft)]">
+              Loading payout ledger…
+            </div>
+          ) : ledgerEntries.length === 0 ? (
             <div className="bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink-soft)]">
               No payout ledger entries yet. Paid orders will create release
               records automatically after checkout succeeds.
