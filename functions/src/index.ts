@@ -3158,7 +3158,15 @@ export const stripeWebhook = onRequest(
         event.type === "customer.subscription.created" ||
         event.type === "customer.subscription.updated"
       ) {
-        await syncSubscriptionFromStripe(event.data.object);
+        const subscriptionObject = event.data.object;
+        // Course subscriptions drive enrollment access (grant/grace/revoke);
+        // plan subscriptions drive currentPlanId + commission. Route by
+        // metadata.purpose: the course handler returns true when it owns it.
+        const handledAsCourse =
+          await handleCourseSubscriptionLifecycle(subscriptionObject);
+        if (!handledAsCourse) {
+          await syncSubscriptionFromStripe(subscriptionObject);
+        }
         // PostHog: checkout_completed (course sales) is emitted in
         // handleCheckoutCompleted, which owns order_id + platform_fee_bps.
         // Plan-subscription billing has no taxonomy event yet (future:
@@ -3166,7 +3174,12 @@ export const stripeWebhook = onRequest(
       }
 
       if (event.type === "customer.subscription.deleted") {
-        await syncSubscriptionFromStripe(event.data.object);
+        const subscriptionObject = event.data.object;
+        const handledAsCourse =
+          await handleCourseSubscriptionLifecycle(subscriptionObject);
+        if (!handledAsCourse) {
+          await syncSubscriptionFromStripe(subscriptionObject);
+        }
       }
 
       if (event.type === "invoice.payment_failed") {
@@ -3645,6 +3658,116 @@ async function handleCourseSubscriptionInvoicePaid(invoice: Stripe.Invoice) {
     userId,
     netAmountMinor,
   });
+}
+
+// Course-subscription lifecycle: keeps the enrollment + mirror in sync with the
+// Stripe subscription status. Grace on past_due (Stripe is retrying — access
+// stays); revoke on canceled/unpaid/incomplete_expired/paused; restore on a
+// recovery back to active/trialing. Returns true when the subscription is a
+// course subscription (so the caller skips the plan handler), false otherwise.
+async function handleCourseSubscriptionLifecycle(
+  subscription: Stripe.Subscription,
+): Promise<boolean> {
+  const meta = subscription.metadata ?? {};
+  if (meta.purpose !== "course_subscription") {
+    return false;
+  }
+
+  const courseId = typeof meta.courseId === "string" ? meta.courseId : null;
+  const userId = typeof meta.userId === "string" ? meta.userId : null;
+  const teacherId = typeof meta.teacherId === "string" ? meta.teacherId : null;
+
+  if (!courseId || !userId) {
+    logger.error("course_subscription lifecycle missing metadata", {
+      subscriptionId: subscription.id,
+    });
+    return true; // it IS ours; swallow so the plan handler isn't called
+  }
+
+  const status = subscription.status;
+  const entitled = status === "active" || status === "trialing";
+  const revoke =
+    status === "canceled" ||
+    status === "unpaid" ||
+    status === "incomplete_expired" ||
+    status === "paused";
+  // past_due = grace (keep current access); incomplete = not yet paid (no
+  // access was granted to lose) — both leave the enrollment untouched.
+
+  const item = subscription.items.data[0];
+  const interval = item?.price?.recurring?.interval ?? null;
+  const periodEndIso = secondsToIso(
+    (item as { current_period_end?: number })?.current_period_end ??
+      (subscription as { current_period_end?: number }).current_period_end,
+  );
+  const stripeCustomerId =
+    typeof subscription.customer === "string"
+      ? subscription.customer
+      : subscription.customer?.id ?? null;
+
+  const enrollmentRef = db.collection("enrollments").doc(`${userId}__${courseId}`);
+  const subRef = db.collection("courseSubscriptions").doc(subscription.id);
+
+  await db.runTransaction(async (transaction) => {
+    const [enrollmentSnapshot, subSnapshot] = await Promise.all([
+      transaction.get(enrollmentRef),
+      transaction.get(subRef),
+    ]);
+
+    transaction.set(
+      subRef,
+      {
+        id: subscription.id,
+        userId,
+        courseId,
+        ...(teacherId ? { teacherId } : {}),
+        stripeSubscriptionId: subscription.id,
+        stripeCustomerId,
+        status,
+        interval,
+        currentPeriodEnd: periodEndIso,
+        cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+        pastDue: status === "past_due" || status === "unpaid",
+        ...(subSnapshot.exists
+          ? {}
+          : { createdAt: FieldValue.serverTimestamp() }),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    if (!enrollmentSnapshot.exists) {
+      // No enrollment yet — invoice.paid creates it on first payment (it has
+      // the course title/category). The lifecycle handler never creates.
+      return;
+    }
+
+    const enrollmentStatus = String(enrollmentSnapshot.data()?.status ?? "");
+
+    if (revoke && enrollmentStatus === "active") {
+      transaction.update(enrollmentRef, {
+        status: "revoked",
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    } else if (entitled && enrollmentStatus === "revoked") {
+      // Recovered (past_due -> active, or re-subscribe) — restore access.
+      transaction.update(enrollmentRef, {
+        status: "active",
+        source: "subscription",
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+    // past_due / incomplete: leave the enrollment as-is (grace).
+  });
+
+  logger.info("Course subscription lifecycle synced", {
+    subscriptionId: subscription.id,
+    status,
+    courseId,
+    userId,
+  });
+
+  return true;
 }
 
 async function handleChargeRefunded(charge: Stripe.Charge) {
@@ -4209,6 +4332,37 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
       invoiceId: invoice.id,
     });
     return;
+  }
+
+  // Course subscriptions track dunning on courseSubscriptions (not the plan
+  // `subscriptions` mirror) and keep access during retries — the actual revoke
+  // is driven by customer.subscription.updated -> canceled/unpaid (grace).
+  try {
+    const subscription = await getStripeClient().subscriptions.retrieve(
+      subscriptionId,
+    );
+    if (subscription.metadata?.purpose === "course_subscription") {
+      await db.collection("courseSubscriptions").doc(subscriptionId).set(
+        {
+          pastDue: true,
+          lastInvoicePaymentFailedAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+      logger.warn("Course subscription invoice payment_failed (grace)", {
+        invoiceId: invoice.id,
+        subscriptionId,
+      });
+      return;
+    }
+  } catch (error) {
+    logger.warn("Could not classify invoice.payment_failed subscription", {
+      invoiceId: invoice.id,
+      subscriptionId,
+      error: error instanceof Error ? error.message : "unknown",
+    });
+    // fall through to plan-subscription handling
   }
 
   await db.collection("subscriptions").doc(subscriptionId).set(
