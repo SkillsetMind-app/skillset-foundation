@@ -1030,6 +1030,14 @@ p {
   color: rgba(255, 255, 255, 0.76);
 }
 
+/* A1-cont-2: the active tab fill is --color-primary, which inverts to light blue
+   (#8fb4e4) in dark mode → this muted-white sub-label drops to ~1.9:1. The parent
+   label already renders --color-base (dark ink in dark, 8.8:1); match it so the
+   sub-label clears AA. Dark-scoped, so light mode (navy fill) is untouched. */
+[data-theme="dark"] .account-settings-tab--active span:last-child span:last-child {
+  color: var(--color-base);
+}
+
 .account-settings-tab__icon {
   display: grid;
   width: 34px;
@@ -1246,6 +1254,13 @@ p {
 
 .course-upload-preset--active span:last-child span:last-child {
   color: rgba(255, 255, 255, 0.76);
+}
+
+/* A1-cont-2: same inversion as .account-settings-tab--active — the preset's
+   --color-primary fill goes light blue in dark, so this muted-white sub-label
+   fails (~1.9:1). Match the parent's --color-base dark ink (8.8:1). Dark-scoped. */
+[data-theme="dark"] .course-upload-preset--active span:last-child span:last-child {
+  color: var(--color-base);
 }
 
 .course-upload-preset__icon {
@@ -2248,6 +2263,13 @@ p {
   color: #ffffff;
 }
 
+/* A1-cont-2: the active payment-method indicator fills with --color-primary
+   (light blue in dark) → white drops to 2.14:1. Flip to --color-base dark ink
+   (8.8:1 on the inverted fill). Dark-scoped, so light mode (navy) is untouched. */
+[data-theme="dark"] .create-course-payment.is-active > span {
+  color: var(--color-base);
+}
+
 .create-course-payment strong {
   color: var(--color-ink);
   font-size: 0.9375rem;
@@ -2305,7 +2327,7 @@ p {
 
 .lesson-modal__crumb,
 .lesson-modal__eyebrow {
-  color: var(--color-accent);
+  color: var(--color-accent-fg);
   font-size: 0.6875rem;
   font-weight: 800;
   letter-spacing: 0.18em;
@@ -2377,7 +2399,7 @@ p {
 
 .lesson-modal__tabs button:hover,
 .lesson-modal__tabs button.is-active {
-  border-bottom-color: var(--color-accent);
+  border-bottom-color: var(--color-accent-fg);
   color: var(--color-primary);
 }
 
@@ -2627,13 +2649,13 @@ p {
 .lesson-modal-upload__error {
   border: 1px solid rgba(178, 34, 52, 0.2);
   background: rgba(178, 34, 52, 0.06);
-  color: var(--color-accent);
+  color: var(--color-accent-fg);
 }
 
 .lesson-modal-upload__success {
   border: 1px solid rgba(31, 138, 91, 0.22);
   background: var(--color-success-soft);
-  color: var(--color-success);
+  color: var(--color-success-fg);
 }
 
 .lesson-modal-assets {
@@ -2759,6 +2781,63 @@ p {
   color: var(--color-ink-soft);
   font-size: 0.8125rem;
   font-weight: 800;
+}
+
+/* ─── A1-cont-2: lesson modal dark theme ────────────────────────────────────
+   The modal was built light-only: its chrome and content cards hardcode #ffffff
+   (or a white→surface-soft gradient whose TOP stays white in dark), while the
+   text tokens (--color-primary, --color-ink, --color-ink-soft) INVERT to light
+   in dark mode. Result in dark: light-blue h3 (~1.9:1) and light-slate body
+   (~2.0:1) on white pockets — real AA failures, not just theme drift. Re-theme
+   the modal dark so the inverted text tokens read on dark surfaces: body is the
+   darkest layer (surface→base) so the surface-strong content cards lift off it;
+   chrome (header/tabs/footer) uses translucent surface over the body; the video
+   card's primary gradient (which inverts light) darkens to surface-strong→surface
+   so its white text holds; the on-toggle knob flips to dark ink so it stays
+   visible on the light-blue on-track. Semantic accent/success foregrounds route
+   to -fg inline above. Dark-scoped → light mode is byte-for-byte unchanged. */
+[data-theme="dark"] .lesson-modal {
+  border-color: var(--color-line-strong);
+  background:
+    radial-gradient(circle at 92% 0%, rgba(227, 107, 120, 0.10), transparent 20rem),
+    linear-gradient(180deg, var(--color-surface) 0%, var(--color-base) 100%);
+}
+
+[data-theme="dark"] .lesson-modal__header {
+  background: rgba(15, 22, 38, 0.76);
+}
+
+[data-theme="dark"] .lesson-modal__tabs {
+  background: rgba(15, 22, 38, 0.92);
+}
+
+[data-theme="dark"] .lesson-modal__footer {
+  background: rgba(15, 22, 38, 0.82);
+}
+
+[data-theme="dark"] .lesson-modal__close {
+  background: var(--color-surface-strong);
+}
+
+[data-theme="dark"] .lesson-modal-video {
+  background:
+    radial-gradient(circle at 88% 18%, rgba(227, 107, 120, 0.16), transparent 12rem),
+    linear-gradient(135deg, var(--color-surface-strong), var(--color-surface));
+}
+
+[data-theme="dark"] .lesson-modal-choice,
+[data-theme="dark"] .lesson-modal-upload__trigger,
+[data-theme="dark"] .lesson-modal-inline-status,
+[data-theme="dark"] .lesson-modal-upload,
+[data-theme="dark"] .lesson-modal-assets article,
+[data-theme="dark"] .lesson-modal-setting {
+  background: var(--color-surface-strong);
+}
+
+/* On-toggle track inverts to light blue in dark; flip the knob to dark ink so it
+   stays visible (8.8:1) and the color shift reinforces the positional state. */
+[data-theme="dark"] .lesson-modal-setting button.is-on::after {
+  background: var(--color-base);
 }
 
 @media (max-width: 1280px) {
@@ -3791,6 +3870,13 @@ button:hover > .dash-card,
   background: var(--color-primary);
   color: #ffffff;
   box-shadow: var(--shadow-button);
+}
+
+/* A1-cont-2: the icon tile fills with --color-primary (light blue in dark) → a
+   white glyph drops to 2.14:1 (below the 3:1 graphical-object floor). Use
+   --color-base dark ink (8.8:1), matching .dash-card--accent. Dark-scoped. */
+[data-theme="dark"] .learner-continue-card__icon {
+  color: var(--color-base);
 }
 
 .credential-hero {
