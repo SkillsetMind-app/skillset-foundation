@@ -6,8 +6,12 @@ import { Target } from "lucide-react";
 
 import { CourseEnrollmentCta } from "@/components/courses/course-enrollment-cta";
 import { CreatorCourseDetail } from "@/components/courses/creator-course-detail";
+import { JsonLd } from "@/components/seo/json-ld";
 import { SiteNav } from "@/components/site/site-nav";
+import { getCourseAccessDecision } from "@/domain/course-access";
 import { getCourseBySlug, getCourseSlugs } from "@/lib/data/catalog";
+import { isPublicFeatureEnabled } from "@/lib/feature-flags";
+import { buildCourseJsonLd } from "@/lib/seo/course-jsonld";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 export function generateStaticParams() {
@@ -76,8 +80,22 @@ export default async function CourseDetailPage({
       .map((lesson) => ({ ...lesson, moduleTitle: module.title })),
   );
 
+  // Derive purchasability from the SAME decision the enrollment CTA renders, so
+  // the JSON-LD Offer can never claim InStock while the visible CTA says
+  // "Checkout opening soon" (Article IV / Google structured-data parity).
+  const access = getCourseAccessDecision(
+    course,
+    isPublicFeatureEnabled("payments.checkout"),
+  );
+  const purchasable =
+    access.mode === "free_enrollment" || access.mode === "paid_checkout_required";
+
   return (
     <div className="page-shell">
+      {/* Course/Offer structured data for organic discovery [C2]. Static catalog
+          courses only — creator courses resolve client-side (see above). The
+          Offer is emitted only when `purchasable`, matching the visible CTA. */}
+      <JsonLd data={buildCourseJsonLd(course, { purchasable })} />
       <SiteNav />
       <main className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
         <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">

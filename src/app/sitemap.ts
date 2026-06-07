@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
-const SITE_URL = "https://skillsetusaofficial.web.app";
+import { getCourseSlugs } from "@/lib/data/catalog";
+import { SITE_URL } from "@/lib/seo/page-metadata";
 
 export const dynamic = "force-static";
 
@@ -30,10 +31,22 @@ const publicRoutes: Array<{
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date();
 
-  return publicRoutes.map((route) => ({
+  const staticEntries = publicRoutes.map((route) => ({
     url: `${SITE_URL}${route.path}`,
     lastModified,
     changeFrequency: route.changeFrequency,
     priority: route.priority,
   }));
+
+  // Static catalog course detail pages (`/courses/[slug]`) are public and
+  // indexable but were missing from the sitemap. Creator (Firestore) courses
+  // resolve client-side and can't be enumerated in this `force-static` sitemap.
+  const courseEntries: MetadataRoute.Sitemap = getCourseSlugs().map((slug) => ({
+    url: `${SITE_URL}/courses/${slug}`,
+    lastModified,
+    changeFrequency: "weekly",
+    priority: 0.7,
+  }));
+
+  return [...staticEntries, ...courseEntries];
 }

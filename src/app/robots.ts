@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const SITE_URL = "https://skillsetusaofficial.web.app";
+import { SITE_URL } from "@/lib/seo/page-metadata";
 
 export const dynamic = "force-static";
 
