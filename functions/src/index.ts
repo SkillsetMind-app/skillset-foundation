@@ -1528,6 +1528,133 @@ export const onCommunityLikeDeleted = onDocumentDeleted(
   },
 );
 
+// ---------------------------------------------------------------------------
+// Leaderboard rebuild (scheduled). Precomputes the top members per window into
+// leaderboards/{window} (signed-in read, server-only write) so the client reads
+// one small doc instead of aggregating the ledger live.
+//  - all-time: ordered by the memberStats all-time points.
+//  - 7d / 30d: sum of pointsEvents.delta inside the window; the badge level is
+//    still the member's CURRENT all-time level (joined from memberStats).
+// ---------------------------------------------------------------------------
+const LEADERBOARD_TOP_N = 20;
+
+type LeaderboardEntryRecord = {
+  uid: string;
+  displayName: string;
+  points: number;
+  level: number;
+  rank: number;
+};
+
+async function buildAllTimeLeaderboard(): Promise<LeaderboardEntryRecord[]> {
+  const snap = await db
+    .collection("memberStats")
+    .where("points", ">", 0)
+    .orderBy("points", "desc")
+    .limit(LEADERBOARD_TOP_N)
+    .get();
+
+  return snap.docs.map((docSnap, index) => {
+    const data = docSnap.data();
+    const points = typeof data.points === "number" ? data.points : 0;
+    return {
+      uid: docSnap.id,
+      displayName:
+        typeof data.displayName === "string" && data.displayName.trim()
+          ? data.displayName.trim()
+          : "Member",
+      points,
+      level: gamificationLevelForPoints(points),
+      rank: index + 1,
+    };
+  });
+}
+
+async function buildWindowLeaderboard(
+  sinceMillis: number,
+): Promise<LeaderboardEntryRecord[]> {
+  const cutoff = Timestamp.fromMillis(sinceMillis);
+  const snap = await db
+    .collection("pointsEvents")
+    .where("createdAt", ">=", cutoff)
+    .get();
+
+  const totals = new Map<string, number>();
+  for (const docSnap of snap.docs) {
+    const data = docSnap.data();
+    const uid = typeof data.uid === "string" ? data.uid : "";
+    const delta = typeof data.delta === "number" ? data.delta : 0;
+    if (!uid) {
+      continue;
+    }
+    totals.set(uid, (totals.get(uid) ?? 0) + delta);
+  }
+
+  const ranked = [...totals.entries()]
+    .filter(([, points]) => points > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, LEADERBOARD_TOP_N);
+
+  const entries: LeaderboardEntryRecord[] = [];
+  for (let index = 0; index < ranked.length; index += 1) {
+    const [uid, windowPoints] = ranked[index];
+    const statsSnap = await db.collection("memberStats").doc(uid).get();
+    const stats = statsSnap.data();
+    const allTimePoints =
+      typeof stats?.points === "number" ? stats.points : 0;
+    entries.push({
+      uid,
+      displayName:
+        typeof stats?.displayName === "string" && stats.displayName.trim()
+          ? stats.displayName.trim()
+          : "Member",
+      points: windowPoints,
+      level: gamificationLevelForPoints(allTimePoints),
+      rank: index + 1,
+    });
+  }
+  return entries;
+}
+
+export const rebuildLeaderboards = onSchedule(
+  {
+    schedule: "every 6 hours",
+    timeZone: "Etc/UTC",
+  },
+  async () => {
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+
+    const [allTime, last30, last7] = await Promise.all([
+      buildAllTimeLeaderboard(),
+      buildWindowLeaderboard(now - 30 * dayMs),
+      buildWindowLeaderboard(now - 7 * dayMs),
+    ]);
+
+    const windows: Array<[string, LeaderboardEntryRecord[]]> = [
+      ["all-time", allTime],
+      ["30d", last30],
+      ["7d", last7],
+    ];
+
+    await Promise.all(
+      windows.map(([window, entries]) =>
+        db.collection("leaderboards").doc(window).set({
+          window,
+          entries,
+          updatedAt: FieldValue.serverTimestamp(),
+        }),
+      ),
+    );
+
+    logger.info("leaderboards rebuilt", {
+      allTime: allTime.length,
+      last30: last30.length,
+      last7: last7.length,
+    });
+  },
+);
+
 export const createCheckoutSession = onCall(
   { secrets: [stripeSecretKey] },
   async (request) => {
