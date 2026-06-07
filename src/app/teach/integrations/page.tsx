@@ -12,6 +12,7 @@ export default function TeacherIntegrationsPage() {
           description="Connect email tools, webhooks, and analytics destinations — it's on the Skillset roadmap. Payouts already run through Stripe, so you can manage your connected account from billing anytime."
           primaryHref="/account/payments"
           primaryLabel="Manage payouts"
+          notifyFeature="Integrations"
         />
       </PlatformShell>
     </ProtectedSurface>

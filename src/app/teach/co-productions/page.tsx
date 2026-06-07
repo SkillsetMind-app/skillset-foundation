@@ -10,6 +10,7 @@ export default function TeacherCoProductionsPage() {
           eyebrow="Teacher Studio"
           title="Co-productions are on the roadmap."
           description="Split revenue with a co-creator and track each partner's share automatically — it's on the Skillset roadmap. Today, every payout routes to the course owner's connected account."
+          notifyFeature="Co-productions"
         />
       </PlatformShell>
     </ProtectedSurface>

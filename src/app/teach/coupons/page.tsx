@@ -12,6 +12,7 @@ export default function TeacherCouponsPage() {
           description="Discount codes, time-boxed launch pricing, and bundle offers are coming to Skillset. For now, set your course price directly in the builder."
           primaryHref="/teach/builder"
           primaryLabel="Open Course Builder"
+          notifyFeature="Coupons & promotions"
         />
       </PlatformShell>
     </ProtectedSurface>

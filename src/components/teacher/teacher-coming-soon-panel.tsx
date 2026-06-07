@@ -3,12 +3,22 @@ import { ArrowRight } from "lucide-react";
 
 import { StatusChip } from "@/components/shared/status-chip";
 
+// Single source for the support inbox a roadmap page routes interest to. Kept
+// in one place so a "Notify me" link never hardcodes the address per page.
+const SUPPORT_EMAIL = "support@skillset.app";
+
 type TeacherComingSoonPanelProps = {
   eyebrow: string;
   title: string;
   description: string;
   primaryHref?: string;
   primaryLabel?: string;
+  /**
+   * When set, renders an honest "Notify me" action: a mailto to support with a
+   * feature-specific subject. No fake form, no unbacked promise — it opens a
+   * real channel the teacher can use to signal demand for this surface.
+   */
+  notifyFeature?: string;
 };
 
 /**
@@ -23,6 +33,7 @@ export function TeacherComingSoonPanel({
   description,
   primaryHref = "/teach",
   primaryLabel = "Back to Studio",
+  notifyFeature,
 }: TeacherComingSoonPanelProps) {
   return (
     <section className="overflow-hidden rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-10">
@@ -43,6 +54,16 @@ export function TeacherComingSoonPanel({
           {primaryLabel}
           <ArrowRight aria-hidden="true" size={14} strokeWidth={1.8} />
         </Link>
+        {notifyFeature ? (
+          <a
+            href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
+              `Notify me when ${notifyFeature} ships`,
+            )}`}
+            className="button-outline px-4 py-3 text-sm"
+          >
+            Notify me
+          </a>
+        ) : null}
         {primaryHref !== "/teach/builder" ? (
           <Link href="/teach/builder" className="button-outline px-4 py-3 text-sm">
             Open Course Builder
