@@ -19,6 +19,10 @@
   --color-line-strong: rgba(26, 54, 93, 0.30);
   --color-success: #1f8a5b;
   --color-success-soft: #e4f3eb;
+  /* Saturated success green for solid fills carrying WHITE text. The base
+     --color-success (#1f8a5b) gives white only 4.33:1 — below AA — so any
+     white-on-green chip/badge must use this darker token instead (5.02:1). */
+  --color-success-solid: #157f50;
   --color-warning: #c07b0a;
   --color-warning-soft: #fcefd2;
   --color-info: #2c5282;
@@ -256,6 +260,21 @@ p {
 
 [data-theme="dark"] .button-outline {
   background: var(--color-surface);
+}
+
+/* Primary CTA in dark mode: --color-primary inverts to a LIGHT blue (#8fb4e4),
+   but .button-solid hardcodes a white label → white-on-#8fb4e4 is only
+   2.14:1 (the "primary CTA fails AA in dark" audit finding). Drop the label to
+   dark ink on the light fill — 6.1–9.0:1 — matching how
+   .account-settings-tab--active and .course-upload-preset--active already
+   render dark text on the inverted primary. Dark-scoped so light mode (navy
+   fill, white text) is untouched. The :hover bg is --color-primary-dark, which
+   in dark mode is lighter still (#d9e8fb), so dark ink stays correct there too. */
+[data-theme="dark"] .button-solid,
+[data-theme="dark"] .button-solid:hover,
+[data-theme="dark"] .button-solid *,
+[data-theme="dark"] .button-solid:hover * {
+  color: var(--color-base) !important;
 }
 
 [data-theme="dark"] input,
@@ -1634,6 +1653,20 @@ p {
   transform: scale(1.08);
 }
 
+/* Dark mode: the chevron's rest background is --color-primary, which inverts to
+   light blue (#8fb4e4) — a white glyph drops to 2.14:1. Use a dark glyph at rest
+   (8.96:1); :hover flips the fill to accent red, so the glyph returns to white
+   (6.6:1). The dark :hover rule follows the dark rest rule, so it wins on hover. */
+[data-theme="dark"] .platform-sidebar > button[aria-label="Collapse sidebar"],
+[data-theme="dark"] .platform-sidebar > button[aria-label="Expand sidebar"] {
+  color: var(--color-base) !important;
+}
+
+[data-theme="dark"] .platform-sidebar > button[aria-label="Collapse sidebar"]:hover,
+[data-theme="dark"] .platform-sidebar > button[aria-label="Expand sidebar"]:hover {
+  color: #ffffff !important;
+}
+
 .platform-grid--collapsed .platform-sidebar-panel {
   padding-inline: 0.625rem;
 }
@@ -1888,8 +1921,10 @@ p {
 }
 
 .course-builder-step.is-done .course-builder-step__num {
-  border-color: var(--color-success);
-  background: var(--color-success);
+  /* White on --color-success (#1f8a5b) is only 4.33:1 — below AA in BOTH
+     themes. --color-success-solid (#157f50) lifts white to 5.02:1. */
+  border-color: var(--color-success-solid);
+  background: var(--color-success-solid);
   color: #fff;
 }
 
