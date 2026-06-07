@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -47,6 +48,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>(getStoredMode);
   const [systemTheme, setSystemTheme] = useState<"light" | "dark">(getSystemTheme);
   const resolvedTheme = mode === "system" ? systemTheme : mode;
+  // Tracks the window timeout that removes the page-wide theme cross-fade
+  // class, so rapid toggles cancel the previous removal instead of racing it.
+  const themeTransitionTimeout = useRef<number | null>(null);
 
   useEffect(() => {
     if (typeof window.matchMedia !== "function") {
@@ -70,6 +74,26 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [resolvedTheme]);
 
   function setMode(nextMode: ThemeMode) {
+    // The [data-theme] swap flips every CSS variable instantly, so without help
+    // the whole page snaps between palettes while only the toggle icon animates.
+    // Arm a short-lived cross-fade (see .theme-transitioning in globals.css)
+    // before the resolvedTheme effect repaints. Added only on user action, so
+    // the initial page load never flashes a transition; gated by reduced-motion
+    // in CSS, not here.
+    if (typeof document !== "undefined") {
+      const root = document.documentElement;
+      root.classList.add("theme-transitioning");
+
+      if (themeTransitionTimeout.current !== null) {
+        window.clearTimeout(themeTransitionTimeout.current);
+      }
+
+      themeTransitionTimeout.current = window.setTimeout(() => {
+        root.classList.remove("theme-transitioning");
+        themeTransitionTimeout.current = null;
+      }, 340);
+    }
+
     setModeState(nextMode);
     window.localStorage.setItem(storageKey, nextMode);
   }

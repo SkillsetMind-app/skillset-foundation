@@ -81,6 +81,33 @@
   box-sizing: border-box;
 }
 
+/*
+ * P2 — page-wide theme cross-fade. The theme-toggle icon already cross-fades and
+ * rotates, but [data-theme] flips every CSS variable at once, so the page colors
+ * used to snap hard. theme-provider adds .theme-transitioning to <html> for the
+ * duration of a user-initiated toggle; this briefly cross-fades color-bearing
+ * properties across the whole tree. transform/opacity stay in the list so the
+ * toggle icon's own animation is preserved during the window. The class is never
+ * present on first paint (added only on user action), so initial load does not
+ * flash, and the whole effect is disabled under reduced-motion.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  html.theme-transitioning,
+  html.theme-transitioning *,
+  html.theme-transitioning *::before,
+  html.theme-transitioning *::after {
+    transition:
+      background-color 300ms ease,
+      border-color 300ms ease,
+      color 300ms ease,
+      fill 300ms ease,
+      stroke 300ms ease,
+      box-shadow 300ms ease,
+      opacity 300ms ease,
+      transform 300ms ease !important;
+  }
+}
+
 /* Single-page landing anchor scrolling. The reduced-motion media query
    below overrides this to `auto` for accessibility. */
 html {
