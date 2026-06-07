@@ -305,8 +305,6 @@ const paymentModelOptions: PlanSelectorOption<TeacherCoursePaymentType>[] = [
     description: "Recurring monthly billing.",
     features: ["Recurring access", "Cancellation controls"],
     icon: Repeat,
-    disabled: true,
-    badge: "Coming soon",
   },
   {
     value: "subscription_yearly",
@@ -314,8 +312,6 @@ const paymentModelOptions: PlanSelectorOption<TeacherCoursePaymentType>[] = [
     description: "Recurring yearly billing.",
     features: ["Annual access", "Renewal reminders"],
     icon: CalendarClock,
-    disabled: true,
-    badge: "Coming soon",
   },
 ];
 
@@ -645,11 +641,13 @@ export function CourseBuilderStudio() {
   const parsedPriceAmountMinor = parsePriceAmountMinor(priceAmount);
   const priceFieldIsValid =
     paymentType === "free" || !hasInvalidPriceAmount(priceAmount);
+  // Free is always ready; every paid model (one_time, subscription_monthly,
+  // subscription_yearly) needs a positive price — priceAmountMinor is the
+  // one-time charge or the per-cycle subscription amount.
   const pricingModelIsReady =
     paymentType === "free"
     || (
-      paymentType === "one_time"
-      && typeof parsedPriceAmountMinor === "number"
+      typeof parsedPriceAmountMinor === "number"
       && parsedPriceAmountMinor > 0
     );
   const installmentsAreValid =
@@ -730,15 +728,21 @@ export function CourseBuilderStudio() {
       module.lessons.map((lesson) => lesson.id),
     ) ?? [],
   );
+  const priceIntervalSuffix =
+    paymentType === "subscription_monthly"
+      ? " / month"
+      : paymentType === "subscription_yearly"
+        ? " / year"
+        : "";
   const formattedPrice =
     paymentType === "free"
       ? "Free"
       : parsedPriceAmountMinor
-        ? new Intl.NumberFormat("en-US", {
+        ? `${new Intl.NumberFormat("en-US", {
             style: "currency",
             currency: currency.toUpperCase(),
             maximumFractionDigits: 0,
-          }).format(parsedPriceAmountMinor / 100)
+          }).format(parsedPriceAmountMinor / 100)}${priceIntervalSuffix}`
         : "Set price";
   const tabCompletion: Record<BuilderTab, boolean> = {
     details: Boolean(title.trim() && summary.trim().length >= 20),

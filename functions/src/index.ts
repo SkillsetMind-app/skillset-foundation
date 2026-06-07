@@ -568,10 +568,20 @@ function validateCourseReadyForReview(course: TeacherCourseRecord) {
     return;
   }
 
-  if (paymentType !== "one_time") {
+  // Paid models that can be submitted for review. one_time charges once;
+  // subscription_monthly / subscription_yearly mint a recurring Stripe Price
+  // (see getOrCreateCourseSubscriptionPrice) and use priceAmountMinor as the
+  // per-cycle amount — the price check below enforces a positive amount for all
+  // three the same way.
+  const submittablePaidTypes = [
+    "one_time",
+    "subscription_monthly",
+    "subscription_yearly",
+  ];
+  if (!submittablePaidTypes.includes(paymentType)) {
     throw new HttpsError(
       "failed-precondition",
-      "Only free and one-time payment courses can be submitted in this release.",
+      "Choose a valid payment model before submitting.",
     );
   }
 

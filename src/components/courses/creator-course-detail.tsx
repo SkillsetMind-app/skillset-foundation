@@ -114,14 +114,22 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
   const courseIsFree =
     course.paymentType === "free"
     || (typeof course.priceAmountMinor === "number" && course.priceAmountMinor === 0);
+  const subscriptionInterval =
+    course.paymentType === "subscription_monthly"
+      ? "month"
+      : course.paymentType === "subscription_yearly"
+        ? "year"
+        : null;
   const priceLabel =
     courseIsFree
       ? "Free"
       : typeof course.priceAmountMinor === "number"
-      ? new Intl.NumberFormat("en", {
+      ? `${new Intl.NumberFormat("en", {
           style: "currency",
           currency: course.currency ?? "USD",
-        }).format(course.priceAmountMinor / 100)
+        }).format(course.priceAmountMinor / 100)}${
+          subscriptionInterval ? ` / ${subscriptionInterval}` : ""
+        }`
       : "Pricing pending";
   const canCheckout =
     checkoutEnabled
@@ -429,7 +437,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
                 {isCheckingOut
                   ? "Opening secure checkout..."
                   : checkoutEnabled && hasPaidPrice
-                    ? `Enroll for ${priceLabel}`
+                    ? `${subscriptionInterval ? "Subscribe" : "Enroll"} for ${priceLabel}`
                     : "Secure checkout coming next"}
               </button>
             )}
