@@ -101,8 +101,8 @@ export default function TermsPage() {
                 {SUPPORT_EMAIL}
               </a>
               . Educator payout and refund handling is described in the{" "}
-              <Link className="font-semibold text-[var(--color-accent)]" href="/teach/refunds">
-                educator refund policy
+              <Link className="font-semibold text-[var(--color-accent)]" href="/fees-and-payouts">
+                fees and payouts policy
               </Link>
               .
             </p>
