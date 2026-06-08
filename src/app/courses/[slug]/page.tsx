@@ -8,9 +8,7 @@ import { CourseEnrollmentCta } from "@/components/courses/course-enrollment-cta"
 import { CreatorCourseDetail } from "@/components/courses/creator-course-detail";
 import { JsonLd } from "@/components/seo/json-ld";
 import { SiteNav } from "@/components/site/site-nav";
-import { getCourseAccessDecision } from "@/domain/course-access";
 import { getCourseBySlug, getCourseSlugs } from "@/lib/data/catalog";
-import { isPublicFeatureEnabled } from "@/lib/feature-flags";
 import { buildCourseJsonLd } from "@/lib/seo/course-jsonld";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
@@ -80,15 +78,12 @@ export default async function CourseDetailPage({
       .map((lesson) => ({ ...lesson, moduleTitle: module.title })),
   );
 
-  // Derive purchasability from the SAME decision the enrollment CTA renders, so
-  // the JSON-LD Offer can never claim InStock while the visible CTA says
-  // "Checkout opening soon" (Article IV / Google structured-data parity).
-  const access = getCourseAccessDecision(
-    course,
-    isPublicFeatureEnabled("payments.checkout"),
-  );
-  const purchasable =
-    access.mode === "free_enrollment" || access.mode === "paid_checkout_required";
+  // Static catalog courses are marketing SAMPLES, not Firestore-backed records,
+  // so they can't be bought from this page — the CTA funnels to the live
+  // marketplace (see <CourseEnrollmentCta>). Emit no purchasable Offer here, so
+  // the JSON-LD can never claim InStock for a course this page cannot actually
+  // sell (Article IV / Google structured-data parity).
+  const purchasable = false;
 
   return (
     <div className="page-shell">

@@ -3803,6 +3803,35 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   });
 }
 
+// Resolve the subscription id from a Stripe Invoice across API versions. The
+// pinned API (2026-02-25.clover, post-Basil) removed the top-level
+// invoice.subscription field and moved it to
+// invoice.parent.subscription_details.subscription. Read the current location
+// first, then fall back to the legacy top-level field so fulfilment still works
+// if an older-versioned event ever reaches us. Returning null here silently
+// dropped EVERY course-subscription invoice (no enrollment grant, no payout
+// ledger) once the account defaulted to a Basil-or-later API version.
+function resolveInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+  const fromParent = invoice.parent?.subscription_details?.subscription;
+  if (typeof fromParent === "string" && fromParent) {
+    return fromParent;
+  }
+  if (fromParent && typeof fromParent === "object" && typeof fromParent.id === "string") {
+    return fromParent.id;
+  }
+
+  const legacyField = (invoice as { subscription?: string | { id: string } | null })
+    .subscription;
+  if (typeof legacyField === "string" && legacyField) {
+    return legacyField;
+  }
+  if (legacyField && typeof legacyField === "object" && typeof legacyField.id === "string") {
+    return legacyField.id;
+  }
+
+  return null;
+}
+
 // Course-subscription fulfilment: each PAID recurring invoice is held in the
 // payoutLedger (released to the teacher by dailyReleaseTransfers after the
 // refund window — the SAME rail as one-time) and grants/refreshes the buyer's
@@ -3810,13 +3839,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 // ignored here; the platform plan is fulfilled via customer.subscription.* in
 // syncSubscriptionFromStripe.
 async function handleCourseSubscriptionInvoicePaid(invoice: Stripe.Invoice) {
-  const subscriptionField = (invoice as {
-    subscription?: string | { id: string } | null;
-  }).subscription;
-  const subscriptionId =
-    typeof subscriptionField === "string"
-      ? subscriptionField
-      : subscriptionField?.id ?? null;
+  const subscriptionId = resolveInvoiceSubscriptionId(invoice);
 
   if (!subscriptionId) {
     // A non-subscription invoice (one-off / manual) — not our concern.
@@ -4769,12 +4792,7 @@ async function syncSubscriptionFromStripe(
  * immediate dunning signal; syncSubscriptionFromStripe clears it on recovery.
  */
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
-  const subscriptionField = (invoice as { subscription?: string | { id: string } | null })
-    .subscription;
-  const subscriptionId =
-    typeof subscriptionField === "string"
-      ? subscriptionField
-      : subscriptionField?.id ?? null;
+  const subscriptionId = resolveInvoiceSubscriptionId(invoice);
 
   if (!subscriptionId) {
     logger.warn("invoice.payment_failed without a subscription", {
