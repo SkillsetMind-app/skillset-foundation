@@ -601,3 +601,44 @@ O dark mode aplica via `<html data-theme="dark">` setado pelo `ThemeProvider` (`
 ### ⚠️ Follow-up DEFERIDO (registro, não build)
 
 - **Stripe embedded `appearance.colorBackground`:** componentes Connect/Elements embarcados têm `appearance` próprio; se `colorBackground` ficar branco fixo, o widget Stripe aparece branco no dark. Exige a Appearance API da Stripe **e** sessão Stripe viva p/ testar (não verificável no preview sem auth). Money-path-adjacent (UI de pagamento) → **não tocar sem poder verificar**; documentado p/ uma rodada com credenciais de teste Stripe.
+
+---
+
+## 💸 Payout onboarding — auto-cura de conta Stripe Connect órfã (BUILD, 2026-06-08)
+
+> **Contexto do pedido:** bug reportado em produção pelo fundador, no painel "Payout setup" do Teacher Studio: *"We could not open Stripe onboarding: You requested an account link for an account that is not connected to your platform or does not exist."* + botão "Continue with Stripe" que não saía do lugar. Dead-end total na configuração de repasses → professor não consegue vender curso pago.
+
+### Diagnóstico — duas causas-raiz independentes
+
+| # | Causa | Natureza | Dono |
+|---|-------|----------|------|
+| 1 | **Conta Connect órfã sem auto-cura.** O `stripeConnectedAccountId` salvo no doc do usuário foi cunhado sob uma **chave/modo Stripe diferente** (test↔live, ou rotação de key) do segredo que a função usa agora. A Stripe rejeita com `account_invalid`/`resource_missing` ("not connected to your platform or does not exist") e o onboarding **dava dead-end** — nenhuma das 3 funções de onboarding recriava a conta. | **HARD BLOCKER (código)** | **Corrigido aqui** |
+| 2 | **`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` ausente no build deployado.** Sem a publishable key no cliente, o frontend cai no **fluxo hospedado** (`accountLinks` redirect) em vez do embedded — exatamente a tela do print. O fix #1 destrava o fluxo hospedado; configurar a key habilita o embedded. | **CONFIG (env/infra)** | **@devops — fora do escopo de código** |
+
+### Correção aplicada (causa #1) — módulo puro testável + 3 callables
+
+| Artefato | Arquivo | O quê |
+|----------|---------|-------|
+| **Módulo de auto-cura** (novo) | `functions/src/stripe-connect-self-heal.ts` | `isOrphanedAccountError(error)` — predicado **conservador** (4 gates: precisa ser `Stripe.errors.StripeError`; exclui família transitória/infra/credencial/quota; aceita em `account_invalid`/`resource_missing`; fallback de mensagem **cercado por `instanceof StripeInvalidRequestError`**). `runWithOrphanedAccountSelfHeal(...)` — recria a conta e **re-tenta exatamente 1×** (retry fora do try → at-most-once, sem loop). |
+| **Helper de recriação** | `functions/src/index.ts` (~707) | `createFreshConnectedAccount({userRef, uid, email, stripe})` — cunha Express account + persiste via `merge` e devolve o novo id. |
+| **3 callables instrumentadas** | `functions/src/index.ts` | `createTeacherStripeAccountLink` (~2426), `createConnectAccountSession` (~5308) embrulhadas no self-heal; `refreshTeacherStripeAccount` (~2530) limpa o id órfão (`FieldValue.delete()` + status `disconnected`) e devolve `connected:false` em vez de explodir. |
+| **Testes** (novo) | `functions/src/stripe-connect-self-heal.test.ts` | **16 testes** — aceita os 2 códigos órfãos + regex de mensagem; **rejeita** connection/rate-limit(429)/auth(401)/API(500)/permission(403)/card-decline/invalid-request não-órfão/não-Stripe; wrapper: sucesso-sem-recriar, órfão→recria-1×-retry-sucesso, órfão-2×→não-reloop, não-órfão→repassa, falha-de-recriação→propaga. |
+
+### Bug do predicado **caçado e corrigido** (correção crítica)
+
+A primeira versão do predicado usava `error.type === "invalid_request_error"` — **código morto**. No stripe-node, `error.type` é o **nome da CLASSE** (`"StripeInvalidRequestError"`); o tipo da API vive em `error.rawType`. Verifiquei no SDK instalado (probe: `.type="StripeInvalidRequestError"`, `.rawType="invalid_request_error"`) e troquei o gate para `error instanceof Stripe.errors.StripeInvalidRequestError` — o check confiável. Pego justamente porque **predicado de money-path se verifica, não se confia**.
+
+### Fund-safety — por que trocar/limpar o id é seguro
+
+Transfers e refunds leem **snapshots congelados** (`ledger.teacherStripeConnectedAccountId` em `index.ts:2874`, `order.teacherStripeConnectedAccountId` em `index.ts:3904`), **não** o `user.stripeConnectedAccountId` vivo (lido só nos pontos de entrada de onboarding). O gate de `chargesEnabled` no checkout bloqueia pagamento até o onboarding concluir → uma conta **órfã tem zero entradas no ledger**. Logo, recriar/limpar o id vivo **não toca em nenhum fundo já movimentado**. (Verificado por workflow independente — veredito: fund-safe.)
+
+### Verificação (todos os gates verdes)
+
+- `cd functions && npx tsc --noEmit` → **EXIT 0**.
+- `npx vitest run` → **180 passed** (26 arquivos; +16 do self-heal).
+- `npm run test:rules` → **69 passed** (57 firestore + 12 storage).
+- `npm run build` → **EXIT 0** (árvore de rotas completa).
+
+### ⚠️ Follow-up DEFERIDO (config, não código)
+
+- **`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`** precisa entrar no env do build deployado (@devops) para reativar o onboarding **embedded**. Sem ela, o fluxo hospedado (já destravado pelo fix #1) segue funcional. Relaciona-se ao follow-up de `appearance.colorBackground` do dark mode acima — ambos dependem de uma rodada com credenciais Stripe vivas.

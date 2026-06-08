@@ -62,6 +62,10 @@ import {
   stripeProcessingFeeMinor as canonicalStripeProcessingFeeMinor,
   type TransferReversalStripeClient,
 } from "./payment-rules";
+import {
+  isOrphanedAccountError,
+  runWithOrphanedAccountSelfHeal,
+} from "./stripe-connect-self-heal";
 
 initializeApp();
 setGlobalOptions({ region: "us-central1", maxInstances: 10 });
@@ -704,6 +708,52 @@ function toStripeHttpsError(error: unknown, action: string): HttpsError {
 
 function getAppUrl() {
   return (process.env.SKILLSET_APP_URL || fallbackAppUrl).replace(/\/$/, "");
+}
+
+/**
+ * Mints a fresh Stripe Express connected account and persists it onto the user
+ * doc (overwriting any existing stripeConnectedAccountId via merge). Shared by
+ * both onboarding callables for BOTH the initial-create and the
+ * self-heal-recreate paths, so an orphaned id is replaced in exactly one place.
+ *
+ * Fund-safe to overwrite: transfers/refunds read a FROZEN
+ * `ledger.teacherStripeConnectedAccountId` snapshot captured at payment-capture
+ * time, never this live field; and an orphaned id can never have a ledger entry
+ * because the checkout chargesEnabled precondition blocks payment before any
+ * ledger write. See stripe-connect-self-heal.ts for the orphan rationale.
+ */
+async function createFreshConnectedAccount(params: {
+  userRef: DocumentReference;
+  uid: string;
+  email: string | undefined;
+  stripe: Stripe;
+}): Promise<string> {
+  const { userRef, uid, email, stripe } = params;
+
+  const account = await stripe.accounts.create({
+    type: "express",
+    email,
+    business_type: "individual",
+    capabilities: {
+      card_payments: { requested: true },
+      transfers: { requested: true },
+    },
+    metadata: { skillsetUserId: uid },
+  });
+
+  await userRef.set(
+    {
+      stripeConnectedAccountId: account.id,
+      stripeConnectStatus: "created",
+      stripeConnectChargesEnabled: Boolean(account.charges_enabled),
+      stripeConnectPayoutsEnabled: Boolean(account.payouts_enabled),
+      stripeConnectUpdatedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+
+  return account.id;
 }
 
 function normalizeSkillsetCurrency(currency?: string | null) {
@@ -2425,43 +2475,39 @@ export const createTeacherStripeAccountLink = onCall(
 
     try {
       const stripe = getStripeClient();
+      const email = user.email || request.auth.token.email?.toString();
       let accountId = user.stripeConnectedAccountId || null;
 
       if (!accountId) {
-        const account = await stripe.accounts.create({
-          type: "express",
-          email: user.email || request.auth.token.email?.toString(),
-          business_type: "individual",
-          capabilities: {
-            card_payments: { requested: true },
-            transfers: { requested: true },
-          },
-          metadata: {
-            skillsetUserId: userId,
-          },
+        accountId = await createFreshConnectedAccount({
+          userRef,
+          uid: userId,
+          email,
+          stripe,
         });
-
-        accountId = account.id;
-
-        await userRef.set(
-          {
-            stripeConnectedAccountId: accountId,
-            stripeConnectStatus: "created",
-            stripeConnectChargesEnabled: Boolean(account.charges_enabled),
-            stripeConnectPayoutsEnabled: Boolean(account.payouts_enabled),
-            stripeConnectUpdatedAt: FieldValue.serverTimestamp(),
-            updatedAt: FieldValue.serverTimestamp(),
-          },
-          { merge: true },
-        );
       }
 
       const appUrl = getAppUrl();
-      const accountLink = await stripe.accountLinks.create({
-        account: accountId,
-        refresh_url: `${appUrl}/account/payments?stripe=refresh#stripe-connect`,
-        return_url: `${appUrl}/account/payments?stripe=return`,
-        type: "account_onboarding",
+      // If the stored account is orphaned (created under a different Stripe
+      // key/mode), accountLinks.create throws "...not connected to your
+      // platform or does not exist". Self-heal mints a fresh account and
+      // retries the link once instead of dead-ending onboarding.
+      const accountLink = await runWithOrphanedAccountSelfHeal({
+        accountId,
+        runOp: (acct) =>
+          stripe.accountLinks.create({
+            account: acct,
+            refresh_url: `${appUrl}/account/payments?stripe=refresh#stripe-connect`,
+            return_url: `${appUrl}/account/payments?stripe=return`,
+            type: "account_onboarding",
+          }),
+        recreateAccount: () =>
+          createFreshConnectedAccount({ userRef, uid: userId, email, stripe }),
+        onRecreate: (staleAccountId) =>
+          logger.warn("Stripe connected account orphaned; recreating once", {
+            userId,
+            staleAccountId,
+          }),
       });
 
       return { url: accountLink.url };
@@ -2528,6 +2574,33 @@ export const refreshTeacherStripeAccount = onCall(
         status,
       };
     } catch (error) {
+      // The stored account is orphaned (created under a different Stripe
+      // key/mode, deleted, or never existed). Don't surface a confusing error
+      // or silently mint an account the user didn't ask to refresh — clear the
+      // stale id so the next explicit onboarding call recreates cleanly under
+      // its own rate-limit gate, and report not-connected.
+      if (isOrphanedAccountError(error)) {
+        logger.warn(
+          "Stripe connected account orphaned on refresh; clearing stale id",
+          { userId, staleAccountId: accountId },
+        );
+        await userRef.set(
+          {
+            stripeConnectedAccountId: FieldValue.delete(),
+            stripeConnectStatus: "disconnected",
+            stripeConnectChargesEnabled: false,
+            stripeConnectPayoutsEnabled: false,
+            stripeConnectUpdatedAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        );
+        return {
+          connected: false,
+          chargesEnabled: false,
+          payoutsEnabled: false,
+        };
+      }
       throw toStripeHttpsError(error, "refreshing Stripe account status");
     }
   },
@@ -5307,53 +5380,50 @@ export const createConnectAccountSession = onCall(
 
     try {
       const stripe = getStripeClient();
+      const email = user.email || request.auth.token.email?.toString();
       let accountId = user.stripeConnectedAccountId || null;
 
       if (!accountId) {
-        const account = await stripe.accounts.create({
-          type: "express",
-          email: user.email || request.auth.token.email?.toString(),
-          business_type: "individual",
-          capabilities: {
-            card_payments: { requested: true },
-            transfers: { requested: true },
-          },
-          metadata: { skillsetUserId: userId },
+        accountId = await createFreshConnectedAccount({
+          userRef,
+          uid: userId,
+          email,
+          stripe,
         });
-
-        accountId = account.id;
-
-        await userRef.set(
-          {
-            stripeConnectedAccountId: accountId,
-            stripeConnectStatus: "created",
-            stripeConnectChargesEnabled: Boolean(account.charges_enabled),
-            stripeConnectPayoutsEnabled: Boolean(account.payouts_enabled),
-            stripeConnectUpdatedAt: FieldValue.serverTimestamp(),
-            updatedAt: FieldValue.serverTimestamp(),
-          },
-          { merge: true },
-        );
 
         await captureServerEvent(userId, SERVER_EVENTS.TEACHER_KYC_SUBMITTED, {
           teacher_id: userId,
         });
       }
 
-      // Account Session client_secret powers the in-app embedded UI.
-      // Each component we enable here becomes mountable on the client.
-      // payouts + balances are included so the wallet page can later
-      // render a fully in-app payout schedule without leaving Skillset.
-      const accountSession = await stripe.accountSessions.create({
-        account: accountId,
-        components: {
-          account_onboarding: { enabled: true },
+      // Account Session client_secret powers the in-app embedded UI. If the
+      // stored account is orphaned, self-heal mints a fresh one and retries the
+      // session once; effectiveAccountId captures whichever id finally worked
+      // so the response carries the correct (possibly new) account id.
+      let effectiveAccountId = accountId;
+      const accountSession = await runWithOrphanedAccountSelfHeal({
+        accountId,
+        runOp: (acct) => {
+          effectiveAccountId = acct;
+          return stripe.accountSessions.create({
+            account: acct,
+            components: {
+              account_onboarding: { enabled: true },
+            },
+          });
         },
+        recreateAccount: () =>
+          createFreshConnectedAccount({ userRef, uid: userId, email, stripe }),
+        onRecreate: (staleAccountId) =>
+          logger.warn("Stripe connected account orphaned; recreating once", {
+            userId,
+            staleAccountId,
+          }),
       });
 
       return {
         clientSecret: accountSession.client_secret,
-        accountId,
+        accountId: effectiveAccountId,
       };
     } catch (error) {
       throw toStripeHttpsError(error, "opening the Stripe onboarding session");
