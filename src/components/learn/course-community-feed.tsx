@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type FormEvent } from "react";
-import { Heart } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Heart, Pin } from "lucide-react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { CommunityLeaderboard } from "@/components/learn/community-leaderboard";
@@ -26,6 +26,7 @@ import {
   createCommunityComment,
   createCommunityPost,
   createCommunityReport,
+  setCommunityPostPinned,
   subscribeToCommunityComments,
   subscribeToCommunityPosts,
 } from "@/lib/data/community-posts";
@@ -38,6 +39,11 @@ import {
 
 type CourseCommunityFeedProps = {
   space: CommunitySpace;
+  // True when the viewer can moderate this space (the course owner, passed from
+  // the creator mount). Gates the pin/unpin control. The pinned *render* is
+  // always on; only the control is moderator-gated. Defaults to false so the
+  // learner mount never shows it.
+  canModerate?: boolean;
 };
 
 const categories: CommunityPostCategory[] = [
@@ -55,7 +61,10 @@ const communityTabs = [
 ] as const;
 type CommunityTab = (typeof communityTabs)[number];
 
-export function CourseCommunityFeed({ space }: CourseCommunityFeedProps) {
+export function CourseCommunityFeed({
+  space,
+  canModerate = false,
+}: CourseCommunityFeedProps) {
   const { user } = useAuth();
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [postsState, setPostsState] = useState<{
@@ -195,7 +204,7 @@ export function CourseCommunityFeed({ space }: CourseCommunityFeedProps) {
               className={`rounded-[9px] px-4 py-2 text-sm font-semibold capitalize transition-colors ${
                 activeTab === tab
                   ? "bg-[var(--color-primary)] text-white"
-                  : "text-[var(--color-ink-soft)] hover:bg-white hover:text-[var(--color-ink)]"
+                  : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-ink)]"
               }`}
             >
               {tab}
@@ -228,7 +237,7 @@ export function CourseCommunityFeed({ space }: CourseCommunityFeedProps) {
                 onChange={(event) => setBody(event.target.value)}
                 rows={3}
                 placeholder="Write a post for this course community..."
-                className="min-h-[72px] resize-none rounded-[12px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary-light)] focus:bg-white"
+                className="min-h-[72px] resize-none rounded-[12px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary-light)] focus:bg-[var(--color-surface-hover)]"
               />
               <button
                 type="submit"
@@ -262,6 +271,7 @@ export function CourseCommunityFeed({ space }: CourseCommunityFeedProps) {
                     currentUser={user}
                     post={post}
                     memberStats={memberStats}
+                    canModerate={canModerate}
                   />
                 ))
               )}
@@ -289,13 +299,11 @@ export function CourseCommunityFeed({ space }: CourseCommunityFeedProps) {
       ) : null}
 
       {activeTab === "members" ? (
-        <CommunityInfoPanel
-          title="Members"
-          items={[
-            ["Your role", user?.roles.includes("teacher") ? "Teacher or educator" : "Learner"],
-            ["Access model", "Only enrolled learners, course teachers, and approved operations users can participate."],
-            ["Directory", "A richer member directory comes after notifications and profile privacy settings."],
-          ]}
+        <CommunityMembersPanel
+          posts={postsState.key === space.courseSlug ? postsState.posts : []}
+          postsReady={postsState.ready && postsState.key === space.courseSlug}
+          memberStats={memberStats}
+          currentUserId={user?.uid ?? null}
         />
       ) : null}
 
@@ -355,14 +363,146 @@ function CommunityInfoPanel({
   );
 }
 
+function CommunityMembersPanel({
+  posts,
+  postsReady,
+  memberStats,
+  currentUserId,
+}: {
+  posts: CommunityPost[];
+  postsReady: boolean;
+  memberStats: Map<string, MemberStats>;
+  currentUserId: string | null;
+}) {
+  // Course-scoped roster: the distinct people who have posted in THIS space,
+  // joined with their global Skillset standing (level/points come from likes
+  // received). Enrollment lists are private by design, so "contributors" is the
+  // honest, privacy-safe roster we can show without a new read, rule, or any
+  // fabricated "online" status. Both inputs are already subscribed by the
+  // parent, so this adds zero fetches.
+  const contributors = useMemo(() => {
+    const byAuthor = new Map<
+      string,
+      { uid: string; name: string; role: string }
+    >();
+    for (const post of posts) {
+      if (!byAuthor.has(post.authorId)) {
+        byAuthor.set(post.authorId, {
+          uid: post.authorId,
+          name: post.authorName,
+          role: post.authorRole,
+        });
+      }
+    }
+    return Array.from(byAuthor.values())
+      .map((author) => {
+        const stats = memberStats.get(author.uid);
+        return {
+          ...author,
+          level: stats?.level ?? 1,
+          points: stats?.points ?? 0,
+          likesReceived: stats?.totalLikesReceived ?? 0,
+        };
+      })
+      .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+  }, [posts, memberStats]);
+
+  return (
+    <section className="rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface)] p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+        Course community
+      </p>
+      <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+        <h3 className="display-title text-3xl text-[var(--color-ink)]">Members</h3>
+        {postsReady && contributors.length > 0 ? (
+          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
+            {contributors.length}{" "}
+            {contributors.length === 1 ? "contributor" : "contributors"}
+          </span>
+        ) : null}
+      </div>
+      <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
+        People active in this space, ranked by their Skillset level. Levels and
+        points come from likes their community posts have earned.
+      </p>
+
+      {!postsReady ? (
+        <p className="mt-5 text-sm text-[var(--color-ink-soft)]">
+          Loading members...
+        </p>
+      ) : contributors.length === 0 ? (
+        <p className="mt-5 rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
+          No one has posted here yet. The first people to start a discussion will
+          appear in this roster.
+        </p>
+      ) : (
+        <ul className="mt-5 grid gap-2">
+          {contributors.map((member, index) => {
+            const isCurrentUser = member.uid === currentUserId;
+            const initial =
+              member.name.trim().charAt(0).toUpperCase() || "?";
+            return (
+              <li
+                key={member.uid}
+                className={`flex items-center gap-3 rounded-[3px] border p-3 ${
+                  isCurrentUser
+                    ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)]"
+                    : "fine-rule bg-[var(--color-surface-soft)]"
+                }`}
+              >
+                <span className="w-5 text-right text-xs font-semibold tabular-nums text-[var(--color-ink-soft)]">
+                  {index + 1}
+                </span>
+                <span
+                  aria-hidden
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] text-sm font-semibold text-[var(--color-ink)]"
+                >
+                  {initial}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
+                      {member.name}
+                    </p>
+                    {isCurrentUser ? (
+                      <span className="rounded-[8px] bg-[var(--color-primary)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white">
+                        You
+                      </span>
+                    ) : null}
+                    <LevelBadge level={member.level} />
+                  </div>
+                  <p className="mt-1 truncate text-[11px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
+                    {member.role}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-sm font-semibold tabular-nums text-[var(--color-primary)]">
+                    {member.points}
+                  </p>
+                  <p className="text-[11px] text-[var(--color-ink-soft)]">
+                    {member.likesReceived}{" "}
+                    {member.likesReceived === 1 ? "like" : "likes"}
+                  </p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function CommunityPostCard({
   currentUser,
   post,
   memberStats,
+  canModerate,
 }: {
   currentUser: SkillsetUser | null;
   post: CommunityPost;
   memberStats: Map<string, MemberStats>;
+  canModerate: boolean;
 }) {
   const [commentsState, setCommentsState] = useState<{
     comments: CommunityComment[];
@@ -379,6 +519,8 @@ function CommunityPostCard({
     likerIds: string[];
   }>({ count: 0, likerIds: [] });
   const [likePending, setLikePending] = useState(false);
+  const [pinPending, setPinPending] = useState(false);
+  const isPinned = post.pinned === true;
 
   useEffect(() => {
     return subscribeToCommunityComments(
@@ -413,6 +555,44 @@ function CommunityPostCard({
     : false;
   const authorLevel = memberStats.get(post.authorId)?.level ?? null;
 
+  // Thread the flat comment list into one level of nesting. A comment is a root
+  // when it has no parentId (or its parent is missing); every other comment is
+  // bucketed under its TOP-LEVEL ancestor (we climb the parent chain with a
+  // cycle guard) so even legacy/deep replies render under a real root instead
+  // of vanishing. Comments arrive sorted oldest-first, so order is preserved.
+  const { rootComments, repliesByParent } = useMemo(() => {
+    const byId = new Map(
+      commentsState.comments.map((comment) => [comment.id, comment]),
+    );
+    const rootIdOf = (comment: CommunityComment): string => {
+      let cursor = comment;
+      let guard = 0;
+      while (
+        cursor.parentId
+        && byId.has(cursor.parentId)
+        && guard < 16
+      ) {
+        cursor = byId.get(cursor.parentId) as CommunityComment;
+        guard += 1;
+      }
+      return cursor.id;
+    };
+    const roots: CommunityComment[] = [];
+    const replies = new Map<string, CommunityComment[]>();
+    for (const comment of commentsState.comments) {
+      const isRoot = !comment.parentId || !byId.has(comment.parentId);
+      if (isRoot) {
+        roots.push(comment);
+      } else {
+        const rootId = rootIdOf(comment);
+        const bucket = replies.get(rootId) ?? [];
+        bucket.push(comment);
+        replies.set(rootId, bucket);
+      }
+    }
+    return { rootComments: roots, repliesByParent: replies };
+  }, [commentsState.comments]);
+
   async function handleToggleLike() {
     if (!currentUser || isOwnPost || likePending) {
       return;
@@ -425,6 +605,22 @@ function CommunityPostCard({
       // The like listener stays authoritative; a failed toggle is a no-op.
     } finally {
       setLikePending(false);
+    }
+  }
+
+  async function handleTogglePin() {
+    if (!canModerate || pinPending) {
+      return;
+    }
+
+    setPinPending(true);
+    try {
+      await setCommunityPostPinned(post.id, !isPinned);
+      // The post listener re-sorts and re-renders pinned-first; no local state.
+    } catch {
+      // A failed toggle is a no-op — the rule is the authority on who may pin.
+    } finally {
+      setPinPending(false);
     }
   }
 
@@ -461,7 +657,19 @@ function CommunityPostCard({
   }
 
   return (
-    <article className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4">
+    <article
+      className={`rounded-[4px] border p-4 ${
+        isPinned
+          ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)]"
+          : "fine-rule bg-[var(--color-surface-soft)]"
+      }`}
+    >
+      {isPinned ? (
+        <p className="mb-3 inline-flex items-center gap-1.5 rounded-[8px] bg-[var(--color-primary)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
+          <Pin size={11} aria-hidden />
+          Pinned
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-semibold text-[var(--color-ink)]">
@@ -469,9 +677,28 @@ function CommunityPostCard({
           </p>
           {authorLevel ? <LevelBadge level={authorLevel} /> : null}
         </div>
-        <span className="rounded-[8px] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
-          {communityPostCategoryLabels[post.category]}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          {canModerate ? (
+            <button
+              type="button"
+              onClick={handleTogglePin}
+              disabled={pinPending}
+              aria-pressed={isPinned}
+              aria-label={isPinned ? "Unpin this post" : "Pin this post"}
+              className={`inline-flex items-center gap-1.5 rounded-[8px] border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] transition-colors disabled:opacity-60 ${
+                isPinned
+                  ? "border-[var(--color-primary)] text-[var(--color-primary)]"
+                  : "border-[var(--color-line)] text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
+              }`}
+            >
+              <Pin size={12} aria-hidden />
+              {isPinned ? "Unpin" : "Pin"}
+            </button>
+          ) : null}
+          <span className="rounded-[8px] bg-[var(--color-surface)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+            {communityPostCategoryLabels[post.category]}
+          </span>
+        </div>
       </div>
       <p className="mt-2 text-[11px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
         {post.authorRole}
@@ -531,38 +758,16 @@ function CommunityPostCard({
               No replies yet. Keep the discussion useful and tied to the course.
             </p>
           ) : (
-            commentsState.comments.map((comment) => {
-              const commentLevel =
-                memberStats.get(comment.authorId)?.level ?? null;
-              return (
-                <div
-                  key={comment.id}
-                  className="rounded-[3px] border border-[var(--color-line)] bg-white p-3"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold text-[var(--color-ink)]">
-                      {comment.authorName}
-                    </p>
-                    {commentLevel ? <LevelBadge level={commentLevel} /> : null}
-                    <span className="text-[11px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                      {comment.authorRole}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
-                    {comment.body}
-                  </p>
-                  <ReportControl
-                    commentId={comment.id}
-                    courseSlug={comment.courseSlug}
-                    currentUser={currentUser}
-                    postId={post.id}
-                    targetAuthorId={comment.authorId}
-                    targetAuthorName={comment.authorName}
-                    targetType="comment"
-                  />
-                </div>
-              );
-            })
+            rootComments.map((rootComment) => (
+              <CommentNode
+                key={rootComment.id}
+                rootComment={rootComment}
+                replies={repliesByParent.get(rootComment.id) ?? []}
+                post={post}
+                currentUser={currentUser}
+                memberStats={memberStats}
+              />
+            ))
           )}
         </div>
 
@@ -589,6 +794,165 @@ function CommunityPostCard({
         </form>
       </div>
     </article>
+  );
+}
+
+// One root comment plus its (single level of) replies. Owns its own reply-form
+// state so opening a reply on one thread never disturbs another.
+function CommentNode({
+  rootComment,
+  replies,
+  post,
+  currentUser,
+  memberStats,
+}: {
+  rootComment: CommunityComment;
+  replies: CommunityComment[];
+  post: CommunityPost;
+  currentUser: SkillsetUser | null;
+  memberStats: Map<string, MemberStats>;
+}) {
+  const [isReplying, setIsReplying] = useState(false);
+  const [replyBody, setReplyBody] = useState("");
+  const [replyError, setReplyError] = useState("");
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+
+  async function handleReplySubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!currentUser) {
+      return;
+    }
+
+    const nextBody = replyBody.trim();
+
+    if (nextBody.length < 3) {
+      setReplyError("Write a short reply first.");
+      return;
+    }
+
+    setReplyError("");
+    setIsSubmittingReply(true);
+
+    try {
+      await createCommunityComment({
+        postId: post.id,
+        courseSlug: post.courseSlug,
+        body: nextBody,
+        user: currentUser,
+        // Replies always attach to the top-level comment, keeping the thread a
+        // single level deep regardless of which reply was acted on.
+        parentId: rootComment.id,
+      });
+      setReplyBody("");
+      setIsReplying(false);
+    } catch {
+      setReplyError("We could not publish your reply.");
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  }
+
+  return (
+    <div className="rounded-[3px] border border-[var(--color-line)] bg-[var(--color-surface)] p-3">
+      <CommentBody
+        comment={rootComment}
+        post={post}
+        currentUser={currentUser}
+        memberStats={memberStats}
+      />
+
+      {replies.length > 0 ? (
+        <div className="mt-3 grid gap-3 border-l border-[var(--color-line)] pl-3">
+          {replies.map((reply) => (
+            <CommentBody
+              key={reply.id}
+              comment={reply}
+              post={post}
+              currentUser={currentUser}
+              memberStats={memberStats}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {currentUser ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setIsReplying((value) => !value)}
+            className="text-xs font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
+          >
+            {isReplying ? "Cancel reply" : "Reply"}
+          </button>
+          {isReplying ? (
+            <form className="mt-2 grid gap-2" onSubmit={handleReplySubmit}>
+              <textarea
+                value={replyBody}
+                onChange={(event) => setReplyBody(event.target.value)}
+                rows={2}
+                placeholder={`Reply to ${rootComment.authorName}...`}
+                className="resize-none rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm outline-none focus:border-[var(--color-primary-light)]"
+              />
+              {replyError ? (
+                <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-accent-fg)]">
+                  {replyError}
+                </p>
+              ) : null}
+              <button
+                type="submit"
+                disabled={isSubmittingReply || !currentUser}
+                className="button-outline justify-self-start px-3 py-1.5 text-xs disabled:opacity-60"
+              >
+                {isSubmittingReply ? "Replying..." : "Post reply"}
+              </button>
+            </form>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// The shared author row + body + report control, reused by a root comment and
+// each of its replies.
+function CommentBody({
+  comment,
+  post,
+  currentUser,
+  memberStats,
+}: {
+  comment: CommunityComment;
+  post: CommunityPost;
+  currentUser: SkillsetUser | null;
+  memberStats: Map<string, MemberStats>;
+}) {
+  const commentLevel = memberStats.get(comment.authorId)?.level ?? null;
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-sm font-semibold text-[var(--color-ink)]">
+          {comment.authorName}
+        </p>
+        {commentLevel ? <LevelBadge level={commentLevel} /> : null}
+        <span className="text-[11px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
+          {comment.authorRole}
+        </span>
+      </div>
+      <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
+        {comment.body}
+      </p>
+      <ReportControl
+        commentId={comment.id}
+        courseSlug={comment.courseSlug}
+        currentUser={currentUser}
+        postId={post.id}
+        targetAuthorId={comment.authorId}
+        targetAuthorName={comment.authorName}
+        targetType="comment"
+      />
+    </div>
   );
 }
 

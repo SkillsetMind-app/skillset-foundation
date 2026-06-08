@@ -818,6 +818,7 @@ service cloud.firestore {
         'authorRole',
         'category',
         'body',
+        'pinned',
         'createdAt',
         'updatedAt'
       ]);
@@ -852,7 +853,14 @@ service cloud.firestore {
           || request.resource.data.authorRole in currentUserRoles()
         )
         && request.resource.data.body.size() >= 8
-        && request.resource.data.body.size() <= 5000;
+        && request.resource.data.body.size() <= 5000
+        // `pinned` is optional and, when present, must be a bool. WHO may set it
+        // is enforced at the match level (create forbids pre-pinned; the author
+        // update path freezes it; only the teacher-pin path or admin flips it).
+        && (
+          !('pinned' in request.resource.data)
+          || request.resource.data.pinned is bool
+        );
     }
 
     // A community "like" is a presence doc at
@@ -878,6 +886,22 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/communityPosts/$(postId)).data;
     }
 
+    // Teacher-pin path: the owner of the post's course may toggle ONLY the
+    // pinned flag (and updatedAt). ownsCourse() reads the STORED courseSlug, so
+    // a teacher can never pin a post in a course they don't own, and the
+    // affectedKeys().hasOnly() clamp means body/author/category/courseSlug stay
+    // immutable on this path — a teacher cannot edit a student's content while
+    // pinning it. (Admins already have a blanket update via isAdmin().)
+    function teacherCanPinCommunityPost() {
+      return signedIn()
+        && ownsCourse(resource.data.courseSlug)
+        && request.resource.data.get('pinned', false) is bool
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'pinned',
+          'updatedAt'
+        ]);
+    }
+
     function hasOnlyAllowedCommunityCommentKeys() {
       return request.resource.data.keys().hasOnly([
         'postId',
@@ -886,6 +910,7 @@ service cloud.firestore {
         'authorName',
         'authorRole',
         'body',
+        'parentId',
         'createdAt',
         'updatedAt'
       ]);
@@ -909,7 +934,15 @@ service cloud.firestore {
           || request.resource.data.authorRole in currentUserRoles()
         )
         && request.resource.data.body.size() >= 3
-        && request.resource.data.body.size() <= 3000;
+        && request.resource.data.body.size() <= 3000
+        // `parentId` is optional: null/absent = top-level comment, a string =
+        // the top-level comment this reply attaches to. One level of nesting is
+        // a display concern enforced in the UI, so the rule only type-checks it.
+        && (
+          !('parentId' in request.resource.data)
+          || request.resource.data.parentId == null
+          || request.resource.data.parentId is string
+        );
     }
 
     function hasOnlyAllowedLessonCommentKeys() {
@@ -1664,13 +1697,21 @@ service cloud.firestore {
         || (signedIn() && hasEnrollmentForCourseSlug(resource.data.courseSlug));
       allow create: if signedIn()
         && hasEnrollmentForCourseSlug(request.resource.data.courseSlug)
-        && validCommunityPostShape();
+        && validCommunityPostShape()
+        // No one creates a pre-pinned post — pinning is a teacher/admin action
+        // taken after the fact.
+        && request.resource.data.get('pinned', false) == false;
       allow update: if isAdmin()
+        || teacherCanPinCommunityPost()
         || (
           signedIn()
           && resource.data.authorId == request.auth.uid
           && request.resource.data.authorId == resource.data.authorId
           && request.resource.data.courseSlug == resource.data.courseSlug
+          // The author may edit their own post but cannot self-pin: pinned must
+          // match the stored value on this path (teacher-pin/admin paths above
+          // are the only ways it changes).
+          && request.resource.data.get('pinned', false) == resource.data.get('pinned', false)
           && validCommunityPostShape()
         );
       allow delete: if isAdmin()

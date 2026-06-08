@@ -159,7 +159,12 @@ export function CreatorCourseCommunity() {
     categories: ["announcement", "discussion", "question", "resource"],
   };
 
-  return <CourseCommunityFeed space={space} />;
+  // The course owner moderates their own space (pin/unpin). The pinned *render*
+  // is on for everyone; only this control is owner-gated, and the security rule
+  // is the real authority (ownsCourse) — this just avoids a dead affordance.
+  const canModerate = Boolean(user && course.ownerId === user.uid);
+
+  return <CourseCommunityFeed space={space} canModerate={canModerate} />;
 }
 
 function CreatorCommunityState({

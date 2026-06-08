@@ -5,6 +5,12 @@
   --color-surface: #ffffff;
   --color-surface-soft: #eef4fc;
   --color-surface-strong: #e3eef9;
+  /* Hover/focus surface for cards & controls. In :root it EQUALS white, so any
+     `hover:bg-white` migrated to this is byte-identical in light (zero
+     regression). In dark it lifts to surface-strong, so hover lightens (the
+     correct affordance) instead of flashing literal white — which the global
+     `.bg-white` override can't reach on `hover:`/`focus:` compound selectors. */
+  --color-surface-hover: #ffffff;
   --color-brand: #1a365d;
   --color-primary: #1a365d;
   --color-primary-dark: #0f2744;
@@ -56,6 +62,8 @@
   --color-surface: #0f1626;
   --color-surface-soft: #141d33;
   --color-surface-strong: #1c2841;
+  /* Hover lifts one step above the soft card surface (no white flash). */
+  --color-surface-hover: #1c2841;
   --color-brand: #7fa7dc;
   --color-primary: #8fb4e4;
   --color-primary-dark: #d9e8fb;

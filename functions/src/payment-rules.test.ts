@@ -6,12 +6,17 @@ import {
   createReleasedRefundTransferReversal,
   decideCheckoutLock,
   decideStripeEventClaim,
+  ledgerRefundStatus,
   markStripeEventDone,
   paidOrderRefundQuerySpec,
   payoutReleaseDelayDays,
+  plannedReleaseTransferAmountMinor,
   releasedRefundReversalAmountMinor,
+  resolveInvoicePaymentIntentId,
+  sanitizeStripeSecret,
   shouldApplyOrderStatusTransition,
   shouldReleaseCheckoutLock,
+  shouldReverseReleasedPayout,
   stripeProcessingFeeMinor,
   type StripeEventMarkerRef,
 } from "./payment-rules";
@@ -92,6 +97,134 @@ describe("functions payment rules", () => {
     ).toBe(6660);
   });
 
+  it("does not over-claw when a partial refund BEFORE release already shrank the transfer (Gap 1)", () => {
+    // Scenario: gross 10000, full net 9170. A 2000 refund arrives BEFORE
+    // release, so the cron transfers only the reduced
+    // floor(9170 * (10000 - 2000) / 10000) = 7336. THEN a second refund brings
+    // the cumulative refund to 3000 (30% of gross) AFTER release.
+    //
+    // The teacher's true entitlement is net * (gross - refunded) / gross =
+    // floor(9170 * 7000 / 10000) = 6419, so only 7336 - 6419 = 917 may be
+    // reversed. Passing netAmountMinor unlocks that net-based path.
+    expect(
+      releasedRefundReversalAmountMinor({
+        grossAmountMinor: 10000,
+        refundedAmountMinor: 3000,
+        releasedTransferAmountMinor: 7336,
+        netAmountMinor: 9170,
+        alreadyReversedAmountMinor: 0,
+      }),
+    ).toBe(917);
+
+    // The proven proportional-on-transferred formula (what we get WITHOUT the
+    // net) would over-claw: min(7336, floor(7336 * 3000 / 10000)) = 2200, which
+    // leaves the teacher 7336 - 2200 = 5136 < their 6419 entitlement. The net
+    // branch is what prevents that wrong-money outcome.
+    expect(
+      releasedRefundReversalAmountMinor({
+        grossAmountMinor: 10000,
+        refundedAmountMinor: 3000,
+        releasedTransferAmountMinor: 7336,
+        alreadyReversedAmountMinor: 0,
+      }),
+    ).toBe(2200);
+  });
+
+  it("reverses the full remaining reduced transfer on a later full refund (Gap 1)", () => {
+    // Continuing the scenario above: after the 917 reversal, a THIRD refund
+    // takes the course to a full 10000 refund. netAfterRefund collapses to 0,
+    // so the entire 7336 transfer must come back; netting out the 917 already
+    // reversed leaves 6419 to reverse now (917 + 6419 = 7336 total = the whole
+    // reduced transfer, so the teacher keeps nothing on a fully refunded sale).
+    expect(
+      releasedRefundReversalAmountMinor({
+        grossAmountMinor: 10000,
+        refundedAmountMinor: 10000,
+        releasedTransferAmountMinor: 7336,
+        netAmountMinor: 9170,
+        alreadyReversedAmountMinor: 917,
+      }),
+    ).toBe(6419);
+  });
+
+  it("uses the unchanged proportional path when the full net was transferred (Gap 1 boundary)", () => {
+    // When the transfer equals the full net (no pre-release refund), transferred
+    // is NOT < net, so the net branch is skipped and the math is bit-for-bit the
+    // proven proportional-on-transferred reversal — passing net must NOT alter a
+    // full-net payout's reversal.
+    const withNet = releasedRefundReversalAmountMinor({
+      grossAmountMinor: 10000,
+      refundedAmountMinor: 2500,
+      releasedTransferAmountMinor: 9170,
+      netAmountMinor: 9170,
+      alreadyReversedAmountMinor: 0,
+    });
+    const withoutNet = releasedRefundReversalAmountMinor({
+      grossAmountMinor: 10000,
+      refundedAmountMinor: 2500,
+      releasedTransferAmountMinor: 9170,
+      alreadyReversedAmountMinor: 0,
+    });
+    // min(9170, floor(9170 * 2500 / 10000)) = min(9170, 2292) = 2292.
+    expect(withNet).toBe(2292);
+    expect(withoutNet).toBe(2292);
+  });
+
+  it("plans the full net transfer when no refund landed before release (Gap 1)", () => {
+    expect(
+      plannedReleaseTransferAmountMinor({
+        netAmountMinor: 9170,
+        grossAmountMinor: 10000,
+        refundedAmountMinor: 0,
+      }),
+    ).toBe(9170);
+    // refundedAmountMinor omitted entirely is treated as zero -> full net.
+    expect(
+      plannedReleaseTransferAmountMinor({
+        netAmountMinor: 9170,
+        grossAmountMinor: 10000,
+      }),
+    ).toBe(9170);
+  });
+
+  it("plans a reduced transfer proportional to the un-refunded net (Gap 1)", () => {
+    // A 2000 (20%) refund before release -> floor(9170 * 8000 / 10000) = 7336.
+    expect(
+      plannedReleaseTransferAmountMinor({
+        netAmountMinor: 9170,
+        grossAmountMinor: 10000,
+        refundedAmountMinor: 2000,
+      }),
+    ).toBe(7336);
+    // A 3000 (30%) refund -> floor(9170 * 7000 / 10000) = 6419.
+    expect(
+      plannedReleaseTransferAmountMinor({
+        netAmountMinor: 9170,
+        grossAmountMinor: 10000,
+        refundedAmountMinor: 3000,
+      }),
+    ).toBe(6419);
+  });
+
+  it("plans zero transfer when fully (or over-) refunded before release (Gap 1)", () => {
+    expect(
+      plannedReleaseTransferAmountMinor({
+        netAmountMinor: 9170,
+        grossAmountMinor: 10000,
+        refundedAmountMinor: 10000,
+      }),
+    ).toBe(0);
+    // A refund recorded above gross is capped at gross -> still zero, never
+    // negative.
+    expect(
+      plannedReleaseTransferAmountMinor({
+        netAmountMinor: 9170,
+        grossAmountMinor: 10000,
+        refundedAmountMinor: 12000,
+      }),
+    ).toBe(0);
+  });
+
   it("creates a Stripe transfer reversal for refund amounts after payout release", async () => {
     const createReversal = vi.fn().mockResolvedValue({ id: "trr_123" });
     const result = await createReleasedRefundTransferReversal({
@@ -131,6 +264,70 @@ describe("functions payment rules", () => {
         idempotencyKey: "transfer_reversal_order_123_ch_123_2220",
       },
     );
+  });
+});
+
+describe("stripe secret sanitization (ERR_INVALID_CHAR onboarding fix)", () => {
+  it("trims a trailing newline so the Authorization header is valid", () => {
+    // The live regression: STRIPE_SECRET_KEY secret v4 was stored with a
+    // trailing "\n", making `Bearer sk_live_xxx\n` throw ERR_INVALID_CHAR on
+    // every Stripe call (opaque INTERNAL 500). Trimming must recover the key.
+    expect(sanitizeStripeSecret("sk_live_abc123\n")).toEqual({
+      ok: true,
+      key: "sk_live_abc123",
+    });
+  });
+
+  it("trims surrounding whitespace and carriage returns", () => {
+    expect(sanitizeStripeSecret("  sk_test_abc123  ")).toEqual({
+      ok: true,
+      key: "sk_test_abc123",
+    });
+    expect(sanitizeStripeSecret("\r\nsk_test_xyz\r\n")).toEqual({
+      ok: true,
+      key: "sk_test_xyz",
+    });
+  });
+
+  it("accepts a clean key unchanged", () => {
+    expect(sanitizeStripeSecret("sk_live_51AbCdEf")).toEqual({
+      ok: true,
+      key: "sk_live_51AbCdEf",
+    });
+  });
+
+  it("reports missing for empty or absent values", () => {
+    expect(sanitizeStripeSecret(undefined)).toEqual({
+      ok: false,
+      reason: "missing",
+    });
+    expect(sanitizeStripeSecret(null)).toEqual({
+      ok: false,
+      reason: "missing",
+    });
+    expect(sanitizeStripeSecret("")).toEqual({ ok: false, reason: "missing" });
+    // Whitespace-only collapses to empty after trim -> still missing.
+    expect(sanitizeStripeSecret("   \n")).toEqual({
+      ok: false,
+      reason: "missing",
+    });
+  });
+
+  it("reports malformed for an interior space or control char a trim cannot fix", () => {
+    // Interior corruption (not edge whitespace) must surface as an actionable
+    // "re-set the secret" error, not silently truncate or throw INTERNAL.
+    expect(sanitizeStripeSecret("sk_live abc")).toEqual({
+      ok: false,
+      reason: "malformed",
+    });
+    expect(sanitizeStripeSecret("sk_live\tabc")).toEqual({
+      ok: false,
+      reason: "malformed",
+    });
+    expect(sanitizeStripeSecret("sk_live_ab cd")).toEqual({
+      ok: false,
+      reason: "malformed",
+    });
   });
 });
 
@@ -272,5 +469,132 @@ describe("checkout lock release ownership (B3)", () => {
     expect(shouldReleaseCheckoutLock(null, "order_A")).toBe(false);
     expect(shouldReleaseCheckoutLock(123, "order_A")).toBe(false);
     expect(shouldReleaseCheckoutLock("", "order_A")).toBe(false);
+  });
+});
+
+describe("invoice PaymentIntent resolution (Gap 2 — Basil/Clover join key)", () => {
+  it("reads the PaymentIntent from the Basil payments list (string id)", () => {
+    // The pinned 2026-02-25.clover API moved the PI to
+    // invoice.payments.data[].payment.payment_intent. This is the value the
+    // subscription refund clawback joins against (charge.payment_intent).
+    expect(
+      resolveInvoicePaymentIntentId({
+        payments: { data: [{ payment: { payment_intent: "pi_live_123" } }] },
+      }),
+    ).toBe("pi_live_123");
+  });
+
+  it("reads the PaymentIntent when payments carries an expanded object", () => {
+    expect(
+      resolveInvoicePaymentIntentId({
+        payments: { data: [{ payment: { payment_intent: { id: "pi_obj_456" } } }] },
+      }),
+    ).toBe("pi_obj_456");
+  });
+
+  it("skips charge-only payment entries and finds the PaymentIntent one", () => {
+    // A payment entry of type "charge" leaves payment_intent unset; resolution
+    // must skip it rather than returning the invoice-id fallback prematurely.
+    expect(
+      resolveInvoicePaymentIntentId({
+        payments: {
+          data: [
+            { payment: { payment_intent: null } },
+            { payment: { payment_intent: "pi_after_charge" } },
+          ],
+        },
+      }),
+    ).toBe("pi_after_charge");
+  });
+
+  it("falls back to the legacy top-level payment_intent for pre-Basil events", () => {
+    expect(
+      resolveInvoicePaymentIntentId({ payment_intent: "pi_legacy_str" }),
+    ).toBe("pi_legacy_str");
+    expect(
+      resolveInvoicePaymentIntentId({ payment_intent: { id: "pi_legacy_obj" } }),
+    ).toBe("pi_legacy_obj");
+  });
+
+  it("returns null when no PaymentIntent is present (caller must retrieve/fallback)", () => {
+    // The exact pre-fix failure: a Basil invoice with no inline payments and no
+    // legacy field. Returning null (not the invoice id) forces the caller to
+    // expand-retrieve or log a degraded key, instead of silently storing in_xxx.
+    expect(resolveInvoicePaymentIntentId({})).toBeNull();
+    expect(resolveInvoicePaymentIntentId({ payments: { data: [] } })).toBeNull();
+    expect(
+      resolveInvoicePaymentIntentId({
+        payments: { data: [{ payment: { payment_intent: null } }] },
+      }),
+    ).toBeNull();
+    expect(
+      resolveInvoicePaymentIntentId({ payments: null, payment_intent: null }),
+    ).toBeNull();
+  });
+});
+
+describe("ledger refund status (Gap 1 + Gap 2)", () => {
+  it("marks a full refund terminal regardless of current status", () => {
+    expect(ledgerRefundStatus(true, "in_release")).toBe("refunded");
+    expect(ledgerRefundStatus(true, "released")).toBe("refunded");
+    expect(ledgerRefundStatus(true, "releasing")).toBe("refunded");
+    expect(ledgerRefundStatus(true, "")).toBe("refunded");
+  });
+
+  it("keeps a still-queued partial refund releasable so the cron pays the reduced amount", () => {
+    // The Gap 1 anti-stranding rule: a partial refund before the payout is
+    // claimed must NOT freeze the ledger out of the release cron.
+    expect(ledgerRefundStatus(false, "in_release")).toBe("in_release");
+  });
+
+  it("sends a partial refund of a releasing/released/settled payout down the reversal path", () => {
+    expect(ledgerRefundStatus(false, "releasing")).toBe("partially_refunded");
+    expect(ledgerRefundStatus(false, "released")).toBe("partially_refunded");
+    expect(ledgerRefundStatus(false, "partially_refunded")).toBe(
+      "partially_refunded",
+    );
+    // An absent/unknown status is never treated as still-queued.
+    expect(ledgerRefundStatus(false, "")).toBe("partially_refunded");
+    expect(ledgerRefundStatus(false, null)).toBe("partially_refunded");
+    expect(ledgerRefundStatus(false, undefined)).toBe("partially_refunded");
+  });
+});
+
+describe("should reverse released payout (Gap 1 + Gap 2)", () => {
+  it("reverses only a payout that actually left the platform", () => {
+    expect(
+      shouldReverseReleasedPayout({
+        status: "released",
+        transferId: "tr_1",
+        releasedTransferAmountMinor: 9170,
+      }),
+    ).toBe(true);
+  });
+
+  it("does not reverse a payout still held, missing a transfer, or zero-valued", () => {
+    // Still held: nothing has left the platform.
+    expect(
+      shouldReverseReleasedPayout({
+        status: "in_release",
+        transferId: "tr_1",
+        releasedTransferAmountMinor: 9170,
+      }),
+    ).toBe(false);
+    // Released but no transfer recorded (e.g. fully refunded before release).
+    expect(
+      shouldReverseReleasedPayout({
+        status: "released",
+        transferId: null,
+        releasedTransferAmountMinor: 9170,
+      }),
+    ).toBe(false);
+    // Released with a transfer but zero amount moved.
+    expect(
+      shouldReverseReleasedPayout({
+        status: "released",
+        transferId: "tr_1",
+        releasedTransferAmountMinor: 0,
+      }),
+    ).toBe(false);
   });
 });

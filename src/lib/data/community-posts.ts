@@ -34,6 +34,18 @@ function getCreatedAtValue(item: { createdAt?: unknown }): number {
   return value?.seconds ?? 0;
 }
 
+// Pinned posts float above the rest; within each group newest-first. Sorting
+// client-side keeps the query a single courseSlug filter (no composite index)
+// and stays correct for legacy posts that predate the `pinned` field.
+function compareFeedPosts(left: CommunityPost, right: CommunityPost): number {
+  const leftPinned = left.pinned === true ? 1 : 0;
+  const rightPinned = right.pinned === true ? 1 : 0;
+  if (leftPinned !== rightPinned) {
+    return rightPinned - leftPinned;
+  }
+  return getCreatedAtValue(right) - getCreatedAtValue(left);
+}
+
 export async function createCommunityPost(input: {
   courseSlug: string;
   category: CommunityPostCategory;
@@ -71,11 +83,21 @@ export function subscribeToCommunityPosts(
             id: document.id,
             ...(document.data() as Omit<CommunityPost, "id">),
           }))
-          .sort((left, right) => getCreatedAtValue(right) - getCreatedAtValue(left)),
+          .sort(compareFeedPosts),
       );
     },
     onError,
   );
+}
+
+// Teacher/admin moderation: toggle a post's pinned state. The write touches only
+// `pinned` + `updatedAt`, which is exactly what the security rule's
+// teacher-pin path allows (any other changed key would be rejected).
+export async function setCommunityPostPinned(postId: string, pinned: boolean) {
+  await updateDoc(doc(getFirestoreDb(), communityPostsCollection, postId), {
+    pinned,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function createCommunityComment(input: {
@@ -83,6 +105,9 @@ export async function createCommunityComment(input: {
   courseSlug: string;
   body: string;
   user: SkillsetUser;
+  // null/undefined = top-level comment; a string = the top-level comment this
+  // reply attaches to. Always sent explicitly so the rule shape is satisfied.
+  parentId?: string | null;
 }) {
   await addDoc(
     collection(getFirestoreDb(), communityPostsCollection, input.postId, "comments"),
@@ -93,6 +118,7 @@ export async function createCommunityComment(input: {
       authorName: input.user.displayName?.trim() || input.user.email || "Skillset member",
       authorRole: input.user.roles[0] ?? "student",
       body: input.body.trim(),
+      parentId: input.parentId ?? null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     },

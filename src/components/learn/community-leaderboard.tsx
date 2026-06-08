@@ -72,7 +72,7 @@ export function CommunityLeaderboard({
               className={`rounded-[8px] px-3 py-1.5 text-xs font-semibold transition-colors ${
                 window === option
                   ? "bg-[var(--color-primary)] text-white"
-                  : "text-[var(--color-ink-soft)] hover:bg-white hover:text-[var(--color-ink)]"
+                  : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-ink)]"
               }`}
             >
               {leaderboardWindowLabels[option]}

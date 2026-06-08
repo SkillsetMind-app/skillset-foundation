@@ -65,10 +65,62 @@ export function stripeProcessingFeeMinor(
   return Math.round((grossMinor * percentBps) / 10000) + FIXED_FEE_MINOR;
 }
 
+export type StripeSecretResult =
+  | { ok: true; key: string }
+  | { ok: false; reason: "missing" | "malformed" };
+
+/**
+ * Sanitize a Stripe secret key read from a secret store / env var.
+ *
+ * Secrets set via the CLI or pasted into a console routinely carry a trailing
+ * newline or stray whitespace. Node's http.setHeader rejects ANY control
+ * character in a header value, so an untrimmed key makes EVERY Stripe call die
+ * with `TypeError [ERR_INVALID_CHAR]: Invalid character in header content
+ * ["Authorization"]` — which only ever reaches the caller as an opaque INTERNAL
+ * 500 (this exact footgun broke live teacher Stripe onboarding, 2026-06-07).
+ *
+ * Returns the trimmed key when usable, or a reason the caller maps to a legible
+ * error:
+ *   - "missing":   no value configured at all.
+ *   - "malformed": after trimming, the key still contains a space or a
+ *                  non-printable-ASCII char (interior corruption a trim cannot
+ *                  fix) — the secret must be re-set as a single clean line.
+ */
+export function sanitizeStripeSecret(
+  raw: string | null | undefined,
+): StripeSecretResult {
+  if (!raw) {
+    return { ok: false, reason: "missing" };
+  }
+
+  const key = raw.trim();
+
+  // A whitespace-only value trims to nothing — effectively no key configured.
+  if (!key) {
+    return { ok: false, reason: "missing" };
+  }
+
+  // A valid Stripe key is printable ASCII (0x21-0x7e) with no interior spaces;
+  // anything else is interior corruption a trim cannot fix.
+  if (/[^\x21-\x7e]/.test(key)) {
+    return { ok: false, reason: "malformed" };
+  }
+
+  return { ok: true, key };
+}
+
 export function releasedRefundReversalAmountMinor(input: {
   grossAmountMinor: number;
   refundedAmountMinor: number;
   releasedTransferAmountMinor: number;
+  /**
+   * Original full net (gross - fees) for this payout. Only meaningful when a
+   * partial refund BEFORE release already shrank the transfer below the full
+   * net. Omit (or pass null) for the common case where the full net was
+   * transferred — the reversal then uses the proven proportional-on-transferred
+   * formula, unchanged.
+   */
+  netAmountMinor?: number | null;
   alreadyReversedAmountMinor?: number | null;
 }): number {
   const gross = Math.max(0, Math.floor(input.grossAmountMinor));
@@ -83,12 +135,175 @@ export function releasedRefundReversalAmountMinor(input: {
     return 0;
   }
 
-  const targetReversal = Math.min(
-    transferred,
-    Math.floor((transferred * Math.min(refunded, gross)) / gross),
-  );
+  const cappedRefunded = Math.min(refunded, gross);
+  const net =
+    input.netAmountMinor == null
+      ? null
+      : Math.max(0, Math.floor(input.netAmountMinor));
+
+  let targetReversal: number;
+  if (net != null && transferred < net) {
+    // A partial refund before release already reduced the transfer below the
+    // full net. The teacher keeps the proportional entitlement on the ORIGINAL
+    // net — net * (gross - refunded) / gross — so reverse only the difference
+    // between what was transferred and that entitlement. Without this branch,
+    // a SECOND refund after such a reduced release would over-claw the teacher.
+    const netAfterRefund = Math.max(
+      0,
+      Math.floor((net * (gross - cappedRefunded)) / gross),
+    );
+    targetReversal = Math.max(0, transferred - netAfterRefund);
+  } else {
+    // Full net was transferred (or net unknown): proven proportional reversal
+    // on the transferred amount. Bit-for-bit the prior behavior.
+    targetReversal = Math.min(
+      transferred,
+      Math.floor((transferred * cappedRefunded) / gross),
+    );
+  }
 
   return Math.max(0, targetReversal - alreadyReversed);
+}
+
+/**
+ * Amount to actually transfer to the teacher when a payout is released.
+ *
+ * The common case (no refund before release) pays the full net. When a partial
+ * refund landed BEFORE the payout cleared, the teacher is only entitled to the
+ * proportional share of the original net on the un-refunded portion:
+ *   floor(net * (gross - refunded) / gross)
+ * A full refund before release collapses this to 0 (nothing is transferred).
+ *
+ * Computed once at claim time and frozen on the ledger (plannedTransferAmountMinor)
+ * so retries of the same release move an identical amount under a stable Stripe
+ * idempotency key — never recomputed mid-flight, which would risk an
+ * idempotency-key-reuse-with-different-params error or a double transfer.
+ */
+export function plannedReleaseTransferAmountMinor(input: {
+  netAmountMinor: number;
+  grossAmountMinor: number;
+  refundedAmountMinor?: number | null;
+}): number {
+  const net = Math.max(0, Math.floor(input.netAmountMinor));
+  const refunded = Math.max(0, Math.floor(input.refundedAmountMinor ?? 0));
+
+  // No pre-release refund recorded -> the full net is owed.
+  if (refunded <= 0) {
+    return net;
+  }
+
+  const gross = Math.max(0, Math.floor(input.grossAmountMinor));
+  if (gross <= 0) {
+    return net;
+  }
+
+  const cappedRefunded = Math.min(refunded, gross);
+  return Math.max(0, Math.floor((net * (gross - cappedRefunded)) / gross));
+}
+
+/**
+ * Minimal structural view of a Stripe Invoice for PaymentIntent resolution.
+ * Kept dependency-free (no `stripe` import) so this stays pure and unit-testable;
+ * the real Stripe.Invoice satisfies it structurally.
+ */
+export type InvoicePaymentIntentSource = {
+  payments?: {
+    data?: Array<{
+      payment?: { payment_intent?: string | { id: string } | null } | null;
+    }>;
+  } | null;
+  payment_intent?: string | { id: string } | null;
+};
+
+/**
+ * Resolve the PaymentIntent id backing a paid Stripe Invoice across API versions.
+ *
+ * The pinned API (2026-02-25.clover, post-Basil) REMOVED the top-level
+ * `invoice.payment_intent` field; the PaymentIntent now lives in
+ * `invoice.payments.data[].payment.payment_intent`. Reading the old top-level
+ * field returns undefined, so a caller that fell back to the invoice id stored a
+ * NON-PaymentIntent join key on the payout ledger — which the subscription
+ * refund clawback (it matches `payoutLedger.paymentId` against a charge's real
+ * `payment_intent`) can never match, silently stranding every dashboard-refunded
+ * subscription payout. Read the Basil location first, then the legacy top-level
+ * field; return null when neither is present so the caller can retrieve-with
+ * -expansion or fall back explicitly.
+ */
+export function resolveInvoicePaymentIntentId(
+  invoice: InvoicePaymentIntentSource,
+): string | null {
+  for (const entry of invoice.payments?.data ?? []) {
+    const pi = entry?.payment?.payment_intent;
+    if (typeof pi === "string" && pi) {
+      return pi;
+    }
+    if (pi && typeof pi === "object" && typeof pi.id === "string" && pi.id) {
+      return pi.id;
+    }
+  }
+
+  const legacyField = invoice.payment_intent;
+  if (typeof legacyField === "string" && legacyField) {
+    return legacyField;
+  }
+  if (
+    legacyField &&
+    typeof legacyField === "object" &&
+    typeof legacyField.id === "string" &&
+    legacyField.id
+  ) {
+    return legacyField.id;
+  }
+
+  return null;
+}
+
+/**
+ * Status to write to a payout ledger when a refund lands, given the refund's
+ * scope and the ledger's CURRENT (transactionally read) status.
+ *
+ *  - full refund            -> "refunded" (terminal).
+ *  - partial, still queued  -> "in_release": the payout has not been claimed by
+ *                              the release cron yet, so keep it releasable and
+ *                              let the cron move the REDUCED transfer
+ *                              (plannedReleaseTransferAmountMinor) instead of
+ *                              stranding the teacher's payout. (Gap 1)
+ *  - partial, anything else -> "partially_refunded": the payout is releasing/
+ *                              released (the reversal path handles the clawback)
+ *                              or already refunded.
+ *
+ * Keying off the FRESH status is what stops a refund that races the cron from
+ * flipping an already-`released` ledger back to `in_release` and double-paying.
+ */
+export function ledgerRefundStatus(
+  isFullRefund: boolean,
+  currentLedgerStatus: string | null | undefined,
+): "refunded" | "partially_refunded" | "in_release" {
+  if (isFullRefund) {
+    return "refunded";
+  }
+  return currentLedgerStatus === "in_release"
+    ? "in_release"
+    : "partially_refunded";
+}
+
+/**
+ * Whether a refund should reverse an already-released payout transfer. True only
+ * when the payout actually left the platform: the ledger is "released", a
+ * transferId was recorded, and a positive amount was transferred. A still-held
+ * (in_release/releasing) payout has nothing to reverse — the refund simply
+ * reduces what the release cron will move.
+ */
+export function shouldReverseReleasedPayout(input: {
+  status: string | null | undefined;
+  transferId: string | null | undefined;
+  releasedTransferAmountMinor: number;
+}): boolean {
+  return (
+    input.status === "released"
+    && Boolean(input.transferId)
+    && input.releasedTransferAmountMinor > 0
+  );
 }
 
 export type TransferReversalStripeClient = {
@@ -111,6 +326,13 @@ export async function createReleasedRefundTransferReversal(input: {
   grossAmountMinor: number;
   refundedAmountMinor: number;
   releasedTransferAmountMinor: number;
+  /**
+   * Original full net for this payout. Forwarded so the reversal math can tell
+   * a partial-refund-before-release reduced transfer apart from a full-net
+   * transfer (see releasedRefundReversalAmountMinor). Omit/null when the full
+   * net was transferred — the proven proportional-on-transferred path is used.
+   */
+  netAmountMinor?: number | null;
   alreadyReversedAmountMinor?: number | null;
   idempotencyKey: string;
   metadata: Record<string, string>;
@@ -126,6 +348,7 @@ export async function createReleasedRefundTransferReversal(input: {
     grossAmountMinor: input.grossAmountMinor,
     refundedAmountMinor: input.refundedAmountMinor,
     releasedTransferAmountMinor: input.releasedTransferAmountMinor,
+    netAmountMinor: input.netAmountMinor,
     alreadyReversedAmountMinor: input.alreadyReversedAmountMinor,
   });
 

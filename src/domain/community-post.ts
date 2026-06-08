@@ -12,6 +12,10 @@ export type CommunityPost = {
   authorRole: string;
   category: CommunityPostCategory;
   body: string;
+  // Teacher/admin-curated. Pinned posts float to the top of the feed. Only the
+  // course owner or an admin can toggle this (rules enforce it); the author
+  // cannot self-pin. Absent on legacy posts, treated as false.
+  pinned?: boolean;
   createdAt?: unknown;
   updatedAt?: unknown;
 };
@@ -24,6 +28,10 @@ export type CommunityComment = {
   authorName: string;
   authorRole: string;
   body: string;
+  // Null (or absent) = top-level comment. A string = the id of the top-level
+  // comment this is a reply to. The feed renders a single level of nesting;
+  // replies-to-replies attach to the same top-level parent.
+  parentId?: string | null;
   createdAt?: unknown;
   updatedAt?: unknown;
 };

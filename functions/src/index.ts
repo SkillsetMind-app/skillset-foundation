@@ -48,12 +48,17 @@ import {
   claimStripeEvent,
   createReleasedRefundTransferReversal,
   decideCheckoutLock,
+  ledgerRefundStatus,
   markStripeEventDone,
   paidOrderRefundQuerySpec,
   payoutReleaseDelayDays,
+  plannedReleaseTransferAmountMinor,
+  resolveInvoicePaymentIntentId,
   resolvePayoutReleaseDelayDays,
+  sanitizeStripeSecret,
   shouldApplyOrderStatusTransition,
   shouldReleaseCheckoutLock,
+  shouldReverseReleasedPayout,
   stripeProcessingFeeMinor as canonicalStripeProcessingFeeMinor,
   type TransferReversalStripeClient,
 } from "./payment-rules";
@@ -177,6 +182,24 @@ type PayoutLedgerRecord = {
   courseId: string;
   orderId: string;
   paymentId: string;
+  /** "course_subscription" for subscription-invoice payouts; absent for one-off. */
+  kind?: string;
+  /** Stripe invoice id backing a subscription payout (doc id for those). */
+  invoiceId?: string;
+  /** Stripe subscription id for a course-subscription payout. */
+  subscriptionId?: string;
+  /**
+   * True when `paymentId` is the invoice's real PaymentIntent id (`pi_…`) — the
+   * join key the subscription refund clawback matches on (charge.payment_intent).
+   * False only when PI resolution returned null after a SUCCESSFUL invoice
+   * retrieve (a charge-less invoice: $0/fully-discounted/credit-balance), so the
+   * `paymentId` falls back to the invoice id (`in_…`), a namespace that can never
+   * collide with a real PaymentIntent. Recorded so the "no PaymentIntent ⇒ no
+   * refundable charge" invariant is AUDITABLE in data — query
+   * `paymentIdIsPaymentIntent == false` to confirm no degraded row ever carried a
+   * refundable charge — instead of living only in a code comment (round-3 review).
+   */
+  paymentIdIsPaymentIntent?: boolean;
   grossAmountMinor: number;
   skillsetFeeMinor: number;
   stripeFeeMinor?: number;
@@ -188,6 +211,20 @@ type PayoutLedgerRecord = {
   transferId?: string | null;
   transferReversedAmountMinor?: number | null;
   refundedAmountMinor?: number | null;
+  /**
+   * Amount actually moved to the teacher when the payout was released. Equals
+   * netAmountMinor for a full payout, or the reduced
+   * plannedTransferAmountMinor when a partial refund landed before release.
+   * Recorded so a later refund reverses against what truly left the platform,
+   * not the full net (Gap 1).
+   */
+  transferAmountMinor?: number | null;
+  /**
+   * Transfer amount computed once when the ledger is claimed for release, so
+   * retries of the same release move an identical amount under a stable
+   * idempotency key. Set-once; never recomputed mid-flight (Gap 1).
+   */
+  plannedTransferAmountMinor?: number | null;
 };
 
 type CourseReviewRecord = {
@@ -607,18 +644,62 @@ function validateCourseReadyForReview(course: TeacherCourseRecord) {
 }
 
 function getStripeClient() {
-  const secretKey = stripeSecretKey.value() || process.env.STRIPE_SECRET_KEY;
+  // sanitizeStripeSecret trims the secret so a stray trailing newline can't
+  // poison the `Authorization: Bearer <key>` header (the ERR_INVALID_CHAR that
+  // surfaced as an opaque INTERNAL 500 and broke live onboarding, 2026-06-07).
+  // See payment-rules.ts for the full rationale; unit-tested there.
+  const result = sanitizeStripeSecret(
+    stripeSecretKey.value() || process.env.STRIPE_SECRET_KEY,
+  );
 
-  if (!secretKey) {
+  if (!result.ok) {
     throw new HttpsError(
       "failed-precondition",
-      "Stripe secret key is not configured.",
+      result.reason === "missing"
+        ? "Stripe secret key is not configured."
+        : "Stripe secret key is malformed (it contains spaces or line breaks). " +
+            "Re-set the STRIPE_SECRET_KEY secret as a single line with no extra characters.",
     );
   }
 
-  return new Stripe(secretKey, {
+  return new Stripe(result.key, {
     apiVersion: "2026-02-25.clover" as Stripe.LatestApiVersion,
   });
+}
+
+/**
+ * Normalizes any error thrown while talking to Stripe into a client-legible
+ * HttpsError. HttpsErrors we threw ourselves (auth / precondition) pass
+ * straight through; genuine Stripe.errors.StripeError instances surface their
+ * real message so onboarding/payout failures are diagnosable instead of an
+ * opaque INTERNAL 500. `action` is a present-participle phrase, e.g.
+ * "starting Stripe onboarding".
+ */
+function toStripeHttpsError(error: unknown, action: string): HttpsError {
+  if (error instanceof HttpsError) {
+    return error;
+  }
+
+  if (error instanceof Stripe.errors.StripeError) {
+    logger.error(`Stripe error while ${action}`, {
+      type: error.type,
+      code: error.code,
+      statusCode: error.statusCode,
+      message: error.message,
+    });
+    return new HttpsError(
+      "failed-precondition",
+      error.message || `Stripe could not complete ${action}.`,
+    );
+  }
+
+  logger.error(`Unexpected error while ${action}`, {
+    error: error instanceof Error ? error.message : String(error),
+  });
+  return new HttpsError(
+    "internal",
+    `Could not complete ${action}. Please try again.`,
+  );
 }
 
 function getAppUrl() {
@@ -2342,47 +2423,51 @@ export const createTeacherStripeAccountLink = onCall(
       );
     }
 
-    const stripe = getStripeClient();
-    let accountId = user.stripeConnectedAccountId || null;
+    try {
+      const stripe = getStripeClient();
+      let accountId = user.stripeConnectedAccountId || null;
 
-    if (!accountId) {
-      const account = await stripe.accounts.create({
-        type: "express",
-        email: user.email || request.auth.token.email?.toString(),
-        business_type: "individual",
-        capabilities: {
-          card_payments: { requested: true },
-          transfers: { requested: true },
-        },
-        metadata: {
-          skillsetUserId: userId,
-        },
+      if (!accountId) {
+        const account = await stripe.accounts.create({
+          type: "express",
+          email: user.email || request.auth.token.email?.toString(),
+          business_type: "individual",
+          capabilities: {
+            card_payments: { requested: true },
+            transfers: { requested: true },
+          },
+          metadata: {
+            skillsetUserId: userId,
+          },
+        });
+
+        accountId = account.id;
+
+        await userRef.set(
+          {
+            stripeConnectedAccountId: accountId,
+            stripeConnectStatus: "created",
+            stripeConnectChargesEnabled: Boolean(account.charges_enabled),
+            stripeConnectPayoutsEnabled: Boolean(account.payouts_enabled),
+            stripeConnectUpdatedAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        );
+      }
+
+      const appUrl = getAppUrl();
+      const accountLink = await stripe.accountLinks.create({
+        account: accountId,
+        refresh_url: `${appUrl}/account/payments?stripe=refresh#stripe-connect`,
+        return_url: `${appUrl}/account/payments?stripe=return`,
+        type: "account_onboarding",
       });
 
-      accountId = account.id;
-
-      await userRef.set(
-        {
-          stripeConnectedAccountId: accountId,
-          stripeConnectStatus: "created",
-          stripeConnectChargesEnabled: Boolean(account.charges_enabled),
-          stripeConnectPayoutsEnabled: Boolean(account.payouts_enabled),
-          stripeConnectUpdatedAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      );
+      return { url: accountLink.url };
+    } catch (error) {
+      throw toStripeHttpsError(error, "starting Stripe onboarding");
     }
-
-    const appUrl = getAppUrl();
-    const accountLink = await stripe.accountLinks.create({
-      account: accountId,
-      refresh_url: `${appUrl}/account/payments?stripe=refresh#stripe-connect`,
-      return_url: `${appUrl}/account/payments?stripe=return`,
-      type: "account_onboarding",
-    });
-
-    return { url: accountLink.url };
   },
 );
 
@@ -2412,35 +2497,39 @@ export const refreshTeacherStripeAccount = onCall(
       };
     }
 
-    const account = await getStripeClient().accounts.retrieve(accountId);
-    const status =
-      account.charges_enabled && account.payouts_enabled
-        ? "ready"
-        : "onboarding_required";
+    try {
+      const account = await getStripeClient().accounts.retrieve(accountId);
+      const status =
+        account.charges_enabled && account.payouts_enabled
+          ? "ready"
+          : "onboarding_required";
 
-    await userRef.set(
-      {
-        stripeConnectStatus: status,
-        stripeConnectChargesEnabled: Boolean(account.charges_enabled),
-        stripeConnectPayoutsEnabled: Boolean(account.payouts_enabled),
-        stripeConnectUpdatedAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
+      await userRef.set(
+        {
+          stripeConnectStatus: status,
+          stripeConnectChargesEnabled: Boolean(account.charges_enabled),
+          stripeConnectPayoutsEnabled: Boolean(account.payouts_enabled),
+          stripeConnectUpdatedAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
 
-    if (status === "ready" && user.stripeConnectStatus !== "ready") {
-      await captureServerEvent(userId, SERVER_EVENTS.TEACHER_KYC_APPROVED, {
-        teacher_id: userId,
-      });
+      if (status === "ready" && user.stripeConnectStatus !== "ready") {
+        await captureServerEvent(userId, SERVER_EVENTS.TEACHER_KYC_APPROVED, {
+          teacher_id: userId,
+        });
+      }
+
+      return {
+        connected: true,
+        chargesEnabled: Boolean(account.charges_enabled),
+        payoutsEnabled: Boolean(account.payouts_enabled),
+        status,
+      };
+    } catch (error) {
+      throw toStripeHttpsError(error, "refreshing Stripe account status");
     }
-
-    return {
-      connected: true,
-      chargesEnabled: Boolean(account.charges_enabled),
-      payoutsEnabled: Boolean(account.payouts_enabled),
-      status,
-    };
   },
 );
 
@@ -2744,10 +2833,27 @@ async function claimLedgerForRelease(
       return null;
     }
 
+    // Freeze the transfer amount once, at claim time. A partial refund that
+    // landed before release leaves the ledger in_release with a recorded
+    // refundedAmountMinor (see handleChargeRefunded), so the teacher is owed
+    // only the proportional un-refunded net. Computing this once and persisting
+    // it means every release retry moves the SAME amount under the stable
+    // `transfer_${ledgerId}` idempotency key — recomputing mid-flight could
+    // reuse that key with a different amount (a Stripe error) or double-pay.
+    const plannedTransferAmountMinor =
+      typeof ledger.plannedTransferAmountMinor === "number"
+        ? ledger.plannedTransferAmountMinor
+        : plannedReleaseTransferAmountMinor({
+            netAmountMinor: Number(ledger.netAmountMinor || 0),
+            grossAmountMinor: Number(ledger.grossAmountMinor || 0),
+            refundedAmountMinor: Number(ledger.refundedAmountMinor || 0),
+          });
+
     transaction.set(
       ledgerRef,
       {
         status: "releasing",
+        plannedTransferAmountMinor,
         releaseAttemptCount: FieldValue.increment(1),
         lastReleaseAttemptAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
@@ -2755,7 +2861,7 @@ async function claimLedgerForRelease(
       { merge: true },
     );
 
-    return ledger;
+    return { ...ledger, plannedTransferAmountMinor };
   });
 }
 
@@ -2766,7 +2872,12 @@ async function releaseLedgerTransfer(
 ) {
   const ledgerRef = db.collection("payoutLedger").doc(ledgerId);
   const destination = ledger.teacherStripeConnectedAccountId;
-  const amount = Number(ledger.netAmountMinor || 0);
+  // Pay the frozen planned amount (full net, or the reduced share when a partial
+  // refund landed before release). Fall back to net for ledgers written before
+  // plannedTransferAmountMinor existed. (Gap 1)
+  const amount = Number(
+    ledger.plannedTransferAmountMinor ?? ledger.netAmountMinor ?? 0,
+  );
   const currency = normalizeSkillsetCurrency(ledger.currency).toLowerCase();
 
   if (!destination) {
@@ -2774,10 +2885,14 @@ async function releaseLedgerTransfer(
   }
 
   if (amount <= 0) {
+    // Fully refunded before release: nothing to transfer. Record a zero
+    // transferAmountMinor so a later refund's reversal math sees that no money
+    // left the platform.
     await ledgerRef.set(
       {
         status: "released",
         transferId: null,
+        transferAmountMinor: 0,
         releasedAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       },
@@ -2825,6 +2940,7 @@ async function releaseLedgerTransfer(
         ledgerRef,
         {
           transferId: transfer.id,
+          transferAmountMinor: amount,
           transferReleasedDuringRefund: true,
           updatedAt: FieldValue.serverTimestamp(),
         },
@@ -2845,6 +2961,7 @@ async function releaseLedgerTransfer(
       {
         status: "released",
         transferId: transfer.id,
+        transferAmountMinor: amount,
         releasedAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       },
@@ -2864,6 +2981,9 @@ async function releaseLedgerTransfer(
       grossAmountMinor: Number(ledger.grossAmountMinor || 0),
       refundedAmountMinor: raceDecision.refundedAmountMinor || amount,
       releasedTransferAmountMinor: amount,
+      // Full net, so the reversal math can distinguish a reduced transfer
+      // (partial refund before release) from a full-net one. (Gap 1)
+      netAmountMinor: Number(ledger.netAmountMinor || 0),
       alreadyReversedAmountMinor: raceDecision.alreadyReversedAmountMinor,
       idempotencyKey: `transfer_reversal_${ledgerId}_release_race`,
       metadata: {
@@ -3505,6 +3625,31 @@ export const stripeWebhook = onRequest(
         }
       }
 
+      if (event.type === "checkout.session.async_payment_succeeded") {
+        // Delayed payment methods (bank debits, vouchers) complete the Checkout
+        // Session as payment_status="unpaid" first — handleCheckoutCompleted
+        // defers those — and only later, when the funds clear, does Stripe fire
+        // async_payment_succeeded with payment_status="paid". This is the actual
+        // fulfilment trigger for those methods; without it the buyer pays and
+        // never receives the course. (Gap 3)
+        const session = event.data.object;
+        if (session.mode === "subscription") {
+          logger.info("Subscription async payment succeeded", {
+            sessionId: session.id,
+            subscriptionId: session.subscription,
+          });
+        } else {
+          await handleCheckoutCompleted(session);
+        }
+      }
+
+      if (event.type === "checkout.session.async_payment_failed") {
+        // The delayed payment never cleared. Mark the order failed so it does
+        // not sit pending forever and the in-flight checkout lock is released
+        // (markOrderStatus owns the ownership-checked lock cleanup). (Gap 3)
+        await markOrderStatus(event.data.object.metadata?.orderId, "failed");
+      }
+
       if (event.type === "checkout.session.expired") {
         await markOrderStatus(event.data.object.metadata?.orderId, "cancelled");
       }
@@ -3661,11 +3806,13 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   }
 
   await db.runTransaction(async (transaction) => {
-    const [orderSnapshot, courseSnapshot, enrollmentSnapshot] = await Promise.all([
-      transaction.get(orderRef),
-      transaction.get(courseRef),
-      transaction.get(enrollmentRef),
-    ]);
+    const [orderSnapshot, courseSnapshot, enrollmentSnapshot, ledgerSnapshot] =
+      await Promise.all([
+        transaction.get(orderRef),
+        transaction.get(courseRef),
+        transaction.get(enrollmentRef),
+        transaction.get(ledgerRef),
+      ]);
 
     if (!orderSnapshot.exists) {
       throw new Error(`Order ${orderId} not found.`);
@@ -3673,6 +3820,25 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
     if (!courseSnapshot.exists) {
       throw new Error(`Course ${courseId} not found.`);
+    }
+
+    // Re-arm guard (Gap 3): the payout ledger is created exactly once per order,
+    // here, and this transaction is atomic — so a ledger already existing means
+    // this order was already fully fulfilled (payment + order + enrollment all
+    // committed with it). A second completion event for the same order — a
+    // redelivered checkout.session.completed, OR an async_payment_succeeded that
+    // arrives after a refund, OR any replay the idempotency marker did not catch
+    // — must NOT re-run fulfilment: doing so would flip order back to `paid`,
+    // reset the ledger to `in_release` with a FRESH releaseAt, and re-schedule a
+    // payout for money that may have been refunded. Skip idempotently.
+    if (ledgerSnapshot.exists) {
+      logger.info("Checkout fulfilment skipped; order already fulfilled", {
+        orderId,
+        ledgerStatus: String(
+          (ledgerSnapshot.data() as PayoutLedgerRecord).status || "",
+        ),
+      });
+      return;
     }
 
     const order = orderSnapshot.data() || {};
@@ -3927,13 +4093,72 @@ async function handleCourseSubscriptionInvoicePaid(invoice: Stripe.Invoice) {
     grossAmountMinor - skillsetFeeMinor - stripeFeeMinor,
   );
 
-  const paymentIntentField = (invoice as {
-    payment_intent?: string | { id: string } | null;
-  }).payment_intent;
-  const paymentId =
-    typeof paymentIntentField === "string"
-      ? paymentIntentField
-      : paymentIntentField?.id ?? invoice.id;
+  // Resolve the REAL PaymentIntent so the payout ledger's paymentId is the join
+  // key the refund path searches by (charge.payment_intent). Basil/Clover
+  // (the pinned 2026-02-25.clover API) dropped the top-level
+  // invoice.payment_intent, so read the inline payments list first. If the
+  // webhook payload did not inline it, retrieve once with expansion. Falling
+  // back to invoice.id (the prior behavior) stored a NON-PaymentIntent key the
+  // subscription refund clawback can never match — stranding the teacher payout
+  // clawback on every dashboard-refunded subscription invoice (Gap 2, caught by
+  // adversarial review). Last-resort invoice.id is logged so a degraded key is
+  // never silent.
+  let resolvedPaymentIntentId = resolveInvoicePaymentIntentId(invoice);
+  if (!resolvedPaymentIntentId) {
+    // invoice.payments is an expandable sub-resource that Stripe does NOT
+    // serialize into webhook event payloads, so on a normal invoice.paid the
+    // inline read above returns null and THIS retrieve is the de-facto PRIMARY
+    // PaymentIntent-resolution path. A transient retrieve failure must therefore
+    // THROW (not be swallowed) WHEN a ledger keyed on this PaymentIntent is about
+    // to be written: a swallowed failure would fall through to invoice.id, the
+    // handler would return 2xx, the two-phase idempotency marker would promote to
+    // "done", Stripe would never redeliver, and the subscription refund clawback
+    // (which joins on charge.payment_intent) could never match — a permanent
+    // teacher-payout money leak (round-2 adversarial review). Throwing instead
+    // leaves the marker "processing" so Stripe redelivers and the ledger is
+    // written with the correct join key on retry. Mirrors the safe sibling
+    // stripe.subscriptions.retrieve above, which is likewise unwrapped.
+    // When NO ledger will be written (gross 0 / no connected account) a degraded
+    // key strands no clawback, so a blip there must not block the enrollment and
+    // subscription side effects — log and proceed in that case only.
+    const ledgerWillBeWritten = grossAmountMinor > 0 && Boolean(connectedAccountId);
+    try {
+      const expandedInvoice = await getStripeClient().invoices.retrieve(
+        invoice.id,
+        { expand: ["payments"] },
+      );
+      resolvedPaymentIntentId = resolveInvoicePaymentIntentId(expandedInvoice);
+    } catch (error) {
+      if (ledgerWillBeWritten) {
+        logger.error(
+          "Could not resolve invoice PaymentIntent for a payout-bearing invoice; " +
+            "throwing to force Stripe redelivery instead of writing a degraded " +
+            "ledger join key the subscription refund clawback can never match",
+          {
+            invoiceId: invoice.id,
+            error: error instanceof Error ? error.message : "unknown",
+          },
+        );
+        throw error;
+      }
+      logger.warn("Could not expand invoice payments to resolve PaymentIntent", {
+        invoiceId: invoice.id,
+        error: error instanceof Error ? error.message : "unknown",
+      });
+    }
+  }
+  if (!resolvedPaymentIntentId) {
+    // Retrieve SUCCEEDED but the invoice genuinely exposes no PaymentIntent
+    // ($0/fully-discounted or paid out of credit balance — neither produces a
+    // refundable charge, so the clawback has nothing to join to anyway). Safe to
+    // proceed with the invoice id; logged so a degraded key is never silent.
+    logger.warn(
+      "Invoice PaymentIntent unresolved; payout ledger paymentId degraded to " +
+        "invoice id (no refundable charge expected for this invoice)",
+      { invoiceId: invoice.id },
+    );
+  }
+  const paymentId = resolvedPaymentIntentId ?? invoice.id;
 
   const item = subscription.items.data[0];
   const periodEndIso = secondsToIso(
@@ -3973,6 +4198,10 @@ async function handleCourseSubscriptionInvoicePaid(invoice: Stripe.Invoice) {
           invoiceId: invoice.id,
           subscriptionId,
           paymentId,
+          // Audit flag: is paymentId a real PaymentIntent (clawback-joinable) or
+          // the charge-less invoice-id fallback? Makes the "no PI ⇒ no refundable
+          // charge" invariant queryable rather than assumed (round-3 review).
+          paymentIdIsPaymentIntent: Boolean(resolvedPaymentIntentId),
           kind: "course_subscription",
           grossAmountMinor,
           skillsetFeeMinor,
@@ -4162,6 +4391,132 @@ async function handleCourseSubscriptionLifecycle(
   return true;
 }
 
+/**
+ * Refund path for course-SUBSCRIPTION charges (no payments/{PI} doc exists).
+ *
+ * Locates the held/released subscription payout by its PaymentIntent and claws
+ * back the teacher's released transfer, writing ONLY the payout ledger. It does
+ * NOT touch the enrollment: a dashboard refund of a single subscription invoice
+ * does not cancel the subscription, so access stays governed by the
+ * subscription lifecycle (customer.subscription.updated/deleted). Returns true
+ * when a matching subscription payout was found and handled, false otherwise so
+ * the caller can log the original "payment not found". (Gap 2)
+ */
+async function handleSubscriptionChargeRefunded(
+  charge: Stripe.Charge,
+  paymentIntentId: string,
+): Promise<boolean> {
+  // A single equality filter on paymentId needs only the default single-field
+  // index (no composite index to deploy); narrow to course subscriptions in
+  // code. One-off purchases never reach here (they have a payments/{PI} doc), so
+  // the kind filter is belt-and-suspenders against acting on a one-off ledger.
+  const ledgerQuery = await db
+    .collection("payoutLedger")
+    .where("paymentId", "==", paymentIntentId)
+    .limit(5)
+    .get();
+  const ledgerDoc = ledgerQuery.docs.find(
+    (doc) =>
+      (doc.data() as PayoutLedgerRecord).kind === "course_subscription",
+  );
+
+  if (!ledgerDoc) {
+    return false;
+  }
+
+  const ledgerRef = ledgerDoc.ref;
+  const ledger = ledgerDoc.data() as PayoutLedgerRecord;
+  const transferId = ledger.transferId || null;
+  const alreadyReversedAmountMinor = Number(ledger.transferReversedAmountMinor || 0);
+  const grossAmountMinor = Number(ledger.grossAmountMinor || 0);
+  const netAmountMinor = Number(ledger.netAmountMinor || 0);
+  // What truly left the platform (reduced when a partial refund preceded
+  // release), falling back to net for ledgers released before tracking. (Gap 1)
+  const releasedTransferAmountMinor = Number(
+    ledger.transferAmountMinor ?? ledger.netAmountMinor ?? 0,
+  );
+  const shouldReverse = shouldReverseReleasedPayout({
+    status: ledger.status,
+    transferId,
+    releasedTransferAmountMinor,
+  });
+  const reversalResult = shouldReverse
+    ? await createReleasedRefundTransferReversal({
+        stripe: getStripeClient() as unknown as TransferReversalStripeClient,
+        ledgerId: ledger.id,
+        transferId,
+        grossAmountMinor,
+        refundedAmountMinor: charge.amount_refunded,
+        releasedTransferAmountMinor,
+        netAmountMinor,
+        alreadyReversedAmountMinor,
+        idempotencyKey:
+          `transfer_reversal_${ledger.id}_${charge.id}_${charge.amount_refunded}`,
+        metadata: {
+          invoiceId: String(ledger.invoiceId ?? ledger.id),
+          paymentId: paymentIntentId,
+          chargeId: charge.id,
+          kind: "course_subscription",
+        },
+      })
+    : { reversalId: null, reversalAmountMinor: 0 };
+  const reversalWriteFields = reversalResult.reversalAmountMinor > 0
+    ? {
+        transferReversedAmountMinor:
+          FieldValue.increment(reversalResult.reversalAmountMinor),
+        latestTransferReversalId: reversalResult.reversalId,
+        latestTransferReversalAt: FieldValue.serverTimestamp(),
+      }
+    : {};
+  const isFullRefund = charge.refunded === true;
+
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ledgerRef);
+    const currentStatus = snapshot.exists
+      ? String((snapshot.data() as PayoutLedgerRecord).status || "")
+      : "";
+    transaction.set(
+      ledgerRef,
+      {
+        status: ledgerRefundStatus(isFullRefund, currentStatus),
+        refundedAmountMinor: charge.amount_refunded,
+        ...reversalWriteFields,
+        refundedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  });
+
+  await recordAuditEvent({
+    action: AUDIT_ACTIONS.REFUND_ISSUED,
+    actorId: "system:stripe-webhook",
+    actorEmail: null,
+    targetType: "payoutLedger",
+    targetId: ledger.id,
+    summary: `Subscription refund ${isFullRefund ? "completed" : "partially completed"} for invoice ${ledger.invoiceId ?? ledger.id}`,
+    metadata: {
+      paymentId: paymentIntentId,
+      chargeId: charge.id,
+      subscriptionId:
+        typeof ledger.subscriptionId === "string" ? ledger.subscriptionId : null,
+      courseId: typeof ledger.courseId === "string" ? ledger.courseId : null,
+      refundedAmountMinor: charge.amount_refunded,
+      fullRefund: isFullRefund,
+      transferReversalAmountMinor: reversalResult.reversalAmountMinor,
+      kind: "course_subscription",
+    },
+  });
+
+  logger.info("Subscription charge refund handled", {
+    ledgerId: ledger.id,
+    paymentId: paymentIntentId,
+    reversalAmountMinor: reversalResult.reversalAmountMinor,
+  });
+
+  return true;
+}
+
 async function handleChargeRefunded(charge: Stripe.Charge) {
   const paymentIntentId =
     typeof charge.payment_intent === "string"
@@ -4177,7 +4532,19 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
   const paymentSnapshot = await paymentRef.get();
 
   if (!paymentSnapshot.exists) {
-    logger.warn("Refunded payment was not found", { paymentIntentId });
+    // One-off purchases write a payments/{PI} doc; course subscriptions do not.
+    // A subscription invoice charge refunded straight from the Stripe Dashboard
+    // therefore lands here with no payment doc. Fall back to the subscription
+    // payout ledger (keyed by invoice id, paymentId == PI) so the teacher's
+    // released transfer is still clawed back — otherwise the platform refunds
+    // the student but never recovers the teacher payout. (Gap 2)
+    const handledAsSubscription = await handleSubscriptionChargeRefunded(
+      charge,
+      paymentIntentId,
+    );
+    if (!handledAsSubscription) {
+      logger.warn("Refunded payment was not found", { paymentIntentId });
+    }
     return;
   }
 
@@ -4206,11 +4573,18 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
   const transferId = ledger?.transferId || null;
   const alreadyReversedAmountMinor = Number(ledger?.transferReversedAmountMinor || 0);
   const grossAmountMinor = Number(ledger?.grossAmountMinor || order.amountMinor || 0);
-  const releasedTransferAmountMinor = Number(ledger?.netAmountMinor || 0);
-  const shouldReverseReleasedTransfer =
-    ledger?.status === "released"
-    && Boolean(transferId)
-    && releasedTransferAmountMinor > 0;
+  const netAmountMinor = Number(ledger?.netAmountMinor || 0);
+  // Reverse against what TRULY left the platform: the recorded transferAmountMinor
+  // (reduced when a partial refund landed before release), falling back to the
+  // full net for ledgers released before transferAmountMinor was tracked. (Gap 1)
+  const releasedTransferAmountMinor = Number(
+    ledger?.transferAmountMinor ?? ledger?.netAmountMinor ?? 0,
+  );
+  const shouldReverseReleasedTransfer = shouldReverseReleasedPayout({
+    status: ledger?.status,
+    transferId,
+    releasedTransferAmountMinor,
+  });
   const reversalResult = shouldReverseReleasedTransfer
     ? await createReleasedRefundTransferReversal({
         stripe: getStripeClient() as unknown as TransferReversalStripeClient,
@@ -4219,6 +4593,9 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
         grossAmountMinor,
         refundedAmountMinor: charge.amount_refunded,
         releasedTransferAmountMinor,
+        // Full net unlocks the net-based reversal path when the released
+        // transfer was reduced by a pre-release partial refund. (Gap 1)
+        netAmountMinor,
         alreadyReversedAmountMinor,
         idempotencyKey:
           `transfer_reversal_${orderId}_${charge.id}_${charge.amount_refunded}`,
@@ -4248,6 +4625,22 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     const currentOrder = currentOrderSnapshot.data() || {};
     const isFullRefund = charge.refunded === true;
     const refundedStatus = isFullRefund ? "refunded" : "partially_refunded";
+    // Re-read the ledger transactionally to decide its status atomically. A
+    // partial refund that arrives while the payout is still queued (in_release,
+    // not yet claimed by the release cron) must keep the ledger in_release so
+    // the cron still releases the REDUCED transfer (the frozen
+    // plannedTransferAmountMinor reads this refundedAmountMinor) instead of
+    // stranding the teacher's payout forever. Basing this on the FRESH status
+    // (not the stale pre-transaction snapshot) is what prevents a refund that
+    // races with the cron from flipping an already-`released` ledger back to
+    // `in_release` — which would re-release and double-pay. Full refunds, and
+    // refunds after the payout already left (`releasing`/`released`), stay on
+    // the terminal refunded/partially_refunded path exactly as before. (Gap 1)
+    const currentLedgerSnapshot = await transaction.get(ledgerRef);
+    const currentLedgerStatus = currentLedgerSnapshot.exists
+      ? String((currentLedgerSnapshot.data() as PayoutLedgerRecord).status || "")
+      : "";
+    const nextLedgerStatus = ledgerRefundStatus(isFullRefund, currentLedgerStatus);
     const enrollmentRef =
       isFullRefund && currentOrder.userId && currentOrder.courseId
         ? db
@@ -4275,7 +4668,7 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     transaction.set(
       ledgerRef,
       {
-        status: isFullRefund ? "refunded" : "partially_refunded",
+        status: nextLedgerStatus,
         refundedAmountMinor: charge.amount_refunded,
         ...reversalWriteFields,
         refundedAt: FieldValue.serverTimestamp(),
@@ -4912,55 +5305,59 @@ export const createConnectAccountSession = onCall(
       );
     }
 
-    const stripe = getStripeClient();
-    let accountId = user.stripeConnectedAccountId || null;
+    try {
+      const stripe = getStripeClient();
+      let accountId = user.stripeConnectedAccountId || null;
 
-    if (!accountId) {
-      const account = await stripe.accounts.create({
-        type: "express",
-        email: user.email || request.auth.token.email?.toString(),
-        business_type: "individual",
-        capabilities: {
-          card_payments: { requested: true },
-          transfers: { requested: true },
+      if (!accountId) {
+        const account = await stripe.accounts.create({
+          type: "express",
+          email: user.email || request.auth.token.email?.toString(),
+          business_type: "individual",
+          capabilities: {
+            card_payments: { requested: true },
+            transfers: { requested: true },
+          },
+          metadata: { skillsetUserId: userId },
+        });
+
+        accountId = account.id;
+
+        await userRef.set(
+          {
+            stripeConnectedAccountId: accountId,
+            stripeConnectStatus: "created",
+            stripeConnectChargesEnabled: Boolean(account.charges_enabled),
+            stripeConnectPayoutsEnabled: Boolean(account.payouts_enabled),
+            stripeConnectUpdatedAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        );
+
+        await captureServerEvent(userId, SERVER_EVENTS.TEACHER_KYC_SUBMITTED, {
+          teacher_id: userId,
+        });
+      }
+
+      // Account Session client_secret powers the in-app embedded UI.
+      // Each component we enable here becomes mountable on the client.
+      // payouts + balances are included so the wallet page can later
+      // render a fully in-app payout schedule without leaving Skillset.
+      const accountSession = await stripe.accountSessions.create({
+        account: accountId,
+        components: {
+          account_onboarding: { enabled: true },
         },
-        metadata: { skillsetUserId: userId },
       });
 
-      accountId = account.id;
-
-      await userRef.set(
-        {
-          stripeConnectedAccountId: accountId,
-          stripeConnectStatus: "created",
-          stripeConnectChargesEnabled: Boolean(account.charges_enabled),
-          stripeConnectPayoutsEnabled: Boolean(account.payouts_enabled),
-          stripeConnectUpdatedAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      );
-
-      await captureServerEvent(userId, SERVER_EVENTS.TEACHER_KYC_SUBMITTED, {
-        teacher_id: userId,
-      });
+      return {
+        clientSecret: accountSession.client_secret,
+        accountId,
+      };
+    } catch (error) {
+      throw toStripeHttpsError(error, "opening the Stripe onboarding session");
     }
-
-    // Account Session client_secret powers the in-app embedded UI.
-    // Each component we enable here becomes mountable on the client.
-    // payouts + balances are included so the wallet page can later
-    // render a fully in-app payout schedule without leaving Skillset.
-    const accountSession = await stripe.accountSessions.create({
-      account: accountId,
-      components: {
-        account_onboarding: { enabled: true },
-      },
-    });
-
-    return {
-      clientSecret: accountSession.client_secret,
-      accountId,
-    };
   },
 );
 

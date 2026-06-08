@@ -133,7 +133,7 @@ function AccountNavMobile({
               className={`inline-flex items-center gap-2 whitespace-nowrap rounded-[8px] px-3 py-2 text-xs font-semibold transition ${
                 isActive
                   ? "bg-[var(--color-primary)] text-white"
-                  : "text-[var(--color-ink-soft)] hover:bg-white hover:text-[var(--color-ink)]"
+                  : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-ink)]"
               }`}
             >
               <Icon aria-hidden="true" size={14} strokeWidth={2} />
@@ -166,7 +166,7 @@ function AccountNavLink({
       className={`flex items-start gap-3 rounded-[10px] px-3 py-3 text-sm font-semibold transition ${
         isActive
           ? "bg-[var(--color-primary)] text-white shadow-[0_10px_22px_rgba(26,54,93,0.14)]"
-          : "text-[var(--color-ink-soft)] hover:bg-white hover:text-[var(--color-ink)]"
+          : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-ink)]"
       }`}
     >
       <span

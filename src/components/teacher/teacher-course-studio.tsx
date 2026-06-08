@@ -244,7 +244,7 @@ export function TeacherCourseStudio({
               statusFilteredCourses.map((course) => (
                 <article
                   key={course.id}
-                  className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[var(--shadow-soft)]"
+                  className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 transition hover:-translate-y-0.5 hover:bg-[var(--color-surface-hover)] hover:shadow-[var(--shadow-soft)]"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">

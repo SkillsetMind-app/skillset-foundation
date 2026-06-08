@@ -1008,3 +1008,350 @@ describe("Firestore community gamification rules (C1)", () => {
     await assertFails(getDoc(doc(db, "pointsEvents/evt-1")));
   });
 });
+
+describe("Firestore community pinned posts + nested replies rules (C8)", () => {
+  const courseSlug = "course-c8";
+  const postId = "post-c8";
+  const teacherUid = "teacher-c8";
+
+  async function seedC8() {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const adminDb = context.firestore();
+      // Course doc id === courseSlug; owned by the teacher.
+      await setDoc(doc(adminDb, `courses/${courseSlug}`), {
+        ownerId: teacherUid,
+        title: "C8 Course",
+        status: "published",
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      });
+      // Author + a second learner are both enrolled. The teacher is NOT
+      // enrolled — ownership alone must be enough to pin.
+      for (const uid of ["author-c8", "member-c8"]) {
+        await setDoc(doc(adminDb, `enrollments/${uid}__${courseSlug}`), {
+          id: `${uid}__${courseSlug}`,
+          userId: uid,
+          courseId: courseSlug,
+          courseSlug,
+          courseTitle: "C8 Course",
+          courseCategory: "Leadership",
+          courseImage: "/brand/logo-mark.png",
+          status: "active",
+          source: "admin",
+          progressPercent: 0,
+          lastLessonId: null,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        });
+      }
+      await setDoc(doc(adminDb, `communityPosts/${postId}`), {
+        courseSlug,
+        authorId: "author-c8",
+        authorName: "Author C8",
+        authorRole: "student",
+        category: "discussion",
+        body: "A post that a teacher may decide to pin.",
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      });
+    });
+  }
+
+  it("lets the course owner pin a post (pinned + updatedAt only)", async () => {
+    await seedC8();
+    const db = testEnv.authenticatedContext(teacherUid, verifiedAuth).firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, `communityPosts/${postId}`), {
+        pinned: true,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("blocks a non-owner enrolled member from pinning", async () => {
+    await seedC8();
+    const db = testEnv.authenticatedContext("member-c8", verifiedAuth).firestore();
+    await assertFails(
+      updateDoc(doc(db, `communityPosts/${postId}`), {
+        pinned: true,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("blocks the author from self-pinning their own post", async () => {
+    await seedC8();
+    const db = testEnv.authenticatedContext("author-c8", verifiedAuth).firestore();
+    await assertFails(
+      updateDoc(doc(db, `communityPosts/${postId}`), {
+        pinned: true,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("still lets the author edit their own post body (no pin change)", async () => {
+    await seedC8();
+    const db = testEnv.authenticatedContext("author-c8", verifiedAuth).firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, `communityPosts/${postId}`), {
+        body: "An edited body that is still long enough.",
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("blocks the owner from editing content while pinning (hasOnly clamp)", async () => {
+    await seedC8();
+    const db = testEnv.authenticatedContext(teacherUid, verifiedAuth).firestore();
+    await assertFails(
+      updateDoc(doc(db, `communityPosts/${postId}`), {
+        pinned: true,
+        body: "Owner sneaking a content edit while pinning.",
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("blocks creating a pre-pinned post", async () => {
+    await seedC8();
+    const db = testEnv.authenticatedContext("author-c8", verifiedAuth).firestore();
+    await assertFails(
+      setDoc(doc(db, "communityPosts/new-pinned-c8"), {
+        courseSlug,
+        authorId: "author-c8",
+        authorName: "Author C8",
+        authorRole: "student",
+        category: "announcement",
+        body: "Trying to create a post already pinned.",
+        pinned: true,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  const commentDoc = (authorUid: string, parentId: unknown) => ({
+    postId,
+    courseSlug,
+    authorId: authorUid,
+    authorName: "Commenter",
+    authorRole: "student",
+    body: "A reply that is long enough to pass.",
+    parentId,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  });
+
+  it("lets an enrolled member post a top-level comment (parentId null)", async () => {
+    await seedC8();
+    const db = testEnv.authenticatedContext("member-c8", verifiedAuth).firestore();
+    await assertSucceeds(
+      setDoc(
+        doc(db, `communityPosts/${postId}/comments/c-root`),
+        commentDoc("member-c8", null),
+      ),
+    );
+  });
+
+  it("lets an enrolled member post a nested reply (parentId string)", async () => {
+    await seedC8();
+    const db = testEnv.authenticatedContext("member-c8", verifiedAuth).firestore();
+    await assertSucceeds(
+      setDoc(
+        doc(db, `communityPosts/${postId}/comments/c-reply`),
+        commentDoc("member-c8", "c-root"),
+      ),
+    );
+  });
+
+  it("blocks a comment whose parentId is the wrong type", async () => {
+    await seedC8();
+    const db = testEnv.authenticatedContext("member-c8", verifiedAuth).firestore();
+    await assertFails(
+      setDoc(
+        doc(db, `communityPosts/${postId}/comments/c-bad`),
+        commentDoc("member-c8", 123),
+      ),
+    );
+  });
+});
+
+describe("Firestore protected course content access (enrollment-status gate)", () => {
+  // Pins the money-critical access gate: only an enrollment with status in
+  // ['active','completed'] may read a course's protected assets / lesson
+  // comments (firestore.rules:807-811, 1540-1567). Without these tests, a
+  // future rules edit that drops hasEnrollmentForCourseSlug or admits
+  // 'refunded'/'revoked' would let a refunded buyer keep accessing paid
+  // content with zero test failures.
+  const courseId = "course-protected";
+  const teacherId = "teacher-protected";
+
+  async function seedProtectedCourseContent() {
+    await seedTeacher(teacherId);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const adminDb = context.firestore();
+      await setDoc(
+        doc(adminDb, `courses/${courseId}`),
+        createCourse(teacherId, "published"),
+      );
+      await setDoc(doc(adminDb, `courses/${courseId}/assets/asset-1`), {
+        id: "asset-1",
+        courseId,
+        ownerId: teacherId,
+        kind: "lesson_video",
+        fileName: "lesson.mp4",
+        contentType: "video/mp4",
+        size: 52_428_800,
+        storagePath: `courses/${courseId}/assets/${teacherId}/asset-1/lesson.mp4`,
+        downloadUrl: null,
+        isPreview: false,
+        lessonId: "lesson-1",
+        moduleId: "module-1",
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      });
+      await setDoc(
+        doc(adminDb, `courses/${courseId}/lessonComments/comment-1`),
+        {
+          courseId,
+          lessonId: "lesson-1",
+          authorId: teacherId,
+          authorName: "Teacher",
+          body: "Seeded lesson comment for read-gate tests.",
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        },
+      );
+    });
+  }
+
+  async function seedEnrollment(uid: string, status: string) {
+    await seedUser(uid, ["student"]);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), `enrollments/${uid}__${courseId}`),
+        {
+          id: `${uid}__${courseId}`,
+          userId: uid,
+          courseId,
+          courseSlug: courseId,
+          courseTitle: "Protected Course",
+          courseCategory: "Leadership",
+          courseImage: "/brand/logo-mark.png",
+          status,
+          source: "payment",
+          progressPercent: 0,
+          lastLessonId: null,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        },
+      );
+    });
+  }
+
+  it("allows an active-status enrollee to read protected assets", async () => {
+    await seedProtectedCourseContent();
+    await seedEnrollment("student-active", "active");
+    const db = testEnv
+      .authenticatedContext("student-active", verifiedAuth)
+      .firestore();
+    await assertSucceeds(getDoc(doc(db, `courses/${courseId}/assets/asset-1`)));
+  });
+
+  it("allows a completed-status enrollee to read protected assets", async () => {
+    await seedProtectedCourseContent();
+    await seedEnrollment("student-completed", "completed");
+    const db = testEnv
+      .authenticatedContext("student-completed", verifiedAuth)
+      .firestore();
+    await assertSucceeds(getDoc(doc(db, `courses/${courseId}/assets/asset-1`)));
+  });
+
+  it("denies a refunded-status user from reading protected assets", async () => {
+    await seedProtectedCourseContent();
+    await seedEnrollment("student-refunded", "refunded");
+    const db = testEnv
+      .authenticatedContext("student-refunded", verifiedAuth)
+      .firestore();
+    await assertFails(getDoc(doc(db, `courses/${courseId}/assets/asset-1`)));
+  });
+
+  it("denies a revoked-status user from reading protected assets", async () => {
+    await seedProtectedCourseContent();
+    await seedEnrollment("student-revoked", "revoked");
+    const db = testEnv
+      .authenticatedContext("student-revoked", verifiedAuth)
+      .firestore();
+    await assertFails(getDoc(doc(db, `courses/${courseId}/assets/asset-1`)));
+  });
+
+  it("denies a user with no enrollment from reading protected assets", async () => {
+    await seedProtectedCourseContent();
+    await seedUser("student-none", ["student"]);
+    const db = testEnv
+      .authenticatedContext("student-none", verifiedAuth)
+      .firestore();
+    await assertFails(getDoc(doc(db, `courses/${courseId}/assets/asset-1`)));
+  });
+
+  it("denies a refunded-status user from reading lesson comments", async () => {
+    await seedProtectedCourseContent();
+    await seedEnrollment("student-refunded", "refunded");
+    const db = testEnv
+      .authenticatedContext("student-refunded", verifiedAuth)
+      .firestore();
+    await assertFails(
+      getDoc(doc(db, `courses/${courseId}/lessonComments/comment-1`)),
+    );
+  });
+
+  it("denies a user with no enrollment from reading lesson comments", async () => {
+    await seedProtectedCourseContent();
+    await seedUser("student-none", ["student"]);
+    const db = testEnv
+      .authenticatedContext("student-none", verifiedAuth)
+      .firestore();
+    await assertFails(
+      getDoc(doc(db, `courses/${courseId}/lessonComments/comment-1`)),
+    );
+  });
+
+  it("allows an active-status enrollee to create a lesson comment", async () => {
+    await seedProtectedCourseContent();
+    await seedEnrollment("student-active", "active");
+    const db = testEnv
+      .authenticatedContext("student-active", verifiedAuth)
+      .firestore();
+    await assertSucceeds(
+      setDoc(doc(db, `courses/${courseId}/lessonComments/comment-active`), {
+        courseId,
+        lessonId: "lesson-1",
+        authorId: "student-active",
+        authorName: "Active Student",
+        body: "A genuine comment from an enrolled student.",
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("denies a refunded-status user from creating a lesson comment", async () => {
+    await seedProtectedCourseContent();
+    await seedEnrollment("student-refunded", "refunded");
+    const db = testEnv
+      .authenticatedContext("student-refunded", verifiedAuth)
+      .firestore();
+    await assertFails(
+      setDoc(doc(db, `courses/${courseId}/lessonComments/comment-refunded`), {
+        courseId,
+        lessonId: "lesson-1",
+        authorId: "student-refunded",
+        authorName: "Refunded Student",
+        body: "A refunded student must not be able to comment.",
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+});

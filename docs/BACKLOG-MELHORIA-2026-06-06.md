@@ -418,6 +418,56 @@ até concluir tudo**, escolhendo o opcional mais recomendado.
 - **Arquivos:** `payment-rules.ts` (+`shouldReleaseCheckoutLock`); `index.ts` (`createCheckoutSession` lock transacional + `expires_at`; `markOrderStatus` transacional + guarda de posse; `handleCheckoutCompleted` release guardado; cron via `markOrderStatus`); `payment-rules.test.ts` (+3 testes de posse, incl. o path exato "evento de A não derruba lock de B").
 - **Verificação:** `npm --prefix functions run build` (tsc) ✅ · `vitest run` **106/106** ✅ · `eslint .` ✅ · review adversarial 3-lentes (`fix-first`) → fixes aplicados → re-review (`SAFE-TO-DEPLOY`).
 
+---
+
+## 🔴 Backend — hardening do fluxo de dinheiro v2 (2026-06-07 → 06-08)
+
+> **Contexto.** Depois de B1/B2/B3, um **incidente LIVE** (onboarding Stripe do professor retornando **500 opaco**) expôs um footgun de credencial e disparou uma auditoria adversarial focada no rail de **payout/refund de assinatura** (Stripe Connect, API **Basil `2026-02-25.clover`**, SDK `stripe ^20.4.1`). Resultado: 1 bug de credencial (SEC1) + 4 gaps de fluxo de dinheiro (G1–G4). Cada fix foi verificado por **review adversarial multi-lente** com evidência `file:linha` de leitura direta (No-Invention) — incluindo **defeitos que o próprio review pegou DENTRO do fix** (G2 sofreu 3 rounds).
+> **Ground truth desta sessão:** `functions tsc` exit 0 · `vitest run` **164/164** (de 92) · `payment-rules.test.ts` **41/41** (de 25) · `test:rules` (emulador) **60/60** · `eslint` limpo · deploy **`npm run deploy:app`** → ~40 functions + `stripeWebhook` *Successful update*, hosting *release complete*.
+> **Descoberta-chave do Basil (verificada nos type defs instalados `functions/node_modules/stripe/types/`):** o campo top-level `invoice.payment_intent` **foi REMOVIDO**; o PI agora vive em `invoice.payments.data[].payment.payment_intent` (`Invoices.d.ts:343` — `payments?:` é **opcional** e um sub-recurso expansível **não serializado** no payload do webhook). Nem `Charge.invoice` nem `PaymentIntent.invoice` existem no Basil → num evento `charge.refunded` o **PaymentIntent é a única chave de join** até o ledger. Isso é a raiz de G2.
+
+| # | Item | Arquivo:linha ✓ | Sev | Status |
+|---|------|-----------------|-----|--------|
+| SEC1 | **Secret com `\n`/espaço → 500 opaco** — chave Stripe com newline final injeta caractere inválido no header `Authorization` (`ERR_INVALID_CHAR`), que chega ao cliente como 500 INTERNAL sem causa. Quebrou o onboarding LIVE do professor (2026-06-07). | `payment-rules.ts:89` + `index.ts:651` | **alta** | ✅ corrigido |
+| G1 | **Refund parcial ANTES do release estranha o payout** — um refund parcial pré-release não reduzia o transfer planejado nem reabria o status, podendo liberar net cheio sobre cobrança já parcialmente reembolsada. | `payment-rules.ts:112,182,278` + `index.ts:178-216` | **alta** | ✅ corrigido |
+| G2 | **Refund de assinatura via dashboard NUNCA faz clawback** — ledger de assinatura gravava `paymentId = invoice.payment_intent` (`undefined` no Basil) → query do clawback (`paymentId == charge.payment_intent`) nunca casava → plataforma reembolsa o aluno mas **nunca recupera o payout do professor**. | `payment-rules.ts:232` + `index.ts:4094-4188,4405` | **crítica** | ✅ corrigido |
+| G3 | **`async_payment_*` ausente + re-arm de ledger terminal** — métodos de pagamento atrasado (débito/voucher) fulfilam só no `async_payment_succeeded` (faltava handler → aluno paga e não recebe o curso); e uma 2ª conclusão do mesmo pedido reabria o ledger terminal com `releaseAt` fresco. | `index.ts:3628,3646,3834` | **alta** | ✅ corrigido |
+| G4 | **Gate de acesso de não-pagante (regressão)** — testes de regra travando que `status ∈ {refunded, …}` não acessa conteúdo protegido (sem mudança de regra; trava de comportamento). | `tests/firestore-rules.ts` | **média** | ✅ testes |
+
+### SEC1 — registro técnico (secret-newline footgun, 2026-06-07)
+
+- **Bug (incidente LIVE).** A secret do Stripe configurada com um `\n` final (paste de painel/`.env` com quebra) era passada crua ao construtor do SDK → o header `Authorization: Bearer sk_live_…\n` dispara `TypeError [ERR_INVALID_CHAR]` no Node, que **só chega ao caller como um 500 INTERNAL opaco** (`payment-rules.ts:78-80`). Sintoma: o professor clicava "conectar Stripe" e recebia erro genérico, sem causa rastreável.
+- **Fix (puro, testado).** `sanitizeStripeSecret(raw)` (`payment-rules.ts:89`) faz `trim()` e valida que a chave é **ASCII imprimível sem espaço interior** (`/[^\x21-\x7e]/`): retorna `{ok,key}` ou um motivo (`"missing"` | `"malformed"`) que o caller mapeia para erro **legível** em vez de 500. Cableado no boot do cliente Stripe (`index.ts:651`). Um `\n` final é corrigido pelo trim; corrupção interior (espaço no meio) é rejeitada como `malformed` com instrução de re-setar a chave numa linha limpa.
+- **Verificação:** vitest cobrindo missing / trailing-newline / interior-space / chave válida · `tsc` ✅ · `eslint` ✅.
+
+### G1 — registro técnico (refund parcial antes do release, 2026-06-07)
+
+- **Bug.** O rail de release (`dailyReleaseTransfers` → `claimLedgerForRelease` → `releaseLedgerTransfer`) liberava `netAmountMinor` cheio. Se um **refund parcial** chegasse **antes** do release (dentro da janela de 30d), o transfer ainda saía pelo net integral, e o status do ledger não refletia o reembolso parcial — descasamento entre o que foi reembolsado ao aluno e o que foi pago ao professor.
+- **Fix (matemática pura, set-once).** (1) `plannedReleaseTransferAmountMinor({net,gross,refunded})` (`payment-rules.ts:182`) = `net` se `refunded≤0`, senão `floor(net*(gross−refunded)/gross)`. (2) `releasedRefundReversalAmountMinor(...)` (`payment-rules.ts:112`) ganhou ramo **net-based** (só quando `net` dado E `transferred < net`): reverte com base no que realmente saiu, não no net cheio. (3) `ledgerRefundStatus(isFull,current)` (`payment-rules.ts:278`) — **anti-stranding**: um refund parcial sobre um ledger ainda `in_release` **preserva** `in_release` (deixa o cron liberar o saldo reduzido) em vez de prendê-lo em `partially_refunded`. (4) O valor de transfer é **computado uma vez** no claim e gravado (`plannedTransferAmountMinor`/`transferAmountMinor`, `index.ts:178-216`) → retries do mesmo release movem valor idêntico sob idempotency key estável.
+- **Design-around (race) pego na leitura adversarial ANTES do edit:** a query do cron (`status == "in_release"`, sem filtro de kind) ficou **inalterada** — refunds parciais pré-release continuam `in_release` por um discriminador de status fresco, evitando duplo-transfer.
+- **Verificação:** +6 testes em `payment-rules.test.ts` (reversal net-based, plannedTransfer, ledgerRefundStatus) · `tsc` ✅ · `vitest` ✅.
+
+### G2 — registro técnico (clawback de refund de assinatura + 3 rounds adversariais, 2026-06-07 → 06-08)
+
+- **Bug (crítico).** Ledger de assinatura (`handleCourseSubscriptionInvoicePaid`) gravava `paymentId` a partir de `invoice.payment_intent` — campo **removido no Basil** → `undefined` → fallback para `invoice.id`. O clawback (`handleSubscriptionChargeRefunded`, `index.ts:4405`) busca `payoutLedger where paymentId == charge.payment_intent`; com a chave degradada (`in_…`) a query **nunca casa** → num refund de assinatura pelo dashboard, a plataforma estorna o aluno mas **nunca recupera o transfer do professor** (vazamento de dinheiro permanente).
+- **Round 1 (review adversarial → CONFIRMADO crítico, 2 lentes mesma raiz).** Fix: `resolveInvoicePaymentIntentId(invoice)` (`payment-rules.ts:232`) percorre `invoice.payments?.data[].payment.payment_intent` (Basil) com fallback ao legacy top-level; em `handleCourseSubscriptionInvoicePaid` resolve inline → **expand-retrieve** → fallback. Novo handler `handleSubscriptionChargeRefunded` (`index.ts:4405`) faz o clawback do transfer liberado (`shouldReverseReleasedPayout` + `createReleasedRefundTransferReversal`, idempotency key `transfer_reversal_${ledger}_${charge}_${amount_refunded}`), grava SÓ o ledger (re-read transacional + `ledgerRefundStatus`), **sem** revogar matrícula. (1 finding refutado: ordem charge-vs-invoice era pré-existente e inalterada.)
+- **Round 2 (review do PRÓPRIO fix → CONFIRMADO high, defeito DENTRO do fix).** Como `invoice.payments` **não** vem inline no webhook, o inline resolve retorna `null` em TODO invoice.paid normal → o `invoices.retrieve(...,{expand:["payments"]})` é o caminho **primário de fato**. Estava num `try/catch` que **engolia** o erro → caía em `paymentId = invoice.id` (degradado) → handler retorna 200 → marker de idempotência promovido a `done` → Stripe **nunca redelivra** → vazamento permanente reintroduzido por falha transitória. Fix: na falha do retrieve, **lançar** quando um ledger com chave de join será escrito (`grossAmountMinor > 0 && connectedAccountId`, `index.ts:4112`) → webhook 500 → marker fica `processing` → Stripe redelivra → self-heal. Espelha o irmão seguro `stripe.subscriptions.retrieve` (não-wrapped) no mesmo handler. Sem ledger a escrever ($0/sem conta) → loga e segue (não bloqueia enrollment).
+- **Round 3 (review do fix corrigido → GO, 2 de 3 lentes `sound`).** A 3ª lente apontou um HIGH residual: retrieve **sucede** mas sem PI + ledger a escrever → grava chave degradada. **Disposição:** sob Basil, "retrieve ok + sem PI" ⇒ fatura sem charge reembolsável ⇒ nenhum `charge.refunded` com `payment_intent` jamais dispara ⇒ a linha degradada (`in_…`) é **inerte por namespace** contra a query do clawback (que só casa `pi_…`). **Não** é vazamento ativo. **Não** apliquei as sugestões literais do verificador (`&& resolvedPaymentIntentId` no gate, ou throw) porque **ambas regridem** o caso legítimo de credit-balance (gate **subpaga** o professor; throw **poison-pilla** o redelivery E bloqueia o enrollment do aluno pagante). **Mitigação aplicada (upside puro, zero regressão):** flag auditável `paymentIdIsPaymentIntent: Boolean(resolvedPaymentIntentId)` no ledger (`index.ts:178-216` tipo + write `~:4188`) → o invariante "sem PI ⇒ sem charge reembolsável" deixa de viver só num comentário e fica **consultável em dados** (`payoutLedger where paymentIdIsPaymentIntent == false`).
+- **Cadeia de idempotência verificada em código real, ponta a ponta:** throw → catch do webhook (`index.ts:3702`) → `response.status(500)` → `markStripeEventDone` (`:3698`) pulado → marker `processing`; no redelivery `claimStripeEvent` → `decideStripeEventClaim` (`payment-rules.ts:436`) retorna `process` (não `duplicate`) para `processing` → reprocessa.
+- **Verificação:** +5 testes `resolveInvoicePaymentIntentId` + testes de `shouldReverseReleasedPayout`/`ledgerRefundStatus` · `tsc` ✅ · `vitest` **164/164** · `eslint` ✅ · 3 workflows adversariais (round1 fix-first, round2 fix-verify, round3 3-lentes → **GO**).
+
+### G3 — registro técnico (`async_payment_*` + re-arm guard, 2026-06-07)
+
+- **Bug A (fulfilment perdido).** Métodos de pagamento atrasado (débito bancário, voucher) completam a Checkout Session como `unpaid` primeiro — `handleCheckoutCompleted` os difere — e só fulfilam quando os fundos limpam via `checkout.session.async_payment_succeeded`. Sem esse handler, o aluno paga e **nunca recebe o curso**. Fix: handlers `async_payment_succeeded` (`index.ts:3628`, modo subscription → log; senão `handleCheckoutCompleted`) e `async_payment_failed` (`:3646` → `markOrderStatus(...,"failed")`, libera o lock de checkout).
+- **Bug B (re-arm de ledger terminal).** Uma 2ª conclusão do mesmo pedido (redelivery, ou `async_payment_succeeded` após refund) re-rodava o fulfilment → flipava o pedido de volta a `paid`, resetava o ledger a `in_release` com `releaseAt` **fresco** → re-agendava payout de dinheiro talvez já reembolsado. Fix: **re-arm guard** (`index.ts:3834`) — como o ledger é criado exatamente uma vez por pedido nesta transação atômica, `if (ledgerSnapshot.exists) return` (idempotente).
+- **Verificação:** `tsc` ✅ · `vitest` ✅ · `eslint` ✅.
+
+### G4 — registro técnico (gate de acesso de não-pagante, 2026-06-07)
+
+- **Objetivo.** Travar por **teste de regra** (não por mudança de regra) que um usuário com enrollment não-pagante (`status` refunded/cancelled/pending) **não** lê conteúdo protegido nem cria comentário de aula — fechando a porta a uma regressão silenciosa futura nas Firestore rules.
+- **Fix:** testes de regressão em `tests/firestore-rules.ts` (gate por status de enrollment) — denials assertados rodam no emulador. Sem alteração em `firestore.rules`/`storage.rules` (logo `deploy:rules` **não** necessário; `deploy:app` é suficiente).
+- **Verificação:** `test:rules` (emulador) **60/60** ✅.
+
 ### C2 — registro técnico da correção (2026-06-07)
 
 - **Objetivo.** Skool ostenta "Google-indexed" como vantagem. Nós tínhamos **0 JSON-LD** (`grep schema.org/@type`=0) e as páginas `/courses/[slug]` **fora do sitemap**. C2 fecha os dois: dados estruturados `schema.org/Course` para rich results + as 6 rotas de curso no sitemap, tudo build-time/SSR (só catálogo estático; cursos de criador resolvem client-side, fora de escopo sem Admin SDK).
@@ -435,3 +485,119 @@ até concluir tudo**, escolhendo o opcional mais recomendado.
 - **Reachability do dead-end de quiz (avaliada, latente):** `getPublicFeatureFlagOverrides()` (`feature-flags/index.ts:187-200`) só faz override de `payments.checkout` via `NEXT_PUBLIC_PAYMENTS_CHECKOUT_ENABLED`. **Não há override** para `teacherStudio.courseBuilder` (`defaultEnabled:false`) → sempre off em prod → **nenhum criador alcança o builder** → nenhum aluno bate no placeholder de quiz hoje. `/promise` era a **única** superfície pública live anunciando quizzes (grep confirmou: nenhuma outra página de marketing menciona quiz).
 - **⚠️ Gap conhecido para o futuro (founder):** quando `teacherStudio.courseBuilder` for ligado, a opção "quiz" do builder (`lesson-content-modal.tsx:67`, `course-builder-studio.tsx:252`) precisa ser **terminada (assessment tooling)** ou **escondida** — senão um criador autora um quiz que vira placeholder para o aluno. Não é defeito live hoje; é pré-condição do lançamento do teacher studio.
 - **Verificação:** tsc ✅ · `eslint src/app/promise/page.tsx` ✅ · 5/5 testes de página (`marketing` + `platform-pages`) ✅ · deploy `npm run deploy:app` ✅ · **LIVE**: `/promise` sem nenhum substring "quiz".
+
+---
+
+## 🟪 Community finish (C7 + C8) — registros de BUILD (2026-06-08)
+
+### C7 — registro técnico do BUILD (2026-06-08) — diretório de membros (roster real, privacy-safe)
+
+- **Premissa verificada (No-Invention).** A aba "members" do feed era um **stub estático** `CommunityInfoPanel` (`course-community-feed.tsx:291-300` pré-edição) — 3 bullets de texto ("A richer member directory comes after…"). Zero dado real. Substituído por um roster **derivado de dados que o pai já assina** (zero fetch novo, zero regra nova, zero exposição de privacidade nova).
+- **Decisão de escopo honesta (a restrição que define o desenho).** Não dá para listar a **matrícula** de um curso no cliente: leituras de `enrollments` são *own-only* por design (privacidade). E `memberStats` é uma coleção **global** (não tem recorte por curso). Logo o roster fiel ao que existe = **contribuidores do espaço** (autores distintos dos posts carregados) **× standing global** (`memberStats`). Rotulado com honestidade: "People active in this space, ranked by their Skillset level" — **não** finge ser a matrícula inteira, **não** inventa status "online".
+- **Implementação (`CommunityMembersPanel`, aditivo).** Dedup de `postsState.posts` por `authorId` (Map, primeiro-post-vence p/ nome/role) → join com o `Map<string, MemberStats>` já assinado no pai (`subscribeToMemberStatsMap`, `course-community-feed.tsx:100`) → ordena por `points` desc, depois nome → render com `LevelBadge`, pontos, likes recebidos, highlight "You", rank, e estado-vazio honesto. `useMemo` sobre `[posts, memberStats]`. Fonte de dados idêntica à do leaderboard (que **já** expõe `memberStats` global a qualquer signed-in) → **sem nova superfície de exposição**.
+- **Dark-safe por construção:** o painel usa `bg-[var(--color-surface)]` (= `#fff` no claro, `#0f1626` no dark — `globals.css:5/56`) em vez de `bg-white` hardcoded → não adiciona dívida de dark mode.
+- **Verificação:** tsc FE (`tsc --noEmit -p tsconfig.json`) EXIT 0 · `eslint course-community-feed.tsx` EXIT 0 · **164/164** `vitest run` ✅. (Roster é auth+matrícula-gated → E2E LIVE N/A sem credenciais; teto = build verde + paridade de fonte com o leaderboard já-live.)
+
+### C8 — registro técnico do BUILD (2026-06-08) — posts fixados (teacher-curated) + respostas aninhadas
+
+- **Premissa verificada (No-Invention).** Posts (`communityPosts/{id}`) não tinham `pinned`; comentários (`…/comments/{id}`) eram **planos** (sem `parentId`). Confirmado em `domain/community-post.ts` e nas regras (`firestore.rules` `hasOnlyAllowed…Keys`). `courseId === courseSlug` provado: `firestore.rules:1508/1543` passam `courseId` para `hasEnrollmentForCourseSlug` (que monta a chave a partir de um slug) → `courses/{courseSlug}` é doc válido e `courseData(courseSlug).ownerId` identifica o professor **sem inventar relação de schema**.
+- **Regras — caminho teacher-pin (escrito apertado, security-critical).** Novo `teacherCanPinCommunityPost()`: `ownsCourse(resource.data.courseSlug)` (lê o slug **armazenado** → professor nunca fixa post de curso que não é dele) `&&` `request.resource.data.get('pinned', false) is bool` `&&` `diff().affectedKeys().hasOnly(['pinned','updatedAt'])` (clamp → professor **não** edita corpo/autor/categoria enquanto fixa). Ordenado **antes** do caminho-autor no `allow update` (curto-circuito; `validCommunityPostShape` do caminho-autor exigiria `authorId==auth.uid`, que barraria o professor).
+- **Regras — invariantes anti-abuso.** (1) **Create** ganha `request.resource.data.get('pinned', false) == false` → ninguém cria post pré-fixado. (2) **Caminho-autor** ganha `request.resource.data.get('pinned', false) == resource.data.get('pinned', false)` → autor edita o próprio corpo mas **não** auto-fixa nem desfixa (só professor-dono/admin mexem em `pinned`). (3) `validCommunityPostShape` aceita `pinned` **opcional, bool quando presente**. (4) Comentário: `parentId` opcional, `null | string` — 1 nível de aninhamento é display-concern (UI), regra só faz type-check.
+- **Data layer.** `setCommunityPostPinned(postId, pinned)` escreve **só** `{pinned, updatedAt}` (casa o clamp `hasOnly`). `compareFeedPosts` ordena **pinned-first, depois createdAt desc** no cliente (mantém a query num único filtro `courseSlug`, sem índice composto, e correto p/ posts legados sem o campo). `createCommunityComment` aceita `parentId?: string|null` (default `null`, sempre enviado p/ satisfazer a shape).
+- **UI (`course-community-feed.tsx`).** **Render fixado é universal** (todo viewer vê o badge "Pinned" + float-to-top — o valor 80%). O **controle** pin/unpin é gated por uma nova prop `canModerate` (default `false`); só o **mount do criador** (`creator-course-community.tsx`) a passa como `course.ownerId === user.uid` — a regra `ownsCourse` é a autoridade real, a prop só evita afetar afford. **Respostas aninhadas:** `CommentNode` (estado de form de reply próprio por thread) + `CommentBody` (linha de autor/badge/corpo/report reutilizada por raiz e reply); `useMemo` threada a lista plana em 1 nível resolvendo cada reply ao **ancestral-raiz** (sobe a cadeia `parentId` com **cycle-guard de 16**) → reply órfã/profunda renderiza sob uma raiz real em vez de sumir.
+- **Cobertura de testes (10 novos, emulador).** owner-pode-fixar (professor **não** matriculado, só dono) · não-dono-matriculado-barrado · autor-auto-fixar-barrado · autor-edita-corpo-ainda-ok · clamp-`hasOnly`-barra-edição-de-corpo-ao-fixar · create-pré-fixado-barrado · comentário-raiz(`parentId null`)-ok · reply-aninhado(`parentId string`)-ok · `parentId`-tipo-errado-barrado.
+- **Verificação:** tsc FE EXIT 0 · `eslint` (4 arquivos) EXIT 0 · **69/69** `test:rules` (firestore 57 + storage 12; os 10 C8 verdes, `PERMISSION_DENIED` no stderr = denials esperados dos `assertFails`) · **164/164** `vitest run`.
+- **⚠️ DEFERIDO → decisão do fundador (ponto de entrada de moderação do professor).** O render fixado serve todos hoje; mas o **botão** pin/unpin só aparece onde o `ownerId` é conhecido no cliente — hoje o `creator-course-community.tsx`, que **gateia por matrícula** (`subscribeToEnrollment(user.uid, courseId)`). Se professores **não** são auto-matriculados no próprio curso, esse mount pode não ser o lugar onde o professor sempre alcança o botão. **Decisão necessária:** (a) auto-matricular o professor-dono no espaço do próprio curso (mais simples; o botão "só funciona"), **ou** (b) uma superfície dedicada de moderação do professor que carregue `ownerId` sem exigir matrícula. A regra (`ownsCourse`) já está correta e testada nos dois casos; é puramente *onde a UI expõe o controle*. Admin já pode fixar via `isAdmin` (tooling) independente disso.
+
+---
+
+## 🧭 Backlog competitivo restante — resoluções decision-ready (2026-06-08)
+
+> **Disciplina (padrão-ouro = No-Invention + money-path-safety).** C7 e C8 eram os únicos blocos community-finish **seguros e de decisão-clara** → construídos e deployados. Os demais (C3/C4/C6/C9/C10/C11/C12) tocam **fluxo de dinheiro** (Stripe `line_items`/transfers/`paymentIntents`) **ou** carregam uma **decisão de produto/financeira não tomada**. Construí-los às cegas inventaria política de negócio que só o fundador decide — exatamente o que o Art. IV proíbe. Abaixo cada item vira "**uma decisão do fundador de distância de buildável**": a decisão pendente, a âncora de código onde engata, a recomendação e o risco. **Nada aqui foi shipado** — são prontos-para-construir, não construídos.
+
+### C3 — order bump no checkout (decision-ready) — score 12
+
+- **Decisão pendente (já é pergunta aberta #147 do backlog):** bump **único** (estilo Cakto) ou **múltiplos** bumps? E **qual** produto faz bump de qual (relação produto↔produto que hoje não existe).
+- **Âncora de código:** `index.ts:1416` (`line_items` é item **único**); flag/entrada via `request.data` em `createCheckoutSession` (`index.ts:1300`). Engate é money-path (Stripe Checkout) → exige o gate de segurança LIVE da própria FASE.
+- **Recomendação:** começar com **bump único** (1 produto adicional, 1-clique) — menor superfície, +25% de ticket documentado (Cakto). Modelar a relação como um campo opcional no curso (`bumpCourseId` + `bumpPriceMinor`) com **split idêntico** ao já auditado.
+- **Risco:** money-path. Sem a decisão do split do bump (mesma taxa? taxa diferente?) e da relação de produto, qualquer build inventa regra financeira. **Não construir sem a decisão.**
+
+### C4 — gating por nível (decision-ready) — score 12, "o dente da retenção"
+
+- **Decisão pendente (a essência):** **o quê** gatear e em **qual nível**? Opções não-equivalentes: (a) gatear **criar post** (risco: barra aluno novo → mata onboarding); (b) gatear **DM/chat** (mata DM-spam — uso documentado do Skool); (c) gatear **seções premium de curso** ("Members of a certain level", vídeo t=01:17) como **recompensa**.
+- **Âncora de código:** o motor (C1) já existe — `memberStats/{uid}.level` (`src/domain/gamification.ts`), lido no feed (`course-community-feed.tsx:100`). Um gate engataria no `allow create` de `communityPosts`/`comments` (regra) **e**/ou no render de lição (`enrolled-course-workspace.tsx`). Drip já tem precedente de unlock (`domain/drip-policy.ts`, `getLessonUnlockState`).
+- **Recomendação (menor-regret):** **NÃO** gatear participação básica (postar/comentar) — isso fere engajamento de aluno novo. Gatear como **recompensa**: desbloquear um recurso social/cosmético ou uma trilha bônus ao subir de nível. Threshold sugerido conservador (ex.: nível 2-3 p/ um primeiro unlock), espelhando o ladder Skool.
+- **Risco:** **decisão de produto pura.** Gatear o alvo errado regride UX silenciosamente. A escolha do alvo+nível é do fundador; o build em si (gate na regra/no render) é mecânico depois disso.
+
+### C6 — programa de afiliados (decision-ready) — score 10
+
+- **Decisão pendente:** **% de comissão** (Skool=40% recorrente), **recorrente vs one-shot**, **janela de atribuição**, e tratamento fiscal do 2º leg de payout.
+- **Âncora de código:** `grep affiliate`=**0** (não existe). MAS ledger+transfer Stripe são reusáveis (`index.ts:2039-2280`) — falta **atribuição** (quem indicou) + **2º leg de payout** (pagar o afiliado).
+- **Recomendação:** modelar `affiliateId` no checkout (param de atribuição) + um 2º `transfer` no fluxo de release já auditado, gated por flag. Reusar o ledger existente (não inventar contabilidade nova).
+- **Risco:** **money-path duplo** (2º leg de transferência = dinheiro real saindo p/ terceiro). Comissão/atribuição são decisão financeira do fundador. **Não construir sem os números.**
+
+### C9 — upsell/downsell pós-compra 1-clique (decision-ready) — score 6
+
+- **Decisão pendente:** quais ofertas sequenciais, e aceitar a **mudança de primitivo de pagamento**.
+- **Âncora de código (bloqueio real):** `paymentIntents.create`=**0 hits**; checkout usa `customer_email` only → **"not a persistent Customer"** (`index.ts:2946`). 1-clique pós-compra exige um **Customer persistente + PaymentIntent** salvo — primitivo que **não existe** hoje. Construção BE maior.
+- **Recomendação:** pré-requisito = migrar checkout p/ criar `Customer` persistente (decisão arquitetural com efeito em todo o fluxo de cobrança). Só depois o upsell 1-clique é viável.
+- **Risco:** money-path + mudança de primitivo. **Registro, não build** — mexe na fundação de cobrança.
+
+### C10 — quizzes/assessment runtime (decision-ready) — score 6
+
+- **Decisão pendente (produto):** modelo de **question/answer/grade** (tipos de questão, correção automática vs manual, peso, retry). Não existe.
+- **Âncora de código:** `quiz` é `LessonType` selecionável no builder, mas o learner renderiza **placeholder** (`enrolled-course-workspace.tsx:722`). Já há nota de pré-condição em T3 (linha 486): quando `teacherStudio.courseBuilder` ligar, a opção quiz precisa ser **terminada ou escondida**.
+- **Recomendação:** definir o modelo mínimo (múltipla-escolha auto-corrigida) **antes** de construir; ligar atrás do mesmo flag do course-builder. Não é money-path → menor risco depois da decisão de modelo.
+- **Risco:** inventar o modelo de avaliação às cegas = product-decision. **Registro até o fundador definir o modelo.**
+
+### C11 — checkout builder drag-drop (decision-ready) — score 3
+
+- **Decisão pendente:** substituir/abandonar **Stripe Checkout hospedado** por um checkout próprio (escassez/prova-social/exit-popup/A-B, múltiplos checkouts por produto).
+- **Âncora de código:** `createCheckoutSession` (`index.ts:1300`) = Stripe Checkout **hospedado fixo**, 1 checkout/curso, zero customização. C11 é uma **re-arquitetura** (checkout próprio = PCI/UX/segurança nova).
+- **Recomendação:** **não** priorizar — score 3, esforço 5. Se buscado, é projeto dedicado com revisão de segurança de pagamento própria.
+- **Risco:** money-path + superfície PCI. **Registro.**
+
+### C12 — multi-preço / multi-oferta por produto (decision-ready) — score 6
+
+- **Decisão pendente:** estrutura de **tabela de ofertas** (até 10 preços/ofertas por produto, estilo Cakto) e como o split/fee se aplica por oferta.
+- **Âncora de código:** hoje **1 preço/curso** (`TeacherCourse.priceAmountMinor`); sem tabela de ofertas. Engata em `createCheckoutSession` (`index.ts:1300`) + no schema do curso.
+- **Recomendação:** modelar `offers: Array<{id, priceMinor, label}>` com split derivado do mesmo `platformFeeBps` já auditado; checkout seleciona a oferta por id.
+- **Risco:** money-path (cada oferta = preço cobrado real). **Registro até a estrutura de oferta ser decidida.**
+
+---
+
+## 🌑 Dark mode — polimento estético (registro de BUILD, 2026-06-08)
+
+> **Contexto do pedido:** "aprimorar a versão dark da página que ainda tá estranha". Defeito-raiz mapeado e corrigido na fonte; verificação por **prova de bundle** (não-visual), porque toda superfície tematizada é auth-gated.
+
+### Diagnóstico — por que estava "estranha"
+
+O dark mode aplica via `<html data-theme="dark">` setado pelo `ThemeProvider` (`lib/theme/theme-provider.tsx`), que envolve **apenas** `components/platform/platform-shell.tsx` (linhas 49/127) — superfícies autenticadas. Tokens viram no bloco `[data-theme="dark"]` de `globals.css`. Havia um override global `[data-theme="dark"] .bg-white { background-color: var(--color-surface) !important }` que pega a classe `.bg-white` **exata**, mas **não** alcança seletores compostos (`hover:bg-white`, `focus:bg-white`), opacidade (`bg-white/NN`) nem hex arbitrário (`bg-[#fff]`). Resultado: **flash branco no hover** de linhas/itens e **barras translúcidas brancas** sobre superfície de tema → o "estranho".
+
+### Correções aplicadas (rastreáveis)
+
+| # | Fix | Arquivo(s) | Antes → Depois |
+|---|-----|-----------|----------------|
+| 1 | **Token de hover dedicado** (lift em vez de flash branco) | `src/app/globals.css` | `+ --color-surface-hover: #ffffff` (`:root`) e `+ --color-surface-hover: #1c2841` (`[data-theme="dark"]` = surface-strong, lift suave sobre surface `#0f1626`) |
+| 2 | **10 migrações** `hover:/focus:bg-white` → `hover:/focus:bg-[var(--color-surface-hover)]` | account-panel.tsx (2×), plans-panel.tsx, community-leaderboard.tsx, course-community-feed.tsx (2×: 207/240), learn-dashboard.tsx, session-card.tsx, listing-search-bar.tsx, teacher-course-studio.tsx | flash branco → lift de tema |
+| 3 | **Barra de matrícula translúcida** | `src/app/courses/[slug]/page.tsx:268` | `bg-white/95` + `bg-white/85` → `bg-[var(--color-surface)]/95` + `/85` |
+| 4 | **Pill do course-builder** | `src/components/teacher/course-builder-studio.tsx:1366` | `bg-white/70` → `bg-[var(--color-surface)]/70` |
+
+### Varreduras de garantia (zero-leak provado na fonte)
+
+- `bg-white/NN` / `bg-[#fff]` / gradiente-white em `src`: só sobrou em `components/site/*` (**marketing — fora do `ThemeProvider`**, não tematizável) e chips frosted sobre `text-white` em contexto escuro (wallet-panel, hero badges, wishlist-heart sobre capa) → **corretos, não são leak**.
+- `bg-(slate|gray|zinc|neutral|stone)-(50|100|200)` e hex claro arbitrário de fundo: **0 ocorrências** em `src`.
+- `text-black` / `text-*-(800|900)` / hex escuro arbitrário de texto (risco dark-on-dark): **0 ocorrências** em `src`.
+- Conclusão: o codebase é disciplinado em tokens CSS-var; a superfície de leak fica fechada exatamente aos casos 1-4 acima.
+
+### Verificação (prova de bundle — visual impossível sem credenciais)
+
+`/account` e demais rotas de plataforma renderizam o gate **"SIGN IN REQUIRED"** *fora* do `ThemeProvider` (curto-circuito antes do shell montar), então o preview local não exibe superfície tematizada sem login (não autentico — política). Prova feita no artefato compilado:
+
+- `npm run build` → **compila limpo** (árvore de rotas completa, zero erro).
+- `.next/static/chunks/*.css` contém **`--color-surface-hover:#fff`** (light) **e `--color-surface-hover:#1c2841`** (dark — valor que só existe no bloco `[data-theme="dark"]`, prova que a rampa dark está íntegra).
+- `var(--color-surface-hover)` referenciado 2× → utilitários `hover:`/`focus:` gerados corretamente pelo Tailwind v4.
+
+### ⚠️ Follow-up DEFERIDO (registro, não build)
+
+- **Stripe embedded `appearance.colorBackground`:** componentes Connect/Elements embarcados têm `appearance` próprio; se `colorBackground` ficar branco fixo, o widget Stripe aparece branco no dark. Exige a Appearance API da Stripe **e** sessão Stripe viva p/ testar (não verificável no preview sem auth). Money-path-adjacent (UI de pagamento) → **não tocar sem poder verificar**; documentado p/ uma rodada com credenciais de teste Stripe.

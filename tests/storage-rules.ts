@@ -157,6 +157,24 @@ describe("Storage course asset rules", () => {
 
     await assertFails(storage.ref(assetPath).getMetadata());
   });
+
+  it("blocks a refunded-status learner from reading protected lesson video assets", async () => {
+    await seedProtectedAsset();
+    const storage = testEnv
+      .authenticatedContext("refunded-student", verifiedAuth)
+      .storage(bucketUrl);
+
+    await assertFails(storage.ref(assetPath).getMetadata());
+  });
+
+  it("blocks a revoked-status learner from reading protected lesson video assets", async () => {
+    await seedProtectedAsset();
+    const storage = testEnv
+      .authenticatedContext("revoked-student", verifiedAuth)
+      .storage(bucketUrl);
+
+    await assertFails(storage.ref(assetPath).getMetadata());
+  });
 });
 
 async function seedProtectedAsset() {
@@ -252,6 +270,40 @@ async function seedCourseAccessData() {
       courseCategory: "Leadership",
       courseImage: "/brand/logo-mark.png",
       status: "active",
+      source: "payment",
+      progressPercent: 0,
+      lastLessonId: null,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    // A refunded enrollment must NOT grant content access — the storage gate
+    // (storage.rules: hasEnrollmentForCourse → status in ['active','completed'])
+    // is what stops a refunded buyer from re-downloading paid lesson videos.
+    await setDoc(doc(adminDb, `enrollments/refunded-student__${courseId}`), {
+      id: `refunded-student__${courseId}`,
+      userId: "refunded-student",
+      courseId,
+      courseSlug: courseId,
+      courseTitle: "Protected Course",
+      courseCategory: "Leadership",
+      courseImage: "/brand/logo-mark.png",
+      status: "refunded",
+      source: "payment",
+      progressPercent: 0,
+      lastLessonId: null,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    // A revoked enrollment (abuse / chargeback) must also be denied.
+    await setDoc(doc(adminDb, `enrollments/revoked-student__${courseId}`), {
+      id: `revoked-student__${courseId}`,
+      userId: "revoked-student",
+      courseId,
+      courseSlug: courseId,
+      courseTitle: "Protected Course",
+      courseCategory: "Leadership",
+      courseImage: "/brand/logo-mark.png",
+      status: "revoked",
       source: "payment",
       progressPercent: 0,
       lastLessonId: null,

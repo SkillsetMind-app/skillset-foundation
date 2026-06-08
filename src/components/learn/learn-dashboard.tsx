@@ -231,7 +231,7 @@ export function LearnDashboard() {
             return (
               <article
                 key={enrollment.id}
-                className="grid gap-4 rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-4 transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[var(--shadow-soft)] md:grid-cols-[220px_1fr]"
+                className="grid gap-4 rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-4 transition hover:-translate-y-0.5 hover:bg-[var(--color-surface-hover)] hover:shadow-[var(--shadow-soft)] md:grid-cols-[220px_1fr]"
               >
                 <div className="relative aspect-[16/10] overflow-hidden rounded-[3px]">
                   <Image
