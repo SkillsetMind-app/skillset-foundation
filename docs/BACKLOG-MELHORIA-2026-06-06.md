@@ -642,3 +642,29 @@ Transfers e refunds leem **snapshots congelados** (`ledger.teacherStripeConnecte
 ### ⚠️ Follow-up DEFERIDO (config, não código)
 
 - **`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`** precisa entrar no env do build deployado (@devops) para reativar o onboarding **embedded**. Sem ela, o fluxo hospedado (já destravado pelo fix #1) segue funcional. Relaciona-se ao follow-up de `appearance.colorBackground` do dark mode acima — ambos dependem de uma rodada com credenciais Stripe vivas.
+
+### 🔬 Revisão adversarial pós-deploy (4 lentes, verificação por refutação)
+
+Depois do deploy, rodei um review adversarial de 4 lentes sobre a **integração** (o que os 16 testes do módulo isolado **não** cobrem). Resultado: **4 achados confirmados, 0 afetando fundos, 0 "fix-now"**. O bug do fundador (callables de onboarding) está corrigido e correto. Os achados e o que fiz:
+
+| # | Sev | Achado | Ação |
+|---|-----|--------|------|
+| 3 | **médio** | `accounts.retrieve(órfã)` retorna **HTTP 403 `StripePermissionError`** (não 400 `account_invalid`) p/ conta cross-platform/revogada — o stripe-node despacha por **status code primeiro**. O predicado estrito exclui `StripePermissionError` no Gate 2 → o **clear-path do refresh nunca disparava** p/ esse sinal (os callables de onboarding seguem se auto-curando, pois `accountLinks/accountSessions.create` devolvem o 400). | **Corrigido** |
+| 1 | info | refresh grava `stripeConnectStatus:"disconnected"`, valor **fora do enum** do cliente (inerte hoje, drift de contrato). | **Corrigido** |
+| 2 | info | retorno do clear-path do refresh **omitia `status`** que o success-path inclui (type-safe; consumidor não lê). | **Corrigido** |
+| 4 | baixo | self-heal **amplifica uma corrida pré-existente** de conta-duplicada p/ o caso órfão (2 chamadas concorrentes → 2 contas Express, a 2ª abandona a 1ª no Stripe). Vazamento de **recurso**, não de fundos; limitado pelo rate-limit + dupla-condição (órfã E concorrência). | **Documentado** |
+
+**Insight central:** **recriar** (cunha conta viva) exige predicado **estrito** — falso-positivo cunha duplicata. **Limpar** (deleta id local stale; não cunha nada, não move dinheiro) tolera predicado **mais largo**. Eu usava o estrito nos dois. A correção respeita essa assimetria.
+
+**Correções (fix #1–#3):**
+
+| Artefato | Arquivo | Mudança |
+|----------|---------|---------|
+| Predicado clear-only (novo) | `functions/src/stripe-connect-self-heal.ts` | `isUnusableConnectedAccountError(error)` — aceita tudo que `isOrphanedAccountError` aceita **+** um **403 `StripePermissionError` com mensagem-gated** (`/not connected to your platform\|does not exist\|No such account\|may have been revoked/i`). Message-gate evita que um glitch de capability **platform-wide** (403 genérico) limpe ids válidos em massa. Estrito permanece nos paths de **recriar**. |
+| Refresh usa o predicado largo | `functions/src/index.ts` (~2582) | `if (isUnusableConnectedAccountError(error))` no catch; retorno agora inclui `status: "disconnected"`. |
+| Contrato server↔client honesto | `src/domain/user-profile.ts:83`, `src/lib/payments/connect.ts:15` | `"disconnected"` adicionado às duas unions de `stripeConnectStatus` / `RefreshStripeAccountResult.status`. |
+| Testes | `functions/src/stripe-connect-self-heal.test.ts` | **+6 testes** (22 no total): delega ao estrito; aceita 403 "does not exist"/"revoked"/"not connected"; **rejeita** 403 de capability genérico (prova do message-gate); rejeita transitório/auth/non-Stripe. |
+
+**Por que #4 fica DOCUMENTADO (não corrigido agora):** a correção "óbvia" — idempotency-key no `accounts.create` — introduz um **modo de falha pior**: uma key sticky-por-usuário **re-toca a MESMA conta morta** dentro da janela de 24h do Stripe (se o orphaning ocorrer < 24h após a criação, ex. test↔live no mesmo dia), quebrando justamente o recreate. A correção correta é um **lock transacional** (Firestore tx) em volta do check-then-create — projeto dedicado, não cirurgia às cegas em money-path recém-deployado. Risco atual: contas Express **KYC-incompletas** acumulam no Stripe (charges_enabled=false → zero entradas no ledger → zero fundos). **Aceito como follow-up de baixa severidade.**
+
+**Verificação (fix #1–#3):** functions `tsc` EXIT 0 · `vitest` **186 passed** (+6) · `npm run build` EXIT 0 · redeploy `functions,hosting`.

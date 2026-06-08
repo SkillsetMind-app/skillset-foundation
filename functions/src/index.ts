@@ -64,6 +64,7 @@ import {
 } from "./payment-rules";
 import {
   isOrphanedAccountError,
+  isUnusableConnectedAccountError,
   runWithOrphanedAccountSelfHeal,
 } from "./stripe-connect-self-heal";
 
@@ -2574,14 +2575,19 @@ export const refreshTeacherStripeAccount = onCall(
         status,
       };
     } catch (error) {
-      // The stored account is orphaned (created under a different Stripe
-      // key/mode, deleted, or never existed). Don't surface a confusing error
-      // or silently mint an account the user didn't ask to refresh — clear the
+      // The stored account is unusable on this platform/key (created under a
+      // different key/mode, deleted, or access revoked). accounts.retrieve
+      // signals this as either a 400 account_invalid OR a 403
+      // StripePermissionError ("...does not have access to account ... or that
+      // account does not exist; access may have been revoked"); the broader
+      // CLEAR-ONLY predicate catches both. Don't surface a confusing error or
+      // silently mint an account the user didn't ask to refresh — clear the
       // stale id so the next explicit onboarding call recreates cleanly under
-      // its own rate-limit gate, and report not-connected.
-      if (isOrphanedAccountError(error)) {
+      // its own rate-limit gate, and report not-connected. Safe to broaden here
+      // because this path mints nothing and is fully recoverable by re-onboarding.
+      if (isUnusableConnectedAccountError(error)) {
         logger.warn(
-          "Stripe connected account orphaned on refresh; clearing stale id",
+          "Stripe connected account unusable on refresh; clearing stale id",
           { userId, staleAccountId: accountId },
         );
         await userRef.set(
@@ -2599,6 +2605,7 @@ export const refreshTeacherStripeAccount = onCall(
           connected: false,
           chargesEnabled: false,
           payoutsEnabled: false,
+          status: "disconnected" as const,
         };
       }
       throw toStripeHttpsError(error, "refreshing Stripe account status");

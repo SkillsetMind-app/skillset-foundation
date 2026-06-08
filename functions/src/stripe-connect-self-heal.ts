@@ -92,6 +92,45 @@ export function isOrphanedAccountError(error: unknown): boolean {
   return ORPHAN_ACCOUNT_MESSAGE.test(message);
 }
 
+// Account-specific "gone / unreachable" phrasings Stripe uses on a 403. These
+// say the ACCOUNT is unusable (deleted, cross-platform, access revoked) — not a
+// generic platform capability/auth failure — so a match means the STORED id is
+// unusable on this platform.
+const ACCOUNT_REVOKED_MESSAGE =
+  /not connected to your platform|does not exist|No such account|may have been revoked/i;
+
+/**
+ * Broader "the stored connected-account id is unusable" detector, for
+ * CLEAR-ONLY call sites (e.g. refreshTeacherStripeAccount, which deletes the
+ * stale id and mints nothing).
+ *
+ * Accepts everything `isOrphanedAccountError` does, PLUS a message-gated 403
+ * `StripePermissionError`. Rationale: stripe-node dispatches errors by HTTP
+ * status first, so `accounts.retrieve(orphanedId)` for a cross-platform /
+ * deleted / revoked account surfaces as a 403 `StripePermissionError`
+ * ("...does not have access to account ... or that account does not exist.
+ * Application access may have been revoked") — NOT a 400 `account_invalid`. The
+ * strict orphan predicate (rightly) excludes `StripePermissionError` at Gate 2
+ * to protect the RECREATE paths from minting a duplicate live account on a
+ * transient/permission hiccup; this looser predicate re-admits it for the one
+ * place that is safe.
+ *
+ * Use ONLY where the action is to CLEAR a local id (idempotent, fund-safe, fully
+ * recoverable by re-onboarding) — NEVER where it would mint a fresh live
+ * account. The message gate keeps a platform-wide permission/capability glitch
+ * (different phrasing) from discarding valid ids en masse.
+ */
+export function isUnusableConnectedAccountError(error: unknown): boolean {
+  if (isOrphanedAccountError(error)) {
+    return true;
+  }
+  if (error instanceof Stripe.errors.StripePermissionError) {
+    const message = typeof error.message === "string" ? error.message : "";
+    return ACCOUNT_REVOKED_MESSAGE.test(message);
+  }
+  return false;
+}
+
 /**
  * Runs a Stripe operation that depends on a stored connected-account id, with
  * AT-MOST-ONCE self-healing.

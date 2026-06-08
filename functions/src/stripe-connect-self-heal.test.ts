@@ -3,6 +3,7 @@ import Stripe from "stripe";
 
 import {
   isOrphanedAccountError,
+  isUnusableConnectedAccountError,
   runWithOrphanedAccountSelfHeal,
 } from "./stripe-connect-self-heal";
 
@@ -141,6 +142,75 @@ describe("isOrphanedAccountError — rejects everything that is NOT a clear orph
     expect(isOrphanedAccountError(undefined)).toBe(false);
     expect(isOrphanedAccountError(null)).toBe(false);
     expect(isOrphanedAccountError("not connected to your platform")).toBe(false);
+  });
+});
+
+describe("isUnusableConnectedAccountError — clear-only broadening (incl. 403)", () => {
+  function permissionError(message: string): Stripe.errors.StripePermissionError {
+    return new Stripe.errors.StripePermissionError({
+      message,
+      statusCode: 403,
+    } as never);
+  }
+
+  it("accepts everything the strict orphan predicate accepts (delegation)", () => {
+    const orphan = stripeApiError({
+      type: "invalid_request_error",
+      code: "account_invalid",
+      statusCode: 400,
+      message: "not connected to your platform or does not exist",
+    });
+    expect(isOrphanedAccountError(orphan)).toBe(true);
+    expect(isUnusableConnectedAccountError(orphan)).toBe(true);
+  });
+
+  it("accepts a 403 StripePermissionError whose message says the account does not exist", () => {
+    const error = permissionError(
+      "The provided key does not have access to account 'acct_123' (or that account does not exist). Application access may have been revoked.",
+    );
+    expect(error).toBeInstanceOf(Stripe.errors.StripePermissionError);
+    // The STRICT predicate must still reject it (protects the recreate paths)...
+    expect(isOrphanedAccountError(error)).toBe(false);
+    // ...but the CLEAR-ONLY predicate admits it.
+    expect(isUnusableConnectedAccountError(error)).toBe(true);
+  });
+
+  it("accepts a 403 whose message mentions revoked access", () => {
+    expect(
+      isUnusableConnectedAccountError(
+        permissionError("Application access may have been revoked."),
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects a 403 platform-capability glitch (no account-gone phrasing) — message gate holds", () => {
+    // A platform-wide permission/capability error must NOT discard a valid id.
+    const error = permissionError(
+      "This application does not have the required permissions for the card_payments capability.",
+    );
+    expect(isUnusableConnectedAccountError(error)).toBe(false);
+  });
+
+  it("still rejects transient / auth errors (delegates to the strict predicate)", () => {
+    expect(
+      isUnusableConnectedAccountError(
+        new Stripe.errors.StripeConnectionError({ message: "connection reset" }),
+      ),
+    ).toBe(false);
+    expect(
+      isUnusableConnectedAccountError(
+        new Stripe.errors.StripeAuthenticationError({
+          message: "Invalid API Key provided",
+          statusCode: 401,
+        } as never),
+      ),
+    ).toBe(false);
+  });
+
+  it("rejects non-Stripe errors and nullish values", () => {
+    expect(isUnusableConnectedAccountError(new Error("boom"))).toBe(false);
+    expect(isUnusableConnectedAccountError(undefined)).toBe(false);
+    expect(isUnusableConnectedAccountError(null)).toBe(false);
   });
 });
 

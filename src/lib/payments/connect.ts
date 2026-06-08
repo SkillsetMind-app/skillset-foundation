@@ -12,7 +12,7 @@ type RefreshStripeAccountResult = {
   connected: boolean;
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
-  status?: "created" | "onboarding_required" | "ready";
+  status?: "created" | "onboarding_required" | "ready" | "disconnected";
 };
 
 export async function startTeacherStripeOnboarding() {

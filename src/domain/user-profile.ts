@@ -80,7 +80,12 @@ export type UserProfile = {
   teacherTermsVersion?: string;
   marketingConsent?: boolean;
   stripeConnectedAccountId?: string | null;
-  stripeConnectStatus?: "created" | "onboarding_required" | "ready" | null;
+  stripeConnectStatus?:
+    | "created"
+    | "onboarding_required"
+    | "ready"
+    | "disconnected"
+    | null;
   stripeConnectChargesEnabled?: boolean;
   stripeConnectPayoutsEnabled?: boolean;
   stripeConnectUpdatedAt?: unknown;
