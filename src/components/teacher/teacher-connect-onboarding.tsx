@@ -9,13 +9,14 @@ import {
   type LoadError,
   type StripeConnectInstance,
 } from "@stripe/connect-js";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   fetchConnectAccountSessionSecret,
   isConnectNotEnabledError,
   startTeacherStripeOnboarding,
 } from "@/lib/payments/connect";
+import { useTheme } from "@/lib/theme/theme-provider";
 
 /**
  * Renders Stripe's embedded creator-onboarding flow INSIDE Skillset.
@@ -39,6 +40,29 @@ import {
 const publishableKey =
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? null;
 
+/**
+ * Stripe's Appearance API runs inside an iframe and can't read Skillset's CSS
+ * variables, so we hand it concrete hex values that mirror our design tokens
+ * (globals.css :root for light, [data-theme="dark"] for dark). Without this the
+ * embedded KYC flow renders a white box punched into the dark UI. Kept at module
+ * scope so both the init effect and the live re-skin effect share one source.
+ */
+function buildConnectAppearance(theme: "light" | "dark") {
+  const dark = theme === "dark";
+  return {
+    overlays: "dialog" as const,
+    variables: {
+      colorPrimary: dark ? "#8fb4e4" : "#1a365d",
+      colorBackground: dark ? "#0f1626" : "#ffffff",
+      colorText: dark ? "#e8edf5" : "#0f2744",
+      colorDanger: dark ? "#e36b78" : "#b22234",
+      fontFamily:
+        "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+      borderRadius: "10px",
+    },
+  };
+}
+
 type TeacherConnectOnboardingProps = {
   onComplete?: () => void;
 };
@@ -46,6 +70,7 @@ type TeacherConnectOnboardingProps = {
 export function TeacherConnectOnboarding({
   onComplete,
 }: TeacherConnectOnboardingProps) {
+  const { resolvedTheme } = useTheme();
   const [connect, setConnect] = useState<StripeConnectInstance | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<LoadError["error"] | null>(null);
@@ -55,6 +80,13 @@ export function TeacherConnectOnboarding({
   // it's neither the teacher's fault nor retryable here — recreating/retrying
   // just loops 400s. We render a calm "being configured" panel with no retry.
   const [payoutsUnavailable, setPayoutsUnavailable] = useState(false);
+  // Latest theme for init() WITHOUT making it an init dependency — re-initing on
+  // every toggle would reset the teacher's onboarding progress. The effect below
+  // re-skins the live widget instead.
+  const themeRef = useRef(resolvedTheme);
+  useEffect(() => {
+    themeRef.current = resolvedTheme;
+  }, [resolvedTheme]);
 
   useEffect(() => {
     if (!publishableKey) return;
@@ -63,23 +95,28 @@ export function TeacherConnectOnboarding({
 
     async function init() {
       try {
+        // Pre-flight the first Account Session secret ourselves. If the PLATFORM
+        // hasn't enabled Connect, this throws ONE clean rejection here — before
+        // connect-js is constructed — so we show the calm panel without connect-js
+        // retrying the fetcher internally and spraying "Uncaught (in promise)" +
+        // a burst of 400s into the console. When Connect IS enabled we reuse this
+        // secret for the first init, so the happy path costs no extra call.
+        const firstSecret = await fetchConnectAccountSessionSecret();
+
+        let reuseFirstSecret = true;
         const instance = await loadConnectAndInitialize({
           publishableKey: publishableKey!,
-          fetchClientSecret: fetchConnectAccountSessionSecret,
-          // Inherit Skillset brand colors so the embedded UI doesn't
-          // look like a foreign Stripe widget plopped onto the page.
-          appearance: {
-            overlays: "dialog",
-            variables: {
-              colorPrimary: "#1a365d",
-              colorBackground: "#ffffff",
-              colorText: "#0f2744",
-              colorDanger: "#b22234",
-              fontFamily:
-                "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-              borderRadius: "10px",
-            },
+          fetchClientSecret: async () => {
+            if (reuseFirstSecret) {
+              reuseFirstSecret = false;
+              return firstSecret;
+            }
+            // Connect asks again only when the session later expires.
+            return fetchConnectAccountSessionSecret();
           },
+          // Inherit Skillset brand colors (light/dark) so the embedded UI doesn't
+          // look like a foreign Stripe widget plopped onto the page.
+          appearance: buildConnectAppearance(themeRef.current),
         });
         if (!cancelled) {
           setConnect(instance);
@@ -108,6 +145,13 @@ export function TeacherConnectOnboarding({
       cancelled = true;
     };
   }, [retryKey]);
+
+  // Re-skin the already-running embedded widget when the teacher flips the theme,
+  // without re-initializing (which would reset their in-progress onboarding).
+  useEffect(() => {
+    if (!connect) return;
+    connect.update({ appearance: buildConnectAppearance(resolvedTheme) });
+  }, [connect, resolvedTheme]);
 
   async function openHostedFallback() {
     setError(null);

@@ -64,7 +64,6 @@ import {
 } from "./payment-rules";
 import {
   isConnectNotEnabledError,
-  isOrphanedAccountError,
   isUnusableConnectedAccountError,
   runWithOrphanedAccountSelfHeal,
 } from "./stripe-connect-self-heal";
