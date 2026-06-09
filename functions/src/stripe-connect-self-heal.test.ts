@@ -302,6 +302,31 @@ describe("isConnectNotEnabledError — platform never activated Connect", () => 
     expect(isConnectNotEnabledError(undefined)).toBe(false);
     expect(isConnectNotEnabledError(null)).toBe(false);
   });
+
+  it("does NOT downgrade a transient 5xx that merely echoes the phrasing (status-fenced fallback)", () => {
+    // A server-error body that happens to contain the marketing phrase must not
+    // be classified as a config gap — that would mask a real, retryable failure.
+    const transient = new Stripe.errors.StripeAPIError({
+      message:
+        "Internal server error. You can only create new accounts if you've " +
+        "signed up for Connect.",
+      statusCode: 500,
+    } as never);
+    expect(isConnectNotEnabledError(transient)).toBe(false);
+  });
+
+  it("stays disjoint from the clear-path predicate (platform_account_required is not 'account gone')", () => {
+    // platform_account_required means the PLATFORM isn't a Connect platform — it
+    // must NOT be read as 'the stored account is gone', or refreshTeacherStripe
+    // would wrongly delete a teacher's id on a platform-wide config gap.
+    const platformGap = new Stripe.errors.StripePermissionError({
+      message: "Only Stripe Connect platforms can work with other accounts.",
+      statusCode: 403,
+      code: "platform_account_required",
+    } as never);
+    expect(isConnectNotEnabledError(platformGap)).toBe(true);
+    expect(isUnusableConnectedAccountError(platformGap)).toBe(false);
+  });
 });
 
 describe("runWithOrphanedAccountSelfHeal — at-most-once recovery", () => {

@@ -176,6 +176,13 @@ export function isConnectNotEnabledError(error: unknown): boolean {
   if (code === CONNECT_NOT_ENABLED_CODE) {
     return true;
   }
+  // Message fallback fenced to the 400/403 statuses Stripe uses for this
+  // platform-config refusal — never a transient 5xx/429 that merely echoes the
+  // phrasing in a server-error body — so a real failure can't be downgraded to a
+  // calm "configuring" message. Mirrors the specificity of the code-gated branch.
+  if (error.statusCode !== 400 && error.statusCode !== 403) {
+    return false;
+  }
   const message = typeof error.message === "string" ? error.message : "";
   return CONNECT_NOT_ENABLED_MESSAGE.test(message);
 }
