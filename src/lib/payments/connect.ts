@@ -15,6 +15,37 @@ type RefreshStripeAccountResult = {
   status?: "created" | "onboarding_required" | "ready" | "disconnected";
 };
 
+/**
+ * True when a Connect callable failed because the PLATFORM has not enabled
+ * Stripe Connect yet (the owner must activate it at dashboard.stripe.com/connect).
+ *
+ * The backend tags this case with `details.reason === "connect_not_enabled"`
+ * (see toStripeHttpsError), which the hosted path receives intact on the
+ * FirebaseError. The embedded path goes through Stripe's connect-js, which may
+ * rewrap the rejection and drop `details`, so we also message-match the honest
+ * server copy and the raw Stripe phrasing as a fallback. Lets the UI show a calm
+ * "payouts being configured" panel instead of an alarming error + retry loop.
+ */
+export function isConnectNotEnabledError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+  const candidate = error as { details?: unknown; message?: unknown };
+  const details = candidate.details;
+  if (
+    details &&
+    typeof details === "object" &&
+    (details as { reason?: unknown }).reason === "connect_not_enabled"
+  ) {
+    return true;
+  }
+  const message =
+    typeof candidate.message === "string" ? candidate.message : "";
+  return /signed up for Connect|connect_not_enabled|finishing its Stripe Connect setup/i.test(
+    message,
+  );
+}
+
 export async function startTeacherStripeOnboarding() {
   const createAccountLink = httpsCallable<Record<string, never>, AccountLinkResult>(
     getFirebaseFunctions(),

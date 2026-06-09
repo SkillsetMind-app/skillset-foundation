@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import Stripe from "stripe";
 
 import {
+  isConnectNotEnabledError,
   isOrphanedAccountError,
   isUnusableConnectedAccountError,
   runWithOrphanedAccountSelfHeal,
@@ -211,6 +212,68 @@ describe("isUnusableConnectedAccountError — clear-only broadening (incl. 403)"
     expect(isUnusableConnectedAccountError(new Error("boom"))).toBe(false);
     expect(isUnusableConnectedAccountError(undefined)).toBe(false);
     expect(isUnusableConnectedAccountError(null)).toBe(false);
+  });
+});
+
+describe("isConnectNotEnabledError — platform never activated Connect", () => {
+  const connectNotEnabled = (message?: string) =>
+    stripeApiError({
+      type: "invalid_request_error",
+      statusCode: 400,
+      message:
+        message ??
+        "You can only create new accounts if you've signed up for Connect, " +
+          "which you can do at https://dashboard.stripe.com/connect.",
+    });
+
+  it("accepts the canonical 'signed up for Connect' rejection on accounts.create", () => {
+    const error = connectNotEnabled();
+    expect(error).toBeInstanceOf(Stripe.errors.StripeInvalidRequestError);
+    expect(isConnectNotEnabledError(error)).toBe(true);
+  });
+
+  it("matches case-insensitively regardless of surrounding phrasing", () => {
+    expect(
+      isConnectNotEnabledError(
+        connectNotEnabled("Account creation requires that you have SIGNED UP FOR CONNECT first."),
+      ),
+    ).toBe(true);
+  });
+
+  it("does NOT collide with the orphaned-account predicate (different phrasing)", () => {
+    const orphan = stripeApiError({
+      type: "invalid_request_error",
+      code: "account_invalid",
+      statusCode: 400,
+      message: "not connected to your platform or does not exist",
+    });
+    // Orphan is account-specific (recreate helps); connect-not-enabled is
+    // platform-wide (recreate cannot help). They must stay disjoint so the
+    // self-heal recreate path never fires on a platform-config gap.
+    expect(isOrphanedAccountError(orphan)).toBe(true);
+    expect(isConnectNotEnabledError(orphan)).toBe(false);
+    expect(isOrphanedAccountError(connectNotEnabled())).toBe(false);
+  });
+
+  it("rejects unrelated invalid-request, transient, and non-Stripe errors", () => {
+    expect(
+      isConnectNotEnabledError(
+        stripeApiError({
+          type: "invalid_request_error",
+          code: "parameter_invalid_empty",
+          statusCode: 400,
+          message: "You passed an empty string for 'email'.",
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      isConnectNotEnabledError(
+        new Stripe.errors.StripeConnectionError({ message: "connection reset" }),
+      ),
+    ).toBe(false);
+    expect(isConnectNotEnabledError(new Error("signed up for Connect"))).toBe(false);
+    expect(isConnectNotEnabledError(undefined)).toBe(false);
+    expect(isConnectNotEnabledError(null)).toBe(false);
   });
 });
 

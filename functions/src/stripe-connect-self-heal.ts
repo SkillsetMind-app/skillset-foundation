@@ -131,6 +131,36 @@ export function isUnusableConnectedAccountError(error: unknown): boolean {
   return false;
 }
 
+// Stripe rejects EVERY Connect call with this exact phrasing when the PLATFORM
+// account has never activated Connect (dashboard.stripe.com/connect): a 400
+// StripeInvalidRequestError on `accounts.create` itself — e.g. "You can only
+// create new accounts if you've signed up for Connect, which you can do at
+// https://dashboard.stripe.com/connect."
+const CONNECT_NOT_ENABLED_MESSAGE = /signed up for Connect/i;
+
+/**
+ * True when Stripe refuses a Connect operation because the PLATFORM account has
+ * not enabled Connect at all — a platform-wide configuration gap, NOT a
+ * per-account, transient, or credential problem.
+ *
+ * This is categorically different from `isOrphanedAccountError`: there is no
+ * teacher account to recreate (accounts.create is exactly what's refused), and
+ * retrying just loops. The only fix is the platform owner activating Connect in
+ * the Stripe Dashboard. Callers should short-circuit to a clean
+ * "payouts not available yet" precondition — never self-heal, never retry.
+ *
+ * Deliberately message-gated (not class/status alone): the orphan and revoked
+ * predicates above also live on 400/403 invalid-request errors, so only the
+ * "signed up for Connect" phrasing distinguishes this platform-config case.
+ */
+export function isConnectNotEnabledError(error: unknown): boolean {
+  if (!(error instanceof Stripe.errors.StripeError)) {
+    return false;
+  }
+  const message = typeof error.message === "string" ? error.message : "";
+  return CONNECT_NOT_ENABLED_MESSAGE.test(message);
+}
+
 /**
  * Runs a Stripe operation that depends on a stored connected-account id, with
  * AT-MOST-ONCE self-healing.

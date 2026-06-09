@@ -682,3 +682,29 @@ A causa #2 (config) deixou de ser deferida. O fundador forneceu a publishable ke
 > ✅ **Cobertura de deploy:** como `.env.production` é **versionado**, qualquer deploy (esta máquina, CI ou outra máquina) recebe a key — sem gap de ambiente. `.env.local` é só o espelho local de dev.
 
 > 🎨 **Follow-up cosmético ainda aberto:** `appearance.colorBackground: "#ffffff"` (linha ~71) deixa o widget embedded **branco no dark mode**. Puramente estético; exige sessão Stripe viva pra testar a Appearance API. Continua deferido.
+
+### 🔴 CAUSA RAIZ REAL — Stripe Connect NÃO está ativado na conta (2026-06-08)
+
+Com a publishable key ligada, o onboarding embedded subiu — e revelou o **erro de fundo que todos os sintomas anteriores mascaravam**. O console do fundador mostra, em loop, `createConnectAccountSession` e `createTeacherStripeAccountLink` devolvendo **HTTP 400** com a mensagem literal da Stripe:
+
+> *"You can only create new accounts if you've signed up for Connect, which you can do at https://dashboard.stripe.com/connect."*
+
+**O que significa:** o produto **Stripe Connect** (marketplace/plataforma) **não foi ativado** na conta Stripe por trás da `sk_live`. Toda chamada `stripe.accounts.create({ type: "express" })` (`createFreshConnectedAccount`, index.ts:734) é recusada porque a conta ainda **não é uma plataforma Connect registrada**. Por isso **embedded E hospedado falham idênticos** — os dois criam conta por baixo — e é a **causa raiz dos sintomas de "conta órfã"** investigados antes: nunca houve plataforma Connect; o self-heal tentava recriar, e recriar também dá 400.
+
+**Não é bug de código.** É **ação de Dashboard** que só o fundador (dono da conta) pode executar: ativar Connect em **https://dashboard.stripe.com/connect** (modo Live, mesma conta da `pk_live_…51TUqjL…`), escolher **Platform/marketplace** e preencher o **perfil da plataforma**. O tipo de chave é irrelevante — mesmo a `sk_live` completa falha igual enquanto Connect estiver off (a `rk_` restrita **não** foi pedida nem precisava).
+
+### ✅ Degradação honesta enquanto o Connect não é ativado (deployado)
+
+Hoje o professor via uma **tela vermelha em loop** dizendo "configurações de privacidade do navegador / cookies bloqueados" — **mentira para ESTE erro** — e o front martelava o backend com 400s repetidos. Tornei a falha honesta:
+
+| Artefato | Arquivo | Mudança |
+|----------|---------|---------|
+| Predicado novo | `functions/src/stripe-connect-self-heal.ts` | `isConnectNotEnabledError(error)` — message-gated em `/signed up for Connect/i`. **Disjunto** de `isOrphanedAccountError` (órfã = conta-específica, recriar ajuda; connect-off = platform-wide, recriar **não** ajuda) → o self-heal **nunca** dispara recreate nesse caso. |
+| Mapper compartilhado | `functions/src/index.ts` (`toStripeHttpsError`) | Antes do mapeamento genérico de StripeError: se `isConnectNotEnabledError` → `HttpsError("failed-precondition", "Payouts aren't available yet…", { reason: "connect_not_enabled" })`. **Um só ponto** cobre os dois callables (ambos roteiam o catch por aqui). `details.reason` deixa o front ramificar sem string-match. |
+| Predicado client | `src/lib/payments/connect.ts` | `isConnectNotEnabledError(error)` — lê `details.reason === "connect_not_enabled"` (caminho hospedado recebe intacto) **+** fallback de mensagem (`/signed up for Connect\|connect_not_enabled\|finishing its Stripe Connect setup/i`) p/ o caminho embedded, onde o connect-js da Stripe pode re-embrulhar o erro e perder `details`. |
+| Painel calmo, sem retry | `src/components/teacher/teacher-connect-onboarding.tsx` | Estado `payoutsUnavailable` (distinto de `error`): detectado no `catch` do `init()` (embedded) **e** do `openHostedFallback()` (hospedado). Renderiza painel neutro "Payouts are being configured" **sem** botões embedded/hospedado (que só loopam 400s) — só um "Check again" de 1 clique. Mata o loop e remove a mensagem mentirosa de cookies. |
+| Testes | `functions/src/stripe-connect-self-heal.test.ts` | **+4 testes** (26 no total): aceita a rejeição canônica; case-insensitive; **prova de disjunção** com o predicado órfão (nos dois sentidos); rejeita invalid-request não-relacionado / transitório / non-Stripe. |
+
+**Verificação:** functions `tsc` EXIT 0 · `vitest` **190 passed** (+4) · `npm run test:rules` **69 passed** · `npm run build` EXIT 0 (árvore completa) · deploy `functions,hosting` **release complete**.
+
+> ⛳ **ÚNICA AÇÃO PENDENTE (fundador):** ativar **Stripe Connect** em https://dashboard.stripe.com/connect (Live, mesma conta da chave). Feito isso, embedded **e** hospedado funcionam **sem mais nenhuma mudança de código** — me avisar que eu re-verifico na hora. O painel "being configured" some sozinho quando o Connect liga.

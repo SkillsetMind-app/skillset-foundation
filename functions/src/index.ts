@@ -63,6 +63,7 @@ import {
   type TransferReversalStripeClient,
 } from "./payment-rules";
 import {
+  isConnectNotEnabledError,
   isOrphanedAccountError,
   isUnusableConnectedAccountError,
   runWithOrphanedAccountSelfHeal,
@@ -683,6 +684,25 @@ function getStripeClient() {
 function toStripeHttpsError(error: unknown, action: string): HttpsError {
   if (error instanceof HttpsError) {
     return error;
+  }
+
+  // Platform-config gap: Connect was never enabled on this Stripe account, so
+  // accounts.create (and every Connect call) is refused. There is nothing to
+  // recreate or retry — only the platform owner enabling Connect in the
+  // Dashboard fixes it. Surface a calm, machine-readable precondition so the UI
+  // can show "payouts being configured" instead of the raw Stripe URL error and
+  // a retry loop. `details.reason` lets the client branch without string-matching.
+  if (isConnectNotEnabledError(error)) {
+    logger.error(
+      `Stripe Connect is not enabled on the platform account (while ${action})`,
+      { message: error instanceof Error ? error.message : String(error) },
+    );
+    return new HttpsError(
+      "failed-precondition",
+      "Payouts aren't available yet — the platform is still finishing its Stripe " +
+        "Connect setup. Please check back soon.",
+      { reason: "connect_not_enabled" },
+    );
   }
 
   if (error instanceof Stripe.errors.StripeError) {
