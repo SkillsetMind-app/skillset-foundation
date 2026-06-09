@@ -668,3 +668,17 @@ Depois do deploy, rodei um review adversarial de 4 lentes sobre a **integração
 **Por que #4 fica DOCUMENTADO (não corrigido agora):** a correção "óbvia" — idempotency-key no `accounts.create` — introduz um **modo de falha pior**: uma key sticky-por-usuário **re-toca a MESMA conta morta** dentro da janela de 24h do Stripe (se o orphaning ocorrer < 24h após a criação, ex. test↔live no mesmo dia), quebrando justamente o recreate. A correção correta é um **lock transacional** (Firestore tx) em volta do check-then-create — projeto dedicado, não cirurgia às cegas em money-path recém-deployado. Risco atual: contas Express **KYC-incompletas** acumulam no Stripe (charges_enabled=false → zero entradas no ledger → zero fundos). **Aceito como follow-up de baixa severidade.**
 
 **Verificação (fix #1–#3):** functions `tsc` EXIT 0 · `vitest` **186 passed** (+6) · `npm run build` EXIT 0 · redeploy `functions,hosting`.
+
+### ✅ RESOLVIDO — `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` configurada (onboarding embedded ligado, 2026-06-08)
+
+A causa #2 (config) deixou de ser deferida. O fundador forneceu a publishable key **Live** (`pk_live_51TU…`).
+
+- **Diagnóstico definitivo antes de pedir:** varri os `.env*` (incl. gitignored), arquivos gitignored, shell env e config do Firebase hosting — a key **não existia em lugar nenhum** e **não é derivável** (a Stripe não expõe a própria publishable key por API; é só Dashboard; a secret vive como Firebase Functions secret e não deriva a publishable). Por isso foi necessário o fundador pegá-la.
+- **Wiring:** `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_…` escrita em `.env.production` (**versionado** — segue o padrão do repo, onde as outras client keys públicas já vivem: `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_POSTHOG_KEY`) **e** `.env.local` (gitignored, espelho de dev local). Publishable key é **pública por design** (vai no bundle pra todo visitante; a Stripe diz que pode commitar) — mesma natureza da Firebase web API key já versionada aqui.
+- **Segurança:** a **restricted/secret key (`rk_`/`sk_`) NÃO** foi solicitada nem colada no chat — é credencial server-side e já está configurada como Firebase Functions secret. Só a publishable (pública) transita/é versionada.
+- **Degradação graciosa verificada** (`teacher-connect-onboarding.tsx`): com a key presente, o branch de fallback hospedado some, mas o componente trata `init error` e `loadError` (cookies/auth do browser) renderizando `StripeConnectFallback` com **botão hospedado + retry** — e esse hospedado chama `createTeacherStripeAccountLink`, que **tem o self-heal**. Sem dead-end.
+- **Verificação (prova-de-bundle):** `npm run build` EXIT 0 · `pk_live_` **inlined em 2 client chunks** de `.next/static/chunks/` (prova de que o front sai do branch de fallback) · redeploy `functions,hosting` OK (hosting release complete).
+
+> ✅ **Cobertura de deploy:** como `.env.production` é **versionado**, qualquer deploy (esta máquina, CI ou outra máquina) recebe a key — sem gap de ambiente. `.env.local` é só o espelho local de dev.
+
+> 🎨 **Follow-up cosmético ainda aberto:** `appearance.colorBackground: "#ffffff"` (linha ~71) deixa o widget embedded **branco no dark mode**. Puramente estético; exige sessão Stripe viva pra testar a Appearance API. Continua deferido.
