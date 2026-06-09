@@ -41,7 +41,7 @@ export function isConnectNotEnabledError(error: unknown): boolean {
   }
   const message =
     typeof candidate.message === "string" ? candidate.message : "";
-  return /signed up for Connect|connect_not_enabled|finishing its Stripe Connect setup/i.test(
+  return /signed up for Connect|connect_not_enabled|finishing its Stripe Connect setup|Only Stripe Connect platforms can work/i.test(
     message,
   );
 }

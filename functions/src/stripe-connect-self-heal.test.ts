@@ -232,6 +232,33 @@ describe("isConnectNotEnabledError — platform never activated Connect", () => 
     expect(isConnectNotEnabledError(error)).toBe(true);
   });
 
+  it("accepts the 403 platform_account_required variant by CODE (stale-id path)", () => {
+    // When a stale connected-account id is stored, the FIRST Connect call
+    // (accountSessions.create / accounts.retrieve) targets that foreign account
+    // and a non-Connect platform gets a 403 StripePermissionError with this
+    // code — NOT the 400 'signed up for Connect'. Confirmed live via probe.
+    const error = new Stripe.errors.StripePermissionError({
+      message:
+        "Only Stripe Connect platforms can work with other accounts. If you " +
+        "specified a client_id parameter, make sure it's correct.",
+      statusCode: 403,
+      code: "platform_account_required",
+    } as never);
+    expect(error).toBeInstanceOf(Stripe.errors.StripePermissionError);
+    expect(isConnectNotEnabledError(error)).toBe(true);
+    // It must NOT be mistaken for an orphan (which would loop the recreate path).
+    expect(isOrphanedAccountError(error)).toBe(false);
+  });
+
+  it("accepts the platform_account_required phrasing by MESSAGE even without the code", () => {
+    const error = new Stripe.errors.StripePermissionError({
+      message:
+        "Only Stripe Connect platforms can work with other accounts.",
+      statusCode: 403,
+    } as never);
+    expect(isConnectNotEnabledError(error)).toBe(true);
+  });
+
   it("matches case-insensitively regardless of surrounding phrasing", () => {
     expect(
       isConnectNotEnabledError(

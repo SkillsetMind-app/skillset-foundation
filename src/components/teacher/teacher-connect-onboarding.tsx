@@ -207,9 +207,9 @@ export function TeacherConnectOnboarding({
         </h4>
         <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
           Skillset is finishing its secure payout setup with Stripe. This is on
-          our side, not yours — no action is needed. You&apos;ll be able to
-          connect a payout account and sell paid courses as soon as it&apos;s
-          ready, usually within a day.
+          our side, not yours — there&apos;s nothing for you to fix here.
+          You&apos;ll be able to connect a payout account and sell paid courses
+          as soon as it&apos;s ready.
         </p>
         <div className="mt-4">
           <button
