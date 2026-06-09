@@ -10,7 +10,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { InlineHelp } from "@/components/shared/inline-help";
@@ -22,7 +22,18 @@ import type { UserProfile } from "@/domain/user-profile";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { subscribeToTeacherPayoutLedger } from "@/lib/data/payout-ledger";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
-import { refreshTeacherStripeAccountStatus } from "@/lib/payments/connect";
+import {
+  isConnectNotEnabledError,
+  refreshTeacherStripeAccountStatus,
+} from "@/lib/payments/connect";
+
+// Shown (as a calm info message, never error styling) when the PLATFORM hasn't
+// enabled Stripe Connect yet — a Skillset-side configuration state, not a
+// failure and not something the teacher can fix.
+const PAYOUTS_UNAVAILABLE_MESSAGE =
+  "Payouts aren't live on Skillset yet — Stripe Connect is still being " +
+  "configured on our side. No payout account is connected; onboarding will " +
+  "open on this page automatically once it's ready.";
 
 export function TeacherWalletPanel() {
   const { user } = useAuth();
@@ -35,6 +46,12 @@ export function TeacherWalletPanel() {
   const [ledgerEntries, setLedgerEntries] = useState<PayoutLedgerEntry[]>([]);
   const [ordersLoaded, setOrdersLoaded] = useState(false);
   const [ledgerLoaded, setLedgerLoaded] = useState(false);
+  // Platform-level truth reported by the onboarding component: when Stripe
+  // Connect isn't enabled on Skillset's Stripe account, NO stored account id is
+  // verifiable or usable — so the panel must not present one as "Connected".
+  const [platformPayoutsUnavailable, setPlatformPayoutsUnavailable] =
+    useState(false);
+  const autoRefreshedRef = useRef(false);
 
   useEffect(() => {
     if (!user) {
@@ -94,6 +111,28 @@ export function TeacherWalletPanel() {
     void refreshStripeStatus();
   }
 
+  // Self-truing: re-verify the stored Connect state against Stripe once per
+  // visit, silently. This is what clears a stale account id (or stale
+  // ready flags) server-side without requiring the teacher to find a button —
+  // the profile subscription then repaints the panel from the corrected doc.
+  // Errors stay silent here; the manual button and the onboarding panel below
+  // surface real problems with context.
+  useEffect(() => {
+    if (!user || autoRefreshedRef.current) {
+      return;
+    }
+    autoRefreshedRef.current = true;
+    refreshTeacherStripeAccountStatus()
+      .then((status) => {
+        if (status.payoutsUnavailable) {
+          setPlatformPayoutsUnavailable(true);
+        }
+      })
+      .catch(() => {
+        // Silent by design (see comment above).
+      });
+  }, [user]);
+
   async function refreshStripeStatus() {
     setError("");
     setMessage("");
@@ -101,12 +140,26 @@ export function TeacherWalletPanel() {
 
     try {
       const status = await refreshTeacherStripeAccountStatus();
+      if (status.payoutsUnavailable) {
+        // Platform-side Connect configuration gap — calm info, not an error.
+        setPlatformPayoutsUnavailable(true);
+        setMessage(PAYOUTS_UNAVAILABLE_MESSAGE);
+        return;
+      }
+      setPlatformPayoutsUnavailable(false);
       setMessage(
         status.chargesEnabled && status.payoutsEnabled
           ? "Stripe charges and payouts are ready for this teacher account."
           : "Stripe still requires more information before paid checkout and payouts are enabled.",
       );
     } catch (cause) {
+      // Same platform gap reported by an older deployed function as a thrown
+      // precondition — keep it calm rather than error-styled.
+      if (isConnectNotEnabledError(cause)) {
+        setPlatformPayoutsUnavailable(true);
+        setMessage(PAYOUTS_UNAVAILABLE_MESSAGE);
+        return;
+      }
       // Surface the real reason (e.g. missing STRIPE_SECRET_KEY secret or a
       // permission error) rather than a mute status string, so a stuck Connect
       // account is diagnosable instead of silently failing.
@@ -127,9 +180,14 @@ export function TeacherWalletPanel() {
   const financialsReady = ordersLoaded && ledgerLoaded;
   const money = (minor: number) => (financialsReady ? formatMoney(minor) : "—");
   const connected = Boolean(profile?.stripeConnectedAccountId);
-  const ready = Boolean(
-    profile?.stripeConnectChargesEnabled && profile?.stripeConnectPayoutsEnabled,
-  );
+  // A panel must never claim "Ready" while the platform itself can't run
+  // Connect — stale profile flags don't outrank the live platform signal.
+  const ready =
+    !platformPayoutsUnavailable
+    && Boolean(
+      profile?.stripeConnectChargesEnabled
+      && profile?.stripeConnectPayoutsEnabled,
+    );
   const paidOrders = orders.filter((order) => order.status === "paid");
   const grossPaidMinor = paidOrders.reduce(
     (sum, order) => sum + order.amountMinor,
@@ -153,11 +211,13 @@ export function TeacherWalletPanel() {
       (sum, entry) => sum + (entry.refundedAmountMinor ?? entry.grossAmountMinor),
       0,
     );
-  const statusLabel = ready
-    ? "Ready"
-    : connected
-      ? "Onboarding required"
-      : "Not connected";
+  const statusLabel = platformPayoutsUnavailable
+    ? "Not available yet"
+    : ready
+      ? "Ready"
+      : connected
+        ? "Onboarding required"
+        : "Not connected";
 
   return (
     <section className="payouts-shell">
@@ -243,7 +303,15 @@ export function TeacherWalletPanel() {
               </h3>
             </div>
             <StatusChip
-              status={ready ? "active" : connected ? "pending" : "draft"}
+              status={
+                platformPayoutsUnavailable
+                  ? "draft"
+                  : ready
+                    ? "active"
+                    : connected
+                      ? "pending"
+                      : "draft"
+              }
               label={isLoading ? "Loading" : statusLabel}
             />
           </div>
@@ -256,17 +324,38 @@ export function TeacherWalletPanel() {
             <PayoutStatusRow
               icon={Banknote}
               label="Connected account"
-              value={profile?.stripeConnectedAccountId ? maskStripeId(profile.stripeConnectedAccountId) : "Not created"}
+              value={
+                platformPayoutsUnavailable
+                  // A stored id can't be verified (or used) while the platform
+                  // has Connect off — presenting it as "Connected" reads like
+                  // a finished setup that never happened.
+                  ? "Not active yet"
+                  : profile?.stripeConnectedAccountId
+                    ? maskStripeId(profile.stripeConnectedAccountId)
+                    : "Not created"
+              }
             />
             <PayoutStatusRow
               icon={ShieldCheck}
               label="Charges"
-              value={profile?.stripeConnectChargesEnabled ? "Enabled" : "Pending"}
+              value={
+                platformPayoutsUnavailable
+                  ? "Unavailable"
+                  : profile?.stripeConnectChargesEnabled
+                    ? "Enabled"
+                    : "Pending"
+              }
             />
             <PayoutStatusRow
               icon={CheckCircle2}
               label="Payouts"
-              value={profile?.stripeConnectPayoutsEnabled ? "Enabled" : "Pending"}
+              value={
+                platformPayoutsUnavailable
+                  ? "Unavailable"
+                  : profile?.stripeConnectPayoutsEnabled
+                    ? "Enabled"
+                    : "Pending"
+              }
             />
           </div>
 
@@ -313,7 +402,10 @@ export function TeacherWalletPanel() {
             </div>
           </div>
           <div className="mt-5">
-            <TeacherConnectOnboarding onComplete={handleOnboardingComplete} />
+            <TeacherConnectOnboarding
+              onComplete={handleOnboardingComplete}
+              onAvailabilityChange={setPlatformPayoutsUnavailable}
+            />
           </div>
         </section>
       )}

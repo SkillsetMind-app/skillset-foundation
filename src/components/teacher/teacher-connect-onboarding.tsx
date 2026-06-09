@@ -65,10 +65,18 @@ function buildConnectAppearance(theme: "light" | "dark") {
 
 type TeacherConnectOnboardingProps = {
   onComplete?: () => void;
+  /**
+   * Fires whenever this component learns whether the PLATFORM has Stripe
+   * Connect enabled at all. Lets the parent (TeacherWalletPanel) stop
+   * presenting a stored-but-unverifiable account id as "Connected" while
+   * payouts are platform-unavailable.
+   */
+  onAvailabilityChange?: (payoutsUnavailable: boolean) => void;
 };
 
 export function TeacherConnectOnboarding({
   onComplete,
+  onAvailabilityChange,
 }: TeacherConnectOnboardingProps) {
   const { resolvedTheme } = useTheme();
   const [connect, setConnect] = useState<StripeConnectInstance | null>(null);
@@ -87,6 +95,16 @@ export function TeacherConnectOnboarding({
   useEffect(() => {
     themeRef.current = resolvedTheme;
   }, [resolvedTheme]);
+
+  // Report platform availability upward via a ref'd callback so the parent's
+  // inline arrow doesn't retrigger the effect every render.
+  const onAvailabilityChangeRef = useRef(onAvailabilityChange);
+  useEffect(() => {
+    onAvailabilityChangeRef.current = onAvailabilityChange;
+  }, [onAvailabilityChange]);
+  useEffect(() => {
+    onAvailabilityChangeRef.current?.(payoutsUnavailable);
+  }, [payoutsUnavailable]);
 
   useEffect(() => {
     if (!publishableKey) return;
@@ -208,8 +226,12 @@ export function TeacherConnectOnboarding({
         <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
           Skillset is finishing its secure payout setup with Stripe. This is on
           our side, not yours — there&apos;s nothing for you to fix here.
-          You&apos;ll be able to connect a payout account and sell paid courses
-          as soon as it&apos;s ready.
+          <strong className="text-[var(--color-ink)]">
+            {" "}No payout account is connected yet.
+          </strong>{" "}
+          When this is ready, Stripe&apos;s identity and bank verification will
+          open right here on this page — you&apos;ll know it worked because
+          you&apos;ll be asked for those details.
         </p>
         <div className="mt-4">
           <button

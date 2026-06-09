@@ -2594,6 +2594,35 @@ export const refreshTeacherStripeAccount = onCall(
         status,
       };
     } catch (error) {
+      // Platform-wide Connect gap (Connect never enabled on the Stripe
+      // Dashboard): Stripe refuses to even LOOK at connected accounts, so the
+      // truthful state is "payouts unavailable" — not an error, and not a
+      // verdict on the stored id. Checked FIRST because a platform gap must
+      // never clear a possibly-valid id (the unusable-account branch below
+      // judges the id only once Connect actually works). Two safety effects:
+      //   1. Force the readiness flags false so a stale `chargesEnabled: true`
+      //      can't hold paid checkout open (the readiness gate in
+      //      createCourseCheckout) while transfers are impossible.
+      //   2. Return payoutsUnavailable so the UI shows the calm
+      //      "being configured" state instead of an alarming failure.
+      if (isConnectNotEnabledError(error)) {
+        await userRef.set(
+          {
+            stripeConnectChargesEnabled: false,
+            stripeConnectPayoutsEnabled: false,
+            stripeConnectUpdatedAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        );
+        return {
+          connected: false,
+          chargesEnabled: false,
+          payoutsEnabled: false,
+          status: "onboarding_required" as const,
+          payoutsUnavailable: true,
+        };
+      }
       // The stored account is unusable on this platform/key (created under a
       // different key/mode, deleted, or access revoked). accounts.retrieve
       // signals this as either a 400 account_invalid OR a 403

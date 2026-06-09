@@ -13,6 +13,13 @@ type RefreshStripeAccountResult = {
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
   status?: "created" | "onboarding_required" | "ready" | "disconnected";
+  /**
+   * True when the PLATFORM hasn't enabled Stripe Connect yet, so no connected
+   * account can be verified or used — distinct from a refresh failure and from
+   * the teacher's own onboarding state. UI should show the calm "payouts being
+   * configured" state, never an error.
+   */
+  payoutsUnavailable?: boolean;
 };
 
 /**
