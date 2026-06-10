@@ -14,7 +14,7 @@ export function HelpBubble() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="fixed bottom-20 right-4 z-40 sm:bottom-6 sm:right-6">
+    <div className="fixed bottom-24 right-4 z-40 min-[921px]:bottom-6 min-[921px]:right-6">
       {open ? (
         <div className="absolute bottom-[calc(100%+12px)] right-0 w-[280px] rounded-[4px] border border-[var(--color-line)] bg-white p-2 shadow-[var(--shadow-strong)]">
           <div className="px-3 py-3">

@@ -1615,6 +1615,11 @@ p {
 
 .platform-sidebar {
   position: relative;
+  /* Above .platform-topbar (z-index 60): the collapse toggle is pinned to the
+     rail's right edge with right: -1.1rem, overflowing into the content column.
+     Without a higher stacking context the opaque topbar painted over that notch,
+     hiding the toggle. 70 keeps it below the legal modal (z-80). */
+  z-index: 70;
   align-self: stretch;
   height: 100%;
   min-height: 0;
@@ -3392,12 +3397,6 @@ p {
 .platform-sidebar .grid.grid-cols-2 {
   border-color: rgba(255, 255, 255, 0.08) !important;
   background: rgba(0, 0, 0, 0.22) !important;
-}
-
-.platform-sidebar .sb-toggle,
-.platform-sidebar button[aria-label="Collapse sidebar"],
-.platform-sidebar button[aria-label="Expand sidebar"] {
-  color: rgba(255, 255, 255, 0.78) !important;
 }
 
 .platform-hero-card {
