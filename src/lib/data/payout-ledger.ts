@@ -19,10 +19,15 @@ export function subscribeToTeacherPayoutLedger(
   callback: (entries: PayoutLedgerEntry[]) => void,
   onError: (error: Error) => void,
 ): Unsubscribe {
+  // Equality filter + bounded limit with NO orderBy (single-field index only).
+  // Without orderBy Firestore returns docs in __name__ order — effectively
+  // arbitrary — so the limit must sit ABOVE any realistic ledger count or the
+  // wallet money math sums an arbitrary subset (the old limit(50) did exactly
+  // that past 50 payouts). Callers sort client-side.
   const payoutLedgerQuery = query(
     collection(getFirestoreDb(), payoutLedgerCollection),
     where("teacherId", "==", teacherId),
-    limit(50),
+    limit(500),
   );
 
   return onSnapshot(

@@ -5,19 +5,9 @@ const nextConfig: NextConfig = {
     root: process.cwd(),
   },
   images: {
+    // Covers/avatars are only ever written as Firebase Storage download URLs
+    // (course-assets.ts) or Google account photos — keep the allowlist tight.
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "i.postimg.cc",
-      },
-      {
-        protocol: "https",
-        hostname: "i.pinimg.com",
-      },
-      {
-        protocol: "https",
-        hostname: "placehold.co",
-      },
       {
         protocol: "https",
         hostname: "firebasestorage.googleapis.com",

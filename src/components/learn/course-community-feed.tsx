@@ -519,6 +519,7 @@ function CommunityPostCard({
     likerIds: string[];
   }>({ count: 0, likerIds: [] });
   const [likePending, setLikePending] = useState(false);
+  const [likeError, setLikeError] = useState("");
   const [pinPending, setPinPending] = useState(false);
   const isPinned = post.pinned === true;
 
@@ -599,10 +600,13 @@ function CommunityPostCard({
     }
 
     setLikePending(true);
+    setLikeError("");
     try {
       await setCommunityPostLike(post.id, !liked, currentUser);
     } catch {
-      // The like listener stays authoritative; a failed toggle is a no-op.
+      // The like listener stays authoritative for the count, but the user
+      // still deserves to know their toggle didn't land.
+      setLikeError("We could not save your like. Please try again.");
     } finally {
       setLikePending(false);
     }
@@ -733,6 +737,11 @@ function CommunityPostCard({
         {isOwnPost ? (
           <span className="text-[11px] text-[var(--color-ink-soft)]">
             Likes on your posts become points.
+          </span>
+        ) : null}
+        {likeError ? (
+          <span role="status" className="text-[11px] font-semibold text-[var(--color-accent-fg)]">
+            {likeError}
           </span>
         ) : null}
       </div>

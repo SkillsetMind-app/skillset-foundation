@@ -6,6 +6,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import {
+  CourseInstructorCard,
+  CourseReviewsSection,
+} from "@/components/courses/course-social-proof";
 import { getSafeExternalUrl } from "@/domain/external-url";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import type { TeacherCourse, TeacherCourseStatus } from "@/domain/teacher-course";
@@ -350,6 +354,15 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
             )}
           </div>
         </section>
+
+        {/* Social proof: real learner reviews (enrollment-gated server-side by
+            submitCourseReview). Renders nothing while a course has no
+            published reviews. */}
+        <CourseReviewsSection
+          courseId={course.id}
+          ratingAverage={course.ratingAverage}
+          ratingCount={course.ratingCount}
+        />
       </section>
 
       <aside className="h-fit rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
@@ -455,6 +468,25 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
             ? "Free enrollment attaches this course to your learning workspace immediately."
             : "Paid access opens only after the Stripe webhook confirms payment and creates your enrollment."}
         </p>
+
+        {/* Risk reversal at the point of purchase. States the REAL policy
+            (automaticRefundWindowDays = 7, progress < 50% — see requestRefund),
+            never an invented "30-day guarantee" the platform doesn't honor. */}
+        {!courseIsFree ? (
+          <p className="mt-3 rounded-[10px] border border-[rgba(26,54,93,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
+            <strong className="text-[var(--color-ink)]">
+              7-day refund guarantee.
+            </strong>{" "}
+            Not the right fit? Request a refund within 7 days, as long as you
+            have completed less than half the course.
+          </p>
+        ) : null}
+
+        {/* Instructor identity: buyers were asked to pay without ever seeing
+            WHO teaches the course. Renders only when the teacher has a
+            published public profile (function-projected, never fabricated). */}
+        <CourseInstructorCard teacherId={course.ownerId} />
+
         <Link
           href="/courses"
           className="mt-4 inline-flex w-full justify-center text-sm font-semibold text-[var(--color-primary)]"

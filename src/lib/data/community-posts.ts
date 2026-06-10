@@ -4,6 +4,7 @@ import {
   addDoc,
   collection,
   doc,
+  limit,
   onSnapshot,
   query,
   serverTimestamp,
@@ -69,9 +70,14 @@ export function subscribeToCommunityPosts(
   callback: (posts: CommunityPost[]) => void,
   onError: (error: Error) => void,
 ): Unsubscribe {
+  // Bounded so one viral course community can't stream an unbounded
+  // collection to every viewer. No orderBy keeps the query on the automatic
+  // single-field index; truncation past the cap is arbitrary (__name__
+  // order), so pagination/composite index is the scale-up path.
   const postsQuery = query(
     collection(getFirestoreDb(), communityPostsCollection),
     where("courseSlug", "==", courseSlug),
+    limit(200),
   );
 
   return onSnapshot(

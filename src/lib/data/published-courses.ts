@@ -3,6 +3,7 @@
 import {
   collection,
   doc,
+  limit,
   onSnapshot,
   query,
   where,
@@ -26,9 +27,15 @@ export function subscribeToPublishedTeacherCourses(
   // Review is non-blocking; a reviewer only *removes* a course from sale by
   // flipping it out of these two states. draft / needs_changes / inactive
   // stay hidden from the public marketplace.
+  // Bounded: every public catalog visitor streams this query, and each doc
+  // carries the FULL course (modules + lesson contentText), so an unbounded
+  // read scales cost with the whole marketplace. 200 covers the catalog for
+  // the foreseeable horizon; past that the fix is a slim "courseCards"
+  // projection + pagination, not a bigger limit.
   const coursesQuery = query(
     collection(getFirestoreDb(), coursesCollection),
     where("status", "in", ["published", "in_review"]),
+    limit(200),
   );
 
   return onSnapshot(

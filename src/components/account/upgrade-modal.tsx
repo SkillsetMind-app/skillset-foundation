@@ -1,10 +1,11 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { EmbeddedCheckoutPanel } from "@/components/account/embedded-checkout-panel";
 import type { PlanBillingCycle, PlanId } from "@/data/plans";
+import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 
 type UpgradeModalProps = {
   open: boolean;
@@ -23,6 +24,10 @@ export function UpgradeModal({
   cycle,
   onClose,
 }: UpgradeModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useModalFocus(dialogRef, open && Boolean(planId));
+
   useEffect(() => {
     if (!open) {
       return;
@@ -50,7 +55,9 @@ export function UpgradeModal({
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-stretch justify-center sm:items-center sm:p-6"
+      ref={dialogRef}
+      tabIndex={-1}
+      className="fixed inset-0 z-[70] flex items-stretch justify-center outline-none sm:items-center sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="upgrade-modal-title"

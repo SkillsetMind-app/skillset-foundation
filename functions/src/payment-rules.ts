@@ -27,7 +27,7 @@ export function resolvePayoutReleaseDelayDays(
 export const automaticRefundWindowDays = 7;
 export const automaticRefundProgressCap = 50;
 
-const DEFAULT_PLATFORM_FEE_BPS = 800;
+export const DEFAULT_PLATFORM_FEE_BPS = 800;
 const PLAN_PLATFORM_FEE_BPS: Record<SkillsetPlanId, number> = {
   free: 800,
   starter: 400,
@@ -334,6 +334,13 @@ export async function createReleasedRefundTransferReversal(input: {
    */
   netAmountMinor?: number | null;
   alreadyReversedAmountMinor?: number | null;
+  /**
+   * When set, reverse EXACTLY this amount instead of recomputing — used by the
+   * claim/reserve flow, where the amount was planned transactionally against
+   * the fresh ledger and must not drift between the reservation and the Stripe
+   * call (the Stripe idempotency key is bound to a single amount).
+   */
+  fixedReversalAmountMinor?: number | null;
   idempotencyKey: string;
   metadata: Record<string, string>;
 }): Promise<{
@@ -344,13 +351,16 @@ export async function createReleasedRefundTransferReversal(input: {
     return { reversalId: null, reversalAmountMinor: 0 };
   }
 
-  const reversalAmountMinor = releasedRefundReversalAmountMinor({
-    grossAmountMinor: input.grossAmountMinor,
-    refundedAmountMinor: input.refundedAmountMinor,
-    releasedTransferAmountMinor: input.releasedTransferAmountMinor,
-    netAmountMinor: input.netAmountMinor,
-    alreadyReversedAmountMinor: input.alreadyReversedAmountMinor,
-  });
+  const reversalAmountMinor =
+    input.fixedReversalAmountMinor != null
+      ? Math.max(0, Math.floor(input.fixedReversalAmountMinor))
+      : releasedRefundReversalAmountMinor({
+          grossAmountMinor: input.grossAmountMinor,
+          refundedAmountMinor: input.refundedAmountMinor,
+          releasedTransferAmountMinor: input.releasedTransferAmountMinor,
+          netAmountMinor: input.netAmountMinor,
+          alreadyReversedAmountMinor: input.alreadyReversedAmountMinor,
+        });
 
   if (reversalAmountMinor <= 0) {
     return { reversalId: null, reversalAmountMinor: 0 };
@@ -374,6 +384,108 @@ export async function createReleasedRefundTransferReversal(input: {
     reversalId: reversal.id,
     reversalAmountMinor,
   };
+}
+
+/* ---------------------------------------------------------------------- *
+ *  Refund-reversal claims — serialize concurrent charge.refunded deliveries
+ *
+ *  Two DISTINCT charge.refunded events (e.g. two partial refunds issued
+ *  seconds apart) can be processed concurrently: the event-level idempotency
+ *  gate only dedupes the SAME event id. Both handlers would then read a stale
+ *  transferReversedAmountMinor and each plan a reversal against the same
+ *  un-reversed balance — over-clawing the teacher (Stripe only caps the total
+ *  at the full transfer amount, not at the correct proportional figure).
+ *
+ *  Fix mirrors the webhook's two-phase claim, scoped to the ledger doc:
+ *  Phase 1 claims this delivery's key (chargeId + CUMULATIVE amount_refunded)
+ *  and reserves the planned amount inside a transaction, planning against the
+ *  fresh reversed counter PLUS any other in-flight reservations. Phase 2 (after
+ *  the Stripe call) promotes the claim to "done" and folds the executed amount
+ *  into transferReversedAmountMinor, guarded on the claim still being
+ *  "pending" so a double delivery can never double-count.
+ *
+ *  Crash safety: a claim stuck "pending" re-executes on the webhook retry with
+ *  the SAME planned amount and the SAME Stripe idempotency key, so Stripe
+ *  replays — not repeats — the reversal.
+ * ---------------------------------------------------------------------- */
+
+export type RefundReversalClaimState = "pending" | "done";
+
+export type RefundReversalClaimRecord = {
+  state: RefundReversalClaimState;
+  plannedAmountMinor: number;
+};
+
+export type RefundReversalClaimDecision = {
+  action: "skip" | "execute";
+  plannedAmountMinor: number;
+};
+
+/**
+ * Ledger-map key for one charge.refunded delivery. amount_refunded is
+ * CUMULATIVE on the charge, so (chargeId, amount) uniquely identifies a refund
+ * state — a pure redelivery reuses the key and is absorbed by the claim.
+ */
+export function refundReversalClaimKey(
+  chargeId: string,
+  cumulativeRefundedAmountMinor: number,
+): string {
+  return `${chargeId}_${Math.max(0, Math.floor(cumulativeRefundedAmountMinor))}`;
+}
+
+/**
+ * Phase-1 decision for a charge.refunded delivery, evaluated against the
+ * TRANSACTIONALLY-FRESH ledger state:
+ *  - claim already "done"    -> skip (this cumulative amount was fully
+ *    accounted; this is a Stripe redelivery).
+ *  - claim still "pending"   -> execute the ORIGINALLY planned amount (a prior
+ *    attempt died between phases; the stable Stripe idempotency key makes the
+ *    re-issued call a replay, not a repeat).
+ *  - no claim                -> plan fresh, counting other pending claims'
+ *    reservations as already-reversed so concurrent deliveries never plan
+ *    against the same un-reversed balance.
+ */
+export function decideRefundReversalClaim(input: {
+  existingClaim: RefundReversalClaimRecord | null | undefined;
+  otherPendingReservedMinor: number;
+  shouldReverse: boolean;
+  grossAmountMinor: number;
+  refundedAmountMinor: number;
+  releasedTransferAmountMinor: number;
+  netAmountMinor?: number | null;
+  alreadyReversedAmountMinor: number;
+}): RefundReversalClaimDecision {
+  if (input.existingClaim?.state === "done") {
+    return { action: "skip", plannedAmountMinor: 0 };
+  }
+
+  if (input.existingClaim?.state === "pending") {
+    const planned = Math.max(
+      0,
+      Math.floor(Number(input.existingClaim.plannedAmountMinor || 0)),
+    );
+    return planned > 0
+      ? { action: "execute", plannedAmountMinor: planned }
+      : { action: "skip", plannedAmountMinor: 0 };
+  }
+
+  if (!input.shouldReverse) {
+    return { action: "skip", plannedAmountMinor: 0 };
+  }
+
+  const planned = releasedRefundReversalAmountMinor({
+    grossAmountMinor: input.grossAmountMinor,
+    refundedAmountMinor: input.refundedAmountMinor,
+    releasedTransferAmountMinor: input.releasedTransferAmountMinor,
+    netAmountMinor: input.netAmountMinor,
+    alreadyReversedAmountMinor:
+      Math.max(0, Math.floor(input.alreadyReversedAmountMinor))
+      + Math.max(0, Math.floor(input.otherPendingReservedMinor)),
+  });
+
+  return planned > 0
+    ? { action: "execute", plannedAmountMinor: planned }
+    : { action: "skip", plannedAmountMinor: 0 };
 }
 
 export function paidOrderRefundQuerySpec(userId: string, courseId: string) {

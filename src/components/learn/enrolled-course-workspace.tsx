@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   BookOpen,
@@ -62,6 +63,12 @@ export function EnrolledCourseWorkspace({
   previewMode = false,
 }: EnrolledCourseWorkspaceProps) {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  // Stripe's success_url carries ?checkout=success while the webhook is still
+  // creating the enrollment — show "finalizing" instead of "Enrollment
+  // required" during that gap (the realtime listener opens the workspace).
+  const cameFromCheckout = searchParams?.get("checkout") === "success";
+  const [checkoutGraceExpired, setCheckoutGraceExpired] = useState(false);
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [isLoading, setIsLoading] = useState(!previewMode);
   const [progressState, setProgressState] = useState<{
@@ -100,6 +107,18 @@ export function EnrolledCourseWorkspace({
   };
   const workspaceEnrollment = previewMode ? previewEnrollment : enrollment;
   const progressKey = workspaceEnrollment?.id ?? null;
+
+  useEffect(() => {
+    if (!cameFromCheckout) {
+      return;
+    }
+
+    // After 90s without an enrollment the webhook is genuinely stuck — switch
+    // the copy from "opening..." to a keep-the-page-open/support message.
+    const timer = window.setTimeout(() => setCheckoutGraceExpired(true), 90_000);
+
+    return () => window.clearTimeout(timer);
+  }, [cameFromCheckout]);
 
   useEffect(() => {
     if (previewMode) {
@@ -221,6 +240,26 @@ export function EnrolledCourseWorkspace({
   }
 
   if (!workspaceEnrollment) {
+    if (cameFromCheckout) {
+      return (
+        <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+            Payment received
+          </p>
+          <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+            {checkoutGraceExpired
+              ? "Almost there — enrollment is taking longer than usual."
+              : "Opening your course..."}
+          </h3>
+          <p role="status" className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
+            {checkoutGraceExpired
+              ? "Your payment went through and is safe. Keep this page open: it unlocks automatically the moment your enrollment is confirmed. If nothing happens in a few minutes, contact support with your Stripe receipt."
+              : "Stripe confirmed your checkout. We are finalizing your enrollment right now; this page opens automatically in a few seconds."}
+          </p>
+        </section>
+      );
+    }
+
     return (
       <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
@@ -1363,7 +1402,7 @@ function ProtectedAssetActions({
       <a
         href={objectUrl}
         target="_blank"
-        rel="noreferrer"
+        rel="noopener noreferrer"
         className="button-outline px-4 py-2 text-xs"
       >
         Open file

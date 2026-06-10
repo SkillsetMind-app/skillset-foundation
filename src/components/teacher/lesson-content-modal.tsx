@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   CheckCircle2,
   FileText,
@@ -34,6 +34,7 @@ import {
   uploadCourseAsset,
   type UploadCourseAssetProgress,
 } from "@/lib/data/course-assets";
+import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 
 type LessonContentModalProps = {
   course: TeacherCourse;
@@ -127,6 +128,21 @@ export function LessonContentModal({
   const trustedEmbed = getTrustedLessonEmbed(lesson.externalUrl);
   const videoStatus = getAssetStatusLabel(lessonAssets, lesson);
 
+  const dialogRef = useRef<HTMLElement>(null);
+
+  useModalFocus(dialogRef, true);
+
+  // Closing mid-upload would drop the progress UI while bytes are still
+  // flying — every close affordance funnels through requestClose so an
+  // in-flight upload can't be dismissed by accident.
+  function requestClose() {
+    if (isUploading) {
+      return;
+    }
+
+    onClose();
+  }
+
   useEffect(() => {
     return subscribeToCourseAssets(
       course.id,
@@ -134,6 +150,22 @@ export function LessonContentModal({
       () => setError("We could not load lesson assets."),
     );
   }, [course.id]);
+
+  // The parent mounts this modal conditionally, so it is always "open" while
+  // mounted — Escape mirrors the close affordances (X button / Done / overlay).
+  // Re-binding when isUploading flips is what keeps Escape from dismissing an
+  // in-flight upload, matching requestClose below.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && !isUploading) {
+        onClose();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isUploading, onClose]);
 
   function resetUploadState(nextKind: CourseAssetKind) {
     setUploadKind(nextKind);
@@ -229,9 +261,12 @@ export function LessonContentModal({
   }
 
   return (
-    <div className="lesson-modal-overlay" role="presentation" onMouseDown={onClose}>
+    <div className="lesson-modal-overlay" role="presentation" onMouseDown={requestClose}>
       <section
+        ref={dialogRef}
+        tabIndex={-1}
         aria-modal="true"
+        aria-labelledby="lesson-modal-title"
         className="lesson-modal"
         role="dialog"
         onMouseDown={(event) => event.stopPropagation()}
@@ -241,12 +276,12 @@ export function LessonContentModal({
             <p className="lesson-modal__crumb">
               Module {moduleIndex + 1} - {module.title} / Lesson {lessonIndex + 1}
             </p>
-            <h3>{lesson.title || "Untitled lesson"}</h3>
+            <h3 id="lesson-modal-title">{lesson.title || "Untitled lesson"}</h3>
             <p>
               Configure the exact lesson students will watch, read, download, and discuss.
             </p>
           </div>
-          <button type="button" className="lesson-modal__close" onClick={onClose}>
+          <button type="button" className="lesson-modal__close" onClick={requestClose}>
             <X aria-hidden="true" size={18} />
             <span className="sr-only">Close lesson studio</span>
           </button>
@@ -498,6 +533,7 @@ export function LessonContentModal({
                   onClick={onSetFreePreview}
                   disabled={!isEditable}
                   aria-pressed={isFreePreview}
+                  aria-label="Use this lesson as the free preview"
                 />
               </div>
               <label className="lesson-modal-field">
@@ -564,8 +600,13 @@ export function LessonContentModal({
             <CheckCircle2 aria-hidden="true" size={14} />
             Uploads save immediately. Text and settings save with the course draft.
           </p>
-          <button type="button" className="button-solid px-4 py-3 text-sm" onClick={onClose}>
-            Done
+          <button
+            type="button"
+            className="button-solid px-4 py-3 text-sm disabled:opacity-60"
+            onClick={requestClose}
+            disabled={isUploading}
+          >
+            {isUploading ? "Uploading..." : "Done"}
           </button>
         </footer>
       </section>

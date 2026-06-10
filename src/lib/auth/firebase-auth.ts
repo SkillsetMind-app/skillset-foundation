@@ -52,14 +52,24 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
 
   return onAuthStateChanged(auth, async (user) => {
     if (user) {
-      await upsertUserProfile({
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
-      });
+      // Read-only hot path. This listener fires on EVERY page load, and it
+      // used to run a serial profile write (upsert) + read before auth could
+      // resolve — delaying every authenticated surface by a round-trip. The
+      // sign-in/sign-up flows already upsert (signInWithEmail,
+      // signUpWithEmail, signInWithGoogle below), so the listener only
+      // repairs a MISSING profile doc (legacy account or an interrupted
+      // signup) before resolving the session.
+      let profile = await getUserProfile(user.uid);
 
-      const profile = await getUserProfile(user.uid);
+      if (!profile) {
+        await upsertUserProfile({
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+        });
+        profile = await getUserProfile(user.uid);
+      }
 
       callback({
         status: "authenticated",

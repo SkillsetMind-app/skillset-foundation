@@ -44,6 +44,35 @@ export function getAuthPathQuery(intent: AuthPathIntent | null): string {
   return intent ? `?path=${intent}` : "";
 }
 
+/**
+ * Validates a post-login destination so deep links survive the sign-in wall
+ * without opening a redirect hole. Only same-origin absolute paths pass:
+ * anything with a scheme/host ("https://evil", "//evil", "/\evil") or a
+ * route that would loop the auth flow is rejected.
+ */
+export function getSafeReturnTo(
+  searchParams: URLSearchParams,
+): string | null {
+  const raw = searchParams.get("returnTo");
+
+  if (!raw || !raw.startsWith("/")) {
+    return null;
+  }
+
+  // "//host" and "/\host" are protocol-relative escapes browsers honor.
+  if (raw.startsWith("//") || raw.startsWith("/\\")) {
+    return null;
+  }
+
+  const authRoutes = ["/login", "/signup", "/auth", "/loading", "/welcome", "/logout"];
+
+  if (authRoutes.some((route) => raw === route || raw.startsWith(`${route}?`) || raw.startsWith(`${route}/`))) {
+    return null;
+  }
+
+  return raw;
+}
+
 export function getLoadingRoute(
   next: "route" | "welcome",
   intent: AuthPathIntent | null = null,

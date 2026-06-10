@@ -17,6 +17,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { PlatformNav } from "@/components/platform/platform-nav";
 import { SessionCard } from "@/components/platform/session-card";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
+import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 
 type MobileSidebarDrawerProps = {
   open: boolean;
@@ -32,6 +33,9 @@ export function MobileSidebarDrawer({
   const { user } = useAuth();
   const pathname = usePathname() ?? "";
   const touchStartX = useRef<number | null>(null);
+  const drawerRef = useRef<HTMLElement>(null);
+
+  useModalFocus(drawerRef, open);
   const workspaceItem = useMemo(() => {
     const isTeacher = user?.roles.includes("teacher");
 
@@ -105,7 +109,12 @@ export function MobileSidebarDrawer({
             onClick={onClose}
           />
           <aside
-            className="relative z-[60] flex h-screen w-[280px] flex-col bg-white shadow-[0_0_60px_rgba(15,39,68,0.25)]"
+            ref={drawerRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Platform navigation"
+            className="relative z-[60] flex h-screen w-[280px] flex-col bg-white shadow-[0_0_60px_rgba(15,39,68,0.25)] outline-none"
             onTouchStart={(event) => {
               touchStartX.current = event.touches[0]?.clientX ?? null;
             }}

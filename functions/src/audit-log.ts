@@ -17,6 +17,7 @@ export const AUDIT_ACTIONS = {
   REFUND_ISSUED: "refund.issued",
   ACCOUNT_DELETION_REQUESTED: "account.deletion_requested",
   ACCOUNT_DATA_EXPORT_REQUESTED: "account.data_export_requested",
+  COURSE_DELETED_BY_ADMIN: "course.deleted_by_admin",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

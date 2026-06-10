@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { TeacherOverviewMetrics } from "@/components/teacher/teacher-overview-metrics";
 import { TeacherStudioInsights } from "@/components/teacher/teacher-studio-insights";
 import type { Order } from "@/domain/order";
+import { computePaymentSplit } from "@/domain/payment-split";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
@@ -28,6 +29,7 @@ export function TeacherStudioDashboard() {
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [ledger, setLedger] = useState<PayoutLedgerEntry[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoaded, setOrdersLoaded] = useState(false);
   const [payoutsReady, setPayoutsReady] = useState(false);
   const [coursesLoaded, setCoursesLoaded] = useState(false);
   const firstName = user?.displayName?.trim().split(/\s+/)[0] ?? "there";
@@ -35,17 +37,21 @@ export function TeacherStudioDashboard() {
   const draftCourses = courses.filter((course) => course.status === "draft");
   const nextPayout = useMemo(() => getNextPayoutLabel(ledger), [ledger]);
 
-  // Compact hero payout chip figure. Mirror of the net-payout computation in
-  // teacher-studio-insights.tsx / teacher-wallet-panel.tsx: gross paid orders
-  // minus the per-order platform commission, floored at zero. Kept local so the
-  // hero stays self-contained instead of coupling to the insights component.
+  // Compact hero payout chip figure, computed with the CANONICAL split
+  // (src/domain/payment-split): platform commission AND the Stripe processing
+  // fee the teacher absorbs (DECISIONS.md D1/D2). The old local mirror omitted
+  // the Stripe fee and overstated the teacher's net on every sale.
   const paidOrders = orders.filter((order) => order.status === "paid");
-  const grossMinor = paidOrders.reduce((sum, order) => sum + order.amountMinor, 0);
-  const platformFeeMinor = paidOrders.reduce(
-    (sum, order) => sum + Math.floor((order.amountMinor * order.platformFeeBps) / 10000),
+  const netMinor = paidOrders.reduce(
+    (sum, order) =>
+      sum
+      + computePaymentSplit(
+        order.amountMinor,
+        order.currency ?? "USD",
+        order.platformFeeBps,
+      ).teacherNetMinor,
     0,
   );
-  const netMinor = Math.max(0, grossMinor - platformFeeMinor);
 
   useEffect(() => {
     if (!user) {
@@ -84,8 +90,16 @@ export function TeacherStudioDashboard() {
 
     return subscribeToTeacherOrders(
       user.uid,
-      setOrders,
-      logSubscriptionError("TeacherStudioDashboard.orders"),
+      (nextOrders) => {
+        setOrders(nextOrders);
+        setOrdersLoaded(true);
+      },
+      (error) => {
+        logSubscriptionError("TeacherStudioDashboard.orders")(error);
+        // Loaded-with-error still ends the skeleton; the chip shows $0 rather
+        // than pulsing forever on a broken subscription.
+        setOrdersLoaded(true);
+      },
     );
   }, [user]);
 
@@ -141,13 +155,25 @@ export function TeacherStudioDashboard() {
               href="/account/payments#stripe-connect"
               className="studio-payout-chip"
               aria-label={
-                payoutsReady
-                  ? `Next payout ${money.format(netMinor / 100)} — open payout settings`
-                  : "Connect Stripe to enable payouts"
+                !ordersLoaded
+                  ? "Next payout loading — open payout settings"
+                  : payoutsReady
+                    ? `Next payout ${money.format(netMinor / 100)} — open payout settings`
+                    : "Connect Stripe to enable payouts"
               }
             >
               <span className="studio-payout-chip__label">Next payout</span>
-              <span className="studio-payout-chip__value">{money.format(netMinor / 100)}</span>
+              <span className="studio-payout-chip__value">
+                {ordersLoaded ? (
+                  money.format(netMinor / 100)
+                ) : (
+                  // Orders snapshot not in yet — pulse instead of flashing $0.
+                  <span
+                    className="inline-block h-[1em] w-14 animate-pulse rounded bg-[var(--color-surface-strong)] align-middle"
+                    aria-hidden="true"
+                  />
+                )}
+              </span>
               <span className="studio-payout-chip__hint">
                 {payoutsReady ? "Net after platform fee" : "Connect Stripe to enable"}
               </span>

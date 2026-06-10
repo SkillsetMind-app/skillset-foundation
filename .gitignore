@@ -58,3 +58,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .gstack/
+
+# local agent/session runtime state (never ship)
+/.claude/jarvis/
+/.claude/logs/
+/.claude/mission-control/
+/.claude/sessions/
+/logs/

@@ -1015,6 +1015,23 @@ export function CourseBuilderStudio() {
       return;
     }
 
+    // The 1.8s autosave makes this deletion permanent almost immediately, so
+    // it must be confirmed — mirrors the asset-delete confirm in
+    // course-asset-uploader / lesson-content-modal.
+    const target = modules.find((module) => module.id === moduleId);
+    const lessonCount = target?.lessons.length ?? 0;
+    const confirmed = window.confirm(
+      `Delete module "${target?.title || "Untitled module"}"${
+        lessonCount > 0
+          ? ` and its ${lessonCount} lesson${lessonCount === 1 ? "" : "s"}`
+          : ""
+      }? This cannot be undone after autosave.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
     setModules((currentModules) => {
       const deletedModule = currentModules.find((module) => module.id === moduleId);
       const nextModules = currentModules.filter((module) => module.id !== moduleId);
@@ -1083,6 +1100,20 @@ export function CourseBuilderStudio() {
 
   function deleteLesson(moduleId: string, lessonId: string) {
     if (!isEditable) {
+      return;
+    }
+
+    // Same confirm rationale as deleteModule: autosave persists the removal
+    // ~1.8s later, so an accidental click would silently destroy the lesson.
+    const parentModule = modules.find((module) => module.id === moduleId);
+    const targetLesson = parentModule?.lessons.find(
+      (lesson) => lesson.id === lessonId,
+    );
+    const confirmed = window.confirm(
+      `Delete lesson "${targetLesson?.title || "Untitled lesson"}"? This cannot be undone after autosave.`,
+    );
+
+    if (!confirmed) {
       return;
     }
 

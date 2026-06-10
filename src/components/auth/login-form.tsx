@@ -13,6 +13,7 @@ import {
 import {
   getAuthPathIntentFromSearchParams,
   getLoadingRoute,
+  getSafeReturnTo,
 } from "@/lib/auth/routing";
 import { getUserProfile } from "@/lib/data/user-profiles";
 
@@ -23,6 +24,9 @@ export function LoginForm() {
     () => getAuthPathIntentFromSearchParams(searchParams),
     [searchParams],
   );
+  // Deep link the sign-in wall captured (e.g. /learn/courses/x). Honored only
+  // for onboarded accounts — first-time users still go through /welcome.
+  const returnTo = useMemo(() => getSafeReturnTo(searchParams), [searchParams]);
   const pathLabel = pathIntent === "teacher" ? "educator" : "learner";
   const signupHref = pathIntent
     ? `/auth?mode=signup&path=${pathIntent}`
@@ -42,7 +46,7 @@ export function LoginForm() {
       const profile = await getUserProfile(user.uid);
       router.push(
         profile?.onboardingCompleted
-          ? getLoadingRoute("route", pathIntent)
+          ? returnTo ?? getLoadingRoute("route", pathIntent)
           : getLoadingRoute("welcome", pathIntent),
       );
     } catch (caughtError) {
@@ -61,7 +65,7 @@ export function LoginForm() {
       const profile = await getUserProfile(user.uid);
       router.push(
         profile?.onboardingCompleted
-          ? getLoadingRoute("route", pathIntent)
+          ? returnTo ?? getLoadingRoute("route", pathIntent)
           : getLoadingRoute("welcome", pathIntent),
       );
     } catch (caughtError) {

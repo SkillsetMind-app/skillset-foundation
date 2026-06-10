@@ -20,6 +20,12 @@ export function CreatorCourseWorkspace({
 }) {
   const searchParams = useSearchParams();
   const courseId = initialCourseId ?? searchParams.get("courseId") ?? "";
+  // Stripe's success_url lands here with ?checkout=success BEFORE the webhook
+  // has created the enrollment doc. During that gap the buyer must see a
+  // "finalizing" state — not "Enrollment required" — and the realtime
+  // enrollment listener opens the workspace the moment the webhook commits.
+  const cameFromCheckout = searchParams.get("checkout") === "success";
+  const [checkoutGraceExpired, setCheckoutGraceExpired] = useState(false);
   const hasFirebaseConfig = Boolean(getFirebaseClientConfig());
   const { user } = useAuth();
   const [enrollmentState, setEnrollmentState] = useState<{
@@ -54,6 +60,19 @@ export function CreatorCourseWorkspace({
   const isLoadingCourse = Boolean(
     canOpenCourse && (!courseState.ready || courseState.key !== courseId),
   );
+
+  useEffect(() => {
+    if (!cameFromCheckout) {
+      return;
+    }
+
+    // Webhook fulfilment normally lands in seconds; after 90s without an
+    // enrollment something is genuinely stuck and the copy should say so
+    // instead of spinning forever.
+    const timer = window.setTimeout(() => setCheckoutGraceExpired(true), 90_000);
+
+    return () => window.clearTimeout(timer);
+  }, [cameFromCheckout]);
 
   useEffect(() => {
     if (!user || !courseId || !hasFirebaseConfig) {
@@ -138,6 +157,20 @@ export function CreatorCourseWorkspace({
   }
 
   if (!enrollment) {
+    if (cameFromCheckout) {
+      return checkoutGraceExpired ? (
+        <CreatorWorkspaceState
+          title="Almost there — enrollment is taking longer than usual."
+          detail="Your payment went through and is safe. Keep this page open: it unlocks automatically the moment your enrollment is confirmed. If nothing happens in a few minutes, contact support with your Stripe receipt."
+        />
+      ) : (
+        <CreatorWorkspaceState
+          title="Payment received — opening your course..."
+          detail="Stripe confirmed your checkout. We are finalizing your enrollment right now; this page opens automatically in a few seconds."
+        />
+      );
+    }
+
     return (
       <CreatorWorkspaceState
         title="Enrollment required."

@@ -104,43 +104,47 @@ export function useAuth() {
 function LegalAcceptanceGate() {
   const { status, user } = useAuth();
   const pathname = usePathname() ?? "";
-  const [needsAcceptance, setNeedsAcceptance] = useState(false);
+  // Keyed by uid so a stale verdict from a previous account can never gate the
+  // next one, and so the no-user case is derived (no setState in the effect).
+  const [acceptance, setAcceptance] = useState<{
+    uid: string;
+    needsAcceptance: boolean;
+  } | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+  const uid = status === "authenticated" ? user?.uid ?? null : null;
+  const needsAcceptance = Boolean(
+    uid && acceptance?.uid === uid && acceptance.needsAcceptance,
+  );
 
+  // One profile read per signed-in uid — NOT per navigation. The legal
+  // versions a profile accepted can't change from client-side route changes,
+  // so keying the fetch on uid (instead of pathname) removes a Firestore read
+  // from every client-side navigation. Exempt routes are a render-time gate
+  // below, which needs no fetch at all.
   useEffect(() => {
+    if (!uid) {
+      return;
+    }
+
     let cancelled = false;
+    const checkedUid = uid;
 
     async function checkLegalAcceptance() {
-      if (status !== "authenticated" || !user) {
-        setNeedsAcceptance(false);
-        return;
-      }
-
-      if (
-        pathname.startsWith("/legal")
-        || pathname.startsWith("/auth")
-        || pathname.startsWith("/login")
-        || pathname.startsWith("/loading")
-        || pathname.startsWith("/signup")
-        || pathname.startsWith("/welcome")
-      ) {
-        setNeedsAcceptance(false);
-        return;
-      }
-
-      const profile = await getUserProfile(user.uid);
+      const profile = await getUserProfile(checkedUid);
 
       if (cancelled) {
         return;
       }
 
-      setNeedsAcceptance(
-        profile?.termsVersion !== currentTermsVersion
+      setAcceptance({
+        uid: checkedUid,
+        needsAcceptance:
+          profile?.termsVersion !== currentTermsVersion
           || profile?.privacyVersion !== currentPrivacyVersion,
-      );
+      });
       setTermsAccepted(false);
       setPrivacyAccepted(false);
       setError("");
@@ -151,7 +155,15 @@ function LegalAcceptanceGate() {
     return () => {
       cancelled = true;
     };
-  }, [pathname, status, user]);
+  }, [uid]);
+
+  const onExemptRoute =
+    pathname.startsWith("/legal")
+    || pathname.startsWith("/auth")
+    || pathname.startsWith("/login")
+    || pathname.startsWith("/loading")
+    || pathname.startsWith("/signup")
+    || pathname.startsWith("/welcome");
 
   async function handleAccept() {
     if (!user || !termsAccepted || !privacyAccepted) {
@@ -164,7 +176,7 @@ function LegalAcceptanceGate() {
     try {
       const profile = await getUserProfile(user.uid);
       await acceptUserTerms(user.uid, profile?.marketingConsent ?? false);
-      setNeedsAcceptance(false);
+      setAcceptance({ uid: user.uid, needsAcceptance: false });
     } catch {
       setError("Could not update your legal acceptance. Please try again.");
     } finally {
@@ -172,7 +184,7 @@ function LegalAcceptanceGate() {
     }
   }
 
-  if (!needsAcceptance) {
+  if (!needsAcceptance || onExemptRoute) {
     return null;
   }
 

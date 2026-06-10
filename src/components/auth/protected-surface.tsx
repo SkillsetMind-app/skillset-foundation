@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
@@ -14,6 +15,7 @@ type ProtectedSurfaceProps = {
 
 export function ProtectedSurface({ permissions, children }: ProtectedSurfaceProps) {
   const { status, user } = useAuth();
+  const pathname = usePathname() ?? "";
 
   if (status === "loading") {
     return (
@@ -25,12 +27,30 @@ export function ProtectedSurface({ permissions, children }: ProtectedSurfaceProp
   }
 
   if (!user) {
+    // Preserve the deep link (path + query) through the sign-in wall so a
+    // shared course/workspace URL lands back where the visitor was headed
+    // instead of dying on the role dashboard. login-form validates it.
+    //
+    // Query read straight from window.location instead of useSearchParams():
+    // the hook forces a CSR bailout that breaks static prerender on every
+    // page using this guard. This branch only ever renders client-side —
+    // during SSR/prerender, auth status is "loading" and the spinner above
+    // renders instead — so window is always available here.
+    const queryString =
+      typeof window === "undefined"
+        ? ""
+        : window.location.search.replace(/^\?/, "");
+    const destination = `${pathname}${queryString ? `?${queryString}` : ""}`;
+    const loginHref = pathname
+      ? `/login?returnTo=${encodeURIComponent(destination)}`
+      : "/login";
+
     return (
       <AccessPanel
         eyebrow="Sign in required"
         title="This area needs an account."
         description="Sign in or create an account to continue into the learning, teaching, or operations workspace."
-        cta={{ href: "/login", label: "Sign in" }}
+        cta={{ href: loginHref, label: "Sign in" }}
         secondary={{ href: "/signup", label: "Create account" }}
       />
     );

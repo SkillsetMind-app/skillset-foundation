@@ -47,12 +47,16 @@ import {
   canonicalPlatformFeeBpsForPlan,
   claimStripeEvent,
   createReleasedRefundTransferReversal,
+  DEFAULT_PLATFORM_FEE_BPS,
   decideCheckoutLock,
+  decideRefundReversalClaim,
   ledgerRefundStatus,
   markStripeEventDone,
   paidOrderRefundQuerySpec,
   payoutReleaseDelayDays,
   plannedReleaseTransferAmountMinor,
+  refundReversalClaimKey,
+  type RefundReversalClaimRecord,
   resolveInvoicePaymentIntentId,
   resolvePayoutReleaseDelayDays,
   sanitizeStripeSecret,
@@ -213,6 +217,8 @@ type PayoutLedgerRecord = {
   status: string;
   releaseAt?: unknown;
   releaseAttemptCount?: number;
+  /** Set on every release claim; lets the recovery sweep age stuck claims. */
+  lastReleaseAttemptAt?: unknown;
   transferId?: string | null;
   transferReversedAmountMinor?: number | null;
   refundedAmountMinor?: number | null;
@@ -230,6 +236,13 @@ type PayoutLedgerRecord = {
    * idempotency key. Set-once; never recomputed mid-flight (Gap 1).
    */
   plannedTransferAmountMinor?: number | null;
+  /**
+   * Two-phase claims for charge.refunded deliveries, keyed by
+   * `${chargeId}_${cumulativeAmountRefunded}`. Serializes concurrent refund
+   * deliveries so each plans its reversal against a fresh counter plus other
+   * in-flight reservations (see decideRefundReversalClaim in payment-rules).
+   */
+  refundReversalClaims?: Record<string, RefundReversalClaimRecord> | null;
 };
 
 type CourseReviewRecord = {
@@ -648,6 +661,12 @@ function validateCourseReadyForReview(course: TeacherCourseRecord) {
   }
 }
 
+// Memoized per secret value: a webhook delivery makes several Stripe calls
+// and used to construct a fresh client (new HTTPS agent, no keep-alive) for
+// each one. Keyed by the key itself so a secret rotation mid-instance
+// transparently builds a new client instead of pinning the stale one.
+let cachedStripeClient: { key: string; client: Stripe } | null = null;
+
 function getStripeClient() {
   // sanitizeStripeSecret trims the secret so a stray trailing newline can't
   // poison the `Authorization: Bearer <key>` header (the ERR_INVALID_CHAR that
@@ -667,9 +686,16 @@ function getStripeClient() {
     );
   }
 
-  return new Stripe(result.key, {
-    apiVersion: "2026-02-25.clover" as Stripe.LatestApiVersion,
-  });
+  if (cachedStripeClient?.key !== result.key) {
+    cachedStripeClient = {
+      key: result.key,
+      client: new Stripe(result.key, {
+        apiVersion: "2026-02-25.clover" as Stripe.LatestApiVersion,
+      }),
+    };
+  }
+
+  return cachedStripeClient.client;
 }
 
 /**
@@ -711,9 +737,13 @@ function toStripeHttpsError(error: unknown, action: string): HttpsError {
       statusCode: error.statusCode,
       message: error.message,
     });
+    // Full detail stays server-side (logged above); clients get a stable,
+    // user-safe message plus a machine-readable code — never the raw Stripe
+    // message, which can expose platform Connect configuration internals.
     return new HttpsError(
       "failed-precondition",
-      error.message || `Stripe could not complete ${action}.`,
+      `Stripe could not complete ${action}. Please try again.`,
+      { reason: "stripe_error", code: error.code ?? null },
     );
   }
 
@@ -1036,6 +1066,10 @@ export const createTeacherCourseDraft = onCall(async (request) => {
       "Teacher setup must be complete before creating courses.",
     );
   }
+
+  // Each call reserves a platform-global courseTitleKeys doc — throttle so a
+  // scripted teacher account cannot mass-squat the title namespace.
+  await enforceRateLimit(`course_draft_create_${uid}`, 20, 60 * 60 * 1000);
 
   const courseRef = db.collection("courses").doc();
   const titleKeyRef = db.collection("courseTitleKeys").doc(titleKey);
@@ -1396,28 +1430,33 @@ export const deleteCourseAsAdmin = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Only Skillset admins can delete courses.");
   }
 
-  // Safety guard: never hard-delete a course that carries real learners or
-  // sales. Orphaning enrollments/orders would corrupt course access and payout
-  // records, so such a course must be unpublished (status: inactive) instead.
-  const [enrollmentSnapshot, orderSnapshot] = await Promise.all([
-    db.collection("enrollments").where("courseId", "==", courseId).limit(1).get(),
-    db.collection("orders").where("courseId", "==", courseId).limit(1).get(),
-  ]);
-
-  if (!enrollmentSnapshot.empty || !orderSnapshot.empty) {
-    throw new HttpsError(
-      "failed-precondition",
-      "This course has enrollments or orders. Unpublish it to remove it from the marketplace; it cannot be permanently deleted.",
-    );
-  }
-
   const courseRef = db.collection("courses").doc(courseId);
 
   await db.runTransaction(async (transaction) => {
-    const courseSnapshot = await transaction.get(courseRef);
+    // Safety guard: never hard-delete a course that carries real learners or
+    // sales — orphaning enrollments/orders would corrupt course access and
+    // payout records; such a course must be unpublished (status: inactive)
+    // instead. Checked INSIDE the delete transaction so an enrollment/order
+    // that lands mid-call conflicts the commit instead of being orphaned.
+    const [courseSnapshot, enrollmentSnapshot, orderSnapshot] = await Promise.all([
+      transaction.get(courseRef),
+      transaction.get(
+        db.collection("enrollments").where("courseId", "==", courseId).limit(1),
+      ),
+      transaction.get(
+        db.collection("orders").where("courseId", "==", courseId).limit(1),
+      ),
+    ]);
 
     if (!courseSnapshot.exists) {
       throw new HttpsError("not-found", "Course not found.");
+    }
+
+    if (!enrollmentSnapshot.empty || !orderSnapshot.empty) {
+      throw new HttpsError(
+        "failed-precondition",
+        "This course has enrollments or orders. Unpublish it to remove it from the marketplace; it cannot be permanently deleted.",
+      );
     }
 
     const course = courseSnapshot.data() as TeacherCourseRecord;
@@ -1430,6 +1469,21 @@ export const deleteCourseAsAdmin = onCall(async (request) => {
     }
 
     transaction.delete(courseRef);
+  });
+
+  // Privileged destructive action — leave an immutable trail of WHO deleted
+  // WHAT. Best-effort by design (recordAuditEvent never throws): the delete
+  // already committed, so the audit write must not fail the call.
+  await recordAuditEvent({
+    action: AUDIT_ACTIONS.COURSE_DELETED_BY_ADMIN,
+    actorId: uid,
+    actorEmail:
+      typeof request.auth.token.email === "string"
+        ? request.auth.token.email
+        : null,
+    targetType: "course",
+    targetId: courseId,
+    summary: "Course permanently deleted by admin",
   });
 
   return { success: true };
@@ -2883,6 +2937,52 @@ export const dailyReleaseTransfers = onSchedule(
   async () => {
     const now = Date.now();
     const stripe = getStripeClient();
+
+    // Recovery sweep: a ledger stuck at "releasing" means a previous run died
+    // between claiming the doc and persisting the transfer outcome (crash, OOM,
+    // timeout). Money may or may not have moved — but the Stripe transfer is
+    // idempotent under `transfer_${ledgerId}`, so resetting the doc to
+    // in_release lets the normal path retry safely: Stripe replays the answer
+    // it already gave or creates the transfer exactly once. Single-field
+    // equality query (no composite index needed); staleness filtered in memory.
+    const stuckSnapshot = await db
+      .collection("payoutLedger")
+      .where("status", "==", "releasing")
+      .limit(50)
+      .get();
+    const staleBeforeMillis = now - 6 * 60 * 60 * 1000;
+    let recoveredCount = 0;
+
+    for (const stuckDocument of stuckSnapshot.docs) {
+      const stuck = stuckDocument.data() as PayoutLedgerRecord;
+      const lastAttemptMillis = timestampToMillis(stuck.lastReleaseAttemptAt);
+
+      // Only reclaim genuinely stale claims — a "releasing" doc touched inside
+      // the window may belong to an in-flight run.
+      if (lastAttemptMillis && lastAttemptMillis > staleBeforeMillis) {
+        continue;
+      }
+
+      // logger.error on purpose: a stuck claim means a prior run crashed
+      // mid-payout. The retry below is safe, but the crash deserves a look.
+      logger.error("Recovering payout ledger stuck in releasing", {
+        ledgerId: stuckDocument.id,
+        teacherId: stuck.teacherId,
+        plannedTransferAmountMinor: stuck.plannedTransferAmountMinor ?? null,
+        releaseAttemptCount: stuck.releaseAttemptCount ?? 0,
+        lastReleaseAttemptAt: lastAttemptMillis,
+      });
+
+      await stuckDocument.ref.set(
+        {
+          status: "in_release",
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+      recoveredCount += 1;
+    }
+
     const ledgerSnapshot = await db
       .collection("payoutLedger")
       .where("status", "==", "in_release")
@@ -2909,6 +3009,20 @@ export const dailyReleaseTransfers = onSchedule(
         continue;
       }
 
+      const attemptCount = Number(claimedLedger.releaseAttemptCount ?? 0) + 1;
+      if (attemptCount >= 5) {
+        // Still money-safe (idempotency key), but five failed attempts means
+        // something structural is wrong (Connect account closed, currency
+        // mismatch, ...) and a human needs to look at this teacher's payout.
+        logger.error("Payout ledger has repeatedly failed to release", {
+          ledgerId: ledgerDocument.id,
+          teacherId: claimedLedger.teacherId,
+          releaseAttemptCount: attemptCount,
+          plannedTransferAmountMinor:
+            claimedLedger.plannedTransferAmountMinor ?? null,
+        });
+      }
+
       try {
         await releaseLedgerTransfer(stripe, ledgerDocument.id, claimedLedger);
         releasedCount += 1;
@@ -2931,11 +3045,20 @@ export const dailyReleaseTransfers = onSchedule(
       }
     }
 
-    logger.info("Daily release transfers finished", {
+    // Failures escalate the whole summary to error so log-based alerting can
+    // key off severity alone — a payout that silently fails for days is the
+    // single worst trust failure a marketplace can have.
+    const summary = {
       releasedCount,
       skippedCount,
       failedCount,
-    });
+      recoveredCount,
+    };
+    if (failedCount > 0) {
+      logger.error("Daily release transfers finished with failures", summary);
+    } else {
+      logger.info("Daily release transfers finished", summary);
+    }
   },
 );
 
@@ -3143,6 +3266,18 @@ async function releaseLedgerTransfer(
     return;
   }
 
+  // Structured money log: every payout that actually moved funds leaves one
+  // queryable line with the Stripe transfer id, so support can answer "where
+  // is my payout?" from logs alone.
+  logger.info("Payout transfer released", {
+    ledgerId,
+    orderId: ledger.orderId,
+    teacherId: ledger.teacherId,
+    transferId: transfer.id,
+    amountMinor: amount,
+    currency,
+  });
+
   await captureServerEvent(ledger.teacherId, SERVER_EVENTS.PAYOUT_RELEASED, {
     ledger_id: ledgerId,
     teacher_id: ledger.teacherId,
@@ -3176,6 +3311,10 @@ export const issueSkillsetCertificate = onCall(async (request) => {
       "Enter the full name (2-120 characters) to print on the certificate.",
     );
   }
+
+  // Re-issue is idempotent, so a handful of calls covers any legitimate
+  // learner; keying on userId also caps rapid enrollmentId probing.
+  await enforceRateLimit(`certificate_issue_${userId}`, 20, 60 * 60 * 1000);
 
   const enrollmentRef = db.collection("enrollments").doc(enrollmentId);
   const certificateRef = db.collection("certificates").doc(enrollmentId);
@@ -3620,6 +3759,12 @@ export const verifySkillsetCertificate = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "A valid verification code is required.");
   }
 
+  // Public-facing lookup: throttle per caller (uid when signed in, IP
+  // otherwise) so the indexed Firestore query cannot be hammered freely.
+  const verifierKey =
+    request.auth?.uid ?? request.rawRequest?.ip ?? "anon";
+  await enforceRateLimit(`cert_verify_call_${verifierKey}`, 60, 60 * 60 * 1000);
+
   return verifyCertificateCode(verificationCode);
 });
 
@@ -3646,6 +3791,25 @@ export const verifySkillsetCertificateHttp = onRequest(
 
     if (!verificationCode || verificationCode.length > 80) {
       response.status(400).json({ error: "A valid verification code is required." });
+      return;
+    }
+
+    // Unauthenticated + CORS "*" by design (embeddable verification) — rate
+    // limit per client IP so it cannot drive unbounded Firestore queries.
+    const clientIp =
+      request.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() ||
+      request.ip ||
+      "unknown";
+
+    try {
+      await enforceRateLimit(`cert_verify_http_${clientIp}`, 60, 60 * 60 * 1000);
+    } catch (error) {
+      if (error instanceof HttpsError && error.code === "resource-exhausted") {
+        response.status(429).json({ error: "Too many attempts. Please wait before trying again." });
+        return;
+      }
+      logger.error("Certificate verification rate limit check failed", error);
+      response.status(500).json({ error: "Certificate verification failed." });
       return;
     }
 
@@ -3688,6 +3852,25 @@ async function verifyCertificateCode(
   };
 }
 
+// Every event type the webhook below actually handles. Anything else is
+// acknowledged immediately after signature verification WITHOUT touching
+// Firestore — the two-phase idempotency claim costs 2 writes + 1 read per
+// event, and a broadly-subscribed endpoint receives far more event types
+// than it handles. Keep this list in sync with the `event.type` checks below.
+const HANDLED_STRIPE_EVENT_TYPES = new Set<string>([
+  "checkout.session.completed",
+  "checkout.session.async_payment_succeeded",
+  "checkout.session.async_payment_failed",
+  "checkout.session.expired",
+  "payment_intent.payment_failed",
+  "charge.refunded",
+  "customer.subscription.created",
+  "customer.subscription.updated",
+  "customer.subscription.deleted",
+  "invoice.payment_failed",
+  "invoice.paid",
+]);
+
 export const stripeWebhook = onRequest(
   { secrets: [stripeSecretKey, stripeWebhookSecret] },
   async (request, response) => {
@@ -3717,6 +3900,15 @@ export const stripeWebhook = onRequest(
     } catch (error) {
       logger.warn("Stripe webhook signature verification failed", error);
       response.status(400).send("Invalid Stripe webhook signature.");
+      return;
+    }
+
+    // Early type filter: unhandled event types are acknowledged without the
+    // Firestore idempotency round-trip — there is nothing to deduplicate when
+    // there is no handler. Runs AFTER signature verification so unauthenticated
+    // requests still get rejected.
+    if (!HANDLED_STRIPE_EVENT_TYPES.has(event.type)) {
+      response.json({ received: true, ignored: true });
       return;
     }
 
@@ -3976,7 +4168,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     // absent (order pre-dates the subscription system). Uses ?? not || so an
     // explicit 0 (Plus plan, zero commission) survives — `0 || 800` would
     // silently overcharge every Plus-tier sale the full 8%.
-    const platformFeeBps = Number(order.platformFeeBps ?? 800);
+    const platformFeeBps = Number(order.platformFeeBps ?? DEFAULT_PLATFORM_FEE_BPS);
     const skillsetFeeMinor = Math.floor((grossAmountMinor * platformFeeBps) / 10000);
     const stripeFeeMinor = canonicalStripeProcessingFeeMinor(
       grossAmountMinor,
@@ -4181,7 +4373,7 @@ async function handleCourseSubscriptionInvoicePaid(invoice: Stripe.Invoice) {
   // renewals. Falls back to the subscribe-time snapshot, then 8%.
   const platformFeeBps = owner
     ? canonicalPlatformFeeBpsForPlan(owner.currentPlanId)
-    : Number(meta.platformFeeBps ?? 800) || 800;
+    : Number(meta.platformFeeBps ?? DEFAULT_PLATFORM_FEE_BPS) || DEFAULT_PLATFORM_FEE_BPS;
   const connectedAccountId =
     (typeof meta.connectedAccountId === "string" && meta.connectedAccountId) ||
     course.stripeConnectedAccountId ||
@@ -4519,6 +4711,206 @@ async function handleCourseSubscriptionLifecycle(
   return true;
 }
 
+type RefundReversalOutcome = {
+  reversalId: string | null;
+  reversalAmountMinor: number;
+};
+
+/**
+ * Claws back a released teacher transfer for a refunded charge with two-phase,
+ * LEDGER-level idempotency (see the claim section in payment-rules.ts).
+ *
+ * Why the event-level webhook claim is not enough: charge.refunded carries the
+ * CUMULATIVE amount_refunded, and two DISTINCT refund events (two partial
+ * refunds issued seconds apart) are different Stripe event ids — both pass the
+ * event claim. If both read transferReversedAmountMinor before either commits,
+ * both plan against the same stale baseline and the teacher is over-reversed.
+ *
+ * Phase 1 (transaction): re-read the ledger FRESH, sum the other "pending"
+ * claims as reserved, decide the incremental amount via
+ * decideRefundReversalClaim, and reserve it under
+ * refundReversalClaims[{chargeId}_{cumulativeAmount}] BEFORE any Stripe call.
+ *
+ * Stripe call: reverses EXACTLY the planned amount (fixedReversalAmountMinor)
+ * under the historical idempotency key format
+ * transfer_reversal_{ledgerId}_{chargeId}_{amount_refunded} — a crash between
+ * phases replays (not repeats) the reversal on webhook redelivery, because the
+ * pending claim re-executes the same amount under the same key.
+ *
+ * Phase 2 (transaction): promote the claim to "done" and fold the executed
+ * amount into transferReversedAmountMinor exactly once (skipped if a
+ * concurrent retry already promoted it). One-off orders also mirror the
+ * reversal fields onto the order doc via mirrorRef (kept for data-contract
+ * continuity with the pre-claim implementation).
+ */
+async function reverseReleasedTransferForRefund(input: {
+  ledgerRef: DocumentReference;
+  /** Value used in the Stripe idempotency key: orderId for one-off purchases,
+   * ledger.id (invoice id) for subscription payouts. MUST NOT change format —
+   * historical reversals were issued under these keys. */
+  ledgerId: string;
+  charge: Stripe.Charge;
+  /** One-off path: order.amountMinor backs gross for pre-ledger records. */
+  fallbackGrossAmountMinor?: number;
+  metadata: Record<string, string>;
+  /** One-off path: order doc that mirrors the reversal fields. */
+  mirrorRef?: DocumentReference | null;
+}): Promise<RefundReversalOutcome> {
+  const { ledgerRef, ledgerId, charge, metadata } = input;
+  const refundedAmountMinor = Math.max(0, Number(charge.amount_refunded || 0));
+  const claimKey = refundReversalClaimKey(charge.id, refundedAmountMinor);
+
+  // Phase 1 — decide + reserve against the transactionally-fresh ledger.
+  const decision = await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ledgerRef);
+
+    if (!snapshot.exists) {
+      return {
+        action: "skip" as const,
+        plannedAmountMinor: 0,
+        transferId: null as string | null,
+      };
+    }
+
+    const ledger = snapshot.data() as PayoutLedgerRecord;
+    const transferId = ledger.transferId || null;
+    const claims = ledger.refundReversalClaims ?? {};
+    const existingClaim = claims[claimKey] ?? null;
+    let otherPendingReservedMinor = 0;
+
+    for (const [key, claim] of Object.entries(claims)) {
+      if (key !== claimKey && claim?.state === "pending") {
+        otherPendingReservedMinor += Math.max(
+          0,
+          Number(claim.plannedAmountMinor || 0),
+        );
+      }
+    }
+
+    // What truly left the platform (reduced when a partial refund preceded
+    // release), falling back to net for ledgers released before tracking.
+    const releasedTransferAmountMinor = Number(
+      ledger.transferAmountMinor ?? ledger.netAmountMinor ?? 0,
+    );
+    const claimDecision = decideRefundReversalClaim({
+      existingClaim,
+      otherPendingReservedMinor,
+      shouldReverse: shouldReverseReleasedPayout({
+        status: ledger.status,
+        transferId,
+        releasedTransferAmountMinor,
+      }),
+      grossAmountMinor: Number(
+        ledger.grossAmountMinor || input.fallbackGrossAmountMinor || 0,
+      ),
+      refundedAmountMinor,
+      releasedTransferAmountMinor,
+      netAmountMinor: Number(ledger.netAmountMinor || 0),
+      alreadyReversedAmountMinor: Number(ledger.transferReversedAmountMinor || 0),
+    });
+
+    if (
+      claimDecision.action === "execute" &&
+      claimDecision.plannedAmountMinor > 0 &&
+      transferId &&
+      existingClaim?.state !== "pending"
+    ) {
+      // Reserve before the Stripe call. Nested-map merge writes only this key.
+      transaction.set(
+        ledgerRef,
+        {
+          refundReversalClaims: {
+            [claimKey]: {
+              state: "pending",
+              plannedAmountMinor: claimDecision.plannedAmountMinor,
+            },
+          },
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }
+
+    return { ...claimDecision, transferId };
+  });
+
+  if (
+    decision.action !== "execute" ||
+    decision.plannedAmountMinor <= 0 ||
+    !decision.transferId
+  ) {
+    return { reversalId: null, reversalAmountMinor: 0 };
+  }
+
+  // If this throws, the claim stays "pending", the webhook fails and Stripe
+  // redelivers; Phase 1 then re-executes the SAME amount under the SAME key.
+  const reversalResult = await createReleasedRefundTransferReversal({
+    stripe: getStripeClient() as unknown as TransferReversalStripeClient,
+    ledgerId,
+    transferId: decision.transferId,
+    grossAmountMinor: 0,
+    refundedAmountMinor,
+    releasedTransferAmountMinor: 0,
+    fixedReversalAmountMinor: decision.plannedAmountMinor,
+    idempotencyKey:
+      `transfer_reversal_${ledgerId}_${charge.id}_${charge.amount_refunded}`,
+    metadata,
+  });
+
+  if (reversalResult.reversalAmountMinor <= 0) {
+    return reversalResult;
+  }
+
+  // Phase 2 — promote the claim and fold the executed amount in exactly once.
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ledgerRef);
+    const ledger = snapshot.exists
+      ? (snapshot.data() as PayoutLedgerRecord)
+      : null;
+    const claim = ledger?.refundReversalClaims?.[claimKey];
+
+    if (claim?.state === "done") {
+      // A concurrent retry already accounted for this delivery.
+      return;
+    }
+
+    const reversalWriteFields = {
+      transferReversedAmountMinor:
+        FieldValue.increment(reversalResult.reversalAmountMinor),
+      latestTransferReversalId: reversalResult.reversalId,
+      latestTransferReversalAt: FieldValue.serverTimestamp(),
+    };
+
+    transaction.set(
+      ledgerRef,
+      {
+        ...reversalWriteFields,
+        refundReversalClaims: {
+          [claimKey]: {
+            state: "done",
+            plannedAmountMinor: reversalResult.reversalAmountMinor,
+          },
+        },
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    if (input.mirrorRef) {
+      transaction.set(
+        input.mirrorRef,
+        {
+          ...reversalWriteFields,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }
+  });
+
+  return reversalResult;
+}
+
 /**
  * Refund path for course-SUBSCRIPTION charges (no payments/{PI} doc exists).
  *
@@ -4554,48 +4946,21 @@ async function handleSubscriptionChargeRefunded(
 
   const ledgerRef = ledgerDoc.ref;
   const ledger = ledgerDoc.data() as PayoutLedgerRecord;
-  const transferId = ledger.transferId || null;
-  const alreadyReversedAmountMinor = Number(ledger.transferReversedAmountMinor || 0);
-  const grossAmountMinor = Number(ledger.grossAmountMinor || 0);
-  const netAmountMinor = Number(ledger.netAmountMinor || 0);
-  // What truly left the platform (reduced when a partial refund preceded
-  // release), falling back to net for ledgers released before tracking. (Gap 1)
-  const releasedTransferAmountMinor = Number(
-    ledger.transferAmountMinor ?? ledger.netAmountMinor ?? 0,
-  );
-  const shouldReverse = shouldReverseReleasedPayout({
-    status: ledger.status,
-    transferId,
-    releasedTransferAmountMinor,
+  // Two-phase claim: decides the incremental amount against the FRESH ledger,
+  // reserves it, executes the Stripe reversal, and folds the result into
+  // transferReversedAmountMinor exactly once. Replaces the old stale-read flow
+  // that could over-reverse on concurrent partial-refund deliveries.
+  const reversalResult = await reverseReleasedTransferForRefund({
+    ledgerRef,
+    ledgerId: ledger.id,
+    charge,
+    metadata: {
+      invoiceId: String(ledger.invoiceId ?? ledger.id),
+      paymentId: paymentIntentId,
+      chargeId: charge.id,
+      kind: "course_subscription",
+    },
   });
-  const reversalResult = shouldReverse
-    ? await createReleasedRefundTransferReversal({
-        stripe: getStripeClient() as unknown as TransferReversalStripeClient,
-        ledgerId: ledger.id,
-        transferId,
-        grossAmountMinor,
-        refundedAmountMinor: charge.amount_refunded,
-        releasedTransferAmountMinor,
-        netAmountMinor,
-        alreadyReversedAmountMinor,
-        idempotencyKey:
-          `transfer_reversal_${ledger.id}_${charge.id}_${charge.amount_refunded}`,
-        metadata: {
-          invoiceId: String(ledger.invoiceId ?? ledger.id),
-          paymentId: paymentIntentId,
-          chargeId: charge.id,
-          kind: "course_subscription",
-        },
-      })
-    : { reversalId: null, reversalAmountMinor: 0 };
-  const reversalWriteFields = reversalResult.reversalAmountMinor > 0
-    ? {
-        transferReversedAmountMinor:
-          FieldValue.increment(reversalResult.reversalAmountMinor),
-        latestTransferReversalId: reversalResult.reversalId,
-        latestTransferReversalAt: FieldValue.serverTimestamp(),
-      }
-    : {};
   const isFullRefund = charge.refunded === true;
 
   await db.runTransaction(async (transaction) => {
@@ -4608,7 +4973,6 @@ async function handleSubscriptionChargeRefunded(
       {
         status: ledgerRefundStatus(isFullRefund, currentStatus),
         refundedAmountMinor: charge.amount_refunded,
-        ...reversalWriteFields,
         refundedAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       },
@@ -4685,63 +5049,30 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
 
   const orderRef = db.collection("orders").doc(orderId);
   const ledgerRef = db.collection("payoutLedger").doc(orderId);
-  const [orderSnapshot, ledgerSnapshot] = await Promise.all([
-    orderRef.get(),
-    ledgerRef.get(),
-  ]);
+  const orderSnapshot = await orderRef.get();
 
   if (!orderSnapshot.exists) {
     throw new Error(`Order ${orderId} not found for refunded payment.`);
   }
 
   const order = orderSnapshot.data() || {};
-  const ledger = ledgerSnapshot.exists
-    ? (ledgerSnapshot.data() as PayoutLedgerRecord)
-    : null;
-  const transferId = ledger?.transferId || null;
-  const alreadyReversedAmountMinor = Number(ledger?.transferReversedAmountMinor || 0);
-  const grossAmountMinor = Number(ledger?.grossAmountMinor || order.amountMinor || 0);
-  const netAmountMinor = Number(ledger?.netAmountMinor || 0);
-  // Reverse against what TRULY left the platform: the recorded transferAmountMinor
-  // (reduced when a partial refund landed before release), falling back to the
-  // full net for ledgers released before transferAmountMinor was tracked. (Gap 1)
-  const releasedTransferAmountMinor = Number(
-    ledger?.transferAmountMinor ?? ledger?.netAmountMinor ?? 0,
-  );
-  const shouldReverseReleasedTransfer = shouldReverseReleasedPayout({
-    status: ledger?.status,
-    transferId,
-    releasedTransferAmountMinor,
+  // Two-phase claim: decides the incremental amount against the FRESH ledger,
+  // reserves it, executes the Stripe reversal, and folds the result into
+  // transferReversedAmountMinor (mirrored onto the order doc) exactly once.
+  // Replaces the old stale-read flow that could over-reverse on concurrent
+  // partial-refund deliveries (the helper re-reads the ledger transactionally).
+  const reversalResult = await reverseReleasedTransferForRefund({
+    ledgerRef,
+    ledgerId: orderId,
+    charge,
+    fallbackGrossAmountMinor: Number(order.amountMinor || 0),
+    metadata: {
+      orderId,
+      paymentId: paymentIntentId,
+      chargeId: charge.id,
+    },
+    mirrorRef: orderRef,
   });
-  const reversalResult = shouldReverseReleasedTransfer
-    ? await createReleasedRefundTransferReversal({
-        stripe: getStripeClient() as unknown as TransferReversalStripeClient,
-        ledgerId: orderId,
-        transferId,
-        grossAmountMinor,
-        refundedAmountMinor: charge.amount_refunded,
-        releasedTransferAmountMinor,
-        // Full net unlocks the net-based reversal path when the released
-        // transfer was reduced by a pre-release partial refund. (Gap 1)
-        netAmountMinor,
-        alreadyReversedAmountMinor,
-        idempotencyKey:
-          `transfer_reversal_${orderId}_${charge.id}_${charge.amount_refunded}`,
-        metadata: {
-          orderId,
-          paymentId: paymentIntentId,
-          chargeId: charge.id,
-        },
-      })
-    : { reversalId: null, reversalAmountMinor: 0 };
-  const reversalWriteFields = reversalResult.reversalAmountMinor > 0
-    ? {
-        transferReversedAmountMinor:
-          FieldValue.increment(reversalResult.reversalAmountMinor),
-        latestTransferReversalId: reversalResult.reversalId,
-        latestTransferReversalAt: FieldValue.serverTimestamp(),
-      }
-    : {};
 
   await db.runTransaction(async (transaction) => {
     const currentOrderSnapshot = await transaction.get(orderRef);
@@ -4789,7 +5120,6 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     transaction.update(orderRef, {
       status: refundedStatus,
       refundedAmountMinor: charge.amount_refunded,
-      ...reversalWriteFields,
       updatedAt: FieldValue.serverTimestamp(),
     });
 
@@ -4798,7 +5128,6 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
       {
         status: nextLedgerStatus,
         refundedAmountMinor: charge.amount_refunded,
-        ...reversalWriteFields,
         refundedAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       },

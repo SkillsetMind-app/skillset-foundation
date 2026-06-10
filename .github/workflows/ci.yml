@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+
+      - name: Install dependencies (app)
+        run: npm ci
+
+      - name: Install dependencies (functions)
+        run: npm ci --prefix functions
+
+      - name: Lint (app)
+        run: npm run lint
+
+      - name: Typecheck (functions)
+        run: npm run lint --prefix functions
+
+      - name: Unit tests (vitest)
+        run: npx vitest run
+
+      # .env.production is tracked and carries ONLY publishable NEXT_PUBLIC_*
+      # values, so the production build works in CI without extra secrets.
+      - name: Build (next)
+        run: npm run build

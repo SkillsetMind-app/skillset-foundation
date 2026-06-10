@@ -17,6 +17,7 @@ import { InlineHelp } from "@/components/shared/inline-help";
 import { StatusChip } from "@/components/shared/status-chip";
 import { TeacherConnectOnboarding } from "@/components/teacher/teacher-connect-onboarding";
 import type { Order } from "@/domain/order";
+import { computePaymentSplit } from "@/domain/payment-split";
 import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import type { UserProfile } from "@/domain/user-profile";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
@@ -193,12 +194,29 @@ export function TeacherWalletPanel() {
     (sum, order) => sum + order.amountMinor,
     0,
   );
-  const platformFeeMinor = paidOrders.reduce(
-    (sum, order) =>
-      sum + Math.floor((order.amountMinor * order.platformFeeBps) / 10000),
+  // Canonical split (src/domain/payment-split): commission + the Stripe
+  // processing fee the teacher absorbs (DECISIONS.md D1/D2). The old inline
+  // gross-minus-commission mirror omitted the Stripe fee, so this card
+  // overstated the teacher's net versus what the ledger actually releases.
+  const orderSplits = paidOrders.map((order) =>
+    computePaymentSplit(
+      order.amountMinor,
+      order.currency ?? "USD",
+      order.platformFeeBps,
+    ),
+  );
+  const platformFeeMinor = orderSplits.reduce(
+    (sum, split) => sum + split.platformCommissionMinor,
     0,
   );
-  const teacherNetMinor = grossPaidMinor - platformFeeMinor;
+  const stripeFeeMinor = orderSplits.reduce(
+    (sum, split) => sum + split.stripeFeeMinor,
+    0,
+  );
+  const teacherNetMinor = orderSplits.reduce(
+    (sum, split) => sum + split.teacherNetMinor,
+    0,
+  );
   const inReleaseMinor = ledgerEntries
     .filter((entry) => ["in_release", "releasing"].includes(entry.status))
     .reduce((sum, entry) => sum + entry.netAmountMinor, 0);
@@ -261,8 +279,8 @@ export function TeacherWalletPanel() {
             {money(teacherNetMinor)}
           </p>
           <p className="mt-2 text-sm text-[rgba(255,255,255,0.72)]">
-            Paid orders after Skillset platform commission. Stripe fees and
-            release state are tracked below.
+            Paid orders after Skillset platform commission and estimated Stripe
+            processing fees. Release state is tracked below.
           </p>
 
           <div className="mt-6 grid gap-3">
@@ -375,6 +393,7 @@ export function TeacherWalletPanel() {
         <MetricCard label="Paid orders" value={financialsReady ? String(paidOrders.length) : "—"} />
         <MetricCard label="Gross sales" value={money(grossPaidMinor)} />
         <MetricCard label="Platform fee est." value={money(platformFeeMinor)} />
+        <MetricCard label="Stripe fee est." value={money(stripeFeeMinor)} />
       </div>
 
       <InlineHelp topic="Payout schedule" href="/help#payouts">

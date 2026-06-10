@@ -83,11 +83,14 @@ service firebase.storage {
     }
 
     function validAvatarUpload() {
+      // Exact allowlist mirroring the client's allowedAvatarTypes
+      // (profile-media.ts). Tighter than a generic image/* check: blocks
+      // exotic image types the UI never produces (gif, tiff, heic, avif...)
+      // so a hand-rolled SDK call cannot park them on a public URL.
       return request.resource != null
         && request.resource.size > 0
         && request.resource.size <= 5 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*')
-        && request.resource.contentType != 'image/svg+xml';
+        && request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp'];
     }
 
     match /users/{uid}/avatar/{fileName} {

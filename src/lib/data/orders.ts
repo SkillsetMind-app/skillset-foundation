@@ -96,10 +96,17 @@ export function subscribeToTeacherOrders(
   callback: (orders: Order[]) => void,
   onError: (error: Error) => void,
 ): Unsubscribe {
+  // Equality filter + bounded limit with NO orderBy (single-field index only;
+  // nothing composite to deploy). Without orderBy Firestore returns docs in
+  // __name__ order, which is effectively arbitrary — so the limit must sit
+  // ABOVE any realistic order count or the wallet/insights money math sees an
+  // arbitrary subset and reports wrong figures (the old limit(20) did exactly
+  // that past 20 sales). Callers sort client-side; revisit with a composite
+  // index + server-side pagination if teachers approach this bound.
   const teacherOrdersQuery = query(
     collection(getFirestoreDb(), ordersCollection),
     where("teacherId", "==", teacherId),
-    limit(20),
+    limit(500),
   );
 
   return onSnapshot(

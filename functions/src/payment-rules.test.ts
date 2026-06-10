@@ -5,12 +5,14 @@ import {
   claimStripeEvent,
   createReleasedRefundTransferReversal,
   decideCheckoutLock,
+  decideRefundReversalClaim,
   decideStripeEventClaim,
   ledgerRefundStatus,
   markStripeEventDone,
   paidOrderRefundQuerySpec,
   payoutReleaseDelayDays,
   plannedReleaseTransferAmountMinor,
+  refundReversalClaimKey,
   releasedRefundReversalAmountMinor,
   resolveInvoicePaymentIntentId,
   sanitizeStripeSecret,
@@ -596,5 +598,122 @@ describe("should reverse released payout (Gap 1 + Gap 2)", () => {
         releasedTransferAmountMinor: 0,
       }),
     ).toBe(false);
+  });
+});
+
+describe("refund reversal claims (concurrent partial-refund race)", () => {
+  // Baseline: $100 gross, $91.70 released to the teacher, no reversals yet.
+  const base = {
+    shouldReverse: true,
+    grossAmountMinor: 10000,
+    releasedTransferAmountMinor: 9170,
+    netAmountMinor: 9170,
+    alreadyReversedAmountMinor: 0,
+    otherPendingReservedMinor: 0,
+    existingClaim: null,
+  };
+
+  it("keys a delivery by chargeId + CUMULATIVE refunded amount", () => {
+    expect(refundReversalClaimKey("ch_1", 5000)).toBe("ch_1_5000");
+    // Floors fractional and clamps negative input defensively.
+    expect(refundReversalClaimKey("ch_1", 5000.9)).toBe("ch_1_5000");
+    expect(refundReversalClaimKey("ch_1", -1)).toBe("ch_1_0");
+  });
+
+  it("plans the proportional amount when no claim exists", () => {
+    const decision = decideRefundReversalClaim({
+      ...base,
+      refundedAmountMinor: 5000,
+    });
+    expect(decision.action).toBe("execute");
+    // Must match the legacy single-delivery math exactly.
+    expect(decision.plannedAmountMinor).toBe(
+      releasedRefundReversalAmountMinor({
+        grossAmountMinor: 10000,
+        refundedAmountMinor: 5000,
+        releasedTransferAmountMinor: 9170,
+        netAmountMinor: 9170,
+        alreadyReversedAmountMinor: 0,
+      }),
+    );
+  });
+
+  it("skips a delivery whose claim is already done (Stripe redelivery)", () => {
+    expect(
+      decideRefundReversalClaim({
+        ...base,
+        refundedAmountMinor: 5000,
+        existingClaim: { state: "done", plannedAmountMinor: 4585 },
+      }),
+    ).toEqual({ action: "skip", plannedAmountMinor: 0 });
+  });
+
+  it("re-executes the ORIGINAL planned amount for a pending claim (crash between phases)", () => {
+    // Even if the ledger counters moved since the claim was reserved, the
+    // pending claim re-issues the same amount so the stable Stripe idempotency
+    // key turns the retry into a replay.
+    expect(
+      decideRefundReversalClaim({
+        ...base,
+        refundedAmountMinor: 5000,
+        alreadyReversedAmountMinor: 9170,
+        existingClaim: { state: "pending", plannedAmountMinor: 4585 },
+      }),
+    ).toEqual({ action: "execute", plannedAmountMinor: 4585 });
+  });
+
+  it("reserves against other pending claims so concurrent deliveries never over-reverse", () => {
+    // Delivery A (refund 1, cumulative 5000) reserved 4585 and is mid-flight.
+    // Delivery B (refund 2, cumulative 10000) must plan only the INCREMENT.
+    const planned = decideRefundReversalClaim({
+      ...base,
+      refundedAmountMinor: 10000,
+      otherPendingReservedMinor: 4585,
+    });
+    expect(planned.action).toBe("execute");
+    expect(planned.plannedAmountMinor).toBe(9170 - 4585);
+    // Sum of both deliveries equals exactly one full clawback — never more.
+    expect(planned.plannedAmountMinor + 4585).toBe(9170);
+  });
+
+  it("skips when the payout never left the platform or nothing remains", () => {
+    expect(
+      decideRefundReversalClaim({
+        ...base,
+        refundedAmountMinor: 5000,
+        shouldReverse: false,
+      }),
+    ).toEqual({ action: "skip", plannedAmountMinor: 0 });
+    // Fully reversed already: increment is zero.
+    expect(
+      decideRefundReversalClaim({
+        ...base,
+        refundedAmountMinor: 10000,
+        alreadyReversedAmountMinor: 9170,
+      }),
+    ).toEqual({ action: "skip", plannedAmountMinor: 0 });
+  });
+
+  it("createReleasedRefundTransferReversal honors the fixed planned amount", async () => {
+    const createReversal = vi.fn().mockResolvedValue({ id: "trr_1" });
+    const result = await createReleasedRefundTransferReversal({
+      stripe: { transfers: { createReversal } },
+      ledgerId: "order_1",
+      transferId: "tr_1",
+      // Deliberately inconsistent inputs: the fixed amount must win over any
+      // recomputation (the claim froze it transactionally).
+      grossAmountMinor: 0,
+      refundedAmountMinor: 10000,
+      releasedTransferAmountMinor: 0,
+      fixedReversalAmountMinor: 4585,
+      idempotencyKey: "transfer_reversal_order_1_ch_1_10000",
+      metadata: { orderId: "order_1" },
+    });
+    expect(result).toEqual({ reversalId: "trr_1", reversalAmountMinor: 4585 });
+    expect(createReversal).toHaveBeenCalledWith(
+      "tr_1",
+      expect.objectContaining({ amount: 4585 }),
+      { idempotencyKey: "transfer_reversal_order_1_ch_1_10000" },
+    );
   });
 });
