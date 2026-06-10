@@ -8,7 +8,7 @@ export default function TeachPage() {
       <PlatformShell
         eyebrow="Teacher Studio"
         title="Build, ship, get paid."
-        description="Draft a course, prepare the learner experience, and submit when ready. Skillset reviews every submission before publication."
+        description="Draft a course, prepare the learner experience, and submit when ready. Your course goes on sale as soon as you submit, and Skillset review follows without blocking sales."
         hideHeader
       >
         <TeacherStudioDashboard />

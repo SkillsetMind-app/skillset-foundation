@@ -68,7 +68,7 @@ export function LoadingScreen() {
 
     void resolveDestination().catch(() => {
       if (!cancelled) {
-        setError("Taking longer than usual. Try again.");
+        setError("Could not load your workspace. Refresh the page to try again.");
       }
     });
 

@@ -27,7 +27,7 @@ type TrustLayer = {
 const trustLayers: ReadonlyArray<TrustLayer> = [
   {
     title: "Course review",
-    detail: "Every course passes through Skillset review before it can be published in the marketplace.",
+    detail: "Skillset reviews every submitted course — lessons, descriptions, pricing, and claims. Review runs without blocking publication.",
     Icon: FileSearch,
   },
   {

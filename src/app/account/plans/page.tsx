@@ -8,7 +8,7 @@ export default function AccountPlansPage() {
     <ProtectedSurface permissions={["auth.signOut"]}>
       <PlatformShell
         title="Plans & fees"
-        description="Choose a plan, start Stripe checkout, manage subscriptions, and review platform fees."
+        description="Choose a plan, check out securely through Stripe, manage your subscription, and review platform fees."
         compact
       >
         <section className="grid gap-5">
@@ -20,9 +20,9 @@ export default function AccountPlansPage() {
               Choose the plan that fits your course business.
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-              Every plan includes the same Skillset toolset. Paid plans reduce
-              the platform commission and are purchased through secure Stripe
-              checkout directly from this page.
+              Every plan includes every Skillset feature. Paid plans lower
+              the platform commission, and you check out through Stripe
+              without leaving this page.
             </p>
           </div>
 
@@ -35,11 +35,11 @@ export default function AccountPlansPage() {
             />
             <PolicyCard
               title="Refund window"
-              detail={`Learners can request eligible refunds during the ${refundWindowDays}-day refund window.`}
+              detail={`Learners can refund a purchase within ${refundWindowDays} days if they've completed less than half the course.`}
             />
             <PolicyCard
               title="Payout clearance"
-              detail={`Creator net moves from pending to available after ${payoutClearDays} days — well past the ${refundWindowDays}-day refund window.`}
+              detail={`Your earnings move from pending to available ${payoutClearDays} days after each sale — well past the ${refundWindowDays}-day refund window.`}
             />
           </div>
         </section>

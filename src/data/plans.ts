@@ -79,9 +79,9 @@ export const plans: ReadonlyArray<Plan> = [
     breakEvenGmvUsd: null,
     highlights: [
       "Every Skillset feature — no tier locks",
-      "Reviewed course publishing",
+      "Publish and sell immediately",
       "Stripe checkout in 30+ currencies",
-      "Verifiable credentials",
+      "Skillset Verified certificates",
       "Course communities and live sessions",
     ],
   },

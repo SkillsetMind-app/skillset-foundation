@@ -281,7 +281,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
           ? "This course is complete. Issue your Skillset Verified certificate below."
           : isIssued
             ? "Your Skillset Verified certificate has been issued and is ready for verification."
-          : "Continue the course to unlock credential review eligibility."}
+          : "Complete the course to become eligible for your Skillset Verified certificate."}
       </p>
       <div className="mt-5 rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4">
         <div className="flex items-center justify-between gap-4">

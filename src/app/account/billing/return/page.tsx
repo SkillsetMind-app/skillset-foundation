@@ -41,7 +41,7 @@ export default async function BillingReturnPage({
 
   return (
     <ProtectedSurface permissions={["auth.signOut"]}>
-      <PlatformShell title="Subscription confirmed" compact>
+      <PlatformShell title="Checkout status" compact>
         {checkoutCompleted ? (
           <div className="rounded-[4px] border fine-rule bg-white p-10 text-center shadow-[var(--shadow-soft)]">
             <div className="mx-auto grid size-12 place-items-center rounded-full bg-[var(--color-primary)] text-white">

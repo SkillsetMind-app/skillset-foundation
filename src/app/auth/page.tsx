@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 export const metadata: Metadata = {
-  title: "Access Skillset | Skillset",
+  title: "Sign in or create an account | Skillset",
   robots: {
     index: false,
     follow: false,

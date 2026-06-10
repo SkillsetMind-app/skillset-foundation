@@ -114,7 +114,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
         setIsLoadingPublishedCourses(false);
       },
       () => {
-        setPublishedCoursesError("Creator-published courses could not load right now.");
+        setPublishedCoursesError("Courses could not load right now. Refresh the page to try again.");
         setIsLoadingPublishedCourses(false);
       },
     );
@@ -132,7 +132,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
         setWishlistError("");
       },
       () => {
-        setWishlistError("Saved courses could not load right now.");
+        setWishlistError("Your wishlist could not load right now. Refresh the page to try again.");
       },
     );
   }, [status, user]);
@@ -303,16 +303,16 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
               Marketplace opening soon
             </p>
             <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)] sm:text-4xl">
-              The first courses are in review.
+              The first courses are on the way.
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
-              Skillset reviews every course before it goes live so the catalog
-              stays high signal. Want to be in the first wave of published
-              creators? The runway is open.
+              Skillset reviews every course in the catalog to keep quality
+              high. Want to be among the first educators to publish here?
+              You can start today.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Link href="/auth?mode=signup&path=teacher" className="button-solid px-5 py-3 text-sm">
-                Apply to teach
+                Start teaching
               </Link>
               <Link href="/for-creators" className="button-outline px-5 py-3 text-sm">
                 Creator overview

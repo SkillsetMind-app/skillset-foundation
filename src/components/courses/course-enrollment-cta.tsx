@@ -71,7 +71,7 @@ export function CourseEnrollmentCta({ course }: CourseEnrollmentCtaProps) {
         href="/courses"
         className="button-solid mt-6 w-full px-5 py-3 text-sm"
       >
-        Browse live programs to enroll
+        Browse live courses to enroll
       </Link>
       <p className="mt-3 text-xs leading-6 text-[var(--color-ink-soft)]">
         &ldquo;{course.title}&rdquo; is a sample program from the Skillset

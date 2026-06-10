@@ -33,7 +33,7 @@ const categories: ReadonlyArray<{
     items: [
       {
         q: "Can creators upload courses themselves?",
-        a: "Yes. Creators draft courses inside the Studio, attach lessons and media, then submit for Skillset review before marketplace publication.",
+        a: "Yes. Creators draft courses inside the Studio, attach lessons and media, and publish to the marketplace on submit. Skillset review runs afterward and never blocks your launch.",
       },
       {
         id: "course-pricing",
@@ -48,7 +48,7 @@ const categories: ReadonlyArray<{
       {
         id: "course-review",
         q: "How does Skillset review work?",
-        a: "Every course goes through a Skillset review before it can be published in the marketplace. Reviewers check that lessons are complete, descriptions are accurate, pricing is reasonable, and any claims in the copy can be backed up. Typical review takes a few business days.",
+        a: "Every course goes through a Skillset review, but review never blocks your launch — courses go on sale as soon as you submit. Reviewers check that lessons are complete, descriptions are accurate, pricing is reasonable, and any claims in the copy can be backed up. Typical review takes a few business days.",
       },
     ],
   },
@@ -91,7 +91,7 @@ const categories: ReadonlyArray<{
     items: [
       {
         q: "How are refunds handled?",
-        a: "The current model uses a 7-day automatic refund window with progress and certificate checks. If a learner has completed less than the configured progress threshold and has not received a certificate, they can request a refund directly from their order. Refunds appear in the creator wallet within minutes of being processed.",
+        a: "Learners can request a refund within 7 days of purchase if they have completed less than half the course and have not received a certificate. The request is made directly from the order and processes automatically. Refunds appear in the creator wallet within minutes of being processed.",
       },
     ],
   },
@@ -112,7 +112,7 @@ const categories: ReadonlyArray<{
       {
         id: "integrations",
         q: "What integrations does Skillset support today?",
-        a: "Skillset connects natively with Stripe (checkout, multi-currency, Connect payouts) and Firebase Auth for sign-in. Course assets and media are stored in Firebase Storage. Need an integration you don't see yet? Contact support and we'll tell you where it sits on the roadmap.",
+        a: "Skillset connects natively with Stripe for checkout, multi-currency payments, and creator payouts. Sign-in, media hosting, and file storage are built into the platform — nothing to set up. Need an integration you don't see yet? Contact support and we'll tell you where it sits on the roadmap.",
       },
     ],
   },

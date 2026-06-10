@@ -19,7 +19,7 @@ export function RefundButton({ enrollment }: { enrollment: Enrollment }) {
 
   async function handleRefund() {
     const confirmed = window.confirm(
-      "Request a refund for this course? If approved, access will be removed after Stripe confirms the refund.",
+      "Request a refund for this course? Refunds are available within 7 days of purchase if less than half the course is completed. If approved, your course access ends once the refund is processed.",
     );
 
     if (!confirmed) {
@@ -33,7 +33,7 @@ export function RefundButton({ enrollment }: { enrollment: Enrollment }) {
       await requestEnrollmentRefund(enrollment.id);
       setStatus("sent");
     } catch {
-      setError("Refund request failed or is no longer eligible.");
+      setError("We could not submit this refund request. It may be outside the 7-day refund window — contact support if you think this is wrong.");
       setStatus("idle");
     }
   }

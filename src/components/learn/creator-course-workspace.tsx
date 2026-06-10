@@ -138,7 +138,7 @@ export function CreatorCourseWorkspace({
     return (
       <CreatorWorkspaceState
         title="Creator course access is not connected."
-        detail="Firebase configuration is required before enrolled creator courses can load."
+        detail="Your enrolled courses cannot load right now. Refresh the page, or contact support if the problem continues."
       />
     );
   }
@@ -161,12 +161,12 @@ export function CreatorCourseWorkspace({
       return checkoutGraceExpired ? (
         <CreatorWorkspaceState
           title="Almost there — enrollment is taking longer than usual."
-          detail="Your payment went through and is safe. Keep this page open: it unlocks automatically the moment your enrollment is confirmed. If nothing happens in a few minutes, contact support with your Stripe receipt."
+          detail="Your payment went through and is safe. Keep this page open: it opens automatically the moment your enrollment is confirmed. If nothing happens in a few minutes, contact support with your payment receipt."
         />
       ) : (
         <CreatorWorkspaceState
           title="Payment received — opening your course..."
-          detail="Stripe confirmed your checkout. We are finalizing your enrollment right now; this page opens automatically in a few seconds."
+          detail="Your payment is confirmed. We are setting up your course access right now; this page opens automatically in a few seconds."
         />
       );
     }

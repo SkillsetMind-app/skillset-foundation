@@ -5,7 +5,7 @@ import { OnboardingWizard } from "@/components/auth/onboarding-wizard";
 import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
 
 export const metadata: Metadata = {
-  title: "Welcome to Skillset | Skillset",
+  title: "Set up your account | Skillset",
   robots: {
     index: false,
     follow: false,

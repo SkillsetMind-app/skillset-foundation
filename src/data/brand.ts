@@ -1,9 +1,9 @@
 export const brand = {
   name: "Skillset",
   shortName: "Skillset",
-  title: "Skillset | Professional Learning Network",
+  title: "Skillset | Professional Course Marketplace",
   description:
-    "Career-focused learning pathways, trusted instructors, and a polished student experience for international learners.",
+    "An international marketplace where independent experts publish professional courses with course communities, live sessions, and verifiable certificates.",
   logoUrl: "/brand/skillset-logo.png",
   faviconUrl: "/brand/skillset-favicon.png",
   // Full wordmark, theme-specific (navy text on light, white text on dark).

@@ -189,7 +189,7 @@ export function ProfileSettingsPanel() {
       });
       setSuccess("Profile updated.");
     } catch {
-      setError("We could not update your profile. Check permissions and try again.");
+      setError("We could not save your profile. Try again, and contact support if it keeps failing.");
     } finally {
       setIsSaving(false);
     }

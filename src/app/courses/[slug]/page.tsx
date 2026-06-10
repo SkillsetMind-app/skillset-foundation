@@ -254,7 +254,7 @@ export default async function CourseDetailPage({
               href="/courses"
               className="mt-4 inline-flex w-full justify-center text-sm font-semibold text-[var(--color-primary)]"
             >
-              Back to all programs
+              Back to all courses
             </Link>
           </aside>
         </div>

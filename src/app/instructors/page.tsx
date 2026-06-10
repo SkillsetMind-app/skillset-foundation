@@ -23,16 +23,16 @@ export default function InstructorsPage() {
             Skillset&rsquo;s first instructors are being onboarded.
           </h1>
           <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
-            Independent experts are completing teacher onboarding and course
-            review now. Verified instructors will appear here once their
-            programs are published.
+            Independent experts are setting up their first courses now.
+            Instructors appear here as soon as their courses are
+            published.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <Link
               href="/auth?mode=signup&path=teacher"
               className="button-solid px-5 py-3 text-sm"
             >
-              Apply to teach
+              Start teaching
             </Link>
             <Link href="/promise" className="button-outline px-5 py-3 text-sm">
               Read the Promise

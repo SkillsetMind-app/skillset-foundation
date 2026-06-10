@@ -63,7 +63,7 @@ function MissingPlanState() {
         No plan selected.
       </h2>
       <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
-        Choose a plan from the plans page and we&apos;ll bring the embedded
+        Choose a plan from the plans page and we&apos;ll open secure Stripe
         checkout right here.
       </p>
       <Link

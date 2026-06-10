@@ -40,7 +40,7 @@ export function MarketingHero() {
             {[
               [
                 "Reviewed",
-                "Every program goes through Skillset review before publishing.",
+                "Every program on the marketplace goes through Skillset review.",
               ],
               [
                 "Global",

@@ -260,12 +260,12 @@ const dripStrategies: { value: DripStrategy; label: string; detail: string }[] =
   {
     value: "instant",
     label: "Instant access",
-    detail: "Unlock every lesson immediately after enrollment.",
+    detail: "Every lesson is available immediately after enrollment.",
   },
   {
     value: "sequential_progress",
     label: "Sequential progress",
-    detail: "Unlock the next lesson after the previous lesson is completed.",
+    detail: "The next lesson opens after the previous lesson is completed.",
   },
   {
     value: "time_drip_lesson",
@@ -288,7 +288,7 @@ const paymentModelOptions: PlanSelectorOption<TeacherCoursePaymentType>[] = [
   {
     value: "one_time",
     title: "One-time payment",
-    description: "Student pays once and gets lifetime access.",
+    description: "Learners pay once and get lifetime access.",
     features: ["Best for complete courses", "Supports optional installments"],
     icon: CreditCard,
   },
@@ -1408,7 +1408,7 @@ export function CourseBuilderStudio() {
             {title.trim() || "Untitled course"}
           </h2>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            Build the course students will actually experience: details, modules,
+            Build the course learners will actually experience: details, modules,
             lessons, media, pricing, drip rules, and the review checklist in one
             guided workspace.
           </p>
@@ -1520,7 +1520,7 @@ export function CourseBuilderStudio() {
                     ? "Create the modules, lessons, links, text content, and upload targets that power the members area."
                     : activeTab === "pricing"
                       ? "Set access, price, release timing, and the free preview lesson before publishing."
-                      : "Skillset checks structure, pricing, preview access, and quality before the course goes public."}
+                      : "Skillset reviews structure, pricing, preview access, and quality — your course can start selling as soon as you submit."}
               </p>
             </div>
             <div className="grid gap-2 text-right text-xs font-semibold text-[var(--color-ink-soft)]">
@@ -1615,7 +1615,7 @@ export function CourseBuilderStudio() {
             <div className="flex flex-wrap items-end justify-between gap-2">
               <div className="grid gap-1">
                 <p className="text-sm font-semibold text-[var(--color-ink)]">
-                  What students will learn
+                  What learners will learn
                 </p>
                 <p className="text-xs text-[var(--color-ink-soft)]">
                   Concrete outcomes shown as the &ldquo;What you&rsquo;ll
@@ -2024,8 +2024,8 @@ export function CourseBuilderStudio() {
             <div className="mt-4 grid gap-4">
               {modules.length === 0 ? (
                 <p className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-                  Add your first module above. Once it exists, you can organize
-                  lessons here like a real course builder.
+                  Add your first module above. Once it exists, you can edit, reorder,
+                  and organize its lessons here.
                 </p>
               ) : (
                 modules.map((module, moduleIndex) => (
@@ -2235,7 +2235,7 @@ export function CourseBuilderStudio() {
                                       ? "Open lesson studio"
                                       : autosaveState === "error"
                                         ? "Autosave failed — use Save draft to enable uploads"
-                                        : "Saving lesson… uploads unlock once the draft is saved"
+                                        : "Saving lesson… uploads open once the draft is saved"
                                   }
                                 >
                                   {savedLessonIds.has(lesson.id)
@@ -2308,8 +2308,8 @@ export function CourseBuilderStudio() {
               ))}
             </div>
             <p className="mt-5 text-sm leading-7 text-[var(--color-ink-soft)]">
-              Review stays lightweight: Skillset checks structure, basic quality,
-              trust, pricing readiness, and whether the public listing should go live.
+              Review stays lightweight and does not block sales: Skillset checks
+              structure, basic quality, trust, and pricing readiness after you submit.
             </p>
             <InlineHelp
               topic="course review"
@@ -2714,8 +2714,8 @@ function CourseCoverField({
 
           {!course.coverImageUrl && !error && !progress ? (
             <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
-              A cover is required before this stage shows as ready in the
-              checklist.
+              Add a cover — it appears on the marketplace card, the course page,
+              and the classroom.
             </p>
           ) : null}
         </div>

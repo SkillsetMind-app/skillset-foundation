@@ -114,7 +114,7 @@ export function CreatorCourseCommunity() {
     return (
       <CreatorCommunityState
         title="Creator community access is not connected."
-        detail="Firebase configuration is required before enrolled creator communities can load."
+        detail="Community spaces cannot load right now. Refresh the page, or contact support if the problem continues."
       />
     );
   }

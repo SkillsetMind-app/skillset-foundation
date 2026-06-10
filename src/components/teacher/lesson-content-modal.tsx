@@ -327,8 +327,8 @@ export function LessonContentModal({
                   <p className="lesson-modal__eyebrow">Primary lesson media</p>
                   <h4>{videoStatus === "Empty" ? "Add a video or embed." : "Media is connected."}</h4>
                   <p>
-                    Upload directly to Skillset Storage or paste a YouTube/Vimeo URL.
-                    The student classroom already knows how to play both paths.
+                    Upload the video to Skillset or paste a YouTube/Vimeo URL.
+                    Learners can play either one in the classroom.
                   </p>
                 </div>
                 <span>{videoStatus}</span>
@@ -394,7 +394,7 @@ export function LessonContentModal({
                 {trustedEmbed
                   ? `${trustedEmbed.provider === "youtube" ? "YouTube" : "Vimeo"} embed detected.`
                   : lesson.externalUrl
-                    ? "External link saved, but it is not a trusted embeddable YouTube/Vimeo URL."
+                    ? "Link saved, but it will not play in the classroom. Use a standard YouTube or Vimeo video URL."
                     : "No external embed URL yet."}
               </div>
 

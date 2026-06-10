@@ -94,8 +94,8 @@ export function LearnDashboard() {
             Your learning dashboard is ready.
           </h3>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            The next step is attaching your first course. When you add a program
-            from the marketplace, it appears here with its private learning workspace.
+            Enroll in your first course to get started. When you enroll from the
+            marketplace, the course appears here with its private learning workspace.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link href="/courses" className="button-solid px-5 py-3 text-sm">

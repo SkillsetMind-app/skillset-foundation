@@ -8,7 +8,7 @@ const freePlan = planById("free");
 
 const trustBullets = [
   `Keep ${100 - freePlan.commissionPercent}% on Free — drop commission to 0% on Plus as you scale.`,
-  `Payouts clear D+${payoutClearDays}. No creator-side subscription required.`,
+  `Payouts clear ${payoutClearDays} days after each sale. No subscription required to start teaching.`,
   "Drip release + refund window protect you from abuse.",
   "Course community, live sessions, and verifiable certificates on every plan.",
 ];

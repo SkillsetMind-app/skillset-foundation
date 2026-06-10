@@ -175,7 +175,7 @@ export function TeacherStudioDashboard() {
                 )}
               </span>
               <span className="studio-payout-chip__hint">
-                {payoutsReady ? "Net after platform fee" : "Connect Stripe to enable"}
+                {payoutsReady ? "Net after fees" : "Connect Stripe to enable"}
               </span>
             </Link>
 

@@ -72,8 +72,8 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
   if (!hasFirebaseConfig) {
     return (
       <CourseDetailState
-        title="Creator course data is not connected."
-        detail="Firebase configuration is required to load approved teacher courses."
+        title="Course details are unavailable right now."
+        detail="We could not connect to the course catalog. Refresh the page or try again shortly."
       />
     );
   }
@@ -204,7 +204,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
       setCheckoutError(
         enrollmentError instanceof Error && enrollmentError.message
           ? enrollmentError.message
-          : "We could not attach this free course to your learning workspace.",
+          : "We could not add this free course to your learning workspace. Try again or contact support.",
       );
       setIsEnrollingFree(false);
     }
@@ -215,7 +215,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
       <section>
         <div className="rounded-[20px] border border-[var(--color-line)] bg-[var(--color-primary)] p-8 text-white shadow-[var(--shadow-soft)]">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">
-            Teacher published
+            From an independent educator
           </p>
           <h1 className="display-title mt-4 text-6xl leading-tight">
             {course.title}
@@ -308,8 +308,8 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
             </p>
           )}
           <p className="mt-4 text-xs leading-6 text-[var(--color-ink-soft)]">
-            {lockedLessonCount} lesson{lockedLessonCount === 1 ? "" : "s"} remain
-            inside the member area after enrollment.
+            Enroll to open the remaining {lockedLessonCount} lesson
+            {lockedLessonCount === 1 ? "" : "s"} in this course.
           </p>
         </section>
 
@@ -384,7 +384,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
               courseIsFree
                 ? "Free enrollment"
                 : checkoutEnabled
-                  ? "Stripe Checkout"
+                  ? "Secure checkout"
                   : "Checkout pending",
             ],
           ].map(([label, value]) => (
@@ -410,7 +410,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
 
         {checkoutStatus === "success" ? (
           <p className="mt-5 rounded-[10px] border border-[rgba(26,54,93,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]">
-            Payment received. Your course access opens after Stripe confirms the webhook.
+            Payment received. Your course access opens automatically — usually within a few seconds.
           </p>
         ) : null}
 
@@ -451,13 +451,13 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
                   ? "Opening secure checkout..."
                   : checkoutEnabled && hasPaidPrice
                     ? `${subscriptionInterval ? "Subscribe" : "Enroll"} for ${priceLabel}`
-                    : "Secure checkout coming next"}
+                    : "Checkout not available yet"}
               </button>
             )}
             {!checkoutEnabled ? (
               <p className="mt-3 rounded-[10px] border border-[rgba(24,58,94,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
-                Checkout is feature-flagged off until Firebase Functions and
-                Stripe webhooks are deployed.
+                Checkout is not available yet. You can preview this course now
+                and enroll once purchasing opens on Skillset.
               </p>
             ) : null}
           </>
@@ -466,7 +466,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
         <p className="mt-3 text-xs leading-6 text-[var(--color-ink-soft)]">
           {courseIsFree
             ? "Free enrollment attaches this course to your learning workspace immediately."
-            : "Paid access opens only after the Stripe webhook confirms payment and creates your enrollment."}
+            : "Paid access opens automatically once your payment is confirmed — usually within seconds."}
         </p>
 
         {/* Risk reversal at the point of purchase. States the REAL policy
@@ -491,7 +491,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
           href="/courses"
           className="mt-4 inline-flex w-full justify-center text-sm font-semibold text-[var(--color-primary)]"
         >
-          Back to all programs
+          Back to all courses
         </Link>
       </aside>
     </div>

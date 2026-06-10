@@ -57,7 +57,7 @@ export default async function LearnCoursePage({
       <PlatformShell
         eyebrow="Private course access"
         title="A focused workspace for each enrolled course."
-        description="This area keeps the enrolled course path, lesson structure, and future progress tracking inside the authenticated learner surface."
+        description="Lessons, materials, and progress for this course stay together in one private workspace that picks up where you left off."
       >
         <EnrolledCourseWorkspace course={course} />
       </PlatformShell>

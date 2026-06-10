@@ -36,7 +36,7 @@ const steps: ReadonlyArray<Step> = [
   {
     title: "Verify",
     detail:
-      "When requirements are met, the course can issue a Skillset Verified credential with a public URL.",
+      "Meet the course requirements and earn a Skillset Verified certificate with a public verification link anyone can check.",
     Icon: BadgeCheck,
   },
 ];

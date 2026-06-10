@@ -8,7 +8,7 @@ const policies = [
     "Platform fee",
     `Plan-based: ${plans
       .map((plan) => `${plan.name} ${plan.commissionPercent}%`)
-      .join(" · ")}. Every plan unlocks the same features — the difference is the commission Skillset takes per paid sale. Start free, upgrade when the math helps you.`,
+      .join(" · ")}. Every plan includes the same features — the difference is the commission Skillset takes per paid sale. Start free, upgrade when the math helps you.`,
   ],
   [
     "Stripe processing fee",

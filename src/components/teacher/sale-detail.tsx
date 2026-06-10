@@ -97,7 +97,7 @@ function getTimeline(order: Order) {
   if (order.status === "paid") {
     items.push({
       label: "Enrollment activated",
-      detail: "Course access should be open for this learner.",
+      detail: "Course access is open for this learner.",
       time: formatDate(order.updatedAt ?? order.createdAt),
     });
   }
@@ -105,7 +105,7 @@ function getTimeline(order: Order) {
   if (order.status === "refunded" || order.status === "partially_refunded") {
     items.push({
       label: "Refund recorded",
-      detail: "Refund status is reflected on this order.",
+      detail: "A full or partial refund was issued; refunded amounts are not paid out to you.",
       time: formatDate(order.updatedAt ?? order.createdAt),
     });
   }
@@ -164,7 +164,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
     return (
       <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
-          You do not have access to this sale.
+          You do not have access to this sale. Sign in with the account that owns it, or contact support.
         </p>
       </section>
     );
@@ -222,7 +222,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
             {[
               ["Amount", formatMoney(order.amountMinor, order.currency)],
               ["Skillset fee", formatMoney(platformFeeMinor, order.currency)],
-              ["Creator net", formatMoney(creatorNetMinor, order.currency)],
+              ["Net before Stripe fee", formatMoney(creatorNetMinor, order.currency)],
             ].map(([label, value]) => (
               <div
                 key={label}

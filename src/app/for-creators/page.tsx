@@ -9,7 +9,7 @@ const creatorTools = [
   "Protected student workspace with progress, files, and certificates.",
   "Course-linked community, events, and future notifications.",
   "Stripe Connect onboarding, refund controls, and payout ledger.",
-  "Skillset review before marketplace publication.",
+  "Skillset review of every course, without blocking your launch.",
   "Shareable course links for simple launch campaigns.",
 ];
 
@@ -17,7 +17,7 @@ const freePlan = planById("free");
 
 export const metadata = buildPageMetadata({
   title: "Teach on Skillset",
-  description: `Publish professional courses to a global audience. Start free at ${freePlan.commissionPercent}% commission, D+${payoutClearDays} payouts, course community and certificates included on every plan.`,
+  description: `Publish professional courses to a global audience. Start free at ${freePlan.commissionPercent}% commission, payouts ${payoutClearDays} days after each sale, course community and certificates included on every plan.`,
   path: "/for-creators",
 });
 
@@ -49,10 +49,10 @@ export default function ForCreatorsPage() {
             </div>
             <div>
               <p className="display-title text-3xl text-[var(--color-primary)]">
-                D+{payoutClearDays}
+                {payoutClearDays} days
               </p>
               <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-                Payout schedule
+                Until payout
               </p>
             </div>
           </div>

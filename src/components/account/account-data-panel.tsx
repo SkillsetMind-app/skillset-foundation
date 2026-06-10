@@ -59,9 +59,9 @@ export function AccountDataPanel() {
         Your data, your account
       </h3>
       <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        Skillset Promise §03 and §04. Export your data or request account
-        deletion without retention games. These requests are handled manually
-        and confirmed by our team.
+        Your data belongs to you. Export a copy or request account deletion
+        at any time. These requests are handled manually and confirmed by
+        our team.
       </p>
 
       <div className="mt-5 flex flex-wrap gap-3">
@@ -96,8 +96,8 @@ export function AccountDataPanel() {
         ) : null}
       </div>
       <p className="mt-3 text-xs leading-5 text-[var(--color-ink-soft)]">
-        Currently processed manually within 72 hours. Automated one-click export
-        and deletion come in the next Promise implementation batch.
+        Requests are currently processed manually within 72 hours. Automated
+        one-click export and deletion are in development.
       </p>
 
       {message ? (

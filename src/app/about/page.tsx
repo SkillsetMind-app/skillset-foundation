@@ -24,8 +24,8 @@ export default function AboutPage() {
           </h1>
           </div>
           <p className="mt-6 text-sm leading-8 text-[var(--color-ink-soft)]">
-            Skillset brings professional programs, educator visibility, and a
-            cleaner international learning experience together in one place.
+            Skillset is where professional educators publish courses and learners
+            earn Skillset Verified certificates employers can check.
           </p>
         </section>
         <section className="mt-10 grid gap-4 sm:grid-cols-3">

@@ -10,7 +10,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 export const metadata = buildPageMetadata({
   title: "Pricing",
   description:
-    "Four plans. Free starts at 8% commission with no subscription. Pro drops it to 1%. Plus goes to 0%. Stripe processing fee is shown separately so the math is never hidden.",
+    "Four plans. Free starts at 8% commission with no subscription. Starter drops it to 4%, Pro to 1%, Plus to 0%. Stripe's processing fee is shown separately so the math is never hidden.",
   path: "/pricing",
 });
 
@@ -39,7 +39,7 @@ export default function PricingPage() {
           </div>
           <div>
             <strong className="block text-[var(--color-ink)]">$475 – $2,333/mo</strong>
-            Starter pays for itself. 4% per sale, less than 6 sales of $19.
+            Starter pays for itself. 4% per sale; the $19 fee costs less than the commission you save.
           </div>
           <div>
             <strong className="block text-[var(--color-ink)]">$2,333 – $11,000/mo</strong>
@@ -171,7 +171,7 @@ export default function PricingPage() {
                 <th scope="col" className="px-4 py-3 text-right font-bold">
                   <span className="inline-flex items-center gap-1">
                     Stripe fee
-                    <Tooltip content="Stripe's processing fee on each successful charge (2.9% + $0.30 for USD cards, 5.4% + $0.30 estimated non-USD). Passed through to the creator on every plan.">
+                    <Tooltip content="Stripe's processing fee on each successful charge (2.9% + $0.30 for USD cards, an estimated 5.4% + $0.30 for non-USD). Passed through to you on every plan.">
                       <HelpCircle
                         aria-hidden="true"
                         size={12}
@@ -234,8 +234,8 @@ export default function PricingPage() {
           </p>
           <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
             Learners can self-refund within {refundWindowDays} days of purchase
-            if they haven&apos;t crossed the progress threshold. Refunds restore
-            the creator&apos;s commission automatically.
+            if they&apos;ve completed less than half the course. A refund reverses
+            the sale automatically, Skillset&apos;s commission included.
           </p>
         </article>
         <article className="rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-5">
@@ -243,7 +243,7 @@ export default function PricingPage() {
             Payout clearance
           </p>
           <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-            Creator earnings clear from pending to available {payoutClearDays}{" "}
+            Your earnings clear from pending to available {payoutClearDays}{" "}
             days after each sale — well past the {refundWindowDays}-day refund
             window, so payouts never need to be clawed back.
           </p>
@@ -277,7 +277,7 @@ export default function PricingPage() {
             href="/auth?mode=signup&path=teacher"
             className="button-solid px-5 py-3 text-sm"
           >
-            Get started free
+            Start free
           </Link>
         </div>
       </section>

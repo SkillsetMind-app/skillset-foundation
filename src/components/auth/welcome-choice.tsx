@@ -75,7 +75,7 @@ export function WelcomeChoice() {
                 </span>
                 <span className="mt-2 block text-[13px] leading-6 text-[var(--color-ink-soft)]">
                   Browse programs, enroll in courses, join course communities,
-                  and earn verifiable credentials.
+                  and earn Skillset Verified certificates.
                 </span>
               </span>
               <ArrowRight
@@ -100,7 +100,7 @@ export function WelcomeChoice() {
                   I&apos;m here to teach
                 </span>
                 <span className="mt-2 block text-[13px] leading-6 text-[var(--color-ink-soft)]">
-                  Build courses, publish to the marketplace after Skillset review,
+                  Build courses, publish to the marketplace as soon as you submit,
                   and get paid through Stripe.
                 </span>
               </span>

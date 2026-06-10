@@ -76,7 +76,7 @@ function getAccountBanner(
 
   if (user.emailVerified === false) {
     return {
-      message: "Verify your email to unlock all features.",
+      message: "Verify your email to secure your account and enable creator tools.",
       ctaLabel: "Resend verification",
       ctaHref: "/account?tab=security",
     };
@@ -84,7 +84,7 @@ function getAccountBanner(
 
   if (roles.includes("teacher") && !profile?.teacherTermsAcceptedAt) {
     return {
-      message: "Accept Teacher Terms to unlock course publishing.",
+      message: "Accept the Teacher Terms to publish courses.",
       ctaLabel: "Accept terms",
       ctaHref: "/onboarding?path=teacher",
     };

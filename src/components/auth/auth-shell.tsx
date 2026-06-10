@@ -39,7 +39,7 @@ export function AuthShell({
             </div>
             <div className="rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4">
               <strong className="text-[var(--color-ink)]">Educators</strong> build courses,
-              manage students, schedule sessions, and publish with review.
+              manage students, schedule sessions, and publish the moment they submit.
             </div>
           </div>
         </section>

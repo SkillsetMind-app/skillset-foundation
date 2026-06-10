@@ -114,8 +114,8 @@ export function PlansPanel() {
           </p>
           <p className="mt-1 text-[var(--color-ink-soft)]">
             {priceIdsReady
-              ? "Plans are fully configured. Card checkout switches on the moment the Stripe publishable key is added to this deployment — no other change needed. Free stays the default tier until then."
-              : "The Stripe Price IDs haven't been configured yet, so paid plans can't be purchased. Free still works as the default tier for every account."}
+              ? "Plans are ready, and card checkout is being switched on for this site. Free stays the default plan until then — no action is needed from you."
+              : "Paid plans can't be purchased here yet while billing setup finishes. Free still works as the default plan for every account."}
           </p>
         </div>
       ) : null}
@@ -276,7 +276,7 @@ export function PlansPanel() {
                   title={
                     canPurchase
                       ? undefined
-                      : "Card checkout activates once the Stripe publishable key is added."
+                      : "Card checkout isn't available on this site yet. Check back soon."
                   }
                 >
                   {canPurchase ? `Upgrade to ${plan.name}` : "Activating soon"}

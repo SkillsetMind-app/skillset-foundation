@@ -28,7 +28,7 @@ const paths = [
   {
     title: "Learn with structure",
     description:
-      "Access courses, events, communities, progress, and future Skillset Verified credentials.",
+      "Access courses, events, communities, progress, and Skillset Verified certificates.",
     roles: ["student"],
     href: "/learn",
   },
@@ -270,7 +270,7 @@ export function OnboardingChoice() {
         selectedPathIncludesTeacher
           ? emailVerified
             ? "Accept the Teacher Terms before opening educator tools."
-            : "Verify your email before opening creator tools."
+            : "Verify your email before opening educator tools."
           : "Choose how you want to use Skillset first.",
       );
       return;
@@ -316,7 +316,7 @@ export function OnboardingChoice() {
 
     if (selectedPathIncludesTeacher && !emailVerified) {
       setStep(0);
-      setError("Verify your email before opening creator tools.");
+      setError("Verify your email before opening educator tools.");
       return;
     }
 
@@ -360,7 +360,7 @@ export function OnboardingChoice() {
           </p>
           <p className="mt-1">
             Your profile is already set from onboarding. Verify your email and
-            accept the Teacher Terms to activate creator tools.
+            accept the Teacher Terms to activate educator tools.
           </p>
         </div>
 
@@ -371,8 +371,8 @@ export function OnboardingChoice() {
                 Email verification
               </p>
               <p className="mt-1">
-                Creator tools require a verified email before Skillset can
-                assign the teacher role.
+                Educator tools require a verified email so Skillset can
+                confirm this address belongs to you.
               </p>
             </div>
             <span
@@ -428,8 +428,8 @@ export function OnboardingChoice() {
             >
               Teacher Terms
             </Link>{" "}
-            and understand Skillset reviews courses before marketplace
-            publication.
+            and understand Skillset reviews courses once they are live on
+            the marketplace.
           </span>
         </label>
 
@@ -513,8 +513,8 @@ export function OnboardingChoice() {
                       Email verification
                     </p>
                     <p className="mt-1">
-                      Creator tools require a verified email before Skillset can
-                      assign the teacher role.
+                      Educator tools require a verified email so Skillset can
+                      confirm this address belongs to you.
                     </p>
                   </div>
                   <span
@@ -570,8 +570,8 @@ export function OnboardingChoice() {
                   >
                     Teacher Terms
                   </Link>{" "}
-                  and understand Skillset reviews courses before marketplace
-                  publication.
+                  and understand Skillset reviews courses once they are live on
+                  the marketplace.
                 </span>
               </label>
             </div>

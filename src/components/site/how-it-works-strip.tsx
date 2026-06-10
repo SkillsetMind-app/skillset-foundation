@@ -13,7 +13,7 @@ type Step = {
 const steps: ReadonlyArray<Step> = [
   {
     number: "01",
-    title: "Apply to teach",
+    title: "Set up your studio",
     description:
       "Open a Teacher Studio account, accept Teacher Terms, connect Stripe Express. Free, takes minutes.",
     Icon: PenLine,
@@ -28,7 +28,7 @@ const steps: ReadonlyArray<Step> = [
   {
     number: "03",
     title: "Sell globally",
-    description: `Skillset reviews your program. Once approved, your course is live on the marketplace. Get paid in 30+ currencies, with earnings clearing ${payoutClearDays} days after each sale.`,
+    description: `Your course goes live on the marketplace as soon as you submit — Skillset review runs alongside, so nothing holds up your first sale. Get paid in 30+ currencies, with earnings clearing ${payoutClearDays} days after each sale.`,
     Icon: Send,
   },
 ];

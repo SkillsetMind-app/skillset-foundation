@@ -103,7 +103,7 @@ export function TeacherWalletPanel() {
       },
       () => {
         setOrdersLoaded(true);
-        setError("We could not load teacher order reporting.");
+        setError("We could not load your sales. Refresh the page to try again.");
       },
     );
   }, [user]);
@@ -413,10 +413,10 @@ export function TeacherWalletPanel() {
                 Complete Stripe onboarding before selling paid courses.
               </h3>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-                This is not an external login requirement. Stripe handles the
-                regulated identity, tax, and bank-account steps inside Skillset
-                because payout compliance cannot be safely automated by the
-                platform.
+                You stay on Skillset the whole time. Stripe collects the
+                legally required identity, tax, and bank details in this
+                embedded step so your payout account meets payment
+                regulations.
               </p>
             </div>
           </div>

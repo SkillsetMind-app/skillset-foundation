@@ -122,7 +122,7 @@ export function CourseReviewPanel({
             {previewMode
               ? "Preview mode cannot publish course reviews."
               : progressPercent < 50
-                ? "Reviews unlock after 50% course progress."
+                ? "Reviews open after you complete 50% of the course."
                 : "Sign in to review this course."}
           </p>
         ) : null}

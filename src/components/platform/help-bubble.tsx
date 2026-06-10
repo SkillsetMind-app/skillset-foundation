@@ -37,7 +37,7 @@ export function HelpBubble() {
             );
           })}
           <p className="px-3 py-2 text-[11px] leading-5 text-[var(--color-ink-muted)]">
-            Average reply time: under 24h.
+            We aim to reply within 24 hours.
           </p>
         </div>
       ) : null}

@@ -7,8 +7,8 @@ export default function ForgotPasswordPage() {
   return (
     <AuthShell
       eyebrow="Password recovery"
-      title="Reset access safely."
-      description="A simple recovery path keeps account access clear for learners, educators, and operators."
+      title="Reset your password."
+      description="Enter the email on your account and Skillset will send you a link to set a new password."
       footer={
         <>
           Remembered your password?{" "}

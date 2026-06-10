@@ -375,7 +375,7 @@ export function OnboardingWizard() {
             You&apos;re all set, {firstName(user?.displayName, user?.email)}.
           </h1>
           <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
-            Skillset is preparing your workspace. Taking you in.
+            Skillset is preparing your workspace. Taking you there now.
           </p>
           <Loader2
             aria-hidden="true"
@@ -440,7 +440,7 @@ export function OnboardingWizard() {
       case "path":
         return (
           <OnboardingQuestion
-            number={1}
+            number={question.number}
             title="How will you use Skillset first?"
             lead="You can do both later. This shapes your first dashboard."
           >
@@ -456,7 +456,7 @@ export function OnboardingWizard() {
                 icon="teach"
                 selected={answers.path === "teacher"}
                 title="I want to teach"
-                description="Build courses, get reviewed, publish, sell globally."
+                description="Build courses, publish to the marketplace, and sell worldwide."
                 onClick={() => void updateAnswer({ ...answers, path: "teacher" }, true)}
               />
             </div>
@@ -465,7 +465,10 @@ export function OnboardingWizard() {
         );
       case "sourceOfDiscovery":
         return (
-          <OnboardingQuestion number={2} title="Where did you hear about Skillset?">
+          <OnboardingQuestion
+            number={question.number}
+            title="Where did you hear about Skillset?"
+          >
             <OptionGrid
               options={sourceOptions}
               selected={answers.sourceOfDiscovery ? [answers.sourceOfDiscovery] : []}
@@ -478,7 +481,10 @@ export function OnboardingWizard() {
         );
       case "alreadySold":
         return (
-          <OnboardingQuestion number={3} title="Are you already selling online?">
+          <OnboardingQuestion
+            number={question.number}
+            title="Are you already selling online?"
+          >
             <div className="grid gap-4 sm:grid-cols-2">
               <LargeRadio
                 selected={answers.alreadySold === "yes"}
@@ -504,7 +510,7 @@ export function OnboardingWizard() {
       case "monthlyRevenue":
         return (
           <OnboardingQuestion
-            number={4}
+            number={question.number}
             title="What's your monthly revenue from online sales today?"
             lead="Honest answers help Skillset calibrate features for your scale."
           >
@@ -534,7 +540,7 @@ export function OnboardingWizard() {
       case "primaryGoal":
         return (
           <OnboardingQuestion
-            number={5}
+            number={question.number}
             title={
               answers.path === "teacher"
                 ? "What kind of program will you publish?"
@@ -556,7 +562,7 @@ export function OnboardingWizard() {
       case "instagramHandle":
         return (
           <OnboardingQuestion
-            number={6}
+            number={question.number}
             title={
               answers.path === "teacher"
                 ? "What's your Instagram handle? Skillset uses it for review and discovery."
@@ -583,7 +589,10 @@ export function OnboardingWizard() {
         );
       case "audienceSize":
         return (
-          <OnboardingQuestion number={7} title="Do you already have an audience?">
+          <OnboardingQuestion
+            number={question.number}
+            title="Do you already have an audience?"
+          >
             <div className="grid gap-2">
               {audienceOptions.map((option) => (
                 <button

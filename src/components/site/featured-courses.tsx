@@ -25,7 +25,7 @@ export function FeaturedCourses() {
             </h2>
             <p className="mt-4 text-[15px] leading-7 text-[var(--color-ink-soft)]">
               Every course is published by an independent expert and reviewed
-              before it goes live — across psychology, management, health, and
+              by Skillset — across psychology, management, health, and
               professional skills.
             </p>
           </div>

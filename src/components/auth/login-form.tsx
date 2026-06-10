@@ -82,7 +82,7 @@ export function LoginForm() {
           {pathLabel} access
         </p>
         <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
-          Sign in and Skillset will send you to the right workspace for this path.
+          Sign in and Skillset opens the workspace that matches your account.
         </p>
       </div>
       <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -140,7 +140,7 @@ export function LoginForm() {
         href={signupHref}
         className="inline-flex text-sm font-semibold text-[var(--color-primary)]"
       >
-        Need an account for this path?
+        New to Skillset? Create an account
       </Link>
     </form>
   );

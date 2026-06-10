@@ -76,7 +76,7 @@ export function SupportTicketCenter() {
       setCategory("course");
       setSuccess("Support ticket created.");
     } catch {
-      setError("We could not create this support ticket.");
+      setError("We could not create this support ticket. Try again in a moment.");
     } finally {
       setIsSubmitting(false);
     }
@@ -93,7 +93,7 @@ export function SupportTicketCenter() {
         </h3>
         <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
           Use this for account, course, payment, or technical questions. The
-          operations team can review tickets from the admin surface.
+          Skillset support team reads every ticket and replies right here.
         </p>
         <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
           <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">

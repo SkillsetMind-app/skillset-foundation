@@ -8,7 +8,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 export const metadata = buildPageMetadata({
   title: "Browse courses",
   description:
-    "Browse professional courses on Skillset. Every program is reviewed before it goes live, with course communities, live sessions, and verifiable certificates.",
+    "Browse professional courses on Skillset. Every course is reviewed by our team, with course communities, live sessions, and Skillset Verified certificates.",
   path: "/courses",
 });
 
@@ -27,9 +27,8 @@ export default function CoursesPage() {
             </h1>
           </div>
           <p className="max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            Browse professional learning pathways, filter by category, preview
-            selected lessons, and choose the course you want to continue inside
-            Skillset.
+            Browse professional courses, filter by category, preview free
+            lessons, and enroll when you find the right fit.
           </p>
         </div>
 

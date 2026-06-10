@@ -140,8 +140,8 @@ export function SecuritySettingsPanel() {
       </h3>
       <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
         Verify your email before opening creator tools. Two-factor
-        authentication is reserved here and will be activated after Firebase
-        Multi-Factor is enabled for the project.
+        authentication is planned and will appear on this page as soon as
+        it is available.
       </p>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">

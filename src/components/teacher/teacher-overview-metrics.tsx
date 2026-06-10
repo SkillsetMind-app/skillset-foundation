@@ -162,7 +162,7 @@ export function TeacherOverviewMetrics() {
       // (which would read as a real measurement of zero progress).
       label: "Completion",
       value: "--",
-      hint: "Unlocks after learners finish lessons",
+      hint: "Appears once learners finish lessons",
       delta: null,
     },
     {

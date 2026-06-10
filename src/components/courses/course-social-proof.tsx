@@ -100,8 +100,8 @@ export function CourseReviewsSection({
       </div>
 
       <p className="mt-4 text-xs leading-6 text-[var(--color-ink-soft)]">
-        Only enrolled learners can review a course, so every review here comes
-        from someone who actually took it.
+        Every review here comes from an enrolled learner. Skillset does not
+        accept reviews from anyone else.
       </p>
     </section>
   );

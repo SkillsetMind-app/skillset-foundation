@@ -27,7 +27,7 @@ const capabilities: ReadonlyArray<Capability> = [
   {
     title: "Drip-released content",
     description:
-      "Protect your work from refund abuse. Release lessons by progress or schedule.",
+      "Release lessons by progress or on a schedule — and protect your work during the refund window.",
     Icon: Calendar,
   },
   {
@@ -39,7 +39,7 @@ const capabilities: ReadonlyArray<Capability> = [
   {
     title: "Multi-currency checkout",
     description:
-      "30+ currencies. Stripe Adaptive Pricing handles local conversion at checkout.",
+      "Sell in 30+ currencies. Learners see prices in their local currency at checkout.",
     Icon: Globe,
   },
   {
@@ -66,7 +66,7 @@ export function CapabilitiesGrid() {
           Everything a program needs, included.
         </h2>
         <p className="mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          No add-ons. No feature paywalls. Every plan unlocks the same toolset
+          No add-ons. No feature paywalls. Every plan includes the same toolset
           — your plan only changes the commission per sale.
         </p>
       </RevealSection>

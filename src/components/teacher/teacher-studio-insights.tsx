@@ -406,7 +406,7 @@ function buildActivity(courses: TeacherCourse[], payoutsReady: boolean): Activit
   if (inReview) {
     items.push({
       title: "Course review in progress",
-      detail: `${inReview.title} is waiting for a Skillset publishing decision.`,
+      detail: `${inReview.title} is on sale while Skillset completes its review.`,
       href: `/teach/builder?courseId=${inReview.id}`,
       kind: "normal",
       icon: "clock",
