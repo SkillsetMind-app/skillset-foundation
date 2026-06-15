@@ -46,7 +46,7 @@ export function WelcomeChoice() {
   }
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)]">
+    <main className="min-h-screen bg-[var(--color-base)]">
       <section className="grid min-h-screen place-items-center px-5 py-12">
         <div className="w-full max-w-[580px] text-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[var(--color-ink-muted)]">

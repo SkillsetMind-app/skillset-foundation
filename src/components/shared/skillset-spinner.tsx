@@ -29,7 +29,7 @@ export function SkillsetSpinner({
 
   if (fullscreen) {
     return (
-      <main className="grid min-h-screen place-items-center bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-5">
+      <main className="grid min-h-screen place-items-center bg-[var(--color-base)] px-5">
         {content}
       </main>
     );

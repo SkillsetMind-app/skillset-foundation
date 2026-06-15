@@ -353,7 +353,7 @@ export function OnboardingWizard() {
 
   if (isBootstrapping || status === "loading") {
     return (
-      <main className="grid min-h-screen place-items-center bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-5">
+      <main className="grid min-h-screen place-items-center bg-[var(--color-base)] px-5">
         <div className="text-center">
           <div className="mx-auto mb-5 size-14 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
           <p className="text-sm font-semibold text-[var(--color-primary)]">
@@ -366,7 +366,7 @@ export function OnboardingWizard() {
 
   if (isComplete) {
     return (
-      <main className="grid min-h-screen place-items-center bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-5">
+      <main className="grid min-h-screen place-items-center bg-[var(--color-base)] px-5">
         <section className="text-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Welcome aboard
