@@ -14,6 +14,14 @@ export function MarketingHero() {
             "radial-gradient(circle at 18% 28%, rgba(255,255,255,0.45), transparent 32%), radial-gradient(circle at 86% 64%, rgba(178,34,52,0.46), transparent 34%)",
         }}
       />
+      {/* Engraved-editorial security texture (certificate/banknote line-work).
+          mix-blend-screen lets only the light engraving show over the navy; the
+          dense side sits right/edges, behind the z-10 content. Mobile swaps to a
+          top/bottom-weighted portrait crop so the centered headline stays calm. */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-[url('/brand/hero-engraving-mobile.webp')] bg-cover bg-center bg-no-repeat opacity-[0.55] mix-blend-screen lg:bg-[url('/brand/hero-engraving-desktop.webp')]"
+      />
       <div className="mx-auto w-full max-w-7xl px-5 pb-8 pt-28 sm:px-8 sm:pb-10 sm:pt-32 lg:pb-12 lg:pt-36">
         <div className="relative z-10 grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)] lg:gap-14">
           <div className="mx-auto flex max-w-3xl flex-col items-center text-center lg:mx-0 lg:items-start lg:text-left">

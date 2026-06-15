@@ -1411,7 +1411,7 @@ p {
   box-shadow: 0 0 0 3px rgba(143, 180, 228, 0.2);
 }
 
-.auth-page {
+.auth-split {
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
@@ -1420,6 +1420,47 @@ p {
     radial-gradient(circle at 8% -10%, rgba(44, 82, 130, 0.08), transparent 36rem),
     radial-gradient(circle at 110% 8%, rgba(178, 34, 52, 0.06), transparent 32rem),
     linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+}
+
+/* Desktop split: navy brand panel on the left, form column on the right.
+   Mobile keeps the single top-anchored card (aside hidden). */
+@media (min-width: 1024px) {
+  .auth-split {
+    flex-direction: row;
+  }
+}
+
+/* Brand panel — desktop only. Always-navy regardless of theme, so it uses
+   fixed brand values like the marketing hero. A researched background image can
+   later layer in behind the content under a navy overlay (one-element insert). */
+.auth-aside {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .auth-aside {
+    position: relative;
+    overflow: hidden;
+    flex: 0 0 44%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 40px;
+    padding: 44px 48px;
+    background:
+      radial-gradient(circle at 16% 18%, rgba(255, 255, 255, 0.1), transparent 42%),
+      radial-gradient(circle at 88% 86%, rgba(178, 34, 52, 0.32), transparent 46%),
+      linear-gradient(150deg, #07172a 0%, #102944 52%, #1a365d 100%);
+    color: #ffffff;
+  }
+}
+
+.auth-form-col {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .onboarding-page {
