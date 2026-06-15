@@ -26,8 +26,11 @@
      surface-soft, 4.68:1 surface-strong — while staying a step lighter than
      --color-ink-soft. Dark theme keeps its own value below. */
   --color-ink-muted: #5a6a81;
-  --color-line: rgba(26, 54, 93, 0.20);
-  --color-line-strong: rgba(26, 54, 93, 0.30);
+  /* Border contrast raised (0.20 -> 0.28 / 0.30 -> 0.40): faint hairlines made
+     the card-heavy surfaces read "washed out / unfinished". Higher opacity gives
+     every `border-[var(--color-line)]` (279 usages) a visible edge. */
+  --color-line: rgba(26, 54, 93, 0.28);
+  --color-line-strong: rgba(26, 54, 93, 0.40);
   --color-success: #1f8a5b;
   --color-success-soft: #e4f3eb;
   /* Saturated success green for solid fills carrying WHITE text. The base
@@ -71,8 +74,8 @@
   --color-ink: #e8edf5;
   --color-ink-soft: #a4b3c8;
   --color-ink-muted: #6b7e9a;
-  --color-line: rgba(255, 255, 255, 0.14);
-  --color-line-strong: rgba(255, 255, 255, 0.24);
+  --color-line: rgba(255, 255, 255, 0.20);
+  --color-line-strong: rgba(255, 255, 255, 0.32);
   --color-success-soft: rgba(31, 138, 91, 0.18);
   --color-warning-soft: rgba(192, 123, 10, 0.18);
   --color-info: #8fb4e4;
@@ -480,6 +483,31 @@ p {
 .reveal-on-view--in {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Hero product-preview floating chips — gentle vertical drift for depth.
+   Motion-gated: the chips are fully positioned without the animation, so
+   under reduced-motion they simply sit still (no layout dependency on it). */
+@keyframes hero-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .float-chip {
+    animation: hero-float 5.5s ease-in-out infinite;
+  }
+
+  .float-chip-delayed {
+    animation: hero-float 6.5s ease-in-out infinite;
+    animation-delay: -2.2s;
+  }
 }
 
 .button-solid,

@@ -1,4 +1,5 @@
 import { HeroCtas } from "@/components/site/hero-ctas";
+import { HeroProductPreview } from "@/components/site/hero-product-preview";
 
 export function MarketingHero() {
   // Keep the hero behind the floating nav while fitting the primary CTA
@@ -14,7 +15,8 @@ export function MarketingHero() {
         }}
       />
       <div className="mx-auto w-full max-w-7xl px-5 pb-8 pt-28 sm:px-8 sm:pb-10 sm:pt-32 lg:pb-12 lg:pt-36">
-        <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center text-center lg:mx-0 lg:items-start lg:text-left">
+        <div className="relative z-10 grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)] lg:gap-14">
+          <div className="mx-auto flex max-w-3xl flex-col items-center text-center lg:mx-0 lg:items-start lg:text-left">
           <div className="inline-flex w-fit rounded-[8px] border border-white/20 bg-white/10 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
             For independent experts who want to teach for a living
           </div>
@@ -59,6 +61,8 @@ export function MarketingHero() {
               </div>
             ))}
           </dl>
+          </div>
+          <HeroProductPreview />
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--color-accent)]" />
       </div>
