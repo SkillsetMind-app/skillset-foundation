@@ -360,6 +360,14 @@ p {
   backdrop-filter: blur(18px);
 }
 
+/* Dark theme: the card's translucent-white glass would read as a bright panel
+   over the navy page. Flip to a translucent surface tint (--color-surface
+   #0f1626 @ same alpha) so it lifts subtly above --color-base and keeps the
+   blur. Border + shadow already track the theme via tokens. */
+[data-theme="dark"] .surface-card {
+  background: rgba(15, 22, 38, 0.92);
+}
+
 .fine-rule {
   border-color: var(--color-line);
 }
@@ -1617,6 +1625,15 @@ p {
   border-bottom: 1px solid var(--color-line);
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(18px);
+}
+
+/* Dark theme: without this the app top bar stayed bright white over the dark
+   navy dashboard — a jarring light strip above an otherwise-dark UI. Mirror the
+   light pattern with a translucent surface tint (--color-surface #0f1626 @ the
+   same 0.94 alpha) so the blur still shows through. The bottom border already
+   tracks the theme via --color-line. */
+[data-theme="dark"] .platform-topbar {
+  background: rgba(15, 22, 38, 0.94);
 }
 
 .platform-topbar__inner {
