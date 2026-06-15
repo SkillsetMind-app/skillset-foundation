@@ -74,7 +74,7 @@ export function HeroProductPreview() {
       </div>
 
       {/* floating value-prop chips for depth (fixed light palette) */}
-      <div className="float-chip absolute -left-6 top-20 flex items-center gap-2.5 rounded-[12px] border border-white/40 bg-white/95 px-3.5 py-2.5 shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
+      <div className="float-chip absolute -left-6 top-36 flex items-center gap-2.5 rounded-[12px] border border-white/40 bg-white/95 px-3.5 py-2.5 shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
         <span className="grid size-8 place-items-center rounded-full bg-[#e4f3eb] text-[#157049]">
           <Wallet size={16} strokeWidth={2} />
         </span>

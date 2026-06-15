@@ -371,7 +371,15 @@ p {
      ligatures, contextual/discretionary alternates and optical sizing so
      large headings read as typeset, not merely "big text". */
   font-optical-sizing: auto;
-  font-feature-settings: "kern", "liga", "dlig", "calt";
+  /* lnum + tnum force LINING + TABULAR figures. Cormorant defaults to
+     OLD-STYLE numerals, where 6/8 ascend and 3/4/5/7/9 drop below the
+     baseline — so a price like "$149" or a version "8 vs 9" looked
+     vertically uneven (founder-flagged). Lining sits every digit on one
+     baseline at uniform height; tabular gives equal width so stacked
+     numbers (pricing tiers, stats) align in a column. font-variant-numeric
+     is set too as a fallback for engines that ignore the feature string. */
+  font-feature-settings: "kern", "liga", "dlig", "calt", "lnum", "tnum";
+  font-variant-numeric: lining-nums tabular-nums;
   text-wrap: balance;
 }
 
