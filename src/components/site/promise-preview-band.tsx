@@ -39,7 +39,7 @@ export function PromisePreviewBand() {
         <RevealSection>
           <div className="grid items-center gap-8 lg:grid-cols-[1fr_0.8fr]">
             <div className="max-w-2xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-primary)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                 The Skillset Promise
               </p>
               <h2 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] sm:text-5xl">
@@ -57,7 +57,7 @@ export function PromisePreviewBand() {
                 lean. */}
             <div
               aria-hidden="true"
-              className="relative hidden aspect-[16/10] w-full overflow-hidden rounded-[16px] border border-[var(--color-line-strong)] bg-white shadow-[var(--shadow-soft)] lg:block"
+              className="relative hidden aspect-[16/10] w-full overflow-hidden rounded-[14px] border border-[var(--color-line-strong)] bg-white shadow-[var(--shadow-soft)] lg:block"
             >
               <Image
                 src="/brand/marketing-engraving-desktop.webp"

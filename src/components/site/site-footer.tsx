@@ -36,8 +36,8 @@ const footerColumns = [
 
 export function SiteFooter() {
   return (
-    <footer className="mx-auto w-full max-w-7xl px-6 pb-10 pt-12 sm:px-8">
-      <div className="rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8">
+    <footer className="mx-auto w-full max-w-7xl px-5 pb-10 pt-12 sm:px-8">
+      <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8">
         <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">
           <div>
             <LogoWordmark compact />

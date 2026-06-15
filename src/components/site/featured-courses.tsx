@@ -20,7 +20,7 @@ export function FeaturedCourses() {
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               The marketplace
             </p>
-            <h2 className="display-title mt-3 text-[clamp(1.9rem,3.4vw,2.9rem)] leading-[1.1] text-[var(--color-primary)]">
+            <h2 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] sm:text-5xl">
               Reviewed programs, ready to learn.
             </h2>
             <p className="mt-4 text-[15px] leading-7 text-[var(--color-ink-soft)]">
@@ -58,7 +58,7 @@ export function FeaturedCourses() {
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
                   />
-                  <span className="absolute left-3 top-3 rounded-[7px] bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)] backdrop-blur-sm">
+                  <span className="absolute left-3 top-3 rounded-[8px] bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)] backdrop-blur-sm">
                     {course.statusLabel}
                   </span>
                 </div>

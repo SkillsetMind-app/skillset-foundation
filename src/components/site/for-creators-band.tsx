@@ -24,7 +24,7 @@ export function ForCreatorsBand() {
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/75">
                 For independent experts
               </p>
-              <h2 className="display-title mt-4 text-4xl leading-tight text-white sm:text-5xl">
+              <h2 className="display-title mt-3 text-4xl leading-tight text-white sm:text-5xl">
                 Bring your expertise to a global audience.
               </h2>
               <div className="mt-6 flex flex-wrap gap-3">
