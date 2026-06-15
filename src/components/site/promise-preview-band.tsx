@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Lock, Download, LogOut, type LucideIcon } from "lucide-react";
 
@@ -36,18 +37,36 @@ export function PromisePreviewBand() {
     <section className="bg-[var(--color-surface-soft)] px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
       <div className="mx-auto w-full max-w-7xl">
         <RevealSection>
-          <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-primary)]">
-              The Skillset Promise
-            </p>
-            <h2 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] sm:text-5xl">
-              Six commitments. Written down. Public.
-            </h2>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
-              Skillset writes its obligations to creators into a contract
-              everyone can read. Fee-locked. Data portable. Cancellable. Read
-              it before signing up.
-            </p>
+          <div className="grid items-center gap-8 lg:grid-cols-[1fr_0.8fr]">
+            <div className="max-w-2xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-primary)]">
+                The Skillset Promise
+              </p>
+              <h2 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] sm:text-5xl">
+                Six commitments. Written down. Public.
+              </h2>
+              <p className="mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
+                Skillset writes its obligations to creators into a contract
+                everyone can read. Fee-locked. Data portable. Cancellable. Read
+                it before signing up.
+              </p>
+            </div>
+            {/* The promise rendered as an engraved official document: the same
+                certificate/banknote security line-work, framed like an issued
+                contract beside the copy. Desktop-only to keep the mobile header
+                lean. */}
+            <div
+              aria-hidden="true"
+              className="relative hidden aspect-[16/10] w-full overflow-hidden rounded-[16px] border border-[var(--color-line-strong)] bg-white shadow-[var(--shadow-soft)] lg:block"
+            >
+              <Image
+                src="/brand/marketing-engraving-desktop.webp"
+                alt=""
+                fill
+                sizes="(min-width: 1024px) 38vw, 0px"
+                className="object-cover"
+              />
+            </div>
           </div>
         </RevealSection>
 
