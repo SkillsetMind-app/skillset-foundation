@@ -69,6 +69,15 @@ export default function PromisePage() {
                 "radial-gradient(circle at 18% 28%, rgba(255,255,255,0.45), transparent 32%), radial-gradient(circle at 86% 64%, rgba(178,34,52,0.46), transparent 34%)",
             }}
           />
+          {/* Engraved-editorial security texture — the same certificate/banknote
+              line-work as the home hero and auth panel. mix-blend-screen lifts
+              only the light engraving over the navy, filling the open right side
+              beside the left-aligned copy and tying the three hero moments
+              (home, auth, promise) into one brand system. */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-[url('/brand/hero-engraving-mobile.webp')] bg-cover bg-center bg-no-repeat opacity-[0.5] mix-blend-screen lg:bg-[url('/brand/hero-engraving-desktop.webp')]"
+          />
           <div className="relative z-10 mx-auto w-full max-w-7xl px-6 py-16 sm:px-8 lg:py-24">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/78">
               The Skillset Creator Promise
