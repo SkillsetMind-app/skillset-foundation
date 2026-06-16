@@ -30,11 +30,11 @@ export default function InstructorsPage() {
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <Link
               href="/auth?mode=signup&path=teacher"
-              className="button-solid px-5 py-3 text-sm"
+              className="button-solid px-4 py-2.5 text-sm"
             >
               Start teaching
             </Link>
-            <Link href="/promise" className="button-outline px-5 py-3 text-sm">
+            <Link href="/promise" className="button-outline px-4 py-2.5 text-sm">
               Read the Promise
             </Link>
           </div>

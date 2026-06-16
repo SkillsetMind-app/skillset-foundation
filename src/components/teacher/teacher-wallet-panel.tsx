@@ -253,7 +253,7 @@ export function TeacherWalletPanel() {
             in Settings.
           </p>
         </div>
-        <button type="button" disabled className="button-outline px-4 py-2 text-sm opacity-60">
+        <button type="button" disabled className="button-outline px-4 py-2.5 text-sm opacity-60">
           <Download aria-hidden="true" size={14} strokeWidth={2} />
           Tax forms after first payouts
         </button>
@@ -295,16 +295,16 @@ export function TeacherWalletPanel() {
                 type="button"
                 onClick={refreshStripeStatus}
                 disabled={isRefreshingStripe}
-                className="button-solid-light px-4 py-2 text-sm disabled:opacity-60"
+                className="button-solid-light px-4 py-2.5 text-sm disabled:opacity-60"
               >
                 {isRefreshingStripe ? "Refreshing..." : "Refresh Stripe status"}
               </button>
             ) : (
-              <a href="#stripe-connect" className="button-solid-light px-4 py-2 text-sm">
+              <a href="#stripe-connect" className="button-solid-light px-4 py-2.5 text-sm">
                 Complete payout setup
               </a>
             )}
-            <Link href="/teach/sales" className="button-outline-light px-4 py-2 text-sm">
+            <Link href="/teach/sales" className="button-outline-light px-4 py-2.5 text-sm">
               View sales
             </Link>
           </div>
@@ -381,7 +381,7 @@ export function TeacherWalletPanel() {
             type="button"
             onClick={refreshStripeStatus}
             disabled={isRefreshingStripe}
-            className="button-outline mt-5 w-full justify-center px-4 py-2 text-sm disabled:opacity-60"
+            className="button-outline mt-5 w-full justify-center px-4 py-2.5 text-sm disabled:opacity-60"
           >
             <RefreshCw aria-hidden="true" size={14} strokeWidth={2} />
             {isRefreshingStripe ? "Refreshing..." : "Refresh account status"}
@@ -439,7 +439,7 @@ export function TeacherWalletPanel() {
               Recent payout ledger.
             </h3>
           </div>
-          <button type="button" disabled className="button-outline px-4 py-2 text-sm opacity-60">
+          <button type="button" disabled className="button-outline px-4 py-2.5 text-sm opacity-60">
             Export after first payout
           </button>
         </div>

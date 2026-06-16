@@ -186,10 +186,10 @@ function CreatorCommunityState({
         {detail}
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
-        <Link href="/learn/community" className="button-solid px-5 py-3 text-sm">
+        <Link href="/learn/community" className="button-solid px-4 py-2.5 text-sm">
           Back to communities
         </Link>
-        <Link href="/learn" className="button-outline px-5 py-3 text-sm">
+        <Link href="/learn" className="button-outline px-4 py-2.5 text-sm">
           Back to My Learning
         </Link>
       </div>

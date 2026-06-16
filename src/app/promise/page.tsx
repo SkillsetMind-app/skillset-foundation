@@ -132,7 +132,7 @@ export default function PromisePage() {
               to. The next page lists every change ever made to them, including
               the date and reason.
             </p>
-            <Link href="/promise/changelog" className="button-solid mt-5 px-5 py-3 text-sm">
+            <Link href="/promise/changelog" className="button-solid mt-5 px-4 py-2.5 text-sm">
               Read the changelog
             </Link>
           </div>

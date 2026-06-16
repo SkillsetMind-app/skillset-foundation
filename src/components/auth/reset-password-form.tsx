@@ -59,7 +59,7 @@ export function ResetPasswordForm() {
           {success}
         </p>
       ) : null}
-      <button type="submit" disabled={isLoading} className="button-solid mt-2 px-5 py-3 text-sm disabled:opacity-60">
+      <button type="submit" disabled={isLoading} className="button-solid mt-2 px-4 py-2.5 text-sm disabled:opacity-60">
         {isLoading ? "Sending..." : "Send reset link"}
       </button>
     </form>

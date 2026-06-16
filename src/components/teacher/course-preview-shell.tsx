@@ -100,7 +100,7 @@ function PreviewState({ title, detail }: { title: string; detail: string }) {
       <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
         {detail}
       </p>
-      <Link href="/teach" className="button-outline mt-6 px-4 py-3 text-sm">
+      <Link href="/teach" className="button-outline mt-6 px-4 py-2.5 text-sm">
         Back to Teacher Studio
       </Link>
     </section>

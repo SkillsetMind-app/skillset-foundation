@@ -78,7 +78,7 @@ export function LearnCommunityHub() {
           announcements, questions, and shared resources.
         </p>
         <div className="mt-6">
-          <Link href="/courses" className="button-solid px-5 py-3 text-sm">
+          <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
             Explore programs
           </Link>
         </div>
@@ -141,7 +141,7 @@ export function LearnCommunityHub() {
             </p>
             <Link
               href={space.href}
-              className="button-solid px-4 py-3 text-sm"
+              className="button-solid px-4 py-2.5 text-sm"
             >
               Open community
             </Link>

@@ -50,7 +50,7 @@ export function TeacherComingSoonPanel({
         {description}
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
-        <Link href={primaryHref} className="button-solid px-4 py-3 text-sm">
+        <Link href={primaryHref} className="button-solid px-4 py-2.5 text-sm">
           {primaryLabel}
           <ArrowRight aria-hidden="true" size={14} strokeWidth={1.8} />
         </Link>
@@ -59,13 +59,13 @@ export function TeacherComingSoonPanel({
             href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
               `Notify me when ${notifyFeature} ships`,
             )}`}
-            className="button-outline px-4 py-3 text-sm"
+            className="button-outline px-4 py-2.5 text-sm"
           >
             Notify me
           </a>
         ) : null}
         {primaryHref !== "/teach/builder" ? (
-          <Link href="/teach/builder" className="button-outline px-4 py-3 text-sm">
+          <Link href="/teach/builder" className="button-outline px-4 py-2.5 text-sm">
             Open Course Builder
           </Link>
         ) : null}

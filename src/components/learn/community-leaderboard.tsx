@@ -63,7 +63,7 @@ export function CommunityLeaderboard({
             Leaderboard
           </h3>
         </div>
-        <div className="flex flex-wrap gap-1 rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-1">
+        <div className="flex flex-wrap gap-1 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-1">
           {LEADERBOARD_WINDOWS.map((option) => (
             <button
               key={option}
@@ -92,7 +92,7 @@ export function CommunityLeaderboard({
             Loading leaderboard...
           </p>
         ) : entries.length === 0 ? (
-          <p className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
+          <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
             No points yet for this window. Be the first — post something worth a
             like.
           </p>
@@ -102,7 +102,7 @@ export function CommunityLeaderboard({
             return (
               <div
                 key={entry.uid}
-                className={`flex items-center justify-between gap-3 rounded-[3px] border px-4 py-3 ${
+                className={`flex items-center justify-between gap-3 rounded-[4px] border px-4 py-3 ${
                   isCurrent
                     ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)]"
                     : "border-[var(--color-line)] bg-white"
@@ -127,7 +127,7 @@ export function CommunityLeaderboard({
       </div>
 
       {ready && currentUserStats && !currentUserInTop ? (
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-[3px] border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3">
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-[4px] border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3">
           <div className="flex items-center gap-3">
             <p className="text-sm font-semibold text-[var(--color-ink)]">You</p>
             <LevelBadge level={currentUserStats.level} />

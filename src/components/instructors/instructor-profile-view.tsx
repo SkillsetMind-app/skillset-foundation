@@ -56,7 +56,7 @@ export function InstructorProfileView({ uid }: { uid: string }) {
           marketplace to discover available courses.
         </p>
         <div className="mt-7">
-          <Link href="/courses" className="button-solid px-5 py-3 text-sm">
+          <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
             Browse the marketplace
           </Link>
         </div>
@@ -113,7 +113,7 @@ export function InstructorProfileView({ uid }: { uid: string }) {
       ) : null}
 
       <div className="mt-8">
-        <Link href="/courses" className="button-outline px-5 py-3 text-sm">
+        <Link href="/courses" className="button-outline px-4 py-2.5 text-sm">
           View courses on Skillset
         </Link>
       </div>

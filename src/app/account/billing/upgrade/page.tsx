@@ -68,7 +68,7 @@ function MissingPlanState() {
       </p>
       <Link
         href="/account/billing?tab=subscriptions"
-        className="button-solid mt-5 inline-flex px-5 py-3 text-sm"
+        className="button-solid mt-5 inline-flex px-4 py-2.5 text-sm"
       >
         See plans
       </Link>

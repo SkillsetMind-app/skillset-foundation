@@ -73,7 +73,12 @@
   --color-primary-light: #b8d2f0;
   --color-ink: #e8edf5;
   --color-ink-soft: #a4b3c8;
-  --color-ink-muted: #6b7e9a;
+  /* Lifted from #6b7e9a → #8493ad: the old value failed WCAG AA on dark
+     surfaces (3.55:1 on surface-strong, 4.05:1 surface-soft, 4.36:1 surface)
+     for the pervasive small uppercase labels. #8493ad clears AA-normal on all
+     four dark surfaces (worst 4.73:1) while staying a step darker than dark
+     --color-ink-soft #a4b3c8, preserving the muted<soft hierarchy. */
+  --color-ink-muted: #8493ad;
   --color-line: rgba(255, 255, 255, 0.20);
   --color-line-strong: rgba(255, 255, 255, 0.32);
   --color-success-soft: rgba(31, 138, 91, 0.18);
@@ -532,9 +537,14 @@ p {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  /* Single source of truth for button size. Call sites still override with
+     px / py / text utilities, but unspecified buttons now land on one subtle,
+     consistent standard height (~40px) instead of inheriting body font size. */
+  padding: 0.625rem 1rem;
   border-radius: 8px;
+  font-size: 0.875rem;
   font-weight: 600;
-  line-height: 1;
+  line-height: 1.25rem;
   text-decoration: none;
   transition:
     transform 180ms ease,
@@ -548,9 +558,12 @@ p {
   border: 1px solid var(--color-primary);
   background: var(--color-primary);
   color: #ffffff !important;
+  /* Softened: the old inset 0 -2px / 0.35 red lip read as a chunky beveled bar
+     under every primary CTA. 1px at 0.22 keeps a hint of the accent edge without
+     thickening the button; ambient drop lightened to match. */
   box-shadow:
-    inset 0 -2px 0 rgba(178, 34, 52, 0.35),
-    0 10px 22px rgba(26, 54, 93, 0.14);
+    inset 0 -1px 0 rgba(178, 34, 52, 0.22),
+    0 6px 14px rgba(26, 54, 93, 0.1);
 }
 
 .button-solid:hover {
@@ -601,9 +614,12 @@ p {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  /* Same unified default height as the solid/outline base. */
+  padding: 0.625rem 1rem;
   border-radius: 8px;
+  font-size: 0.875rem;
   font-weight: 600;
-  line-height: 1;
+  line-height: 1.25rem;
   text-decoration: none;
   transition:
     transform 180ms ease,
@@ -633,6 +649,39 @@ p {
 .button-outline-light:hover {
   transform: translateY(-1px);
   background: rgba(255, 255, 255, 0.14);
+}
+
+/* Account warning banner (verify email / accept terms / connect payouts).
+   In light it is a warm cream amber. In dark the cream strip was a blinding
+   wash across the top of the page (the gradient is an arbitrary value, so the
+   global .bg-white dark override never reached it) — give it a muted dark-amber
+   surface with warm light text so it still reads as a warning without glaring. */
+.account-status-banner {
+  background: linear-gradient(90deg, #fef3c7 0%, #fde68a 100%);
+  border-bottom: 1px solid #f59e0b;
+  color: #78350f;
+}
+
+[data-theme="dark"] .account-status-banner {
+  background: linear-gradient(
+    90deg,
+    rgba(192, 123, 10, 0.18) 0%,
+    rgba(192, 123, 10, 0.26) 100%
+  );
+  border-bottom-color: rgba(245, 158, 11, 0.42);
+  color: #fad79f;
+}
+
+/* Active account-nav pill. Light = navy fill with white text (correct). In dark
+   the --color-primary token inverts to light blue, so white text on it fails
+   AA — switch the active pill to an elevated dark surface with light ink. */
+[data-theme="dark"] .account-nav-active {
+  background: var(--color-surface-strong) !important;
+  color: var(--color-ink) !important;
+}
+
+[data-theme="dark"] .account-nav-active .account-nav-helper {
+  color: var(--color-ink-soft) !important;
 }
 
 .site-header {
@@ -947,7 +996,7 @@ p {
   height: 26px;
   flex: 0 0 26px;
   place-items: center;
-  border-radius: 7px;
+  border-radius: 8px;
   background: var(--color-surface-soft);
   color: var(--color-primary);
 }
@@ -1158,7 +1207,7 @@ p {
 .settings-pill--success {
   border: 1px solid rgba(31, 138, 91, 0.22);
   background: var(--color-success-soft);
-  color: var(--color-success);
+  color: var(--color-success-fg);
 }
 
 .settings-toggle {
@@ -1548,7 +1597,7 @@ p {
   flex: 1;
   padding: 9px 12px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 8px;
   background: transparent;
   color: var(--color-ink-soft);
   cursor: pointer;
@@ -2365,7 +2414,7 @@ p {
   width: 2.5rem;
   height: 2.5rem;
   place-items: center;
-  border-radius: 11px;
+  border-radius: 10px;
   background: var(--color-surface-soft);
   color: var(--color-primary);
 }
@@ -3294,7 +3343,7 @@ p {
   flex: 0 0 250px;
   scroll-snap-align: start;
   border: 1px solid var(--color-line);
-  border-radius: 15px;
+  border-radius: 16px;
   background: var(--color-surface);
   padding: 12px;
   transition:
@@ -3338,7 +3387,7 @@ p {
 .member-lesson-chip--done {
   border-color: rgba(31, 138, 91, 0.22);
   background: var(--color-success-soft);
-  color: var(--color-success);
+  color: var(--color-success-fg);
 }
 
 @media (max-width: 1180px) {
@@ -3881,7 +3930,7 @@ button:hover > .dash-card,
 
 .studio-activity-card__icon.is-success {
   background: var(--color-success-soft);
-  color: var(--color-success);
+  color: var(--color-success-fg);
 }
 
 .studio-activity-card strong {

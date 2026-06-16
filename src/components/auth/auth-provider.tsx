@@ -252,7 +252,7 @@ function LegalAcceptanceGate() {
           type="button"
           disabled={isSaving || !termsAccepted || !privacyAccepted}
           onClick={handleAccept}
-          className="button-solid mt-5 w-full px-5 py-3 text-sm disabled:opacity-60"
+          className="button-solid mt-5 w-full px-4 py-2.5 text-sm disabled:opacity-60"
         >
           {isSaving ? "Saving..." : "Accept and continue"}
         </button>

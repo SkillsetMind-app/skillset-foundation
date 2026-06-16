@@ -444,7 +444,7 @@ export function OnboardingChoice() {
             type="button"
             onClick={() => router.push("/learn")}
             disabled={isSaving}
-            className="button-outline px-5 py-3 text-sm disabled:opacity-60"
+            className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
           >
             Skip for now
           </button>
@@ -452,7 +452,7 @@ export function OnboardingChoice() {
             type="button"
             onClick={handleFinish}
             disabled={isSaving || !emailVerified || !teacherTermsAccepted}
-            className="button-solid px-5 py-3 text-sm disabled:opacity-60"
+            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
           >
             {isSaving ? "Activating..." : "Activate teaching"}
           </button>
@@ -680,7 +680,7 @@ export function OnboardingChoice() {
             type="button"
             onClick={() => setStep((currentStep) => Math.max(currentStep - 1, 0))}
             disabled={isSaving}
-            className="button-outline px-5 py-3 text-sm disabled:opacity-60"
+            className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
           >
             Back
           </button>
@@ -690,7 +690,7 @@ export function OnboardingChoice() {
             type="button"
             onClick={handleNext}
             disabled={isSaving}
-            className="button-solid px-5 py-3 text-sm disabled:opacity-60"
+            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
           >
             Continue
           </button>
@@ -699,7 +699,7 @@ export function OnboardingChoice() {
             type="button"
             onClick={handleFinish}
             disabled={isSaving}
-            className="button-solid px-5 py-3 text-sm disabled:opacity-60"
+            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
           >
             {isSaving ? "Saving..." : "Finish setup"}
           </button>

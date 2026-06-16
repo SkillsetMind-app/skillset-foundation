@@ -89,7 +89,7 @@ export function CommunityModerationQueue() {
       ) : null}
 
       {!hasFirebaseConfig ? (
-        <p className="mt-5 rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-ink-soft)]">
+        <p className="mt-5 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-ink-soft)]">
           Firebase configuration is required before community reports can load.
         </p>
       ) : !ready ? (
@@ -97,7 +97,7 @@ export function CommunityModerationQueue() {
           Loading community reports...
         </p>
       ) : reports.length === 0 ? (
-        <p className="mt-5 rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-ink-soft)]">
+        <p className="mt-5 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-ink-soft)]">
           No community reports yet.
         </p>
       ) : (

@@ -188,7 +188,7 @@ export function TeacherStudioDashboard() {
               </Link>
               <Link
                 href="/teach/builder?newCourse=1"
-                className="button-solid px-5 py-2.5 text-sm"
+                className="button-solid px-4 py-2.5 text-sm"
               >
                 New course
               </Link>

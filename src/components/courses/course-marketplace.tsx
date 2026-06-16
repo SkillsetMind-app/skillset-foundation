@@ -195,8 +195,8 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                 onClick={() => setActiveCategory(filter)}
                 className={
                   isActive
-                    ? "button-solid px-4 py-2 text-sm"
-                    : "button-outline px-4 py-2 text-sm"
+                    ? "button-solid px-3.5 py-2 text-xs"
+                    : "button-outline px-3.5 py-2 text-xs"
                 }
               >
                 {filter}
@@ -277,7 +277,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                 setActiveCategory(allCategoriesLabel);
                 setQuery("");
               }}
-              className="button-outline mt-5 px-5 py-2.5 text-sm"
+              className="button-outline mt-5 px-4 py-2.5 text-sm"
             >
               Clear filters
             </button>
@@ -311,10 +311,10 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
               You can start today.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Link href="/auth?mode=signup&path=teacher" className="button-solid px-5 py-3 text-sm">
+              <Link href="/auth?mode=signup&path=teacher" className="button-solid px-4 py-2.5 text-sm">
                 Start teaching
               </Link>
-              <Link href="/for-creators" className="button-outline px-5 py-3 text-sm">
+              <Link href="/for-creators" className="button-outline px-4 py-2.5 text-sm">
                 Creator overview
               </Link>
             </div>
@@ -406,14 +406,14 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                 <div className="mt-6 flex flex-wrap gap-2">
                   <Link
                     href={track.href ?? `/courses/${track.slug}`}
-                    className="button-solid px-4 py-2 text-sm"
+                    className="button-solid px-3.5 py-2 text-xs"
                   >
                     View course
                   </Link>
                   {hasFreePreview ? (
                     <Link
                       href={track.freePreviewHref ?? `/courses/${track.slug}#free-preview`}
-                      className="button-outline px-4 py-2 text-sm"
+                      className="button-outline px-4 py-2.5 text-sm"
                     >
                       Free preview
                     </Link>

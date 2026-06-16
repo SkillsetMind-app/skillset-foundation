@@ -248,7 +248,7 @@ export function TeacherStudioInsights() {
               <h3 className="display-title text-2xl text-[var(--color-primary)]">
                 Top courses
               </h3>
-              <Link href="/teach/builder" className="button-outline px-3 py-2 text-xs">
+              <Link href="/teach/builder" className="button-outline px-3.5 py-2 text-xs">
                 All courses
               </Link>
             </div>

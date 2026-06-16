@@ -195,13 +195,13 @@ export function CourseCommunityFeed({
         <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
           {space.description}
         </p>
-        <div className="mt-5 flex flex-wrap gap-2 rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-2">
+        <div className="mt-5 flex flex-wrap gap-2 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-2">
           {communityTabs.map((tab) => (
             <button
               key={tab}
               type="button"
               onClick={() => setActiveTab(tab)}
-              className={`rounded-[9px] px-4 py-2 text-sm font-semibold capitalize transition-colors ${
+              className={`rounded-[8px] px-4 py-2.5 text-sm font-semibold capitalize transition-colors ${
                 activeTab === tab
                   ? "bg-[var(--color-primary)] text-white"
                   : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-ink)]"
@@ -242,7 +242,7 @@ export function CourseCommunityFeed({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="button-solid px-4 py-3 text-sm disabled:opacity-60"
+                className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
               >
                 {isSubmitting ? "Publishing..." : "Post"}
               </button>
@@ -261,7 +261,7 @@ export function CourseCommunityFeed({
               {!postsState.ready || postsState.key !== space.courseSlug ? (
                 <p className="text-sm text-[var(--color-ink-soft)]">Loading community feed...</p>
               ) : postsState.posts.length === 0 ? (
-                <p className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
+                <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
                   No posts yet. The first discussion can set the tone for this course space.
                 </p>
               ) : (
@@ -343,7 +343,7 @@ function CommunityInfoPanel({
         {items.map(([label, value]) => (
           <div
             key={label}
-            className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+            className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
               {label}
@@ -355,7 +355,7 @@ function CommunityInfoPanel({
         ))}
       </div>
       {cta ? (
-        <Link href={cta.href} className="button-solid mt-6 inline-flex px-5 py-3 text-sm">
+        <Link href={cta.href} className="button-solid mt-6 inline-flex px-4 py-2.5 text-sm">
           {cta.label}
         </Link>
       ) : null}
@@ -431,7 +431,7 @@ function CommunityMembersPanel({
           Loading members...
         </p>
       ) : contributors.length === 0 ? (
-        <p className="mt-5 rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
+        <p className="mt-5 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
           No one has posted here yet. The first people to start a discussion will
           appear in this roster.
         </p>
@@ -444,7 +444,7 @@ function CommunityMembersPanel({
             return (
               <li
                 key={member.uid}
-                className={`flex items-center gap-3 rounded-[3px] border p-3 ${
+                className={`flex items-center gap-3 rounded-[4px] border p-3 ${
                   isCurrentUser
                     ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)]"
                     : "fine-rule bg-[var(--color-surface-soft)]"
@@ -721,7 +721,7 @@ function CommunityPostCard({
           title={
             isOwnPost ? "You can't like your own post" : undefined
           }
-          className={`inline-flex items-center gap-1.5 rounded-[9px] border px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-default disabled:opacity-70 ${
+          className={`inline-flex items-center gap-1.5 rounded-[8px] border px-3.5 py-2 text-xs font-semibold transition-colors disabled:cursor-default disabled:opacity-70 ${
             liked
               ? "border-[var(--color-accent-fg)] text-[var(--color-accent-fg)]"
               : "border-[var(--color-line)] text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
@@ -796,7 +796,7 @@ function CommunityPostCard({
           <button
             type="submit"
             disabled={isCommenting || !currentUser}
-            className="button-outline justify-self-start px-4 py-2 text-sm disabled:opacity-60"
+            className="button-outline justify-self-start px-4 py-2.5 text-sm disabled:opacity-60"
           >
             {isCommenting ? "Replying..." : "Reply"}
           </button>
@@ -863,7 +863,7 @@ function CommentNode({
   }
 
   return (
-    <div className="rounded-[3px] border border-[var(--color-line)] bg-[var(--color-surface)] p-3">
+    <div className="rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface)] p-3">
       <CommentBody
         comment={rootComment}
         post={post}
@@ -911,7 +911,7 @@ function CommentNode({
               <button
                 type="submit"
                 disabled={isSubmittingReply || !currentUser}
-                className="button-outline justify-self-start px-3 py-1.5 text-xs disabled:opacity-60"
+                className="button-outline justify-self-start px-3.5 py-2 text-xs disabled:opacity-60"
               >
                 {isSubmittingReply ? "Replying..." : "Post reply"}
               </button>
@@ -1036,13 +1036,13 @@ function ReportControl({
       ) : null}
       {isOpen ? (
         <form
-          className="mt-3 grid gap-2 rounded-[3px] border border-[var(--color-line)] bg-white p-3"
+          className="mt-3 grid gap-2 rounded-[4px] border border-[var(--color-line)] bg-white p-3"
           onSubmit={handleReportSubmit}
         >
           <select
             value={reason}
             onChange={(event) => setReason(event.target.value as CommunityReportReason)}
-            className="rounded-[9px] border border-[var(--color-line)] bg-white px-3 py-2 text-xs outline-none focus:border-[var(--color-primary-light)]"
+            className="rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-2 text-xs outline-none focus:border-[var(--color-primary-light)]"
           >
             {(Object.keys(communityReportReasonLabels) as CommunityReportReason[]).map(
               (item) => (
@@ -1057,20 +1057,20 @@ function ReportControl({
             onChange={(event) => setDetail(event.target.value)}
             rows={2}
             placeholder="Optional context for the review team."
-            className="resize-none rounded-[9px] border border-[var(--color-line)] bg-white px-3 py-2 text-xs outline-none focus:border-[var(--color-primary-light)]"
+            className="resize-none rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-2 text-xs outline-none focus:border-[var(--color-primary-light)]"
           />
           <div className="flex flex-wrap gap-2">
             <button
               type="submit"
               disabled={isSubmitting || !currentUser}
-              className="button-solid px-3 py-2 text-xs disabled:opacity-60"
+              className="button-solid px-3.5 py-2 text-xs disabled:opacity-60"
             >
               {isSubmitting ? "Sending..." : "Send report"}
             </button>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="button-outline px-3 py-2 text-xs"
+              className="button-outline px-3.5 py-2 text-xs"
             >
               Cancel
             </button>

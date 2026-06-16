@@ -190,7 +190,7 @@ export function AdminEnrollmentPanel() {
         type="button"
         onClick={handleCreateEnrollment}
         disabled={isSaving || !userId || !selectedCourse}
-        className="button-solid mt-6 px-5 py-3 text-sm disabled:opacity-60"
+        className="button-solid mt-6 px-4 py-2.5 text-sm disabled:opacity-60"
       >
         {isSaving ? "Creating enrollment..." : "Create admin enrollment"}
       </button>
@@ -215,7 +215,7 @@ export function AdminEnrollmentPanel() {
               Loading granted enrollments...
             </p>
           ) : grantedEnrollments.length === 0 ? (
-            <p className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+            <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
               No admin or demo grants yet.
             </p>
           ) : (

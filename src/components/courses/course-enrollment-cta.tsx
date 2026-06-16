@@ -35,7 +35,7 @@ export function CourseEnrollmentCta({ course }: CourseEnrollmentCtaProps) {
       <button
         type="button"
         disabled
-        className="button-outline mt-6 w-full px-5 py-3 text-sm"
+        className="button-outline mt-6 w-full px-5 py-2.5 text-sm"
       >
         Loading...
       </button>
@@ -47,13 +47,13 @@ export function CourseEnrollmentCta({ course }: CourseEnrollmentCtaProps) {
       <>
         <Link
           href="/auth?mode=signup"
-          className="button-solid mt-6 w-full px-5 py-3 text-sm"
+          className="button-solid mt-6 w-full px-5 py-2.5 text-sm"
         >
           Create account to enroll
         </Link>
         <Link
           href="/auth?mode=signin"
-          className="button-outline mt-3 w-full px-5 py-3 text-sm"
+          className="button-outline mt-3 w-full px-5 py-2.5 text-sm"
         >
           Sign in to continue
         </Link>
@@ -69,7 +69,7 @@ export function CourseEnrollmentCta({ course }: CourseEnrollmentCtaProps) {
     <>
       <Link
         href="/courses"
-        className="button-solid mt-6 w-full px-5 py-3 text-sm"
+        className="button-solid mt-6 w-full px-5 py-2.5 text-sm"
       >
         Browse live courses to enroll
       </Link>

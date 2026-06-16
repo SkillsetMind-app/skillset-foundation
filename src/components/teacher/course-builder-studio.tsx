@@ -170,7 +170,7 @@ function CategoryMultiSelect({
             selected.map((item, index) => (
               <span
                 key={item}
-                className={`inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 text-xs font-semibold ${
+                className={`inline-flex items-center gap-1 rounded-[8px] px-2 py-0.5 text-xs font-semibold ${
                   index === 0
                     ? "bg-[var(--color-primary)] text-white"
                     : "bg-[var(--color-surface-strong)] text-[var(--color-ink)]"
@@ -221,7 +221,7 @@ function CategoryMultiSelect({
                 }`}
               >
                 <span
-                  className={`grid size-4 shrink-0 place-items-center rounded-[5px] border transition-colors ${
+                  className={`grid size-4 shrink-0 place-items-center rounded-[4px] border transition-colors ${
                     isSelected
                       ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
                       : "border-[var(--color-line-strong)] bg-white"
@@ -1360,7 +1360,7 @@ export function CourseBuilderStudio() {
         <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           Choose a course from Teacher Studio before opening the builder.
         </p>
-        <Link href="/teach" className="button-outline mt-5 px-4 py-2 text-sm">
+        <Link href="/teach" className="button-outline mt-5 px-4 py-2.5 text-sm">
           Back to Teacher Studio
         </Link>
       </section>
@@ -1381,7 +1381,7 @@ export function CourseBuilderStudio() {
         <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           {error}
         </p>
-        <Link href="/teach" className="button-outline mt-5 px-4 py-2 text-sm">
+        <Link href="/teach" className="button-outline mt-5 px-4 py-2.5 text-sm">
           Back to Teacher Studio
         </Link>
       </section>
@@ -1417,7 +1417,7 @@ export function CourseBuilderStudio() {
           <Link
             href={`/teach/builder/${courseId}/preview`}
             target="_blank"
-            className="button-outline px-4 py-3 text-sm"
+            className="button-outline px-4 py-2.5 text-sm"
           >
             <ExternalLink aria-hidden="true" size={14} strokeWidth={1.8} />
             Preview
@@ -1426,7 +1426,7 @@ export function CourseBuilderStudio() {
             type="button"
             onClick={saveDraft}
             disabled={!isEditable || isSaving}
-            className="button-solid px-4 py-3 text-sm disabled:opacity-60"
+            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
           >
             {isSaving ? "Saving..." : "Save draft"}
           </button>
@@ -1534,18 +1534,18 @@ export function CourseBuilderStudio() {
           </div>
 
         {course?.status === "in_review" ? (
-          <p className="mt-5 rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="mt-5 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             This course is with Skillset for review. If changes are needed, it
             will return here as editable.
           </p>
         ) : course?.status === "published" ? (
-          <p className="mt-5 rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="mt-5 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             This course is live. You can keep improving the structure while
             Skillset controls marketplace visibility.
           </p>
         ) : null}
         {course?.reviewNote ? (
-          <div className="mt-5 rounded-[3px] border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.04)] p-4">
+          <div className="mt-5 rounded-[4px] border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.04)] p-4">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               Skillset review note
             </p>
@@ -1691,7 +1691,7 @@ export function CourseBuilderStudio() {
               </button>
             ) : null}
           </div>
-          <p className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             Keep the title specific, the category clear, and the summary focused
             on learner outcomes. This copy will influence the marketplace page.
           </p>
@@ -1755,7 +1755,7 @@ export function CourseBuilderStudio() {
               </label>
             </div>
             {paymentType === "one_time" ? (
-              <div className="mt-4 rounded-[3px] border border-[var(--color-line)] bg-white p-4">
+              <div className="mt-4 rounded-[4px] border border-[var(--color-line)] bg-white p-4">
                 <label className="flex items-start gap-3 text-sm font-semibold text-[var(--color-ink)]">
                   <input
                     type="checkbox"
@@ -1888,7 +1888,7 @@ export function CourseBuilderStudio() {
               <button
                 type="submit"
                 disabled={!isEditable}
-                className="button-outline w-fit px-4 py-3 text-sm disabled:opacity-60"
+                className="button-outline w-fit px-4 py-2.5 text-sm disabled:opacity-60"
               >
                 Add module
               </button>
@@ -1999,7 +1999,7 @@ export function CourseBuilderStudio() {
               <button
                 type="submit"
                 disabled={!isEditable || modules.length === 0}
-                className="button-outline px-4 py-3 text-sm disabled:opacity-60"
+                className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
               >
                 Add lesson
               </button>
@@ -2023,7 +2023,7 @@ export function CourseBuilderStudio() {
 
             <div className="mt-4 grid gap-4">
               {modules.length === 0 ? (
-                <p className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+                <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
                   Add your first module above. Once it exists, you can edit, reorder,
                   and organize its lessons here.
                 </p>
@@ -2092,7 +2092,7 @@ export function CourseBuilderStudio() {
                         module.lessons.map((lesson, lessonIndex) => (
                           <div
                             key={lesson.id}
-                            className="grid gap-3 rounded-[3px] border border-[var(--color-line)] bg-white p-4"
+                            className="grid gap-3 rounded-[4px] border border-[var(--color-line)] bg-white p-4"
                           >
                             <div className="grid gap-3 lg:grid-cols-[1fr_190px_120px_140px_auto] lg:items-end">
                               <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
@@ -2332,7 +2332,7 @@ export function CourseBuilderStudio() {
               }
             }}
             disabled={selectedTabIndex <= 0}
-            className="button-outline inline-flex items-center gap-2 px-4 py-3 text-sm disabled:opacity-40"
+            className="button-outline inline-flex items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-40"
           >
             <ArrowLeft aria-hidden="true" size={14} strokeWidth={1.9} />
             {selectedTabIndex > 0
@@ -2348,7 +2348,7 @@ export function CourseBuilderStudio() {
                   setActiveTab(nextTab.value);
                 }
               }}
-              className="button-solid inline-flex items-center gap-2 px-5 py-3 text-sm"
+              className="button-solid inline-flex items-center gap-2 px-4 py-2.5 text-sm"
             >
               Continue to {builderTabs[selectedTabIndex + 1].label}
               <ArrowRight aria-hidden="true" size={14} strokeWidth={1.9} />
@@ -2371,14 +2371,14 @@ export function CourseBuilderStudio() {
           </h3>
           <div className="mt-5 grid gap-3">
             {modules.length === 0 ? (
-              <p className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+              <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
                 Start with one module, then add the lessons learners should complete.
               </p>
             ) : (
               modules.map((module, index) => (
                 <article
                   key={module.id}
-                  className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+                  className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
                 >
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                     Module {index + 1}
@@ -2459,7 +2459,7 @@ export function CourseBuilderStudio() {
               type="button"
               onClick={saveDraft}
               disabled={!isEditable || isSaving}
-              className="button-outline px-4 py-3 text-sm disabled:opacity-60"
+              className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
             >
               {isSaving ? "Saving..." : "Save draft"}
             </button>
@@ -2478,11 +2478,11 @@ export function CourseBuilderStudio() {
                 || !pricingModelIsReady
                 || !installmentsAreValid
               }
-              className="button-solid px-4 py-3 text-sm disabled:opacity-60"
+              className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
             >
               {isSubmitting ? "Submitting..." : "Submit for review"}
             </button>
-            <Link href="/teach" className="button-outline px-4 py-3 text-sm">
+            <Link href="/teach" className="button-outline px-4 py-2.5 text-sm">
               Back to Teacher Studio
             </Link>
           </div>

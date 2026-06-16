@@ -136,7 +136,7 @@ export function ManagedCoursePanel() {
             Loading published courses...
           </p>
         ) : courses.length === 0 ? (
-          <p className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             No published or inactive courses yet.
           </p>
         ) : (
@@ -175,8 +175,8 @@ export function ManagedCoursePanel() {
                     disabled={busyCourseId === course.id}
                     className={
                       course.featured
-                        ? "button-outline px-4 py-2 text-xs disabled:opacity-60"
-                        : "button-solid px-4 py-2 text-xs disabled:opacity-60"
+                        ? "button-outline px-3.5 py-2 text-xs disabled:opacity-60"
+                        : "button-solid px-3.5 py-2 text-xs disabled:opacity-60"
                     }
                   >
                     {busyCourseId === course.id
@@ -191,7 +191,7 @@ export function ManagedCoursePanel() {
                     type="button"
                     onClick={() => handleUnpublish(course.id)}
                     disabled={busyCourseId === course.id}
-                    className="button-outline px-4 py-2 text-xs disabled:opacity-60"
+                    className="button-outline px-3.5 py-2 text-xs disabled:opacity-60"
                   >
                     {busyCourseId === course.id ? "Working..." : "Unpublish"}
                   </button>
@@ -201,7 +201,7 @@ export function ManagedCoursePanel() {
                     type="button"
                     onClick={() => handleRepublish(course.id)}
                     disabled={busyCourseId === course.id}
-                    className="button-solid px-4 py-2 text-xs disabled:opacity-60"
+                    className="button-solid px-3.5 py-2 text-xs disabled:opacity-60"
                   >
                     {busyCourseId === course.id ? "Working..." : "Republish"}
                   </button>
@@ -212,7 +212,7 @@ export function ManagedCoursePanel() {
                       type="button"
                       onClick={() => handleDelete(course.id)}
                       disabled={busyCourseId === course.id}
-                      className="inline-flex items-center justify-center rounded-[8px] bg-[var(--color-accent)] px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+                      className="inline-flex items-center justify-center rounded-[8px] bg-[var(--color-accent)] px-3.5 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
                     >
                       {busyCourseId === course.id ? "Deleting..." : "Confirm delete"}
                     </button>
@@ -220,7 +220,7 @@ export function ManagedCoursePanel() {
                       type="button"
                       onClick={() => setConfirmingDeleteId(null)}
                       disabled={busyCourseId === course.id}
-                      className="button-outline px-4 py-2 text-xs disabled:opacity-60"
+                      className="button-outline px-3.5 py-2 text-xs disabled:opacity-60"
                     >
                       Cancel
                     </button>
@@ -230,7 +230,7 @@ export function ManagedCoursePanel() {
                     type="button"
                     onClick={() => setConfirmingDeleteId(course.id)}
                     disabled={busyCourseId === course.id}
-                    className="button-outline px-4 py-2 text-xs text-[var(--color-accent-fg)] disabled:opacity-60"
+                    className="button-outline px-3.5 py-2 text-xs text-[var(--color-accent-fg)] disabled:opacity-60"
                   >
                     Delete
                   </button>

@@ -66,7 +66,7 @@ export function CertificatePrintView({
           <button
             type="button"
             onClick={() => window.print()}
-            className="button-solid px-5 py-3 text-sm"
+            className="button-solid px-4 py-2.5 text-sm"
           >
             Download / print
           </button>

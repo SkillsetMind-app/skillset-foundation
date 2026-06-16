@@ -1,6 +1,12 @@
-import Image from "next/image";
 import Link from "next/link";
-import { Lock, Download, LogOut, type LucideIcon } from "lucide-react";
+import {
+  Lock,
+  Download,
+  LogOut,
+  ScrollText,
+  BadgeCheck,
+  type LucideIcon,
+} from "lucide-react";
 
 import { RevealSection } from "@/components/shared/reveal-section";
 
@@ -32,6 +38,17 @@ const promises: ReadonlyArray<Promise> = [
   },
 ];
 
+// All six commitments, in order — listed as the clauses of the public charter.
+// Mirrors the canonical list on /promise so the visual stays truthful.
+const charter: ReadonlyArray<{ n: string; label: string }> = [
+  { n: "01", label: "Fee-lock for 24 months" },
+  { n: "02", label: "Feature parity across all plans" },
+  { n: "03", label: "Data portability, one click" },
+  { n: "04", label: "Cancellation in one click" },
+  { n: "05", label: "Funds protection by contract" },
+  { n: "06", label: "Human support SLA" },
+];
+
 export function PromisePreviewBand() {
   return (
     <section className="bg-[var(--color-surface-soft)] px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
@@ -51,21 +68,82 @@ export function PromisePreviewBand() {
                 it before signing up.
               </p>
             </div>
-            {/* The promise rendered as an engraved official document: the same
-                certificate/banknote security line-work, framed like an issued
-                contract beside the copy. Desktop-only to keep the mobile header
-                lean. */}
-            <div
-              aria-hidden="true"
-              className="relative hidden aspect-[16/10] w-full overflow-hidden rounded-[14px] border border-[var(--color-line-strong)] bg-white shadow-[var(--shadow-soft)] lg:block"
-            >
-              <Image
-                src="/brand/marketing-engraving-desktop.webp"
-                alt=""
-                fill
-                sizes="(min-width: 1024px) 38vw, 0px"
-                className="object-cover"
+            {/* The promise rendered as what it actually is: a public, written
+                charter. Six numbered clauses, a "public record" header, and a
+                ratified signature line — so the visual communicates "written
+                down, public" instead of standing as abstract decoration. Tokens
+                only (no hardcoded white) so it adapts to dark mode.
+                Desktop-only to keep the mobile band lean. */}
+            <div className="relative hidden overflow-hidden rounded-[18px] border border-[var(--color-line-strong)] bg-[var(--color-surface)] shadow-[var(--shadow-soft)] lg:block">
+              <div
+                aria-hidden="true"
+                className="absolute inset-x-0 top-0 h-1 bg-[var(--color-accent)]"
               />
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -right-12 -top-12 size-44 rounded-full opacity-70"
+                style={{
+                  background:
+                    "radial-gradient(circle, var(--color-line) 0%, transparent 70%)",
+                }}
+              />
+              <div className="relative p-7">
+                <div className="flex items-center justify-between">
+                  <span
+                    className="grid size-10 place-items-center rounded-[10px] bg-[var(--color-surface-soft)] text-[var(--color-accent-fg)]"
+                    aria-hidden="true"
+                  >
+                    <ScrollText size={20} strokeWidth={1.7} />
+                  </span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--color-ink-muted)]">
+                    Public record &middot; v1.0
+                  </span>
+                </div>
+
+                <h3 className="display-title mt-5 text-2xl leading-tight text-[var(--color-primary)]">
+                  The Skillset Promise
+                </h3>
+                <p className="mt-1 text-[13px] leading-6 text-[var(--color-ink-soft)]">
+                  Six commitments to every creator &mdash; in writing.
+                </p>
+
+                <div className="my-5 h-px bg-[var(--color-line)]" />
+
+                <ul className="grid gap-2.5">
+                  {charter.map((clause) => (
+                    <li key={clause.n} className="flex items-baseline gap-3">
+                      <span className="font-mono text-[11px] font-bold tabular-nums text-[var(--color-accent-fg)]">
+                        {clause.n}
+                      </span>
+                      <span className="text-[13px] font-medium leading-5 text-[var(--color-ink)]">
+                        {clause.label}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="my-5 h-px bg-[var(--color-line)]" />
+
+                <div className="flex items-end justify-between">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--color-ink-muted)]">
+                      Ratified &middot; public &amp; in writing
+                    </p>
+                    <p className="display-title mt-1 text-xl italic leading-none text-[var(--color-primary)]">
+                      Skillset
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
+                    <BadgeCheck
+                      size={13}
+                      strokeWidth={2}
+                      className="text-[var(--color-accent-fg)]"
+                      aria-hidden="true"
+                    />
+                    Sealed
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </RevealSection>
@@ -100,7 +178,7 @@ export function PromisePreviewBand() {
         </div>
 
         <RevealSection delay={260}>
-          <Link href="/promise" className="button-outline mt-10 px-5 py-3 text-sm">
+          <Link href="/promise" className="button-outline mt-10 px-4 py-2.5 text-sm">
             Read the full Promise
           </Link>
         </RevealSection>

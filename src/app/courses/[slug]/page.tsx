@@ -247,7 +247,7 @@ export default async function CourseDetailPage({
               ))}
             </dl>
             <CourseEnrollmentCta course={course} />
-            <Link href="#free-preview" className="button-outline mt-3 w-full px-5 py-3 text-sm">
+            <Link href="#free-preview" className="button-outline mt-3 w-full px-4 py-2.5 text-sm">
               See free preview lessons
             </Link>
             <Link
@@ -277,7 +277,7 @@ export default async function CourseDetailPage({
           </div>
           <Link
             href="#enroll-card"
-            className="button-solid shrink-0 px-4 py-2 text-sm"
+            className="button-solid shrink-0 px-3.5 py-2 text-xs"
           >
             Enroll
           </Link>

@@ -147,7 +147,7 @@ export default function HelpPage() {
         </p>
         <Link
           href="/support"
-          className="button-solid mt-6 inline-flex px-5 py-3 text-sm"
+          className="button-solid mt-6 inline-flex px-4 py-2.5 text-sm"
         >
           Contact support
         </Link>

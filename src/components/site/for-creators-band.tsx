@@ -17,7 +17,7 @@ export function ForCreatorsBand() {
   return (
     <section className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
       <RevealSection>
-        <div className="relative overflow-hidden rounded-[22px] bg-[var(--color-primary)] p-6 text-white shadow-[var(--shadow-strong)] sm:p-8 lg:p-10">
+        <div className="relative overflow-hidden rounded-[20px] bg-[var(--color-primary)] p-6 text-white shadow-[var(--shadow-strong)] sm:p-8 lg:p-10">
           <div className="absolute inset-0 bg-gradient-to-br from-[#07172a] via-[#102944] to-[#1a365d]" />
           <div className="relative z-10 grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
             <div>
@@ -30,7 +30,7 @@ export function ForCreatorsBand() {
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   href="/auth?mode=signup&path=teacher"
-                  className="button-solid-light group inline-flex items-center gap-2 px-5 py-3 text-sm"
+                  className="button-solid-light group inline-flex items-center gap-2 px-4 py-2.5 text-sm"
                 >
                   Start teaching
                   <ArrowRight

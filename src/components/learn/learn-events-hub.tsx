@@ -135,7 +135,7 @@ export function LearnEventsHub() {
           hours, webinars, and course deadlines.
         </p>
         <div className="mt-6">
-          <Link href="/courses" className="button-solid px-5 py-3 text-sm">
+          <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
             Explore programs
           </Link>
         </div>
@@ -254,7 +254,7 @@ function LearnerEventCard({
         {event.description}
       </p>
 
-      <div className="mt-6 rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4">
+      <div className="mt-6 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
           Attendance
         </p>
@@ -275,7 +275,7 @@ function LearnerEventCard({
             type="button"
             disabled={isSavingRsvp || isLoadingRsvp || !currentUser}
             onClick={() => handleRsvp("attending")}
-            className="button-solid px-4 py-2 text-sm disabled:opacity-60"
+            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
           >
             {isSavingRsvp ? "Saving..." : "I will attend"}
           </button>
@@ -283,7 +283,7 @@ function LearnerEventCard({
             type="button"
             disabled={isSavingRsvp || isLoadingRsvp || !currentUser}
             onClick={() => handleRsvp("not_attending")}
-            className="button-outline px-4 py-2 text-sm disabled:opacity-60"
+            className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
           >
             I cannot attend
           </button>
@@ -295,7 +295,7 @@ function LearnerEventCard({
           href={safeJoinUrl}
           target="_blank"
           rel="noreferrer noopener"
-          className="button-solid mt-6 inline-flex px-4 py-3 text-sm"
+          className="button-solid mt-6 inline-flex px-4 py-2.5 text-sm"
         >
           Join external session
         </a>

@@ -60,7 +60,7 @@ export function Tooltip({
         <span
           role="tooltip"
           id={id}
-          className={`pointer-events-none absolute left-1/2 z-50 w-max max-w-[240px] -translate-x-1/2 rounded-[6px] bg-[var(--color-primary)] px-3 py-2 text-xs leading-5 text-white shadow-[0_10px_22px_rgba(15,39,68,0.18)] ${sideClass}`}
+          className={`pointer-events-none absolute left-1/2 z-50 w-max max-w-[240px] -translate-x-1/2 rounded-[8px] bg-[var(--color-primary)] px-3 py-2 text-xs leading-5 text-white shadow-[0_10px_22px_rgba(15,39,68,0.18)] ${sideClass}`}
         >
           {content}
           <span

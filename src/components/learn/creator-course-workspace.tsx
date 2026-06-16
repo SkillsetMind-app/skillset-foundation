@@ -224,10 +224,10 @@ function CreatorWorkspaceState({
         {detail}
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
-        <Link href="/learn" className="button-solid px-5 py-3 text-sm">
+        <Link href="/learn" className="button-solid px-4 py-2.5 text-sm">
           Back to My Learning
         </Link>
-        <Link href="/courses" className="button-outline px-5 py-3 text-sm">
+        <Link href="/courses" className="button-outline px-4 py-2.5 text-sm">
           Open marketplace
         </Link>
       </div>

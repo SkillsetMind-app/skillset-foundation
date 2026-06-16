@@ -18,12 +18,12 @@ export function HeroCtas() {
       <div className="flex flex-wrap justify-center gap-3 lg:justify-start">
         <Link
           href={getPrimaryWorkspaceHref(user)}
-          className="button-solid-light inline-flex items-center gap-2 px-5 py-3 text-sm"
+          className="button-solid-light"
         >
           <LayoutDashboard aria-hidden="true" size={16} strokeWidth={1.9} />
           Go to your dashboard
         </Link>
-        <Link href="/courses" className="button-outline-light px-5 py-3 text-sm">
+        <Link href="/courses" className="button-outline-light">
           Browse courses
         </Link>
       </div>
@@ -34,7 +34,7 @@ export function HeroCtas() {
     <div className="flex flex-wrap justify-center gap-3 lg:justify-start">
       <Link
         href="/auth?mode=signup&path=teacher"
-        className="button-solid-light group inline-flex items-center gap-2 px-5 py-3 text-sm"
+        className="button-solid-light group"
       >
         Start teaching free
         <ArrowRight
@@ -44,7 +44,7 @@ export function HeroCtas() {
           className="transition-transform duration-200 group-hover:translate-x-0.5"
         />
       </Link>
-      <Link href="/pricing" className="button-outline-light px-5 py-3 text-sm">
+      <Link href="/pricing" className="button-outline-light">
         See how you get paid
       </Link>
     </div>

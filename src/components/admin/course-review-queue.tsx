@@ -171,7 +171,7 @@ export function CourseReviewQueue() {
         {isLoading ? (
           <p className="text-sm text-[var(--color-ink-soft)]">Loading review queue...</p>
         ) : courses.length === 0 ? (
-          <p className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             No courses are waiting for review right now.
           </p>
         ) : (
@@ -199,7 +199,7 @@ export function CourseReviewQueue() {
                 <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
                   {course.summary}
                 </p>
-                <div className="mt-4 grid gap-2 rounded-[3px] border fine-rule bg-white p-4">
+                <div className="mt-4 grid gap-2 rounded-[4px] border fine-rule bg-white p-4">
                   {readiness.checks.map((check) => (
                     <p
                       key={check}

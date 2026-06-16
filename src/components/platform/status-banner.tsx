@@ -52,7 +52,7 @@ export function StatusBanner() {
   }
 
   return (
-    <div className="sticky top-0 z-[35] min-h-12 border-b border-[#f59e0b] bg-[linear-gradient(90deg,#fef3c7_0%,#fde68a_100%)] px-4 py-2 text-[#78350f]">
+    <div className="account-status-banner sticky top-0 z-[35] min-h-12 px-4 py-2">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-3 text-center text-sm font-semibold">
         <AlertTriangle aria-hidden="true" size={16} strokeWidth={1.8} />
         <span>{banner.message}</span>

@@ -270,12 +270,12 @@ export default function PricingPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link href="/for-creators" className="button-outline px-5 py-3 text-sm">
+          <Link href="/for-creators" className="button-outline px-4 py-2.5 text-sm">
             Creator overview
           </Link>
           <Link
             href="/auth?mode=signup&path=teacher"
-            className="button-solid px-5 py-3 text-sm"
+            className="button-solid px-4 py-2.5 text-sm"
           >
             Start free
           </Link>

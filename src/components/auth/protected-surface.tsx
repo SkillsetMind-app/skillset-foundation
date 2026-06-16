@@ -100,12 +100,12 @@ function AccessPanel({
           {(cta || secondary) ? (
             <div className="mt-6 flex flex-wrap gap-3">
               {cta ? (
-                <Link href={cta.href} className="button-solid px-5 py-3 text-sm">
+                <Link href={cta.href} className="button-solid px-4 py-2.5 text-sm">
                   {cta.label}
                 </Link>
               ) : null}
               {secondary ? (
-                <Link href={secondary.href} className="button-outline px-5 py-3 text-sm">
+                <Link href={secondary.href} className="button-outline px-4 py-2.5 text-sm">
                   {secondary.label}
                 </Link>
               ) : null}

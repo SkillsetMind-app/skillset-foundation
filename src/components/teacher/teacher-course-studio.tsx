@@ -135,7 +135,7 @@ export function TeacherCourseStudio({
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/teach/builder?newCourse=1" className="button-solid px-5 py-3 text-sm">
+            <Link href="/teach/builder?newCourse=1" className="button-solid px-4 py-2.5 text-sm">
               New course
             </Link>
           </div>

@@ -93,7 +93,7 @@ export default function ForCreatorsPage() {
             remains controlled by Skillset review so the platform does not turn
             into a noisy upload directory.
           </p>
-          <Link href="/auth?mode=signup&path=teacher" className="button-solid-light mt-6 px-5 py-3 text-sm">
+          <Link href="/auth?mode=signup&path=teacher" className="button-solid-light mt-6 px-4 py-2.5 text-sm">
             Create account
           </Link>
         </aside>

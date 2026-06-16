@@ -134,7 +134,7 @@ export function PlansPanel() {
             type="button"
             onClick={handleManage}
             disabled={busyAction === "portal"}
-            className="button-outline px-4 py-2 text-sm disabled:opacity-60"
+            className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
           >
             {busyAction === "portal" ? "Opening Stripe..." : "Manage subscription"}
           </button>
@@ -157,8 +157,8 @@ export function PlansPanel() {
               onClick={() => setCycle(option.value)}
               className={
                 active
-                  ? "rounded-[7px] bg-[var(--color-primary)] text-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em]"
-                  : "rounded-[7px] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)]"
+                  ? "rounded-[8px] bg-[var(--color-primary)] text-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em]"
+                  : "rounded-[8px] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)]"
               }
             >
               {option.label}

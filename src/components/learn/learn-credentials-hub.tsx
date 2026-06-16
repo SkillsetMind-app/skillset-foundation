@@ -117,7 +117,7 @@ export function LearnCredentialsHub() {
           show which credentials are in progress or ready for Skillset review.
         </p>
         <div className="mt-6">
-          <Link href="/courses" className="button-solid px-5 py-3 text-sm">
+          <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
             Explore programs
           </Link>
         </div>
@@ -283,7 +283,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
             ? "Your Skillset Verified certificate has been issued and is ready for verification."
           : "Complete the course to become eligible for your Skillset Verified certificate."}
       </p>
-      <div className="mt-5 rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4">
+      <div className="mt-5 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4">
         <div className="flex items-center justify-between gap-4">
           <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
             Progress
@@ -307,7 +307,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
       <div className="mt-5 flex flex-wrap gap-3">
         <Link
           href={`/learn/courses/${candidate.courseSlug}`}
-          className={isEligible ? "button-outline px-4 py-3 text-sm" : "button-solid px-4 py-3 text-sm"}
+          className={isEligible ? "button-outline px-4 py-2.5 text-sm" : "button-solid px-4 py-2.5 text-sm"}
         >
           {isEligible ? "Review course" : "Continue course"}
         </Link>
@@ -315,7 +315,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
           <button
             type="button"
             onClick={() => setIsNaming(true)}
-            className="button-solid px-4 py-3 text-sm"
+            className="button-solid px-4 py-2.5 text-sm"
           >
             Issue certificate
           </button>
@@ -323,7 +323,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
         {isIssued && candidate.certificateId ? (
           <Link
             href={`/learn/credentials/${candidate.certificateId}`}
-            className="button-solid px-4 py-3 text-sm"
+            className="button-solid px-4 py-2.5 text-sm"
           >
             View certificate
           </Link>
@@ -331,7 +331,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
         {isIssued ? (
           <Link
             href={`/verify?code=${encodeURIComponent(candidate.verificationCode ?? "")}`}
-            className="button-outline px-4 py-3 text-sm"
+            className="button-outline px-4 py-2.5 text-sm"
           >
             Verify credential
           </Link>
@@ -358,7 +358,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
               type="button"
               onClick={handleIssue}
               disabled={isIssuing}
-              className="button-solid px-4 py-3 text-sm disabled:opacity-60"
+              className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
             >
               {isIssuing ? "Issuing..." : "Confirm & issue"}
             </button>
@@ -369,7 +369,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
                 setIssueError("");
               }}
               disabled={isIssuing}
-              className="button-outline px-4 py-3 text-sm disabled:opacity-60"
+              className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
             >
               Cancel
             </button>

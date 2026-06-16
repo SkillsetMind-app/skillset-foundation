@@ -205,7 +205,7 @@ function PurchasesTab({
         {orders.map((order) => (
           <li
             key={order.id}
-            className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+            className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
@@ -327,7 +327,7 @@ function InvoicesTab({
             {error}
           </p>
         ) : receipts.length === 0 ? (
-          <p className="mt-3 rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="mt-3 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             No one-off purchase receipts yet. Receipts appear here after a course
             checkout is paid.
           </p>
@@ -336,7 +336,7 @@ function InvoicesTab({
             {receipts.map((order) => (
               <li
                 key={order.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-[var(--color-ink)]">

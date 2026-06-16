@@ -548,7 +548,7 @@ export function ProfileSettingsPanel() {
         <button
           type="submit"
           disabled={isSaving}
-          className="button-solid justify-self-start px-5 py-3 text-sm disabled:opacity-60"
+          className="button-solid justify-self-start px-4 py-2.5 text-sm disabled:opacity-60"
         >
           {isSaving ? "Saving..." : "Save profile"}
         </button>

@@ -237,7 +237,7 @@ export function TeacherConnectOnboarding({
           <button
             type="button"
             onClick={retryEmbeddedSetup}
-            className="button-outline px-4 py-2 text-sm"
+            className="button-outline px-4 py-2.5 text-sm"
           >
             Check again
           </button>
@@ -275,7 +275,7 @@ export function TeacherConnectOnboarding({
             type="button"
             onClick={openHostedFallback}
             disabled={isOpeningHosted}
-            className="button-solid px-4 py-2 text-sm disabled:opacity-60"
+            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
           >
             {isOpeningHosted ? "Opening Stripe..." : "Continue with Stripe"}
           </button>
@@ -313,7 +313,7 @@ export function TeacherConnectOnboarding({
   if (!connect) {
     return (
       <div
-        className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-5 text-sm text-[var(--color-ink-soft)]"
+        className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-5 text-sm text-[var(--color-ink-soft)]"
         aria-busy="true"
         aria-live="polite"
       >
@@ -372,14 +372,14 @@ function StripeConnectFallback({
           type="button"
           onClick={onHosted}
           disabled={isOpeningHosted}
-          className="button-solid px-4 py-2 text-sm disabled:opacity-60"
+          className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
         >
           {isOpeningHosted ? "Opening Stripe..." : "Continue secure setup"}
         </button>
         <button
           type="button"
           onClick={onRetry}
-          className="button-outline px-4 py-2 text-sm"
+          className="button-outline px-4 py-2.5 text-sm"
         >
           Retry embedded setup
         </button>

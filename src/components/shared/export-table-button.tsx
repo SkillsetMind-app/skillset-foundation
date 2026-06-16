@@ -94,7 +94,7 @@ export function ExportTableButton({
         type="button"
         onClick={() => setOpen((current) => !current)}
         disabled={isDisabled}
-        className="button-outline inline-flex items-center gap-2 px-3 py-2 text-xs disabled:opacity-50"
+        className="button-outline inline-flex items-center gap-2 px-3.5 py-2 text-xs disabled:opacity-50"
         aria-haspopup="menu"
         aria-expanded={open}
       >

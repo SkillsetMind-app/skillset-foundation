@@ -602,7 +602,7 @@ export function LessonContentModal({
           </p>
           <button
             type="button"
-            className="button-solid px-4 py-3 text-sm disabled:opacity-60"
+            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
             onClick={requestClose}
             disabled={isUploading}
           >
@@ -684,7 +684,7 @@ function LessonUploadForm({
       <button
         type="submit"
         disabled={!isEditable || isUploading || !selectedFile}
-        className="button-outline px-4 py-3 text-sm disabled:opacity-60"
+        className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
       >
         {isUploading ? "Uploading..." : "Upload file"}
       </button>
@@ -726,7 +726,7 @@ function LessonAssetList({
                 type="button"
                 onClick={() => onDelete(asset)}
                 disabled={deletingAssetId === asset.id}
-                className="button-outline px-3 py-1.5 text-xs text-[var(--color-accent-fg)] disabled:opacity-60"
+                className="button-outline px-3.5 py-2 text-xs text-[var(--color-accent-fg)] disabled:opacity-60"
               >
                 {deletingAssetId === asset.id ? "Deleting..." : "Delete"}
               </button>

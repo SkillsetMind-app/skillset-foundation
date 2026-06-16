@@ -16,13 +16,13 @@ export default function NotFound() {
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link
             href="/"
-            className="button-solid px-5 py-3 text-sm"
+            className="button-solid px-4 py-2.5 text-sm"
           >
             Go home
           </Link>
           <Link
             href="/platform"
-            className="button-outline px-5 py-3 text-sm"
+            className="button-outline px-4 py-2.5 text-sm"
           >
             Open platform overview
           </Link>

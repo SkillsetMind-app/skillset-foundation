@@ -170,7 +170,7 @@ export function SecuritySettingsPanel() {
               type="button"
               onClick={handleSendVerification}
               disabled={isBusy || emailVerified}
-              className="button-outline px-4 py-2 text-xs disabled:opacity-60"
+              className="button-outline px-3.5 py-2 text-xs disabled:opacity-60"
             >
               Send email
             </button>
@@ -178,7 +178,7 @@ export function SecuritySettingsPanel() {
               type="button"
               onClick={handleRefreshVerification}
               disabled={isBusy}
-              className="button-solid px-4 py-2 text-xs disabled:opacity-60"
+              className="button-solid px-3.5 py-2 text-xs disabled:opacity-60"
             >
               Refresh status
             </button>
@@ -207,7 +207,7 @@ export function SecuritySettingsPanel() {
               type="button"
               onClick={handleEmailChangeRequest}
               disabled={isBusy || !newEmail.trim()}
-              className="button-outline justify-self-start px-4 py-2 text-xs disabled:opacity-60"
+              className="button-outline justify-self-start px-3.5 py-2 text-xs disabled:opacity-60"
             >
               Send change confirmation
             </button>
@@ -248,7 +248,7 @@ export function SecuritySettingsPanel() {
               type="button"
               onClick={handlePasswordChangeRequest}
               disabled={isBusy || !currentPassword || !passwordReady}
-              className="button-outline justify-self-start px-4 py-2 text-xs disabled:opacity-60"
+              className="button-outline justify-self-start px-3.5 py-2 text-xs disabled:opacity-60"
             >
               Update password
             </button>
@@ -287,7 +287,7 @@ export function SecuritySettingsPanel() {
           <button
             type="button"
             disabled
-            className="button-outline mt-4 px-4 py-2 text-xs opacity-60"
+            className="button-outline mt-4 px-3.5 py-2 text-xs opacity-60"
           >
             Available soon
           </button>

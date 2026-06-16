@@ -72,7 +72,7 @@ export function UserLookupPanel() {
         {isLoading ? (
           <p className="text-sm text-[var(--color-ink-soft)]">Loading users...</p>
         ) : visibleUsers.length === 0 ? (
-          <p className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             No users match this search.
           </p>
         ) : (

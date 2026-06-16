@@ -220,7 +220,7 @@ export function CreateCourseStart({ ownerId }: CreateCourseStartProps) {
           <button
             type="submit"
             disabled={!canSubmit}
-            className="button-solid px-5 py-3 text-sm disabled:opacity-60"
+            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
           >
             {isSaving ? "Creating..." : "Create and open builder"}
             <ArrowRight aria-hidden="true" size={14} strokeWidth={1.9} />

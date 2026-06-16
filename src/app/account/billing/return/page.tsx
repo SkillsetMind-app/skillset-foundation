@@ -59,11 +59,11 @@ export default async function BillingReturnPage({
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Link
                 href="/account/billing?tab=subscriptions"
-                className="button-outline px-5 py-3 text-sm"
+                className="button-outline px-4 py-2.5 text-sm"
               >
                 Back to billing
               </Link>
-              <Link href="/teach" className="button-solid px-5 py-3 text-sm">
+              <Link href="/teach" className="button-solid px-4 py-2.5 text-sm">
                 Open Teacher Studio
               </Link>
             </div>
@@ -83,7 +83,7 @@ export default async function BillingReturnPage({
             </p>
             <Link
               href="/account/billing?tab=subscriptions"
-              className="button-solid mt-5 inline-flex px-5 py-3 text-sm"
+              className="button-solid mt-5 inline-flex px-4 py-2.5 text-sm"
             >
               Go to billing
             </Link>

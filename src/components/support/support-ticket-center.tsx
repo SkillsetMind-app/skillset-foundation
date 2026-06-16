@@ -142,7 +142,7 @@ export function SupportTicketCenter() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="button-solid px-5 py-3 text-sm disabled:opacity-60"
+            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
           >
             {isSubmitting ? "Creating ticket..." : "Create ticket"}
           </button>

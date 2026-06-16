@@ -165,7 +165,7 @@ function AccountNavLink({
       aria-current={isActive ? "page" : undefined}
       className={`flex items-start gap-3 rounded-[10px] px-3 py-3 text-sm font-semibold transition ${
         isActive
-          ? "bg-[var(--color-primary)] text-white shadow-[0_10px_22px_rgba(26,54,93,0.14)]"
+          ? "account-nav-active bg-[var(--color-primary)] text-white shadow-[0_10px_22px_rgba(26,54,93,0.14)]"
           : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-ink)]"
       }`}
     >
@@ -181,7 +181,7 @@ function AccountNavLink({
       <span>
         <span className="block">{label}</span>
         <span
-          className={`mt-1 block text-[11px] font-medium leading-4 ${
+          className={`account-nav-helper mt-1 block text-[11px] font-medium leading-4 ${
             isActive
               ? "text-[rgba(255,255,255,0.78)]"
               : "text-[var(--color-ink-muted)]"

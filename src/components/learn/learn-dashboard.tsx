@@ -71,10 +71,10 @@ export function LearnDashboard() {
             {error}
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
-            <Link href="/courses" className="button-solid px-4 py-2 text-sm">
+            <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
               Explore courses
             </Link>
-            <Link href="/support" className="button-outline px-4 py-2 text-sm">
+            <Link href="/support" className="button-outline px-4 py-2.5 text-sm">
               Contact support
             </Link>
           </div>
@@ -98,10 +98,10 @@ export function LearnDashboard() {
             marketplace, the course appears here with its private learning workspace.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/courses" className="button-solid px-5 py-3 text-sm">
+            <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
               Explore programs
             </Link>
-            <Link href="/platform" className="button-outline px-5 py-3 text-sm">
+            <Link href="/platform" className="button-outline px-4 py-2.5 text-sm">
               View platform overview
             </Link>
           </div>
@@ -153,10 +153,10 @@ export function LearnDashboard() {
               . Continue the next lesson or explore a reviewed Skillset course.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link href={continueHref} className="button-solid px-5 py-3 text-sm">
+              <Link href={continueHref} className="button-solid px-4 py-2.5 text-sm">
                 {continueEnrollment ? "Continue learning" : "Explore courses"}
               </Link>
-              <Link href="/courses" className="button-outline bg-white px-5 py-3 text-sm">
+              <Link href="/courses" className="button-outline bg-white px-4 py-2.5 text-sm">
                 Explore courses
               </Link>
             </div>
@@ -213,7 +213,7 @@ export function LearnDashboard() {
         </div>
         <div className="mt-5 grid gap-4">
           {visibleEnrollments.length === 0 ? (
-            <p className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+            <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
               No enrollments match this search.
             </p>
           ) : visibleEnrollments.map((enrollment) => {
@@ -233,7 +233,7 @@ export function LearnDashboard() {
                 key={enrollment.id}
                 className="grid gap-4 rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-4 transition hover:-translate-y-0.5 hover:bg-[var(--color-surface-hover)] hover:shadow-[var(--shadow-soft)] md:grid-cols-[220px_1fr]"
               >
-                <div className="relative aspect-[16/10] overflow-hidden rounded-[3px]">
+                <div className="relative aspect-[16/10] overflow-hidden rounded-[4px]">
                   <Image
                     src={enrollment.courseImage}
                     alt={enrollment.courseTitle}
@@ -284,7 +284,7 @@ export function LearnDashboard() {
                       <div className="flex flex-wrap gap-2">
                         <Link
                           href={workspaceHref}
-                          className="button-solid px-4 py-3 text-sm"
+                          className="button-solid px-4 py-2.5 text-sm"
                         >
                           Open workspace
                         </Link>
@@ -294,7 +294,7 @@ export function LearnDashboard() {
                       <button
                         type="button"
                         disabled
-                        className="button-outline px-4 py-3 text-sm opacity-70"
+                        className="button-outline px-4 py-2.5 text-sm opacity-70"
                       >
                         Access inactive
                       </button>

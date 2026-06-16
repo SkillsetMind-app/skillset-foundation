@@ -120,7 +120,7 @@ export function LearnerWishlist() {
           Save courses from the marketplace and return here when you are ready
           to compare options or start learning.
         </p>
-        <Link href="/courses" className="button-solid mt-6 inline-flex px-5 py-3 text-sm">
+        <Link href="/courses" className="button-solid mt-6 inline-flex px-4 py-2.5 text-sm">
           Explore courses
         </Link>
       </section>

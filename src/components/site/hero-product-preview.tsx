@@ -22,7 +22,7 @@ export function HeroProductPreview() {
       <div className="absolute -inset-8 rounded-[32px] bg-[radial-gradient(circle_at_70%_30%,rgba(178,34,52,0.22),transparent_60%),radial-gradient(circle_at_30%_80%,rgba(255,255,255,0.14),transparent_55%)] blur-2xl" />
 
       {/* app window */}
-      <div className="relative rotate-[1.2deg] rounded-[22px] border border-white/15 bg-white/[0.06] p-2.5 shadow-[0_40px_90px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-transform duration-500 hover:rotate-0">
+      <div className="relative rotate-[1.2deg] rounded-[20px] border border-white/15 bg-white/[0.06] p-2.5 shadow-[0_40px_90px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-transform duration-500 hover:rotate-0">
         {/* window chrome */}
         <div className="flex items-center gap-2 px-3 py-2.5">
           <span className="size-2.5 rounded-full bg-white/25" />

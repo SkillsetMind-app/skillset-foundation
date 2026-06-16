@@ -203,7 +203,7 @@ export function EmbeddedCheckoutPanel({
         <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
           {plan.tagline}
         </p>
-        <div className="mt-4 rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4">
+        <div className="mt-4 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
             {isYearly ? "Yearly billing" : "Monthly billing"}
           </p>

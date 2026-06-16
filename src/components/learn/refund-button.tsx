@@ -44,7 +44,7 @@ export function RefundButton({ enrollment }: { enrollment: Enrollment }) {
         type="button"
         onClick={handleRefund}
         disabled={status !== "idle"}
-        className="button-outline px-4 py-3 text-sm disabled:opacity-60"
+        className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
       >
         {status === "loading"
           ? "Requesting refund..."

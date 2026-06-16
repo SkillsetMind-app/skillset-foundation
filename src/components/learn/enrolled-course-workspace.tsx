@@ -225,12 +225,12 @@ export function EnrolledCourseWorkspace({
           {error}
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
-          <Link href="/learn" className="button-solid px-4 py-2 text-sm">
+          <Link href="/learn" className="button-solid px-4 py-2.5 text-sm">
             Back to my learning
           </Link>
           <Link
             href={`/courses/${course.slug}`}
-            className="button-outline px-4 py-2 text-sm"
+            className="button-outline px-4 py-2.5 text-sm"
           >
             Open course page
           </Link>
@@ -273,10 +273,10 @@ export function EnrolledCourseWorkspace({
           workspace.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href={`/courses/${course.slug}`} className="button-solid px-5 py-3 text-sm">
+          <Link href={`/courses/${course.slug}`} className="button-solid px-4 py-2.5 text-sm">
             Open course page
           </Link>
-          <Link href="/learn" className="button-outline px-5 py-3 text-sm">
+          <Link href="/learn" className="button-outline px-4 py-2.5 text-sm">
             Back to My Learning
           </Link>
         </div>
@@ -558,12 +558,12 @@ export function EnrolledCourseWorkspace({
               <button
                 type="button"
                 onClick={() => setSelectedLessonId(nextLesson.id)}
-                className="button-solid mt-4 px-4 py-3 text-sm"
+                className="button-solid mt-4 px-4 py-2.5 text-sm"
               >
                 Continue
               </button>
             ) : (
-              <Link href="/learn/credentials" className="button-solid mt-4 px-4 py-3 text-sm">
+              <Link href="/learn/credentials" className="button-solid mt-4 px-4 py-2.5 text-sm">
                 View credential
               </Link>
             )}
@@ -831,7 +831,7 @@ function CourseAssetResourceList({
           {assets.map((asset) => (
             <div
               key={asset.id}
-              className="rounded-[3px] border border-[var(--color-line)] bg-white p-3"
+              className="rounded-[4px] border border-[var(--color-line)] bg-white p-3"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -960,7 +960,7 @@ function LessonContentPanel({
           </p>
         ) : null}
         {!locked && lesson.contentText ? (
-          <div className="mt-4 whitespace-pre-line rounded-[3px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
+          <div className="mt-4 whitespace-pre-line rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
             {lesson.contentText}
           </div>
         ) : null}
@@ -969,7 +969,7 @@ function LessonContentPanel({
             href={safeLessonExternalUrl}
             target="_blank"
             rel="noreferrer noopener"
-            className="button-outline mt-4 inline-flex px-4 py-3 text-sm"
+            className="button-outline mt-4 inline-flex px-4 py-2.5 text-sm"
           >
             Open instructor resource
           </a>
@@ -993,7 +993,7 @@ function LessonContentPanel({
         type="button"
         onClick={onToggleComplete}
         disabled={previewMode || locked || isSaving}
-        className="button-solid mt-5 px-4 py-3 text-sm disabled:opacity-60"
+        className="button-solid mt-5 px-4 py-2.5 text-sm disabled:opacity-60"
       >
         {previewMode
           ? "Preview only"
@@ -1087,7 +1087,7 @@ function LessonDiscussion({
   }
 
   return (
-    <div className="mt-5 rounded-[3px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
+    <div className="mt-5 rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
@@ -1165,7 +1165,7 @@ function LessonDiscussion({
         <button
           type="submit"
           disabled={previewMode || isSaving || body.trim().length < 3}
-          className="button-outline w-fit px-4 py-2 text-sm disabled:opacity-60"
+          className="button-outline w-fit px-4 py-2.5 text-sm disabled:opacity-60"
         >
           {isSaving ? "Publishing..." : "Publish comment"}
         </button>
@@ -1202,7 +1202,7 @@ function LessonAssetList({
       {assets.map((asset) => (
         <div
           key={asset.id}
-          className="rounded-[3px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3"
+          className="rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>

@@ -41,7 +41,7 @@ export function CertificateVerificationPanel() {
   }
 
   return (
-    <section className="mx-auto max-w-4xl rounded-[22px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] md:p-8">
+    <section className="mx-auto max-w-4xl rounded-[20px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] md:p-8">
       <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
         Skillset Verified
       </p>
@@ -67,7 +67,7 @@ export function CertificateVerificationPanel() {
         <button
           type="submit"
           disabled={isChecking}
-          className="button-solid px-5 py-3 text-sm disabled:opacity-60"
+          className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
         >
           {isChecking ? "Checking..." : "Verify"}
         </button>
@@ -119,7 +119,7 @@ export function CertificateVerificationPanel() {
           <button
             type="button"
             onClick={() => window.print()}
-            className="button-solid mt-5 px-5 py-3 text-sm print:hidden"
+            className="button-solid mt-5 px-4 py-2.5 text-sm print:hidden"
           >
             Print / Save as PDF
           </button>
@@ -127,10 +127,10 @@ export function CertificateVerificationPanel() {
       ) : null}
 
       <div className="mt-8 flex flex-wrap gap-3 print:hidden">
-        <Link href="/" className="button-outline px-5 py-3 text-sm">
+        <Link href="/" className="button-outline px-4 py-2.5 text-sm">
           Back to homepage
         </Link>
-        <Link href="/courses" className="button-solid px-5 py-3 text-sm">
+        <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
           Explore courses
         </Link>
       </div>

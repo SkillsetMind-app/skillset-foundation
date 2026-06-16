@@ -290,7 +290,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
                   href={previewLessonExternalUrl}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="button-outline w-fit px-4 py-2 text-sm"
+                  className="button-outline w-fit px-3.5 py-2 text-xs"
                 >
                   Open preview resource
                 </a>
@@ -422,10 +422,10 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
 
         {authStatus !== "authenticated" ? (
           <div className="mt-6 grid gap-3">
-            <Link href="/auth?mode=signup" className="button-solid w-full justify-center px-5 py-3 text-sm">
+            <Link href="/auth?mode=signup" className="button-solid w-full justify-center px-5 py-2.5 text-sm">
               Create account to enroll
             </Link>
-            <Link href="/auth?mode=signin" className="button-outline w-full justify-center px-5 py-3 text-sm">
+            <Link href="/auth?mode=signin" className="button-outline w-full justify-center px-5 py-2.5 text-sm">
               Sign in
             </Link>
           </div>
@@ -436,7 +436,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
                 type="button"
                 onClick={handleFreeEnrollment}
                 disabled={isEnrollingFree}
-                className="button-solid mt-6 w-full px-5 py-3 text-sm disabled:opacity-60"
+                className="button-solid mt-6 w-full px-5 py-2.5 text-sm disabled:opacity-60"
               >
                 {isEnrollingFree ? "Adding to your workspace..." : "Enroll free"}
               </button>
@@ -445,7 +445,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
                 type="button"
                 onClick={handleCheckout}
                 disabled={!canCheckout || isCheckingOut}
-                className="button-solid mt-6 w-full px-5 py-3 text-sm disabled:opacity-60"
+                className="button-solid mt-6 w-full px-5 py-2.5 text-sm disabled:opacity-60"
               >
                 {isCheckingOut
                   ? "Opening secure checkout..."
@@ -527,7 +527,7 @@ function CourseDetailState({
       </p>
       <Link
         href={resolvedAction.href}
-        className="button-solid mt-6 inline-flex px-5 py-3 text-sm"
+        className="button-solid mt-6 inline-flex px-5 py-2.5 text-sm"
       >
         {resolvedAction.label}
       </Link>

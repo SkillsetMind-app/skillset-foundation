@@ -257,7 +257,7 @@ export function SignupForm() {
         disabled={
           isLoading || !legalAccepted || !passwordReady || !passwordsMatch
         }
-        className="button-solid mt-1 px-5 py-3 text-sm disabled:opacity-60"
+        className="button-solid mt-1 px-4 py-2.5 text-sm disabled:opacity-60"
       >
         {isLoading ? "Creating account..." : "Create account"}
       </button>
@@ -272,7 +272,7 @@ export function SignupForm() {
         type="button"
         disabled={isLoading || !legalAccepted}
         onClick={handleGoogleSignup}
-        className="button-outline px-5 py-3 text-sm disabled:opacity-60"
+        className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
       >
         <GoogleMark />
         Continue with Google

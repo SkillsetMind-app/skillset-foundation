@@ -347,7 +347,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
             || !selectedFile
             || (requiresModuleTarget && !moduleId)
           }
-          className="button-solid px-4 py-3 text-sm disabled:opacity-60"
+          className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
         >
           {isUploading ? "Uploading..." : "Upload asset"}
         </button>
@@ -355,7 +355,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
 
       <div className="mt-6 grid gap-4">
         {assets.length === 0 ? (
-          <p className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             No uploaded assets yet. Start with a course cover or first lesson
             material.
           </p>
@@ -418,7 +418,7 @@ function AssetGroup({
         {title}
       </p>
       {assets.length === 0 ? (
-        <p className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-3 text-xs leading-5 text-[var(--color-ink-soft)]">
+        <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-3 text-xs leading-5 text-[var(--color-ink-soft)]">
           Nothing uploaded here yet.
         </p>
       ) : (
@@ -433,7 +433,7 @@ function AssetGroup({
           return (
             <article
               key={asset.id}
-              className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+              className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -467,7 +467,7 @@ function AssetGroup({
                     type="button"
                     onClick={() => onDelete(asset)}
                     disabled={deletingAssetId === asset.id}
-                    className="button-outline px-3 py-1.5 text-xs text-[var(--color-accent-fg)] disabled:opacity-60"
+                    className="button-outline px-3.5 py-2 text-xs text-[var(--color-accent-fg)] disabled:opacity-60"
                   >
                     {deletingAssetId === asset.id ? "Deleting..." : "Delete"}
                   </button>

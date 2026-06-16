@@ -147,7 +147,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
         <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           {error || "Sale not found."}
         </p>
-        <Link href="/teach" className="button-outline mt-5 px-4 py-2 text-sm">
+        <Link href="/teach" className="button-outline mt-5 px-4 py-2.5 text-sm">
           Back to Teacher Studio
         </Link>
       </section>
@@ -199,7 +199,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
             Customer
           </p>
-          <div className="mt-4 rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4">
+          <div className="mt-4 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4">
             <p className="text-sm font-semibold text-[var(--color-ink)]">
               Learner account
             </p>
@@ -226,7 +226,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
             ].map(([label, value]) => (
               <div
                 key={label}
-                className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+                className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
               >
                 <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
                   {label}
@@ -237,7 +237,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
               </div>
             ))}
           </div>
-          <div className="mt-5 grid gap-3 rounded-[3px] border fine-rule bg-white p-4 text-xs text-[var(--color-ink-soft)]">
+          <div className="mt-5 grid gap-3 rounded-[4px] border fine-rule bg-white p-4 text-xs text-[var(--color-ink-soft)]">
             <p>
               Provider <strong className="text-[var(--color-ink)]">{order.provider}</strong>
             </p>
@@ -283,13 +283,13 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
               href={`/learn/courses/${order.courseSlug}`}
-              className="button-outline inline-flex items-center gap-2 px-4 py-2 text-xs"
+              className="button-outline inline-flex items-center gap-2 px-3.5 py-2 text-xs"
             >
               View enrollment in workspace
             </Link>
             <a
               href="mailto:support@skillset.app"
-              className="button-outline inline-flex items-center gap-2 px-4 py-2 text-xs"
+              className="button-outline inline-flex items-center gap-2 px-3.5 py-2 text-xs"
             >
               <Mail aria-hidden="true" size={14} />
               Contact support
@@ -300,7 +300,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
               )}&body=${encodeURIComponent(
                 `Please help me process a refund for order ${order.id} (${order.courseTitle}).`,
               )}`}
-              className="button-outline inline-flex items-center gap-2 px-4 py-2 text-xs"
+              className="button-outline inline-flex items-center gap-2 px-3.5 py-2 text-xs"
             >
               <RotateCcw aria-hidden="true" size={14} />
               Request refund
@@ -324,7 +324,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
           </div>
           <Link
             href={`/courses/${order.courseSlug}`}
-            className="button-outline mt-5 px-4 py-2 text-xs"
+            className="button-outline mt-5 px-3.5 py-2 text-xs"
           >
             View public course
           </Link>

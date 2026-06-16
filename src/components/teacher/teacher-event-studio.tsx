@@ -338,7 +338,7 @@ export function TeacherEventStudio() {
             <button
               type="submit"
               disabled={isSaving || (!editingEventId && !selectedCourse)}
-              className="button-solid px-5 py-3 text-sm disabled:opacity-60"
+              className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
             >
               {isSaving
                 ? "Saving..."
@@ -350,7 +350,7 @@ export function TeacherEventStudio() {
               <button
                 type="button"
                 onClick={resetForm}
-                className="button-outline px-5 py-3 text-sm"
+                className="button-outline px-4 py-2.5 text-sm"
               >
                 Cancel edit
               </button>
@@ -375,11 +375,11 @@ export function TeacherEventStudio() {
         </div>
         <div className="mt-6 grid gap-3">
           {!eventsLoaded ? (
-            <p className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
+            <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
               Loading scheduled sessions…
             </p>
           ) : events.length === 0 ? (
-            <p className="rounded-[3px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
+            <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
               No agenda items scheduled yet. Create one when the course has a
               class, mentorship, masterclass, office hour, webinar, or deadline.
             </p>
@@ -426,7 +426,7 @@ export function TeacherEventStudio() {
                   <button
                     type="button"
                     onClick={() => startEditing(event)}
-                    className="button-outline px-4 py-2 text-xs"
+                    className="button-outline px-3.5 py-2 text-xs"
                   >
                     Edit
                   </button>
@@ -435,7 +435,7 @@ export function TeacherEventStudio() {
                       type="button"
                       onClick={() => handleCancelEvent(event)}
                       disabled={actioningEventId === event.id}
-                      className="button-outline px-4 py-2 text-xs disabled:opacity-60"
+                      className="button-outline px-3.5 py-2 text-xs disabled:opacity-60"
                     >
                       {actioningEventId === event.id ? "Working..." : "Cancel session"}
                     </button>
@@ -444,7 +444,7 @@ export function TeacherEventStudio() {
                     type="button"
                     onClick={() => handleDeleteEvent(event)}
                     disabled={actioningEventId === event.id}
-                    className="button-outline px-4 py-2 text-xs text-[var(--color-accent-fg)] disabled:opacity-60"
+                    className="button-outline px-3.5 py-2 text-xs text-[var(--color-accent-fg)] disabled:opacity-60"
                   >
                     Delete
                   </button>
@@ -481,7 +481,7 @@ function TeacherEventRsvpSummary({ eventId }: { eventId: string }) {
   const notAttendingCount = rsvps.filter((rsvp) => rsvp.status === "not_attending").length;
 
   return (
-    <div className="mt-4 rounded-[3px] border border-[var(--color-line)] bg-white p-3">
+    <div className="mt-4 rounded-[4px] border border-[var(--color-line)] bg-white p-3">
       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
         RSVP
       </p>
