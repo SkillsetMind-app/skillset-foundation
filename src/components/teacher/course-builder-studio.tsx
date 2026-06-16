@@ -172,7 +172,7 @@ function CategoryMultiSelect({
                 key={item}
                 className={`inline-flex items-center gap-1 rounded-[8px] px-2 py-0.5 text-xs font-semibold ${
                   index === 0
-                    ? "bg-[var(--color-primary)] text-white"
+                    ? "bg-[var(--color-primary)] text-[var(--color-base)]"
                     : "bg-[var(--color-surface-strong)] text-[var(--color-ink)]"
                 }`}
               >
@@ -223,7 +223,7 @@ function CategoryMultiSelect({
                 <span
                   className={`grid size-4 shrink-0 place-items-center rounded-[4px] border transition-colors ${
                     isSelected
-                      ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                      ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-base)]"
                       : "border-[var(--color-line-strong)] bg-white"
                   }`}
                 >

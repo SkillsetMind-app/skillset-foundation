@@ -157,7 +157,7 @@ export function PlansPanel() {
               onClick={() => setCycle(option.value)}
               className={
                 active
-                  ? "rounded-[8px] bg-[var(--color-primary)] text-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em]"
+                  ? "rounded-[8px] bg-[var(--color-primary)] text-[var(--color-base)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em]"
                   : "rounded-[8px] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)]"
               }
             >

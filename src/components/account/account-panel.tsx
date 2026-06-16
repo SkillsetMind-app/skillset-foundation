@@ -132,7 +132,7 @@ function AccountNavMobile({
               aria-current={isActive ? "page" : undefined}
               className={`inline-flex items-center gap-2 whitespace-nowrap rounded-[8px] px-3 py-2 text-xs font-semibold transition ${
                 isActive
-                  ? "bg-[var(--color-primary)] text-white"
+                  ? "bg-[var(--color-primary)] text-[var(--color-base)]"
                   : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-ink)]"
               }`}
             >

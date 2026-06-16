@@ -721,7 +721,7 @@ function OptionGrid({
             className={[
               "rounded-[10px] border-[1.5px] px-4 py-3 text-sm font-semibold transition hover:bg-[var(--color-surface-soft)]",
               isSelected
-                ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-base)]"
                 : "border-[var(--color-line)] bg-white text-[var(--color-ink)]",
               multi && selected.length >= 3 && !isSelected
                 ? "cursor-not-allowed opacity-50"

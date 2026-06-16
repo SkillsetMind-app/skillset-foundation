@@ -194,7 +194,7 @@ export function CreateCourseStart({ ownerId }: CreateCourseStartProps) {
                     onClick={() => toggleCategory(category)}
                     className={`rounded-[8px] border px-3 py-2 text-left text-xs font-semibold transition-colors ${
                       selected
-                        ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                        ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-base)]"
                         : "border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:border-[var(--color-primary-light)]"
                     }`}
                     aria-pressed={selected}

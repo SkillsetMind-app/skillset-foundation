@@ -1359,6 +1359,17 @@ p {
   box-shadow: 0 24px 60px rgba(15, 39, 68, 0.18);
 }
 
+/* The balance hero is a dark-navy gradient, but its mid stop is
+   var(--color-primary), which inverts to light blue in dark -> a light band
+   under white text. Pin the mid stop to navy so the card stays dark and the
+   white figures keep contrast. */
+[data-theme="dark"] .payout-balance-card {
+  background:
+    radial-gradient(circle at 85% 20%, rgba(178, 34, 52, 0.38), transparent 18rem),
+    radial-gradient(circle at 20% 110%, rgba(255, 255, 255, 0.16), transparent 16rem),
+    linear-gradient(135deg, #0c223b 0%, #1a365d 58%, #0a1527 100%);
+}
+
 .payout-bank-card,
 .payout-statements,
 .payout-tax-card {
