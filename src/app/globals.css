@@ -4119,7 +4119,7 @@ button:hover > .dash-card,
   border-radius: 14px;
   background: var(--color-primary);
   color: #ffffff;
-  box-shadow: var(--shadow-button);
+  box-shadow: var(--shadow-soft);
 }
 
 /* A1-cont-2: the icon tile fills with --color-primary (light blue in dark) → a

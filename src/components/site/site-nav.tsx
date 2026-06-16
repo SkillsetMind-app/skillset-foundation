@@ -201,7 +201,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
             aria-expanded={mobileOpen}
             aria-controls="site-mobile-menu"
             onClick={() => setMobileOpen((open) => !open)}
-            className="grid size-10 shrink-0 place-items-center rounded-[10px] border border-[rgba(26,54,93,0.12)] bg-white text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] min-[941px]:hidden"
+            className="grid size-10 shrink-0 place-items-center rounded-[10px] border border-[var(--color-line)] bg-white text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] min-[941px]:hidden"
           >
             {mobileOpen ? (
               <X aria-hidden="true" size={18} strokeWidth={1.8} />
@@ -221,7 +221,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
             />
             <div
               id="site-mobile-menu"
-              className="absolute inset-x-0 top-[calc(100%+8px)] z-[46] rounded-[14px] border border-[rgba(26,54,93,0.1)] bg-white p-3 shadow-[0_24px_48px_rgba(15,39,68,0.16)] min-[941px]:hidden"
+              className="absolute inset-x-0 top-[calc(100%+8px)] z-[46] rounded-[14px] border border-[var(--color-line)] bg-white p-3 shadow-[0_24px_48px_rgba(15,39,68,0.16)] min-[941px]:hidden"
             >
               <nav aria-label="Mobile navigation" className="grid gap-1">
                 {resolvedNav.map((item) => {
