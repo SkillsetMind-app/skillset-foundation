@@ -75,9 +75,9 @@ export function CapabilitiesGrid() {
           const { Icon } = capability;
           return (
             <RevealSection key={capability.title} delay={index * 80}>
-              <article className="group h-full rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] transition duration-[180ms] ease-out hover:-translate-y-0.5 hover:border-[rgba(26,54,93,0.18)] hover:shadow-[0_18px_36px_rgba(15,39,68,0.10)]">
+              <article className="group h-full rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] transition duration-[180ms] ease-out hover:-translate-y-0.5 hover:border-[var(--color-line-strong)] hover:shadow-[var(--shadow-strong)]">
                 <span
-                  className="grid size-12 place-items-center rounded-[10px] bg-[var(--color-surface-soft)] text-[var(--color-primary)] ring-1 ring-inset ring-[var(--color-line)] shadow-[0_6px_14px_rgba(26,54,93,0.08)] transition-all duration-[180ms] ease-out group-hover:bg-[var(--color-primary)] group-hover:text-white group-hover:shadow-[0_10px_22px_rgba(26,54,93,0.20)]"
+                  className="grid size-12 place-items-center rounded-[10px] bg-[var(--color-surface-soft)] text-[var(--color-primary)] ring-1 ring-inset ring-[var(--color-line)] shadow-[0_6px_14px_rgba(26,54,93,0.08)] transition-all duration-[180ms] ease-out group-hover:bg-[var(--color-primary)] group-hover:text-[var(--color-base)] group-hover:shadow-[0_10px_22px_rgba(26,54,93,0.20)]"
                   aria-hidden="true"
                 >
                   <Icon size={22} strokeWidth={1.7} />

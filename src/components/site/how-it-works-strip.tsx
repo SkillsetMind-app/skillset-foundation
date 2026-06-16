@@ -52,7 +52,7 @@ export function HowItWorksStrip() {
               <article className="border-t-2 border-[var(--color-primary)] pt-6">
                 <div className="flex items-center gap-4">
                   <span
-                    className="grid size-11 place-items-center rounded-[10px] bg-[var(--color-primary)] text-white shadow-[0_10px_22px_rgba(26,54,93,0.18)]"
+                    className="grid size-11 place-items-center rounded-[10px] bg-[var(--color-primary)] text-[var(--color-base)] shadow-[var(--shadow-soft)]"
                     aria-hidden="true"
                   >
                     <Icon size={20} strokeWidth={1.7} />
