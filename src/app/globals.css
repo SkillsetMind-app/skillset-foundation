@@ -491,6 +491,26 @@ p {
   background: var(--color-surface-soft);
 }
 
+/* Shared "info notice" box — the same inline pattern was duplicated across ~10
+   platform surfaces (rounded-[10px] / navy 0.12 border / surface-soft fill /
+   px-4 py-3 / text-sm font-semibold / primary text). Extracted so the navy
+   border can adapt in dark instead of vanishing. Light values match the old
+   inline utilities exactly (verified by computed-style probe). */
+.info-notice {
+  border-radius: 10px;
+  border: 1px solid rgba(26, 54, 93, 0.12);
+  background: var(--color-surface-soft);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+[data-theme="dark"] .info-notice {
+  border-color: var(--color-line);
+}
+
 .blue-panel {
   background: linear-gradient(
     135deg,

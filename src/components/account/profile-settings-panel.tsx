@@ -540,7 +540,7 @@ export function ProfileSettingsPanel() {
         ) : null}
 
         {success ? (
-          <p className="rounded-[10px] border border-[rgba(26,54,93,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]">
+          <p className="info-notice">
             {success}
           </p>
         ) : null}

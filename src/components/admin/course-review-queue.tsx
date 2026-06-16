@@ -162,7 +162,7 @@ export function CourseReviewQueue() {
       ) : null}
 
       {success ? (
-        <p className="mt-5 rounded-[10px] border border-[rgba(26,54,93,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]">
+        <p className="mt-5 info-notice">
           {success}
         </p>
       ) : null}

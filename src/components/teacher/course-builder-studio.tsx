@@ -2450,7 +2450,7 @@ export function CourseBuilderStudio() {
             </p>
           ) : null}
           {success ? (
-            <p className="mt-4 rounded-[10px] border border-[rgba(26,54,93,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]">
+            <p className="mt-4 info-notice">
               {success}
             </p>
           ) : null}
