@@ -389,6 +389,32 @@ p {
   background: var(--color-surface);
 }
 
+/* Decorative white tiles/pills become a soft dark surface in dark mode (was a
+   light-mode leftover: white bg + light-blue glyph/text read ~2.16:1). The
+   glyph/text stays var(--color-primary) and reads ~7.7:1 on surface-soft. */
+[data-theme="dark"] .account-settings-tab__icon,
+[data-theme="dark"] .settings-info-row__icon,
+[data-theme="dark"] .course-upload-preset__icon,
+[data-theme="dark"] .studio-action-card__icon,
+[data-theme="dark"] .settings-pill--neutral {
+  background: var(--color-surface-soft);
+}
+
+[data-theme="dark"] .settings-pill--neutral {
+  border-color: var(--color-line);
+}
+
+/* Selected tabs keep their white "selected" affordance (like .platform-nav-active)
+   but their label used var(--color-primary) -> light blue on white (~2.16:1).
+   Pin the label to the same dark ink the nav chip uses (~15:1). Covers hover. */
+[data-theme="dark"] .auth-tabs button.active,
+[data-theme="dark"] .studio-range-tabs button:hover,
+[data-theme="dark"] .studio-range-tabs button.is-active,
+[data-theme="dark"] .credential-filter-tabs button:hover,
+[data-theme="dark"] .credential-filter-tabs button.is-active {
+  color: #0f2744;
+}
+
 .fine-rule {
   border-color: var(--color-line);
 }
