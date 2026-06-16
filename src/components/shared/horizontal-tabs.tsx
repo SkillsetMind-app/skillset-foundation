@@ -43,7 +43,7 @@ export function HorizontalTabs({
               disabled={tab.disabled}
               onClick={() => onChange(tab.value)}
               className={cn(
-                "shrink-0 border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition duration-[180ms] hover:text-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-50",
+                "shrink-0 border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition duration-[180ms] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(44,82,130,0.28)] disabled:cursor-not-allowed disabled:opacity-50",
                 isActive && "border-[var(--color-accent-fg)] text-[var(--color-primary)]",
               )}
             >

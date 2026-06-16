@@ -321,6 +321,7 @@ p {
 
 [data-theme="dark"] .button-outline {
   background: var(--color-surface);
+  border-color: var(--color-line);
 }
 
 /* Primary CTA in dark mode: --color-primary inverts to a LIGHT blue (#8fb4e4),
@@ -481,6 +482,13 @@ p {
 .pill {
   border: 1px solid rgba(26, 54, 93, 0.1);
   background: rgba(245, 249, 255, 0.96);
+}
+
+/* Dark mode: .pill had no dark override, so its navy 0.1 border + near-white
+   fill read as navy-on-dark / glare in dark. Adapt both; light is untouched. */
+[data-theme="dark"] .pill {
+  border-color: var(--color-line);
+  background: var(--color-surface-soft);
 }
 
 .blue-panel {
@@ -690,6 +698,12 @@ p {
   transform: translateY(-1px);
 }
 
+/* Dark mode: the light :hover border (navy 0.24) is invisible on dark
+   surfaces. Adapt to the theme line token; the light :hover stays untouched. */
+[data-theme="dark"] .button-outline:hover {
+  border-color: var(--color-line-strong);
+}
+
 .button-solid-light,
 .button-outline-light {
   display: inline-flex;
@@ -873,6 +887,11 @@ p {
   box-shadow: 0 0 0 3px rgba(178, 34, 52, 0.08);
 }
 
+.btn-signin:focus-visible {
+  outline: 2px solid rgba(44, 82, 130, 0.28);
+  outline-offset: 3px;
+}
+
 .btn-cta-hero {
   display: inline-flex;
   align-items: center;
@@ -898,6 +917,11 @@ p {
   background: var(--color-accent-hover);
   transform: translateY(-1px);
   box-shadow: 0 10px 22px rgba(178, 34, 52, 0.28);
+}
+
+.btn-cta-hero:focus-visible {
+  outline: 2px solid rgba(44, 82, 130, 0.28);
+  outline-offset: 3px;
 }
 
 .signin-dropdown {
