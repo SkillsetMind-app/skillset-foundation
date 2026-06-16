@@ -24,7 +24,7 @@ export function UserAvatar({
   return (
     <span
       aria-label={label}
-      className={`relative grid shrink-0 place-items-center overflow-hidden rounded-full border border-[rgba(26,54,93,0.16)] bg-[linear-gradient(145deg,#f8fbff,#e8eef7)] text-[var(--color-primary)] ${sizeClasses[size]} ${className}`}
+      className={`avatar-fallback relative grid shrink-0 place-items-center overflow-hidden rounded-full text-[var(--color-primary)] ${sizeClasses[size]} ${className}`}
     >
       {photoURL ? (
         // unoptimized: the Next image optimizer 400s on Firebase Storage URLs

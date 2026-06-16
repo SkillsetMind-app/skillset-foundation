@@ -441,6 +441,20 @@ p {
   border-color: var(--color-line);
 }
 
+/* Avatar fallback (no photo): a light gradient with a var(--color-primary)
+   silhouette. In dark the gradient stayed light, dropping the light-blue
+   silhouette to ~1.3:1. Theme the gradient (a Tailwind arbitrary value can't
+   be theme-scoped inline) so the silhouette reads ~7:1 in dark. */
+.avatar-fallback {
+  border: 1px solid rgba(26, 54, 93, 0.16);
+  background: linear-gradient(145deg, #f8fbff, #e8eef7);
+}
+
+[data-theme="dark"] .avatar-fallback {
+  border-color: var(--color-line);
+  background: linear-gradient(145deg, var(--color-surface-strong), var(--color-surface-soft));
+}
+
 .fine-rule {
   border-color: var(--color-line);
 }
