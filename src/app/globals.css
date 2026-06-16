@@ -373,6 +373,22 @@ p {
   background: rgba(15, 22, 38, 0.92);
 }
 
+/* Dark-mode parity for shared card/panel surfaces that hardcode a white (or
+   near-white gradient) background with no dark override — they rendered as
+   bright panels over the navy page in dark mode. Flip to the surface token.
+   (Inputs are already covered by the generic [data-theme="dark"] input rule
+   above; lesson-modal notes/empties self-correct via --color-surface-soft;
+   active-state white affordances are intentionally left white.) */
+[data-theme="dark"] .settings-section-card,
+[data-theme="dark"] .payout-bank-card,
+[data-theme="dark"] .payout-statements,
+[data-theme="dark"] .payout-tax-card,
+[data-theme="dark"] .course-upload-panel,
+[data-theme="dark"] .auth-card,
+[data-theme="dark"] .credential-metric-card {
+  background: var(--color-surface);
+}
+
 .fine-rule {
   border-color: var(--color-line);
 }
