@@ -415,6 +415,32 @@ p {
   color: #0f2744;
 }
 
+/* Decorative number/progress badges: white bg + light-blue var(--color-primary)
+   read ~2.16:1 in dark. Soft dark surface keeps the glyph at ~7.7:1. */
+[data-theme="dark"] .course-builder-step__num,
+[data-theme="dark"] .member-module-progress {
+  background: var(--color-surface-soft);
+}
+
+/* Hover states that flip to a white background drop their light ink/inherited
+   text to ~1:1 in dark. Use an elevated dark surface for the hover highlight
+   instead (text stays readable; matches the row/card resting surface). */
+[data-theme="dark"] .account-settings-tab:hover,
+[data-theme="dark"] .course-upload-preset:hover,
+[data-theme="dark"] .studio-course-row:hover,
+[data-theme="dark"] .studio-action-card:hover {
+  background: var(--color-surface-strong);
+}
+
+/* Public floating header bar hardcodes a white background (CSS, not the
+   .bg-white utility, so the generic dark rule misses it) -> a white pill on a
+   dark marketing page. Flip to the dark surface; tokenize the hairline border.
+   Covers .scrolled (which only overrides padding/shadow). */
+[data-theme="dark"] .site-header__inner {
+  background: var(--color-surface);
+  border-color: var(--color-line);
+}
+
 .fine-rule {
   border-color: var(--color-line);
 }
