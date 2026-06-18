@@ -1061,7 +1061,9 @@ function LessonDiscussion({
         courseId,
         lessonId,
         authorId: user.uid,
-        authorName: user.displayName || user.email || "Skillset learner",
+        // No email fallback: lesson comments are readable by every enrolled
+        // learner, so an email-as-name leaked the author's address.
+        authorName: user.displayName || "Skillset learner",
         body,
       });
       setBody("");

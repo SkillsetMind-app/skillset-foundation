@@ -56,7 +56,11 @@ export async function createCommunityPost(input: {
   await addDoc(collection(getFirestoreDb(), communityPostsCollection), {
     courseSlug: input.courseSlug,
     authorId: input.user.uid,
-    authorName: input.user.displayName?.trim() || input.user.email || "Skillset member",
+    // NEVER fall back to email here. authorName is rendered to every
+    // co-enrolled member of the course community, so an email fallback for a
+    // learner with no displayName leaked their address as the public author
+    // label. Same rule applies to the comment + report writers below.
+    authorName: input.user.displayName?.trim() || "Skillset member",
     authorRole: input.user.roles[0] ?? "student",
     category: input.category,
     body: input.body.trim(),
@@ -121,7 +125,7 @@ export async function createCommunityComment(input: {
       postId: input.postId,
       courseSlug: input.courseSlug,
       authorId: input.user.uid,
-      authorName: input.user.displayName?.trim() || input.user.email || "Skillset member",
+      authorName: input.user.displayName?.trim() || "Skillset member",
       authorRole: input.user.roles[0] ?? "student",
       body: input.body.trim(),
       parentId: input.parentId ?? null,
@@ -171,7 +175,7 @@ export async function createCommunityReport(input: {
     targetAuthorId: input.targetAuthorId,
     targetAuthorName: input.targetAuthorName,
     reporterId: input.user.uid,
-    reporterName: input.user.displayName?.trim() || input.user.email || "Skillset member",
+    reporterName: input.user.displayName?.trim() || "Skillset member",
     reporterEmail: input.user.email ?? null,
     reason: input.reason,
     detail: input.detail?.trim() || null,

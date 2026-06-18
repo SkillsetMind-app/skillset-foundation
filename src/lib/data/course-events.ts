@@ -138,7 +138,10 @@ export async function saveCourseEventRsvp(input: {
       eventId: input.eventId,
       courseSlug: input.courseSlug,
       userId: input.user.uid,
-      attendeeName: input.user.displayName?.trim() || input.user.email || "Skillset learner",
+      // No email fallback for the display label — the real address is kept in
+      // the dedicated attendeeEmail field (read by the event owner). Using it
+      // as the name leaked the attendee's email into a rendered label.
+      attendeeName: input.user.displayName?.trim() || "Skillset learner",
       attendeeEmail: input.user.email,
       status: input.status,
       updatedAt: serverTimestamp(),
