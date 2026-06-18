@@ -248,7 +248,8 @@ type PayoutLedgerRecord = {
 type CourseReviewRecord = {
   id: string;
   courseId: string;
-  userId: string;
+  // No `userId`: it is deliberately not stored on the world-readable review
+  // doc (see submitCourseReview). Identity is the deterministic doc id.
   authorName: string;
   rating: number;
   body?: string | null;
@@ -2485,7 +2486,18 @@ export const submitCourseReview = onCall(async (request) => {
       {
         id: reviewId,
         courseId,
-        userId,
+        // The reviewer's raw Auth UID is intentionally NOT stored here.
+        // courseReviews are world-readable on the published-course read
+        // path, so a stored `userId` leaked the UIDs of confirmed paying
+        // customers (harvestable + cross-referenceable against other
+        // UID-keyed reads to deanonymize buyers). Ownership is derived from
+        // the deterministic doc id `${courseId}__${userId}` on both the
+        // client (getCourseReviewId) and in firestore.rules. The explicit
+        // delete() purges the stale field from any pre-existing review the
+        // moment it is re-submitted (merge write); a one-time backfill
+        // (functions/scripts/backfill-purge-review-userid.mjs) clears the
+        // rest.
+        userId: FieldValue.delete(),
         authorName,
         rating,
         body,

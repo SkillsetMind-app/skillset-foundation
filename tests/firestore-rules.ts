@@ -498,10 +498,12 @@ describe("Firestore course review rules", () => {
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       });
+      // NEW shape: the review doc carries NO `userId` field. The reviewer's
+      // Auth UID was removed because this doc is world-readable for published
+      // courses and the UID let an attacker harvest paying-customer ids.
       await setDoc(doc(adminDb, "courseReviews/course-published__student-1"), {
         id: "course-published__student-1",
         courseId: "course-published",
-        userId: "student-1",
         authorName: "Seed User",
         rating: 5,
         body: "Clear and useful.",
@@ -516,9 +518,12 @@ describe("Firestore course review rules", () => {
       .authenticatedContext("student-1", verifiedAuth)
       .firestore();
 
-    await assertSucceeds(
+    const publicSnap = await assertSucceeds(
       getDoc(doc(publicDb, "courseReviews/course-published__student-1")),
     );
+    // Regression guard: the world-readable review doc must never expose the
+    // reviewer's Auth UID.
+    expect((publicSnap.data() ?? {}).userId).toBeUndefined();
     await assertFails(
       setDoc(doc(studentDb, "courseReviews/course-published__student-1"), {
         id: "course-published__student-1",
@@ -531,6 +536,58 @@ describe("Firestore course review rules", () => {
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       }),
+    );
+  });
+
+  it("identifies the review author by doc-id (no stored userId) and blocks non-authors on a non-published course", async () => {
+    await seedTeacher("teacher-2");
+    await seedUser("author-2", ["student"]);
+    await seedUser("stranger-2", ["student"]);
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const adminDb = context.firestore();
+      // 'draft' => the world-readable published/in_review branch does NOT
+      // apply, so reads fall through to the signed-in author/owner/enrolled
+      // branch — exercising the doc-id reconstruction that replaced the
+      // removed `userId` field.
+      await setDoc(
+        doc(adminDb, "courses/course-draft-2"),
+        createCourse("teacher-2", "draft"),
+      );
+      // Review doc in the NEW shape: no `userId` field at all.
+      await setDoc(doc(adminDb, "courseReviews/course-draft-2__author-2"), {
+        id: "course-draft-2__author-2",
+        courseId: "course-draft-2",
+        authorName: "Author Two",
+        rating: 4,
+        body: "Solid material.",
+        status: "published",
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      });
+    });
+
+    const authorDb = testEnv
+      .authenticatedContext("author-2", verifiedAuth)
+      .firestore();
+    const strangerDb = testEnv
+      .authenticatedContext("stranger-2", verifiedAuth)
+      .firestore();
+    const anonDb = testEnv.unauthenticatedContext().firestore();
+
+    // Author is identified purely by reconstructing the doc id
+    // (`${courseId}__${uid}`) — no stored userId needed.
+    await assertSucceeds(
+      getDoc(doc(authorDb, "courseReviews/course-draft-2__author-2")),
+    );
+    // A different signed-in user (not author, not owner, not enrolled) is
+    // denied — the removed userId field cannot be impersonated.
+    await assertFails(
+      getDoc(doc(strangerDb, "courseReviews/course-draft-2__author-2")),
+    );
+    // Anonymous visitors cannot read reviews of a non-published course.
+    await assertFails(
+      getDoc(doc(anonDb, "courseReviews/course-draft-2__author-2")),
     );
   });
 });

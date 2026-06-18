@@ -1621,7 +1621,14 @@ service cloud.firestore {
         || (
           signedIn()
           && (
-            resource.data.userId == request.auth.uid
+            // Author-of-the-review check WITHOUT relying on a stored userId
+            // field (that field leaked reviewer UIDs on the world-readable
+            // published-course branch above, so it was removed). The doc id is
+            // `${courseId}__${uid}` (submitCourseReview), so reconstructing it
+            // from the still-stored courseId + the caller's uid identifies the
+            // author. Reviews are write:false from clients, so courseId and the
+            // doc id are function-controlled and always mutually consistent.
+            reviewId == resource.data.courseId + '__' + request.auth.uid
             || ownsCourse(resource.data.courseId)
             || hasEnrollmentForCourseSlug(resource.data.courseId)
           )

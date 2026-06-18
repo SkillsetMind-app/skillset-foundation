@@ -3,7 +3,10 @@ export type CourseReviewStatus = "published" | "hidden";
 export type CourseReview = {
   id: string;
   courseId: string;
-  userId: string;
+  // No `userId`: the reviewer's Auth UID is never projected into the
+  // world-readable review doc (it leaked paying-customer UIDs). Ownership is
+  // derived from the deterministic doc id `${courseId}__${userId}` via
+  // getCourseReviewId / subscribeToUserCourseReview.
   authorName: string;
   rating: number;
   body: string | null;
