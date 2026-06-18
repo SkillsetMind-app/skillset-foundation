@@ -1417,6 +1417,7 @@ export function CourseBuilderStudio() {
           <Link
             href={`/teach/builder/${courseId}/preview`}
             target="_blank"
+            rel="noopener noreferrer"
             className="button-outline px-4 py-2.5 text-sm"
           >
             <ExternalLink aria-hidden="true" size={14} strokeWidth={1.8} />

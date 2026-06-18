@@ -116,6 +116,16 @@ describe("Storage course asset rules", () => {
     )));
   });
 
+  it("blocks parameterized/cased SVG uploads (MIME-suffix bypass) for course assets", async () => {
+    const storage = testEnv.authenticatedContext(teacherId, verifiedAuth).storage(bucketUrl);
+
+    // `image/svg+xml; charset=utf-8` matches image/.* but slipped past the
+    // bare `!= 'image/svg+xml'` compare — the stored-XSS vector. Must FAIL.
+    await assertFails(uploadParameterizedSvgAsset(storage.ref(
+      `courses/${courseId}/assets/${teacherId}/asset-svg2/payload.svg`,
+    )));
+  });
+
   it("blocks SVG uploads for profile avatars", async () => {
     const storage = testEnv.authenticatedContext(teacherId, verifiedAuth).storage(bucketUrl);
 
@@ -137,6 +147,14 @@ describe("Storage course asset rules", () => {
 
     await assertSucceeds(uploadTextAsset(storage.ref(
       `courses/${courseId}/assets/${teacherId}/asset-notes/notes.txt`,
+    )));
+  });
+
+  it("blocks text/xml uploads (active markup) for protected course assets", async () => {
+    const storage = testEnv.authenticatedContext(teacherId, verifiedAuth).storage(bucketUrl);
+
+    await assertFails(uploadXmlAsset(storage.ref(
+      `courses/${courseId}/assets/${teacherId}/asset-xml/payload.xml`,
     )));
   });
 
@@ -195,6 +213,25 @@ function uploadSvgAsset(reference: firebase.storage.Reference): Promise<unknown>
   return new Promise((resolve, reject) => {
     reference.put(new Uint8Array([60, 115, 118, 103, 62]), {
       contentType: "image/svg+xml",
+    }).then(resolve, reject);
+  });
+}
+
+function uploadParameterizedSvgAsset(reference: firebase.storage.Reference): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    // "<svg>" bytes, but the contentType carries a MIME parameter — the exact
+    // bypass the rule must now reject (image/[Ss][Vv][Gg].* negation).
+    reference.put(new Uint8Array([60, 115, 118, 103, 62]), {
+      contentType: "image/svg+xml; charset=utf-8",
+    }).then(resolve, reject);
+  });
+}
+
+function uploadXmlAsset(reference: firebase.storage.Reference): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    // "<?xml" bytes; the rule must reject on the text/xml contentType.
+    reference.put(new Uint8Array([60, 63, 120, 109, 108]), {
+      contentType: "text/xml",
     }).then(resolve, reject);
   });
 }

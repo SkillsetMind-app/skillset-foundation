@@ -52,17 +52,29 @@ service firebase.storage {
         && (
           (
             request.resource.contentType.matches('image/.*')
-            && request.resource.contentType != 'image/svg+xml'
+            // Reject SVG in EVERY form — bare, parameterized
+            // (image/svg+xml; charset=utf-8) and case variants
+            // (image/SVG+XML). A stored SVG, opened by an enrolled viewer via
+            // its blob: URL on the app origin, executes its <script> in that
+            // viewer's session (token theft / account takeover). The prior
+            // `!= 'image/svg+xml'` was bypassable by any MIME parameter or by
+            // uppercasing. The case-insensitive char-class match below is
+            // RE2-safe (no inline flags) and still admits every raster type the
+            // client may legitimately upload (jpeg/png/webp/gif/heic/avif/...).
+            && !request.resource.contentType.matches('image/[Ss][Vv][Gg].*')
           )
           || request.resource.contentType.matches('video/.*')
           || (
             // Allow plain text materials (txt / markdown / csv) but never
-            // text/html: a stored HTML asset opened by an enrolled viewer via
-            // its blob URL would execute script in that viewer's context — the
-            // same active-markup risk that already bars image/svg+xml above.
-            // Negated `matches` also covers charset variants (text/html;...).
+            // active markup: text/html OR text/xml, opened by an enrolled
+            // viewer via its blob: URL on the app origin, can execute script /
+            // XSLT in that viewer's context — the same active-markup risk that
+            // bars image/svg above. Both negations use case-insensitive
+            // char-classes (RE2-safe) and the trailing .* also covers charset
+            // variants (text/html;..., text/HTML, text/xml;...).
             request.resource.contentType.matches('text/.*')
-            && !request.resource.contentType.matches('text/html.*')
+            && !request.resource.contentType.matches('text/[Hh][Tt][Mm][Ll].*')
+            && !request.resource.contentType.matches('text/[Xx][Mm][Ll].*')
           )
           || request.resource.contentType.matches('audio/.*')
           || request.resource.contentType == 'application/pdf'
