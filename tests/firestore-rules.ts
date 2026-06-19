@@ -8,8 +8,10 @@ import {
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
 import {
+  collection,
   doc,
   getDoc,
+  getDocs,
   setDoc,
   Timestamp,
   updateDoc,
@@ -1410,5 +1412,83 @@ describe("Firestore protected course content access (enrollment-status gate)", (
         updatedAt: Timestamp.now(),
       }),
     );
+  });
+});
+
+describe("Firestore gamification rules (memberStats / leaderboards)", () => {
+  async function seedMemberStats(uid: string, points: number) {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), `memberStats/${uid}`), {
+        // No `uid` field is stored — the doc id IS the uid; the client derives
+        // it. The aggregate is server-written (the like trigger) only.
+        displayName: "Seed Member",
+        points,
+        level: 1,
+        totalLikesReceived: points,
+        updatedAt: Timestamp.now(),
+      });
+    });
+  }
+
+  async function seedLeaderboard() {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "leaderboards/all-time"), {
+        window: "all-time",
+        // NEW shape: entries carry NO raw Auth UID (it leaked the global top
+        // list's member identities). displayName/points/level/rank only.
+        entries: [
+          { displayName: "Top Member", points: 120, level: 5, rank: 1 },
+        ],
+        updatedAt: Timestamp.now(),
+      });
+    });
+  }
+
+  it("lets a signed-in member GET a single member's stats by known uid", async () => {
+    await seedMemberStats("other-member", 30);
+    // A non-enrolled signed-in account is the strongest subject: even it may
+    // read ONE doc it already knows the uid for (badge use case), but must not
+    // be able to enumerate (see the next test).
+    const db = testEnv
+      .authenticatedContext("reader-1", verifiedAuth)
+      .firestore();
+    await assertSucceeds(getDoc(doc(db, "memberStats/other-member")));
+  });
+
+  it("denies LISTing the memberStats collection (no roster enumeration)", async () => {
+    await seedMemberStats("member-a", 10);
+    await seedMemberStats("member-b", 20);
+    // The core fix for Problem A: `allow list: if false` means no account —
+    // enrolled or not — can stream the whole collection into a roster of every
+    // member (raw uid -> displayName -> points).
+    const db = testEnv
+      .authenticatedContext("reader-1", verifiedAuth)
+      .firestore();
+    await assertFails(getDocs(collection(db, "memberStats")));
+  });
+
+  it("denies an unauthenticated read of member stats", async () => {
+    await seedMemberStats("other-member", 30);
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(doc(db, "memberStats/other-member")));
+  });
+
+  it("lets a signed-in member read a leaderboard window with no uid leak", async () => {
+    await seedLeaderboard();
+    const db = testEnv
+      .authenticatedContext("reader-1", verifiedAuth)
+      .firestore();
+    const snap = await assertSucceeds(getDoc(doc(db, "leaderboards/all-time")));
+    // Regression guard for Problem B: no leaderboard entry may carry a raw uid.
+    const entries = (snap.data() ?? {}).entries as Array<Record<string, unknown>>;
+    for (const entry of entries) {
+      expect(entry.uid).toBeUndefined();
+    }
+  });
+
+  it("denies an unauthenticated read of the leaderboard", async () => {
+    await seedLeaderboard();
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(doc(db, "leaderboards/all-time")));
   });
 });

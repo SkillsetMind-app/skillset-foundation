@@ -32,8 +32,8 @@ import {
 } from "@/lib/data/community-posts";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import {
+  fetchMemberStatsForUids,
   setCommunityPostLike,
-  subscribeToMemberStatsMap,
   subscribeToPostLikes,
 } from "@/lib/data/gamification";
 
@@ -61,6 +61,46 @@ const communityTabs = [
 ] as const;
 type CommunityTab = (typeof communityTabs)[number];
 
+// Stable identity so consumers that memoize on the returned map don't churn
+// while there are no members to fetch.
+const EMPTY_MEMBER_STATS: Map<string, MemberStats> = new Map();
+
+/**
+ * Level-badge stats for an explicit set of members (the viewer + the authors of
+ * posts/comments already on screen). Re-fetches only when the set actually
+ * changes — `key` is a stable sorted string, so identical sets across renders
+ * don't refetch. memberStats can't be listed (roster enumeration is blocked in
+ * firestore.rules), so this per-uid fetch is the only read path; a stats read
+ * failure just omits badges, it never breaks the feed.
+ */
+function useMemberStats(uids: string[]): Map<string, MemberStats> {
+  const key = [...new Set(uids.filter((uid) => uid))].sort().join(",");
+  const [stats, setStats] = useState<Map<string, MemberStats>>(
+    () => EMPTY_MEMBER_STATS,
+  );
+
+  useEffect(() => {
+    if (!key) {
+      return;
+    }
+    let active = true;
+    fetchMemberStatsForUids(key.split(","))
+      .then((map) => {
+        if (active) {
+          setStats(map);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [key]);
+
+  // With no uids there's nothing to show (and any prior fetch is stale) — return
+  // the shared empty map rather than clearing state inside the effect.
+  return key ? stats : EMPTY_MEMBER_STATS;
+}
+
 export function CourseCommunityFeed({
   space,
   canModerate = false,
@@ -81,9 +121,17 @@ export function CourseCommunityFeed({
   const [activeTab, setActiveTab] = useState<CommunityTab>("posts");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [memberStats, setMemberStats] = useState<Map<string, MemberStats>>(
-    () => new Map(),
-  );
+  // Level badges need stats for exactly the members on screen: the viewer plus
+  // every post author in this space. Comment authors are fetched per-card so we
+  // never pull the whole roster (the collection forbids listing).
+  const memberStatUids = useMemo(() => {
+    const authorIds =
+      postsState.key === space.courseSlug
+        ? postsState.posts.map((post) => post.authorId)
+        : [];
+    return user ? [user.uid, ...authorIds] : authorIds;
+  }, [postsState, space.courseSlug, user]);
+  const memberStats = useMemberStats(memberStatUids);
 
   useEffect(() => {
     if (!user) {
@@ -97,17 +145,6 @@ export function CourseCommunityFeed({
       () => setError("We could not confirm your community access."),
     );
   }, [space.courseSlug, user]);
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    // One collection listener feeds every level badge in the feed + leaderboard
-    // (memberStats docs are tiny). A read failure leaves badges absent, never
-    // breaks the feed.
-    return subscribeToMemberStatsMap(setMemberStats, () => undefined);
-  }, [user]);
 
   useEffect(() => {
     if (!enrollment) {
@@ -282,7 +319,6 @@ export function CourseCommunityFeed({
 
       {activeTab === "leaderboard" ? (
         <CommunityLeaderboard
-          currentUserId={user?.uid ?? null}
           currentUserStats={user ? memberStats.get(user.uid) ?? null : null}
         />
       ) : null}
@@ -556,6 +592,19 @@ function CommunityPostCard({
     : false;
   const authorLevel = memberStats.get(post.authorId)?.level ?? null;
 
+  // Comment authors aren't in the parent's post-author set, so fetch their badge
+  // stats per-card and merge with the parent map. Same scoped per-uid read —
+  // never a collection list.
+  const commentAuthorUids = useMemo(
+    () => commentsState.comments.map((comment) => comment.authorId),
+    [commentsState.comments],
+  );
+  const commentAuthorStats = useMemberStats(commentAuthorUids);
+  const threadStats = useMemo(
+    () => new Map([...memberStats, ...commentAuthorStats]),
+    [memberStats, commentAuthorStats],
+  );
+
   // Thread the flat comment list into one level of nesting. A comment is a root
   // when it has no parentId (or its parent is missing); every other comment is
   // bucketed under its TOP-LEVEL ancestor (we climb the parent chain with a
@@ -774,7 +823,7 @@ function CommunityPostCard({
                 replies={repliesByParent.get(rootComment.id) ?? []}
                 post={post}
                 currentUser={currentUser}
-                memberStats={memberStats}
+                memberStats={threadStats}
               />
             ))
           )}

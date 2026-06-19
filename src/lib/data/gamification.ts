@@ -4,6 +4,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   onSnapshot,
   serverTimestamp,
   setDoc,
@@ -74,44 +75,57 @@ export function subscribeToPostLikes(
   );
 }
 
+function normalizeMemberStats(uid: string, data: Partial<MemberStats>): MemberStats {
+  const points = typeof data.points === "number" ? data.points : 0;
+  return {
+    uid,
+    displayName:
+      typeof data.displayName === "string" && data.displayName.trim()
+        ? data.displayName
+        : "Member",
+    points,
+    level: typeof data.level === "number" ? data.level : levelForPoints(points),
+    totalLikesReceived:
+      typeof data.totalLikesReceived === "number" ? data.totalLikesReceived : 0,
+  };
+}
+
 /**
- * Live map of every member's gamification stats (uid -> stats), used to render
- * level badges next to post/comment authors. memberStats docs are tiny; for the
- * current scale a single collection listener is the simplest correct choice (a
- * per-author fetch is the scale-up path).
+ * Fetch the gamification stats (level/points) for a specific set of members,
+ * used to render level badges next to post/comment authors and the viewer's own
+ * leaderboard row.
+ *
+ * Reads each doc individually by its known uid (a `get`, not a `list`) so it
+ * only ever touches members the caller already legitimately knows — the current
+ * user plus authors of posts/comments in a course the viewer is enrolled in.
+ * The collection deliberately forbids `list` (firestore.rules memberStats) so
+ * the full member roster can never be enumerated; this scoped fetch is the
+ * read path that respects that. A per-uid failure (or missing doc) simply omits
+ * that badge — it never rejects the whole map or breaks the feed.
  */
-export function subscribeToMemberStatsMap(
-  callback: (statsByUid: Map<string, MemberStats>) => void,
-  onError: (error: Error) => void,
-): Unsubscribe {
-  return onSnapshot(
-    collection(getFirestoreDb(), "memberStats"),
-    (snapshot) => {
-      const statsByUid = new Map<string, MemberStats>();
-      for (const document of snapshot.docs) {
-        const data = document.data() as Partial<MemberStats>;
-        const points = typeof data.points === "number" ? data.points : 0;
-        statsByUid.set(document.id, {
-          uid: document.id,
-          displayName:
-            typeof data.displayName === "string" && data.displayName.trim()
-              ? data.displayName
-              : "Member",
-          points,
-          level:
-            typeof data.level === "number"
-              ? data.level
-              : levelForPoints(points),
-          totalLikesReceived:
-            typeof data.totalLikesReceived === "number"
-              ? data.totalLikesReceived
-              : 0,
-        });
+export async function fetchMemberStatsForUids(
+  uids: string[],
+): Promise<Map<string, MemberStats>> {
+  const unique = [...new Set(uids.filter((uid) => uid))];
+  const statsByUid = new Map<string, MemberStats>();
+
+  await Promise.all(
+    unique.map(async (uid) => {
+      try {
+        const snapshot = await getDoc(doc(getFirestoreDb(), "memberStats", uid));
+        if (snapshot.exists()) {
+          statsByUid.set(
+            uid,
+            normalizeMemberStats(uid, snapshot.data() as Partial<MemberStats>),
+          );
+        }
+      } catch {
+        // A single unreadable member just loses its badge; the rest still load.
       }
-      callback(statsByUid);
-    },
-    onError,
+    }),
   );
+
+  return statsByUid;
 }
 
 /** Live precomputed leaderboard for one window. */

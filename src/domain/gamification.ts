@@ -77,9 +77,10 @@ export function levelProgress(points: number): LevelProgress {
 }
 
 /**
- * Per-member aggregate. Lives in `memberStats/{uid}` (signed-in read,
- * server-only write). Drives post/comment level badges + the all-time
- * leaderboard.
+ * Per-member aggregate. Lives in `memberStats/{uid}`. Server-only write; reads
+ * are single-doc `get` only (the collection forbids `list` so the member roster
+ * can't be enumerated — see firestore.rules and fetchMemberStatsForUids).
+ * Drives post/comment level badges + the leaderboard.
  */
 export type MemberStats = {
   uid: string;
@@ -100,8 +101,11 @@ export const leaderboardWindowLabels: Record<LeaderboardWindow, string> = {
   "all-time": "All time",
 };
 
+// No raw Auth UID here: the leaderboard is broadcast to every signed-in member,
+// so exposing each ranked member's uid let any account map displayName -> uid
+// for the global top list. The UI keys rows by `rank` (unique per window) and
+// self-identifies the viewer by matching their own displayName + level.
 export type LeaderboardEntry = {
-  uid: string;
   displayName: string;
   points: number;
   level: number;

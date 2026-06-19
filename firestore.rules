@@ -1668,10 +1668,15 @@ service cloud.firestore {
 
     // Gamification aggregate per member (points, derived level, likes
     // received). Written EXCLUSIVELY by the like triggers via the Admin SDK —
-    // never by a client. Signed-in members may read (powers post/comment level
-    // badges and the all-time leaderboard); points cannot be self-set.
+    // never by a client. Reads are single-doc `get` only: a member fetches the
+    // stats of someone they already legitimately know (themselves, or a
+    // post/comment author in a course they're enrolled in) to render a level
+    // badge. `list` is DENIED so no account — enrolled or not — can enumerate
+    // the collection into a roster (raw uid -> displayName -> points) of every
+    // member. Points can never be self-set (write: false).
     match /memberStats/{uid} {
-      allow read: if signedIn();
+      allow get: if signedIn();
+      allow list: if false;
       allow write: if false;
     }
 
@@ -1684,7 +1689,10 @@ service cloud.firestore {
     }
 
     // Precomputed leaderboard per window (7d / 30d / all-time), rebuilt by the
-    // scheduled function. Signed-in members read; only the server writes.
+    // scheduled function. Signed-in members read; only the server writes. The
+    // entries carry NO raw Auth UID (the builder stores displayName/points/
+    // level/rank only — see functions buildAllTimeLeaderboard), so a signed-in
+    // read can't map the global top list back to member uids.
     match /leaderboards/{window} {
       allow read: if signedIn();
       allow write: if false;

@@ -1751,8 +1751,11 @@ export const onCommunityLikeDeleted = onDocumentDeleted(
 // ---------------------------------------------------------------------------
 const LEADERBOARD_TOP_N = 20;
 
+// No `uid`: the leaderboard doc is read by every signed-in member, so storing
+// each ranked member's raw Auth UID leaked a displayName -> uid map for the
+// global top list. The client keys rows by `rank` and self-identifies the
+// viewer by their own displayName + level (see src/domain/gamification.ts).
 type LeaderboardEntryRecord = {
-  uid: string;
   displayName: string;
   points: number;
   level: number;
@@ -1771,7 +1774,6 @@ async function buildAllTimeLeaderboard(): Promise<LeaderboardEntryRecord[]> {
     const data = docSnap.data();
     const points = typeof data.points === "number" ? data.points : 0;
     return {
-      uid: docSnap.id,
       displayName:
         typeof data.displayName === "string" && data.displayName.trim()
           ? data.displayName.trim()
@@ -1816,7 +1818,6 @@ async function buildWindowLeaderboard(
     const allTimePoints =
       typeof stats?.points === "number" ? stats.points : 0;
     entries.push({
-      uid,
       displayName:
         typeof stats?.displayName === "string" && stats.displayName.trim()
           ? stats.displayName.trim()

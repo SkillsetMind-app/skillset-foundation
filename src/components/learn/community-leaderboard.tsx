@@ -22,10 +22,8 @@ import { subscribeToLeaderboard } from "@/lib/data/gamification";
  * from leaderboards/{window}.
  */
 export function CommunityLeaderboard({
-  currentUserId,
   currentUserStats,
 }: {
-  currentUserId: string | null;
   currentUserStats: MemberStats | null;
 }) {
   const [window, setWindow] = useState<LeaderboardWindow>("7d");
@@ -50,9 +48,18 @@ export function CommunityLeaderboard({
   const ready = boardState.ready && boardState.window === window;
   const entries =
     boardState.window === window ? boardState.board?.entries ?? [] : [];
-  const currentUserInTop = currentUserId
-    ? entries.some((entry) => entry.uid === currentUserId)
-    : false;
+  // Entries no longer carry a uid (it leaked the global top list's identities),
+  // so the viewer is matched by their own displayName + level — both come from
+  // the same memberStats doc the leaderboard was built from, so they match
+  // exactly. We pin to the highest-ranked match so only one row reads "You".
+  const selfRank = currentUserStats
+    ? entries.find(
+        (entry) =>
+          entry.displayName === currentUserStats.displayName &&
+          entry.level === currentUserStats.level,
+      )?.rank ?? null
+    : null;
+  const currentUserInTop = selfRank !== null;
 
   return (
     <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
@@ -98,10 +105,10 @@ export function CommunityLeaderboard({
           </p>
         ) : (
           entries.map((entry) => {
-            const isCurrent = entry.uid === currentUserId;
+            const isCurrent = entry.rank === selfRank;
             return (
               <div
-                key={entry.uid}
+                key={entry.rank}
                 className={`flex items-center justify-between gap-3 rounded-[4px] border px-4 py-3 ${
                   isCurrent
                     ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)]"
