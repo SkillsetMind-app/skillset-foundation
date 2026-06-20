@@ -1533,6 +1533,20 @@ type PublicProfileProjection = {
   credentials: string[];
 };
 
+// Defense-in-depth: photoURL is mirrored into the anonymously-readable
+// publicProfiles doc (the public instructor page), so only a well-formed https
+// URL within a sane length is allowed to cross into that public surface. A
+// legacy or abused users/{uid} doc cannot push a data:/javascript:/oversized
+// URL onto a public <img src>. The firestore rule bounds type+size on write;
+// this is the second layer that also enforces the scheme on projection.
+function sanitizePublicPhotoUrl(value: unknown): string | null {
+  return typeof value === "string" &&
+    value.length <= 1200 &&
+    value.startsWith("https://")
+    ? value
+    : null;
+}
+
 function projectPublicTeacherProfile(
   data: UserProfileRecord | undefined,
 ): PublicProfileProjection | null {
@@ -1559,7 +1573,7 @@ function projectPublicTeacherProfile(
   return {
     displayName: data.displayName ?? null,
     username: data.username ?? null,
-    photoURL: data.photoURL ?? null,
+    photoURL: sanitizePublicPhotoUrl(data.photoURL),
     bio: data.bio ?? null,
     credentials,
   };
