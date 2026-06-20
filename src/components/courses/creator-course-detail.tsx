@@ -213,7 +213,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
   return (
     <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
       <section>
-        <div className="rounded-[20px] border border-[var(--color-line)] bg-[var(--color-primary)] p-8 text-white shadow-[var(--shadow-soft)]">
+        <div className="primary-fill-card rounded-[20px] border border-[var(--color-line)] bg-[var(--color-primary)] p-8 text-white shadow-[var(--shadow-soft)]">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">
             From an independent educator
           </p>

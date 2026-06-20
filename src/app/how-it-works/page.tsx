@@ -58,7 +58,7 @@ export default function HowItWorksPage() {
             >
               <div className="flex items-center justify-between">
                 <span
-                  className="grid size-11 place-items-center rounded-[10px] bg-[var(--color-primary)] text-white shadow-[0_10px_22px_rgba(26,54,93,0.18)]"
+                  className="grid size-11 place-items-center rounded-[10px] bg-[var(--color-primary)] text-[var(--color-base)] shadow-[0_10px_22px_rgba(26,54,93,0.18)]"
                   aria-hidden="true"
                 >
                   <Icon size={20} strokeWidth={1.7} />

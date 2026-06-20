@@ -100,8 +100,11 @@ export function TeacherOverviewMetrics() {
   const paidOrders30d = paidOrders.filter((order) => {
     const createdAt = getTimestampMillis(order.createdAt);
 
+    // Exclude orders with an unresolvable createdAt (symmetric with the prior
+    // window below, which requires a real timestamp). Counting them in the
+    // current window only skewed the 30d total + vs-prev delta upward.
     if (!createdAt) {
-      return true;
+      return false;
     }
 
     return now - createdAt <= 30 * 24 * 60 * 60 * 1000;

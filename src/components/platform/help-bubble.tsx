@@ -45,7 +45,7 @@ export function HelpBubble() {
         type="button"
         onClick={() => setOpen((current) => !current)}
         aria-label="Open help menu"
-        className="grid size-12 place-items-center rounded-full bg-[var(--color-primary)] text-white shadow-[0_12px_28px_rgba(26,54,93,0.20)] transition duration-[220ms] hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(44,82,130,0.28)] sm:size-14"
+        className="grid size-12 place-items-center rounded-full bg-[var(--color-primary)] text-[var(--color-base)] shadow-[0_12px_28px_rgba(26,54,93,0.20)] transition duration-[220ms] hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(44,82,130,0.28)] sm:size-14"
       >
         <MessageCircleQuestion aria-hidden="true" size={22} strokeWidth={1.8} />
       </button>

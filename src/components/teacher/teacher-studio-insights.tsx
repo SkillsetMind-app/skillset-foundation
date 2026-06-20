@@ -161,7 +161,7 @@ export function TeacherStudioInsights() {
                   x2={chart.width - chart.padRight}
                   y1={line.y}
                   y2={line.y}
-                  stroke="rgba(26,54,93,0.10)"
+                  stroke="var(--color-line)"
                   strokeDasharray={line.major ? "0" : "4 6"}
                 />
               ))}
@@ -172,7 +172,7 @@ export function TeacherStudioInsights() {
                   y={label.y + 4}
                   textAnchor="end"
                   fontSize="10"
-                  fill="#7a8fae"
+                  fill="var(--color-ink-muted)"
                   fontWeight="700"
                 >
                   {label.text}
@@ -185,7 +185,7 @@ export function TeacherStudioInsights() {
                   y={chart.height - 8}
                   textAnchor="middle"
                   fontSize="10"
-                  fill="#7a8fae"
+                  fill="var(--color-ink-muted)"
                   fontWeight="700"
                 >
                   {point.month}

@@ -240,7 +240,7 @@ export function CourseCommunityFeed({
               onClick={() => setActiveTab(tab)}
               className={`rounded-[8px] px-4 py-2.5 text-sm font-semibold capitalize transition-colors ${
                 activeTab === tab
-                  ? "bg-[var(--color-primary)] text-white"
+                  ? "bg-[var(--color-primary)] text-[var(--color-base)]"
                   : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-ink)]"
               }`}
             >
@@ -501,7 +501,7 @@ function CommunityMembersPanel({
                       {member.name}
                     </p>
                     {isCurrentUser ? (
-                      <span className="rounded-[8px] bg-[var(--color-primary)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white">
+                      <span className="rounded-[8px] bg-[var(--color-primary)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--color-base)]">
                         You
                       </span>
                     ) : null}
@@ -718,7 +718,7 @@ function CommunityPostCard({
       }`}
     >
       {isPinned ? (
-        <p className="mb-3 inline-flex items-center gap-1.5 rounded-[8px] bg-[var(--color-primary)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
+        <p className="mb-3 inline-flex items-center gap-1.5 rounded-[8px] bg-[var(--color-primary)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-base)]">
           <Pin size={11} aria-hidden />
           Pinned
         </p>

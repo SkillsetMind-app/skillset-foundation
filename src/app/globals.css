@@ -339,6 +339,18 @@ p {
   color: var(--color-base) !important;
 }
 
+/* Solid primary-fill promo cards with mixed white + white/NN child text and NO
+   navy overlay (creator-course-detail intro, for-creators aside). In dark mode
+   --color-primary inverts to light blue, so the white descendants drop to
+   ~2.14:1. Flip ALL descendant text to dark ink — same remedy as .button-solid,
+   scoped to a marker class so the overlay-backed marketing hero/band (where
+   white text is correct over the navy gradient) is never touched. Light mode
+   keeps the white-on-navy design. */
+[data-theme="dark"] .primary-fill-card,
+[data-theme="dark"] .primary-fill-card * {
+  color: var(--color-base) !important;
+}
+
 [data-theme="dark"] input,
 [data-theme="dark"] textarea,
 [data-theme="dark"] select {
@@ -3862,6 +3874,29 @@ button:hover > .dash-card,
   background: rgba(255, 255, 255, 0.84);
   box-shadow: 0 18px 40px rgba(15, 39, 68, 0.08);
   padding: 1rem;
+}
+
+/* Dark-mode surfaces for the teacher-studio revenue chart. The light rules
+   above hardcode #ffffff / rgba(255,255,255,…) / a white active range tab,
+   which stay bright when the theme flips — a glaring white panel, near-white
+   empty-state card, and white tab on the dark dashboard. Re-point them at dark
+   tokens. (The SVG gridlines + axis labels are tokenized inline in
+   teacher-studio-insights.tsx, so they theme themselves.) */
+[data-theme="dark"] .studio-chart-canvas {
+  background:
+    radial-gradient(circle at 80% 24%, rgba(178, 34, 52, 0.12), transparent 11rem),
+    linear-gradient(180deg, var(--color-surface) 0%, var(--color-base) 100%);
+}
+
+[data-theme="dark"] .studio-chart-empty {
+  border-color: var(--color-line);
+  background: var(--color-surface);
+}
+
+[data-theme="dark"] .studio-range-tabs button:hover,
+[data-theme="dark"] .studio-range-tabs button.is-active {
+  background: var(--color-surface-strong);
+  color: var(--color-ink);
 }
 
 .studio-chart-empty p {

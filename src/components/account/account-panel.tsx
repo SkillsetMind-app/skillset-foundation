@@ -165,7 +165,7 @@ function AccountNavLink({
       aria-current={isActive ? "page" : undefined}
       className={`flex items-start gap-3 rounded-[10px] px-3 py-3 text-sm font-semibold transition ${
         isActive
-          ? "account-nav-active bg-[var(--color-primary)] text-white shadow-[0_10px_22px_rgba(26,54,93,0.14)]"
+          ? "account-nav-active bg-[var(--color-primary)] text-[var(--color-base)] shadow-[0_10px_22px_rgba(26,54,93,0.14)]"
           : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-ink)]"
       }`}
     >

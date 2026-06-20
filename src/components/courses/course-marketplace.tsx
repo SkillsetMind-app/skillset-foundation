@@ -370,7 +370,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                   onClick={() => void handleToggleWishlist(track)}
                   className={`absolute right-5 top-5 grid size-10 place-items-center rounded-full border border-white/30 shadow-[0_12px_24px_rgba(15,39,68,0.22)] transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:opacity-60 ${
                     isWishlisted
-                      ? "bg-[var(--color-primary)] text-white"
+                      ? "bg-[var(--color-primary)] text-[var(--color-base)]"
                       : "bg-white/95 text-[var(--color-primary)]"
                   }`}
                 >

@@ -33,8 +33,10 @@ export function HeroProductPreview() {
           </div>
         </div>
 
-        {/* screen — fixed light palette (see file header) */}
-        <div className="overflow-hidden rounded-[16px] bg-white text-[#163252]">
+        {/* screen — fixed light palette (see file header). bg-[#ffffff] (not
+            bg-white) so the global [data-theme=dark] .bg-white override can't
+            darken this intentionally-bright product mockup in dark mode. */}
+        <div className="overflow-hidden rounded-[16px] bg-[#ffffff] text-[#163252]">
           {/* course cover */}
           <div className="relative h-28 bg-[linear-gradient(120deg,#0f2744,#1a365d_55%,#2c5282)]">
             <div className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#1a365d]">

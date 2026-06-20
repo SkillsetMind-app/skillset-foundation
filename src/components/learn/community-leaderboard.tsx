@@ -49,16 +49,19 @@ export function CommunityLeaderboard({
   const entries =
     boardState.window === window ? boardState.board?.entries ?? [] : [];
   // Entries no longer carry a uid (it leaked the global top list's identities),
-  // so the viewer is matched by their own displayName + level — both come from
-  // the same memberStats doc the leaderboard was built from, so they match
-  // exactly. We pin to the highest-ranked match so only one row reads "You".
-  const selfRank = currentUserStats
-    ? entries.find(
+  // so the viewer is matched by their own displayName + level. That pair is NOT
+  // unique — default display names ("Member") collide — so we only tag a row
+  // "You" when EXACTLY ONE entry matches. An ambiguous match would mislabel a
+  // stranger's row as the viewer; instead we fall back to the dashed summary
+  // "You" row below (rendered when currentUserInTop is false).
+  const selfMatches = currentUserStats
+    ? entries.filter(
         (entry) =>
           entry.displayName === currentUserStats.displayName &&
           entry.level === currentUserStats.level,
-      )?.rank ?? null
-    : null;
+      )
+    : [];
+  const selfRank = selfMatches.length === 1 ? selfMatches[0].rank : null;
   const currentUserInTop = selfRank !== null;
 
   return (
@@ -78,7 +81,7 @@ export function CommunityLeaderboard({
               onClick={() => setWindow(option)}
               className={`rounded-[8px] px-3 py-1.5 text-xs font-semibold transition-colors ${
                 window === option
-                  ? "bg-[var(--color-primary)] text-white"
+                  ? "bg-[var(--color-primary)] text-[var(--color-base)]"
                   : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-ink)]"
               }`}
             >

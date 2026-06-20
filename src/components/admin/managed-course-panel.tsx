@@ -160,7 +160,7 @@ export function ManagedCoursePanel() {
                 <div className="flex flex-col items-end gap-2">
                   <StatusChip status={course.status} />
                   {course.featured ? (
-                    <span className="rounded-[8px] bg-[var(--color-primary)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
+                    <span className="rounded-[8px] bg-[var(--color-primary)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-base)]">
                       Featured
                     </span>
                   ) : null}

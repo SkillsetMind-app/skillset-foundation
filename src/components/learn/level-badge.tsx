@@ -16,7 +16,7 @@ export function LevelBadge({
 
   return (
     <span
-      className={`inline-flex items-center rounded-[8px] bg-[var(--color-primary)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-white ${
+      className={`inline-flex items-center rounded-[8px] bg-[var(--color-primary)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--color-base)] ${
         className ?? ""
       }`}
       title={`Level ${safeLevel} — earned from likes on community posts`}

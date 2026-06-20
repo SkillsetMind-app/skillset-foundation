@@ -81,7 +81,7 @@ export default function ForCreatorsPage() {
             </div>
           ))}
         </div>
-        <aside className="rounded-[18px] border border-[var(--color-line)] bg-[var(--color-primary)] p-6 text-white shadow-[var(--shadow-soft)]">
+        <aside className="primary-fill-card rounded-[18px] border border-[var(--color-line)] bg-[var(--color-primary)] p-6 text-white shadow-[var(--shadow-soft)]">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">
             Creator path
           </p>

@@ -44,7 +44,7 @@ export default async function BillingReturnPage({
       <PlatformShell title="Checkout status" compact>
         {checkoutCompleted ? (
           <div className="rounded-[4px] border fine-rule bg-white p-10 text-center shadow-[var(--shadow-soft)]">
-            <div className="mx-auto grid size-12 place-items-center rounded-full bg-[var(--color-primary)] text-white">
+            <div className="mx-auto grid size-12 place-items-center rounded-full bg-[var(--color-primary)] text-[var(--color-base)]">
               <Check aria-hidden="true" size={24} strokeWidth={2.4} />
             </div>
             <h2 className="display-title mt-5 text-3xl text-[var(--color-primary)]">
