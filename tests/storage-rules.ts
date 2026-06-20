@@ -134,6 +134,32 @@ describe("Storage course asset rules", () => {
     )));
   });
 
+  it("allows a valid image write to the canonical avatar object name", async () => {
+    const storage = testEnv.authenticatedContext(teacherId, verifiedAuth).storage(bucketUrl);
+
+    await assertSucceeds(uploadImageAsset(storage.ref(
+      `users/${teacherId}/avatar/avatar`,
+    )));
+  });
+
+  it("blocks a valid image write to a non-canonical avatar filename (no roster accumulation)", async () => {
+    const storage = testEnv.authenticatedContext(teacherId, verifiedAuth).storage(bucketUrl);
+
+    // Even a perfectly valid PNG must be rejected at any name other than the
+    // canonical `avatar`, so a hand-rolled SDK call cannot pile up objects.
+    await assertFails(uploadImageAsset(storage.ref(
+      `users/${teacherId}/avatar/${Date.now()}-extra.png`,
+    )));
+  });
+
+  it("allows a valid image write to the canonical signature object name", async () => {
+    const storage = testEnv.authenticatedContext(teacherId, verifiedAuth).storage(bucketUrl);
+
+    await assertSucceeds(uploadImageAsset(storage.ref(
+      `users/${teacherId}/signature/signature`,
+    )));
+  });
+
   it("blocks text/html uploads for protected course assets", async () => {
     const storage = testEnv.authenticatedContext(teacherId, verifiedAuth).storage(bucketUrl);
 

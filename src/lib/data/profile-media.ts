@@ -35,16 +35,6 @@ export type UploadAvatarProgress = {
   percent: number;
 };
 
-function sanitizeFileName(fileName: string) {
-  return fileName
-    .normalize("NFKD")
-    .replace(/[^\w.\-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .toLowerCase()
-    .slice(0, 80) || "avatar";
-}
-
 export function isAllowedAvatarFile(file: File) {
   return file.size > 0
     && file.size <= maxAvatarBytes
@@ -60,8 +50,10 @@ export async function uploadUserAvatar(
     throw new Error(`Use a ${avatarRequirementLabel} image.`);
   }
 
-  const safeFileName = sanitizeFileName(file.name);
-  const storagePath = `users/${uid}/avatar/${Date.now()}-${safeFileName}`;
+  // Canonical, deterministic object key: every upload overwrites the same
+  // object, so a user holds at most one avatar (storage.rules pins writes to
+  // this exact filename). The download URL is cache-busted with ?v= below.
+  const storagePath = `users/${uid}/avatar/avatar`;
   const storageRef = ref(getFirebaseStorage(), storagePath);
   const uploadTask = uploadBytesResumable(storageRef, file, {
     contentType: file.type,
@@ -132,8 +124,9 @@ export async function uploadTeacherSignature(
     throw new Error(`Use a ${signatureRequirementLabel} image.`);
   }
 
-  const safeFileName = sanitizeFileName(file.name);
-  const storagePath = `users/${uid}/signature/${Date.now()}-${safeFileName}`;
+  // Canonical, deterministic object key (overwrite-on-upload; storage.rules
+  // pins writes to this exact filename). Cache-busted with ?v= below.
+  const storagePath = `users/${uid}/signature/signature`;
   const storageRef = ref(getFirebaseStorage(), storagePath);
   const uploadTask = uploadBytesResumable(storageRef, file, {
     contentType: file.type,

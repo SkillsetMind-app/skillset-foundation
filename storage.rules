@@ -106,9 +106,15 @@ service firebase.storage {
     }
 
     match /users/{uid}/avatar/{fileName} {
+      // Read stays open on any filename so avatars uploaded under the legacy
+      // timestamped key (`users/{uid}/avatar/{ts}-{name}`) keep rendering.
       allow read: if true;
+      // Write is pinned to the single canonical object name `avatar`: the
+      // client now overwrites it on every upload, so a signed-in user can hold
+      // at most one writable avatar object (no unbounded roster accumulation).
       allow write: if signedIn()
         && uid == request.auth.uid
+        && fileName == 'avatar'
         && validAvatarUpload();
     }
 
@@ -117,8 +123,10 @@ service firebase.storage {
     // readable so an issued certificate renders for anyone holding the link.
     match /users/{uid}/signature/{fileName} {
       allow read: if true;
+      // Pinned to the single canonical object name `signature` (see avatar).
       allow write: if signedIn()
         && uid == request.auth.uid
+        && fileName == 'signature'
         && validAvatarUpload();
     }
 
