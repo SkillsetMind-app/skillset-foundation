@@ -285,6 +285,25 @@ service cloud.firestore {
             && request.resource.data.teacherTermsVersion.size() >= 1
             && request.resource.data.teacherTermsVersion.size() <= 40
           )
+        )
+        && (
+          // photoURL is mirrored into a world-readable publicProfiles doc, so bound
+          // its type + length here (projectPublicTeacherProfile additionally enforces
+          // the https scheme before mirroring). Self-owned doc => hardening, not a gate.
+          !request.resource.data.keys().hasAny(['photoURL'])
+          || request.resource.data.photoURL == null
+          || (
+            request.resource.data.photoURL is string
+            && request.resource.data.photoURL.size() <= 1200
+          )
+        )
+        && (
+          !request.resource.data.keys().hasAny(['teacherSignatureUrl'])
+          || request.resource.data.teacherSignatureUrl == null
+          || (
+            request.resource.data.teacherSignatureUrl is string
+            && request.resource.data.teacherSignatureUrl.size() <= 1200
+          )
         );
     }
 
@@ -1605,6 +1624,9 @@ service cloud.firestore {
             && request.resource.data.authorId == resource.data.authorId
             && request.resource.data.courseId == resource.data.courseId
             && request.resource.data.lessonId == resource.data.lessonId
+            // createdAt is immutable once set — an edit must not re-timestamp the
+            // comment (which would let an author reorder a thread / fake age).
+            && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null)
             && validLessonCommentShape(courseId)
           );
         allow delete: if isAdmin()
@@ -1723,6 +1745,9 @@ service cloud.firestore {
           && resource.data.authorId == request.auth.uid
           && request.resource.data.authorId == resource.data.authorId
           && request.resource.data.courseSlug == resource.data.courseSlug
+          // createdAt is immutable once set — an edit must not re-timestamp the post
+          // (which would let an author reorder the feed / fake post age).
+          && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null)
           // The author may edit their own post but cannot self-pin: pinned must
           // match the stored value on this path (teacher-pin/admin paths above
           // are the only ways it changes).
@@ -1751,6 +1776,9 @@ service cloud.firestore {
             && request.resource.data.authorId == resource.data.authorId
             && request.resource.data.courseSlug == resource.data.courseSlug
             && request.resource.data.postId == resource.data.postId
+            // createdAt is immutable once set — an edit must not re-timestamp the
+            // comment (which would let an author reorder a thread / fake age).
+            && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null)
             && validCommunityCommentShape(postId)
           );
         allow delete: if isAdmin()

@@ -716,6 +716,67 @@ describe("Firestore /users/{uid} privilege-escalation guards (C1/C2)", () => {
   });
 });
 
+describe("Firestore /users/{uid} profile-media field validation (photoURL / teacherSignatureUrl)", () => {
+  // photoURL is mirrored into the world-readable publicProfiles doc, so the rule
+  // bounds its type + length (the https scheme is enforced server-side in
+  // projectPublicTeacherProfile). teacherSignatureUrl is self-owned only.
+  it("allows a well-formed photoURL within the length cap", async () => {
+    await seedUser("photo-ok", ["student"]);
+    const db = testEnv.authenticatedContext("photo-ok", verifiedAuth).firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "users/photo-ok"), {
+        photoURL:
+          "https://firebasestorage.googleapis.com/v0/b/x/o/users%2Fphoto-ok%2Favatar.png?alt=media",
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("allows clearing photoURL to null", async () => {
+    await seedUser("photo-null", ["student"]);
+    const db = testEnv.authenticatedContext("photo-null", verifiedAuth).firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "users/photo-null"), {
+        photoURL: null,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("blocks an oversized photoURL (> 1200 chars => document bloat)", async () => {
+    await seedUser("photo-big", ["student"]);
+    const db = testEnv.authenticatedContext("photo-big", verifiedAuth).firestore();
+    await assertFails(
+      updateDoc(doc(db, "users/photo-big"), {
+        photoURL: "https://x/" + "a".repeat(1300),
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("blocks a non-string photoURL (type confusion)", async () => {
+    await seedUser("photo-type", ["student"]);
+    const db = testEnv.authenticatedContext("photo-type", verifiedAuth).firestore();
+    await assertFails(
+      updateDoc(doc(db, "users/photo-type"), {
+        photoURL: { nested: "not-a-string" },
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("blocks an oversized teacherSignatureUrl (> 1200 chars)", async () => {
+    await seedTeacher("sig-big");
+    const db = testEnv.authenticatedContext("sig-big", verifiedAuth).firestore();
+    await assertFails(
+      updateDoc(doc(db, "users/sig-big"), {
+        teacherSignatureUrl: "https://x/" + "a".repeat(1300),
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+});
+
 describe("Firestore teacher terms acceptance guard (C3)", () => {
   it("C3: blocks backdated teacherTermsAcceptedAt on create (timestamp from 1970)", async () => {
     const db = testEnv
@@ -1155,6 +1216,20 @@ describe("Firestore community pinned posts + nested replies rules (C8)", () => {
     await assertSucceeds(
       updateDoc(doc(db, `communityPosts/${postId}`), {
         body: "An edited body that is still long enough.",
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("blocks the author from re-stamping createdAt while editing (feed-order tamper)", async () => {
+    await seedC8();
+    const db = testEnv.authenticatedContext("author-c8", verifiedAuth).firestore();
+    // An edit may touch body/updatedAt, but createdAt is frozen — rewriting it
+    // would let an author reorder the feed or fake the post's age.
+    await assertFails(
+      updateDoc(doc(db, `communityPosts/${postId}`), {
+        body: "An edited body that is still long enough.",
+        createdAt: Timestamp.fromMillis(4102444800000),
         updatedAt: Timestamp.now(),
       }),
     );
