@@ -9,6 +9,7 @@ import {
 } from "@firebase/rules-unit-testing";
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -1565,5 +1566,88 @@ describe("Firestore gamification rules (memberStats / leaderboards)", () => {
     await seedLeaderboard();
     const db = testEnv.unauthenticatedContext().firestore();
     await assertFails(getDoc(doc(db, "leaderboards/all-time")));
+  });
+});
+
+describe("Firestore user notifications inbox rules", () => {
+  async function seedNotification(uid: string, id: string, read = false) {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), `users/${uid}/notifications/${id}`),
+        {
+          type: "community_reply",
+          title: "Someone replied to you",
+          body: "A reply body for the inbox.",
+          link: "/learn/community/course-x",
+          actorName: "Member",
+          read,
+          createdAt: Timestamp.now(),
+        },
+      );
+    });
+  }
+
+  it("lets the owner read their own notification", async () => {
+    await seedNotification("owner-n", "n-1");
+    const db = testEnv.authenticatedContext("owner-n", verifiedAuth).firestore();
+    await assertSucceeds(getDoc(doc(db, "users/owner-n/notifications/n-1")));
+  });
+
+  it("blocks another user from reading someone else's notification", async () => {
+    await seedNotification("owner-n", "n-1");
+    const db = testEnv
+      .authenticatedContext("stranger-n", verifiedAuth)
+      .firestore();
+    await assertFails(getDoc(doc(db, "users/owner-n/notifications/n-1")));
+  });
+
+  it("lets the owner mark a notification read (read flag only)", async () => {
+    await seedNotification("owner-n", "n-1", false);
+    const db = testEnv.authenticatedContext("owner-n", verifiedAuth).firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "users/owner-n/notifications/n-1"), { read: true }),
+    );
+  });
+
+  it("blocks editing any field other than read on the owner update path", async () => {
+    await seedNotification("owner-n", "n-1", false);
+    const db = testEnv.authenticatedContext("owner-n", verifiedAuth).firestore();
+    // Smuggling another key alongside `read` must reject the whole write.
+    await assertFails(
+      updateDoc(doc(db, "users/owner-n/notifications/n-1"), {
+        read: true,
+        title: "forged title",
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(db, "users/owner-n/notifications/n-1"), {
+        title: "forged title",
+      }),
+    );
+  });
+
+  it("blocks a non-bool read value", async () => {
+    await seedNotification("owner-n", "n-1", false);
+    const db = testEnv.authenticatedContext("owner-n", verifiedAuth).firestore();
+    await assertFails(
+      updateDoc(doc(db, "users/owner-n/notifications/n-1"), { read: "yes" }),
+    );
+  });
+
+  it("blocks the owner from creating or deleting a notification (server-only)", async () => {
+    const db = testEnv.authenticatedContext("owner-n", verifiedAuth).firestore();
+    await assertFails(
+      setDoc(doc(db, "users/owner-n/notifications/n-forge"), {
+        type: "enrollment",
+        title: "Forged",
+        body: "Should not be allowed.",
+        link: null,
+        actorName: null,
+        read: false,
+        createdAt: Timestamp.now(),
+      }),
+    );
+    await seedNotification("owner-n", "n-del");
+    await assertFails(deleteDoc(doc(db, "users/owner-n/notifications/n-del")));
   });
 });

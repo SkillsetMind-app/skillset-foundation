@@ -249,8 +249,9 @@ type ActiveLessonStudio = {
 const lessonTypes: { value: LessonType; label: string }[] = [
   { value: "video", label: "Video lesson" },
   { value: "text", label: "Text lesson" },
-  { value: "quiz", label: "Quiz" },
-  { value: "assignment", label: "Assignment" },
+  // Quiz/assignment authoring is hidden until a real assessment engine exists
+  // (no question/submission/grading model). See
+  // docs/plans/2026-06-23-launch-readiness.md (B8).
   { value: "live_recording", label: "Live recording" },
   { value: "download", label: "Download" },
   { value: "external_embed", label: "External embed" },
@@ -289,7 +290,7 @@ const paymentModelOptions: PlanSelectorOption<TeacherCoursePaymentType>[] = [
     value: "one_time",
     title: "One-time payment",
     description: "Learners pay once and get lifetime access.",
-    features: ["Best for complete courses", "Supports optional installments"],
+    features: ["Best for complete courses", "Lifetime access for learners"],
     icon: CreditCard,
   },
   {
@@ -1755,41 +1756,12 @@ export function CourseBuilderStudio() {
                 </select>
               </label>
             </div>
-            {paymentType === "one_time" ? (
-              <div className="mt-4 rounded-[4px] border border-[var(--color-line)] bg-white p-4">
-                <label className="flex items-start gap-3 text-sm font-semibold text-[var(--color-ink)]">
-                  <input
-                    type="checkbox"
-                    checked={installmentsEnabled}
-                    onChange={(event) =>
-                      setInstallmentsEnabled(event.target.checked)
-                    }
-                    disabled={!isEditable}
-                    className="mt-1 size-4 accent-[var(--color-accent)]"
-                  />
-                  <span>
-                    Allow installments
-                    <span className="mt-1 block text-xs font-normal leading-5 text-[var(--color-ink-soft)]">
-                      Useful for higher-priced courses in markets where installment
-                      payments are common.
-                    </span>
-                  </span>
-                </label>
-                {installmentsEnabled ? (
-                  <label className="mt-4 grid max-w-[220px] gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                    Max installments
-                    <input
-                      value={installmentsMax}
-                      onChange={(event) => setInstallmentsMax(event.target.value)}
-                      disabled={!isEditable}
-                      inputMode="numeric"
-                      placeholder="12"
-                      className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                    />
-                  </label>
-                ) : null}
-              </div>
-            ) : null}
+            {/* Installments UI is hidden until Stripe checkout actually honors it
+                (today one-time checkout always charges the full price upfront, so
+                the toggle was a misleading paid-feature promise). State +
+                validation are kept so existing course values persist and no new
+                course can enable a non-functional option.
+                See docs/plans/2026-06-23-launch-readiness.md (H5). */}
             <div className="mt-4 grid gap-4 md:grid-cols-[1fr_180px]">
               <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                 Content release

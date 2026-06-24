@@ -24,9 +24,12 @@ export function initPostHog(): void {
     capture_pageview: false, // we capture manually on route change (App Router)
     capture_pageleave: true,
     autocapture: true,
-    // Respect a returning visitor's explicit cookie rejection: start opted-out
-    // so nothing is captured before the consent banner is even shown.
-    opt_out_capturing_by_default: getStoredCookieConsent() === "rejected",
+    // GDPR/ePrivacy prior-consent: capture NOTHING until the visitor explicitly
+    // accepts. A first-time (null) or rejected visitor starts opted-out, so no
+    // analytics, autocapture, session recording, or exception capture fires before
+    // consent. applyAnalyticsConsent(true) opts in once they click Accept.
+    opt_out_capturing_by_default: getStoredCookieConsent() !== "accepted",
+    capture_exceptions: true,
     session_recording: {
       maskAllInputs: true,
       maskTextSelector: '[data-sensitive="true"]',
@@ -61,6 +64,20 @@ export function captureEvent(
   if (typeof window === "undefined") return;
   if (!initialized) return;
   posthog.capture(name, properties);
+}
+
+/**
+ * Report a caught/boundary exception to PostHog. Used by the App Router error
+ * boundaries (error.tsx / global-error.tsx). No-op while opted out (pre-consent).
+ */
+export function captureException(
+  error: unknown,
+  context?: Record<string, unknown>,
+): void {
+  if (typeof window === "undefined") return;
+  if (!initialized) return;
+  const normalized = error instanceof Error ? error : new Error(String(error));
+  posthog.captureException(normalized, context);
 }
 
 export function identifyUser(

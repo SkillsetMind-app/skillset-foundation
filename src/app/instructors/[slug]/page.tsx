@@ -1,13 +1,25 @@
+import type { Metadata } from "next";
+
 import { InstructorProfileView } from "@/components/instructors/instructor-profile-view";
 import { SiteNav } from "@/components/site/site-nav";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
-export const metadata = buildPageMetadata({
-  title: "Instructor",
-  description:
-    "An independent expert publishing reviewed professional courses on Skillset.",
-  path: "/instructors",
-});
+// Per-slug metadata so every instructor profile gets a correct canonical
+// (/instructors/{slug}) instead of all collapsing onto /instructors, which told
+// search engines the profiles were duplicates of the listing.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  return buildPageMetadata({
+    title: "Instructor",
+    description:
+      "An independent expert publishing reviewed professional courses on Skillset.",
+    path: `/instructors/${slug}`,
+  });
+}
 
 // Public instructor profile. The route is dynamic (SSR): the public profile is
 // read client-side from `publicProfiles/{uid}` (anonymously readable), which is

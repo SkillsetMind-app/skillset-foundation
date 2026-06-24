@@ -1540,6 +1540,19 @@ service cloud.firestore {
         && userUpdateDoesNotEscalatePrivilege()
         && teacherTermsAcceptedAtOnUpdateIsImmutableOrFresh();
       allow delete: if false;
+
+      // In-app notifications inbox. The server (Admin SDK, via Cloud Function
+      // producers) is the ONLY writer — clients can neither forge a
+      // notification nor purge their own inbox. The owner may only flip the
+      // `read` flag (mark-as-read / mark-all-read); any other key in the diff,
+      // or a non-bool `read`, rejects the whole update.
+      match /notifications/{notificationId} {
+        allow read: if isSelf(uid) || isAdmin();
+        allow update: if isSelf(uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+          && request.resource.data.read is bool;
+        allow create, delete: if false;
+      }
     }
 
     match /publicProfiles/{uid} {

@@ -1,9 +1,15 @@
 // Client-side cookie/consent preference store.
 //
-// SkillsetUSA's audience is US-first, so this follows an opt-out (CCPA-style)
-// model: analytics run by default, and an explicit "reject" opts the visitor
-// out of PostHog capture. The decision is persisted in localStorage so the
-// banner is shown once and respected on return visits.
+// PostHog initialization uses prior-consent (opt-in): it captures NOTHING until
+// the visitor explicitly accepts (see lib/posthog/client.ts — the opt_out
+// default is keyed off `=== "accepted"`). An explicit "reject" also persists,
+// and either decision is stored in localStorage so the banner shows once and is
+// respected on return visits. `reopenCookieConsent()` clears the decision so a
+// visitor can review, change, or withdraw consent at any time (GDPR Art. 7(3) —
+// withdrawal as easy as granting; CCPA "Your Privacy Choices").
+//
+// `hasAnalyticsConsent` keeps a legacy opt-out reading (undecided = allowed) and
+// is NOT the runtime gate for capture — PostHog's own opt-in/out state is.
 //
 // The store is exposed as a subscribable external store so React components can
 // read it with useSyncExternalStore (SSR-safe, no setState-in-effect).
@@ -57,6 +63,26 @@ export function setStoredCookieConsent(decision: CookieConsentDecision): void {
     blockedStorageDecision = decision;
   }
 
+  emitConsentChange();
+}
+
+/**
+ * Reopen the consent choice: clears the stored decision so the banner shows
+ * again, letting a visitor change or withdraw consent at any time (GDPR Art.
+ * 7(3); CCPA "Your Privacy Choices"). Triggered from the footer control.
+ */
+export function reopenCookieConsent(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Storage blocked — clearing the in-memory decision below still re-shows
+    // the banner for this session.
+  }
+  blockedStorageDecision = null;
   emitConsentChange();
 }
 

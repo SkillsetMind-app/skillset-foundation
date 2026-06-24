@@ -16,11 +16,8 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { InlineHelp } from "@/components/shared/inline-help";
 import { StatusChip } from "@/components/shared/status-chip";
 import { TeacherConnectOnboarding } from "@/components/teacher/teacher-connect-onboarding";
-import type { Order } from "@/domain/order";
-import { computePaymentSplit } from "@/domain/payment-split";
 import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import type { UserProfile } from "@/domain/user-profile";
-import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { subscribeToTeacherPayoutLedger } from "@/lib/data/payout-ledger";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 import {
@@ -43,9 +40,7 @@ export function TeacherWalletPanel() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isRefreshingStripe, setIsRefreshingStripe] = useState(false);
-  const [orders, setOrders] = useState<Order[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<PayoutLedgerEntry[]>([]);
-  const [ordersLoaded, setOrdersLoaded] = useState(false);
   const [ledgerLoaded, setLedgerLoaded] = useState(false);
   // Platform-level truth reported by the onboarding component: when Stripe
   // Connect isn't enabled on Skillset's Stripe account, NO stored account id is
@@ -86,24 +81,6 @@ export function TeacherWalletPanel() {
       () => {
         setLedgerLoaded(true);
         setError("We could not load payout release reporting.");
-      },
-    );
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    return subscribeToTeacherOrders(
-      user.uid,
-      (nextOrders) => {
-        setOrders(nextOrders);
-        setOrdersLoaded(true);
-      },
-      () => {
-        setOrdersLoaded(true);
-        setError("We could not load your sales. Refresh the page to try again.");
       },
     );
   }, [user]);
@@ -175,10 +152,14 @@ export function TeacherWalletPanel() {
     }
   }
 
-  // Orders + ledger arrive on separate subscriptions; until both have delivered
-  // at least once, the money totals below are computed from empty arrays and
-  // would briefly flash $0. Gate the figures so they render once, correctly.
-  const financialsReady = ordersLoaded && ledgerLoaded;
+  // Money figures derive from the payout LEDGER — the authoritative record for
+  // BOTH one-time orders AND subscription invoices. Subscription checkout writes
+  // ledger entries but no `orders` doc, so the previous orders-only view showed
+  // $0 / "No sales yet" for subscription-selling teachers while their money was
+  // actually accruing and releasing (a self-contradiction with the release rows
+  // below). The ledger carries server-computed gross/commission/Stripe-fee/net
+  // per entry, so these are exact, not estimates.
+  const financialsReady = ledgerLoaded;
   const money = (minor: number) => (financialsReady ? formatMoney(minor) : "—");
   const connected = Boolean(profile?.stripeConnectedAccountId);
   // A panel must never claim "Ready" while the platform itself can't run
@@ -189,32 +170,28 @@ export function TeacherWalletPanel() {
       profile?.stripeConnectChargesEnabled
       && profile?.stripeConnectPayoutsEnabled,
     );
-  const paidOrders = orders.filter((order) => order.status === "paid");
-  const grossPaidMinor = paidOrders.reduce(
-    (sum, order) => sum + order.amountMinor,
+  // Earnings = ledger entries that aren't refunded. Fully/partially refunded
+  // entries are excluded here (so net is never overstated) and surfaced in the
+  // "Refunded" row instead.
+  const earningEntries = ledgerEntries.filter(
+    (entry) =>
+      entry.status !== "refunded" && entry.status !== "partially_refunded",
+  );
+  const salesCount = earningEntries.length;
+  const grossPaidMinor = earningEntries.reduce(
+    (sum, entry) => sum + entry.grossAmountMinor,
     0,
   );
-  // Canonical split (src/domain/payment-split): commission + the Stripe
-  // processing fee the teacher absorbs (DECISIONS.md D1/D2). The old inline
-  // gross-minus-commission mirror omitted the Stripe fee, so this card
-  // overstated the teacher's net versus what the ledger actually releases.
-  const orderSplits = paidOrders.map((order) =>
-    computePaymentSplit(
-      order.amountMinor,
-      order.currency ?? "USD",
-      order.platformFeeBps,
-    ),
-  );
-  const platformFeeMinor = orderSplits.reduce(
-    (sum, split) => sum + split.platformCommissionMinor,
+  const platformFeeMinor = earningEntries.reduce(
+    (sum, entry) => sum + entry.skillsetFeeMinor,
     0,
   );
-  const stripeFeeMinor = orderSplits.reduce(
-    (sum, split) => sum + split.stripeFeeMinor,
+  const stripeFeeMinor = earningEntries.reduce(
+    (sum, entry) => sum + (entry.stripeFeeMinor ?? 0),
     0,
   );
-  const teacherNetMinor = orderSplits.reduce(
-    (sum, split) => sum + split.teacherNetMinor,
+  const teacherNetMinor = earningEntries.reduce(
+    (sum, entry) => sum + entry.netAmountMinor,
     0,
   );
   const inReleaseMinor = ledgerEntries
@@ -279,8 +256,8 @@ export function TeacherWalletPanel() {
             {money(teacherNetMinor)}
           </p>
           <p className="mt-2 text-sm text-[rgba(255,255,255,0.72)]">
-            Paid orders after Skillset platform commission and estimated Stripe
-            processing fees. Release state is tracked below.
+            Net across one-time and subscription sales, after Skillset commission
+            and Stripe fees. Release state is tracked below.
           </p>
 
           <div className="mt-6 grid gap-3">
@@ -390,7 +367,7 @@ export function TeacherWalletPanel() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <MetricCard label="Paid orders" value={financialsReady ? String(paidOrders.length) : "—"} />
+        <MetricCard label="Paid sales" value={financialsReady ? String(salesCount) : "—"} />
         <MetricCard label="Gross sales" value={money(grossPaidMinor)} />
         <MetricCard label="Platform fee est." value={money(platformFeeMinor)} />
         <MetricCard label="Stripe fee est." value={money(stripeFeeMinor)} />

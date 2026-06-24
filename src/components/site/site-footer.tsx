@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
+import { PrivacyChoicesButton } from "@/components/site/privacy-choices-button";
 
 // Slim 3-column footer. /courses and /how-it-works were removed —
 // Courses is the in-app sidebar Marketplace; How it works is a homepage
@@ -70,6 +71,7 @@ export function SiteFooter() {
         </div>
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] pt-5 text-xs leading-6 text-[var(--color-ink-soft)]">
           <span>&copy; {new Date().getFullYear()} Skillset.</span>
+          <PrivacyChoicesButton />
           <span>
             Built for course-first learning, transparent payouts, trusted
             student progress.

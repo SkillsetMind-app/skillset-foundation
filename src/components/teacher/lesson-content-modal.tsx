@@ -65,8 +65,11 @@ const lessonModalTabs: Array<{
 const editableLessonTypes: Array<{ value: LessonType; label: string }> = [
   { value: "video", label: "Video lesson" },
   { value: "text", label: "Text lesson" },
-  { value: "quiz", label: "Quiz" },
-  { value: "assignment", label: "Assignment" },
+  // Quiz/assignment authoring is intentionally hidden until a real assessment
+  // engine exists (no question/submission/grading model yet). Exposing them lets
+  // instructors sell a course whose paid lessons render only a placeholder.
+  // See docs/plans/2026-06-23-launch-readiness.md (B8). The LessonType union and
+  // student-side rendering are kept for forward-compat.
   { value: "live_recording", label: "Live recording" },
   { value: "download", label: "Download" },
   { value: "external_embed", label: "External embed" },

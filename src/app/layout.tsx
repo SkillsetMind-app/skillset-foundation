@@ -5,6 +5,7 @@ import { ConsoleSignature } from "@/components/shared/console-signature";
 import { CookieConsent } from "@/components/site/cookie-consent";
 import { PostHogProvider } from "@/app/posthog-provider";
 import { brand } from "@/data/brand";
+import { SITE_URL } from "@/lib/seo/page-metadata";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -19,6 +20,7 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: brand.title,
   description: brand.description,
   icons: {

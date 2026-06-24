@@ -1756,6 +1756,150 @@ export const onCommunityLikeDeleted = onDocumentDeleted(
 );
 
 // ---------------------------------------------------------------------------
+// In-app notifications. Producers below write best-effort docs into
+// users/{uid}/notifications (owner-read, server-only write per firestore.rules).
+// A failed notification write must NEVER fail the action that triggered it, so
+// every call is catch-logged. This is the only delivery channel (no email yet).
+// ---------------------------------------------------------------------------
+type NotificationKind =
+  | "community_comment"
+  | "community_reply"
+  | "enrollment"
+  | "course_review"
+  | "certificate";
+
+async function writeNotification(
+  userId: string,
+  payload: {
+    type: NotificationKind;
+    title: string;
+    body: string;
+    link?: string | null;
+    actorName?: string | null;
+  },
+): Promise<void> {
+  if (!userId) {
+    return;
+  }
+  try {
+    await db
+      .collection("users")
+      .doc(userId)
+      .collection("notifications")
+      .add({
+        type: payload.type,
+        title: payload.title,
+        body: payload.body,
+        link: payload.link ?? null,
+        actorName: payload.actorName ?? null,
+        read: false,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+  } catch (error) {
+    logger.error("writeNotification failed", {
+      userId,
+      type: payload.type,
+      error,
+    });
+  }
+}
+
+function truncateForNotification(value: string, max = 140): string {
+  const trimmed = value.trim();
+  return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed;
+}
+
+// Community engagement notifications: the post author hears about every comment,
+// and the parent-comment author hears about direct replies. Self-actions are
+// skipped, and a reply on your own post never double-notifies you.
+export const onCommunityCommentCreated = onDocumentCreated(
+  "communityPosts/{postId}/comments/{commentId}",
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) {
+      return;
+    }
+
+    const postId = event.params.postId;
+    const commenterId = typeof data.authorId === "string" ? data.authorId : "";
+    const commenterName =
+      typeof data.authorName === "string" && data.authorName.trim()
+        ? data.authorName.trim()
+        : "A member";
+    const parentId = typeof data.parentId === "string" ? data.parentId : null;
+    const courseSlug =
+      typeof data.courseSlug === "string" ? data.courseSlug : "";
+    const snippet = truncateForNotification(
+      typeof data.body === "string" ? data.body : "",
+    );
+    const link = courseSlug
+      ? `/learn/community/${courseSlug}`
+      : "/learn/community";
+
+    // Best-effort reads: the post author (notified on any comment) and, for
+    // replies, the parent comment's author (the direct reply target).
+    const postSnap = await db
+      .collection("communityPosts")
+      .doc(postId)
+      .get()
+      .catch(() => null);
+    const postAuthorId =
+      postSnap && postSnap.exists
+        ? (postSnap.get("authorId") as string | undefined)
+        : undefined;
+
+    let parentAuthorId: string | undefined;
+    if (parentId) {
+      const parentSnap = await db
+        .collection("communityPosts")
+        .doc(postId)
+        .collection("comments")
+        .doc(parentId)
+        .get()
+        .catch(() => null);
+      parentAuthorId =
+        parentSnap && parentSnap.exists
+          ? (parentSnap.get("authorId") as string | undefined)
+          : undefined;
+    }
+
+    const tasks: Array<Promise<void>> = [];
+    const notified = new Set<string>();
+
+    if (parentAuthorId && parentAuthorId !== commenterId) {
+      notified.add(parentAuthorId);
+      tasks.push(
+        writeNotification(parentAuthorId, {
+          type: "community_reply",
+          title: `${commenterName} replied to you`,
+          body: snippet,
+          link,
+          actorName: commenterName,
+        }),
+      );
+    }
+
+    if (
+      postAuthorId
+      && postAuthorId !== commenterId
+      && !notified.has(postAuthorId)
+    ) {
+      tasks.push(
+        writeNotification(postAuthorId, {
+          type: "community_comment",
+          title: `${commenterName} commented on your post`,
+          body: snippet,
+          link,
+          actorName: commenterName,
+        }),
+      );
+    }
+
+    await Promise.all(tasks);
+  },
+);
+
+// ---------------------------------------------------------------------------
 // Leaderboard rebuild (scheduled). Precomputes the top members per window into
 // leaderboards/{window} (signed-in read, server-only write) so the client reads
 // one small doc instead of aggregating the ledger live.
@@ -1912,11 +2056,35 @@ async function incrementCourseEnrollmentCount(courseId: string): Promise<void> {
 export const onEnrollmentCreated = onDocumentCreated(
   "enrollments/{enrollmentId}",
   async (event) => {
-    const courseId = readEnrollmentCourseId(event.data?.data());
+    const enrollment = event.data?.data();
+    const courseId = readEnrollmentCourseId(enrollment);
     if (!courseId) {
       return;
     }
     await incrementCourseEnrollmentCount(courseId);
+
+    // Welcome the enrolled learner (best-effort, never blocks the enrollment).
+    // Covers admin / manual / free / subscription grants where the learner was
+    // not mid-checkout and would otherwise get no in-app signal.
+    const userId =
+      typeof enrollment?.userId === "string" ? enrollment.userId : "";
+    if (userId) {
+      const courseTitle =
+        typeof enrollment?.courseTitle === "string"
+        && enrollment.courseTitle.trim()
+          ? enrollment.courseTitle.trim()
+          : "your new course";
+      const courseSlug =
+        typeof enrollment?.courseSlug === "string"
+          ? enrollment.courseSlug
+          : "";
+      await writeNotification(userId, {
+        type: "enrollment",
+        title: "You're enrolled",
+        body: `You now have access to ${courseTitle}. Jump in any time.`,
+        link: courseSlug ? `/learn/courses/${courseSlug}` : "/learn",
+      });
+    }
   },
 );
 
@@ -2413,6 +2581,12 @@ export const submitCourseReview = onCall(async (request) => {
 
   let nextRatingAverage = 0;
   let nextRatingCount = 0;
+  // Captured inside the txn so a teacher notification can fire AFTER commit —
+  // never inside the rating transaction (best-effort, must not roll back money).
+  let reviewTeacherId = "";
+  let reviewCourseTitle = "";
+  let reviewCourseSlug = "";
+  let reviewAuthorName = "Skillset learner";
 
   await db.runTransaction(async (transaction) => {
     const [
@@ -2496,6 +2670,19 @@ export const submitCourseReview = onCall(async (request) => {
       || request.auth?.token.name?.toString().trim()
       || "Skillset learner";
 
+    const courseRecord = course as {
+      ownerId?: unknown;
+      title?: unknown;
+      slug?: unknown;
+    };
+    reviewTeacherId =
+      typeof courseRecord.ownerId === "string" ? courseRecord.ownerId : "";
+    reviewCourseTitle =
+      typeof courseRecord.title === "string" ? courseRecord.title : "";
+    reviewCourseSlug =
+      typeof courseRecord.slug === "string" ? courseRecord.slug : "";
+    reviewAuthorName = authorName;
+
     transaction.set(
       reviewRef,
       {
@@ -2534,6 +2721,18 @@ export const submitCourseReview = onCall(async (request) => {
     nextRatingAverage = ratingAverage;
     nextRatingCount = ratingCount;
   });
+
+  // Tell the course owner about the new review (best-effort, post-commit). A
+  // teacher reviewing their own course notifies no one.
+  if (reviewTeacherId && reviewTeacherId !== userId) {
+    await writeNotification(reviewTeacherId, {
+      type: "course_review",
+      title: `New ${rating}-star review`,
+      body: `${reviewAuthorName} reviewed ${reviewCourseTitle || "your course"}.`,
+      link: reviewCourseSlug ? `/courses/${reviewCourseSlug}` : "/teach",
+      actorName: reviewAuthorName,
+    });
+  }
 
   return {
     success: true,
