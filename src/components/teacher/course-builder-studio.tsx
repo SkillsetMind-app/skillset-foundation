@@ -406,6 +406,12 @@ function moveArrayItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
 }
 
 function sanitizeModules(modules: TeacherCourseModule[]): TeacherCourseModule[] {
+  // B1: the client always sends the real lesson content to the Cloud Function.
+  // The function is the single authoritative writer of the gated
+  // courses/{id}/lessonContent subcollection (capped + rules-bypassed) and
+  // decides — via its own WRITE_LESSON_CONTENT_INLINE flag — whether to also
+  // mirror the content inline on the world-readable course doc. Nulling content
+  // client-side would starve that subcollection mirror, so we never do it here.
   return normalizeTeacherCourseModules(modules);
 }
 
@@ -1311,6 +1317,7 @@ export function CourseBuilderStudio() {
     savedSignature,
     builderDraftSignature,
     builderDraftPayload,
+    modules,
     runAutosave,
   ]);
 

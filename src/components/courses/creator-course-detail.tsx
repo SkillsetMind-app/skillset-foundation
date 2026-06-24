@@ -15,6 +15,11 @@ import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import type { TeacherCourse, TeacherCourseStatus } from "@/domain/teacher-course";
 import { normalizeLearningOutcomes } from "@/domain/teacher-course";
 import { subscribeToViewableTeacherCourse } from "@/lib/data/published-courses";
+import {
+  getLessonContentDoc,
+  resolveLessonContent,
+  type LessonContent,
+} from "@/lib/data/lesson-content";
 import { hasPermission } from "@/lib/permissions";
 import { isPublicFeatureEnabled } from "@/lib/feature-flags";
 import { getFirebaseClientConfig } from "@/lib/firebase/config";
@@ -41,6 +46,14 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
   const [checkoutError, setCheckoutError] = useState("");
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isEnrollingFree, setIsEnrollingFree] = useState(false);
+  // B1: the free-preview lesson body/link now live in the gated subcollection.
+  // The firestore.rules freePreviewLessonId branch lets an unauthenticated
+  // visitor read exactly this one doc, so fetch it and fall back to the inline
+  // course-doc field for un-migrated courses.
+  const [previewContent, setPreviewContent] = useState<{
+    key: string | null;
+    content: LessonContent | null;
+  }>({ key: null, content: null });
 
   useEffect(() => {
     if (!courseId || !hasFirebaseConfig) {
@@ -59,6 +72,38 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
       },
     );
   }, [courseId, hasFirebaseConfig]);
+
+  // B1: one-shot fetch of the free-preview lesson's gated content. Keyed on the
+  // preview lesson id so it re-runs if the educator changes the preview.
+  const freePreviewLessonId = course?.freePreviewLessonId ?? null;
+  useEffect(() => {
+    if (!courseId || !hasFirebaseConfig || !freePreviewLessonId) {
+      // No reset here: render resolves preview content only when
+      // previewContent.key matches the current course+preview lesson, so a stale
+      // value is ignored and falls back to inline — avoids a setState-in-effect.
+      return;
+    }
+
+    let cancelled = false;
+    const key = `${courseId}__${freePreviewLessonId}`;
+
+    getLessonContentDoc(courseId, freePreviewLessonId)
+      .then((content) => {
+        if (!cancelled) {
+          setPreviewContent({ key, content });
+        }
+      })
+      .catch(() => {
+        // Soft-fail to inline fallback — never blank the marketing preview.
+        if (!cancelled) {
+          setPreviewContent({ key, content: null });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, hasFirebaseConfig, freePreviewLessonId]);
 
   if (!courseId) {
     return (
@@ -159,8 +204,23 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
   const previewLesson = course.freePreviewLessonId
     ? lessons.find((lesson) => lesson.id === course.freePreviewLessonId)
     : null;
-  const previewLessonEmbed = getTrustedLessonEmbed(previewLesson?.externalUrl);
-  const previewLessonExternalUrl = getSafeExternalUrl(previewLesson?.externalUrl);
+  // B1: prefer the gated subcollection content for the preview lesson; fall
+  // back to the inline field when the fetched doc is absent (un-migrated
+  // course) or hasn't loaded for this preview lesson yet.
+  const resolvedPreviewContent: LessonContent =
+    previewLesson
+      ? resolveLessonContent(
+          previewContent.key
+            === `${course.id}__${previewLesson.id}`
+            ? previewContent.content ?? undefined
+            : undefined,
+          previewLesson,
+        )
+      : { contentText: null, externalUrl: null };
+  const previewLessonContentText = resolvedPreviewContent.contentText;
+  const previewLessonRawExternalUrl = resolvedPreviewContent.externalUrl;
+  const previewLessonEmbed = getTrustedLessonEmbed(previewLessonRawExternalUrl);
+  const previewLessonExternalUrl = getSafeExternalUrl(previewLessonRawExternalUrl);
   const lockedLessonCount = Math.max(lessons.length - (previewLesson ? 1 : 0), 0);
   const ratingLabel =
     course.ratingCount && course.ratingAverage
@@ -269,9 +329,9 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
                     || "This lesson is open so learners can judge the teaching style before enrolling."}
                 </p>
               </div>
-              {previewLesson.contentText ? (
+              {previewLessonContentText ? (
                 <div className="rounded-[12px] bg-white p-4 text-sm leading-7 text-[var(--color-ink)]">
-                  {previewLesson.contentText}
+                  {previewLessonContentText}
                 </div>
               ) : null}
               {previewLessonEmbed ? (
@@ -295,7 +355,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
                   Open preview resource
                 </a>
               ) : null}
-              {!previewLesson.externalUrl ? (
+              {!previewLessonRawExternalUrl ? (
                 <p className="rounded-[12px] bg-white p-4 text-xs leading-6 text-[var(--color-ink-soft)]">
                   Preview media can be attached by the educator as a video,
                   external lesson link, or text resource.

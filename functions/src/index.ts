@@ -403,6 +403,17 @@ const builderPaymentTypes = new Set([
   "free",
 ]);
 
+// B1 dual-write flag (server mirror). Identical-by-convention copy of
+// WRITE_LESSON_CONTENT_INLINE in src/lib/data/lesson-content.ts — the functions
+// package compiles from its own rootDir (`src`) and cannot import `@/...`, so
+// the flag is mirrored here exactly like normalizeLearningOutcomes. While true,
+// updateTeacherCourseBuilder writes lesson contentText/externalUrl BOTH inline
+// in the course doc AND into the gated lessonContent subcollection. Flip to
+// false (Phase 2) to stop the inline write (subcollection-only) WITHOUT another
+// code edit, immediately before the --strip backfill closes the leak. Keep this
+// in lockstep with the client flag.
+const WRITE_LESSON_CONTENT_INLINE = true;
+
 // Maps a course paymentType to a Stripe recurring interval, or null when the
 // course is not a subscription. A course is monthly XOR yearly (single
 // paymentType field), so it has at most one recurring cadence.
@@ -1215,6 +1226,29 @@ export const updateTeacherCourseBuilder = onCall(async (request) => {
   const courseRef = db.collection("courses").doc(courseId);
   const nextTitleKeyRef = db.collection("courseTitleKeys").doc(titleKey);
 
+  // B1 dual-write: the gated subcollection always receives the real lesson
+  // content (shape locked to the two keys). The inline copy on the course doc
+  // is gated by the flag — when off, the course doc is written with null
+  // contentText/externalUrl (subcollection-only) so the world-readable doc no
+  // longer carries the paid payload.
+  const lessonContentItems = modules.flatMap((module) =>
+    module.lessons.map((lesson) => ({
+      lessonId: lesson.id,
+      contentText: lesson.contentText ?? null,
+      externalUrl: lesson.externalUrl ?? null,
+    })),
+  );
+  const courseModules = WRITE_LESSON_CONTENT_INLINE
+    ? modules
+    : modules.map((module) => ({
+        ...module,
+        lessons: module.lessons.map((lesson) => ({
+          ...lesson,
+          contentText: null,
+          externalUrl: null,
+        })),
+      }));
+
   await db.runTransaction(async (transaction) => {
     const courseSnapshot = await transaction.get(courseRef);
 
@@ -1296,7 +1330,7 @@ export const updateTeacherCourseBuilder = onCall(async (request) => {
       category,
       categories,
       learningOutcomes,
-      modules,
+      modules: courseModules,
       lessonCount,
       priceAmountMinor,
       currency,
@@ -1310,6 +1344,33 @@ export const updateTeacherCourseBuilder = onCall(async (request) => {
       updatedAt: FieldValue.serverTimestamp(),
     });
   });
+
+  // B1 dual-write (server, Admin SDK — rules bypassed, same doc shape as the
+  // backfill and the client mirror). Done AFTER the course doc commits so the
+  // gated subcollection tracks the persisted structure. Upsert content for
+  // every current lesson and delete docs for lessons that were removed.
+  const lessonContentRef = courseRef.collection("lessonContent");
+  const currentLessonIds = new Set(
+    lessonContentItems.map((item) => item.lessonId),
+  );
+  const existingContent = await lessonContentRef.get();
+  const contentBatch = db.batch();
+
+  for (const item of lessonContentItems) {
+    contentBatch.set(
+      lessonContentRef.doc(item.lessonId),
+      { contentText: item.contentText, externalUrl: item.externalUrl },
+      { merge: false },
+    );
+  }
+
+  for (const existingDoc of existingContent.docs) {
+    if (!currentLessonIds.has(existingDoc.id)) {
+      contentBatch.delete(existingDoc.ref);
+    }
+  }
+
+  await contentBatch.commit();
 
   return { success: true };
 });

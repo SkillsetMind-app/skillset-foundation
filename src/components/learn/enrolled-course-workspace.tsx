@@ -47,6 +47,11 @@ import {
   subscribeToLessonComments,
   type LessonComment,
 } from "@/lib/data/lesson-comments";
+import {
+  resolveLessonContent,
+  subscribeToLessonContent,
+  type LessonContent,
+} from "@/lib/data/lesson-content";
 import { track } from "@/lib/posthog/events";
 
 type EnrolledCourseWorkspaceProps = {
@@ -88,6 +93,18 @@ export function EnrolledCourseWorkspace({
     ready: boolean;
   }>({
     assets: [],
+    key: null,
+    ready: false,
+  });
+  // B1: gated lesson content streamed from courses/{id}/lessonContent. Merged
+  // onto the rendered lesson, preferring the subcollection value and falling
+  // back to the inline course-doc field for un-migrated courses.
+  const [lessonContentState, setLessonContentState] = useState<{
+    content: Map<string, LessonContent>;
+    key: string | null;
+    ready: boolean;
+  }>({
+    content: new Map(),
     key: null,
     ready: false,
   });
@@ -192,6 +209,35 @@ export function EnrolledCourseWorkspace({
       },
     );
   }, [course.id, enableFirestoreAssets, workspaceEnrollment]);
+
+  // B1: subscribe to the gated lesson-content subcollection for the active
+  // course. Only meaningful for an enrolled (or preview) viewer, who passes the
+  // enrollment gate in firestore.rules; a permission error degrades gracefully
+  // to inline fallback rather than blocking the workspace.
+  useEffect(() => {
+    if (!workspaceEnrollment) {
+      return;
+    }
+
+    return subscribeToLessonContent(
+      course.id,
+      (content) => {
+        setLessonContentState({ content, key: course.id, ready: true });
+      },
+      () => {
+        // Soft-fail: preserve whatever content we already loaded for this course
+        // — never clobber it to an empty Map, or a transient rules/permission
+        // hiccup would permanently blank an enrolled learner's lessons. Mark
+        // ready so the workspace stops showing the loading state; pre-strip, the
+        // inline course-doc fallback still covers any lesson without a doc.
+        setLessonContentState((prev) =>
+          prev.key === course.id
+            ? { ...prev, ready: true }
+            : { content: new Map(), key: course.id, ready: true },
+        );
+      },
+    );
+  }, [course.id, workspaceEnrollment]);
 
   // LESSON_STARTED — fires when the learner navigates to a lesson card.
   // Preview mode (teacher impersonating learner view) is excluded so the
@@ -307,6 +353,29 @@ export function EnrolledCourseWorkspace({
   const selectedLessonUnlockState = selectedLesson
     ? lessonUnlockStateById.get(selectedLesson.id)
       ?? { unlocked: true, unlocksAt: null, reason: "available" }
+    : null;
+  // B1: prefer the gated subcollection content for the rendered lesson; fall
+  // back to the inline course-doc field when the subcollection doc is absent
+  // (un-migrated course, or content not yet streamed).
+  const lessonContentMap =
+    lessonContentState.key === course.id
+      ? lessonContentState.content
+      : null;
+  // Post-strip the lesson body/resource live only in the gated subcollection, so
+  // gate the panel on the subscription being ready to avoid a blank flash before
+  // the first snapshot. Pre-strip the inline fallback already covers this.
+  const isLessonContentLoading = Boolean(
+    workspaceEnrollment
+      && (!lessonContentState.ready || lessonContentState.key !== course.id),
+  );
+  const resolvedSelectedLesson: Lesson | null = selectedLesson
+    ? {
+        ...selectedLesson,
+        ...resolveLessonContent(
+          lessonContentMap?.get(selectedLesson.id),
+          selectedLesson,
+        ),
+      }
     : null;
   const selectedLessonAssets =
     assetsState.key === course.id && selectedLesson
@@ -487,7 +556,7 @@ export function EnrolledCourseWorkspace({
             {error}
           </p>
         ) : null}
-        {selectedLesson ? (
+        {selectedLesson && resolvedSelectedLesson ? (
           <LessonContentPanel
             assets={selectedLessonAssets}
             completed={completedLessonIds.includes(selectedLesson.id)}
@@ -497,8 +566,9 @@ export function EnrolledCourseWorkspace({
               enableFirestoreAssets
                 && (!assetsState.ready || assetsState.key !== course.id),
             )}
+            isLoadingContent={isLessonContentLoading}
             isSaving={activeLessonId === selectedLesson.id}
-            lesson={selectedLesson}
+            lesson={resolvedSelectedLesson}
             unlockState={selectedLessonUnlockState}
             previewMode={previewMode}
             onToggleComplete={() =>
@@ -861,6 +931,7 @@ function LessonContentPanel({
   courseId,
   enableFirestoreAssets,
   isLoadingAssets,
+  isLoadingContent,
   isSaving,
   lesson,
   previewMode,
@@ -872,6 +943,7 @@ function LessonContentPanel({
   courseId: string;
   enableFirestoreAssets: boolean;
   isLoadingAssets: boolean;
+  isLoadingContent: boolean;
   isSaving: boolean;
   lesson: Lesson;
   previewMode: boolean;
@@ -879,6 +951,11 @@ function LessonContentPanel({
   onToggleComplete: () => void;
 }) {
   const locked = Boolean(unlockState && !unlockState.unlocked);
+  // The lesson body + resource link live in the gated subcollection post-strip;
+  // while that subscription is still loading and nothing has resolved yet, show
+  // a loading state instead of the "not attached" empty copy.
+  const lessonContentPending =
+    isLoadingContent && !lesson.contentText && !lesson.externalUrl;
   const primaryHostedVideo = locked
     ? null
     : assets.find(
@@ -930,6 +1007,12 @@ function LessonContentPanel({
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
           />
+        ) : lessonContentPending ? (
+          <div className="member-video-empty">
+            <PlayCircle size={34} aria-hidden />
+            <h5>Loading lesson content...</h5>
+            <p>Fetching this lesson&apos;s media and notes.</p>
+          </div>
         ) : (
           <div className="member-video-empty">
             <PlayCircle size={34} aria-hidden />
@@ -957,6 +1040,11 @@ function LessonContentPanel({
         {!locked && lesson.description ? (
           <p className="mt-3 text-sm leading-7 text-[var(--color-ink)]">
             {lesson.description}
+          </p>
+        ) : null}
+        {!locked && lessonContentPending ? (
+          <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
+            Loading lesson content...
           </p>
         ) : null}
         {!locked && lesson.contentText ? (

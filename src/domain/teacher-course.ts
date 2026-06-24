@@ -215,6 +215,11 @@ function normalizeNullableNumber(value: number | null | undefined): number | nul
     : null;
 }
 
+// Serialize the builder's modules for the course-doc payload. contentText /
+// externalUrl are always kept (trimmed) so the Cloud Function receives the real
+// lesson content and can mirror it into the gated lessonContent subcollection;
+// the function alone decides — via its own WRITE_LESSON_CONTENT_INLINE flag —
+// whether to also keep the content inline on the world-readable course doc.
 export function normalizeTeacherCourseModules(
   modules: TeacherCourseModule[],
 ): TeacherCourseModule[] {

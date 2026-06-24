@@ -5,6 +5,7 @@ import {
   assertFails,
   assertSucceeds,
   initializeTestEnvironment,
+  type RulesTestContext,
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
 import {
@@ -26,6 +27,11 @@ import {
 } from "vitest";
 
 let testEnv: RulesTestEnvironment;
+
+// The admin handle from context.firestore() is the compat Firestore the
+// rules-unit-testing SDK returns; type helper params against it (not the modular
+// `Firestore`) so seed helpers accept exactly what context.firestore() yields.
+type AdminFirestore = ReturnType<RulesTestContext["firestore"]>;
 
 const verifiedAuth = {
   email: "learner@example.com",
@@ -313,6 +319,215 @@ describe("Firestore course publishing rules", () => {
         moduleId: "module-1",
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+});
+
+describe("Firestore gated lessonContent rules (B1)", () => {
+  // courses/{id}/lessonContent/{lessonId} carries the paid lesson body + link
+  // OUT of the world-readable course doc. Read gate == /assets (admin, owner,
+  // enrolled) PLUS one public branch: the single free-preview lesson on a
+  // published/in_review course. Write gate == owner/admin, shape-locked to
+  // exactly {contentText, externalUrl} with the same size caps as inline.
+  const courseId = "course-b1";
+  const ownerUid = "teacher-b1";
+  const previewLessonId = "lesson-preview";
+  const gatedLessonId = "lesson-gated";
+
+  async function seedB1(
+    status: "published" | "draft" = "published",
+    extra: (adminDb: AdminFirestore) => Promise<void> = async () => undefined,
+  ) {
+    await seedTeacher(ownerUid);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const adminDb = context.firestore();
+      await setDoc(doc(adminDb, `courses/${courseId}`), {
+        ownerId: ownerUid,
+        title: "B1 Course",
+        summary: "A structured professional course with a clear learning outcome.",
+        category: "Leadership",
+        learningOutcomes: [],
+        status,
+        modules: [
+          {
+            id: "module-1",
+            title: "Module 1",
+            summary: null,
+            coverAssetId: null,
+            lessons: [
+              { id: previewLessonId, title: "Preview", type: "text" },
+              { id: gatedLessonId, title: "Gated", type: "text" },
+            ],
+          },
+        ],
+        lessonCount: 2,
+        priceAmountMinor: 19900,
+        currency: "USD",
+        platformFeeBps: 1500,
+        dripStrategy: "instant",
+        dripIntervalDays: 1,
+        freePreviewLessonId: previewLessonId,
+        coverImageUrl: null,
+        reviewNote: null,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      });
+      // The two gated content docs (admin seed bypasses rules — same shape as
+      // the backfill writes).
+      await setDoc(doc(adminDb, `courses/${courseId}/lessonContent/${previewLessonId}`), {
+        contentText: "Preview body that marketing shows publicly.",
+        externalUrl: null,
+      });
+      await setDoc(doc(adminDb, `courses/${courseId}/lessonContent/${gatedLessonId}`), {
+        contentText: "Paid lesson body — must require enrollment.",
+        externalUrl: "https://videos.example.com/gated.mp4",
+      });
+      await extra(adminDb);
+    });
+  }
+
+  async function enroll(
+    adminDb: AdminFirestore,
+    uid: string,
+    status: "active" | "completed",
+  ) {
+    await setDoc(doc(adminDb, `enrollments/${uid}__${courseId}`), {
+      id: `${uid}__${courseId}`,
+      userId: uid,
+      courseId,
+      courseSlug: courseId,
+      courseTitle: "B1 Course",
+      courseCategory: "Leadership",
+      courseImage: "/brand/logo-mark.png",
+      status,
+      source: "admin",
+      progressPercent: status === "completed" ? 100 : 0,
+      lastLessonId: null,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+  }
+
+  it("lets an enrolled (active) learner read gated lesson content", async () => {
+    await seedUser("student-active", ["student"]);
+    await seedB1("published", (adminDb) => enroll(adminDb, "student-active", "active"));
+
+    const db = testEnv.authenticatedContext("student-active", verifiedAuth).firestore();
+    await assertSucceeds(
+      getDoc(doc(db, `courses/${courseId}/lessonContent/${gatedLessonId}`)),
+    );
+  });
+
+  it("lets an enrolled (completed) learner read gated lesson content", async () => {
+    await seedUser("student-done", ["student"]);
+    await seedB1("published", (adminDb) => enroll(adminDb, "student-done", "completed"));
+
+    const db = testEnv.authenticatedContext("student-done", verifiedAuth).firestore();
+    await assertSucceeds(
+      getDoc(doc(db, `courses/${courseId}/lessonContent/${gatedLessonId}`)),
+    );
+  });
+
+  it("denies a signed-in but non-enrolled user from reading gated content", async () => {
+    await seedUser("student-outsider", ["student"]);
+    await seedB1("published");
+
+    const db = testEnv.authenticatedContext("student-outsider", verifiedAuth).firestore();
+    await assertFails(
+      getDoc(doc(db, `courses/${courseId}/lessonContent/${gatedLessonId}`)),
+    );
+  });
+
+  it("denies an anonymous visitor from reading a NON-preview gated lesson", async () => {
+    await seedB1("published");
+
+    const anonDb = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      getDoc(doc(anonDb, `courses/${courseId}/lessonContent/${gatedLessonId}`)),
+    );
+  });
+
+  it("lets an anonymous visitor read the free-preview lesson on a published course", async () => {
+    await seedB1("published");
+
+    const anonDb = testEnv.unauthenticatedContext().firestore();
+    await assertSucceeds(
+      getDoc(doc(anonDb, `courses/${courseId}/lessonContent/${previewLessonId}`)),
+    );
+  });
+
+  it("denies anonymous read of the free-preview lesson on a NON-published (draft) course", async () => {
+    await seedB1("draft");
+
+    const anonDb = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      getDoc(doc(anonDb, `courses/${courseId}/lessonContent/${previewLessonId}`)),
+    );
+  });
+
+  it("lets the course owner read AND write gated lesson content (shape-locked)", async () => {
+    await seedB1("published");
+
+    const db = testEnv.authenticatedContext(ownerUid, verifiedAuth).firestore();
+    await assertSucceeds(
+      getDoc(doc(db, `courses/${courseId}/lessonContent/${gatedLessonId}`)),
+    );
+    await assertSucceeds(
+      setDoc(doc(db, `courses/${courseId}/lessonContent/${gatedLessonId}`), {
+        contentText: "Owner-edited body.",
+        externalUrl: "https://videos.example.com/owner.mp4",
+      }),
+    );
+  });
+
+  it("lets an admin read gated lesson content", async () => {
+    await seedUser("admin-b1", ["admin"]);
+    await seedB1("published");
+
+    const db = testEnv.authenticatedContext("admin-b1", verifiedAuth).firestore();
+    await assertSucceeds(
+      getDoc(doc(db, `courses/${courseId}/lessonContent/${gatedLessonId}`)),
+    );
+  });
+
+  it("denies an owner write that exceeds the 20k contentText cap", async () => {
+    await seedB1("published");
+
+    const db = testEnv.authenticatedContext(ownerUid, verifiedAuth).firestore();
+    await assertFails(
+      setDoc(doc(db, `courses/${courseId}/lessonContent/${gatedLessonId}`), {
+        contentText: "x".repeat(20001),
+        externalUrl: null,
+      }),
+    );
+  });
+
+  it("denies an owner write carrying an unexpected key (shape lock)", async () => {
+    await seedB1("published");
+
+    const db = testEnv.authenticatedContext(ownerUid, verifiedAuth).firestore();
+    await assertFails(
+      setDoc(doc(db, `courses/${courseId}/lessonContent/${gatedLessonId}`), {
+        contentText: "Body.",
+        externalUrl: null,
+        smuggled: "not allowed",
+      }),
+    );
+  });
+
+  it("denies a stranger from writing another owner's gated lesson content", async () => {
+    await seedUser("stranger-b1", ["student", "teacher"], {
+      teacherTermsAcceptedAt: Timestamp.now(),
+      teacherTermsVersion: "2026-05-10",
+    });
+    await seedB1("published");
+
+    const db = testEnv.authenticatedContext("stranger-b1", verifiedAuth).firestore();
+    await assertFails(
+      setDoc(doc(db, `courses/${courseId}/lessonContent/${gatedLessonId}`), {
+        contentText: "Hijacked body.",
+        externalUrl: null,
       }),
     );
   });
