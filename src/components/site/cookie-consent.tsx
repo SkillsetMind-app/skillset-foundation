@@ -49,6 +49,12 @@ export function CookieConsent() {
           .
         </p>
         <div className="cookie-consent__actions">
+          <Link
+            href="/legal/privacy"
+            className="button-outline px-4 py-2 text-sm"
+          >
+            Manage preferences
+          </Link>
           <button
             type="button"
             onClick={() => decide("rejected")}

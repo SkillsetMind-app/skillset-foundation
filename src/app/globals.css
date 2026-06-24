@@ -723,9 +723,14 @@ p {
   outline-offset: 3px;
 }
 
+/* Tactile press: a quick sink + micro-scale so every CTA reacts the way the
+   reference platforms (Hotmart/Kajabi) feel when clicked. The 180ms transform
+   transition on the base rule eases it back out on release. */
 .button-solid:active,
-.button-outline:active {
-  transform: translateY(0);
+.button-outline:active,
+.button-solid-light:active,
+.button-outline-light:active {
+  transform: translateY(1px) scale(0.985);
 }
 
 .button-outline {
@@ -789,6 +794,123 @@ p {
 .button-outline-light:hover {
   transform: translateY(-1px);
   background: rgba(255, 255, 255, 0.14);
+}
+
+/* Hero conversion card — an always-light surface sitting on the always-navy
+   hero, so every color is FIXED (not a theme token): theme tokens invert in
+   dark mode and would wreck contrast on this white card (same rationale as the
+   hero-product-preview header). */
+.hero-signup-card {
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 1.5rem;
+  box-shadow: 0 30px 70px rgba(7, 23, 42, 0.45);
+  text-align: left;
+}
+
+.hero-signup-card__eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: #b22234;
+}
+
+.hero-signup-card__title {
+  margin-top: 0.5rem;
+  font-size: 1.5rem;
+  line-height: 1.15;
+  font-weight: 800;
+  color: #1a365d;
+}
+
+.hero-signup-card__sub {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #5a6a81;
+}
+
+.hero-signup-card__label {
+  color: #1a365d;
+}
+
+.hero-signup-card__input {
+  border: 1px solid #d8e0ea;
+  background: #ffffff;
+  color: #163252;
+}
+
+.hero-signup-card__input::placeholder {
+  color: #97a6ba;
+}
+
+.hero-signup-card__input:focus {
+  border-color: #2c5282;
+}
+
+.hero-signup-card__ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #d2dbe6;
+  background: #ffffff;
+  color: #1a365d;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+.hero-signup-card__ghost:hover {
+  background: #f3f6fb;
+  border-color: #c2cedd;
+  transform: translateY(-1px);
+}
+
+.hero-signup-card__ghost:active {
+  transform: translateY(1px) scale(0.985);
+}
+
+.hero-signup-card__divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.875rem 0;
+  color: #8090a4;
+  font-size: 0.75rem;
+}
+
+.hero-signup-card__divider::before,
+.hero-signup-card__divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: #e3e9f1;
+}
+
+.hero-signup-card__foot {
+  margin-top: 0.875rem;
+  font-size: 0.8125rem;
+  color: #5a6a81;
+}
+
+.hero-signup-card__terms {
+  margin-top: 0.625rem;
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  color: #8090a4;
+}
+
+.hero-signup-card__link {
+  font-weight: 600;
+  color: #1a365d;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* Account warning banner (verify email / accept terms / connect payouts).
