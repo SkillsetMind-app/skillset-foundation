@@ -156,6 +156,12 @@ export const permissionDefinitions = {
       label: "Manage teacher courses",
       description: "Can manage courses in teacher studio.",
     },
+    manageStorefront: {
+      key: "teacherStudio.manageStorefront",
+      area: "teacherStudio",
+      label: "Manage instructor storefront",
+      description: "Can edit storefront branding and course showcase ordering.",
+    },
   },
   certificates: {
     view: {
@@ -264,6 +270,7 @@ const teacherPermissions = [
   ...studentPermissions,
   "teacherStudio.access",
   "teacherStudio.manageCourses",
+  "teacherStudio.manageStorefront",
   "courses.create",
   "courses.submitForReview",
 ] as const satisfies readonly Permission[];

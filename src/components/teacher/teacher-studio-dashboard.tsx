@@ -187,6 +187,12 @@ export function TeacherStudioDashboard() {
                 Public profile
               </Link>
               <Link
+                href="/teach/storefront"
+                className="button-outline bg-white px-4 py-2.5 text-sm"
+              >
+                Storefront
+              </Link>
+              <Link
                 href="/teach/builder?newCourse=1"
                 className="button-solid px-4 py-2.5 text-sm"
               >

@@ -12,6 +12,7 @@ import {
 
 import type {
   PublicProfile,
+  StorefrontConfig,
   UpsertUserProfileInput,
   UpdateOnboardingAnswersInput,
   UserIdentityInput,
@@ -213,6 +214,23 @@ export async function updateUserPreferences(
     doc(getFirestoreDb(), usersCollection, uid),
     {
       preferences,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
+export async function updateUserStorefront(
+  uid: string,
+  storefront: StorefrontConfig,
+): Promise<void> {
+  // setDoc merge deep-merges nested maps, so saving only { branding } preserves
+  // any { showcase } already on the doc (and vice-versa). The storefront guard
+  // in firestore.rules validates the URL/hex fields before this lands.
+  await setDoc(
+    doc(getFirestoreDb(), usersCollection, uid),
+    {
+      storefront,
       updatedAt: serverTimestamp(),
     },
     { merge: true },

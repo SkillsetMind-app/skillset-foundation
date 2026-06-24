@@ -304,6 +304,99 @@ service cloud.firestore {
             request.resource.data.teacherSignatureUrl is string
             && request.resource.data.teacherSignatureUrl.size() <= 1200
           )
+        )
+        && (
+          // storefront is a self-owned branding/showcase map. A safe subset is
+          // mirrored into the world-readable publicProfiles doc by
+          // projectPublicTeacherProfile, so bound the projected fields here:
+          // logo/hero URLs (https + length, also re-sanitized on projection) and
+          // a hex accentColor (blocks CSS-var injection). Self-doc => hardening.
+          !request.resource.data.keys().hasAny(['storefront'])
+          || (
+            request.resource.data.storefront is map
+            && request.resource.data.storefront.keys().hasOnly(['branding', 'showcase'])
+            && validStorefrontBranding()
+            && validStorefrontShowcase()
+          )
+        );
+    }
+
+    function validStorefrontBranding() {
+      return !('branding' in request.resource.data.storefront)
+        || (
+          request.resource.data.storefront.branding is map
+          && request.resource.data.storefront.branding.keys().hasOnly(
+            ['accentColor', 'logoUrl', 'heroImageUrl', 'themePreset'])
+          && (
+            !('logoUrl' in request.resource.data.storefront.branding)
+            || request.resource.data.storefront.branding.logoUrl == null
+            || (
+              request.resource.data.storefront.branding.logoUrl is string
+              && request.resource.data.storefront.branding.logoUrl.size() <= 1200
+              && request.resource.data.storefront.branding.logoUrl.matches('^https://.+')
+            )
+          )
+          && (
+            !('heroImageUrl' in request.resource.data.storefront.branding)
+            || request.resource.data.storefront.branding.heroImageUrl == null
+            || (
+              request.resource.data.storefront.branding.heroImageUrl is string
+              && request.resource.data.storefront.branding.heroImageUrl.size() <= 1200
+              && request.resource.data.storefront.branding.heroImageUrl.matches('^https://.+')
+            )
+          )
+          && (
+            !('accentColor' in request.resource.data.storefront.branding)
+            || request.resource.data.storefront.branding.accentColor == null
+            || (
+              request.resource.data.storefront.branding.accentColor is string
+              && request.resource.data.storefront.branding.accentColor.matches('^#[0-9a-fA-F]{6}$')
+            )
+          )
+          && (
+            !('themePreset' in request.resource.data.storefront.branding)
+            || request.resource.data.storefront.branding.themePreset == null
+            || request.resource.data.storefront.branding.themePreset in ['default', 'warm', 'cool', 'mono']
+          )
+        );
+    }
+
+    function validStorefrontShowcase() {
+      return !('showcase' in request.resource.data.storefront)
+        || (
+          request.resource.data.storefront.showcase is map
+          && request.resource.data.storefront.showcase.keys().hasOnly(
+            ['tagline', 'orderedCourseIds', 'featuredCourseId', 'sectionLabels'])
+          && (
+            !('tagline' in request.resource.data.storefront.showcase)
+            || request.resource.data.storefront.showcase.tagline == null
+            || (
+              request.resource.data.storefront.showcase.tagline is string
+              && request.resource.data.storefront.showcase.tagline.size() <= 200
+            )
+          )
+          && (
+            !('orderedCourseIds' in request.resource.data.storefront.showcase)
+            || (
+              request.resource.data.storefront.showcase.orderedCourseIds is list
+              && request.resource.data.storefront.showcase.orderedCourseIds.size() <= 200
+            )
+          )
+          && (
+            !('featuredCourseId' in request.resource.data.storefront.showcase)
+            || request.resource.data.storefront.showcase.featuredCourseId == null
+            || (
+              request.resource.data.storefront.showcase.featuredCourseId is string
+              && request.resource.data.storefront.showcase.featuredCourseId.size() <= 160
+            )
+          )
+          && (
+            !('sectionLabels' in request.resource.data.storefront.showcase)
+            || (
+              request.resource.data.storefront.showcase.sectionLabels is list
+              && request.resource.data.storefront.showcase.sectionLabels.size() <= 20
+            )
+          )
         );
     }
 

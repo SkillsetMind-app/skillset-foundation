@@ -188,6 +188,111 @@ describe("Firestore user role rules", () => {
   });
 });
 
+describe("Firestore storefront write rules", () => {
+  const validStorefront = {
+    branding: {
+      accentColor: "#183a5e",
+      logoUrl: "https://cdn.example.com/logo.png",
+      heroImageUrl: "https://cdn.example.com/hero.jpg",
+      themePreset: "warm",
+    },
+    showcase: {
+      tagline: "Sales coaching that compounds.",
+      orderedCourseIds: ["course-a", "course-b"],
+      featuredCourseId: "course-a",
+    },
+  };
+
+  it("allows an owner to save a valid storefront", async () => {
+    await seedUser("teacher-store", ["student", "teacher"]);
+    const db = testEnv
+      .authenticatedContext("teacher-store", verifiedAuth)
+      .firestore();
+
+    await assertSucceeds(
+      updateDoc(doc(db, "users/teacher-store"), {
+        storefront: validStorefront,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("rejects a non-https logo URL projected to the public profile", async () => {
+    await seedUser("teacher-badlogo", ["student", "teacher"]);
+    const db = testEnv
+      .authenticatedContext("teacher-badlogo", verifiedAuth)
+      .firestore();
+
+    await assertFails(
+      updateDoc(doc(db, "users/teacher-badlogo"), {
+        storefront: { branding: { logoUrl: "http://cdn.example.com/logo.png" } },
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("rejects a non-hex accent color (CSS injection guard)", async () => {
+    await seedUser("teacher-badhex", ["student", "teacher"]);
+    const db = testEnv
+      .authenticatedContext("teacher-badhex", verifiedAuth)
+      .firestore();
+
+    await assertFails(
+      updateDoc(doc(db, "users/teacher-badhex"), {
+        storefront: {
+          branding: { accentColor: "red;background:url(javascript:alert(1))" },
+        },
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("rejects an unknown theme preset", async () => {
+    await seedUser("teacher-badpreset", ["student", "teacher"]);
+    const db = testEnv
+      .authenticatedContext("teacher-badpreset", verifiedAuth)
+      .firestore();
+
+    await assertFails(
+      updateDoc(doc(db, "users/teacher-badpreset"), {
+        storefront: { branding: { themePreset: "neon" } },
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("rejects an unknown storefront key", async () => {
+    await seedUser("teacher-badkey", ["student", "teacher"]);
+    const db = testEnv
+      .authenticatedContext("teacher-badkey", verifiedAuth)
+      .firestore();
+
+    await assertFails(
+      updateDoc(doc(db, "users/teacher-badkey"), {
+        storefront: {
+          branding: { logoUrl: "https://cdn.example.com/logo.png" },
+          sidebar: true,
+        },
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("forbids writing another user's storefront", async () => {
+    await seedUser("teacher-victim", ["student", "teacher"]);
+    const db = testEnv
+      .authenticatedContext("teacher-attacker", verifiedAuth)
+      .firestore();
+
+    await assertFails(
+      updateDoc(doc(db, "users/teacher-victim"), {
+        storefront: validStorefront,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+});
+
 describe("Firestore course publishing rules", () => {
   it("allows teacher draft creation but blocks direct publication", async () => {
     await seedTeacher("teacher-1");

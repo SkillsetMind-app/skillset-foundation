@@ -53,6 +53,56 @@ export const defaultLearningPreferences: LearningPreferences = {
   dailyDigest: false,
 };
 
+// --- Instructor storefront (members-area branding) -------------------------
+// A teacher-configurable brand layer embedded on the user doc (like
+// `preferences`). A safe subset is later projected by the
+// syncPublicTeacherProfile Cloud Function into the world-readable
+// publicProfiles doc to power the public instructor vitrine — so the URL fields
+// are validated (https + length) on the write rule AND re-sanitized on
+// projection, and accentColor is constrained to a hex string to block CSS
+// injection. AUGMENT, not replace: this is a VIEW over the teacher's existing
+// `ownerId`-keyed courses, never a new collection.
+export const storefrontThemePresets = [
+  "default",
+  "warm",
+  "cool",
+  "mono",
+] as const;
+
+export type StorefrontThemePreset = (typeof storefrontThemePresets)[number];
+
+export const maxStorefrontTaglineLength = 200;
+export const maxStorefrontUrlLength = 1200;
+export const maxStorefrontOrderedCourses = 200;
+export const maxStorefrontSectionLabels = 20;
+export const maxStorefrontSectionLabelLength = 60;
+
+/** A teacher-chosen brand accent must be a 6-digit hex so it is safe to drop
+ * into a CSS custom property without style/script injection. */
+export function isStorefrontHexColor(value: string): boolean {
+  return /^#[0-9a-fA-F]{6}$/.test(value);
+}
+
+export type StorefrontBranding = {
+  accentColor?: string | null;
+  logoUrl?: string | null;
+  heroImageUrl?: string | null;
+  themePreset?: StorefrontThemePreset | null;
+};
+
+export type StorefrontShowcase = {
+  tagline?: string | null;
+  /** Explicit ordering of this teacher's published courses on the vitrine. */
+  orderedCourseIds?: string[];
+  featuredCourseId?: string | null;
+  sectionLabels?: string[];
+};
+
+export type StorefrontConfig = {
+  branding?: StorefrontBranding;
+  showcase?: StorefrontShowcase;
+};
+
 export type UserProfile = {
   uid: string;
   email: string | null;
@@ -103,6 +153,13 @@ export type UserProfile = {
    * firestore.rules — it is not a privilege-bearing field).
    */
   preferences?: UserPreferences;
+  /**
+   * Instructor storefront branding + showcase ordering, set from the
+   * /teach/storefront editor. Client-writable on the user's own doc, validated
+   * by the storefront guard in firestore.rules (https URLs, hex accent). A safe
+   * subset is projected into the public profile by syncPublicTeacherProfile.
+   */
+  storefront?: StorefrontConfig;
   createdAt: string;
   updatedAt: string;
   lastLoginAt: string;
