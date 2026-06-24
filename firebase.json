@@ -6,6 +6,7 @@
     "ignore": [
       "node_modules",
       ".git",
+      "scripts",
       "firebase-debug.log",
       "firebase-debug.*.log"
     ],

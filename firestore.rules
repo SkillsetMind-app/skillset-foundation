@@ -1623,6 +1623,39 @@ service cloud.firestore {
           );
       }
 
+      match /lessonContent/{lessonId} {
+        // Gated lesson bodies. contentText (lesson body, <=20k) and externalUrl
+        // (video / resource link, <=2k) live HERE, OUT of the public course doc,
+        // so the paid curriculum is not world-readable without enrolling. Same
+        // enrollment gate as /assets, plus one public branch: the single
+        // free-preview lesson stays readable so the marketing preview keeps
+        // working once content moves out of the doc.
+        allow read: if isAdmin()
+          || ownsCourse(courseId)
+          || hasEnrollmentForCourseSlug(courseId)
+          || (
+            courseExists(courseId)
+            && courseData(courseId).status in ['published', 'in_review']
+            && courseData(courseId).get('freePreviewLessonId', '') == lessonId
+          );
+        // Owner / admin only, shape-locked to the two content fields with the
+        // same size caps the inline path enforces. The server (Admin SDK)
+        // bypasses rules, so the backfill and any future dual-write are unaffected.
+        allow create, update: if teacherCanManageCourseAssets(courseId)
+          && request.resource.data.keys().hasOnly(['contentText', 'externalUrl'])
+          && (
+            request.resource.data.get('contentText', null) == null
+            || (request.resource.data.contentText is string
+              && request.resource.data.contentText.size() <= 20000)
+          )
+          && (
+            request.resource.data.get('externalUrl', null) == null
+            || (request.resource.data.externalUrl is string
+              && request.resource.data.externalUrl.size() <= 2000)
+          );
+        allow delete: if isAdmin() || teacherCanManageCourseAssets(courseId);
+      }
+
       match /lessonComments/{commentId} {
         allow read: if isAdmin()
           || ownsCourse(courseId)

@@ -1312,6 +1312,176 @@ describe("Firestore community pinned posts + nested replies rules (C8)", () => {
   });
 });
 
+describe("Firestore lesson content (gated subcollection) rules", () => {
+  // Pins B1: paid lesson bodies live in courses/{id}/lessonContent/{lessonId},
+  // NOT inline in the public course doc, so the curriculum is not world-readable.
+  // Read is gated to admin / owner / active|completed enrollee, with one public
+  // branch for the course's single free-preview lesson. Writes are owner/admin
+  // only, shape- and size-locked to contentText (<=20k) + externalUrl (<=2k).
+  const courseId = "course-content";
+  const teacherId = "teacher-content";
+
+  async function seedLessonContent() {
+    await seedTeacher(teacherId);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const adminDb = context.firestore();
+      await setDoc(doc(adminDb, `courses/${courseId}`), {
+        ...createCourse(teacherId, "published"),
+        freePreviewLessonId: "lesson-preview",
+      });
+      await setDoc(doc(adminDb, `courses/${courseId}/lessonContent/lesson-1`), {
+        contentText: "Paid lesson body that must stay gated.",
+        externalUrl: "https://videos.example.com/lesson-1",
+      });
+      await setDoc(
+        doc(adminDb, `courses/${courseId}/lessonContent/lesson-preview`),
+        {
+          contentText: "Free preview body, public on purpose.",
+          externalUrl: null,
+        },
+      );
+    });
+  }
+
+  async function seedContentEnrollment(uid: string, status: string) {
+    await seedUser(uid, ["student"]);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), `enrollments/${uid}__${courseId}`), {
+        id: `${uid}__${courseId}`,
+        userId: uid,
+        courseId,
+        courseSlug: courseId,
+        courseTitle: "Content Course",
+        courseCategory: "Leadership",
+        courseImage: "/brand/logo-mark.png",
+        status,
+        source: "payment",
+        progressPercent: 0,
+        lastLessonId: null,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      });
+    });
+  }
+
+  it("allows an active-status enrollee to read gated lesson content", async () => {
+    await seedLessonContent();
+    await seedContentEnrollment("student-active", "active");
+    const db = testEnv
+      .authenticatedContext("student-active", verifiedAuth)
+      .firestore();
+    await assertSucceeds(
+      getDoc(doc(db, `courses/${courseId}/lessonContent/lesson-1`)),
+    );
+  });
+
+  it("allows a completed-status enrollee to read gated lesson content", async () => {
+    await seedLessonContent();
+    await seedContentEnrollment("student-completed", "completed");
+    const db = testEnv
+      .authenticatedContext("student-completed", verifiedAuth)
+      .firestore();
+    await assertSucceeds(
+      getDoc(doc(db, `courses/${courseId}/lessonContent/lesson-1`)),
+    );
+  });
+
+  it("denies a refunded-status user from reading gated lesson content", async () => {
+    await seedLessonContent();
+    await seedContentEnrollment("student-refunded", "refunded");
+    const db = testEnv
+      .authenticatedContext("student-refunded", verifiedAuth)
+      .firestore();
+    await assertFails(
+      getDoc(doc(db, `courses/${courseId}/lessonContent/lesson-1`)),
+    );
+  });
+
+  it("denies a signed-in user with no enrollment from reading gated lesson content", async () => {
+    await seedLessonContent();
+    await seedUser("student-none", ["student"]);
+    const db = testEnv
+      .authenticatedContext("student-none", verifiedAuth)
+      .firestore();
+    await assertFails(
+      getDoc(doc(db, `courses/${courseId}/lessonContent/lesson-1`)),
+    );
+  });
+
+  it("denies an unauthenticated visitor from reading a non-preview lesson", async () => {
+    await seedLessonContent();
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(
+      getDoc(doc(db, `courses/${courseId}/lessonContent/lesson-1`)),
+    );
+  });
+
+  it("allows anyone to read the free-preview lesson on a published course", async () => {
+    await seedLessonContent();
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertSucceeds(
+      getDoc(doc(db, `courses/${courseId}/lessonContent/lesson-preview`)),
+    );
+  });
+
+  it("allows the course owner to read and write lesson content", async () => {
+    await seedLessonContent();
+    const db = testEnv
+      .authenticatedContext(teacherId, verifiedAuth)
+      .firestore();
+    await assertSucceeds(
+      getDoc(doc(db, `courses/${courseId}/lessonContent/lesson-1`)),
+    );
+    await assertSucceeds(
+      setDoc(doc(db, `courses/${courseId}/lessonContent/lesson-2`), {
+        contentText: "A new lesson body written by the owner.",
+        externalUrl: null,
+      }),
+    );
+  });
+
+  it("denies the owner from writing an oversized contentText", async () => {
+    await seedLessonContent();
+    const db = testEnv
+      .authenticatedContext(teacherId, verifiedAuth)
+      .firestore();
+    await assertFails(
+      setDoc(doc(db, `courses/${courseId}/lessonContent/lesson-3`), {
+        contentText: "x".repeat(20001),
+        externalUrl: null,
+      }),
+    );
+  });
+
+  it("denies the owner from writing an unexpected field", async () => {
+    await seedLessonContent();
+    const db = testEnv
+      .authenticatedContext(teacherId, verifiedAuth)
+      .firestore();
+    await assertFails(
+      setDoc(doc(db, `courses/${courseId}/lessonContent/lesson-4`), {
+        contentText: "Body",
+        externalUrl: null,
+        secret: "should not be allowed",
+      }),
+    );
+  });
+
+  it("denies a different teacher from writing another owner's lesson content", async () => {
+    await seedLessonContent();
+    await seedTeacher("teacher-stranger");
+    const db = testEnv
+      .authenticatedContext("teacher-stranger", verifiedAuth)
+      .firestore();
+    await assertFails(
+      setDoc(doc(db, `courses/${courseId}/lessonContent/lesson-5`), {
+        contentText: "Hijacked content body.",
+        externalUrl: null,
+      }),
+    );
+  });
+});
+
 describe("Firestore protected course content access (enrollment-status gate)", () => {
   // Pins the money-critical access gate: only an enrollment with status in
   // ['active','completed'] may read a course's protected assets / lesson
