@@ -3,12 +3,13 @@ import Image from "next/image";
 import { HeroCtas } from "@/components/site/hero-ctas";
 import { HeroSignupCard } from "@/components/site/hero-signup-card";
 
-// Drop a real ultra-wide portrait at `public/brand/hero/hero-person.png`
-// (subject on the right, left edge fading into deep navy #1a365d so it melts
-// into the hero) and set this to "/brand/hero/hero-person.png". Until an asset
-// exists it stays null so nothing 404s — the hero degrades to the clean navy
-// gradient + signup card. One-line flip to go live with the photo.
-const HERO_PERSON_SRC: string | null = null;
+// Brand hero portrait (navy backdrop so it melts into the hero). Three
+// candidates live in public/brand/hero/ — swap this one line to switch:
+//   hero-person-a.png  woman, blazer, smartphone (Hotmart-style, default)
+//   hero-person-b.png  woman, curly hair, presenting gesture, tablet
+//   hero-person-c.png  man, blazer, tablet
+// Set to null to fall back to the clean navy gradient + signup card.
+const HERO_PERSON_SRC: string | null = "/brand/hero/hero-person-a.png";
 
 export function MarketingHero() {
   // Keep the hero behind the floating nav while fitting the primary CTA
@@ -44,7 +45,7 @@ export function MarketingHero() {
             fill
             priority
             sizes="62vw"
-            className="object-cover object-[center_right]"
+            className="object-cover object-[center_top]"
           />
         </div>
       ) : null}
