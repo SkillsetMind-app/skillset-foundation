@@ -126,7 +126,7 @@ export function NotificationBell() {
       </button>
 
       {open ? (
-        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[min(380px,calc(100vw-32px))] overflow-hidden rounded-[4px] border border-[var(--color-line)] bg-white shadow-[0_24px_48px_rgba(15,39,68,0.16)]">
+        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[min(380px,calc(100vw-32px))] overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-white shadow-[0_24px_48px_rgba(15,39,68,0.16)]">
           <div className="flex items-center justify-between border-b border-[var(--color-line)] px-5 py-4">
             <h4 className="text-[15px] font-bold text-[var(--color-primary)]">
               Notifications

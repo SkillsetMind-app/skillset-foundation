@@ -87,10 +87,10 @@ export function SupportTicketQueue() {
   }
 
   return (
-    <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Support queue
           </p>
           <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
@@ -119,14 +119,14 @@ export function SupportTicketQueue() {
         {isLoading ? (
           <p className="text-sm text-[var(--color-ink-soft)]">Loading support tickets...</p>
         ) : tickets.length === 0 ? (
-          <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             No support tickets are open right now.
           </p>
         ) : (
           tickets.map((ticket) => (
             <article
               key={ticket.id}
-              className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+              className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -150,7 +150,7 @@ export function SupportTicketQueue() {
               </p>
               {ticket.adminResponse ? (
                 <div className="mt-3 rounded-[10px] border fine-rule bg-white p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-brand)]">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
                     Reply sent to user
                   </p>
                   <p className="mt-1 text-sm leading-6 text-[var(--color-ink)]">

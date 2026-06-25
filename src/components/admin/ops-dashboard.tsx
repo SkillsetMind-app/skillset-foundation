@@ -70,7 +70,7 @@ export function OpsDashboard() {
 
   return (
     <div className="grid gap-5">
-      <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
+      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
         <HorizontalTabs
           tabs={opsTabs}
           activeValue={activeTab}
@@ -149,8 +149,8 @@ function AuditLogPanel() {
   }, []);
 
   return (
-    <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+    <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         Audit log
       </p>
       <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
@@ -172,14 +172,14 @@ function AuditLogPanel() {
             {error}
           </p>
         ) : entries.length === 0 ? (
-          <div className="rounded-[4px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-5 text-sm leading-7 text-[var(--color-ink-soft)]">
+          <div className="rounded-[14px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-5 text-sm leading-7 text-[var(--color-ink-soft)]">
             No audit events recorded yet.
           </div>
         ) : (
           entries.map((entry) => (
             <article
               key={entry.id}
-              className="rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
+              className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>

@@ -94,7 +94,7 @@ export function OpsOverviewMetrics() {
       {cards.map((card) => (
         <div
           key={card.label}
-          className="rounded-[4px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
+          className="rounded-[14px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
         >
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
             {card.label}

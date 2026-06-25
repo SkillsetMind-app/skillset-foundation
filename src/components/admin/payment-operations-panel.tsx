@@ -68,10 +68,10 @@ export function PaymentOperationsPanel() {
   );
 
   return (
-    <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Payments
           </p>
           <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
@@ -99,7 +99,7 @@ export function PaymentOperationsPanel() {
         ].map(([label, value]) => (
           <div
             key={label}
-            className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+            className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
             <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
               {label}
@@ -121,7 +121,7 @@ export function PaymentOperationsPanel() {
         {isLoading ? (
           <p className="text-sm text-[var(--color-ink-soft)]">Loading orders...</p>
         ) : orders.length === 0 ? (
-          <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             No Stripe orders yet. After a paid checkout, pending and paid orders
             will appear here.
           </p>
@@ -129,7 +129,7 @@ export function PaymentOperationsPanel() {
           orders.map((order) => (
             <article
               key={order.id}
-              className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+              className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>

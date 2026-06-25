@@ -27,8 +27,8 @@ export default function OpsPage() {
       >
         <div className="grid gap-5 lg:grid-cols-3">
           {opsCards.map((card) => (
-            <div key={card.title} className="rounded-[4px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-              <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+            <div key={card.title} className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+              <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                 Platform controls
               </p>
               <h3 className="display-title mt-3 text-3xl leading-none text-[var(--color-ink)]">

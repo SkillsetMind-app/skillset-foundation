@@ -115,10 +115,10 @@ export function AdminEnrollmentPanel() {
   }
 
   return (
-    <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Manual enrollment
           </p>
           <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
@@ -197,7 +197,7 @@ export function AdminEnrollmentPanel() {
 
       <div className="mt-8 border-t border-[var(--color-line)] pt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h4 className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--color-brand)]">
+          <h4 className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             Granted enrollments
           </h4>
           <span className="rounded-[8px] bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
@@ -215,7 +215,7 @@ export function AdminEnrollmentPanel() {
               Loading granted enrollments...
             </p>
           ) : grantedEnrollments.length === 0 ? (
-            <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+            <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
               No admin or demo grants yet.
             </p>
           ) : (
@@ -225,7 +225,7 @@ export function AdminEnrollmentPanel() {
               return (
                 <article
                   key={enrollment.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
                 >
                   <div>
                     <p className="text-sm font-semibold text-[var(--color-ink)]">

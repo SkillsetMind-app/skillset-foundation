@@ -98,10 +98,10 @@ export function ManagedCoursePanel() {
   }
 
   return (
-    <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Published courses
           </p>
           <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
@@ -136,14 +136,14 @@ export function ManagedCoursePanel() {
             Loading published courses...
           </p>
         ) : courses.length === 0 ? (
-          <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             No published or inactive courses yet.
           </p>
         ) : (
           courses.map((course) => (
             <article
               key={course.id}
-              className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+              className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">

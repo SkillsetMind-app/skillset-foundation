@@ -36,10 +36,10 @@ export function UserLookupPanel() {
   }, []);
 
   return (
-    <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             User lookup
           </p>
           <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
@@ -72,14 +72,14 @@ export function UserLookupPanel() {
         {isLoading ? (
           <p className="text-sm text-[var(--color-ink-soft)]">Loading users...</p>
         ) : visibleUsers.length === 0 ? (
-          <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             No users match this search.
           </p>
         ) : (
           visibleUsers.map((user) => (
             <article
               key={user.uid}
-              className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+              className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
