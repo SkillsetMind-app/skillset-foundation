@@ -355,7 +355,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
 
       <div className="mt-6 grid gap-4">
         {assets.length === 0 ? (
-          <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             No uploaded assets yet. Start with a course cover or first lesson
             material.
           </p>
@@ -418,7 +418,7 @@ function AssetGroup({
         {title}
       </p>
       {assets.length === 0 ? (
-        <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-3 text-xs leading-5 text-[var(--color-ink-soft)]">
+        <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-3 text-xs leading-5 text-[var(--color-ink-soft)]">
           Nothing uploaded here yet.
         </p>
       ) : (
@@ -433,7 +433,7 @@ function AssetGroup({
           return (
             <article
               key={asset.id}
-              className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+              className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>

@@ -135,7 +135,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
 
   if (isLoading) {
     return (
-      <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="settings-section-card">
         <p className="text-sm text-[var(--color-ink-soft)]">Loading sale...</p>
       </section>
     );
@@ -143,7 +143,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
 
   if (error || !order) {
     return (
-      <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="settings-section-card">
         <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           {error || "Sale not found."}
         </p>
@@ -162,7 +162,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
 
   if (!canView) {
     return (
-      <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="settings-section-card">
         <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           You do not have access to this sale. Sign in with the account that owns it, or contact support.
         </p>
@@ -173,10 +173,10 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
       <div className="grid gap-5">
-        <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <section className="settings-section-card">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                 Sale
               </p>
               <h2 className="display-title mt-3 text-4xl text-[var(--color-primary)]">
@@ -195,11 +195,11 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
           </div>
         </section>
 
-        <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+        <section className="settings-section-card">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Customer
           </p>
-          <div className="mt-4 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4">
+          <div className="mt-4 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4">
             <p className="text-sm font-semibold text-[var(--color-ink)]">
               Learner account
             </p>
@@ -214,8 +214,8 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
           </div>
         </section>
 
-        <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+        <section className="settings-section-card">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Payment
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -226,7 +226,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
             ].map(([label, value]) => (
               <div
                 key={label}
-                className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+                className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
               >
                 <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
                   {label}
@@ -237,7 +237,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
               </div>
             ))}
           </div>
-          <div className="mt-5 grid gap-3 rounded-[4px] border fine-rule bg-white p-4 text-xs text-[var(--color-ink-soft)]">
+          <div className="mt-5 grid gap-3 rounded-[14px] border fine-rule bg-white p-4 text-xs text-[var(--color-ink-soft)]">
             <p>
               Provider <strong className="text-[var(--color-ink)]">{order.provider}</strong>
             </p>
@@ -252,8 +252,8 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
           </div>
         </section>
 
-        <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+        <section className="settings-section-card">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Timeline
           </p>
           <div className="mt-5 grid gap-4">
@@ -276,8 +276,8 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
           </div>
         </section>
 
-        <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+        <section className="settings-section-card">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Actions
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
@@ -310,8 +310,8 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
       </div>
 
       <aside className="space-y-5">
-        <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+        <section className="settings-section-card">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Course
           </p>
           <h3 className="mt-3 text-lg font-bold leading-7 text-[var(--color-ink)]">

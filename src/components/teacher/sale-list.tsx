@@ -73,7 +73,7 @@ export function SaleList() {
 
   if (isLoading) {
     return (
-      <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
         <p className="text-sm text-[var(--color-ink-soft)]">
           Loading your sales...
         </p>
@@ -83,7 +83,7 @@ export function SaleList() {
 
   if (error) {
     return (
-      <section className="rounded-[4px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] p-6">
+      <section className="rounded-[14px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] p-6">
         <p className="text-sm font-semibold text-[var(--color-accent-fg)]">
           {error}
         </p>
@@ -93,7 +93,7 @@ export function SaleList() {
 
   if (orders.length === 0) {
     return (
-      <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-8 text-center shadow-[var(--shadow-soft)]">
+      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-8 text-center shadow-[var(--shadow-soft)]">
         <h2 className="display-title text-2xl text-[var(--color-primary)]">
           No sales yet.
         </h2>
