@@ -289,7 +289,7 @@ export function StorefrontSettingsPanel() {
       </div>
 
       <form className="mt-6 grid gap-5" onSubmit={handleSubmit}>
-        <div className="grid gap-4 rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
+        <div className="grid gap-4 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
           <p className="text-sm font-semibold text-[var(--color-ink)]">
             Brand
           </p>
@@ -375,7 +375,7 @@ export function StorefrontSettingsPanel() {
           </label>
         </div>
 
-        <div className="grid gap-3 rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
+        <div className="grid gap-3 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <p className="text-sm font-semibold text-[var(--color-ink)]">
               Course showcase order

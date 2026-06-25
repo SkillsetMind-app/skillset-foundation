@@ -85,7 +85,7 @@ export function SupportTicketCenter() {
   return (
     <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
       <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+        <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           Support
         </p>
         <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
@@ -150,7 +150,7 @@ export function SupportTicketCenter() {
       </section>
 
       <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+        <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           Your tickets
         </p>
         <div className="mt-6 grid gap-3">
@@ -185,7 +185,7 @@ export function SupportTicketCenter() {
                 </p>
                 {ticket.adminResponse ? (
                   <div className="mt-3 rounded-[10px] border border-[rgba(26,54,93,0.14)] bg-white p-3">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-brand)]">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
                       Skillset replied
                     </p>
                     <p className="mt-1 text-sm leading-6 text-[var(--color-ink)]">

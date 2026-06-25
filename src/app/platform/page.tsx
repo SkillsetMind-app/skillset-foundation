@@ -17,7 +17,7 @@ export default function PlatformPage() {
             href={surface.href}
             className="rounded-[18px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)] transition-transform hover:-translate-y-1"
           >
-            <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+            <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               {surface.label}
             </p>
             <h3 className="display-title mt-3 text-3xl leading-none text-[var(--color-ink)]">

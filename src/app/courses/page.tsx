@@ -19,7 +19,7 @@ export default function CoursesPage() {
       <main className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
         <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-brand)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               Marketplace
             </p>
             <h1 className="display-title mt-3 text-6xl leading-none text-[var(--color-ink)]">

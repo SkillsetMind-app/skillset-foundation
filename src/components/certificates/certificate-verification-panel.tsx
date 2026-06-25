@@ -42,7 +42,7 @@ export function CertificateVerificationPanel() {
 
   return (
     <section className="mx-auto max-w-4xl rounded-[20px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] md:p-8">
-      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         Skillset Verified
       </p>
       <h1 className="display-title mt-4 text-4xl text-[var(--color-ink)] md:text-6xl">
@@ -93,7 +93,7 @@ export function CertificateVerificationPanel() {
 
       {result?.valid ? (
         <div className="mt-6 rounded-[16px] border border-[rgba(26,54,93,0.16)] bg-[var(--color-surface-soft)] p-5">
-          <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-brand)]">
+          <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             Verified credential
           </p>
           <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">

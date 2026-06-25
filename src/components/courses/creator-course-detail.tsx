@@ -426,7 +426,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
       </section>
 
       <aside className="h-fit rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-brand)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           At a glance
         </p>
         <dl className="mt-5 grid gap-4">
@@ -576,7 +576,7 @@ function CourseDetailState({
 
   return (
     <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         Creator course
       </p>
       <h1 className="display-title mt-3 text-4xl text-[var(--color-ink)]">

@@ -262,7 +262,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
       ) : visibleCourses.length === 0 ? (
         hasAnyCourses && isFiltering ? (
           <div className="rounded-[18px] border border-[var(--color-line)] bg-white p-8 text-center shadow-[var(--shadow-soft)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-brand)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               No matches
             </p>
             <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">

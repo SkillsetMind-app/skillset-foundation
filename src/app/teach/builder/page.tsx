@@ -14,7 +14,7 @@ export default function TeacherBuilderPage() {
       >
         <Suspense
           fallback={
-            <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+            <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
               <p className="text-sm text-[var(--color-ink-soft)]">
                 Loading course builder...
               </p>

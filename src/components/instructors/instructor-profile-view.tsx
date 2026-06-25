@@ -71,7 +71,7 @@ export function InstructorProfileView({ uid }: { uid: string }) {
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
         <UserAvatar name={name} photoURL={profile.photoURL} size="lg" />
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-brand)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Instructor
           </p>
           <h1 className="display-title mt-2 text-3xl text-[var(--color-ink)] sm:text-4xl">

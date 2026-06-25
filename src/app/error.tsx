@@ -19,7 +19,7 @@ export default function Error({
   return (
     <main className="page-shell flex min-h-screen items-center justify-center px-6">
       <div className="surface-card max-w-2xl rounded-[18px] p-8 text-center sm:p-10">
-        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-brand)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-accent-fg)]">
           Something went wrong
         </p>
         <h1 className="display-title mt-4 text-4xl text-[var(--color-ink)] sm:text-5xl">

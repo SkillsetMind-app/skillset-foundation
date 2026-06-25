@@ -18,7 +18,7 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div className="rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-brand)]">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         {eyebrow}
       </p>
       <h3 className="display-title text-3xl text-[var(--color-ink)]">{title}</h3>

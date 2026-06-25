@@ -313,7 +313,7 @@ export function TeacherConnectOnboarding({
   if (!connect) {
     return (
       <div
-        className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-5 text-sm text-[var(--color-ink-soft)]"
+        className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-5 text-sm text-[var(--color-ink-soft)]"
         aria-busy="true"
         aria-live="polite"
       >
