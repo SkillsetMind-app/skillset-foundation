@@ -28,7 +28,6 @@ import { useAuth } from "@/components/auth/auth-provider";
 import {
   platformNav,
   type PlatformNavContext,
-  type PlatformNavItem,
 } from "@/data/site";
 import {
   hasPermission,
@@ -66,51 +65,24 @@ export function PlatformNav({ collapsed = false }: { collapsed?: boolean }) {
       item.contexts.includes(context) &&
       (!item.permission || hasPermission(subject, item.permission)),
   );
-  const sections = groupBySection(visibleItems, context);
 
+  // Flat nav — no section labels. Account items (Settings, Plans, Billing,
+  // Payouts, Wishlist) live in the avatar menu, mirroring the refined design.
   return (
-    <nav className="platform-sidebar-nav mt-3 flex flex-col gap-4" aria-label="Workspace">
-      {sections.map((section) => (
-        <div key={section.label} className="grid gap-1">
-          {section.items.map((item) => (
-            <PlatformNavLink
-              key={item.href}
-              href={item.href}
-              label={item.label}
-              icon={item.icon}
-              active={isActivePlatformRoute(pathname, item.href)}
-              collapsed={collapsed}
-              newTab={item.newTab}
-            />
-          ))}
-        </div>
+    <nav className="platform-sidebar-nav mt-3 flex flex-col gap-1" aria-label="Workspace">
+      {visibleItems.map((item) => (
+        <PlatformNavLink
+          key={item.href}
+          href={item.href}
+          label={item.label}
+          icon={item.icon}
+          active={isActivePlatformRoute(pathname, item.href)}
+          collapsed={collapsed}
+          newTab={item.newTab}
+        />
       ))}
     </nav>
   );
-}
-
-function groupBySection(items: PlatformNavItem[], context: PlatformNavContext) {
-  const sectionOrder: Record<PlatformNavContext, string[]> = {
-    learner: ["Discover", "Learn", "Account"],
-    teacher: ["My Learning", "Teach", "Discover", "Account", "Growth", "Setup"],
-    ops: ["Operations", "Discover", "Account"],
-  };
-  const groups = new Map<string, PlatformNavItem[]>();
-
-  items.forEach((item) => {
-    groups.set(item.section, [...(groups.get(item.section) ?? []), item]);
-  });
-
-  const orderedLabels = [
-    ...sectionOrder[context],
-    ...Array.from(groups.keys()).filter(
-      (label) => !sectionOrder[context].includes(label),
-    ),
-  ];
-
-  return orderedLabels
-    .map((label) => ({ label, items: groups.get(label) ?? [] }))
-    .filter((group) => group.items.length > 0);
 }
 
 function resolveContext(

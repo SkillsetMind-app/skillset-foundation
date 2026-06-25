@@ -7,6 +7,7 @@ import {
   ExternalLink,
   FileText,
   GraduationCap,
+  Heart,
   LayoutDashboard,
   LogOut,
   Presentation,
@@ -202,6 +203,14 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
               label="My credentials"
               onNavigate={() => setIsOpen(false)}
             />
+            {!user.roles.includes("teacher") ? (
+              <MenuLink
+                href="/learn/wishlist"
+                icon={Heart}
+                label="Wishlist"
+                onNavigate={() => setIsOpen(false)}
+              />
+            ) : null}
           </div>
 
           <div className="account-menu-separator" />
