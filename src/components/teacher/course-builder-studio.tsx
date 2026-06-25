@@ -1364,7 +1364,7 @@ export function CourseBuilderStudio() {
 
   if (!courseId) {
     return (
-      <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="settings-section-card">
         <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           Choose a course from Teacher Studio before opening the builder.
         </p>
@@ -1377,7 +1377,7 @@ export function CourseBuilderStudio() {
 
   if (isLoading) {
     return (
-      <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="settings-section-card">
         <p className="text-sm text-[var(--color-ink-soft)]">Loading course builder...</p>
       </section>
     );
@@ -1385,7 +1385,7 @@ export function CourseBuilderStudio() {
 
   if (error && !course) {
     return (
-      <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="settings-section-card">
         <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           {error}
         </p>
@@ -1445,7 +1445,7 @@ export function CourseBuilderStudio() {
       <nav className="course-builder-stepper" aria-label="Course creation steps">
         <div className="course-builder-stepper__head">
           <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-brand)]">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               Course creation
             </p>
             <p className="mt-1 truncate text-sm font-semibold leading-snug text-[var(--color-ink-soft)]">
@@ -1543,18 +1543,18 @@ export function CourseBuilderStudio() {
           </div>
 
         {course?.status === "in_review" ? (
-          <p className="mt-5 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             This course is with Skillset for review. If changes are needed, it
             will return here as editable.
           </p>
         ) : course?.status === "published" ? (
-          <p className="mt-5 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             This course is live. You can keep improving the structure while
             Skillset controls marketplace visibility.
           </p>
         ) : null}
         {course?.reviewNote ? (
-          <div className="mt-5 rounded-[4px] border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.04)] p-4">
+          <div className="mt-5 rounded-[14px] border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.04)] p-4">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               Skillset review note
             </p>
@@ -1700,7 +1700,7 @@ export function CourseBuilderStudio() {
               </button>
             ) : null}
           </div>
-          <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             Keep the title specific, the category clear, and the summary focused
             on learner outcomes. This copy will influence the marketplace page.
           </p>
@@ -1710,7 +1710,7 @@ export function CourseBuilderStudio() {
         {activeTab === "pricing" ? (
           <div
             id="builder-sec-pricing"
-            className="scroll-mt-24 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+            className="scroll-mt-24 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               Marketplace setup
@@ -1844,7 +1844,7 @@ export function CourseBuilderStudio() {
         <div className="mt-6 grid gap-4">
           <div
             id="builder-sec-modules"
-            className="scroll-mt-24 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+            className="scroll-mt-24 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
             <h4 className="text-sm font-semibold text-[var(--color-ink)]">
               Add module
@@ -1877,7 +1877,7 @@ export function CourseBuilderStudio() {
 
           <div
             id="builder-sec-lessons"
-            className="scroll-mt-24 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+            className="scroll-mt-24 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
             <h4 className="text-sm font-semibold text-[var(--color-ink)]">
               Add lesson
@@ -1986,7 +1986,7 @@ export function CourseBuilderStudio() {
             </form>
           </div>
 
-          <div className="rounded-[4px] border fine-rule bg-white p-4">
+          <div className="rounded-[14px] border fine-rule bg-white p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
@@ -2003,7 +2003,7 @@ export function CourseBuilderStudio() {
 
             <div className="mt-4 grid gap-4">
               {modules.length === 0 ? (
-                <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+                <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
                   Add your first module above. Once it exists, you can edit, reorder,
                   and organize its lessons here.
                 </p>
@@ -2011,7 +2011,7 @@ export function CourseBuilderStudio() {
                 modules.map((module, moduleIndex) => (
                   <article
                     key={module.id}
-                    className="rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
+                    className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
                   >
                     <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-start">
                       <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -2072,7 +2072,7 @@ export function CourseBuilderStudio() {
                         module.lessons.map((lesson, lessonIndex) => (
                           <div
                             key={lesson.id}
-                            className="grid gap-3 rounded-[4px] border border-[var(--color-line)] bg-white p-4"
+                            className="grid gap-3 rounded-[14px] border border-[var(--color-line)] bg-white p-4"
                           >
                             <div className="grid gap-3 lg:grid-cols-[1fr_190px_120px_140px_auto] lg:items-end">
                               <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
@@ -2267,7 +2267,7 @@ export function CourseBuilderStudio() {
         {activeTab === "review" ? (
           <div
             id="builder-sec-review"
-            className="mt-6 scroll-mt-24 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-5"
+            className="mt-6 scroll-mt-24 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-5"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               Submit readiness
@@ -2342,8 +2342,8 @@ export function CourseBuilderStudio() {
       </section>
 
       <div className="course-builder-footer">
-        <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+        <section className="settings-section-card">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Course structure
           </p>
           <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
@@ -2351,14 +2351,14 @@ export function CourseBuilderStudio() {
           </h3>
           <div className="mt-5 grid gap-3">
             {modules.length === 0 ? (
-              <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+              <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
                 Start with one module, then add the lessons learners should complete.
               </p>
             ) : (
               modules.map((module, index) => (
                 <article
                   key={module.id}
-                  className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+                  className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
                 >
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                     Module {index + 1}
@@ -2413,8 +2413,8 @@ export function CourseBuilderStudio() {
           </div>
         </section>
 
-        <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+        <section className="settings-section-card">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Review readiness
           </p>
           <div className="mt-4 grid gap-2 text-sm text-[var(--color-ink-soft)]">
@@ -2607,7 +2607,7 @@ function CourseCoverField({
   }
 
   return (
-    <section className="grid gap-3 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4">
+    <section className="grid gap-3 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
