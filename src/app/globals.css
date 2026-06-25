@@ -666,19 +666,20 @@ p {
 }
 
 .button-solid,
-.button-outline {
+.button-outline,
+.button-accent {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  /* Single source of truth for button size. Call sites still override with
-     px / py / text utilities, but unspecified buttons now land on one subtle,
-     consistent standard height (~40px) instead of inheriting body font size. */
-  padding: 0.625rem 1rem;
-  border-radius: 8px;
-  font-size: 0.875rem;
+  /* Mirrors the design's .btn base (radius 9px, 13px label, 11/16 padding,
+     line-height 1). Call sites still override size with px / py / text
+     utilities; unspecified buttons land on the design's standard. */
+  padding: 0.6875rem 1rem;
+  border-radius: 9px;
+  font-size: 0.8125rem;
   font-weight: 600;
-  line-height: 1.25rem;
+  line-height: 1;
   text-decoration: none;
   transition:
     transform 180ms ease,
@@ -696,8 +697,8 @@ p {
      under every primary CTA. 1px at 0.22 keeps a hint of the accent edge without
      thickening the button; ambient drop lightened to match. */
   box-shadow:
-    inset 0 -1px 0 rgba(178, 34, 52, 0.22),
-    0 6px 14px rgba(26, 54, 93, 0.1);
+    inset 0 -2px 0 rgba(178, 34, 52, 0.32),
+    0 8px 18px rgba(26, 54, 93, 0.14);
 }
 
 .button-solid:hover {
@@ -705,9 +706,13 @@ p {
   background: var(--color-primary-dark);
   color: #ffffff !important;
   transform: translateY(-1px);
-  box-shadow: 0 14px 28px rgba(15, 39, 68, 0.18);
+  box-shadow:
+    inset 0 -2px 0 rgba(178, 34, 52, 0.32),
+    0 12px 24px rgba(15, 39, 68, 0.18);
 }
 
+.button-accent *,
+.button-accent:hover *,
 .button-solid *,
 .button-solid:hover *,
 .button-solid-light *,
@@ -718,7 +723,8 @@ p {
 }
 
 .button-solid:focus-visible,
-.button-outline:focus-visible {
+.button-outline:focus-visible,
+.button-accent:focus-visible {
   outline: 2px solid rgba(44, 82, 130, 0.28);
   outline-offset: 3px;
 }
@@ -728,20 +734,21 @@ p {
    transition on the base rule eases it back out on release. */
 .button-solid:active,
 .button-outline:active,
+.button-accent:active,
 .button-solid-light:active,
 .button-outline-light:active {
   transform: translateY(1px) scale(0.985);
 }
 
 .button-outline {
-  border: 1px solid rgba(26, 54, 93, 0.18);
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--color-line);
+  background: rgba(255, 255, 255, 0.85);
   color: var(--color-primary) !important;
   box-shadow: none;
 }
 
 .button-outline:hover {
-  border-color: rgba(26, 54, 93, 0.24);
+  border-color: var(--color-line-strong);
   background: var(--color-surface-soft);
   color: var(--color-primary-dark) !important;
   transform: translateY(-1px);
@@ -751,6 +758,23 @@ p {
    surfaces. Adapt to the theme line token; the light :hover stays untouched. */
 [data-theme="dark"] .button-outline:hover {
   border-color: var(--color-line-strong);
+}
+
+/* Accent CTA — mirrors the design's .btn-accent (crimson fill, crimson glow).
+   --color-accent stays crimson in dark mode, so white-on-crimson holds AA. */
+.button-accent {
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent);
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(178, 34, 52, 0.22);
+}
+
+.button-accent:hover {
+  border-color: var(--color-accent-hover);
+  background: var(--color-accent-hover);
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(178, 34, 52, 0.26);
 }
 
 .button-solid-light,
