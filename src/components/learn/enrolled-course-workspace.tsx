@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import {
+  ArrowLeft,
+  Award,
   BookOpen,
   CheckCircle2,
   Clock,
@@ -503,6 +505,13 @@ export function EnrolledCourseWorkspace({
 
       <section className="member-classroom-hero">
         <div className="member-classroom-hero__copy">
+          <Link
+            href="/learn"
+            className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-ink-soft)] transition hover:text-[var(--color-ink)]"
+          >
+            <ArrowLeft size={14} aria-hidden />
+            Back
+          </Link>
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Members area
           </p>
@@ -537,6 +546,42 @@ export function EnrolledCourseWorkspace({
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
+          </div>
+          <div className="mt-7 flex flex-wrap items-center gap-3">
+            {nextLesson ? (
+              <button
+                type="button"
+                onClick={() => setSelectedLessonId(nextLesson.id)}
+                className="button-solid inline-flex items-center gap-2 px-5 py-2.5 text-sm"
+              >
+                <PlayCircle size={16} aria-hidden />
+                Continue watching
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  const firstLessonId = course.modules[0]?.lessons[0]?.id;
+                  if (firstLessonId) {
+                    setSelectedLessonId(firstLessonId);
+                  }
+                }}
+                className="button-outline inline-flex items-center gap-2 px-5 py-2.5 text-sm"
+              >
+                <PlayCircle size={16} aria-hidden />
+                Watch again
+              </button>
+            )}
+            {progressPercent === 100 ? (
+              <Link
+                href="/learn/credentials"
+                className="button-solid inline-flex items-center gap-2 px-5 py-2.5 text-sm"
+                style={{ background: "var(--color-accent)" }}
+              >
+                <Award size={16} aria-hidden />
+                Get certificate
+              </Link>
+            ) : null}
           </div>
         </div>
         <div className="member-classroom-hero__cover">
