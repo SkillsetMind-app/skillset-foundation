@@ -97,7 +97,7 @@ export function PlansPanel() {
 
   if (!user) {
     return (
-      <div className="rounded-[4px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm text-[var(--color-ink-soft)]">
+      <div className="rounded-[14px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm text-[var(--color-ink-soft)]">
         Sign in to view and manage your plan.
       </div>
     );
@@ -106,7 +106,7 @@ export function PlansPanel() {
   return (
     <section className="grid gap-5">
       {!checkoutReady ? (
-        <div className="rounded-[4px] border border-dashed border-[rgba(178,34,52,0.32)] bg-[rgba(178,34,52,0.04)] p-4 text-sm leading-6 text-[var(--color-ink)]">
+        <div className="rounded-[14px] border border-dashed border-[rgba(178,34,52,0.32)] bg-[rgba(178,34,52,0.04)] p-4 text-sm leading-6 text-[var(--color-ink)]">
           <p className="font-semibold text-[var(--color-accent-fg)]">
             {priceIdsReady
               ? "Card checkout activates soon."
@@ -199,8 +199,8 @@ export function PlansPanel() {
               key={plan.id}
               className={
                 isCurrent
-                  ? "relative rounded-[4px] border-2 border-[var(--color-primary)] bg-white p-5 shadow-[0_18px_36px_rgba(15,39,68,0.10)]"
-                  : "rounded-[4px] border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
+                  ? "relative rounded-[14px] border-2 border-[var(--color-primary)] bg-white p-5 shadow-[0_18px_36px_rgba(15,39,68,0.10)]"
+                  : "rounded-[14px] border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
               }
             >
               <div className="flex items-start justify-between gap-2">
@@ -291,7 +291,7 @@ export function PlansPanel() {
         })}
       </div>
 
-      <footer className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-xs leading-6 text-[var(--color-ink-soft)]">
+      <footer className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-xs leading-6 text-[var(--color-ink-soft)]">
         Plan changes are processed by Stripe. Upgrades apply immediately and
         Stripe Billing prorates the difference. Downgrades and cancellations
         take effect at the end of the current billing period. You can update

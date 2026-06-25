@@ -110,8 +110,8 @@ export function BillingTabs() {
   }
 
   return (
-    <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-      <div className="mb-5 rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
+    <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <div className="mb-5 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           Billing is not payouts
         </p>
@@ -205,7 +205,7 @@ function PurchasesTab({
         {orders.map((order) => (
           <li
             key={order.id}
-            className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+            className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
@@ -287,8 +287,8 @@ function InvoicesTab({
 
   return (
     <div className="grid gap-5">
-      <div className="rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
-        <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+      <div className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
+        <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           Subscription invoices
         </p>
         <p className="mt-2 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -315,7 +315,7 @@ function InvoicesTab({
       </div>
 
       <div>
-        <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+        <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           Purchase receipts
         </p>
         {isLoading ? (
@@ -327,7 +327,7 @@ function InvoicesTab({
             {error}
           </p>
         ) : receipts.length === 0 ? (
-          <p className="mt-3 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="mt-3 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             No one-off purchase receipts yet. Receipts appear here after a course
             checkout is paid.
           </p>
@@ -336,7 +336,7 @@ function InvoicesTab({
             {receipts.map((order) => (
               <li
                 key={order.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
@@ -379,14 +379,14 @@ function BillingNotice({
 }) {
   if (tone === "error") {
     return (
-      <p className="rounded-[4px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+      <p className="rounded-[14px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
         {children}
       </p>
     );
   }
 
   return (
-    <div className="rounded-[4px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm text-[var(--color-ink-soft)]">
+    <div className="rounded-[14px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm text-[var(--color-ink-soft)]">
       {children}
     </div>
   );
@@ -404,10 +404,10 @@ function BillingEmptyState({
   statusLabel: string;
 }) {
   return (
-    <div className="rounded-[4px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6">
+    <div className="rounded-[14px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {eyebrow}
           </p>
           <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">

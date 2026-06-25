@@ -278,15 +278,15 @@ export function ProfileSettingsPanel() {
 
   if (isLoading) {
     return (
-      <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-sm text-[var(--color-ink-soft)]">Loading profile settings...</p>
       </section>
     );
   }
 
   return (
-    <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+    <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         Account identity
       </p>
       <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
@@ -297,7 +297,7 @@ export function ProfileSettingsPanel() {
       </p>
 
       <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
-        <div className="flex flex-col gap-4 rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-4 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 sm:flex-row sm:items-center">
           <UserAvatar
             name={displayName || user?.email}
             photoURL={photoURL}
@@ -431,7 +431,7 @@ export function ProfileSettingsPanel() {
             ) : null}
           </div>
 
-          <div className="flex flex-col gap-4 rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-4 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 sm:flex-row sm:items-center">
             <div className="relative grid h-16 w-32 shrink-0 place-items-center overflow-hidden rounded-[8px] border border-[var(--color-line)] bg-white">
               {signatureUrl ? (
                 <Image

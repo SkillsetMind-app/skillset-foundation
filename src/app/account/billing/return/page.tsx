@@ -43,7 +43,7 @@ export default async function BillingReturnPage({
     <ProtectedSurface permissions={["auth.signOut"]}>
       <PlatformShell title="Checkout status" compact>
         {checkoutCompleted ? (
-          <div className="rounded-[4px] border fine-rule bg-white p-10 text-center shadow-[var(--shadow-soft)]">
+          <div className="rounded-[14px] border fine-rule bg-white p-10 text-center shadow-[var(--shadow-soft)]">
             <div className="mx-auto grid size-12 place-items-center rounded-full bg-[var(--color-primary)] text-[var(--color-base)]">
               <Check aria-hidden="true" size={24} strokeWidth={2.4} />
             </div>
@@ -69,7 +69,7 @@ export default async function BillingReturnPage({
             </div>
           </div>
         ) : (
-          <div className="rounded-[4px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-8 text-center">
+          <div className="rounded-[14px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-8 text-center">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               Nothing to confirm
             </p>
