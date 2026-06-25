@@ -61,8 +61,8 @@ export function MarketingHero() {
                 <span className="block">teaching what you know.</span>
               </h1>
               <p className="max-w-[34rem] text-[15px] leading-[1.6] text-white/82 sm:text-base">
-                We handle the checkout, the classroom, and your payouts. You
-                just teach.
+                No site to build. No tools to wire up. We run the checkout, the
+                classroom, and your payouts. You teach.
               </p>
               <HeroCtas />
             </div>

@@ -21,11 +21,11 @@ export function FeaturedCourses() {
               The marketplace
             </p>
             <h2 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] sm:text-5xl">
-              Reviewed programs, ready to learn.
+              Reviewed courses, ready to learn.
             </h2>
             <p className="mt-4 text-[15px] leading-7 text-[var(--color-ink-soft)]">
-              Every course is published by an independent expert and reviewed
-              by Skillset — across psychology, management, health, and
+              Every course is built by an independent expert and reviewed by
+              Skillset — across psychology, management, health, and
               professional skills.
             </p>
           </div>

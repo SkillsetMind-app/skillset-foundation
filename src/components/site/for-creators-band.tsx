@@ -7,9 +7,9 @@ import { planById, payoutClearDays } from "@/data/plans";
 const freePlan = planById("free");
 
 const trustBullets = [
-  `Keep ${100 - freePlan.commissionPercent}% on Free — drop commission to 0% on Plus as you scale.`,
-  `Payouts clear ${payoutClearDays} days after each sale. No subscription required to start teaching.`,
-  "Drip release + refund window protect you from abuse.",
+  `Keep ${100 - freePlan.commissionPercent}% on Free. Scale to Plus and your commission can drop to 0%.`,
+  `Payouts clear ${payoutClearDays} days after each sale. No subscription needed to start.`,
+  "Drip release and a refund window protect you from abuse.",
   "Course community, live sessions, and verifiable certificates on every plan.",
 ];
 
@@ -25,7 +25,7 @@ export function ForCreatorsBand() {
                 For independent experts
               </p>
               <h2 className="display-title mt-3 text-4xl leading-tight text-white sm:text-5xl">
-                Bring your expertise to a global audience.
+                Teach the world what you already know.
               </h2>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link

@@ -63,9 +63,9 @@ export function PromisePreviewBand() {
                 Six commitments. Written down. Public.
               </h2>
               <p className="mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
-                Skillset writes its obligations to creators into a contract
-                everyone can read. Fee-locked. Data portable. Cancellable. Read
-                it before signing up.
+                Skillset puts what it owes creators in a contract anyone can
+                read. Fees locked. Data portable. Cancel anytime. Read it before
+                you sign up.
               </p>
             </div>
             {/* The promise rendered as what it actually is: a public, written

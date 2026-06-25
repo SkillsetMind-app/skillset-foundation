@@ -15,20 +15,20 @@ const steps: ReadonlyArray<Step> = [
     number: "01",
     title: "Set up your studio",
     description:
-      "Open a Teacher Studio account, accept Teacher Terms, connect Stripe Express. Free, takes minutes.",
+      "Open a Teacher Studio account, accept the Teacher Terms, connect Stripe Express. Free, takes minutes.",
     Icon: PenLine,
   },
   {
     number: "02",
     title: "Build and submit",
     description:
-      "Build modules and lessons in Course Builder. Set pricing and a free preview lesson. Submit for review.",
+      "Build your modules and lessons in Course Builder. Set your price and a free preview lesson. Submit.",
     Icon: Sparkles,
   },
   {
     number: "03",
     title: "Sell globally",
-    description: `Your course goes live on the marketplace as soon as you submit — Skillset review runs alongside, so nothing holds up your first sale. Get paid in 30+ currencies, with earnings clearing ${payoutClearDays} days after each sale.`,
+    description: `Your course goes live the moment you submit. Skillset's review runs alongside, so nothing holds up your first sale. Get paid in 30+ currencies, with earnings clearing ${payoutClearDays} days after each sale.`,
     Icon: Send,
   },
 ];
@@ -41,7 +41,7 @@ export function HowItWorksStrip() {
           How it works
         </p>
         <h2 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] sm:text-5xl">
-          Three steps from idea to income.
+          From idea to income in three steps.
         </h2>
       </RevealSection>
       <div className="mt-10 grid gap-8 sm:mt-12 lg:grid-cols-3">

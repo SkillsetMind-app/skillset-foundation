@@ -21,36 +21,36 @@ const capabilities: ReadonlyArray<Capability> = [
   {
     title: "Course builder",
     description:
-      "Modular structure, multiple lesson types, scheduled events, free preview slot.",
+      "Modular structure, multiple lesson types, scheduled events, a free preview slot.",
     Icon: LayoutGrid,
   },
   {
     title: "Drip-released content",
     description:
-      "Release lessons by progress or on a schedule — and protect your work during the refund window.",
+      "Release lessons by progress or on a schedule, and protect your work during the refund window.",
     Icon: Calendar,
   },
   {
     title: "Course-linked community",
     description:
-      "Every paid course opens its own private community space for posts, replies, and likes.",
+      "Every paid course gets its own private space for posts, replies, and likes.",
     Icon: MessagesSquare,
   },
   {
     title: "Multi-currency checkout",
     description:
-      "Sell in 30+ currencies. Learners see prices in their local currency at checkout.",
+      "Sell in 30+ currencies. Learners pay in their own currency at checkout.",
     Icon: Globe,
   },
   {
     title: `Creator wallet, ${payoutClearDays}-day clearance`,
-    description: `Earnings clear from pending to available ${payoutClearDays} days after each sale. Transparent ledger with full audit trail.`,
+    description: `Earnings move from pending to available ${payoutClearDays} days after each sale. Full ledger, full audit trail.`,
     Icon: Wallet,
   },
   {
     title: "Verifiable certificates",
     description:
-      "Public verification URL. Employers can confirm credentials in seconds.",
+      "A public link employers can check in seconds.",
     Icon: Award,
   },
 ];
@@ -63,11 +63,11 @@ export function CapabilitiesGrid() {
           Built into Skillset
         </p>
         <h2 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] sm:text-5xl">
-          Everything a program needs, included.
+          Everything a course needs is already here.
         </h2>
         <p className="mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          No add-ons. No feature paywalls. Every plan includes the same toolset
-          — your plan only changes the commission per sale.
+          No add-ons. No locked features. Every plan ships the same toolset —
+          your plan only changes the commission you pay per sale.
         </p>
       </RevealSection>
       <div className="mt-10 grid gap-5 sm:mt-12 md:grid-cols-2 xl:grid-cols-3">
