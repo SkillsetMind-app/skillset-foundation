@@ -53,6 +53,7 @@ function moveItem<T>(items: T[], from: number, direction: -1 | 1): T[] {
 export function StorefrontSettingsPanel() {
   const { user } = useAuth();
 
+  const [displayName, setDisplayName] = useState("");
   const [accentColor, setAccentColor] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [heroImageUrl, setHeroImageUrl] = useState("");
@@ -85,6 +86,7 @@ export function StorefrontSettingsPanel() {
         const branding = profile?.storefront?.branding;
         const showcase = profile?.storefront?.showcase;
 
+        setDisplayName(profile?.displayName ?? "");
         setAccentColor(branding?.accentColor ?? "");
         setLogoUrl(branding?.logoUrl ?? "");
         setHeroImageUrl(branding?.heroImageUrl ?? "");
@@ -229,7 +231,7 @@ export function StorefrontSettingsPanel() {
 
   if (isLoading) {
     return (
-      <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="settings-section-card">
         <p className="text-sm text-[var(--color-ink-soft)]">
           Loading storefront settings...
         </p>
@@ -243,18 +245,48 @@ export function StorefrontSettingsPanel() {
       : defaultAccentColor;
 
   return (
-    <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+    <section className="settings-section-card">
+      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         Teacher Studio
       </p>
-      <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+      <h2 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
         Storefront branding
-      </h3>
-      <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
+      </h2>
+      <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
         Brand your public instructor page &mdash; logo, hero image, accent color,
         and the order your courses appear in. Saved here now; your public
         storefront goes live in a later step.
       </p>
+
+      {/* Live brand preview — how your storefront header reads at a glance. */}
+      <div className="mt-6 overflow-hidden rounded-[16px] border border-[var(--color-line)] shadow-[var(--shadow-soft)]">
+        <div
+          className="flex items-center gap-4 px-5 py-6 sm:px-7"
+          style={{
+            backgroundImage:
+              "linear-gradient(135deg, #0f2744 0%, #1a365d 60%, #234b78 100%)",
+          }}
+        >
+          <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-[12px] bg-white/10 text-xl font-bold text-white ring-1 ring-white/20">
+            {isValidStorefrontUrl(logoUrl) && logoUrl ? (
+              // Teacher-supplied URL: plain img tolerates any host + onError.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt="" className="h-full w-full object-contain" />
+            ) : (
+              (displayName.trim()[0] ?? "S").toUpperCase()
+            )}
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-base font-bold text-white">
+              {displayName.trim() || "Your instructor page"}
+            </span>
+            <span className="mt-1 block max-w-md truncate text-sm text-white/70">
+              {tagline.trim() || "One line that sums up what you teach."}
+            </span>
+          </span>
+        </div>
+        <div className="h-1.5" style={{ background: previewAccent }} />
+      </div>
 
       <form className="mt-6 grid gap-5" onSubmit={handleSubmit}>
         <div className="grid gap-4 rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
