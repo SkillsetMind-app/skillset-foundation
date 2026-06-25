@@ -173,8 +173,8 @@ export function CourseCommunityFeed({
 
   if (!enrollment) {
     return (
-      <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           Access required
         </p>
         <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
@@ -222,8 +222,8 @@ export function CourseCommunityFeed({
 
   return (
     <div className="space-y-5">
-      <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {space.name}
         </p>
         <h3 className="display-title mt-3 text-4xl text-[var(--color-ink)]">
@@ -232,7 +232,7 @@ export function CourseCommunityFeed({
         <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
           {space.description}
         </p>
-        <div className="mt-5 flex flex-wrap gap-2 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-2">
+        <div className="mt-5 flex flex-wrap gap-2 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-2">
           {communityTabs.map((tab) => (
             <button
               key={tab}
@@ -290,15 +290,15 @@ export function CourseCommunityFeed({
               </p>
             ) : null}
           </form>
-          <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-            <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+          <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               Feed
             </p>
             <div className="mt-5 grid gap-4">
               {!postsState.ready || postsState.key !== space.courseSlug ? (
                 <p className="text-sm text-[var(--color-ink-soft)]">Loading community feed...</p>
               ) : postsState.posts.length === 0 ? (
-                <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
+                <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
                   No posts yet. The first discussion can set the tone for this course space.
                 </p>
               ) : (
@@ -368,8 +368,8 @@ function CommunityInfoPanel({
   cta?: { href: string; label: string };
 }) {
   return (
-    <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+    <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         Course community
       </p>
       <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
@@ -379,7 +379,7 @@ function CommunityInfoPanel({
         {items.map(([label, value]) => (
           <div
             key={label}
-            className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+            className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
               {label}
@@ -444,8 +444,8 @@ function CommunityMembersPanel({
   }, [posts, memberStats]);
 
   return (
-    <section className="rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface)] p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+    <section className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface)] p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         Course community
       </p>
       <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
@@ -467,7 +467,7 @@ function CommunityMembersPanel({
           Loading members...
         </p>
       ) : contributors.length === 0 ? (
-        <p className="mt-5 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
+        <p className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
           No one has posted here yet. The first people to start a discussion will
           appear in this roster.
         </p>
@@ -480,7 +480,7 @@ function CommunityMembersPanel({
             return (
               <li
                 key={member.uid}
-                className={`flex items-center gap-3 rounded-[4px] border p-3 ${
+                className={`flex items-center gap-3 rounded-[14px] border p-3 ${
                   isCurrentUser
                     ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)]"
                     : "fine-rule bg-[var(--color-surface-soft)]"
@@ -711,7 +711,7 @@ function CommunityPostCard({
 
   return (
     <article
-      className={`rounded-[4px] border p-4 ${
+      className={`rounded-[14px] border p-4 ${
         isPinned
           ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)]"
           : "fine-rule bg-[var(--color-surface-soft)]"
@@ -912,7 +912,7 @@ function CommentNode({
   }
 
   return (
-    <div className="rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface)] p-3">
+    <div className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface)] p-3">
       <CommentBody
         comment={rootComment}
         post={post}
@@ -1085,7 +1085,7 @@ function ReportControl({
       ) : null}
       {isOpen ? (
         <form
-          className="mt-3 grid gap-2 rounded-[4px] border border-[var(--color-line)] bg-white p-3"
+          className="mt-3 grid gap-2 rounded-[14px] border border-[var(--color-line)] bg-white p-3"
           onSubmit={handleReportSubmit}
         >
           <select

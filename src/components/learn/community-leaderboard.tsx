@@ -65,7 +65,7 @@ export function CommunityLeaderboard({
   const currentUserInTop = selfRank !== null;
 
   return (
-    <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Trophy size={18} className="text-[var(--color-primary)]" aria-hidden />
@@ -73,7 +73,7 @@ export function CommunityLeaderboard({
             Leaderboard
           </h3>
         </div>
-        <div className="flex flex-wrap gap-1 rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-1">
+        <div className="flex flex-wrap gap-1 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-1">
           {LEADERBOARD_WINDOWS.map((option) => (
             <button
               key={option}
@@ -102,7 +102,7 @@ export function CommunityLeaderboard({
             Loading leaderboard...
           </p>
         ) : entries.length === 0 ? (
-          <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
+          <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
             No points yet for this window. Be the first — post something worth a
             like.
           </p>
@@ -112,7 +112,7 @@ export function CommunityLeaderboard({
             return (
               <div
                 key={entry.rank}
-                className={`flex items-center justify-between gap-3 rounded-[4px] border px-4 py-3 ${
+                className={`flex items-center justify-between gap-3 rounded-[14px] border px-4 py-3 ${
                   isCurrent
                     ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)]"
                     : "border-[var(--color-line)] bg-white"
@@ -137,7 +137,7 @@ export function CommunityLeaderboard({
       </div>
 
       {ready && currentUserStats && !currentUserInTop ? (
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-[4px] border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3">
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-[14px] border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3">
           <div className="flex items-center gap-3">
             <p className="text-sm font-semibold text-[var(--color-ink)]">You</p>
             <LevelBadge level={currentUserStats.level} />

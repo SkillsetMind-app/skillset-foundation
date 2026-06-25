@@ -56,7 +56,7 @@ export function LearnDashboard() {
   if (isLoading) {
     return (
       <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
           <p className="text-sm text-[var(--color-ink-soft)]">Loading your learning workspace...</p>
         </div>
       </div>
@@ -66,7 +66,7 @@ export function LearnDashboard() {
   if (error) {
     return (
       <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-[4px] border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <div className="rounded-[14px] border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
           <p className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
             {error}
           </p>
@@ -86,8 +86,8 @@ export function LearnDashboard() {
   if (enrollments.length === 0) {
     return (
       <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+        <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             My learning
           </p>
           <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
@@ -213,7 +213,7 @@ export function LearnDashboard() {
         </div>
         <div className="mt-5 grid gap-4">
           {visibleEnrollments.length === 0 ? (
-            <p className="rounded-[4px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+            <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
               No enrollments match this search.
             </p>
           ) : visibleEnrollments.map((enrollment) => {
@@ -233,7 +233,7 @@ export function LearnDashboard() {
                 key={enrollment.id}
                 className="grid gap-4 rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-4 transition hover:-translate-y-0.5 hover:bg-[var(--color-surface-hover)] hover:shadow-[var(--shadow-soft)] md:grid-cols-[220px_1fr]"
               >
-                <div className="relative aspect-[16/10] overflow-hidden rounded-[4px]">
+                <div className="relative aspect-[16/10] overflow-hidden rounded-[14px]">
                   <Image
                     src={enrollment.courseImage}
                     alt={enrollment.courseTitle}

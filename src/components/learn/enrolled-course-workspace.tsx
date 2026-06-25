@@ -258,7 +258,7 @@ export function EnrolledCourseWorkspace({
 
   if (isLoading) {
     return (
-      <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-sm text-[var(--color-ink-soft)]">Loading course workspace...</p>
       </section>
     );
@@ -266,7 +266,7 @@ export function EnrolledCourseWorkspace({
 
   if (error) {
     return (
-      <section className="rounded-[4px] border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-[14px] border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
           {error}
         </p>
@@ -288,8 +288,8 @@ export function EnrolledCourseWorkspace({
   if (!workspaceEnrollment) {
     if (cameFromCheckout) {
       return (
-        <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+        <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Payment received
           </p>
           <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
@@ -307,8 +307,8 @@ export function EnrolledCourseWorkspace({
     }
 
     return (
-      <section className="rounded-[4px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-brand)]">
+      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           Enrollment required
         </p>
         <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
@@ -901,7 +901,7 @@ function CourseAssetResourceList({
           {assets.map((asset) => (
             <div
               key={asset.id}
-              className="rounded-[4px] border border-[var(--color-line)] bg-white p-3"
+              className="rounded-[14px] border border-[var(--color-line)] bg-white p-3"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -1048,7 +1048,7 @@ function LessonContentPanel({
           </p>
         ) : null}
         {!locked && lesson.contentText ? (
-          <div className="mt-4 whitespace-pre-line rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
+          <div className="mt-4 whitespace-pre-line rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
             {lesson.contentText}
           </div>
         ) : null}
@@ -1177,7 +1177,7 @@ function LessonDiscussion({
   }
 
   return (
-    <div className="mt-5 rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
+    <div className="mt-5 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
@@ -1292,7 +1292,7 @@ function LessonAssetList({
       {assets.map((asset) => (
         <div
           key={asset.id}
-          className="rounded-[4px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3"
+          className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
