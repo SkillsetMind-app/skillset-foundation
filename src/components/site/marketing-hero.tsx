@@ -1,17 +1,16 @@
 import Image from "next/image";
 
 import { HeroCtas } from "@/components/site/hero-ctas";
-import { HeroSignupCard } from "@/components/site/hero-signup-card";
 
 // Centered hero figure (Hotmart-style): a wide photo of a woman on a navy
 // backdrop so it melts into the hero. Lives behind the copy + card and shows
 // through the clear center. Set to null to fall back to the navy gradient.
-//   hero-woman-uw.png  21:9 ultrawide built from hero-gen.png (gpt-image-2:
-//   navy blazer + cream top, generous headroom, hands holding a phone). Its
-//   navy background is extended edge-to-edge so the subject sits centered with
-//   wide navy margins + top headroom; object-cover then crops only the navy —
-//   never her head or hands — and her head clears the floating nav.
-const HERO_PERSON_SRC: string | null = "/brand/hero/hero-woman-uw.png";
+//   hero-woman-2-uw.png  21:9 ultrawide built from hero-woman-2.png (gpt-image-1,
+//   photoreal pass: navy blazer + cream top, natural skin texture, hands holding
+//   a phone). Its navy background is extended edge-to-edge with the subject biased
+//   slightly right (copy sits left) + top headroom; object-cover then crops only
+//   the navy — never her head or hands — and her head clears the floating nav.
+const HERO_PERSON_SRC: string | null = "/brand/hero/hero-woman-2-uw.png";
 
 export function MarketingHero() {
   // Keep the hero behind the floating nav while fitting the primary CTA
@@ -42,7 +41,7 @@ export function MarketingHero() {
             className="absolute inset-0"
             style={{
               backgroundImage:
-                "linear-gradient(to right, rgba(7,23,42,0.94) 0%, rgba(7,23,42,0.58) 24%, rgba(7,23,42,0.04) 44%, rgba(7,23,42,0.04) 58%, rgba(7,23,42,0.55) 80%, rgba(7,23,42,0.84) 100%)",
+                "linear-gradient(to right, rgba(7,23,42,0.95) 0%, rgba(7,23,42,0.85) 28%, rgba(7,23,42,0.42) 52%, rgba(7,23,42,0.05) 74%, rgba(7,23,42,0) 100%)",
             }}
           />
         </div>
@@ -57,7 +56,7 @@ export function MarketingHero() {
       />
 
       <div className="mx-auto w-full max-w-7xl px-5 pb-8 pt-28 sm:px-8 sm:pb-10 sm:pt-32 lg:pb-12 lg:pt-36">
-        <div className="relative z-10 flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-12">
+        <div className="relative z-10 flex flex-col gap-10 lg:flex-row lg:items-center">
           <div className="mx-auto flex max-w-xl flex-col items-center text-center lg:mx-0 lg:items-start lg:text-left">
             <div className="inline-flex w-fit rounded-[8px] border border-white/20 bg-white/10 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
               For independent experts
@@ -98,11 +97,6 @@ export function MarketingHero() {
                 </div>
               ))}
             </dl>
-          </div>
-
-          {/* Conversion card (Hotmart-style "create account, free"). */}
-          <div className="mx-auto w-full max-w-[380px] lg:mx-0 lg:shrink-0">
-            <HeroSignupCard />
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--color-accent)]" />
