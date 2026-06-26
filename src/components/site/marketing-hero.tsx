@@ -5,12 +5,12 @@ import { HeroCtas } from "@/components/site/hero-ctas";
 // Centered hero figure (Hotmart-style): a wide photo of a woman on a navy
 // backdrop so it melts into the hero. Lives behind the copy + card and shows
 // through the clear center. Set to null to fall back to the navy gradient.
-//   hero-woman-4.jpg  ~21:9 (3000x1273) photoreal portrait — warm over-the-shoulder
-//   smile, black blazer, hugging a MacBook on the brand navy. Generated from the
-//   chosen reference vibe with copy space baked in: subject sits in the right third,
-//   clean navy negative space on the left for the headline, headroom on top so her
+//   hero-woman-5.jpg  ~21:9 (3000x1273) photoreal portrait — woman turned over her
+//   shoulder with a big genuine smile, dark blazer, hugging a laptop on the brand
+//   navy radial. Subject sits far in the right third, leaving a wide clean navy
+//   negative space on the left for the headline and generous headroom on top so her
 //   head clears the floating nav. object-cover crops only the navy margins.
-const HERO_PERSON_SRC: string | null = "/brand/hero/hero-woman-4.jpg";
+const HERO_PERSON_SRC: string | null = "/brand/hero/hero-woman-5.jpg";
 
 export function MarketingHero() {
   // Keep the hero behind the floating nav while fitting the primary CTA
@@ -59,17 +59,18 @@ export function MarketingHero() {
         <div className="relative z-10 flex flex-col gap-10 lg:flex-row lg:items-center">
           <div className="mx-auto flex max-w-xl flex-col items-center text-center lg:mx-0 lg:items-start lg:text-left">
             <div className="inline-flex w-fit rounded-[8px] border border-white/20 bg-white/10 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
-              For independent experts
+              For psychology &amp; wellbeing experts
             </div>
             <div className="mt-5 space-y-4 lg:mt-6">
               {/* One sentence, two lines — short and direct. */}
               <h1 className="display-title text-[clamp(2.3rem,4.6vw,3.6rem)] leading-[1.07] text-white">
-                Make a living
-                <span className="block">teaching what you know.</span>
+                Your knowledge changes lives.
+                <span className="block">Now let it reach thousands.</span>
               </h1>
               <p className="max-w-[34rem] text-[15px] leading-[1.6] text-white/82 sm:text-base">
-                No site to build. No tools to wire up. We run the checkout, the
-                classroom, and your payouts. You teach.
+                Built for psychologists, therapists, and personal-development
+                coaches. No site to build, no tools to wire up — we run the
+                checkout, the classroom, and your payouts. You teach.
               </p>
               <HeroCtas />
             </div>

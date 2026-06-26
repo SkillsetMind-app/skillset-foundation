@@ -9,9 +9,9 @@ import { SiteNav } from "@/components/site/site-nav";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 export const metadata = buildPageMetadata({
-  title: "International marketplace for professional courses",
+  title: "Course platform for psychology & personal-development experts",
   description:
-    "Skillset is the international marketplace where independent experts publish reviewed courses with course communities, live sessions, and verifiable certificates.",
+    "Skillset is where psychologists, therapists, and personal-development coaches publish reviewed courses — with private communities, live sessions, and verifiable certificates. We run checkout, classroom, and payouts. You teach.",
   path: "/",
 });
 

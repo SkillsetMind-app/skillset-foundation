@@ -43,9 +43,9 @@ export function SiteFooter() {
           <div>
             <LogoWordmark compact />
             <p className="mt-4 max-w-sm text-sm leading-7 text-[var(--color-ink-soft)]">
-              An international course marketplace for serious creators and
-              learners — reviewed quality, transparent payouts, verifiable
-              credentials.
+              The course platform for psychologists, therapists, and
+              personal-development coaches — reviewed quality, transparent
+              payouts, verifiable credentials.
             </p>
           </div>
           <div className="grid gap-6 sm:grid-cols-3">

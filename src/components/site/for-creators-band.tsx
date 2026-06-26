@@ -22,10 +22,10 @@ export function ForCreatorsBand() {
           <div className="relative z-10 grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/75">
-                For independent experts
+                For psychology &amp; wellbeing experts
               </p>
               <h2 className="display-title mt-3 text-4xl leading-tight text-white sm:text-5xl">
-                Teach the world what you already know.
+                Reach more people than your practice ever could.
               </h2>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
