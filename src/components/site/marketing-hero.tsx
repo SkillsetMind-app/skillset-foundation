@@ -6,10 +6,11 @@ import { HeroSignupCard } from "@/components/site/hero-signup-card";
 // Centered hero figure (Hotmart-style): a wide photo of a woman on a navy
 // backdrop so it melts into the hero. Lives behind the copy + card and shows
 // through the clear center. Set to null to fall back to the navy gradient.
-//   hero-woman-uw.png  21:9 ultrawide — the 3:2 studio shot (hero-woman-1.png)
-//   with its navy background extended edge-to-edge so the subject sits centered
-//   with generous navy margins. object-cover then crops only the navy, never
-//   her face or hands, on any desktop ratio from 16:9 to 21:9.
+//   hero-woman-uw.png  21:9 ultrawide built from hero-gen.png (gpt-image-2:
+//   navy blazer + cream top, generous headroom, hands holding a phone). Its
+//   navy background is extended edge-to-edge so the subject sits centered with
+//   wide navy margins + top headroom; object-cover then crops only the navy —
+//   never her head or hands — and her head clears the floating nav.
 const HERO_PERSON_SRC: string | null = "/brand/hero/hero-woman-uw.png";
 
 export function MarketingHero() {
