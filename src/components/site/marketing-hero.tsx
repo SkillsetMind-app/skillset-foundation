@@ -6,8 +6,11 @@ import { HeroSignupCard } from "@/components/site/hero-signup-card";
 // Centered hero figure (Hotmart-style): a wide photo of a woman on a navy
 // backdrop so it melts into the hero. Lives behind the copy + card and shows
 // through the clear center. Set to null to fall back to the navy gradient.
-//   hero-woman-1.png  ultrawide woman, centered, gpt-image-2 (default)
-const HERO_PERSON_SRC: string | null = "/brand/hero/hero-woman-1.png";
+//   hero-woman-uw.png  21:9 ultrawide — the 3:2 studio shot (hero-woman-1.png)
+//   with its navy background extended edge-to-edge so the subject sits centered
+//   with generous navy margins. object-cover then crops only the navy, never
+//   her face or hands, on any desktop ratio from 16:9 to 21:9.
+const HERO_PERSON_SRC: string | null = "/brand/hero/hero-woman-uw.png";
 
 export function MarketingHero() {
   // Keep the hero behind the floating nav while fitting the primary CTA
@@ -22,18 +25,17 @@ export function MarketingHero() {
           (left) and card (right) zones while the center stays clear. */}
       {HERO_PERSON_SRC ? (
         <div aria-hidden="true" className="absolute inset-0 hidden lg:block">
-          {/* object-contain (not cover): the source is a 3:2 portrait with the
-              subject framed head-to-hands on navy. cover into a full-viewport
-              hero cropped her forehead/eyes (top) and hands/phone (bottom).
-              contain shows the whole figure; the source's navy sides melt into
-              the pillarbox, and object-bottom turns any slack into headroom. */}
+          {/* Full-bleed ultrawide: the source is already 21:9 with the subject
+              centered inside wide navy margins, so object-cover fills the hero
+              edge-to-edge and only ever crops the navy — her face and hands
+              stay intact on every desktop ratio. */}
           <Image
             src={HERO_PERSON_SRC}
             alt=""
             fill
             priority
             sizes="100vw"
-            className="object-contain object-bottom"
+            className="object-cover object-center"
           />
           <div
             className="absolute inset-0"
