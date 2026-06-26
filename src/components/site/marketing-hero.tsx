@@ -22,13 +22,18 @@ export function MarketingHero() {
           (left) and card (right) zones while the center stays clear. */}
       {HERO_PERSON_SRC ? (
         <div aria-hidden="true" className="absolute inset-0 hidden lg:block">
+          {/* object-contain (not cover): the source is a 3:2 portrait with the
+              subject framed head-to-hands on navy. cover into a full-viewport
+              hero cropped her forehead/eyes (top) and hands/phone (bottom).
+              contain shows the whole figure; the source's navy sides melt into
+              the pillarbox, and object-bottom turns any slack into headroom. */}
           <Image
             src={HERO_PERSON_SRC}
             alt=""
             fill
             priority
             sizes="100vw"
-            className="object-cover object-center"
+            className="object-contain object-bottom"
           />
           <div
             className="absolute inset-0"
