@@ -41,7 +41,7 @@ export function HowItWorksStrip() {
           How it works
         </p>
         <h2 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] sm:text-5xl">
-          From your method to a published program — in three steps.
+          Three steps from your method to a published program.
         </h2>
       </RevealSection>
       <div className="mt-10 grid gap-8 sm:mt-12 lg:grid-cols-3">

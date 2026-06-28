@@ -33,7 +33,7 @@ const capabilities: ReadonlyArray<Capability> = [
   {
     title: "Private program community",
     description:
-      "Every paid course gets its own private space where members keep showing up after the lesson ends — posts, replies, and likes.",
+      "Every paid course gets a private space for posts, replies, and likes. Members keep talking there after the lesson ends.",
     Icon: MessagesSquare,
   },
   {
@@ -50,7 +50,7 @@ const capabilities: ReadonlyArray<Capability> = [
   {
     title: "Verifiable certificates",
     description:
-      "A public link anyone can verify in seconds — proof your members completed the work.",
+      "A public link anyone can check in seconds. Proof your members did the work.",
     Icon: Award,
   },
 ];
@@ -63,11 +63,11 @@ export function CapabilitiesGrid() {
           Built into Skillset
         </p>
         <h2 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] sm:text-5xl">
-          Everything your program needs — nothing to wire up yourself.
+          Everything your program needs is already built in.
         </h2>
         <p className="mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          No add-ons. No locked features. Every plan ships the same toolset —
-          your plan only changes the commission you pay per sale.
+          No add-ons. No locked features. Every plan ships the same toolset.
+          Your plan only changes the commission you pay per sale.
         </p>
       </RevealSection>
       <div className="mt-10 grid gap-5 sm:mt-12 md:grid-cols-2 xl:grid-cols-3">

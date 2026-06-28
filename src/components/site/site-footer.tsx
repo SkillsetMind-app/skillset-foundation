@@ -44,8 +44,8 @@ export function SiteFooter() {
             <LogoWordmark compact />
             <p className="mt-4 max-w-sm text-sm leading-7 text-[var(--color-ink-soft)]">
               The course platform for psychologists, therapists, and
-              personal-development coaches — reviewed quality, transparent
-              payouts, verifiable credentials.
+              personal-development coaches. Reviewed programs, transparent
+              payouts, verifiable certificates.
             </p>
           </div>
           <div className="grid gap-6 sm:grid-cols-3">
@@ -72,10 +72,7 @@ export function SiteFooter() {
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] pt-5 text-xs leading-6 text-[var(--color-ink-soft)]">
           <span>&copy; {new Date().getFullYear()} Skillset.</span>
           <PrivacyChoicesButton />
-          <span>
-            Built for course-first learning, transparent payouts, trusted
-            student progress.
-          </span>
+          <span>Course-first learning with transparent payouts.</span>
         </div>
       </div>
     </footer>

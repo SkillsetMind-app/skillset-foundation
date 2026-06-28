@@ -69,7 +69,7 @@ export function MarketingHero() {
               </h1>
               <p className="max-w-[34rem] text-[15px] leading-[1.6] text-white/82 sm:text-base">
                 Built for psychologists, therapists, and personal-development
-                coaches. No site to build, no tools to wire up — we run the
+                coaches. No site to build, no tools to wire up. We run the
                 checkout, the classroom, and your payouts. You teach.
               </p>
               <HeroCtas />
