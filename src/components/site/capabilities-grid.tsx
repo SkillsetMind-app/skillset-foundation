@@ -31,9 +31,9 @@ const capabilities: ReadonlyArray<Capability> = [
     Icon: Calendar,
   },
   {
-    title: "Course-linked community",
+    title: "Private program community",
     description:
-      "Every paid course gets its own private space for posts, replies, and likes.",
+      "Every paid course gets its own private space where members keep showing up after the lesson ends — posts, replies, and likes.",
     Icon: MessagesSquare,
   },
   {
@@ -50,7 +50,7 @@ const capabilities: ReadonlyArray<Capability> = [
   {
     title: "Verifiable certificates",
     description:
-      "A public link employers can check in seconds.",
+      "A public link anyone can verify in seconds — proof your members completed the work.",
     Icon: Award,
   },
 ];
@@ -63,7 +63,7 @@ export function CapabilitiesGrid() {
           Built into Skillset
         </p>
         <h2 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] sm:text-5xl">
-          Everything a course needs is already here.
+          Everything your program needs — nothing to wire up yourself.
         </h2>
         <p className="mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
           No add-ons. No locked features. Every plan ships the same toolset —

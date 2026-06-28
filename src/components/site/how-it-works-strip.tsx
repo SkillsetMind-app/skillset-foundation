@@ -27,8 +27,8 @@ const steps: ReadonlyArray<Step> = [
   },
   {
     number: "03",
-    title: "Sell globally",
-    description: `Your course goes live the moment you submit. Skillset's review runs alongside, so nothing holds up your first sale. Get paid in 30+ currencies, with earnings clearing ${payoutClearDays} days after each sale.`,
+    title: "Reach people anywhere",
+    description: `Your course goes live the moment you submit. Skillset's review runs alongside, so nothing holds up your first enrollment. Get paid in 30+ currencies, with earnings clearing ${payoutClearDays} days after each sale.`,
     Icon: Send,
   },
 ];
@@ -41,7 +41,7 @@ export function HowItWorksStrip() {
           How it works
         </p>
         <h2 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] sm:text-5xl">
-          From idea to income in three steps.
+          From your method to a published program — in three steps.
         </h2>
       </RevealSection>
       <div className="mt-10 grid gap-8 sm:mt-12 lg:grid-cols-3">
