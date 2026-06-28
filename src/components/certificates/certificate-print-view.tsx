@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { CertificateDocument } from "@/components/certificates/certificate-document";
 import type { Certificate } from "@/domain/certificate";
 import { getCertificate } from "@/lib/data/certificates";
+import { SITE_URL } from "@/lib/seo/page-metadata";
 
 type LoadState = "loading" | "ready" | "missing" | "error";
 
@@ -62,14 +63,24 @@ export function CertificatePrintView({
         >
           ← Back to credentials
         </Link>
-        {state === "ready" ? (
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="button-solid px-4 py-2.5 text-sm"
-          >
-            Download / print
-          </button>
+        {state === "ready" && certificate ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <a
+              href={buildLinkedInAddUrl(certificate)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="button-outline px-4 py-2.5 text-sm"
+            >
+              Add to LinkedIn
+            </a>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="button-solid px-4 py-2.5 text-sm"
+            >
+              Download PDF
+            </button>
+          </div>
         ) : null}
       </div>
 
@@ -101,6 +112,24 @@ export function CertificatePrintView({
       </div>
     </main>
   );
+}
+
+// LinkedIn "Add to Profile" deep link for the Licenses & Certifications section.
+// Points at the public verification URL so anyone (recruiters included) can confirm it.
+function buildLinkedInAddUrl(certificate: Certificate): string {
+  const verifyUrl = `${SITE_URL}/verify?code=${encodeURIComponent(
+    certificate.verificationCode,
+  )}`;
+
+  const params = new URLSearchParams({
+    startTask: "CERTIFICATION_NAME",
+    name: certificate.courseTitle,
+    organizationName: "Skillset",
+    certUrl: verifyUrl,
+    certId: certificate.verificationCode,
+  });
+
+  return `https://www.linkedin.com/profile/add?${params.toString()}`;
 }
 
 function CertificateNotice({

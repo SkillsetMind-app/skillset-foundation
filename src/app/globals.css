@@ -4711,3 +4711,17 @@ button:hover > .dash-card,
     transition: none;
   }
 }
+
+/* Clean print/PDF output for certificates: controlled page margin and faithful
+   brand colors (browsers drop colored borders and fills from print by default). */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  .cert-doc,
+  .cert-doc * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
