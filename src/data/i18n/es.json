@@ -17,7 +17,9 @@
     "accessLearningTitle": "Acceder a mis cursos",
     "accessLearningDesc": "Continúa tus programas inscritos",
     "manageTeachingTitle": "Gestionar mi enseñanza",
-    "manageTeachingDesc": "Abrir el Estudio del Profesor"
+    "manageTeachingDesc": "Abrir el Estudio del Profesor",
+    "primaryNavLabel": "Navegación principal",
+    "mobileNavLabel": "Navegación móvil"
   },
   "footer": {
     "tagline": "La plataforma de cursos para psicólogos, terapeutas y coaches de desarrollo personal. Programas revisados, pagos transparentes, certificados verificables.",
@@ -75,7 +77,8 @@
       "alreadyHaveAccount": "¿Ya tienes una cuenta?",
       "acceptTermsToCreate": "Acepta los Términos del Servicio y la Política de Privacidad para crear tu cuenta.",
       "acceptTermsForGoogle": "Acepta los Términos del Servicio y la Política de Privacidad antes de continuar con Google.",
-      "passwordRequirements": "Usa una contraseña que cumpla todos los requisitos."
+      "passwordRequirements": "Usa una contraseña que cumpla todos los requisitos.",
+      "mfaUseSignIn": "Esta cuenta tiene la verificación en dos pasos activada. Inicia sesión para introducir tu código."
     }
   },
   "account": {

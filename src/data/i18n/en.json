@@ -17,7 +17,9 @@
     "accessLearningTitle": "Access my learning",
     "accessLearningDesc": "Continue your enrolled programs",
     "manageTeachingTitle": "Manage my teaching",
-    "manageTeachingDesc": "Open Teacher Studio"
+    "manageTeachingDesc": "Open Teacher Studio",
+    "primaryNavLabel": "Primary navigation",
+    "mobileNavLabel": "Mobile navigation"
   },
   "footer": {
     "tagline": "The course platform for psychologists, therapists, and personal-development coaches. Reviewed programs, transparent payouts, verifiable certificates.",
@@ -75,7 +77,8 @@
       "alreadyHaveAccount": "Already have an account?",
       "acceptTermsToCreate": "Accept the Terms of Service and Privacy Policy to create your account.",
       "acceptTermsForGoogle": "Accept the Terms of Service and Privacy Policy before continuing with Google.",
-      "passwordRequirements": "Use a password that meets every requirement."
+      "passwordRequirements": "Use a password that meets every requirement.",
+      "mfaUseSignIn": "This account has two-step verification enabled. Please sign in instead to enter your code."
     }
   },
   "account": {

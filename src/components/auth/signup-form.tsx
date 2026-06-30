@@ -12,6 +12,7 @@ import {
 } from "@/components/auth/password-strength-checklist";
 import {
   getAuthErrorMessage,
+  isMultiFactorRequiredError,
   signInWithGoogle,
   signUpWithEmail,
 } from "@/lib/auth/firebase-auth";
@@ -152,7 +153,13 @@ export function SignupForm() {
           : `/welcome${getAuthPathQuery(pathIntent)}`,
       );
     } catch (caughtError) {
-      setError(getAuthErrorMessage(caughtError));
+      // A returning user with TOTP enrolled trips an MFA challenge here, but
+      // the signup surface has no resolver — steer them to sign-in, which does.
+      if (isMultiFactorRequiredError(caughtError)) {
+        setError(t("auth.signup.mfaUseSignIn"));
+      } else {
+        setError(getAuthErrorMessage(caughtError));
+      }
     } finally {
       setIsLoading(false);
     }

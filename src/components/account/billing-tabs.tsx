@@ -68,6 +68,13 @@ export function BillingTabs() {
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  // "loading" until the first profile snapshot resolves. The Overview waits on
+  // this so it never flashes "Free subscription" from a still-null profile
+  // during the orders-vs-profile load race; "error" lets it show plan/portal as
+  // unknown instead of asserting Free when the listener fails.
+  const [profileStatus, setProfileStatus] = useState<
+    "loading" | "ready" | "error"
+  >("loading");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -106,8 +113,14 @@ export function BillingTabs() {
 
     return subscribeToUserProfile(
       user.uid,
-      (nextProfile) => setProfile(nextProfile),
-      () => setProfile(null),
+      (nextProfile) => {
+        setProfile(nextProfile);
+        setProfileStatus("ready");
+      },
+      () => {
+        setProfile(null);
+        setProfileStatus("error");
+      },
     );
   }, [user]);
 
@@ -159,6 +172,7 @@ export function BillingTabs() {
           <OverviewTab
             orders={sortedOrders}
             profile={profile}
+            profileStatus={profileStatus}
             isLoading={isLoading}
             error={error}
             isSignedIn={isSignedIn}
@@ -183,15 +197,25 @@ type OrderTabProps = {
  * one currency today; the label uses the currency of the most recent paid
  * order. ponytail: per-currency grouping when multi-currency selling lands. */
 function summarisePurchases(orders: Order[]) {
-  const paid = orders.filter((order) => order.status === "paid");
+  // A partial refund leaves the learner with course access and net-paid most of
+  // the price, so it counts as an owned purchase (net of the refunded portion);
+  // only a full refund removes the course.
+  const owned = orders.filter(
+    (order) =>
+      order.status === "paid" || order.status === "partially_refunded",
+  );
   const refunded = orders.filter(
     (order) =>
       order.status === "refunded" || order.status === "partially_refunded",
   );
-  const spentMinor = paid.reduce((total, order) => total + order.amountMinor, 0);
-  const currency = paid[0]?.currency ?? "USD";
+  const spentMinor = owned.reduce(
+    (total, order) =>
+      total + Math.max(0, order.amountMinor - (order.refundedAmountMinor ?? 0)),
+    0,
+  );
+  const currency = owned[0]?.currency ?? "USD";
   return {
-    courseCount: paid.length,
+    courseCount: owned.length,
     refundCount: refunded.length,
     spentMinor,
     currency,
@@ -201,6 +225,7 @@ function summarisePurchases(orders: Order[]) {
 function OverviewTab({
   orders,
   profile,
+  profileStatus,
   isLoading,
   error,
   isSignedIn,
@@ -208,9 +233,12 @@ function OverviewTab({
   onSeePurchases,
 }: OrderTabProps & {
   profile: UserProfile | null;
+  profileStatus: "loading" | "ready" | "error";
   onSeePurchases: () => void;
 }) {
-  if (authResolving || isLoading) {
+  // Wait on the profile too, so the plan/portal block never renders a default
+  // "Free" from a not-yet-loaded profile during the orders-vs-profile race.
+  if (authResolving || isLoading || profileStatus === "loading") {
     return <BillingNotice>Loading your billing overview...</BillingNotice>;
   }
 
@@ -224,8 +252,11 @@ function OverviewTab({
 
   const { courseCount, refundCount, spentMinor, currency } =
     summarisePurchases(orders);
+  // Profile listener failed: we don't know the plan, so show it as unknown
+  // rather than asserting "Free" (which would misstate a paying user's plan).
+  const profileFailed = profileStatus === "error";
   const planId: PlanId = profile?.currentPlanId ?? "free";
-  const planName = planById(planId).name;
+  const planName = profileFailed ? "Unavailable" : planById(planId).name;
   const hasCustomer = Boolean(profile?.stripeCustomerId);
 
   return (
@@ -239,8 +270,8 @@ function OverviewTab({
           {formatMoney(spentMinor, currency)}
         </p>
         <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-          {courseCount} {courseCount === 1 ? "course" : "courses"} purchased ·{" "}
-          {planName} subscription
+          {courseCount} {courseCount === 1 ? "course" : "courses"} purchased
+          {profileFailed ? "" : ` · ${planName} subscription`}
         </p>
 
         <dl className="mt-5 grid gap-px overflow-hidden rounded-[10px] border fine-rule bg-[var(--color-line)]">
@@ -282,7 +313,9 @@ function OverviewTab({
           <PortalButton label="Open Stripe portal" />
         ) : (
           <p className="mt-3 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-            Your portal opens once you have a paid purchase or subscription.
+            {profileFailed
+              ? "We couldn't load your billing details right now. Refresh to try again."
+              : "Your portal opens once you have a paid purchase or subscription."}
           </p>
         )}
         <p className="mt-4 text-xs leading-6 text-[var(--color-ink-soft)]">

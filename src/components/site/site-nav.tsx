@@ -149,7 +149,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
       <div className="site-header__inner relative">
         <LogoWordmark nav />
         <nav
-          aria-label="Primary navigation"
+          aria-label={t("nav.primaryNavLabel")}
           className="site-header__links"
         >
           {resolvedNav.map((item) => {
@@ -228,7 +228,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
               id="site-mobile-menu"
               className="absolute inset-x-0 top-[calc(100%+8px)] z-[46] rounded-[14px] border border-[var(--color-line)] bg-white p-3 shadow-[0_24px_48px_rgba(15,39,68,0.16)] min-[941px]:hidden"
             >
-              <nav aria-label="Mobile navigation" className="grid gap-1">
+              <nav aria-label={t("nav.mobileNavLabel")} className="grid gap-1">
                 {resolvedNav.map((item) => {
                   const baseClass =
                     "rounded-[10px] px-3 py-2.5 text-sm font-semibold transition-colors";

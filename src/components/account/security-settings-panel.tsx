@@ -11,6 +11,7 @@ import {
 import {
   changeSkillsetPassword,
   getAuthErrorMessage,
+  isMultiFactorRequiredError,
   requestSkillsetEmailChange,
   refreshCurrentUserEmailVerification,
   resetPassword,
@@ -97,7 +98,17 @@ export function SecuritySettingsPanel() {
       setNextPassword("");
       setMessage("Password updated.");
     } catch (caughtError) {
-      setError(getAuthErrorMessage(caughtError));
+      // Re-authentication for a 2FA user triggers an MFA challenge this form
+      // can't resolve. The reset-link path below sets a new password without
+      // re-auth, so steer them there instead of showing a code prompt with no
+      // field.
+      if (isMultiFactorRequiredError(caughtError)) {
+        setError(
+          'Two-step verification is on for this account. Use "Email me a reset link" below to set a new password without your current one.',
+        );
+      } else {
+        setError(getAuthErrorMessage(caughtError));
+      }
     } finally {
       setIsBusy(false);
     }

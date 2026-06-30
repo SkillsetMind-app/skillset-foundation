@@ -17,6 +17,12 @@ export type Order = {
   courseSlug: string;
   courseTitle: string;
   amountMinor: number;
+  /**
+   * Cumulative amount refunded on this order, in minor units, mirrored from the
+   * charge by the refund webhook. Absent (treat as 0) on orders that never had
+   * a refund. Net paid = amountMinor - (refundedAmountMinor ?? 0).
+   */
+  refundedAmountMinor?: number;
   currency: string;
   platformFeeBps: number;
   payoutModel?: "separate_charges_and_transfers" | "destination_charge";
