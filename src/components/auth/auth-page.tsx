@@ -4,6 +4,7 @@ import { LoginForm } from "@/components/auth/login-form";
 import { SignupForm } from "@/components/auth/signup-form";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { ArrowLeft, Check } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -51,8 +52,24 @@ export function AuthPage() {
     <main className="auth-split">
       {/* Brand panel — desktop only, decorative (form carries all functional UI). */}
       <aside className="auth-aside" aria-hidden="true">
-        {/* Engraved-editorial certificate seal-work behind the brand copy. */}
-        <div className="pointer-events-none absolute inset-0 bg-[url('/brand/auth-engraving.webp')] bg-cover bg-center opacity-[0.45] mix-blend-screen" />
+        {/* Brand photo behind the copy — the same navy portrait as the homepage
+            hero, with a scrim so the white brand text stays legible. */}
+        <Image
+          src="/brand/hero/hero-woman-6.png"
+          alt=""
+          fill
+          priority
+          sizes="(min-width: 1024px) 48vw, 0px"
+          // ponytail: x% keeps her face in the panel crop; nudge if off-centre.
+          className="pointer-events-none object-cover [object-position:66%_center]"
+        />
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage:
+              "linear-gradient(160deg, rgba(7,9,13,0.32), rgba(7,9,13,0.82))",
+          }}
+        />
         <p className="relative text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">
           Skillset for experts
         </p>
