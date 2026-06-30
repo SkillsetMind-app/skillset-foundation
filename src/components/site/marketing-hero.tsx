@@ -5,12 +5,12 @@ import { HeroCtas } from "@/components/site/hero-ctas";
 // Centered hero figure (Hotmart-style): a wide photo of a woman on a navy
 // backdrop so it melts into the hero. Lives behind the copy + card and shows
 // through the clear center. Set to null to fall back to the navy gradient.
-//   hero-woman-5.jpg  ~21:9 (3000x1273) photoreal portrait — woman turned over her
-//   shoulder with a big genuine smile, dark blazer, hugging a laptop on the brand
-//   navy radial. Subject sits far in the right third, leaving a wide clean navy
-//   negative space on the left for the headline and generous headroom on top so her
+//   hero-woman-6.png  ~21:9 (1928x815) photoreal portrait — woman in round glasses
+//   turned over her shoulder with a big genuine smile, dark blazer, hugging a MacBook
+//   on the brand navy radial. Subject sits far in the right third, leaving a wide clean
+//   navy negative space on the left for the headline and generous headroom on top so her
 //   head clears the floating nav. object-cover crops only the navy margins.
-const HERO_PERSON_SRC: string | null = "/brand/hero/hero-woman-5.jpg";
+const HERO_PERSON_SRC: string | null = "/brand/hero/hero-woman-6.png";
 
 export function MarketingHero() {
   // Keep the hero behind the floating nav while fitting the primary CTA
