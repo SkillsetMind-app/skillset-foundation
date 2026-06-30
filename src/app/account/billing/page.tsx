@@ -6,8 +6,9 @@ export default function AccountBillingPage() {
   return (
     <ProtectedSurface permissions={["auth.signOut"]}>
       <PlatformShell
-        title="Billing"
-        description="Billing is for purchases, subscriptions, invoices, and receipts on this account. Creator payouts live under Payouts."
+        eyebrow="Billing & receipts"
+        title="What you've paid Skillset."
+        description="Course purchases stay accessible for life, and every receipt is downloadable. Subscription billing and payment methods live in your secure Stripe portal. Creator payouts are under Payouts."
         compact
       >
         <BillingTabs />

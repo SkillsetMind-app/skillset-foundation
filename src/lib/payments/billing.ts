@@ -83,3 +83,19 @@ export async function openBillingPortal() {
 
   window.location.assign(result.data.url);
 }
+
+/**
+ * Requests a self-serve refund for a paid course purchase. The server callable
+ * (`requestRefund`) is keyed by enrollmentId — which is deterministic,
+ * `${uid}__${courseId}` — and enforces the real policy gates (refund window,
+ * course progress, certificate status). It rejects ineligible requests with an
+ * HttpsError whose message we surface verbatim, so the UI never has to encode
+ * the policy itself. Resolves on a accepted request; throws otherwise.
+ */
+export async function requestOrderRefund(enrollmentId: string): Promise<void> {
+  const requestRefund = httpsCallable<{ enrollmentId: string }, unknown>(
+    getFirebaseFunctions(),
+    "requestRefund",
+  );
+  await requestRefund({ enrollmentId });
+}

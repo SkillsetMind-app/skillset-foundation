@@ -7,14 +7,18 @@ import { PlansPanel } from "@/components/account/plans-panel";
 import { useAuth } from "@/components/auth/auth-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import { StatusChip } from "@/components/shared/status-chip";
+import { planById, type PlanId } from "@/data/plans";
 import type { Order } from "@/domain/order";
+import type { UserProfile } from "@/domain/user-profile";
 import { subscribeToUserOrders } from "@/lib/data/orders";
-import { openBillingPortal } from "@/lib/payments/billing";
+import { subscribeToUserProfile } from "@/lib/data/user-profiles";
+import { openBillingPortal, requestOrderRefund } from "@/lib/payments/billing";
 
 const billingTabs = [
+  { value: "overview", label: "Overview" },
   { value: "purchases", label: "Purchases" },
-  { value: "subscriptions", label: "Subscriptions" },
-  { value: "invoices", label: "Invoices" },
+  { value: "payment-methods", label: "Payment methods" },
+  { value: "subscriptions", label: "Subscription" },
 ];
 
 function formatMoney(amountMinor: number, currency: string) {
@@ -59,16 +63,17 @@ function toMillis(value: unknown): number {
 export function BillingTabs() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const activeTab = searchParams.get("tab") ?? "purchases";
+  const activeTab = searchParams.get("tab") ?? "overview";
   const { status, user } = useAuth();
 
   const [orders, setOrders] = useState<Order[]>([]);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // One real-time listener feeds both the Purchases and Invoices tabs, so the
+  // One real-time listener feeds the Overview and Purchases tabs, so the
   // subscription lives at the tab-shell level (it survives tab switches — only
-  // the inner branch re-renders). The Subscriptions tab uses its own source.
+  // the inner branch re-renders). The Subscription tab uses its own source.
   // Only the subscription callbacks call setState (never the effect body), so
   // there are no cascading synchronous re-renders; the signed-out and
   // auth-loading states are derived from `status` at render time instead.
@@ -88,6 +93,21 @@ export function BillingTabs() {
         setError("We could not load your purchases. Refresh to try again.");
         setIsLoading(false);
       },
+    );
+  }, [user]);
+
+  // Profile feeds the current plan + whether a Stripe customer exists (so the
+  // portal button is only offered when it can actually open). Failure is
+  // non-fatal — the overview just falls back to the Free plan label.
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    return subscribeToUserProfile(
+      user.uid,
+      (nextProfile) => setProfile(nextProfile),
+      () => setProfile(null),
     );
   }, [user]);
 
@@ -111,16 +131,6 @@ export function BillingTabs() {
 
   return (
     <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-      <div className="mb-5 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-          Billing is not payouts
-        </p>
-        <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
-          Use Billing for purchases, subscriptions, invoices, and receipts tied
-          to this account. Use Payouts when you are a creator connecting Stripe
-          or checking money owed to you.
-        </p>
-      </div>
       <HorizontalTabs
         tabs={billingTabs}
         activeValue={activeTab}
@@ -130,21 +140,30 @@ export function BillingTabs() {
       <div className="mt-6">
         {activeTab === "subscriptions" ? (
           <PlansPanel />
-        ) : activeTab === "invoices" ? (
-          <InvoicesTab
+        ) : activeTab === "payment-methods" ? (
+          <PaymentMethodsTab
+            profile={profile}
+            isSignedIn={isSignedIn}
+            authResolving={authResolving}
+          />
+        ) : activeTab === "purchases" ? (
+          <PurchasesTab
             orders={sortedOrders}
+            userId={user?.uid ?? null}
             isLoading={isLoading}
             error={error}
             isSignedIn={isSignedIn}
             authResolving={authResolving}
           />
         ) : (
-          <PurchasesTab
+          <OverviewTab
             orders={sortedOrders}
+            profile={profile}
             isLoading={isLoading}
             error={error}
             isSignedIn={isSignedIn}
             authResolving={authResolving}
+            onSeePurchases={() => handleTabChange("purchases")}
           />
         )}
       </div>
@@ -160,13 +179,222 @@ type OrderTabProps = {
   authResolving: boolean;
 };
 
-function PurchasesTab({
+/** Sum of paid orders. Single-currency assumption — the marketplace prices in
+ * one currency today; the label uses the currency of the most recent paid
+ * order. ponytail: per-currency grouping when multi-currency selling lands. */
+function summarisePurchases(orders: Order[]) {
+  const paid = orders.filter((order) => order.status === "paid");
+  const refunded = orders.filter(
+    (order) =>
+      order.status === "refunded" || order.status === "partially_refunded",
+  );
+  const spentMinor = paid.reduce((total, order) => total + order.amountMinor, 0);
+  const currency = paid[0]?.currency ?? "USD";
+  return {
+    courseCount: paid.length,
+    refundCount: refunded.length,
+    spentMinor,
+    currency,
+  };
+}
+
+function OverviewTab({
   orders,
+  profile,
   isLoading,
   error,
   isSignedIn,
   authResolving,
-}: OrderTabProps) {
+  onSeePurchases,
+}: OrderTabProps & {
+  profile: UserProfile | null;
+  onSeePurchases: () => void;
+}) {
+  if (authResolving || isLoading) {
+    return <BillingNotice>Loading your billing overview...</BillingNotice>;
+  }
+
+  if (!isSignedIn) {
+    return <BillingNotice>Sign in to view your billing overview.</BillingNotice>;
+  }
+
+  if (error) {
+    return <BillingNotice tone="error">{error}</BillingNotice>;
+  }
+
+  const { courseCount, refundCount, spentMinor, currency } =
+    summarisePurchases(orders);
+  const planId: PlanId = profile?.currentPlanId ?? "free";
+  const planName = planById(planId).name;
+  const hasCustomer = Boolean(profile?.stripeCustomerId);
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+      {/* Lifetime summary */}
+      <div className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-5">
+        <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
+          Lifetime spend
+        </p>
+        <p className="display-title mt-2 text-4xl text-[var(--color-primary)]">
+          {formatMoney(spentMinor, currency)}
+        </p>
+        <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
+          {courseCount} {courseCount === 1 ? "course" : "courses"} purchased ·{" "}
+          {planName} subscription
+        </p>
+
+        <dl className="mt-5 grid gap-px overflow-hidden rounded-[10px] border fine-rule bg-[var(--color-line)]">
+          {[
+            ["Courses purchased", String(courseCount)],
+            ["Active subscription", planName],
+            ["Refunds", String(refundCount)],
+          ].map(([label, value]) => (
+            <div
+              key={label}
+              className="flex items-center justify-between gap-4 bg-white px-4 py-3 text-sm"
+            >
+              <dt className="text-[var(--color-ink-soft)]">{label}</dt>
+              <dd className="font-semibold text-[var(--color-ink)]">{value}</dd>
+            </div>
+          ))}
+        </dl>
+
+        <button
+          type="button"
+          onClick={onSeePurchases}
+          className="button-outline mt-5 px-4 py-2 text-sm"
+        >
+          See all purchases &rarr;
+        </button>
+      </div>
+
+      {/* Payments & invoices via Stripe */}
+      <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-5">
+        <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
+          Payments & invoices
+        </p>
+        <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
+          Your payment method, subscription invoices, and billing history live
+          in the Stripe Customer Portal — the canonical record Stripe keeps in
+          sync with every charge.
+        </p>
+        {hasCustomer ? (
+          <PortalButton label="Open Stripe portal" />
+        ) : (
+          <p className="mt-3 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+            Your portal opens once you have a paid purchase or subscription.
+          </p>
+        )}
+        <p className="mt-4 text-xs leading-6 text-[var(--color-ink-soft)]">
+          All payments are processed by <strong>Stripe</strong>. Card details
+          are never stored on Skillset.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** Cards live in Stripe, never on Skillset — so this tab is an honest portal
+ * delegation, not a fabricated card list. */
+function PaymentMethodsTab({
+  profile,
+  isSignedIn,
+  authResolving,
+}: {
+  profile: UserProfile | null;
+  isSignedIn: boolean;
+  authResolving: boolean;
+}) {
+  if (authResolving) {
+    return <BillingNotice>Loading your payment methods...</BillingNotice>;
+  }
+
+  if (!isSignedIn) {
+    return <BillingNotice>Sign in to manage your payment methods.</BillingNotice>;
+  }
+
+  const hasCustomer = Boolean(profile?.stripeCustomerId);
+
+  return (
+    <div className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5">
+      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
+        Payment methods
+      </p>
+      <h3 className="display-title mt-2 text-2xl text-[var(--color-ink)]">
+        Managed securely by Stripe.
+      </h3>
+      <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
+        Skillset never stores your full card details. Add, replace, or remove a
+        card — and set your default — inside the Stripe Customer Portal, the same
+        secure surface that holds your invoices and billing history.
+      </p>
+      {hasCustomer ? (
+        <PortalButton label="Manage payment methods" />
+      ) : (
+        <p className="mt-3 rounded-[10px] border fine-rule bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+          You&rsquo;ll add your first card during checkout — Stripe stores it
+          securely and it appears here for management afterwards.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Opens the Stripe portal, owning its own busy/error state so both the
+ * overview and payment-methods tabs can drop it in. */
+function PortalButton({ label }: { label: string }) {
+  const [busy, setBusy] = useState(false);
+  const [portalError, setPortalError] = useState("");
+
+  async function handleOpenPortal() {
+    setPortalError("");
+    setBusy(true);
+    try {
+      await openBillingPortal();
+      // openBillingPortal navigates away on success; leave it busy if it
+      // resolves (the redirect is already in flight).
+    } catch (cause) {
+      setPortalError(
+        cause instanceof Error
+          ? cause.message
+          : "Could not open the Stripe billing portal.",
+      );
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        onClick={handleOpenPortal}
+        disabled={busy}
+        className="button-outline px-4 py-2 text-sm disabled:opacity-60"
+      >
+        {busy ? "Opening Stripe..." : label}
+      </button>
+      {portalError ? (
+        <p
+          role="alert"
+          className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]"
+        >
+          {portalError}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function PurchasesTab({
+  orders,
+  userId,
+  isLoading,
+  error,
+  isSignedIn,
+  authResolving,
+}: OrderTabProps & { userId: string | null }) {
+  const [refundFor, setRefundFor] = useState<Order | null>(null);
+
   if (authResolving) {
     return <BillingNotice>Loading your purchases...</BillingNotice>;
   }
@@ -221,149 +449,174 @@ function PurchasesTab({
                 <span className="rounded-[8px] bg-white px-3 py-1 text-sm font-bold text-[var(--color-primary)]">
                   {formatMoney(order.amountMinor, order.currency)}
                 </span>
-                {order.receiptUrl ? (
-                  <a
-                    href={order.receiptUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs font-semibold text-[var(--color-primary)] hover:underline"
-                  >
-                    View receipt &rarr;
-                  </a>
-                ) : null}
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                  {order.receiptUrl ? (
+                    <a
+                      href={order.receiptUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs font-semibold text-[var(--color-primary)] hover:underline"
+                    >
+                      View receipt &rarr;
+                    </a>
+                  ) : null}
+                  {order.status === "paid" && userId ? (
+                    <button
+                      type="button"
+                      onClick={() => setRefundFor(order)}
+                      className="text-xs font-semibold text-[var(--color-accent-fg)] hover:underline"
+                    >
+                      Request a refund
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </div>
           </li>
         ))}
       </ul>
+
+      {refundFor && userId ? (
+        <RefundModal
+          order={refundFor}
+          userId={userId}
+          onClose={() => setRefundFor(null)}
+        />
+      ) : null}
     </div>
   );
 }
 
-function InvoicesTab({
-  orders,
-  isLoading,
-  error,
-  isSignedIn,
-  authResolving,
-}: OrderTabProps) {
-  const [portalBusy, setPortalBusy] = useState(false);
-  const [portalError, setPortalError] = useState("");
+/** Confirms and submits a self-serve refund. The server enforces every policy
+ * gate (window, progress, certificate) and returns a precise message we show
+ * verbatim — so this modal stays a thin, honest confirmation. We do not collect
+ * a reason the callable would silently drop. */
+function RefundModal({
+  order,
+  userId,
+  onClose,
+}: {
+  order: Order;
+  userId: string;
+  onClose: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [done, setDone] = useState(false);
 
-  // One-off course purchases get a Stripe charge receipt (captured on the
-  // order). Subscription invoices live in the Customer Portal, surfaced via
-  // the button below.
-  const receipts = useMemo(
-    () => orders.filter((order) => Boolean(order.receiptUrl)),
-    [orders],
-  );
-
-  async function handleOpenPortal() {
-    setPortalError("");
-    setPortalBusy(true);
+  async function handleSubmit() {
+    setSubmitError("");
+    setBusy(true);
     try {
-      await openBillingPortal();
-      // openBillingPortal navigates away on success, so if it resolves the
-      // redirect is already in flight — leave the button in its busy state.
+      await requestOrderRefund(`${userId}__${order.courseId}`);
+      setDone(true);
     } catch (cause) {
-      setPortalError(
+      setSubmitError(
         cause instanceof Error
           ? cause.message
-          : "Could not open the Stripe billing portal.",
+          : "We could not submit your refund request. Please try again.",
       );
-      setPortalBusy(false);
+    } finally {
+      setBusy(false);
     }
   }
 
-  if (authResolving) {
-    return <BillingNotice>Loading your invoices...</BillingNotice>;
-  }
-
-  if (!isSignedIn) {
-    return (
-      <BillingNotice>Sign in to view your invoices and receipts.</BillingNotice>
-    );
-  }
-
   return (
-    <div className="grid gap-5">
-      <div className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
-        <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          Subscription invoices
-        </p>
-        <p className="mt-2 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          Your subscription invoices, payment method, and billing history live
-          in the Stripe Customer Portal — the canonical source Stripe keeps in
-          sync with every charge.
-        </p>
-        <button
-          type="button"
-          onClick={handleOpenPortal}
-          disabled={portalBusy}
-          className="button-outline mt-3 px-4 py-2 text-sm disabled:opacity-60"
-        >
-          {portalBusy ? "Opening Stripe..." : "View invoices in Stripe portal"}
-        </button>
-        {portalError ? (
-          <p
-            role="alert"
-            className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]"
-          >
-            {portalError}
-          </p>
-        ) : null}
-      </div>
-
-      <div>
-        <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          Purchase receipts
-        </p>
-        {isLoading ? (
-          <p className="mt-3 text-sm text-[var(--color-ink-soft)]">
-            Loading receipts...
-          </p>
-        ) : error ? (
-          <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
-            {error}
-          </p>
-        ) : receipts.length === 0 ? (
-          <p className="mt-3 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-            No one-off purchase receipts yet. Receipts appear here after a course
-            checkout is paid.
-          </p>
-        ) : (
-          <ul className="mt-3 grid gap-3">
-            {receipts.map((order) => (
-              <li
-                key={order.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-[rgba(7,9,13,0.55)] p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Request a refund"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-[16px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        {done ? (
+          <>
+            <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-success-fg)]">
+              Refund requested
+            </p>
+            <h2 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
+              We&rsquo;re on it.
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
+              Your request for <strong>{order.courseTitle}</strong> was
+              submitted. Eligible refunds are processed back to your original
+              payment method, and the status here updates as soon as Stripe
+              confirms it.
+            </p>
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="button-solid px-4 py-2 text-sm"
               >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
-                    {order.courseTitle}
-                  </p>
-                  <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
-                    {formatDate(order.paidAt ?? order.createdAt)} -{" "}
-                    {formatMoney(order.amountMinor, order.currency)}
-                  </p>
+                Done
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
+              Refund request
+            </p>
+            <h2 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
+              Request a refund.
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
+              Course purchases are refundable within the refund window if you
+              have completed less than half the course and have not been issued
+              a certificate. Eligible requests are processed automatically.
+            </p>
+
+            <dl className="mt-4 grid gap-px overflow-hidden rounded-[10px] border fine-rule bg-[var(--color-line)]">
+              {[
+                ["Course", order.courseTitle],
+                ["Purchased", formatDate(order.paidAt ?? order.createdAt)],
+                ["Amount", formatMoney(order.amountMinor, order.currency)],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between gap-4 bg-white px-4 py-2.5 text-sm"
+                >
+                  <dt className="text-[var(--color-ink-soft)]">{label}</dt>
+                  <dd className="truncate font-semibold text-[var(--color-ink)]">
+                    {value}
+                  </dd>
                 </div>
-                {order.receiptUrl ? (
-                  <a
-                    href={order.receiptUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-sm font-semibold text-[var(--color-primary)] hover:underline"
-                  >
-                    View receipt &rarr;
-                  </a>
-                ) : (
-                  <span className="text-sm text-[var(--color-ink-soft)]">
-                    Receipt pending
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
+              ))}
+            </dl>
+
+            {submitError ? (
+              <p
+                role="alert"
+                className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]"
+              >
+                {submitError}
+              </p>
+            ) : null}
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={busy}
+                className="button-outline px-4 py-2 text-sm disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={busy}
+                className="button-solid px-4 py-2 text-sm disabled:opacity-60"
+              >
+                {busy ? "Submitting..." : "Request refund"}
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
