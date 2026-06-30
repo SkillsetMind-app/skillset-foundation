@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { NotificationRow } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
+import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import type { AppNotification } from "@/domain/notification";
 import {
   markAllNotificationsAsRead,
@@ -16,6 +17,7 @@ import {
 export function NotificationsInbox() {
   const { status, user } = useAuth();
   const uid = status === "authenticated" ? user?.uid ?? null : null;
+  const [filter, setFilter] = useState<"all" | "unread">("all");
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   // Which uid the current `notifications` array was delivered for. Until it
   // matches the active uid we treat the list as still loading. Tracking this as
@@ -43,13 +45,34 @@ export function NotificationsInbox() {
 
   // Derived during render (not in an effect): signed-out shows nothing and
   // mirrors auth loading; signed-in shows items only once they arrived for THIS
-  // uid, otherwise the loading skeleton.
-  const items = uid && loadedUid === uid ? notifications : [];
+  // uid, otherwise the loading skeleton. Memoized so the fallback `[]` keeps a
+  // stable reference and the downstream useMemos don't recompute every render.
+  const items = useMemo(
+    () => (uid && loadedUid === uid ? notifications : []),
+    [uid, loadedUid, notifications],
+  );
   const loading = uid ? loadedUid !== uid : status === "loading";
 
   const unreadIds = useMemo(
     () => items.filter((item) => !item.read).map((item) => item.id),
     [items],
+  );
+
+  // Client-side filter over the already-loaded list — no extra query.
+  const visible = useMemo(
+    () => (filter === "unread" ? items.filter((item) => !item.read) : items),
+    [items, filter],
+  );
+
+  const notificationTabs = useMemo(
+    () => [
+      { value: "all", label: "All" },
+      {
+        value: "unread",
+        label: unreadIds.length > 0 ? `Unread (${unreadIds.length})` : "Unread",
+      },
+    ],
+    [unreadIds.length],
   );
 
   async function handleMarkAll() {
@@ -103,6 +126,13 @@ export function NotificationsInbox() {
       </div>
 
       <div className="overflow-hidden rounded-[16px] border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]">
+        <HorizontalTabs
+          tabs={notificationTabs}
+          activeValue={filter}
+          onChange={(value) => setFilter(value as "all" | "unread")}
+          ariaLabel="Filter notifications"
+          className="px-2"
+        />
         {loading ? (
           <div aria-hidden="true">
             {[0, 1, 2].map((row) => (
@@ -112,7 +142,7 @@ export function NotificationsInbox() {
               />
             ))}
           </div>
-        ) : items.length === 0 ? (
+        ) : visible.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <BellOff
               aria-hidden="true"
@@ -121,16 +151,19 @@ export function NotificationsInbox() {
               className="mx-auto text-[var(--color-ink-muted)]"
             />
             <p className="mt-4 text-sm font-semibold text-[var(--color-ink)]">
-              No notifications yet
+              {filter === "unread" && items.length > 0
+                ? "You're all caught up"
+                : "No notifications yet"}
             </p>
             <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[var(--color-ink-soft)]">
-              Replies to your posts, new reviews on your courses, and enrollment
-              updates will show up here.
+              {filter === "unread" && items.length > 0
+                ? "Nothing unread right now. Switch to All to see your earlier notifications."
+                : "Replies to your posts, new reviews on your courses, and enrollment updates will show up here."}
             </p>
           </div>
         ) : (
           <ul className="divide-y divide-[var(--color-line)]">
-            {items.map((notification) => (
+            {visible.map((notification) => (
               <li key={notification.id}>
                 {notification.link ? (
                   <Link

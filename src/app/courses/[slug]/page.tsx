@@ -94,7 +94,7 @@ export default async function CourseDetailPage({
       <SiteNav />
       <main className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
         <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
-          <section>
+          <section id="overview" className="scroll-mt-24">
             <div className="relative mb-8 aspect-[16/9] overflow-hidden rounded-[20px] shadow-[var(--shadow-soft)]">
               <Image
                 src={course.image}
@@ -135,6 +135,29 @@ export default async function CourseDetailPage({
             <p className="mt-8 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-primary-light)]">
               {course.detail}
             </p>
+            {/* Section nav — anchors to the real, server-rendered sections so it
+                stays SSR/SEO-safe and invents nothing. The design's Reviews and
+                Instructor tabs are intentionally omitted: catalog courses carry
+                no review or instructor-bio data, and fabricating it would
+                violate No-Invention. */}
+            <nav
+              aria-label="Course sections"
+              className="mt-10 flex flex-wrap gap-1 border-b border-[var(--color-line)]"
+            >
+              {[
+                ["Overview", "#overview"],
+                ["Free preview", "#free-preview"],
+                ["Curriculum", "#curriculum"],
+              ].map(([label, href]) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="border-b-2 border-transparent px-4 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition hover:border-[var(--color-accent-fg)] hover:text-[var(--color-primary)]"
+                >
+                  {label}
+                </Link>
+              ))}
+            </nav>
             {/* Free preview and curriculum used to live nested inside an
                 outer white card with rounded-[16px] holding inner rounded-[14px]
                 blocks — the rounded-on-rounded made the section feel busy.
@@ -178,7 +201,7 @@ export default async function CourseDetailPage({
               </div>
             </section>
 
-            <section className="mt-8">
+            <section id="curriculum" className="mt-8 scroll-mt-24">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                 Course structure
               </p>
