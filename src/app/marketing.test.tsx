@@ -17,12 +17,12 @@ describe("marketing home", () => {
     render(<Home />);
 
     expect(
-      screen.getByText("Turn your expertise into a global course business.", {
+      screen.getByText("Your knowledge changes lives.", {
         exact: false,
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Three steps from idea to income."),
+      screen.getByText("Three steps from your method to a published program."),
     ).toBeInTheDocument();
     expect(
       screen.getByText("Six commitments. Written down. Public."),
