@@ -4725,3 +4725,242 @@ button:hover > .dash-card,
     print-color-adjust: exact;
   }
 }
+
+/* === Members area (Skillset DESIGN V2) ===
+   Per-course student consumption hero. Namespaced --ma-* tokens + .members-*
+   classes, scoped to [data-members-theme] so nothing global is clobbered.
+   Ported from "Área de Membros.html" (.mb-hero*). */
+[data-members-theme="dark"] {
+  --ma-bg: #0a0d12;
+  --ma-bg-top: #06080c;
+  --ma-elev: #11151d;
+  --ma-surface: #141923;
+  --ma-surface-2: #1a202b;
+  --ma-line: rgba(255, 255, 255, 0.08);
+  --ma-line-2: rgba(255, 255, 255, 0.15);
+  --ma-ink: #eef1f6;
+  --ma-ink-soft: #9aa6b6;
+  --ma-ink-muted: #67717f;
+  --ma-hero-scrim: linear-gradient(90deg, rgba(7, 9, 13, 0.96) 0%, rgba(7, 9, 13, 0.78) 32%, rgba(7, 9, 13, 0.3) 62%, rgba(7, 9, 13, 0.1) 100%), linear-gradient(0deg, rgba(7, 9, 13, 0.7), rgba(7, 9, 13, 0) 40%);
+  --ma-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+}
+[data-members-theme="light"] {
+  --ma-bg: #efeae2;
+  --ma-bg-top: #ffffff;
+  --ma-elev: #ffffff;
+  --ma-surface: #ffffff;
+  --ma-surface-2: #f5f1ea;
+  --ma-line: rgba(28, 24, 18, 0.12);
+  --ma-line-2: rgba(28, 24, 18, 0.2);
+  --ma-ink: #231f1a;
+  --ma-ink-soft: #6a6258;
+  --ma-ink-muted: #9b9286;
+  --ma-hero-scrim: linear-gradient(90deg, rgba(20, 16, 12, 0.92) 0%, rgba(20, 16, 12, 0.66) 34%, rgba(20, 16, 12, 0.22) 64%, rgba(20, 16, 12, 0.04) 100%), linear-gradient(0deg, rgba(20, 16, 12, 0.55), rgba(20, 16, 12, 0) 42%);
+  --ma-shadow: 0 16px 40px rgba(60, 50, 38, 0.16);
+}
+[data-members-theme] {
+  /* theme-independent */
+  --ma-accent: #b22234;
+  --ma-accent-hover: #9e1f2f;
+  --ma-success: #27a06a;
+  --ma-display: "Cormorant Garamond", Georgia, serif;
+  --ma-sans: "Manrope", system-ui, -apple-system, sans-serif;
+}
+
+.members-hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  min-height: clamp(380px, 46vw, 520px);
+  background: var(--ma-surface-2);
+  font-family: var(--ma-sans);
+}
+.members-hero__cover {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.members-hero__art {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 42%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  opacity: 0.9;
+  pointer-events: none;
+}
+.members-hero__art-mark {
+  font-family: var(--ma-display);
+  font-weight: 700;
+  font-size: clamp(64px, 9vw, 128px);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+}
+.members-hero__art-studio {
+  font-family: var(--ma-display);
+  font-weight: 500;
+  font-size: 21px;
+  color: rgba(255, 255, 255, 0.85);
+}
+.members-hero__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: var(--ma-hero-scrim);
+  pointer-events: none;
+}
+.members-hero__inner {
+  position: relative;
+  z-index: 3;
+  align-self: center;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 48px 56px;
+}
+.members-hero__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 24px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: none;
+  opacity: 0.92;
+}
+.members-hero__back:hover {
+  opacity: 1;
+}
+.members-hero__title {
+  margin: 0;
+  max-width: 680px;
+  font-family: var(--ma-display);
+  font-weight: 600;
+  font-size: clamp(34px, 4.4vw, 56px);
+  line-height: 1.05;
+  letter-spacing: 0.005em;
+  color: #fff;
+  text-wrap: balance;
+}
+.members-hero__studio {
+  margin-top: 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.74);
+}
+.members-hero__studio strong {
+  font-weight: 700;
+  color: #fff;
+}
+.members-hero__sub {
+  margin: 18px 0 0;
+  max-width: 600px;
+  font-size: 15.5px;
+  line-height: 1.62;
+  color: rgba(255, 255, 255, 0.82);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.members-hero__sub--full {
+  -webkit-line-clamp: unset;
+}
+.members-hero__more {
+  margin-top: 8px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13.5px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+.members-hero__prog {
+  margin-top: 24px;
+  max-width: 520px;
+}
+.members-hero__prog-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+}
+.members-hero__prog-label strong {
+  font-weight: 800;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.members-hero__bar {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  overflow: hidden;
+}
+.members-hero__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ma-accent);
+}
+
+@media (max-width: 1100px) {
+  .members-hero__inner {
+    padding: 44px 44px;
+  }
+  .members-hero__art {
+    width: 38%;
+  }
+  .members-hero__title {
+    font-size: clamp(32px, 4.6vw, 50px);
+  }
+}
+@media (max-width: 980px) {
+  .members-hero {
+    min-height: 0;
+  }
+  .members-hero__art {
+    display: none;
+  }
+  .members-hero__inner {
+    padding: 40px 36px;
+  }
+  .members-hero__title,
+  .members-hero__sub,
+  .members-hero__prog {
+    max-width: none;
+  }
+}
+@media (max-width: 760px) {
+  .members-hero__inner {
+    padding: 30px 22px;
+  }
+  .members-hero__title {
+    font-size: clamp(28px, 7vw, 40px);
+  }
+  .members-hero__sub {
+    font-size: 14.5px;
+  }
+}
+@media (max-width: 640px) {
+  .members-hero__inner {
+    padding: 26px 18px;
+  }
+}

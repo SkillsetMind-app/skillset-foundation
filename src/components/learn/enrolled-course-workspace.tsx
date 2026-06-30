@@ -18,6 +18,7 @@ import {
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { CourseReviewPanel } from "@/components/learn/course-review-panel";
+import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { CourseSubscriptionCard } from "@/components/learn/course-subscription-card";
 import { WatermarkedVideoPlayer } from "@/components/learn/watermarked-video-player";
 import type { CourseAsset } from "@/domain/course-asset";
@@ -405,6 +406,18 @@ export function EnrolledCourseWorkspace({
   const selectedLessonNumber = selectedLesson
     ? allLessons.findIndex((lesson) => lesson.id === selectedLesson.id) + 1
     : 0;
+  // Members-area hero cover: the teacher's chosen members_cover CourseAsset
+  // (resolved to a protected object URL inside the hero band). Only available
+  // once Firestore assets are streamed (enableFirestoreAssets); otherwise the
+  // hero falls back to the course image.
+  const membersCoverAsset =
+    course.membersCoverAssetId && assetsState.key === course.id
+      ? assetsState.assets.find(
+          (asset) =>
+            asset.id === course.membersCoverAssetId
+            && asset.kind === "members_cover",
+        )
+      : undefined;
 
   if (assetsState.key === course.id) {
     for (const asset of assetsState.assets) {
@@ -488,6 +501,12 @@ export function EnrolledCourseWorkspace({
 
   return (
     <div className="member-classroom">
+      <MembersAreaHeroBand
+        course={course}
+        coverAsset={membersCoverAsset}
+        progressPercent={previewMode ? null : progressPercent}
+      />
+
       {previewMode ? (
         <section className="member-preview-banner">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -866,6 +885,71 @@ export function EnrolledCourseWorkspace({
         previewMode={previewMode}
       />
     </div>
+  );
+}
+
+function MembersAreaHeroBand({
+  course,
+  coverAsset,
+  progressPercent,
+}: {
+  course: Course;
+  coverAsset?: CourseAsset;
+  progressPercent: number | null;
+}) {
+  // Resolve the members_cover asset to a protected object URL, mirroring
+  // ProtectedAssetCover (mount-guard + revoke on unmount/asset change).
+  // Keyed by assetId so a stale resolve is ignored in render without a
+  // synchronous setState clear (react-hooks/set-state-in-effect).
+  const [objectUrlState, setObjectUrlState] = useState<{
+    assetId: string;
+    url: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!coverAsset || !coverAsset.contentType.startsWith("image/")) {
+      return undefined;
+    }
+
+    let isMounted = true;
+    let nextObjectUrl: string | null = null;
+
+    getProtectedCourseAssetObjectUrl(coverAsset)
+      .then((url) => {
+        nextObjectUrl = url;
+
+        if (isMounted) {
+          setObjectUrlState({
+            assetId: coverAsset.id,
+            url,
+          });
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isMounted = false;
+
+      if (nextObjectUrl) {
+        URL.revokeObjectURL(nextObjectUrl);
+      }
+    };
+  }, [coverAsset]);
+
+  const objectUrl =
+    coverAsset && objectUrlState?.assetId === coverAsset.id
+      ? objectUrlState.url
+      : null;
+
+  return (
+    <MembersAreaHero
+      theme={course.membersTheme ?? "dark"}
+      coverUrl={objectUrl ?? course.image ?? null}
+      title={course.membersTitle ?? course.title}
+      subtitle={course.membersSubtitle ?? null}
+      description={course.membersDescription ?? course.summary ?? null}
+      progressPercent={progressPercent}
+    />
   );
 }
 

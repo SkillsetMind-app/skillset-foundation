@@ -1,5 +1,6 @@
 export type CourseAssetKind =
   | "course_cover"
+  | "members_cover"
   | "module_cover"
   | "lesson_thumbnail"
   | "lesson_material"
@@ -25,6 +26,7 @@ export type CourseAsset = {
 
 export const courseAssetKindLabels: Record<CourseAssetKind, string> = {
   course_cover: "Course cover",
+  members_cover: "Members area cover",
   module_cover: "Module cover",
   lesson_thumbnail: "Lesson thumbnail",
   lesson_material: "Lesson material",
@@ -34,6 +36,7 @@ export const courseAssetKindLabels: Record<CourseAssetKind, string> = {
 
 export const courseAssetAcceptTypes: Record<CourseAssetKind, string> = {
   course_cover: "image/*",
+  members_cover: "image/*",
   module_cover: "image/*",
   lesson_thumbnail: "image/*",
   lesson_material:
@@ -104,6 +107,7 @@ export function isAllowedCourseAssetFile(file: File, kind: CourseAssetKind): boo
 
   if (
     kind === "course_cover" ||
+    kind === "members_cover" ||
     kind === "module_cover" ||
     kind === "lesson_thumbnail"
   ) {

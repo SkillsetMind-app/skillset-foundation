@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { isAllowedCourseAssetFile } from "./course-asset";
+import {
+  courseAssetAcceptTypes,
+  courseAssetKindLabels,
+  isAllowedCourseAssetFile,
+} from "./course-asset";
 
 function file(name: string, type: string, size = 1024) {
   return new File(["x".repeat(size)], name, { type });
@@ -39,6 +43,17 @@ describe("course asset validation", () => {
       true,
     );
     expect(isAllowedCourseAssetFile(file("installer.exe", ""), "lesson_material")).toBe(
+      false,
+    );
+  });
+
+  it("registers the members-area cover kind as a labeled image asset", () => {
+    expect(courseAssetKindLabels.members_cover).toBe("Members area cover");
+    expect(courseAssetAcceptTypes.members_cover).toBe("image/*");
+    expect(isAllowedCourseAssetFile(file("hero.jpg", "image/jpeg"), "members_cover")).toBe(
+      true,
+    );
+    expect(isAllowedCourseAssetFile(file("hero.mp4", "video/mp4"), "members_cover")).toBe(
       false,
     );
   });

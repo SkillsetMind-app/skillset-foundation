@@ -1126,6 +1126,11 @@ export const createTeacherCourseDraft = onCall(async (request) => {
       dripIntervalDays: 1,
       freePreviewLessonId: null,
       coverImageUrl: null,
+      membersTheme: null,
+      membersCoverAssetId: null,
+      membersTitle: null,
+      membersSubtitle: null,
+      membersDescription: null,
       reviewNote: null,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
@@ -1184,6 +1189,16 @@ export const updateTeacherCourseBuilder = onCall(async (request) => {
     cleanOptionalInteger(input.dripIntervalDays) ?? 1,
   );
   const freePreviewLessonId = cleanOptionalText(input.freePreviewLessonId, 160);
+  // Members-area hero customization. Mirrors normalizeMembersTheme/Text in
+  // src/domain/teacher-course.ts (separate runtime, no cross-import).
+  const membersTheme =
+    input.membersTheme === "light" || input.membersTheme === "dark"
+      ? input.membersTheme
+      : null;
+  const membersCoverAssetId = cleanOptionalText(input.membersCoverAssetId, 160);
+  const membersTitle = cleanOptionalText(input.membersTitle, 80);
+  const membersSubtitle = cleanOptionalText(input.membersSubtitle, 160);
+  const membersDescription = cleanOptionalText(input.membersDescription, 2000);
   const allLessonIds = new Set(
     modules.flatMap((module) => module.lessons.map((lesson) => lesson.id)),
   );
@@ -1341,6 +1356,11 @@ export const updateTeacherCourseBuilder = onCall(async (request) => {
       dripStrategy,
       dripIntervalDays,
       freePreviewLessonId,
+      membersTheme,
+      membersCoverAssetId,
+      membersTitle,
+      membersSubtitle,
+      membersDescription,
       updatedAt: FieldValue.serverTimestamp(),
     });
   });

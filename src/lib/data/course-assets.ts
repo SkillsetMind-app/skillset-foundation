@@ -25,7 +25,13 @@ import { getFirebaseStorage, getFirestoreDb } from "@/lib/firebase/client";
 
 const coursesCollection = "courses";
 const assetsCollection = "assets";
-const publicDownloadKinds = new Set<CourseAssetKind>(["course_cover"]);
+// members_cover is decorative hero art shown to enrolled students (like the
+// public course_cover), not gated content — so it gets a downloadUrl the
+// builder preview and the student hero can render directly by assetId.
+const publicDownloadKinds = new Set<CourseAssetKind>([
+  "course_cover",
+  "members_cover",
+]);
 
 type UploadCourseAssetInput = {
   courseId: string;

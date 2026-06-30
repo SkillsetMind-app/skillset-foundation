@@ -1,4 +1,5 @@
 import type { DripStrategy } from "@/domain/drip-policy";
+import type { MembersTheme } from "@/domain/teacher-course";
 
 export type CourseStatus = "draft" | "opening_soon" | "pilot" | "waitlist" | "published";
 
@@ -52,6 +53,14 @@ export type Course = {
   outcomes: string[];
   modules: CourseModule[];
   communityEnabled: boolean;
+  // Per-course members-area hero customization (enrolled-student surface).
+  // null theme → the hero defaults to "dark" (the members-area design default).
+  // membersCoverAssetId is a CourseAsset id the hero resolves to an image URL.
+  membersTheme?: MembersTheme | null;
+  membersCoverAssetId?: string | null;
+  membersTitle?: string | null;
+  membersSubtitle?: string | null;
+  membersDescription?: string | null;
 };
 
 export type ProductSurface = {

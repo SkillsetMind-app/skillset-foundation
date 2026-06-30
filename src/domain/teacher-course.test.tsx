@@ -6,6 +6,9 @@ import {
   normalizeInstallmentsMax,
   adminCanRepublishCourse,
   adminCanUnpublishCourse,
+  normalizeMembersText,
+  normalizeMembersTheme,
+  MAX_MEMBERS_TITLE_LENGTH,
   normalizeTeacherCourseModules,
   teacherCanDeleteCourse,
   teacherCanEditCourse,
@@ -80,6 +83,28 @@ describe("teacher course domain", () => {
         "",
       ]),
     ).toEqual(["Marketing and sales", "Technology and software"]);
+  });
+
+  it("accepts only light/dark for the members-area theme", () => {
+    expect(normalizeMembersTheme("light")).toBe("light");
+    expect(normalizeMembersTheme("dark")).toBe("dark");
+    expect(normalizeMembersTheme("Dark")).toBeNull();
+    expect(normalizeMembersTheme("")).toBeNull();
+    expect(normalizeMembersTheme(null)).toBeNull();
+    expect(normalizeMembersTheme(undefined)).toBeNull();
+    expect(normalizeMembersTheme(42)).toBeNull();
+  });
+
+  it("trims and caps members-area text fields", () => {
+    expect(normalizeMembersText("  Hero title  ", MAX_MEMBERS_TITLE_LENGTH)).toBe(
+      "Hero title",
+    );
+    expect(normalizeMembersText("   ", MAX_MEMBERS_TITLE_LENGTH)).toBeNull();
+    expect(normalizeMembersText(null, MAX_MEMBERS_TITLE_LENGTH)).toBeNull();
+    expect(normalizeMembersText(123, MAX_MEMBERS_TITLE_LENGTH)).toBeNull();
+    expect(
+      normalizeMembersText("a".repeat(120), MAX_MEMBERS_TITLE_LENGTH),
+    ).toHaveLength(MAX_MEMBERS_TITLE_LENGTH);
   });
 
   it("normalizes modules, lessons, module copy, and lesson media references", () => {

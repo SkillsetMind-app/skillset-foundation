@@ -11,7 +11,14 @@ import {
 } from "firebase/firestore";
 
 import type { TeacherCourse } from "@/domain/teacher-course";
-import { normalizeLearningOutcomes } from "@/domain/teacher-course";
+import {
+  normalizeLearningOutcomes,
+  normalizeMembersText,
+  normalizeMembersTheme,
+  MAX_MEMBERS_DESCRIPTION_LENGTH,
+  MAX_MEMBERS_SUBTITLE_LENGTH,
+  MAX_MEMBERS_TITLE_LENGTH,
+} from "@/domain/teacher-course";
 import type { Course } from "@/domain/learning";
 import type { CourseCard } from "@/lib/data/catalog";
 import { getFirestoreDb } from "@/lib/firebase/client";
@@ -194,5 +201,16 @@ export function teacherCourseToLearningCourse(course: TeacherCourse): Course {
       })),
     })),
     communityEnabled: true,
+    membersTheme: normalizeMembersTheme(course.membersTheme),
+    membersCoverAssetId: normalizeMembersText(course.membersCoverAssetId, 160),
+    membersTitle: normalizeMembersText(course.membersTitle, MAX_MEMBERS_TITLE_LENGTH),
+    membersSubtitle: normalizeMembersText(
+      course.membersSubtitle,
+      MAX_MEMBERS_SUBTITLE_LENGTH,
+    ),
+    membersDescription: normalizeMembersText(
+      course.membersDescription,
+      MAX_MEMBERS_DESCRIPTION_LENGTH,
+    ),
   };
 }

@@ -55,6 +55,8 @@ export type TeacherCoursePaymentType =
   | "subscription_yearly"
   | "free";
 
+export type MembersTheme = "light" | "dark";
+
 export type TeacherLesson = {
   id: string;
   title: string;
@@ -97,6 +99,14 @@ export type TeacherCourse = {
   dripIntervalDays?: number | null;
   freePreviewLessonId?: string | null;
   coverImageUrl?: string | null;
+  // Per-course members-area customization (the enrolled-student hero). All
+  // optional/nullable — a course with none set falls back to membersTheme
+  // "dark" (the design default) and the course's own title/cover.
+  membersTheme?: MembersTheme | null;
+  membersCoverAssetId?: string | null;
+  membersTitle?: string | null;
+  membersSubtitle?: string | null;
+  membersDescription?: string | null;
   reviewNote?: string | null;
   ratingAverage?: number;
   ratingCount?: number;
@@ -142,6 +152,11 @@ export type UpdateTeacherCourseBuilderInput = {
   dripStrategy: DripStrategy;
   dripIntervalDays: number | null;
   freePreviewLessonId: string | null;
+  membersTheme?: MembersTheme | null;
+  membersCoverAssetId?: string | null;
+  membersTitle?: string | null;
+  membersSubtitle?: string | null;
+  membersDescription?: string | null;
 };
 
 export function countCourseLessons(modules: TeacherCourseModule[]): number {
@@ -202,6 +217,29 @@ export function normalizeLearningOutcomes(outcomes: unknown): string[] {
   }
 
   return normalized;
+}
+
+export const MAX_MEMBERS_TITLE_LENGTH = 80;
+export const MAX_MEMBERS_SUBTITLE_LENGTH = 160;
+export const MAX_MEMBERS_DESCRIPTION_LENGTH = 2000;
+
+// Members-area hero customization. Theme accepts only the two literals (else
+// null → caller defaults to "dark"); text fields trim and cap to mirror the
+// builder's existing input limits. The Cloud Function keeps its own copy.
+export function normalizeMembersTheme(value: unknown): MembersTheme | null {
+  return value === "light" || value === "dark" ? value : null;
+}
+
+export function normalizeMembersText(
+  value: unknown,
+  maxLength: number,
+): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const nextValue = value.trim();
+  return nextValue ? nextValue.slice(0, maxLength) : null;
 }
 
 function normalizeNullableText(value: string | null | undefined): string | null {

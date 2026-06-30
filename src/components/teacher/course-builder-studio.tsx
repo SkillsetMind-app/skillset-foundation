@@ -14,8 +14,10 @@ import {
   Gift,
   Image as ImageIcon,
   Loader2,
+  Moon,
   Plus,
   Repeat,
+  Sun,
   Trash2,
   UploadCloud,
 } from "lucide-react";
@@ -37,11 +39,13 @@ import {
 } from "@/components/shared/plan-selector-cards";
 import { InlineHelp } from "@/components/shared/inline-help";
 import { StatusChip } from "@/components/shared/status-chip";
+import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { CourseAssetUploader } from "@/components/teacher/course-asset-uploader";
 import { LessonContentModal } from "@/components/teacher/lesson-content-modal";
 import type { DripStrategy } from "@/domain/drip-policy";
 import type {
   LessonType,
+  MembersTheme,
   TeacherCourse,
   TeacherLesson,
   TeacherCourseModule,
@@ -70,9 +74,11 @@ import {
   isAllowedCourseAssetFile,
 } from "@/domain/course-asset";
 import {
+  subscribeToCourseAssets,
   uploadCourseAsset,
   type UploadCourseAssetProgress,
 } from "@/lib/data/course-assets";
+import type { CourseAsset } from "@/domain/course-asset";
 import {
   defaultSkillsetCurrency,
   getCurrencyLabel,
@@ -85,6 +91,7 @@ const secondaryCurrencies = supportedStripeCurrencies.filter(
 );
 const builderTabs = [
   { value: "details", label: "Details", sub: "Title, categories, promise" },
+  { value: "members", label: "Members Area", sub: "Theme, cover, title" },
   { value: "content", label: "Curriculum", sub: "Modules, lessons, uploads" },
   { value: "pricing", label: "Pricing", sub: "Payment, drip, preview" },
   { value: "review", label: "Review", sub: "Readiness and submission" },
@@ -447,6 +454,11 @@ type BuilderDraftFields = {
   dripIntervalDays: string;
   freePreviewLessonId: string;
   platformFeeBps: number;
+  membersTheme: MembersTheme;
+  membersCoverAssetId: string | null;
+  membersTitle: string;
+  membersSubtitle: string;
+  membersDescription: string;
 };
 
 // Single normalization pipeline used by manual save, autosave, and the
@@ -487,6 +499,11 @@ function buildBuilderDraftPayload(input: BuilderDraftFields) {
     dripStrategy: input.dripStrategy,
     dripIntervalDays: nextDripIntervalDays,
     freePreviewLessonId: input.freePreviewLessonId || null,
+    membersTheme: input.membersTheme,
+    membersCoverAssetId: input.membersCoverAssetId,
+    membersTitle: input.membersTitle.trim() || null,
+    membersSubtitle: input.membersSubtitle.trim() || null,
+    membersDescription: input.membersDescription.trim() || null,
   };
 }
 
@@ -518,6 +535,11 @@ function builderDraftSignatureFromCourse(course: TeacherCourse): string {
       dripIntervalDays: String(course.dripIntervalDays ?? 1),
       freePreviewLessonId: course.freePreviewLessonId ?? "",
       platformFeeBps: course.platformFeeBps ?? 800,
+      membersTheme: course.membersTheme ?? "dark",
+      membersCoverAssetId: course.membersCoverAssetId ?? null,
+      membersTitle: course.membersTitle ?? "",
+      membersSubtitle: course.membersSubtitle ?? "",
+      membersDescription: course.membersDescription ?? "",
     }),
   );
 }
@@ -544,6 +566,13 @@ export function CourseBuilderStudio() {
   const [dripStrategy, setDripStrategy] = useState<DripStrategy>("instant");
   const [dripIntervalDays, setDripIntervalDays] = useState("1");
   const [freePreviewLessonId, setFreePreviewLessonId] = useState("");
+  const [membersTheme, setMembersTheme] = useState<MembersTheme>("dark");
+  const [membersCoverAssetId, setMembersCoverAssetId] = useState<string | null>(
+    null,
+  );
+  const [membersTitle, setMembersTitle] = useState("");
+  const [membersSubtitle, setMembersSubtitle] = useState("");
+  const [membersDescription, setMembersDescription] = useState("");
   const [moduleTitle, setModuleTitle] = useState("");
   const [moduleSummary, setModuleSummary] = useState("");
   const [lessonModuleId, setLessonModuleId] = useState("");
@@ -619,6 +648,11 @@ export function CourseBuilderStudio() {
         setDripStrategy(nextCourse.dripStrategy ?? "instant");
         setDripIntervalDays(String(nextCourse.dripIntervalDays ?? 1));
         setFreePreviewLessonId(nextCourse.freePreviewLessonId ?? "");
+        setMembersTheme(nextCourse.membersTheme ?? "dark");
+        setMembersCoverAssetId(nextCourse.membersCoverAssetId ?? null);
+        setMembersTitle(nextCourse.membersTitle ?? "");
+        setMembersSubtitle(nextCourse.membersSubtitle ?? "");
+        setMembersDescription(nextCourse.membersDescription ?? "");
         setLessonModuleId(nextCourse.modules?.[0]?.id ?? "");
         setError("");
         // Baseline mirrors exactly what the state setters above produce, so a
@@ -753,6 +787,9 @@ export function CourseBuilderStudio() {
         : "Set price";
   const tabCompletion: Record<BuilderTab, boolean> = {
     details: Boolean(title.trim() && summary.trim().length >= 20),
+    // Members-area customization is fully optional (the hero falls back to the
+    // course's own title/cover and the dark default), so this tab never blocks.
+    members: true,
     content: modules.length > 0 && lessonCount > 0,
     pricing:
       pricingModelIsReady &&
@@ -807,6 +844,11 @@ export function CourseBuilderStudio() {
         dripIntervalDays,
         freePreviewLessonId,
         platformFeeBps: course?.platformFeeBps ?? 800,
+        membersTheme,
+        membersCoverAssetId,
+        membersTitle,
+        membersSubtitle,
+        membersDescription,
       }),
     [
       title,
@@ -824,6 +866,11 @@ export function CourseBuilderStudio() {
       dripIntervalDays,
       freePreviewLessonId,
       course?.platformFeeBps,
+      membersTheme,
+      membersCoverAssetId,
+      membersTitle,
+      membersSubtitle,
+      membersDescription,
     ],
   );
   const builderDraftSignature = useMemo(
@@ -1516,20 +1563,24 @@ export function CourseBuilderStudio() {
               <h3 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)]">
                 {activeTab === "details"
                   ? "Set the course foundation."
-                  : activeTab === "content"
-                    ? "Build the curriculum."
-                    : activeTab === "pricing"
-                      ? "Package the offer."
-                      : "Prepare for Skillset review."}
+                  : activeTab === "members"
+                    ? "Customize the members area."
+                    : activeTab === "content"
+                      ? "Build the curriculum."
+                      : activeTab === "pricing"
+                        ? "Package the offer."
+                        : "Prepare for Skillset review."}
               </h3>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
                 {activeTab === "details"
                   ? "This is the information learners and reviewers use to understand the promise of the course."
-                  : activeTab === "content"
-                    ? "Create the modules, lessons, links, text content, and upload targets that power the members area."
-                    : activeTab === "pricing"
-                      ? "Set access, price, release timing, and the free preview lesson before publishing."
-                      : "Skillset reviews structure, pricing, preview access, and quality — your course can start selling as soon as you submit."}
+                  : activeTab === "members"
+                    ? "Choose the theme, cover, and copy enrolled students see at the top of their course workspace."
+                    : activeTab === "content"
+                      ? "Create the modules, lessons, links, text content, and upload targets that power the members area."
+                      : activeTab === "pricing"
+                        ? "Set access, price, release timing, and the free preview lesson before publishing."
+                        : "Skillset reviews structure, pricing, preview access, and quality — your course can start selling as soon as you submit."}
               </p>
             </div>
             <div className="grid gap-2 text-right text-xs font-semibold text-[var(--color-ink-soft)]">
@@ -1705,6 +1756,39 @@ export function CourseBuilderStudio() {
             on learner outcomes. This copy will influence the marketplace page.
           </p>
         </div>
+        ) : null}
+
+        {activeTab === "members" && course ? (
+          <MembersAreaTab
+            courseId={courseId}
+            course={course}
+            isEditable={isEditable}
+            theme={membersTheme}
+            onThemeChange={(next) => {
+              setMembersTheme(next);
+              setSuccess("");
+            }}
+            coverAssetId={membersCoverAssetId}
+            onCoverAssetIdChange={(next) => {
+              setMembersCoverAssetId(next);
+              setSuccess("");
+            }}
+            title={membersTitle}
+            onTitleChange={(next) => {
+              setMembersTitle(next);
+              setSuccess("");
+            }}
+            subtitle={membersSubtitle}
+            onSubtitleChange={(next) => {
+              setMembersSubtitle(next);
+              setSuccess("");
+            }}
+            description={membersDescription}
+            onDescriptionChange={(next) => {
+              setMembersDescription(next);
+              setSuccess("");
+            }}
+          />
         ) : null}
 
         {activeTab === "pricing" ? (
@@ -2696,6 +2780,371 @@ function CourseCoverField({
             <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
               Add a cover — it appears on the marketplace card, the course page,
               and the classroom.
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// Per-course "Members Area" customization tab. Hosts the theme/cover/title/
+// subtitle/description controls plus a LIVE mini-preview that reuses the same
+// MembersAreaHero the enrolled student sees, fed from in-tab state so it
+// updates as the teacher types/switches theme/uploads. Studio name + cover are
+// REAL values only (the owner's own display name and an uploaded CourseAsset);
+// no progress bar in the builder since there is no real enrollment to measure.
+function MembersAreaTab({
+  courseId,
+  course,
+  isEditable,
+  theme,
+  onThemeChange,
+  coverAssetId,
+  onCoverAssetIdChange,
+  title,
+  onTitleChange,
+  subtitle,
+  onSubtitleChange,
+  description,
+  onDescriptionChange,
+}: {
+  courseId: string;
+  course: TeacherCourse;
+  isEditable: boolean;
+  theme: MembersTheme;
+  onThemeChange: (theme: MembersTheme) => void;
+  coverAssetId: string | null;
+  onCoverAssetIdChange: (assetId: string | null) => void;
+  title: string;
+  onTitleChange: (value: string) => void;
+  subtitle: string;
+  onSubtitleChange: (value: string) => void;
+  description: string;
+  onDescriptionChange: (value: string) => void;
+}) {
+  const [assets, setAssets] = useState<CourseAsset[]>([]);
+
+  useEffect(() => {
+    return subscribeToCourseAssets(course.id, setAssets, () => undefined);
+  }, [course.id]);
+
+  // members_cover is a public-download kind, so the resolved asset carries the
+  // URL the hero renders directly — no protected blob fetch needed.
+  const coverUrl =
+    (coverAssetId
+      ? assets.find((asset) => asset.id === coverAssetId)?.downloadUrl
+      : null) ?? null;
+  // Mirror the student hero's own fallback so the preview matches reality:
+  // empty title -> the real course title. The subtitle line shows only what the
+  // teacher types here (the student view carries no separate studio name).
+  const previewTitle = title.trim() || course.title || "Untitled course";
+
+  return (
+    <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_360px] lg:items-start">
+      <div className="grid gap-4">
+        <div className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+          Theme
+          <p className="text-xs font-normal leading-5 text-[var(--color-ink-soft)]">
+            Sets the look of the enrolled-student hero. Dark is the default.
+          </p>
+          <div className="inline-flex w-fit gap-1 rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
+            {(
+              [
+                { value: "light", label: "Light", icon: Sun },
+                { value: "dark", label: "Dark", icon: Moon },
+              ] as const
+            ).map((option) => {
+              const Icon = option.icon;
+              const active = theme === option.value;
+
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  disabled={!isEditable}
+                  aria-pressed={active}
+                  onClick={() => onThemeChange(option.value)}
+                  className={`inline-flex items-center gap-1.5 rounded-[8px] px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-60 ${
+                    active
+                      ? "bg-white text-[var(--color-primary)] shadow-[var(--shadow-soft)]"
+                      : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
+                  }`}
+                >
+                  <Icon aria-hidden="true" size={15} strokeWidth={1.9} />
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <MembersCoverField
+          course={course}
+          isEditable={isEditable}
+          coverUrl={coverUrl}
+          onUploaded={onCoverAssetIdChange}
+          onRemove={() => onCoverAssetIdChange(null)}
+        />
+
+        <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+          Members area title
+          <input
+            value={title}
+            onChange={(event) => onTitleChange(event.target.value)}
+            disabled={!isEditable}
+            maxLength={80}
+            placeholder={course.title || "Your course title"}
+            className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+          />
+          <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
+            {title.length}/80 — leave empty to use the course title.
+          </span>
+        </label>
+
+        <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+          Subtitle
+          <input
+            value={subtitle}
+            onChange={(event) => onSubtitleChange(event.target.value)}
+            disabled={!isEditable}
+            maxLength={160}
+            placeholder="Your studio name, a tagline, or who it's for"
+            className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+          />
+          <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
+            {subtitle.length}/160 — the line under the title. Add your studio
+            name or a tagline, or leave it empty.
+          </span>
+        </label>
+
+        <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+          Description
+          <textarea
+            value={description}
+            onChange={(event) => onDescriptionChange(event.target.value)}
+            disabled={!isEditable}
+            maxLength={2000}
+            rows={4}
+            placeholder="A short welcome shown under the title in the members area."
+            className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+          />
+          <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
+            {description.length}/2000
+          </span>
+        </label>
+      </div>
+
+      <div className="grid gap-3 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 lg:sticky lg:top-24">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
+          Live preview
+        </p>
+        {/* ponytail: fixed-scale thumbnail (1080px stage scaled to fit the
+            340px card) — a measured/responsive scale isn't worth it for a
+            corner preview; bump STAGE_WIDTH if the hero ever grows wider. */}
+        <div
+          data-members-theme={theme}
+          aria-hidden="true"
+          style={{
+            width: "100%",
+            height: 174,
+            overflow: "hidden",
+            borderRadius: 10,
+            background: "var(--ma-bg)",
+            pointerEvents: "none",
+          }}
+        >
+          <div
+            style={{
+              width: 1080,
+              transform: "scale(0.3148)",
+              transformOrigin: "top left",
+            }}
+          >
+            <MembersAreaHero
+              theme={theme}
+              coverUrl={coverUrl}
+              title={previewTitle}
+              subtitle={subtitle.trim() || null}
+              description={description.trim() || null}
+              progressPercent={null}
+              backHref={null}
+            />
+          </div>
+        </div>
+        <Link
+          href={`/teach/builder/${courseId}/preview`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="button-outline inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm"
+        >
+          <ExternalLink aria-hidden="true" size={14} strokeWidth={1.8} />
+          Open full preview
+        </Link>
+        <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
+          The full preview opens the last saved version in a new tab. Edits
+          autosave, so it stays current within a moment of typing.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Single-cover uploader for the members hero — same proven uploadCourseAsset
+// path as CourseCoverField, but bound to membersCoverAssetId (the upload
+// returns the new asset id, which we hand back to the builder state) instead of
+// the course's public coverImageUrl.
+function MembersCoverField({
+  course,
+  isEditable,
+  coverUrl,
+  onUploaded,
+  onRemove,
+}: {
+  course: TeacherCourse;
+  isEditable: boolean;
+  coverUrl: string | null;
+  onUploaded: (assetId: string) => void;
+  onRemove: () => void;
+}) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [progress, setProgress] = useState<UploadCourseAssetProgress | null>(null);
+  const [error, setError] = useState("");
+  const [fileInputKey, setFileInputKey] = useState(0);
+
+  async function handleFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+
+    if (!file || !isEditable) {
+      return;
+    }
+
+    setError("");
+    setProgress(null);
+
+    if (!isAllowedCourseAssetFile(file, "members_cover")) {
+      setError(
+        `Use an image file under ${formatCourseAssetSize(courseAssetMaxBytes)}.`,
+      );
+      setFileInputKey((current) => current + 1);
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const assetId = await uploadCourseAsset({
+        courseId: course.id,
+        ownerId: course.ownerId,
+        kind: "members_cover",
+        file,
+        isPreview: false,
+        onProgress: setProgress,
+      });
+      onUploaded(assetId);
+    } catch {
+      setError(
+        "We could not upload this cover. Check the file and course ownership, then try again.",
+      );
+    } finally {
+      setIsUploading(false);
+      setProgress(null);
+      setFileInputKey((current) => current + 1);
+    }
+  }
+
+  return (
+    <section className="grid gap-3 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
+            Members area cover
+          </p>
+          <p className="mt-1 max-w-xl text-xs leading-5 text-[var(--color-ink-soft)]">
+            Hero background for the enrolled-student workspace. Recommended 16:9,
+            under {formatCourseAssetSize(courseAssetMaxBytes)}.
+          </p>
+        </div>
+        {coverUrl ? (
+          <span className="inline-flex items-center gap-1 rounded-[8px] bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+            <CheckCircle2 size={12} aria-hidden /> Cover set
+          </span>
+        ) : null}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-[200px_1fr] sm:items-start">
+        <div className="relative aspect-video overflow-hidden rounded-[10px] border border-[var(--color-line)] bg-white">
+          {coverUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- members cover is an arbitrary CourseAsset URL
+            <img
+              src={coverUrl}
+              alt={`${course.title || "Course"} members cover`}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-[var(--color-ink-soft)]">
+              <ImageIcon size={22} aria-hidden />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
+                No cover yet
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="grid content-start gap-2">
+          <label
+            className={`inline-flex w-fit items-center gap-2 rounded-[10px] border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] ${
+              !isEditable || isUploading
+                ? "pointer-events-none opacity-60"
+                : "cursor-pointer"
+            }`}
+          >
+            <UploadCloud size={16} aria-hidden />
+            {isUploading
+              ? "Uploading..."
+              : coverUrl
+                ? "Replace cover"
+                : "Upload cover"}
+            <input
+              key={fileInputKey}
+              type="file"
+              accept={courseAssetAcceptTypes.members_cover}
+              disabled={!isEditable || isUploading}
+              onChange={handleFile}
+              className="hidden"
+            />
+          </label>
+
+          {coverUrl && isEditable && !isUploading ? (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="w-fit text-xs font-semibold text-[var(--color-accent-fg)] underline-offset-2 hover:underline"
+            >
+              Remove cover
+            </button>
+          ) : null}
+
+          {progress ? (
+            <div className="rounded-[10px] border fine-rule bg-white p-3">
+              <div className="flex items-center justify-between gap-3 text-xs font-semibold text-[var(--color-primary)]">
+                <span>
+                  {progress.state === "success" ? "Upload complete" : "Uploading"}
+                </span>
+                <span>{progress.percent}%</span>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--color-surface-soft)]">
+                <div
+                  className="h-full rounded-full bg-[var(--color-primary)] transition-[width] duration-200"
+                  style={{ width: `${progress.percent}%` }}
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {error ? (
+            <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-accent-fg)]">
+              {error}
             </p>
           ) : null}
         </div>
