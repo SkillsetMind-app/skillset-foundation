@@ -56,6 +56,43 @@
     "verify": "Verificar e entrar",
     "verifying": "Verificando...",
     "useDifferentAccount": "Usar outra conta",
-    "mfaCodePrompt": "Digite o código de 6 dígitos do seu app autenticador."
+    "mfaCodePrompt": "Digite o código de 6 dígitos do seu app autenticador.",
+    "signup": {
+      "introLearner": "Segue para a configuração de aluno — você pode adicionar o outro lado depois pelo seu perfil.",
+      "introEducator": "Segue para a configuração de educador — você pode adicionar o outro lado depois pelo seu perfil.",
+      "fullName": "Nome completo",
+      "fullNamePlaceholder": "Seu nome",
+      "passwordPlaceholder": "No mínimo 8 caracteres",
+      "confirmPassword": "Confirmar senha",
+      "confirmPasswordPlaceholder": "Digite a senha novamente",
+      "passwordsDontMatch": "As duas senhas não coincidem.",
+      "agreePrefix": "Concordo com os ",
+      "agreeMiddle": " e a ",
+      "agreeSuffix": " da Skillset.",
+      "createAccount": "Criar conta",
+      "creatingAccount": "Criando conta...",
+      "or": "ou",
+      "alreadyHaveAccount": "Já tem uma conta?",
+      "acceptTermsToCreate": "Aceite os Termos de Serviço e a Política de Privacidade para criar sua conta.",
+      "acceptTermsForGoogle": "Aceite os Termos de Serviço e a Política de Privacidade antes de continuar com o Google.",
+      "passwordRequirements": "Use uma senha que atenda a todos os requisitos."
+    }
+  },
+  "account": {
+    "openMenu": "Abrir menu da conta",
+    "memberFallback": "Membro Skillset",
+    "switchView": "Trocar de visão",
+    "studentView": "Visão de aluno",
+    "becomeTeacher": "Tornar-se professor",
+    "sectionAccount": "Conta",
+    "creatorPlan": "Plano de criador",
+    "subscription": "Assinatura",
+    "settings": "Configurações",
+    "payoutsTax": "Repasses e impostos",
+    "billing": "Cobrança",
+    "myCredentials": "Meus certificados",
+    "wishlist": "Lista de desejos",
+    "signOut": "Sair",
+    "opensNewTab": "(abre em uma nova aba)"
   }
 }

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 
 import { GoogleMark } from "@/components/auth/google-mark";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import {
   isStrongPassword,
   PasswordStrengthChecklist,
@@ -50,12 +51,17 @@ function deriveUsername(displayName: string, email: string): string {
 
 export function SignupForm() {
   const router = useRouter();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const pathIntent = useMemo(
     () => getAuthPathIntentFromSearchParams(searchParams),
     [searchParams],
   );
-  const pathLabel = pathIntent === "teacher" ? "educator" : "learner";
+  const intro = t(
+    pathIntent === "teacher"
+      ? "auth.signup.introEducator"
+      : "auth.signup.introLearner",
+  );
   const signinHref = pathIntent
     ? `/auth?mode=signin&path=${pathIntent}`
     : "/auth?mode=signin";
@@ -75,7 +81,7 @@ export function SignupForm() {
     setError("");
 
     if (!legalAccepted) {
-      setError("Accept the Terms of Service and Privacy Policy to create your account.");
+      setError(t("auth.signup.acceptTermsToCreate"));
       return;
     }
 
@@ -87,12 +93,12 @@ export function SignupForm() {
     }
 
     if (!passwordReady) {
-      setError("Use a password that meets every requirement.");
+      setError(t("auth.signup.passwordRequirements"));
       return;
     }
 
     if (!passwordsMatch) {
-      setError("The two passwords do not match.");
+      setError(t("auth.signup.passwordsDontMatch"));
       return;
     }
 
@@ -121,7 +127,7 @@ export function SignupForm() {
     setError("");
 
     if (!legalAccepted) {
-      setError("Accept the Terms of Service and Privacy Policy before continuing with Google.");
+      setError(t("auth.signup.acceptTermsForGoogle"));
       return;
     }
 
@@ -154,19 +160,16 @@ export function SignupForm() {
 
   return (
     <form className="mt-5 grid gap-3" onSubmit={handleEmailSignup}>
-      <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
-        Continues into the {pathLabel} setup — you can add the other side later
-        from your profile.
-      </p>
+      <p className="text-xs leading-5 text-[var(--color-ink-soft)]">{intro}</p>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-          Full name
+          {t("auth.signup.fullName")}
           <input
             type="text"
             value={displayName}
             onChange={(event) => setDisplayName(event.target.value)}
-            placeholder="Your name"
+            placeholder={t("auth.signup.fullNamePlaceholder")}
             autoComplete="name"
             required
             className="field-input"
@@ -174,12 +177,12 @@ export function SignupForm() {
         </label>
 
         <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-          Email
+          {t("auth.email")}
           <input
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@example.com"
+            placeholder={t("auth.emailPlaceholder")}
             autoComplete="email"
             required
             className="field-input"
@@ -188,12 +191,12 @@ export function SignupForm() {
       </div>
 
       <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-        Password
+        {t("auth.password")}
         <input
           type="password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          placeholder="At least 8 characters"
+          placeholder={t("auth.signup.passwordPlaceholder")}
           autoComplete="new-password"
           minLength={8}
           required
@@ -203,12 +206,12 @@ export function SignupForm() {
       </label>
 
       <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-        Confirm password
+        {t("auth.signup.confirmPassword")}
         <input
           type="password"
           value={confirmPassword}
           onChange={(event) => setConfirmPassword(event.target.value)}
-          placeholder="Re-enter your password"
+          placeholder={t("auth.signup.confirmPasswordPlaceholder")}
           autoComplete="new-password"
           required
           aria-invalid={showMismatch}
@@ -216,7 +219,7 @@ export function SignupForm() {
         />
         {showMismatch ? (
           <span className="text-xs font-semibold text-[var(--color-accent-fg)]">
-            The two passwords do not match.
+            {t("auth.signup.passwordsDontMatch")}
           </span>
         ) : null}
       </label>
@@ -230,15 +233,15 @@ export function SignupForm() {
           required
         />
         <span>
-          I agree to the Skillset{" "}
+          {t("auth.signup.agreePrefix")}
           <Link href="/legal/terms" className="font-semibold text-[var(--color-primary)]">
-            Terms of Service
-          </Link>{" "}
-          and{" "}
-          <Link href="/legal/privacy" className="font-semibold text-[var(--color-primary)]">
-            Privacy Policy
+            {t("footer.termsOfService")}
           </Link>
-          .
+          {t("auth.signup.agreeMiddle")}
+          <Link href="/legal/privacy" className="font-semibold text-[var(--color-primary)]">
+            {t("footer.privacyPolicy")}
+          </Link>
+          {t("auth.signup.agreeSuffix")}
         </span>
       </label>
 
@@ -259,12 +262,14 @@ export function SignupForm() {
         }
         className="button-solid mt-1 px-4 py-2.5 text-sm disabled:opacity-60"
       >
-        {isLoading ? "Creating account..." : "Create account"}
+        {isLoading
+          ? t("auth.signup.creatingAccount")
+          : t("auth.signup.createAccount")}
       </button>
 
       <div className="flex items-center gap-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
         <span className="h-px flex-1 bg-[var(--color-line)]" />
-        or
+        {t("auth.signup.or")}
         <span className="h-px flex-1 bg-[var(--color-line)]" />
       </div>
 
@@ -275,13 +280,13 @@ export function SignupForm() {
         className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
       >
         <GoogleMark />
-        Continue with Google
+        {t("auth.continueWithGoogle")}
       </button>
       <Link
         href={signinHref}
         className="mt-1 inline-flex text-sm font-semibold text-[var(--color-primary)]"
       >
-        Already have an account?
+        {t("auth.signup.alreadyHaveAccount")}
       </Link>
     </form>
   );

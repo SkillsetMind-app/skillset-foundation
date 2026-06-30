@@ -56,6 +56,43 @@
     "verify": "Verify and sign in",
     "verifying": "Verifying...",
     "useDifferentAccount": "Use a different account",
-    "mfaCodePrompt": "Enter the 6-digit code from your authenticator app."
+    "mfaCodePrompt": "Enter the 6-digit code from your authenticator app.",
+    "signup": {
+      "introLearner": "Continues into the learner setup — you can add the other side later from your profile.",
+      "introEducator": "Continues into the educator setup — you can add the other side later from your profile.",
+      "fullName": "Full name",
+      "fullNamePlaceholder": "Your name",
+      "passwordPlaceholder": "At least 8 characters",
+      "confirmPassword": "Confirm password",
+      "confirmPasswordPlaceholder": "Re-enter your password",
+      "passwordsDontMatch": "The two passwords do not match.",
+      "agreePrefix": "I agree to the Skillset ",
+      "agreeMiddle": " and ",
+      "agreeSuffix": ".",
+      "createAccount": "Create account",
+      "creatingAccount": "Creating account...",
+      "or": "or",
+      "alreadyHaveAccount": "Already have an account?",
+      "acceptTermsToCreate": "Accept the Terms of Service and Privacy Policy to create your account.",
+      "acceptTermsForGoogle": "Accept the Terms of Service and Privacy Policy before continuing with Google.",
+      "passwordRequirements": "Use a password that meets every requirement."
+    }
+  },
+  "account": {
+    "openMenu": "Open account menu",
+    "memberFallback": "Skillset member",
+    "switchView": "Switch view",
+    "studentView": "Student view",
+    "becomeTeacher": "Become a teacher",
+    "sectionAccount": "Account",
+    "creatorPlan": "Creator plan",
+    "subscription": "Subscription",
+    "settings": "Settings",
+    "payoutsTax": "Payouts & tax",
+    "billing": "Billing",
+    "myCredentials": "My credentials",
+    "wishlist": "Wishlist",
+    "signOut": "Sign out",
+    "opensNewTab": "(opens in a new tab)"
   }
 }

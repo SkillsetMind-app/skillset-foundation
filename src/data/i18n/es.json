@@ -56,6 +56,43 @@
     "verify": "Verificar e iniciar sesión",
     "verifying": "Verificando...",
     "useDifferentAccount": "Usar otra cuenta",
-    "mfaCodePrompt": "Introduce el código de 6 dígitos de tu app de autenticación."
+    "mfaCodePrompt": "Introduce el código de 6 dígitos de tu app de autenticación.",
+    "signup": {
+      "introLearner": "Continúa con la configuración de estudiante — puedes añadir el otro lado más tarde desde tu perfil.",
+      "introEducator": "Continúa con la configuración de educador — puedes añadir el otro lado más tarde desde tu perfil.",
+      "fullName": "Nombre completo",
+      "fullNamePlaceholder": "Tu nombre",
+      "passwordPlaceholder": "Al menos 8 caracteres",
+      "confirmPassword": "Confirmar contraseña",
+      "confirmPasswordPlaceholder": "Vuelve a escribir tu contraseña",
+      "passwordsDontMatch": "Las dos contraseñas no coinciden.",
+      "agreePrefix": "Acepto los ",
+      "agreeMiddle": " y la ",
+      "agreeSuffix": " de Skillset.",
+      "createAccount": "Crear cuenta",
+      "creatingAccount": "Creando cuenta...",
+      "or": "o",
+      "alreadyHaveAccount": "¿Ya tienes una cuenta?",
+      "acceptTermsToCreate": "Acepta los Términos del Servicio y la Política de Privacidad para crear tu cuenta.",
+      "acceptTermsForGoogle": "Acepta los Términos del Servicio y la Política de Privacidad antes de continuar con Google.",
+      "passwordRequirements": "Usa una contraseña que cumpla todos los requisitos."
+    }
+  },
+  "account": {
+    "openMenu": "Abrir menú de cuenta",
+    "memberFallback": "Miembro de Skillset",
+    "switchView": "Cambiar de vista",
+    "studentView": "Vista de estudiante",
+    "becomeTeacher": "Conviértete en profesor",
+    "sectionAccount": "Cuenta",
+    "creatorPlan": "Plan de creador",
+    "subscription": "Suscripción",
+    "settings": "Ajustes",
+    "payoutsTax": "Pagos e impuestos",
+    "billing": "Facturación",
+    "myCredentials": "Mis credenciales",
+    "wishlist": "Lista de deseos",
+    "signOut": "Cerrar sesión",
+    "opensNewTab": "(se abre en una pestaña nueva)"
   }
 }
