@@ -72,7 +72,7 @@ export function MembersAreaHero({
       <div className="members-hero__inner">
         {backHref ? (
           <Link className="members-hero__back" href={backHref}>
-            <ArrowLeft size={17} aria-hidden="true" /> Voltar ao painel
+            <ArrowLeft size={17} aria-hidden="true" /> Back to dashboard
           </Link>
         ) : null}
 

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import {
-  ArrowLeft,
   Award,
   BookOpen,
   CheckCircle2,
@@ -522,93 +521,61 @@ export function EnrolledCourseWorkspace({
         </section>
       ) : null}
 
-      <section className="member-classroom-hero">
-        <div className="member-classroom-hero__copy">
-          <Link
-            href="/learn"
-            className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-ink-soft)] transition hover:text-[var(--color-ink)]"
-          >
-            <ArrowLeft size={14} aria-hidden />
-            Back
-          </Link>
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Members area
-          </p>
-          <h3 className="display-title mt-3 text-4xl text-[var(--color-ink)]">
-            {course.title}
-          </h3>
-          <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            {course.summary}
-          </p>
-          <div className="mt-6 flex flex-wrap gap-2">
-            <span className="member-meta-chip">
-              <BookOpen size={14} aria-hidden />
-              {course.modules.length} module{course.modules.length === 1 ? "" : "s"}
-            </span>
-            <span className="member-meta-chip">
-              <PlayCircle size={14} aria-hidden />
-              {totalLessonCount} lesson{totalLessonCount === 1 ? "" : "s"}
-            </span>
-            <span className="member-meta-chip">
-              <Clock size={14} aria-hidden />
-              {course.durationLabel}
-            </span>
-          </div>
-          <div className="member-progress mt-7">
-            <div className="flex items-center justify-between gap-4 text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">
-              <span>{completedLessonCount} of {totalLessonCount} lessons complete</span>
-              <span>{progressPercent}%</span>
-            </div>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
-              <div
-                className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-          </div>
-          <div className="mt-7 flex flex-wrap items-center gap-3">
-            {nextLesson ? (
-              <button
-                type="button"
-                onClick={() => setSelectedLessonId(nextLesson.id)}
-                className="button-solid inline-flex items-center gap-2 px-5 py-2.5 text-sm"
-              >
-                <PlayCircle size={16} aria-hidden />
-                Continue watching
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  const firstLessonId = course.modules[0]?.lessons[0]?.id;
-                  if (firstLessonId) {
-                    setSelectedLessonId(firstLessonId);
-                  }
-                }}
-                className="button-outline inline-flex items-center gap-2 px-5 py-2.5 text-sm"
-              >
-                <PlayCircle size={16} aria-hidden />
-                Watch again
-              </button>
-            )}
-            {progressPercent === 100 ? (
-              <Link
-                href="/learn/credentials"
-                className="button-accent inline-flex items-center gap-2 px-5 py-2.5 text-sm"
-              >
-                <Award size={16} aria-hidden />
-                Get certificate
-              </Link>
-            ) : null}
-          </div>
+      {/* Slim action strip below the members hero — the hero already carries the
+          cover, title, description and progress, so this keeps only what it does
+          not: the at-a-glance chips and the primary continue/certificate CTAs. */}
+      <section className="member-classroom-actions flex flex-wrap items-center justify-between gap-4 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] px-5 py-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="member-meta-chip">
+            <BookOpen size={14} aria-hidden />
+            {course.modules.length} module{course.modules.length === 1 ? "" : "s"}
+          </span>
+          <span className="member-meta-chip">
+            <PlayCircle size={14} aria-hidden />
+            {totalLessonCount} lesson{totalLessonCount === 1 ? "" : "s"}
+          </span>
+          <span className="member-meta-chip">
+            <Clock size={14} aria-hidden />
+            {course.durationLabel}
+          </span>
+          <span className="member-meta-chip">
+            {completedLessonCount} of {totalLessonCount} complete
+          </span>
         </div>
-        <div className="member-classroom-hero__cover">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={course.image} alt={course.title} />
-          <div className="member-classroom-hero__coverOverlay">
-            <span>{progressPercent === 100 ? "Completed" : workspaceEnrollment.status}</span>
-            <strong>{nextLesson?.title ?? "Course completed"}</strong>
-          </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {nextLesson ? (
+            <button
+              type="button"
+              onClick={() => setSelectedLessonId(nextLesson.id)}
+              className="button-solid inline-flex items-center gap-2 px-5 py-2.5 text-sm"
+            >
+              <PlayCircle size={16} aria-hidden />
+              Continue watching
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                const firstLessonId = course.modules[0]?.lessons[0]?.id;
+                if (firstLessonId) {
+                  setSelectedLessonId(firstLessonId);
+                }
+              }}
+              className="button-outline inline-flex items-center gap-2 px-5 py-2.5 text-sm"
+            >
+              <PlayCircle size={16} aria-hidden />
+              Watch again
+            </button>
+          )}
+          {progressPercent === 100 ? (
+            <Link
+              href="/learn/credentials"
+              className="button-accent inline-flex items-center gap-2 px-5 py-2.5 text-sm"
+            >
+              <Award size={16} aria-hidden />
+              Get certificate
+            </Link>
+          ) : null}
         </div>
       </section>
 
@@ -949,6 +916,7 @@ function MembersAreaHeroBand({
       subtitle={course.membersSubtitle ?? null}
       description={course.membersDescription ?? course.summary ?? null}
       progressPercent={progressPercent}
+      backHref="/learn"
     />
   );
 }
