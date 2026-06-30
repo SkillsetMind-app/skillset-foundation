@@ -4,6 +4,8 @@ import {
   EmailAuthProvider,
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
+  getMultiFactorResolver,
+  multiFactor,
   onAuthStateChanged,
   reauthenticateWithCredential,
   reload,
@@ -12,9 +14,13 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
+  TotpMultiFactorGenerator,
   updateProfile,
   updatePassword,
   verifyBeforeUpdateEmail,
+  type MultiFactorError,
+  type MultiFactorInfo,
+  type TotpSecret,
   type User,
 } from "firebase/auth";
 
@@ -371,7 +377,35 @@ export function getAuthErrorMessage(error: unknown): string {
   }
 
   if (code.includes("auth/requires-recent-login")) {
-    return "For security, sign out and sign in again before changing your email.";
+    return "For security, sign out and sign in again before changing this setting.";
+  }
+
+  if (
+    code.includes("auth/invalid-verification-code")
+    || code.includes("auth/invalid-otp")
+    || code.includes("auth/missing-otp")
+  ) {
+    return "That code didn't match. Check your authenticator app and try again.";
+  }
+
+  if (code.includes("auth/totp-challenge-timeout")) {
+    return "The code expired. Open your authenticator app for a fresh one and retry.";
+  }
+
+  if (code.includes("auth/second-factor-already-in-use")) {
+    return "This authenticator is already enrolled on your account.";
+  }
+
+  if (code.includes("auth/maximum-second-factor-count-exceeded")) {
+    return "You've reached the maximum number of authenticators for this account.";
+  }
+
+  if (code.includes("auth/unverified-email")) {
+    return "Verify your email before enabling two-factor authentication.";
+  }
+
+  if (code.includes("auth/multi-factor-auth-required")) {
+    return "Enter the code from your authenticator app to finish signing in.";
   }
 
   if (code.includes("auth/api-key-not-valid") || code.includes("auth/invalid-api-key")) {
@@ -385,4 +419,138 @@ export function getAuthErrorMessage(error: unknown): string {
   return code
     ? `Something went wrong (${code}).`
     : "Something went wrong. Please try again.";
+}
+
+// ---------------------------------------------------------------------------
+// Two-factor authentication (TOTP)
+//
+// Real Firebase multi-factor wiring. Enrollment and the sign-in challenge are
+// BOTH implemented here so the feature can be turned on safely — enrolling a
+// second factor without a sign-in resolver would lock users out. The UI gates
+// all of this behind the `auth.mfa` feature flag (and Identity Platform must be
+// enabled on the Firebase project); if it isn't, generateSecret/getSession
+// throw and the message is surfaced honestly instead of faking success.
+// ---------------------------------------------------------------------------
+
+export const TOTP_FACTOR_ID = TotpMultiFactorGenerator.FACTOR_ID;
+
+/** True when a sign-in failed only because a second factor is still required. */
+export function isMultiFactorRequiredError(
+  error: unknown,
+): error is MultiFactorError {
+  return (
+    typeof error === "object"
+    && error !== null
+    && "code" in error
+    && String((error as { code?: unknown }).code).includes(
+      "auth/multi-factor-auth-required",
+    )
+  );
+}
+
+/**
+ * Starts TOTP enrollment for the current user: generates a shared secret and
+ * the otpauth:// provisioning URI (for a QR or manual key entry). The secret is
+ * generated and held client-side — it is never sent anywhere until the user
+ * confirms a code, and is never persisted by Skillset.
+ */
+export async function startTotpEnrollment(): Promise<{
+  secret: TotpSecret;
+  secretKey: string;
+  otpauthUrl: string;
+}> {
+  const auth = getFirebaseAuth();
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("Sign in again before enabling two-factor authentication.");
+  }
+
+  const session = await multiFactor(user).getSession();
+  const secret = await TotpMultiFactorGenerator.generateSecret(session);
+  const accountName = user.email ?? user.uid;
+  const otpauthUrl = secret.generateQrCodeUrl(accountName, "Skillset");
+
+  return { secret, secretKey: secret.secretKey, otpauthUrl };
+}
+
+/** Confirms the 6-digit code and enrolls the authenticator as a second factor. */
+export async function finishTotpEnrollment(
+  secret: TotpSecret,
+  code: string,
+  displayName = "Authenticator app",
+): Promise<void> {
+  const auth = getFirebaseAuth();
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("Sign in again before enabling two-factor authentication.");
+  }
+
+  const assertion = TotpMultiFactorGenerator.assertionForEnrollment(
+    secret,
+    code.trim(),
+  );
+  await multiFactor(user).enroll(assertion, displayName);
+}
+
+/** Currently enrolled TOTP factors for the signed-in user (synchronous read). */
+export function listEnrolledTotpFactors(): MultiFactorInfo[] {
+  const user = getFirebaseAuth().currentUser;
+  if (!user) {
+    return [];
+  }
+  return multiFactor(user).enrolledFactors.filter(
+    (factor) => factor.factorId === TOTP_FACTOR_ID,
+  );
+}
+
+/** Removes an enrolled factor by its uid. */
+export async function unenrollTotpFactor(factorUid: string): Promise<void> {
+  const auth = getFirebaseAuth();
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("Sign in again to manage two-factor authentication.");
+  }
+  await multiFactor(user).unenroll(factorUid);
+}
+
+/**
+ * Completes a sign-in that was interrupted by the MFA challenge. Given the
+ * original MultiFactorError and the user's 6-digit code, it resolves the TOTP
+ * second factor and then runs the same post-sign-in finalize steps as a normal
+ * email sign-in (token-ready wait + profile upsert), returning the mapped user.
+ */
+export async function completeMfaSignIn(
+  error: MultiFactorError,
+  code: string,
+): Promise<SkillsetUser> {
+  const auth = getFirebaseAuth();
+  const resolver = getMultiFactorResolver(auth, error);
+  const totpHint = resolver.hints.find(
+    (hint) => hint.factorId === TOTP_FACTOR_ID,
+  );
+
+  if (!totpHint) {
+    throw new Error(
+      "This account requires a second factor that isn't supported here yet.",
+    );
+  }
+
+  const assertion = TotpMultiFactorGenerator.assertionForSignIn(
+    totpHint.uid,
+    code.trim(),
+  );
+  const credential = await resolver.resolveSignIn(assertion);
+
+  await waitForIdTokenReady(credential.user);
+  await runUpsertWithRetry(
+    {
+      uid: credential.user.uid,
+      email: credential.user.email,
+      displayName: credential.user.displayName,
+      photoURL: credential.user.photoURL,
+    },
+    "completeMfaSignIn",
+  );
+
+  return mapFirebaseUser(credential.user);
 }

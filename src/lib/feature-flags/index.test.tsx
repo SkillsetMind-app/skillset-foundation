@@ -15,6 +15,7 @@ describe("feature flags", () => {
     expect(getFeatureFlagsByArea("auth").map((flag) => flag.key)).toEqual([
       "auth.emailPassword",
       "auth.passwordReset",
+      "auth.mfa",
     ]);
     expect(getFeatureFlagsByArea("firebaseIntegration")[0]).toMatchObject({
       area: "firebaseIntegration",

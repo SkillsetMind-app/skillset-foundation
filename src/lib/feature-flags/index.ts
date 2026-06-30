@@ -34,6 +34,14 @@ export const featureFlagDefinitions = {
       description: "Allows users to request password reset flows.",
       defaultEnabled: true,
     },
+    mfa: {
+      key: "auth.mfa",
+      area: "auth",
+      label: "Two-factor authentication",
+      description:
+        "Enables TOTP two-factor enrollment and the sign-in challenge. Requires Firebase Identity Platform (MFA) to be enabled on the project.",
+      defaultEnabled: false,
+    },
   },
   payments: {
     checkout: {
@@ -190,6 +198,12 @@ export function getPublicFeatureFlagOverrides(): FeatureFlagOverrides {
 
   if (checkoutFlag === "true" || checkoutFlag === "false") {
     overrides["payments.checkout"] = checkoutFlag === "true";
+  }
+
+  const mfaFlag = process.env.NEXT_PUBLIC_AUTH_MFA_ENABLED;
+
+  if (mfaFlag === "true" || mfaFlag === "false") {
+    overrides["auth.mfa"] = mfaFlag === "true";
   }
 
   return overrides;

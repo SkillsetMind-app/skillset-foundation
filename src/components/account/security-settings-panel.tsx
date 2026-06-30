@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { TotpMfaSection } from "@/components/account/totp-mfa-section";
 import { useAuth } from "@/components/auth/auth-provider";
 import {
   isStrongPassword,
@@ -139,9 +140,9 @@ export function SecuritySettingsPanel() {
         Account protection
       </h3>
       <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        Verify your email before opening creator tools. Two-factor
-        authentication is planned and will appear on this page as soon as
-        it is available.
+        Verify your email before opening creator tools, keep your sign-in
+        details current, and add two-factor authentication to protect your
+        account.
       </p>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -269,29 +270,7 @@ export function SecuritySettingsPanel() {
           </div>
         </div>
 
-        <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="font-semibold text-[var(--color-ink)]">
-                Two-factor authentication
-              </p>
-              <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
-                Planned for creator accounts with payouts or sensitive
-                financial actions.
-              </p>
-            </div>
-            <span className="rounded-[8px] bg-[rgba(26,54,93,0.08)] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
-              Ready next
-            </span>
-          </div>
-          <button
-            type="button"
-            disabled
-            className="button-outline mt-4 px-3.5 py-2 text-xs opacity-60"
-          >
-            Available soon
-          </button>
-        </div>
+        <TotpMfaSection emailVerified={emailVerified} />
       </div>
 
       {message ? (
