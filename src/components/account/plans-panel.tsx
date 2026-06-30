@@ -243,13 +243,15 @@ export function PlansPanel() {
 
               <ul className="mt-4 grid gap-1.5 text-xs leading-5 text-[var(--color-ink-soft)]">
                 {plan.highlights.map((highlight) => (
-                  <li key={highlight} className="flex items-start gap-1.5">
-                    <Check
-                      aria-hidden="true"
-                      size={12}
-                      strokeWidth={2.4}
-                      className="mt-1 shrink-0 text-[var(--color-primary)]"
-                    />
+                  <li key={highlight} className="flex items-start gap-2">
+                    <span className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full bg-[var(--color-success-soft)]">
+                      <Check
+                        aria-hidden="true"
+                        size={10}
+                        strokeWidth={3}
+                        className="text-[var(--color-success-fg)]"
+                      />
+                    </span>
                     <span>{highlight}</span>
                   </li>
                 ))}
