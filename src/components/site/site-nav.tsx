@@ -1,6 +1,8 @@
 "use client";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
+import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
 import { AccountMenu } from "@/components/site/account-menu";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import {
@@ -22,10 +24,10 @@ import { getPrimaryWorkspaceHref } from "@/lib/auth/routing";
 // sidebar, so the public header focuses on the conversion path (creators,
 // pricing, promise, help) instead of duplicating in-app discovery.
 const navItems = [
-  { href: "/for-creators", label: "For creators" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/promise", label: "Promise" },
-  { href: "/help", label: "Help" },
+  { href: "/for-creators", labelKey: "nav.forCreators" },
+  { href: "/pricing", labelKey: "nav.pricing" },
+  { href: "/promise", labelKey: "nav.promise" },
+  { href: "/help", labelKey: "nav.help" },
 ];
 
 // On the single-page landing the header scrolls to in-page sections instead
@@ -47,6 +49,7 @@ type ResolvedNavItem = {
 };
 
 function resolveNavItems(
+  t: (key: string) => string,
   landingNav?: readonly LandingNavItem[],
 ): ResolvedNavItem[] {
   if (landingNav) {
@@ -69,7 +72,7 @@ function resolveNavItems(
 
   return navItems.map((item) => ({
     key: item.href,
-    label: item.label,
+    label: t(item.labelKey),
     target: item.href,
     isAnchor: false,
   }));
@@ -79,14 +82,14 @@ const signInOptions = [
   {
     href: "/auth?mode=signin&path=student&role=student",
     icon: GraduationCap,
-    title: "Access my learning",
-    description: "Continue your enrolled programs",
+    titleKey: "nav.accessLearningTitle",
+    descriptionKey: "nav.accessLearningDesc",
   },
   {
     href: "/auth?mode=signin&path=teacher&role=teacher",
     icon: Presentation,
-    title: "Manage my teaching",
-    description: "Open Teacher Studio",
+    titleKey: "nav.manageTeachingTitle",
+    descriptionKey: "nav.manageTeachingDesc",
   },
 ];
 
@@ -96,10 +99,11 @@ function isActiveNav(pathname: string, href: string) {
 
 export function SiteNav({ landingNav }: SiteNavProps = {}) {
   const { status, user, signOut } = useAuth();
+  const { t } = useTranslation();
   const pathname = usePathname() ?? "";
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const resolvedNav = resolveNavItems(landingNav);
+  const resolvedNav = resolveNavItems(t, landingNav);
   const isAuthenticated = status === "authenticated" && user;
 
   useEffect(() => {
@@ -183,21 +187,22 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
                 className="btn-cta-hero hidden items-center gap-2 min-[941px]:inline-flex"
               >
                 <LayoutDashboard aria-hidden="true" size={16} strokeWidth={1.9} />
-                Dashboard
+                {t("nav.dashboard")}
               </Link>
               <AccountMenu user={user} onSignOut={signOut} />
             </>
           ) : (
             <div className="hidden items-center gap-2 min-[941px]:flex">
+              <LocaleSwitcher />
               <SignInDropdown />
               <Link href="/auth?mode=signup" className="btn-cta-hero">
-                Get started free
+                {t("nav.getStarted")}
               </Link>
             </div>
           )}
           <button
             type="button"
-            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-label={mobileOpen ? t("nav.closeMenu") : t("nav.openMenu")}
             aria-expanded={mobileOpen}
             aria-controls="site-mobile-menu"
             onClick={() => setMobileOpen((open) => !open)}
@@ -215,7 +220,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
           <>
             <button
               type="button"
-              aria-label="Close menu"
+              aria-label={t("nav.closeMenu")}
               onClick={() => setMobileOpen(false)}
               className="fixed inset-0 z-[44] bg-[rgba(15,39,68,0.4)] min-[941px]:hidden"
             />
@@ -267,14 +272,14 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
                     onClick={() => setMobileOpen(false)}
                     className="button-solid w-full px-4 py-2.5 text-sm"
                   >
-                    Go to dashboard
+                    {t("nav.goToDashboard")}
                   </Link>
                   <Link
                     href="/account"
                     onClick={() => setMobileOpen(false)}
                     className="button-outline w-full px-4 py-2.5 text-sm"
                   >
-                    Account settings
+                    {t("nav.accountSettings")}
                   </Link>
                 </div>
               ) : (
@@ -283,16 +288,19 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
                     href="/auth?mode=signin"
                     className="button-outline w-full px-4 py-2.5 text-sm"
                   >
-                    Sign in
+                    {t("nav.signIn")}
                   </Link>
                   <Link
                     href="/auth?mode=signup"
                     className="button-solid w-full px-4 py-2.5 text-sm"
                   >
-                    Get started free
+                    {t("nav.getStarted")}
                   </Link>
                 </div>
               )}
+              <div className="mt-3 flex justify-center border-t border-[var(--color-line)] pt-3">
+                <LocaleSwitcher />
+              </div>
             </div>
           </>
         ) : null}
@@ -334,6 +342,7 @@ function useDismissableLayer(
 }
 
 function SignInDropdown() {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -348,7 +357,7 @@ function SignInDropdown() {
         className={`btn-signin ${isOpen ? "open" : ""}`}
         onClick={() => setIsOpen((current) => !current)}
       >
-        Sign in
+        {t("nav.signIn")}
         <ChevronDown
           aria-hidden="true"
           size={12}
@@ -372,9 +381,11 @@ function SignInDropdown() {
                 </span>
                 <span>
                   <span className="block text-sm font-semibold text-[var(--color-ink)]">
-                    {option.title}
+                    {t(option.titleKey)}
                   </span>
-                  <span className="signin-dropdown__sub">{option.description}</span>
+                  <span className="signin-dropdown__sub">
+                    {t(option.descriptionKey)}
+                  </span>
                 </span>
               </Link>
             );

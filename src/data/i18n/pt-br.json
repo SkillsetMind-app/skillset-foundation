@@ -1,0 +1,61 @@
+{
+  "locale": {
+    "label": "Idioma"
+  },
+  "nav": {
+    "forCreators": "Para criadores",
+    "pricing": "Preços",
+    "promise": "Promessa",
+    "help": "Ajuda",
+    "signIn": "Entrar",
+    "getStarted": "Comece grátis",
+    "dashboard": "Painel",
+    "goToDashboard": "Ir para o painel",
+    "accountSettings": "Configurações da conta",
+    "openMenu": "Abrir menu",
+    "closeMenu": "Fechar menu",
+    "accessLearningTitle": "Acessar meus cursos",
+    "accessLearningDesc": "Continue seus programas matriculados",
+    "manageTeachingTitle": "Gerenciar meu ensino",
+    "manageTeachingDesc": "Abrir o Estúdio do Professor"
+  },
+  "footer": {
+    "tagline": "A plataforma de cursos para psicólogos, terapeutas e coaches de desenvolvimento pessoal. Programas revisados, repasses transparentes, certificados verificáveis.",
+    "platform": "Plataforma",
+    "creator": "Criador",
+    "helpLegal": "Ajuda e jurídico",
+    "pricing": "Preços",
+    "forCreators": "Para criadores",
+    "thePromise": "A Promessa",
+    "trust": "Confiança",
+    "feesPayouts": "Taxas e repasses",
+    "creatorPromise": "Promessa ao Criador",
+    "teacherTerms": "Termos do professor",
+    "helpCenter": "Central de ajuda",
+    "contactSupport": "Falar com o suporte",
+    "termsOfService": "Termos de serviço",
+    "privacyPolicy": "Política de privacidade",
+    "rightsLine": "Aprendizado focado em cursos, com repasses transparentes."
+  },
+  "auth": {
+    "learnerAccess": "acesso do aluno",
+    "educatorAccess": "acesso do educador",
+    "accessSubtitle": "Entre e a Skillset abre a área que combina com a sua conta.",
+    "email": "E-mail",
+    "emailPlaceholder": "voce@exemplo.com",
+    "password": "Senha",
+    "passwordPlaceholder": "Sua senha",
+    "signIn": "Entrar",
+    "signingIn": "Entrando...",
+    "continueWithGoogle": "Continuar com o Google",
+    "forgotPassword": "Esqueceu a senha?",
+    "createAccount": "Novo na Skillset? Crie uma conta",
+    "mfaTitle": "Verificação em duas etapas",
+    "mfaSubtitle": "Digite o código de 6 dígitos do seu app autenticador para concluir o login.",
+    "mfaCodeLabel": "Código de autenticação",
+    "verify": "Verificar e entrar",
+    "verifying": "Verificando...",
+    "useDifferentAccount": "Usar outra conta",
+    "mfaCodePrompt": "Digite o código de 6 dígitos do seu app autenticador."
+  }
+}

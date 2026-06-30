@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 
 import { GoogleMark } from "@/components/auth/google-mark";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import {
   completeMfaSignIn,
   getAuthErrorMessage,
@@ -22,6 +23,7 @@ import { getUserProfile } from "@/lib/data/user-profiles";
 
 export function LoginForm() {
   const router = useRouter();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const pathIntent = useMemo(
     () => getAuthPathIntentFromSearchParams(searchParams),
@@ -30,7 +32,9 @@ export function LoginForm() {
   // Deep link the sign-in wall captured (e.g. /learn/courses/x). Honored only
   // for onboarded accounts — first-time users still go through /welcome.
   const returnTo = useMemo(() => getSafeReturnTo(searchParams), [searchParams]);
-  const pathLabel = pathIntent === "teacher" ? "educator" : "learner";
+  const accessLabel = t(
+    pathIntent === "teacher" ? "auth.educatorAccess" : "auth.learnerAccess",
+  );
   const signupHref = pathIntent
     ? `/auth?mode=signup&path=${pathIntent}`
     : "/auth?mode=signup";
@@ -94,7 +98,7 @@ export function LoginForm() {
 
   async function handleMfaSubmit() {
     if (!mfaError || mfaCode.length < 6) {
-      setError("Enter the 6-digit code from your authenticator app.");
+      setError(t("auth.mfaCodePrompt"));
       return;
     }
     setError("");
@@ -126,15 +130,14 @@ export function LoginForm() {
       <form className="mt-5 grid gap-3.5" onSubmit={handleSubmit}>
         <div className="rounded-[12px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            Two-step verification
+            {t("auth.mfaTitle")}
           </p>
           <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
-            Enter the 6-digit code from your authenticator app to finish signing
-            in.
+            {t("auth.mfaSubtitle")}
           </p>
         </div>
         <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-          Authentication code
+          {t("auth.mfaCodeLabel")}
           <input
             value={mfaCode}
             onChange={(event) =>
@@ -162,7 +165,7 @@ export function LoginForm() {
           disabled={isLoading || mfaCode.length < 6}
           className="button-solid mt-2 px-4 py-2.5 text-sm disabled:opacity-60"
         >
-          {isLoading ? "Verifying..." : "Verify and sign in"}
+          {isLoading ? t("auth.verifying") : t("auth.verify")}
         </button>
         <button
           type="button"
@@ -174,7 +177,7 @@ export function LoginForm() {
           }}
           className="text-sm font-semibold text-[var(--color-primary)] disabled:opacity-60"
         >
-          Use a different account
+          {t("auth.useDifferentAccount")}
         </button>
       </form>
     );
@@ -184,31 +187,31 @@ export function LoginForm() {
     <form className="mt-5 grid gap-3.5" onSubmit={handleSubmit}>
       <div className="rounded-[12px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-          {pathLabel} access
+          {accessLabel}
         </p>
         <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
-          Sign in and Skillset opens the workspace that matches your account.
+          {t("auth.accessSubtitle")}
         </p>
       </div>
       <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-        Email
+        {t("auth.email")}
         <input
           type="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          placeholder="you@example.com"
+          placeholder={t("auth.emailPlaceholder")}
           autoComplete="email"
           required
           className="field-input"
         />
       </label>
       <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-        Password
+        {t("auth.password")}
         <input
           type="password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          placeholder="Your password"
+          placeholder={t("auth.passwordPlaceholder")}
           autoComplete="current-password"
           required
           className="field-input"
@@ -224,7 +227,7 @@ export function LoginForm() {
         </p>
       ) : null}
       <button type="submit" disabled={isLoading} className="button-solid mt-2 px-4 py-2.5 text-sm disabled:opacity-60">
-        {isLoading ? "Signing in..." : "Sign in"}
+        {isLoading ? t("auth.signingIn") : t("auth.signIn")}
       </button>
       <button
         type="button"
@@ -233,19 +236,19 @@ export function LoginForm() {
         className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
       >
         <GoogleMark />
-        Continue with Google
+        {t("auth.continueWithGoogle")}
       </button>
       <Link
         href="/forgot-password"
         className="inline-flex text-sm font-semibold text-[var(--color-primary)]"
       >
-        Forgot password?
+        {t("auth.forgotPassword")}
       </Link>
       <Link
         href={signupHref}
         className="inline-flex text-sm font-semibold text-[var(--color-primary)]"
       >
-        New to Skillset? Create an account
+        {t("auth.createAccount")}
       </Link>
     </form>
   );

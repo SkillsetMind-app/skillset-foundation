@@ -12,6 +12,13 @@ vi.mock("@/components/auth/auth-provider", () => ({
   }),
 }));
 
+// SiteFooter is an async server component that reads the locale via
+// next/headers — not renderable in this synchronous jsdom test, and not what
+// this test asserts (the marketing hero copy). Stub it out.
+vi.mock("@/components/site/site-footer", () => ({
+  SiteFooter: () => null,
+}));
+
 describe("marketing home", () => {
   it("renders the product thesis", () => {
     render(<Home />);

@@ -1,0 +1,61 @@
+{
+  "locale": {
+    "label": "Language"
+  },
+  "nav": {
+    "forCreators": "For creators",
+    "pricing": "Pricing",
+    "promise": "Promise",
+    "help": "Help",
+    "signIn": "Sign in",
+    "getStarted": "Get started free",
+    "dashboard": "Dashboard",
+    "goToDashboard": "Go to dashboard",
+    "accountSettings": "Account settings",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "accessLearningTitle": "Access my learning",
+    "accessLearningDesc": "Continue your enrolled programs",
+    "manageTeachingTitle": "Manage my teaching",
+    "manageTeachingDesc": "Open Teacher Studio"
+  },
+  "footer": {
+    "tagline": "The course platform for psychologists, therapists, and personal-development coaches. Reviewed programs, transparent payouts, verifiable certificates.",
+    "platform": "Platform",
+    "creator": "Creator",
+    "helpLegal": "Help & legal",
+    "pricing": "Pricing",
+    "forCreators": "For creators",
+    "thePromise": "The Promise",
+    "trust": "Trust",
+    "feesPayouts": "Fees and payouts",
+    "creatorPromise": "Creator Promise",
+    "teacherTerms": "Teacher terms",
+    "helpCenter": "Help center",
+    "contactSupport": "Contact support",
+    "termsOfService": "Terms of service",
+    "privacyPolicy": "Privacy policy",
+    "rightsLine": "Course-first learning with transparent payouts."
+  },
+  "auth": {
+    "learnerAccess": "learner access",
+    "educatorAccess": "educator access",
+    "accessSubtitle": "Sign in and Skillset opens the workspace that matches your account.",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "Your password",
+    "signIn": "Sign in",
+    "signingIn": "Signing in...",
+    "continueWithGoogle": "Continue with Google",
+    "forgotPassword": "Forgot password?",
+    "createAccount": "New to Skillset? Create an account",
+    "mfaTitle": "Two-step verification",
+    "mfaSubtitle": "Enter the 6-digit code from your authenticator app to finish signing in.",
+    "mfaCodeLabel": "Authentication code",
+    "verify": "Verify and sign in",
+    "verifying": "Verifying...",
+    "useDifferentAccount": "Use a different account",
+    "mfaCodePrompt": "Enter the 6-digit code from your authenticator app."
+  }
+}

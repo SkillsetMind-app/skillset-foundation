@@ -1,41 +1,46 @@
 import Link from "next/link";
 
+import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { PrivacyChoicesButton } from "@/components/site/privacy-choices-button";
+import { getServerTranslation } from "@/lib/i18n/server";
 
 // Slim 3-column footer. /courses and /how-it-works were removed —
 // Courses is the in-app sidebar Marketplace; How it works is a homepage
-// anchor (not a standalone page worth promoting twice).
+// anchor (not a standalone page worth promoting twice). Labels are i18n keys
+// resolved at render against the request locale.
 const footerColumns = [
   {
-    title: "Platform",
+    titleKey: "footer.platform",
     links: [
-      ["Pricing", "/pricing"],
-      ["For creators", "/for-creators"],
-      ["The Promise", "/promise"],
-      ["Trust", "/trust"],
+      ["footer.pricing", "/pricing"],
+      ["footer.forCreators", "/for-creators"],
+      ["footer.thePromise", "/promise"],
+      ["footer.trust", "/trust"],
     ],
   },
   {
-    title: "Creator",
+    titleKey: "footer.creator",
     links: [
-      ["Fees and payouts", "/fees-and-payouts"],
-      ["Creator Promise", "/promise"],
-      ["Teacher terms", "/legal/teacher-terms"],
+      ["footer.feesPayouts", "/fees-and-payouts"],
+      ["footer.creatorPromise", "/promise"],
+      ["footer.teacherTerms", "/legal/teacher-terms"],
     ],
   },
   {
-    title: "Help & legal",
+    titleKey: "footer.helpLegal",
     links: [
-      ["Help center", "/help"],
-      ["Contact support", "/contact"],
-      ["Terms of service", "/legal/terms"],
-      ["Privacy policy", "/legal/privacy"],
+      ["footer.helpCenter", "/help"],
+      ["footer.contactSupport", "/contact"],
+      ["footer.termsOfService", "/legal/terms"],
+      ["footer.privacyPolicy", "/legal/privacy"],
     ],
   },
 ] as const;
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const { t } = await getServerTranslation();
+
   return (
     <footer className="mx-auto w-full max-w-7xl px-5 pb-10 pt-12 sm:px-8">
       <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8">
@@ -43,25 +48,23 @@ export function SiteFooter() {
           <div>
             <LogoWordmark compact />
             <p className="mt-4 max-w-sm text-sm leading-7 text-[var(--color-ink-soft)]">
-              The course platform for psychologists, therapists, and
-              personal-development coaches. Reviewed programs, transparent
-              payouts, verifiable certificates.
+              {t("footer.tagline")}
             </p>
           </div>
           <div className="grid gap-6 sm:grid-cols-3">
             {footerColumns.map((column) => (
-              <div key={column.title}>
+              <div key={column.titleKey}>
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                  {column.title}
+                  {t(column.titleKey)}
                 </p>
                 <div className="mt-3 grid gap-2">
-                  {column.links.map(([label, href]) => (
+                  {column.links.map(([labelKey, href]) => (
                     <Link
-                      key={`${column.title}-${href}`}
+                      key={`${column.titleKey}-${href}`}
                       href={href}
                       className="text-sm font-semibold text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)]"
                     >
-                      {label}
+                      {t(labelKey)}
                     </Link>
                   ))}
                 </div>
@@ -71,8 +74,11 @@ export function SiteFooter() {
         </div>
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] pt-5 text-xs leading-6 text-[var(--color-ink-soft)]">
           <span>&copy; {new Date().getFullYear()} Skillset.</span>
-          <PrivacyChoicesButton />
-          <span>Course-first learning with transparent payouts.</span>
+          <div className="flex flex-wrap items-center gap-4">
+            <PrivacyChoicesButton />
+            <LocaleSwitcher />
+          </div>
+          <span>{t("footer.rightsLine")}</span>
         </div>
       </div>
     </footer>
