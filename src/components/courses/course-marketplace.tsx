@@ -3,12 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Bookmark, BookmarkCheck } from "lucide-react";
+import { Bookmark, BookmarkCheck, LayoutGrid, List } from "lucide-react";
 import { startTransition, useDeferredValue, useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import type { CourseCard } from "@/lib/data/catalog";
 import type { TeacherCourse } from "@/domain/teacher-course";
+import { canContinueEnrollment, type Enrollment } from "@/domain/enrollment";
+import { subscribeToUserEnrollments } from "@/lib/data/enrollments";
 import {
   courseSortOptions,
   sortCourseCards,
@@ -53,6 +55,9 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   // with ops-curated picks, then A->Z. While nothing is featured it is identical
   // to the catalog's long-standing A->Z order, so untouched = no behavior change.
   const [sortKey, setSortKey] = useState<CourseSortKey>("featured");
+  // Layout preference only (not URL-synced): grid is the long-standing default.
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [activeEnrollments, setActiveEnrollments] = useState<Enrollment[]>([]);
   const [publishedCourses, setPublishedCourses] = useState<CourseCard[]>([]);
   const [publishedCoursesError, setPublishedCoursesError] = useState("");
   const [wishlistError, setWishlistError] = useState("");
@@ -137,6 +142,29 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
     );
   }, [status, user]);
 
+  // Continue-learning strip data. Mirrors the learn dashboard subscription
+  // lifecycle; on any error we simply keep the strip empty (no blocking UI on a
+  // browse page). Guarded behind authenticated status + a valid user id.
+  useEffect(() => {
+    if (status !== "authenticated" || !user || !getSupabaseClientConfig()) {
+      return;
+    }
+
+    return subscribeToUserEnrollments(
+      user.uid,
+      (nextEnrollments) => {
+        setActiveEnrollments(
+          nextEnrollments.filter((enrollment) =>
+            canContinueEnrollment(enrollment.status),
+          ),
+        );
+      },
+      () => {
+        setActiveEnrollments([]);
+      },
+    );
+  }, [status, user]);
+
   async function handleToggleWishlist(course: CourseCard) {
     if (!user) {
       router.push("/auth?mode=signup");
@@ -180,6 +208,30 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   const isFiltering =
     activeCategory !== allCategoriesLabel || deferredQuery.length > 0;
 
+  // Real per-category counts from the loaded courses (All = total).
+  const categoryCounts = new Map<string, number>();
+  for (const course of marketplaceCourses) {
+    categoryCounts.set(
+      course.category,
+      (categoryCounts.get(course.category) ?? 0) + 1,
+    );
+  }
+  function categoryCount(filter: string): number {
+    return filter === allCategoriesLabel
+      ? marketplaceCourses.length
+      : (categoryCounts.get(filter) ?? 0);
+  }
+
+  // Join active enrollments to the visible catalog by slug so we can show the
+  // course image/title; skip enrollments whose course isn't currently listed.
+  const courseBySlug = new Map(
+    marketplaceCourses.map((course) => [course.slug, course]),
+  );
+  const continueItems = activeEnrollments.flatMap((enrollment) => {
+    const course = courseBySlug.get(enrollment.courseSlug);
+    return course ? [{ enrollment, course }] : [];
+  });
+
   return (
     <section>
       <div className="mb-8 grid gap-3 lg:grid-cols-[1fr_280px] lg:items-start">
@@ -199,7 +251,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                     : "button-outline px-3.5 py-2 text-xs"
                 }
               >
-                {filter}
+                {filter} ({categoryCount(filter)})
               </button>
             );
           })}
@@ -228,8 +280,94 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
               ))}
             </select>
           </label>
+          <div className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+            View
+            <div className="flex gap-2" role="group" aria-label="View layout">
+              <button
+                type="button"
+                aria-pressed={viewMode === "grid"}
+                aria-label="Grid view"
+                onClick={() => setViewMode("grid")}
+                className={
+                  viewMode === "grid"
+                    ? "button-solid inline-flex items-center gap-2 px-3.5 py-2 text-xs"
+                    : "button-outline inline-flex items-center gap-2 px-3.5 py-2 text-xs"
+                }
+              >
+                <LayoutGrid aria-hidden="true" size={16} strokeWidth={2} />
+                Grid
+              </button>
+              <button
+                type="button"
+                aria-pressed={viewMode === "list"}
+                aria-label="List view"
+                onClick={() => setViewMode("list")}
+                className={
+                  viewMode === "list"
+                    ? "button-solid inline-flex items-center gap-2 px-3.5 py-2 text-xs"
+                    : "button-outline inline-flex items-center gap-2 px-3.5 py-2 text-xs"
+                }
+              >
+                <List aria-hidden="true" size={16} strokeWidth={2} />
+                List
+              </button>
+            </div>
+          </div>
         </div>
       </div>
+
+      {status === "authenticated" && continueItems.length > 0 ? (
+        <div className="mb-8">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
+            Continue learning
+          </p>
+          <div className="flex gap-4 overflow-x-auto pb-1">
+            {continueItems.map(({ enrollment, course }) => {
+              const progress = Math.max(
+                0,
+                Math.min(100, enrollment.progressPercent),
+              );
+
+              return (
+                <div
+                  key={enrollment.id}
+                  className="surface-card flex w-[min(320px,80vw)] shrink-0 items-center gap-3 rounded-[14px] p-3"
+                >
+                  <div className="relative size-14 shrink-0 overflow-hidden rounded-[10px]">
+                    <Image
+                      src={course.image}
+                      alt={course.title}
+                      fill
+                      sizes="56px"
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-[var(--color-primary)]">
+                      {course.title}
+                    </p>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
+                      <div
+                        className="h-full rounded-full bg-[var(--color-accent)]"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
+                      {progress}% complete
+                    </p>
+                  </div>
+                  <Link
+                    href={`/learn/courses/${enrollment.courseSlug}`}
+                    className="button-solid shrink-0 px-3 py-2 text-xs"
+                  >
+                    Resume
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {publishedCoursesError ? (
         <p className="mb-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
@@ -321,20 +459,37 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
           </div>
         )
       ) : (
-        <div className="grid gap-5 lg:grid-cols-3">
+        <div
+          className={
+            viewMode === "list"
+              ? "grid gap-5"
+              : "grid gap-5 lg:grid-cols-3"
+          }
+        >
           {sortedCourses.map((track) => {
             const hasFreePreview = Boolean(track.freePreviewHref);
             const isWishlisted =
               status === "authenticated" && wishlistCourseIds.has(track.slug);
             const isWishlistPending = pendingWishlistCourseIds.has(track.slug);
             const WishlistIcon = isWishlisted ? BookmarkCheck : Bookmark;
+            const isList = viewMode === "list";
 
             return (
             <article
               key={`${track.slug}-${track.title}`}
-              className="surface-card overflow-hidden rounded-[18px]"
+              className={
+                isList
+                  ? "surface-card grid overflow-hidden rounded-[18px] md:grid-cols-[300px_1fr]"
+                  : "surface-card overflow-hidden rounded-[18px]"
+              }
             >
-              <div className="relative aspect-[4/3] overflow-hidden">
+              <div
+                className={
+                  isList
+                    ? "relative aspect-[4/3] overflow-hidden md:aspect-auto"
+                    : "relative aspect-[4/3] overflow-hidden"
+                }
+              >
                 <Image
                   src={track.image}
                   alt={track.title}
