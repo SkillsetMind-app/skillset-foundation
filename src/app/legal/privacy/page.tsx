@@ -43,8 +43,8 @@ export default function PrivacyPage() {
             <ul className="mt-3 list-disc space-y-2 pl-6">
               <li>
                 <strong className="text-[var(--color-ink)]">Account details</strong>{" "}
-                — your name and email, managed through Firebase Authentication,
-                plus your role (learner or educator).
+                — your name and email, managed through Supabase Auth, plus your
+                role (learner or educator).
               </li>
               <li>
                 <strong className="text-[var(--color-ink)]">Learning activity</strong>{" "}
@@ -94,8 +94,8 @@ export default function PrivacyPage() {
             </p>
             <ul className="mt-3 list-disc space-y-2 pl-6">
               <li>
-                <strong className="text-[var(--color-ink)]">Google Firebase</strong>{" "}
-                — authentication, database, and hosting.
+                <strong className="text-[var(--color-ink)]">Supabase</strong>{" "}
+                — authentication, database, and storage.
               </li>
               <li>
                 <strong className="text-[var(--color-ink)]">Stripe</strong> —

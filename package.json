@@ -8,14 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:rules": "firebase emulators:exec --project demo-skillset-rules-test --only firestore,storage \"npm run test:rules:run\"",
-    "test:rules:run": "vitest run --config vitest.rules.config.ts",
-    "test:watch": "vitest",
-    "deploy:app": "firebase deploy --only functions,hosting --project skillsetusaofficial",
-    "predeploy:app": "node scripts/predeploy-reminder.mjs",
-    "deploy:rules": "firebase deploy --only storage,firestore:rules --project skillsetusaofficial",
-    "deploy:full": "npm run deploy:app && npm run deploy:rules",
-    "deploy:hosting": "npm run deploy:app"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@stripe/connect-js": "^3.4.5",
@@ -25,7 +18,6 @@
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.110.0",
     "clsx": "^2.1.1",
-    "firebase": "^12.13.0",
     "lucide-react": "^0.553.0",
     "next": "^16.2.6",
     "posthog-js": "^1.391.2",
@@ -34,7 +26,6 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
-    "@firebase/rules-unit-testing": "^5.0.1",
     "@tailwindcss/postcss": "^4.3.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
@@ -43,7 +34,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
-    "firebase-tools": "^15.18.0",
     "jsdom": "^27.0.1",
     "stripe": "^22.1.1",
     "tailwindcss": "^4.3.0",
