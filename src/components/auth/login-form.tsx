@@ -1,5 +1,6 @@
 "use client";
 
+import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
@@ -40,6 +41,7 @@ export function LoginForm() {
     : "/auth?mode=signup";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   // Set when a sign-in succeeds at the password step but the account also
@@ -206,16 +208,39 @@ export function LoginForm() {
         />
       </label>
       <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-        {t("auth.password")}
-        <input
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          placeholder={t("auth.passwordPlaceholder")}
-          autoComplete="current-password"
-          required
-          className="field-input"
-        />
+        <span className="flex items-center justify-between gap-2">
+          {t("auth.password")}
+          <Link
+            href="/forgot-password"
+            className="text-sm font-semibold text-[var(--color-primary)]"
+          >
+            {t("auth.forgotPassword")}
+          </Link>
+        </span>
+        <span className="relative block">
+          <input
+            type={showPassword ? "text" : "password"}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder={t("auth.passwordPlaceholder")}
+            autoComplete="current-password"
+            required
+            className="field-input pr-11"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((visible) => !visible)}
+            aria-label={t(showPassword ? "auth.hidePassword" : "auth.showPassword")}
+            aria-pressed={showPassword}
+            className="absolute inset-y-0 right-0 flex items-center px-3 text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
+          >
+            {showPassword ? (
+              <EyeOff className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Eye className="h-4 w-4" aria-hidden="true" />
+            )}
+          </button>
+        </span>
       </label>
       {error ? (
         <p
@@ -238,12 +263,6 @@ export function LoginForm() {
         <GoogleMark />
         {t("auth.continueWithGoogle")}
       </button>
-      <Link
-        href="/forgot-password"
-        className="inline-flex text-sm font-semibold text-[var(--color-primary)]"
-      >
-        {t("auth.forgotPassword")}
-      </Link>
       <Link
         href={signupHref}
         className="inline-flex text-sm font-semibold text-[var(--color-primary)]"

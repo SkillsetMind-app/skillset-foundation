@@ -51,6 +51,8 @@
     "signingIn": "Iniciando sesión...",
     "continueWithGoogle": "Continuar con Google",
     "forgotPassword": "¿Olvidaste tu contraseña?",
+    "showPassword": "Mostrar contraseña",
+    "hidePassword": "Ocultar contraseña",
     "createAccount": "¿Nuevo en Skillset? Crea una cuenta",
     "mfaTitle": "Verificación en dos pasos",
     "mfaSubtitle": "Introduce el código de 6 dígitos de tu app de autenticación para completar el inicio de sesión.",

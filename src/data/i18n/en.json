@@ -51,6 +51,8 @@
     "signingIn": "Signing in...",
     "continueWithGoogle": "Continue with Google",
     "forgotPassword": "Forgot password?",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "createAccount": "New to Skillset? Create an account",
     "mfaTitle": "Two-step verification",
     "mfaSubtitle": "Enter the 6-digit code from your authenticator app to finish signing in.",
