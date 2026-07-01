@@ -28,7 +28,9 @@
   --color-ink-muted: #5a6a81;
   /* Border contrast raised (0.20 -> 0.28 / 0.30 -> 0.40): faint hairlines made
      the card-heavy surfaces read "washed out / unfinished". Higher opacity gives
-     every `border-[var(--color-line)]` (279 usages) a visible edge. */
+     every `border-[var(--color-line)]` (279 usages) a visible edge.
+     (V2 handoff's tokens.css softens these to .12/.18; HELD pending founder pick
+     per the "no blind porting" rule — see docs/design-v2 morning report.) */
   --color-line: rgba(26, 54, 93, 0.28);
   --color-line-strong: rgba(26, 54, 93, 0.40);
   --color-success: #1f8a5b;
@@ -56,8 +58,71 @@
   --radius-md: 10px;
   --radius-lg: 12px;
   --radius-xl: 14px;
+  --radius-xs: 6px;
   --radius-3xl: 18px;
+  --radius-2xl: 16px;
   --radius-4xl: 22px;
+  /* Design V2 net-new tokens (additive — no existing value changed) */
+  --color-on-primary: #ffffff;
+  --color-on-accent: #ffffff;
+  --shadow-button: 0 10px 22px rgba(26, 54, 93, 0.14);
+  --shadow-button-strong: 0 14px 28px rgba(15, 39, 68, 0.28);
+  /* Spacing scale (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+  --space-11: 80px;
+  --space-12: 96px;
+  /* Layout */
+  --container-max: 1280px;
+  --container-pad-mobile: 20px;
+  --container-pad-desktop: 32px;
+  --sidebar-width: 252px;
+  /* Type scale (raw px) */
+  --fs-10: 10px;
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-15: 15px;
+  --fs-16: 16px;
+  --fs-18: 18px;
+  --fs-20: 20px;
+  --fs-24: 24px;
+  --fs-30: 30px;
+  --fs-36: 36px;
+  --fs-48: 48px;
+  --fs-60: 60px;
+  --fs-72: 72px;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-extra: 800;
+  --tracking-eyebrow: 0.22em;
+  --tracking-label: 0.18em;
+  --tracking-tight: 0.14em;
+  --tracking-normal: 0;
+  --leading-tight: 1.05;
+  --leading-snug: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+  /* Numeric + mono families (Inter loaded via next/font as --font-inter) */
+  --font-num: var(--font-inter), "Inter", -apple-system, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  /* Motion */
+  --ease-standard: cubic-bezier(0.2, 0.6, 0.2, 1);
+  --ease-out: ease-out;
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 280ms;
 }
 
 [data-theme="dark"] {
@@ -102,6 +167,16 @@
   --color-foreground: var(--color-ink);
   --font-sans: var(--font-manrope);
   --font-display: var(--font-cormorant);
+  --font-num: var(--font-inter);
+}
+
+/* Tabular numeric display (Design V2): Inter with lining/tabular figures for
+   metrics, prices, counts, streaks — so digits align in columns and don't jitter. */
+.num {
+  font-family: var(--font-num), "Inter", -apple-system, system-ui, sans-serif;
+  font-feature-settings: "tnum" 1, "lnum" 1, "ss01" 1, "cv11" 1;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.01em;
 }
 
 *,

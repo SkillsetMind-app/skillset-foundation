@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Manrope } from "next/font/google";
+import { Cormorant_Garamond, Inter, Manrope } from "next/font/google";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { ConsoleSignature } from "@/components/shared/console-signature";
@@ -22,6 +22,12 @@ const cormorant = Cormorant_Garamond({
   weight: ["500", "600", "700"],
 });
 
+// Design V2: Inter for tabular numeric display (--font-num / .num utility).
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: brand.title,
@@ -42,7 +48,7 @@ export default async function RootLayout({
   return (
     <html
       lang={LOCALE_HTML_LANG[locale]}
-      className={`${manrope.variable} ${cormorant.variable} h-full scroll-smooth`}
+      className={`${manrope.variable} ${cormorant.variable} ${inter.variable} h-full scroll-smooth`}
     >
       <body className="min-h-full bg-[var(--color-base)] text-[var(--color-ink)] antialiased">
         <ConsoleSignature />
