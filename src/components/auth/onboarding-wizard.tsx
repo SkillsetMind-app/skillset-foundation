@@ -1,6 +1,6 @@
 "use client";
 
-import { GraduationCap, Loader2, Presentation } from "lucide-react";
+import { Check, GraduationCap, Loader2, Presentation } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -66,6 +66,21 @@ const audienceOptions = [
   "100,000+ followers",
   "I'm building it now",
 ];
+
+// Single source for the two branch answers whose labels are rendered inline in
+// the step JSX (path cards, alreadySold radios). Referenced by both the step
+// renderers and the completion recap so the summary can never drift from what
+// the user actually saw and picked. primaryGoal needs no map: its stored values
+// are the category labels themselves.
+const pathLabels: Record<"student" | "teacher", string> = {
+  student: "I want to learn",
+  teacher: "I want to teach",
+};
+
+const alreadySoldLabels: Record<"yes" | "no", string> = {
+  yes: "Yes, I sell on another platform",
+  no: "Not yet, this will be my first",
+};
 
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -365,6 +380,30 @@ export function OnboardingWizard() {
   }
 
   if (isComplete) {
+    // Recap echoes back what the user picked, sourced from the same `answers`
+    // state and the same labels the steps rendered (pathLabels /
+    // alreadySoldLabels; primaryGoal values are their own labels). The
+    // alreadySold row only shows when the teacher branch was taken.
+    const recap: { label: string; value: string }[] = [];
+
+    if (answers.path && answers.path in pathLabels) {
+      recap.push({
+        label: "You want to",
+        value: pathLabels[answers.path as "student" | "teacher"],
+      });
+    }
+
+    if (answers.primaryGoal && answers.primaryGoal.length > 0) {
+      recap.push({ label: "Interests", value: answers.primaryGoal.join(", ") });
+    }
+
+    if (answers.path === "teacher" && answers.alreadySold) {
+      recap.push({
+        label: "Selling online",
+        value: alreadySoldLabels[answers.alreadySold],
+      });
+    }
+
     return (
       <main className="grid min-h-screen place-items-center bg-[var(--color-base)] px-5">
         <section className="text-center">
@@ -377,6 +416,32 @@ export function OnboardingWizard() {
           <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
             Skillset is preparing your workspace. Taking you there now.
           </p>
+          {recap.length > 0 ? (
+            <dl className="mx-auto mt-8 max-w-md space-y-3 rounded-[16px] border-[1.5px] border-[var(--color-line)] bg-white p-6 text-left">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--color-ink-soft)]">
+                Your answers
+              </p>
+              {recap.map((row) => (
+                <div
+                  key={row.label}
+                  className="flex items-start justify-between gap-4"
+                >
+                  <dt className="text-[13px] font-semibold text-[var(--color-ink-soft)]">
+                    {row.label}
+                  </dt>
+                  <dd className="flex items-center gap-2 text-right text-sm font-semibold text-[var(--color-primary)]">
+                    {row.value}
+                    <Check
+                      aria-hidden="true"
+                      className="shrink-0 text-[var(--color-accent-fg)]"
+                      size={16}
+                      strokeWidth={2.4}
+                    />
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
           <Loader2
             aria-hidden="true"
             className="mx-auto mt-8 size-14 animate-spin text-[var(--color-accent-fg)]"
@@ -448,14 +513,14 @@ export function OnboardingWizard() {
               <PathCard
                 icon="learn"
                 selected={answers.path === "student"}
-                title="I want to learn"
+                title={pathLabels.student}
                 description="Browse programs, enroll, join communities, earn credentials."
                 onClick={() => void updateAnswer({ ...answers, path: "student" }, true)}
               />
               <PathCard
                 icon="teach"
                 selected={answers.path === "teacher"}
-                title="I want to teach"
+                title={pathLabels.teacher}
                 description="Build courses, publish to the marketplace, and sell worldwide."
                 onClick={() => void updateAnswer({ ...answers, path: "teacher" }, true)}
               />
@@ -488,13 +553,13 @@ export function OnboardingWizard() {
             <div className="grid gap-4 sm:grid-cols-2">
               <LargeRadio
                 selected={answers.alreadySold === "yes"}
-                title="Yes, I sell on another platform"
+                title={alreadySoldLabels.yes}
                 description="Hotmart, Kajabi, Teachable, Eduzz, anything."
                 onClick={() => void updateAnswer({ ...answers, alreadySold: "yes" }, true)}
               />
               <LargeRadio
                 selected={answers.alreadySold === "no"}
-                title="Not yet, this will be my first"
+                title={alreadySoldLabels.no}
                 description="Skillset is built for newcomers too."
                 onClick={() =>
                   void updateAnswer(
