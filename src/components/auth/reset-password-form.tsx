@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 
-import { getAuthErrorMessage, resetPassword } from "@/lib/auth/firebase-auth";
+import { getAuthErrorMessage, resetPassword } from "@/lib/auth/supabase-auth";
 
 export function ResetPasswordForm() {
   const [email, setEmail] = useState("");

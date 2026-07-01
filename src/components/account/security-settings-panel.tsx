@@ -16,7 +16,7 @@ import {
   refreshCurrentUserEmailVerification,
   resetPassword,
   sendSkillsetEmailVerification,
-} from "@/lib/auth/firebase-auth";
+} from "@/lib/auth/supabase-auth";
 
 export function SecuritySettingsPanel() {
   const { user } = useAuth();

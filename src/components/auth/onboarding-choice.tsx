@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -13,14 +12,14 @@ import {
   validateUsername,
 } from "@/lib/auth/profile-validation";
 import {
+  listenToAuthState,
   refreshCurrentUserEmailVerification,
   sendSkillsetEmailVerification,
-} from "@/lib/auth/firebase-auth";
+} from "@/lib/auth/supabase-auth";
 import {
   completeUserOnboarding,
   getUserProfile,
 } from "@/lib/data/user-profiles";
-import { getFirebaseApp } from "@/lib/firebase/client";
 import type { Role } from "@/lib/permissions";
 import { getAuthPathIntentFromSearchParams } from "@/lib/auth/routing";
 
@@ -128,72 +127,79 @@ export function OnboardingChoice() {
     useState(false);
 
   useEffect(() => {
-    const auth = getAuth(getFirebaseApp());
+    return listenToAuthState((session) => {
+      if (session.status === "loading") {
+        return;
+      }
 
-    return onAuthStateChanged(auth, async (user) => {
-      if (!user) {
+      if (session.status === "unauthenticated" || !session.user) {
         router.push("/login");
         return;
       }
 
-      setUid(user.uid);
-      setEmailVerified(user.emailVerified);
-      setDisplayName(user.displayName ?? "");
+      const authedUser = session.user;
+      setUid(authedUser.uid);
+      setEmailVerified(authedUser.emailVerified);
+      setDisplayName(authedUser.displayName ?? "");
 
-      try {
-        const profile = await getUserProfile(user.uid);
-        setDisplayName(profile?.displayName ?? user.displayName ?? "");
-        setUsername(profile?.username ?? "");
-        setBio(profile?.bio ?? "");
-        setTimezone(
-          profile?.timezone ??
-            Intl.DateTimeFormat().resolvedOptions().timeZone ??
-            "America/New_York",
-        );
-        setGoals(profile?.goals ?? []);
-        setTeacherTermsAccepted(Boolean(profile?.teacherTermsAcceptedAt));
+      void (async () => {
+        try {
+          const profile = await getUserProfile(authedUser.uid);
+          setDisplayName(profile?.displayName ?? authedUser.displayName ?? "");
+          setUsername(profile?.username ?? "");
+          setBio(profile?.bio ?? "");
+          setTimezone(
+            profile?.timezone ??
+              Intl.DateTimeFormat().resolvedOptions().timeZone ??
+              "America/New_York",
+          );
+          setGoals(profile?.goals ?? []);
+          setTeacherTermsAccepted(Boolean(profile?.teacherTermsAcceptedAt));
 
-        const intendedRole = pathIntent ?? "student";
-        const intendedPath = paths.find((path) =>
-          path.roles.some((role) => role === intendedRole),
-        );
-        const existingPath = profile?.onboardingCompleted
-          ? paths.find((path) =>
-              path.roles.every((role) => profile?.roles.includes(role)),
-            )
-          : null;
+          const intendedRole = pathIntent ?? "student";
+          const intendedPath = paths.find((path) =>
+            path.roles.some((role) => role === intendedRole),
+          );
+          const existingPath = profile?.onboardingCompleted
+            ? paths.find((path) =>
+                path.roles.every((role) => profile?.roles.includes(role)),
+              )
+            : null;
 
-        // Wizard already gathered the survey. If this is a teacher who
-        // finished the wizard but does not yet hold the teacher role,
-        // collapse to a single activation step instead of re-asking
-        // path/profile/goals.
-        const finishedWizardAsTeacher =
-          pathIntent === "teacher" &&
-          Boolean(profile?.onboardingCompleted) &&
-          profile?.onboardingPath === "teacher" &&
-          !(profile?.roles ?? []).includes("teacher");
+          // Wizard already gathered the survey. If this is a teacher who
+          // finished the wizard but does not yet hold the teacher role,
+          // collapse to a single activation step instead of re-asking
+          // path/profile/goals.
+          const finishedWizardAsTeacher =
+            pathIntent === "teacher" &&
+            Boolean(profile?.onboardingCompleted) &&
+            profile?.onboardingPath === "teacher" &&
+            !(profile?.roles ?? []).includes("teacher");
 
-        if (finishedWizardAsTeacher) {
-          const teacherPath = paths.find((path) => {
-            const roles = path.roles as readonly Role[];
-            return roles.includes("teacher") && !roles.includes("student");
-          });
-          setStreamlinedTeacherActivation(true);
-          setSelectedPath(teacherPath ?? null);
-          // Seed a default goal so the existing finish guard
-          // (goals.length === 0) does not block activation. The wizard's
-          // category answers use a different taxonomy.
-          if (!profile?.goals || profile.goals.length === 0) {
-            setGoals(["teach_online"]);
+          if (finishedWizardAsTeacher) {
+            const teacherPath = paths.find((path) => {
+              const roles = path.roles as readonly Role[];
+              return roles.includes("teacher") && !roles.includes("student");
+            });
+            setStreamlinedTeacherActivation(true);
+            setSelectedPath(teacherPath ?? null);
+            // Seed a default goal so the existing finish guard
+            // (goals.length === 0) does not block activation. The wizard's
+            // category answers use a different taxonomy.
+            if (!profile?.goals || profile.goals.length === 0) {
+              setGoals(["teach_online"]);
+            }
+          } else if (intendedPath || existingPath) {
+            setSelectedPath(intendedPath ?? existingPath ?? null);
           }
-        } else if (intendedPath || existingPath) {
-          setSelectedPath(intendedPath ?? existingPath ?? null);
+        } catch {
+          setError(
+            "Could not load your profile. You can still complete setup.",
+          );
+        } finally {
+          setIsBootstrapping(false);
         }
-      } catch {
-        setError("Could not load your profile. You can still complete setup.");
-      } finally {
-        setIsBootstrapping(false);
-      }
+      })();
     });
   }, [pathIntent, router]);
 

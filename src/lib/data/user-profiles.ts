@@ -1,15 +1,5 @@
 "use client";
 
-import {
-  doc,
-  getDoc,
-  onSnapshot,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-  type Unsubscribe,
-} from "firebase/firestore";
-
 import type {
   PublicProfile,
   StorefrontConfig,
@@ -19,148 +9,225 @@ import type {
   UserPreferences,
   UserProfile,
 } from "@/domain/user-profile";
-import { getFirestoreDb } from "@/lib/firebase/client";
 import {
   currentPrivacyVersion,
   currentTeacherTermsVersion,
   currentTermsVersion,
 } from "@/lib/legal/versions";
 import type { Role } from "@/lib/permissions";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import {
+  rowToPublicProfile,
+  rowToUserProfile,
+  type PublicProfileRow,
+  type UserRow,
+} from "@/lib/supabase/user-mappers";
 
-const usersCollection = "users";
-const publicProfilesCollection = "publicProfiles";
+function nowIso(): string {
+  return new Date().toISOString();
+}
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
-  const snapshot = await getDoc(doc(getFirestoreDb(), usersCollection, uid));
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+    .eq("uid", uid)
+    .maybeSingle();
 
-  if (!snapshot.exists()) {
-    return null;
+  if (error) {
+    throw error;
   }
 
-  return snapshot.data() as UserProfile;
+  return data ? rowToUserProfile(data) : null;
 }
 
 export function subscribeToUserProfile(
   uid: string,
   callback: (profile: UserProfile | null) => void,
   onError: (error: Error) => void,
-): Unsubscribe {
-  return onSnapshot(
-    doc(getFirestoreDb(), usersCollection, uid),
-    (snapshot) => {
-      callback(snapshot.exists() ? (snapshot.data() as UserProfile) : null);
-    },
-    onError,
-  );
+): () => void {
+  const supabase = getSupabaseBrowserClient();
+
+  // Fire once with the current value (like Firestore onSnapshot), then keep the
+  // caller in sync via Realtime. RLS scopes postgres_changes to the caller's
+  // own row, so no cross-user leakage.
+  void supabase
+    .from("users")
+    .select("*")
+    .eq("uid", uid)
+    .maybeSingle()
+    .then(({ data, error }) => {
+      if (error) {
+        onError(error instanceof Error ? error : new Error(String(error)));
+        return;
+      }
+      callback(data ? rowToUserProfile(data) : null);
+    });
+
+  const channel = supabase
+    .channel(`users:${uid}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "users", filter: `uid=eq.${uid}` },
+      (payload) => {
+        if (payload.eventType === "DELETE") {
+          callback(null);
+          return;
+        }
+        callback(rowToUserProfile(payload.new as unknown as UserRow));
+      },
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }
 
 export async function getPublicProfile(
   uid: string,
 ): Promise<PublicProfile | null> {
-  const snapshot = await getDoc(
-    doc(getFirestoreDb(), publicProfilesCollection, uid),
-  );
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("public_profiles")
+    .select("*")
+    .eq("uid", uid)
+    .maybeSingle();
 
-  if (!snapshot.exists()) {
-    return null;
+  if (error) {
+    throw error;
   }
 
-  return snapshot.data() as PublicProfile;
+  return data ? rowToPublicProfile(data) : null;
 }
 
 export function subscribeToPublicProfile(
   uid: string,
   callback: (profile: PublicProfile | null) => void,
   onError: (error: Error) => void,
-): Unsubscribe {
-  return onSnapshot(
-    doc(getFirestoreDb(), publicProfilesCollection, uid),
-    (snapshot) => {
-      callback(snapshot.exists() ? (snapshot.data() as PublicProfile) : null);
-    },
-    onError,
-  );
+): () => void {
+  const supabase = getSupabaseBrowserClient();
+
+  void supabase
+    .from("public_profiles")
+    .select("*")
+    .eq("uid", uid)
+    .maybeSingle()
+    .then(({ data, error }) => {
+      if (error) {
+        onError(error instanceof Error ? error : new Error(String(error)));
+        return;
+      }
+      callback(data ? rowToPublicProfile(data) : null);
+    });
+
+  const channel = supabase
+    .channel(`public_profiles:${uid}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "public_profiles",
+        filter: `uid=eq.${uid}`,
+      },
+      (payload) => {
+        if (payload.eventType === "DELETE") {
+          callback(null);
+          return;
+        }
+        callback(rowToPublicProfile(payload.new as unknown as PublicProfileRow));
+      },
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }
 
 export async function upsertUserProfile(
   input: UpsertUserProfileInput,
 ): Promise<void> {
-  const profileRef = doc(getFirestoreDb(), usersCollection, input.uid);
-  const existingProfile = await getDoc(profileRef);
+  const supabase = getSupabaseBrowserClient();
+  const timestamp = nowIso();
 
-  if (existingProfile.exists()) {
-    const data = existingProfile.data();
-    const patch: Record<string, unknown> = {
+  // Create the row if it's somehow missing (normally the on_auth_user_created
+  // trigger provisions it at signup). ignoreDuplicates => INSERT ... ON CONFLICT
+  // DO NOTHING, so an existing row's roles/identity are never clobbered.
+  const { error: insertError } = await supabase.from("users").upsert(
+    {
+      uid: input.uid,
       email: input.email,
-      displayName: input.displayName,
-      photoURL: input.photoURL,
-      updatedAt: serverTimestamp(),
-      lastLoginAt: serverTimestamp(),
-    };
+      display_name: input.displayName,
+      photo_url: input.photoURL,
+      roles: ["student"],
+      onboarding_completed: false,
+      created_at: timestamp,
+      updated_at: timestamp,
+      last_login_at: timestamp,
+    },
+    { onConflict: "uid", ignoreDuplicates: true },
+  );
 
-    if (!Array.isArray(data.roles) || data.roles.length === 0) {
-      patch.roles = ["student"];
-    }
-
-    if (typeof data.uid !== "string") {
-      patch.uid = input.uid;
-    }
-
-    if (typeof data.onboardingCompleted !== "boolean") {
-      patch.onboardingCompleted = false;
-    }
-
-    await updateDoc(profileRef, patch);
-
-    return;
+  if (insertError) {
+    throw insertError;
   }
 
-  await setDoc(profileRef, {
-    uid: input.uid,
-    email: input.email,
-    displayName: input.displayName,
-    photoURL: input.photoURL,
-    roles: ["student"],
-    onboardingCompleted: false,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    lastLoginAt: serverTimestamp(),
-  });
+  // Record the login without touching profile-managed identity fields
+  // (display_name/photo_url are owned by updateUserIdentity after signup).
+  const { error: touchError } = await supabase
+    .from("users")
+    .update({ last_login_at: timestamp, updated_at: timestamp })
+    .eq("uid", input.uid);
+
+  if (touchError) {
+    throw touchError;
+  }
 }
 
 export async function updateUserRoles(
   uid: string,
   roles: ReadonlyArray<Extract<Role, "student" | "teacher">>,
 ) {
+  const supabase = getSupabaseBrowserClient();
   const normalizedRoles = Array.from(new Set(roles));
   const includesTeacher = normalizedRoles.includes("teacher");
+  const timestamp = nowIso();
 
-  await setDoc(
-    doc(getFirestoreDb(), usersCollection, uid),
-    {
+  const { error } = await supabase
+    .from("users")
+    .update({
       roles: normalizedRoles,
       ...(includesTeacher
         ? {
-            teacherTermsAcceptedAt: serverTimestamp(),
-            teacherTermsVersion: currentTeacherTermsVersion,
+            teacher_terms_accepted_at: timestamp,
+            teacher_terms_version: currentTeacherTermsVersion,
           }
         : {}),
-      onboardingCompleted: true,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
-  );
+      onboarding_completed: true,
+      updated_at: timestamp,
+    })
+    .eq("uid", uid);
+
+  if (error) {
+    throw error;
+  }
 }
 
-export async function updateUserRole(uid: string, role: Extract<Role, "student" | "teacher">) {
+export async function updateUserRole(
+  uid: string,
+  role: Extract<Role, "student" | "teacher">,
+) {
   await updateUserRoles(uid, [role]);
 }
 
-function buildIdentityPatch(input: UserIdentityInput) {
+function buildIdentityPatch(input: UserIdentityInput): Record<string, unknown> {
   const patch: Record<string, unknown> = {};
 
   if (input.displayName !== undefined) {
-    patch.displayName = input.displayName?.trim() || null;
+    patch.display_name = input.displayName?.trim() || null;
   }
 
   if (input.username !== undefined) {
@@ -172,7 +239,7 @@ function buildIdentityPatch(input: UserIdentityInput) {
   }
 
   if (input.phoneNumber !== undefined) {
-    patch.phoneNumber = input.phoneNumber?.trim() || null;
+    patch.phone_number = input.phoneNumber?.trim() || null;
   }
 
   if (input.timezone !== undefined) {
@@ -194,47 +261,87 @@ function buildIdentityPatch(input: UserIdentityInput) {
 }
 
 export async function updateUserIdentity(uid: string, input: UserIdentityInput) {
-  await setDoc(
-    doc(getFirestoreDb(), usersCollection, uid),
-    {
-      ...buildIdentityPatch(input),
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
-  );
+  const supabase = getSupabaseBrowserClient();
+  const { error } = await supabase
+    .from("users")
+    .update({ ...buildIdentityPatch(input), updated_at: nowIso() })
+    .eq("uid", uid);
+
+  if (error) {
+    throw error;
+  }
 }
 
 export async function updateUserPreferences(
   uid: string,
   preferences: UserPreferences,
 ): Promise<void> {
-  // setDoc merge deep-merges nested maps, so passing only one section
-  // (e.g. { notifications }) preserves the other section already on the doc.
-  await setDoc(
-    doc(getFirestoreDb(), usersCollection, uid),
-    {
-      preferences,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
-  );
+  const supabase = getSupabaseBrowserClient();
+
+  // Firestore setDoc merge deep-merged nested maps; Postgres jsonb assignment
+  // replaces. Read-merge-write reproduces the deep-merge so passing only one
+  // section (e.g. { notifications }) preserves the other.
+  // ponytail: tiny read-then-write race, negligible for single-user self-edits.
+  const { data, error: readError } = await supabase
+    .from("users")
+    .select("preferences")
+    .eq("uid", uid)
+    .maybeSingle();
+
+  if (readError) {
+    throw readError;
+  }
+
+  const current = (data?.preferences as unknown as UserPreferences | null) ?? {};
+  const merged: UserPreferences = {
+    notifications: { ...current.notifications, ...preferences.notifications },
+    learning: { ...current.learning, ...preferences.learning },
+  };
+
+  const { error } = await supabase
+    .from("users")
+    .update({ preferences: merged, updated_at: nowIso() })
+    .eq("uid", uid);
+
+  if (error) {
+    throw error;
+  }
 }
 
 export async function updateUserStorefront(
   uid: string,
   storefront: StorefrontConfig,
 ): Promise<void> {
-  // setDoc merge deep-merges nested maps, so saving only { branding } preserves
-  // any { showcase } already on the doc (and vice-versa). The storefront guard
-  // in firestore.rules validates the URL/hex fields before this lands.
-  await setDoc(
-    doc(getFirestoreDb(), usersCollection, uid),
-    {
-      storefront,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
-  );
+  const supabase = getSupabaseBrowserClient();
+
+  // Deep-merge branding/showcase so saving only { branding } preserves any
+  // { showcase } already on the row (and vice-versa). Same rationale + caveat
+  // as updateUserPreferences.
+  const { data, error: readError } = await supabase
+    .from("users")
+    .select("storefront")
+    .eq("uid", uid)
+    .maybeSingle();
+
+  if (readError) {
+    throw readError;
+  }
+
+  const current =
+    (data?.storefront as unknown as StorefrontConfig | null) ?? {};
+  const merged: StorefrontConfig = {
+    branding: { ...current.branding, ...storefront.branding },
+    showcase: { ...current.showcase, ...storefront.showcase },
+  };
+
+  const { error } = await supabase
+    .from("users")
+    .update({ storefront: merged, updated_at: nowIso() })
+    .eq("uid", uid);
+
+  if (error) {
+    throw error;
+  }
 }
 
 export async function updateOnboardingAnswers({
@@ -243,21 +350,24 @@ export async function updateOnboardingAnswers({
   path,
   completed = false,
 }: UpdateOnboardingAnswersInput) {
-  await setDoc(
-    doc(getFirestoreDb(), usersCollection, uid),
-    {
-      onboardingAnswers: answers,
-      ...(path ? { onboardingPath: path } : {}),
+  const supabase = getSupabaseBrowserClient();
+  const timestamp = nowIso();
+
+  const { error } = await supabase
+    .from("users")
+    .update({
+      onboarding_answers: answers,
+      ...(path ? { onboarding_path: path } : {}),
       ...(completed
-        ? {
-            onboardingCompleted: true,
-            onboardingCompletedAt: serverTimestamp(),
-          }
+        ? { onboarding_completed: true, onboarding_completed_at: timestamp }
         : {}),
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
-  );
+      updated_at: timestamp,
+    })
+    .eq("uid", uid);
+
+  if (error) {
+    throw error;
+  }
 }
 
 export async function completeUserOnboarding({
@@ -271,38 +381,49 @@ export async function completeUserOnboarding({
   identity: UserIdentityInput;
   acceptTeacherTerms?: boolean;
 }) {
+  const supabase = getSupabaseBrowserClient();
   const normalizedRoles = Array.from(new Set(roles));
   const includesTeacher = normalizedRoles.includes("teacher");
+  const timestamp = nowIso();
 
-  await setDoc(
-    doc(getFirestoreDb(), usersCollection, uid),
-    {
+  const { error } = await supabase
+    .from("users")
+    .update({
       ...buildIdentityPatch(identity),
       roles: normalizedRoles,
       ...(includesTeacher && acceptTeacherTerms
         ? {
-            teacherTermsAcceptedAt: serverTimestamp(),
-            teacherTermsVersion: currentTeacherTermsVersion,
+            teacher_terms_accepted_at: timestamp,
+            teacher_terms_version: currentTeacherTermsVersion,
           }
         : {}),
-      onboardingCompleted: true,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
-  );
+      onboarding_completed: true,
+      updated_at: timestamp,
+    })
+    .eq("uid", uid);
+
+  if (error) {
+    throw error;
+  }
 }
 
 export async function acceptUserTerms(uid: string, marketingConsent: boolean) {
-  await setDoc(
-    doc(getFirestoreDb(), usersCollection, uid),
-    {
-      termsAcceptedAt: serverTimestamp(),
-      termsVersion: currentTermsVersion,
-      privacyAcceptedAt: serverTimestamp(),
-      privacyVersion: currentPrivacyVersion,
-      marketingConsent,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
-  );
+  const supabase = getSupabaseBrowserClient();
+  const timestamp = nowIso();
+
+  const { error } = await supabase
+    .from("users")
+    .update({
+      terms_accepted_at: timestamp,
+      terms_version: currentTermsVersion,
+      privacy_accepted_at: timestamp,
+      privacy_version: currentPrivacyVersion,
+      marketing_consent: marketingConsent,
+      updated_at: timestamp,
+    })
+    .eq("uid", uid);
+
+  if (error) {
+    throw error;
+  }
 }

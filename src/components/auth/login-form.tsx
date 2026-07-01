@@ -1,6 +1,5 @@
 "use client";
 
-import type { MultiFactorError } from "firebase/auth";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
@@ -11,9 +10,10 @@ import {
   completeMfaSignIn,
   getAuthErrorMessage,
   isMultiFactorRequiredError,
+  type MfaRequiredError,
   signInWithEmail,
   signInWithGoogle,
-} from "@/lib/auth/firebase-auth";
+} from "@/lib/auth/supabase-auth";
 import {
   getAuthPathIntentFromSearchParams,
   getLoadingRoute,
@@ -44,7 +44,7 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   // Set when a sign-in succeeds at the password step but the account also
   // requires a TOTP second factor. Holds the original error the resolver needs.
-  const [mfaError, setMfaError] = useState<MultiFactorError | null>(null);
+  const [mfaError, setMfaError] = useState<MfaRequiredError | null>(null);
   const [mfaCode, setMfaCode] = useState("");
 
   async function finishLogin(uid: string) {

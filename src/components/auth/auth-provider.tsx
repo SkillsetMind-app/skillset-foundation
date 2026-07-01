@@ -16,11 +16,10 @@ import {
   getUserProfile,
 } from "@/lib/data/user-profiles";
 import {
+  getCurrentSkillsetUser,
   listenToAuthState,
-  mapFirebaseUser,
   signOutOfSkillset,
-} from "@/lib/auth/firebase-auth";
-import { getFirebaseAuth } from "@/lib/firebase/client";
+} from "@/lib/auth/supabase-auth";
 import {
   currentPrivacyVersion,
   currentTermsVersion,
@@ -60,21 +59,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session.status, session.user]);
 
   async function refreshUser() {
-    const auth = getFirebaseAuth();
-    const currentUser = auth.currentUser;
+    // getUser() hits the server, so email_confirmed_at/roles reflect the latest
+    // state (the Supabase equivalent of Firebase's currentUser.reload()).
+    const user = await getCurrentSkillsetUser();
 
-    if (!currentUser) {
-      setSession({ status: "unauthenticated", user: null });
-      return;
-    }
-
-    await currentUser.reload();
-    const profile = await getUserProfile(currentUser.uid);
-
-    setSession({
-      status: "authenticated",
-      user: mapFirebaseUser(currentUser, profile),
-    });
+    setSession(
+      user
+        ? { status: "authenticated", user }
+        : { status: "unauthenticated", user: null },
+    );
   }
 
   return (

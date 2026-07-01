@@ -15,7 +15,7 @@ import {
   isMultiFactorRequiredError,
   signInWithGoogle,
   signUpWithEmail,
-} from "@/lib/auth/firebase-auth";
+} from "@/lib/auth/supabase-auth";
 import {
   normalizeUsername,
   validateDisplayName,

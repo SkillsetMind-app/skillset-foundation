@@ -1,16 +1,17 @@
 "use client";
 
 import { ShieldCheck } from "lucide-react";
-import type { MultiFactorInfo, TotpSecret } from "firebase/auth";
 import { useEffect, useState } from "react";
 
 import {
+  type EnrolledFactor,
   finishTotpEnrollment,
   getAuthErrorMessage,
   listEnrolledTotpFactors,
   startTotpEnrollment,
+  type TotpSecret,
   unenrollTotpFactor,
-} from "@/lib/auth/firebase-auth";
+} from "@/lib/auth/supabase-auth";
 import { isPublicFeatureEnabled } from "@/lib/feature-flags";
 
 type SetupState = {
@@ -28,7 +29,7 @@ type SetupState = {
  */
 export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
   const mfaEnabled = isPublicFeatureEnabled("auth.mfa");
-  const [factors, setFactors] = useState<MultiFactorInfo[]>([]);
+  const [factors, setFactors] = useState<EnrolledFactor[]>([]);
   const [setup, setSetup] = useState<SetupState | null>(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -37,14 +38,24 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    // Read enrolled factors once on mount. This MUST run client-side only —
-    // listEnrolledTotpFactors reads Firebase auth.currentUser, which is null
-    // during SSR/render; doing it in an effect (not lazy init) avoids a
-    // hydration mismatch (server snapshot [] vs client snapshot factors).
-    if (mfaEnabled) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setFactors(listEnrolledTotpFactors());
+    // Read enrolled factors once on mount. Client-side only —
+    // listEnrolledTotpFactors reads the Supabase session, absent during
+    // SSR/render; doing it in an effect (not lazy init) avoids a hydration
+    // mismatch (server snapshot [] vs client snapshot factors).
+    if (!mfaEnabled) {
+      return;
     }
+
+    let cancelled = false;
+    void listEnrolledTotpFactors().then((enrolled) => {
+      if (!cancelled) {
+        setFactors(enrolled);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [mfaEnabled]);
 
   const isEnrolled = factors.length > 0;
@@ -73,7 +84,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
     setMessage("");
     try {
       await finishTotpEnrollment(setup.secret, code, "Authenticator app");
-      setFactors(listEnrolledTotpFactors());
+      setFactors(await listEnrolledTotpFactors());
       setSetup(null);
       setCode("");
       setMessage("Two-factor authentication is on. Your account is protected.");
@@ -90,7 +101,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
     setMessage("");
     try {
       await unenrollTotpFactor(factorUid);
-      setFactors(listEnrolledTotpFactors());
+      setFactors(await listEnrolledTotpFactors());
       setMessage("Two-factor authentication turned off.");
     } catch (caught) {
       setError(getAuthErrorMessage(caught));
@@ -161,10 +172,10 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                 </p>
                 <p className="text-xs text-[var(--color-ink-soft)]">
                   Enrolled{" "}
-                  {factor.enrollmentTime
+                  {factor.enrolledAt
                     ? new Intl.DateTimeFormat("en", {
                         dateStyle: "medium",
-                      }).format(new Date(factor.enrollmentTime))
+                      }).format(new Date(factor.enrolledAt))
                     : ""}
                 </p>
               </div>
