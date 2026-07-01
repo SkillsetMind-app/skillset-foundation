@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check, HelpCircle } from "lucide-react";
+import { Check, ChevronDown, HelpCircle } from "lucide-react";
 
 import { PublicPage } from "@/components/site/public-page";
 import { Tooltip } from "@/components/shared/tooltip";
@@ -52,92 +52,156 @@ export default function PricingPage() {
         </div>
       </aside>
 
-      <section
-        className="mt-6 grid gap-4 lg:grid-cols-4"
-        aria-label="Plan comparison"
-      >
-        {plans.map((plan, index) => {
-          const isHighlight = plan.id === "pro";
-          return (
-            <article
-              key={plan.id}
-              className={
-                isHighlight
-                  ? "relative rounded-[18px] border-2 border-[var(--color-primary)] bg-white p-6 shadow-[0_24px_48px_rgba(15,39,68,0.12)]"
-                  : "rounded-[18px] border fine-rule bg-white p-6 shadow-[var(--shadow-soft)]"
-              }
-            >
-              {isHighlight ? (
-                <span className="absolute -top-3 left-6 rounded-full bg-[var(--color-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">
-                  Most popular
-                </span>
-              ) : null}
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                {plan.name}
-              </p>
-              <div className="mt-3 flex items-baseline gap-1">
-                <span className="display-title text-4xl text-[var(--color-primary)]">
-                  {plan.monthlyUsd === 0 ? "Free" : formatUsd(plan.monthlyUsd)}
-                </span>
-                {plan.monthlyUsd > 0 ? (
-                  <span className="text-sm text-[var(--color-ink-soft)]">
-                    /month
-                  </span>
-                ) : null}
-              </div>
-              {plan.yearlyUsd > 0 ? (
-                <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
-                  or {formatUsd(plan.yearlyUsd)} billed yearly
-                </p>
-              ) : null}
-              <p className="mt-4 text-sm leading-6 text-[var(--color-ink)]">
-                {plan.tagline}
-              </p>
-              <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
-                {plan.audience}
-              </p>
-              <div className="mt-5 rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4">
-                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
-                  Commission per sale
-                </p>
-                <p className="mt-1 display-title text-3xl text-[var(--color-primary)]">
-                  {plan.commissionPercent}%
-                </p>
-                {plan.breakEvenGmvUsd ? (
-                  <p className="mt-1 text-[11px] text-[var(--color-ink-soft)]">
-                    Worth it from {formatUsd(plan.breakEvenGmvUsd)}/mo in sales
-                  </p>
-                ) : null}
-              </div>
-              <ul className="mt-5 grid gap-2 text-sm text-[var(--color-ink-soft)]">
-                {plan.highlights.map((highlight) => (
-                  <li key={highlight} className="flex items-start gap-2">
-                    <Check
-                      aria-hidden="true"
-                      size={14}
-                      strokeWidth={2.4}
-                      className="mt-1 shrink-0 text-[var(--color-primary)]"
-                    />
-                    <span>{highlight}</span>
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/auth?mode=signup&path=teacher"
+      {/* Billing toggle + plan grid. Mirrors the monthly/yearly cycle toggle
+          in plans-panel.tsx, but stays server-rendered: a native radio group
+          drives the reprice purely with CSS (`group-has-[#billing-yearly:checked]`),
+          so both price figures ship pre-rendered and no client JS is needed.
+          The page keeps `export const metadata` (server-only) intact. */}
+      <div className="group mt-6">
+        {/* ponytail: CSS-only toggle (peer/has) instead of useState — keeps the
+            page a server component so metadata export stays. Real radios keep it
+            keyboard-accessible. Upgrade path: extract a client child if the
+            reprice ever needs interactivity beyond show/hide. */}
+        <fieldset className="mb-5">
+          <legend className="sr-only">Billing cycle</legend>
+          <div className="inline-flex w-fit gap-1 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] p-1">
+            <label className="cursor-pointer rounded-[8px] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)] has-[:checked]:bg-[var(--color-primary)] has-[:checked]:text-[var(--color-base)] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-primary)]">
+              <input
+                type="radio"
+                name="billing-cycle"
+                id="billing-monthly"
+                defaultChecked
+                className="sr-only"
+              />
+              Monthly
+              <span className="ml-2 text-[10px] font-medium normal-case opacity-80">
+                Pay each month
+              </span>
+            </label>
+            <label className="cursor-pointer rounded-[8px] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)] has-[:checked]:bg-[var(--color-primary)] has-[:checked]:text-[var(--color-base)] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-primary)]">
+              <input
+                type="radio"
+                name="billing-cycle"
+                id="billing-yearly"
+                className="sr-only"
+              />
+              Yearly
+              <span className="ml-2 text-[10px] font-medium normal-case opacity-80">
+                ~17% off vs monthly
+              </span>
+            </label>
+          </div>
+        </fieldset>
+
+        <section
+          className="grid gap-4 lg:grid-cols-4"
+          aria-label="Plan comparison"
+        >
+          {plans.map((plan, index) => {
+            const isHighlight = plan.id === "pro";
+            // Yearly figure billed annually; the /month label shows the
+            // annualized monthly-equivalent so the scannable number stays small.
+            const yearlyMonthlyEquiv = plan.yearlyUsd / 12;
+            return (
+              <article
+                key={plan.id}
                 className={
                   isHighlight
-                    ? "button-solid mt-6 w-full justify-center px-4 py-2.5 text-sm"
-                    : "button-outline mt-6 w-full justify-center px-4 py-2.5 text-sm"
+                    ? "relative rounded-[18px] border-2 border-[var(--color-primary)] bg-white p-6 shadow-[0_24px_48px_rgba(15,39,68,0.12)]"
+                    : "rounded-[18px] border fine-rule bg-white p-6 shadow-[var(--shadow-soft)]"
                 }
-                aria-label={`Start on ${plan.name}`}
-                data-plan-position={index}
               >
-                {plan.monthlyUsd === 0 ? "Start free" : `Start on ${plan.name}`}
-              </Link>
-            </article>
-          );
-        })}
-      </section>
+                {isHighlight ? (
+                  <span className="absolute -top-3 left-6 rounded-full bg-[var(--color-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">
+                    Most popular
+                  </span>
+                ) : null}
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
+                  {plan.name}
+                </p>
+                {plan.monthlyUsd === 0 ? (
+                  <div className="mt-3 flex items-baseline gap-1">
+                    <span className="display-title text-4xl text-[var(--color-primary)]">
+                      Free
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    {/* Monthly price — hidden when the yearly radio is checked. */}
+                    <div className="mt-3 flex items-baseline gap-1 group-has-[#billing-yearly:checked]:hidden">
+                      <span className="display-title text-4xl text-[var(--color-primary)]">
+                        {formatUsd(plan.monthlyUsd)}
+                      </span>
+                      <span className="text-sm text-[var(--color-ink-soft)]">
+                        /month
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:hidden">
+                      or {formatUsd(plan.yearlyUsd)} billed yearly
+                    </p>
+                    {/* Yearly price — shown only when the yearly radio is checked. */}
+                    <div className="mt-3 hidden items-baseline gap-1 group-has-[#billing-yearly:checked]:flex">
+                      <span className="display-title text-4xl text-[var(--color-primary)]">
+                        {formatUsd(yearlyMonthlyEquiv)}
+                      </span>
+                      <span className="text-sm text-[var(--color-ink-soft)]">
+                        /month
+                      </span>
+                    </div>
+                    <p className="mt-1 hidden text-xs text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:block">
+                      {formatUsd(plan.yearlyUsd)} billed yearly
+                    </p>
+                  </>
+                )}
+                <p className="mt-4 text-sm leading-6 text-[var(--color-ink)]">
+                  {plan.tagline}
+                </p>
+                <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
+                  {plan.audience}
+                </p>
+                <div className="mt-5 rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
+                    Commission per sale
+                  </p>
+                  <p className="mt-1 display-title text-3xl text-[var(--color-primary)]">
+                    {plan.commissionPercent}%
+                  </p>
+                  {plan.breakEvenGmvUsd ? (
+                    <p className="mt-1 text-[11px] text-[var(--color-ink-soft)]">
+                      Worth it from {formatUsd(plan.breakEvenGmvUsd)}/mo in sales
+                    </p>
+                  ) : null}
+                </div>
+                <ul className="mt-5 grid gap-2 text-sm text-[var(--color-ink-soft)]">
+                  {plan.highlights.map((highlight) => (
+                    <li key={highlight} className="flex items-start gap-2">
+                      <Check
+                        aria-hidden="true"
+                        size={14}
+                        strokeWidth={2.4}
+                        className="mt-1 shrink-0 text-[var(--color-primary)]"
+                      />
+                      <span>{highlight}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/auth?mode=signup&path=teacher"
+                  className={
+                    isHighlight
+                      ? "button-solid mt-6 w-full justify-center px-4 py-2.5 text-sm"
+                      : "button-outline mt-6 w-full justify-center px-4 py-2.5 text-sm"
+                  }
+                  aria-label={`Start on ${plan.name}`}
+                  data-plan-position={index}
+                >
+                  {plan.monthlyUsd === 0 ? "Start free" : `Start on ${plan.name}`}
+                </Link>
+              </article>
+            );
+          })}
+        </section>
+      </div>
 
       {/* Breakdown — same $100 sale across all four tiers so the user can
           see exactly where every cent goes. */}
@@ -258,6 +322,57 @@ export default function PricingPage() {
             content and revert to Free.
           </p>
         </article>
+      </section>
+
+      {/* FAQ — plan changes, downgrades, and how fees work. Answers are drawn
+          straight from the operational-rule cards above and plans.ts truth
+          (commission-only model, Stripe fee passed through). Native
+          <details>/<summary> = keyboard-accessible, zero JS, tokens-only. */}
+      <section className="mt-12" aria-labelledby="pricing-faq-heading">
+        <h2
+          id="pricing-faq-heading"
+          className="display-title text-3xl text-[var(--color-primary)] sm:text-4xl"
+        >
+          Common questions
+        </h2>
+        <div className="mt-6 grid gap-3">
+          {[
+            {
+              q: "What happens when I upgrade a plan?",
+              a: "Upgrades apply immediately, and the new commission rate takes effect on new sales. Sales made before the change keep the commission rate from the plan you were on at the time. Stripe Billing prorates the subscription difference for the current cycle.",
+            },
+            {
+              q: "What happens when I downgrade or cancel?",
+              a: `Downgrades and cancellations take effect at the end of your current billing period — you keep the plan you're paying for until then. If you cancel, you keep all your content and revert to Free (${plans[0].commissionPercent}% commission, no subscription).`,
+            },
+            {
+              q: "How do the fees work on a subscription sale?",
+              a: `Two fees come out of each sale, shown separately so the math is never hidden. Skillset takes its plan commission (8% on Free down to 0% on Plus), and Stripe's standard processing fee (2.9% + $0.30 for USD cards, an estimated 5.4% + $0.30 for non-USD) is passed through to you. Everything left over is yours.`,
+            },
+            {
+              q: "When can a sale be refunded, and does it affect my payout?",
+              a: `Learners can self-refund within ${refundWindowDays} days of purchase if they've completed less than half the course, which reverses the sale automatically — Skillset's commission included. Your earnings clear from pending to available ${payoutClearDays} days after each sale, well past the ${refundWindowDays}-day refund window, so a cleared payout never needs to be clawed back.`,
+            },
+          ].map((item) => (
+            <details
+              key={item.q}
+              className="group rounded-[16px] border fine-rule bg-white shadow-[var(--shadow-soft)] [&_summary::-webkit-details-marker]:hidden"
+            >
+              <summary className="flex cursor-pointer items-center justify-between gap-4 rounded-[16px] px-5 py-4 text-sm font-semibold text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]">
+                {item.q}
+                <ChevronDown
+                  aria-hidden="true"
+                  size={18}
+                  strokeWidth={2.2}
+                  className="shrink-0 text-[var(--color-primary)] transition-transform group-open:rotate-180"
+                />
+              </summary>
+              <p className="px-5 pb-5 text-sm leading-7 text-[var(--color-ink-soft)]">
+                {item.a}
+              </p>
+            </details>
+          ))}
+        </div>
       </section>
 
       <section className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-[18px] border fine-rule bg-[var(--color-surface-soft)] p-6">
