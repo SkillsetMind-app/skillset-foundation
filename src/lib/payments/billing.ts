@@ -1,14 +1,7 @@
 "use client";
 
-import { httpsCallable } from "firebase/functions";
-
 import type { PlanBillingCycle, PlanId } from "@/data/plans";
-import { getFirebaseFunctions } from "@/lib/firebase/client";
-
-type CreateBillingCheckoutInput = {
-  planId: Exclude<PlanId, "free">;
-  cycle: PlanBillingCycle;
-};
+import { postPaymentRoute } from "@/lib/payments/client-fetch";
 
 type CreateBillingCheckoutResult = {
   /** Stripe Checkout Session client_secret for embedded mode. */
@@ -17,15 +10,11 @@ type CreateBillingCheckoutResult = {
   sessionId: string;
 };
 
-type CreateBillingPortalResult = {
-  url: string;
-};
-
 /**
  * Creates a Stripe Checkout Session for upgrading to a paid plan and
  * returns the `clientSecret` needed to mount the embedded checkout UI.
- * The server-side function resolves the Stripe Price ID from plans.ts
- * so the client never has to know it.
+ * The Route Handler resolves the Stripe Price ID from plans.ts so the
+ * client never has to know it.
  *
  * The UI then renders `<EmbeddedCheckoutProvider clientSecret={...}>`
  * — the learner stays on Skillset, the card form is Stripe Elements
@@ -35,26 +24,18 @@ export async function createBillingCheckoutClientSecret(
   planId: Exclude<PlanId, "free">,
   cycle: PlanBillingCycle,
 ): Promise<CreateBillingCheckoutResult> {
-  const createBillingCheckoutSession = httpsCallable<
-    CreateBillingCheckoutInput,
-    CreateBillingCheckoutResult
-  >(getFirebaseFunctions(), "createBillingCheckoutSession");
-  const result = await createBillingCheckoutSession({ planId, cycle });
+  const result = await postPaymentRoute<CreateBillingCheckoutResult>(
+    "/api/payments/billing/checkout",
+    { planId, cycle },
+  );
 
-  if (!result.data.clientSecret) {
+  if (!result.clientSecret) {
     throw new Error("Stripe did not return a client_secret.");
   }
 
-  return result.data;
+  return result;
 }
 
-/**
- * Opens the Stripe Customer Portal so the user can update card, change
- * plan, cancel, or download invoices. The Portal is a Stripe-hosted page
- * (no embedded option exists for it today). Used for managing an
- * EXISTING subscription, not for the upgrade conversion flow — that
- * stays embedded via the function above.
- */
 /**
  * Whether the Stripe publishable key is present in this build. Embedded
  * checkout needs it to mount Stripe.js on the client; without it the upgrade
@@ -70,32 +51,32 @@ export function isCheckoutClientConfigured(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 }
 
+/**
+ * Opens the Stripe Customer Portal so the user can update card, change
+ * plan, cancel, or download invoices. The Portal is a Stripe-hosted page
+ * (no embedded option exists for it today). Used for managing an
+ * EXISTING subscription, not for the upgrade conversion flow — that
+ * stays embedded via the function above.
+ */
 export async function openBillingPortal() {
-  const createBillingPortalSession = httpsCallable<
-    Record<string, never>,
-    CreateBillingPortalResult
-  >(getFirebaseFunctions(), "createBillingPortalSession");
-  const result = await createBillingPortalSession({});
+  const { url } = await postPaymentRoute<{ url: string }>(
+    "/api/payments/billing/portal",
+  );
 
-  if (!result.data.url) {
+  if (!url) {
     throw new Error("Stripe did not return a Customer Portal URL.");
   }
 
-  window.location.assign(result.data.url);
+  window.location.assign(url);
 }
 
 /**
- * Requests a self-serve refund for a paid course purchase. The server callable
- * (`requestRefund`) is keyed by enrollmentId — which is deterministic,
- * `${uid}__${courseId}` — and enforces the real policy gates (refund window,
- * course progress, certificate status). It rejects ineligible requests with an
- * HttpsError whose message we surface verbatim, so the UI never has to encode
- * the policy itself. Resolves on a accepted request; throws otherwise.
+ * Requests a self-serve refund for a paid course purchase. The Route Handler is
+ * keyed by enrollmentId — which is deterministic, `${uid}__${courseId}` — and
+ * enforces the real policy gates (refund window, course progress, certificate
+ * status). It rejects ineligible requests with an error message we surface
+ * verbatim, so the UI never has to encode the policy itself.
  */
 export async function requestOrderRefund(enrollmentId: string): Promise<void> {
-  const requestRefund = httpsCallable<{ enrollmentId: string }, unknown>(
-    getFirebaseFunctions(),
-    "requestRefund",
-  );
-  await requestRefund({ enrollmentId });
+  await postPaymentRoute("/api/payments/refunds/request", { enrollmentId });
 }

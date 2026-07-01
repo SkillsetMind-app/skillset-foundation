@@ -1695,6 +1695,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_checkout_lock: {
+        Args: {
+          p_claim_grace_ms: number
+          p_course_id: string
+          p_now: string
+          p_order_id: string
+          p_session_ttl_ms: number
+          p_user_id: string
+        }
+        Returns: {
+          action: string
+          checkout_url: string
+        }[]
+      }
       course_title_key: { Args: { p_title: string }; Returns: string }
       create_free_course_enrollment: {
         Args: { p_course_id: string }

@@ -1,12 +1,6 @@
 "use client";
 
-import { httpsCallable } from "firebase/functions";
-
-import { getFirebaseFunctions } from "@/lib/firebase/client";
-
-type AccountLinkResult = {
-  url: string;
-};
+import { postPaymentRoute } from "@/lib/payments/client-fetch";
 
 type RefreshStripeAccountResult = {
   connected: boolean;
@@ -23,21 +17,28 @@ type RefreshStripeAccountResult = {
 };
 
 /**
- * True when a Connect callable failed because the PLATFORM has not enabled
- * Stripe Connect yet (the owner must activate it at dashboard.stripe.com/connect).
+ * True when a Connect call failed because the PLATFORM has not enabled Stripe
+ * Connect yet (the owner must activate it at dashboard.stripe.com/connect).
  *
- * The backend tags this case with `details.reason === "connect_not_enabled"`
- * (see toStripeHttpsError), which the hosted path receives intact on the
- * FirebaseError. The embedded path goes through Stripe's connect-js, which may
- * rewrap the rejection and drop `details`, so we also message-match the honest
- * server copy and the raw Stripe phrasing as a fallback. Lets the UI show a calm
- * "payouts being configured" panel instead of an alarming error + retry loop.
+ * The Route Handler tags this case as `code: "connect_not_enabled"` on the JSON
+ * error body, which PaymentRequestError carries through as `.code` — the primary
+ * signal. We also keep the legacy `details.reason` / message fallbacks so an
+ * error that reaches the client through Stripe's connect-js (embedded flow, which
+ * may rewrap the rejection) is still classified. Lets the UI show a calm "payouts
+ * being configured" panel instead of an alarming error + retry loop.
  */
 export function isConnectNotEnabledError(error: unknown): boolean {
   if (!error || typeof error !== "object") {
     return false;
   }
-  const candidate = error as { details?: unknown; message?: unknown };
+  const candidate = error as {
+    code?: unknown;
+    details?: unknown;
+    message?: unknown;
+  };
+  if (candidate.code === "connect_not_enabled") {
+    return true;
+  }
   const details = candidate.details;
   if (
     details &&
@@ -54,33 +55,22 @@ export function isConnectNotEnabledError(error: unknown): boolean {
 }
 
 export async function startTeacherStripeOnboarding() {
-  const createAccountLink = httpsCallable<Record<string, never>, AccountLinkResult>(
-    getFirebaseFunctions(),
-    "createTeacherStripeAccountLink",
+  const { url } = await postPaymentRoute<{ url: string }>(
+    "/api/payments/connect/account-link",
   );
-  const result = await createAccountLink({});
 
-  if (!result.data.url) {
+  if (!url) {
     throw new Error("Stripe account onboarding URL missing.");
   }
 
-  window.location.assign(result.data.url);
+  window.location.assign(url);
 }
 
 export async function refreshTeacherStripeAccountStatus() {
-  const refreshAccount = httpsCallable<
-    Record<string, never>,
-    RefreshStripeAccountResult
-  >(getFirebaseFunctions(), "refreshTeacherStripeAccount");
-  const result = await refreshAccount({});
-
-  return result.data;
+  return postPaymentRoute<RefreshStripeAccountResult>(
+    "/api/payments/connect/refresh",
+  );
 }
-
-type ConnectAccountSessionResult = {
-  clientSecret: string;
-  accountId: string;
-};
 
 /**
  * Mints a Stripe Connect Account Session client_secret that the embedded
@@ -88,15 +78,14 @@ type ConnectAccountSessionResult = {
  * the app. The creator never leaves Skillset.
  */
 export async function fetchConnectAccountSessionSecret(): Promise<string> {
-  const callable = httpsCallable<
-    Record<string, never>,
-    ConnectAccountSessionResult
-  >(getFirebaseFunctions(), "createConnectAccountSession");
-  const result = await callable({});
+  const { clientSecret } = await postPaymentRoute<{
+    clientSecret: string;
+    accountId: string;
+  }>("/api/payments/connect/account-session");
 
-  if (!result.data.clientSecret) {
+  if (!clientSecret) {
     throw new Error("Stripe did not return a Connect Account Session secret.");
   }
 
-  return result.data.clientSecret;
+  return clientSecret;
 }

@@ -1,45 +1,34 @@
 "use client";
 
-import { httpsCallable } from "firebase/functions";
-
-import { getFirebaseFunctions } from "@/lib/firebase/client";
-
-type CreateCheckoutSessionInput = {
-  courseId: string;
-};
-
-type CreateCheckoutSessionResult = {
-  url: string;
-};
-
-type CreateFreeCourseEnrollmentResult = {
-  enrollmentId: string;
-};
+import { postPaymentRoute } from "@/lib/payments/client-fetch";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export async function startCourseCheckout(courseId: string) {
-  const createCheckoutSession = httpsCallable<
-    CreateCheckoutSessionInput,
-    CreateCheckoutSessionResult
-  >(getFirebaseFunctions(), "createCheckoutSession");
-  const result = await createCheckoutSession({ courseId });
+  const { url } = await postPaymentRoute<{ url: string }>(
+    "/api/payments/checkout",
+    { courseId },
+  );
 
-  if (!result.data.url) {
+  if (!url) {
     throw new Error("Checkout URL missing.");
   }
 
-  window.location.assign(result.data.url);
+  window.location.assign(url);
 }
 
 export async function enrollInFreeCreatorCourse(courseId: string) {
-  const createFreeEnrollment = httpsCallable<
-    CreateCheckoutSessionInput,
-    CreateFreeCourseEnrollmentResult
-  >(getFirebaseFunctions(), "createFreeCourseEnrollment");
-  const result = await createFreeEnrollment({ courseId });
+  // Free enrollment is a trusted-write RPC (no Stripe), called directly.
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase.rpc("create_free_course_enrollment", {
+    p_course_id: courseId,
+  });
 
-  if (!result.data.enrollmentId) {
+  if (error) {
+    throw error;
+  }
+  if (!data) {
     throw new Error("Enrollment was not created.");
   }
 
-  return result.data.enrollmentId;
+  return data;
 }

@@ -1,0 +1,137 @@
+import { NextResponse } from "next/server";
+
+import {
+  PaymentError,
+  paymentErrorResponse,
+  requireAdminUserId,
+} from "@/lib/payments/server/auth";
+import { getStripeClient } from "@/lib/payments/server/stripe";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+// Admin refund (ported from Firebase issueAdminRefund). requireAdminUserId()
+// replaces the roles.includes("admin") gate. Full refund when amountMinor is
+// omitted, else a partial capped against what is STILL refundable (total −
+// already refunded) so repeated partials can never exceed the original charge.
+// The order/ledger/enrollment transition flows through the charge.refunded
+// WEBHOOK — NOT duplicated here.
+
+export async function POST(request: Request) {
+  try {
+    const callerId = await requireAdminUserId();
+    const body = (await request.json().catch(() => ({}))) as {
+      orderId?: string;
+      amountMinor?: unknown;
+    };
+
+    const orderId = String(body?.orderId || "").trim();
+    if (!orderId || orderId.length > 220) {
+      throw new PaymentError("A valid orderId is required.", 400);
+    }
+
+    const rawAmount = body?.amountMinor;
+    let amountMinor: number | null = null;
+    if (rawAmount !== undefined && rawAmount !== null) {
+      const parsed = Number(rawAmount);
+      if (!Number.isInteger(parsed) || parsed <= 0) {
+        throw new PaymentError(
+          "amountMinor must be a positive integer in minor units.",
+          400,
+        );
+      }
+      amountMinor = parsed;
+    }
+
+    const supabase = await createSupabaseServerClient();
+    const { error: rateError } = await supabase.rpc("enforce_rate_limit", {
+      p_key: `admin_refund_${callerId}`,
+      p_limit: 30,
+      p_window_ms: 60 * 60 * 1000,
+    });
+    if (rateError) {
+      if (rateError.message?.includes("RATE_LIMIT")) {
+        throw new PaymentError(
+          "Too many attempts. Please wait before trying again.",
+          429,
+        );
+      }
+      throw new Error(rateError.message);
+    }
+
+    const admin = getSupabaseAdminClient();
+    const { data: order } = await admin
+      .from("orders")
+      .select(
+        "status, payment_intent_id, amount_minor, refunded_amount_minor, course_id, user_id",
+      )
+      .eq("id", orderId)
+      .maybeSingle();
+
+    if (!order) {
+      throw new PaymentError("Order not found.", 404);
+    }
+
+    if (order.status !== "paid" && order.status !== "partially_refunded") {
+      throw new PaymentError("Only paid orders can be refunded.", 400);
+    }
+
+    const paymentIntentId = String(order.payment_intent_id || "");
+    if (!paymentIntentId) {
+      throw new PaymentError("Payment intent not found for this order.", 400);
+    }
+
+    const orderAmountMinor = Number(order.amount_minor || 0);
+    // For a partially_refunded order, cap against what is STILL refundable
+    // (total − already refunded), not the original total.
+    const alreadyRefundedMinor = Number(order.refunded_amount_minor || 0);
+    const remainingRefundableMinor = orderAmountMinor - alreadyRefundedMinor;
+
+    if (
+      amountMinor !== null &&
+      orderAmountMinor > 0 &&
+      amountMinor > remainingRefundableMinor
+    ) {
+      throw new PaymentError(
+        "Refund amount exceeds the remaining refundable balance.",
+        400,
+      );
+    }
+
+    const stripe = getStripeClient();
+    const refund = await stripe.refunds.create(
+      {
+        payment_intent: paymentIntentId,
+        ...(amountMinor !== null ? { amount: amountMinor } : {}),
+        metadata: {
+          orderId,
+          courseId: typeof order.course_id === "string" ? order.course_id : "",
+          userId: typeof order.user_id === "string" ? order.user_id : "",
+          source: "admin_request",
+          adminId: callerId,
+        },
+      },
+      {
+        idempotencyKey:
+          amountMinor !== null
+            ? `admin_refund_${orderId}_${amountMinor}`
+            : `admin_refund_${orderId}_full`,
+      },
+    );
+
+    await admin
+      .from("orders")
+      .update({
+        refund_requested_at: new Date().toISOString(),
+        refund_request_id: refund.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", orderId);
+
+    // ponytail: dropped recordAuditEvent (Firestore side-channel; no gate or
+    // return-shape depends on it).
+
+    return NextResponse.json({ refundId: refund.id, status: refund.status });
+  } catch (error) {
+    return paymentErrorResponse(error);
+  }
+}

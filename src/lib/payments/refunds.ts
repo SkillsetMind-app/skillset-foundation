@@ -1,12 +1,6 @@
 "use client";
 
-import { httpsCallable } from "firebase/functions";
-
-import { getFirebaseFunctions } from "@/lib/firebase/client";
-
-type RequestRefundInput = {
-  enrollmentId: string;
-};
+import { postPaymentRoute } from "@/lib/payments/client-fetch";
 
 type RequestRefundResult = {
   refundId: string;
@@ -14,18 +8,11 @@ type RequestRefundResult = {
 };
 
 export async function requestEnrollmentRefund(enrollmentId: string) {
-  const requestRefund = httpsCallable<RequestRefundInput, RequestRefundResult>(
-    getFirebaseFunctions(),
-    "requestRefund",
+  return postPaymentRoute<RequestRefundResult>(
+    "/api/payments/refunds/request",
+    { enrollmentId },
   );
-
-  return requestRefund({ enrollmentId });
 }
-
-type IssueAdminRefundInput = {
-  orderId: string;
-  amountMinor?: number;
-};
 
 /**
  * Admin-initiated refund (full or partial). Gated server-side on the admin
@@ -33,12 +20,7 @@ type IssueAdminRefundInput = {
  * charge.refunded webhook. `amountMinor` omitted means a full refund.
  */
 export async function issueAdminRefund(orderId: string, amountMinor?: number) {
-  const callable = httpsCallable<IssueAdminRefundInput, RequestRefundResult>(
-    getFirebaseFunctions(),
-    "issueAdminRefund",
-  );
-
-  return callable({
+  return postPaymentRoute<RequestRefundResult>("/api/payments/refunds/admin", {
     orderId,
     ...(amountMinor !== undefined ? { amountMinor } : {}),
   });
