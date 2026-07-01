@@ -76,7 +76,7 @@ export default function PromisePage() {
               (home, auth, promise) into one brand system. */}
           <div
             aria-hidden="true"
-            className="absolute inset-0 bg-[url('/brand/hero-engraving-mobile.webp')] bg-cover bg-center bg-no-repeat opacity-[0.5] mix-blend-screen lg:bg-[url('/brand/hero-engraving-desktop.webp')]"
+            className="absolute inset-0 bg-[url(/brand/hero-engraving-mobile.webp)] bg-cover bg-center bg-no-repeat opacity-[0.5] mix-blend-screen lg:bg-[url(/brand/hero-engraving-desktop.webp)]"
           />
           <div className="relative z-10 mx-auto w-full max-w-7xl px-6 py-16 sm:px-8 lg:py-24">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/78">
