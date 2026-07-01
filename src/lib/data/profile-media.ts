@@ -1,18 +1,6 @@
 "use client";
 
-import { updateProfile } from "firebase/auth";
-import {
-  doc,
-  serverTimestamp,
-  updateDoc,
-} from "firebase/firestore";
-import {
-  getDownloadURL,
-  ref,
-  uploadBytesResumable,
-} from "firebase/storage";
-
-import { getFirebaseAuth, getFirebaseStorage, getFirestoreDb } from "@/lib/firebase/client";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export const maxAvatarBytes = 5 * 1024 * 1024;
 
@@ -35,10 +23,21 @@ export type UploadAvatarProgress = {
   percent: number;
 };
 
+const publicMediaBucket = "public-media";
+
 export function isAllowedAvatarFile(file: File) {
   return file.size > 0
     && file.size <= maxAvatarBytes
     && (allowedAvatarTypes as readonly string[]).includes(file.type);
+}
+
+// ponytail: supabase-js upload() exposes no per-byte progress, so callers get a
+// coarse 0% -> 100% pair. Fine for a <=5 MB avatar/signature.
+function emitCoarseProgress(
+  size: number,
+  onProgress?: (progress: UploadAvatarProgress) => void,
+) {
+  onProgress?.({ bytesTransferred: 0, totalBytes: size, percent: 0 });
 }
 
 export async function uploadUserAvatar(
@@ -50,70 +49,48 @@ export async function uploadUserAvatar(
     throw new Error(`Use a ${avatarRequirementLabel} image.`);
   }
 
+  const supabase = getSupabaseBrowserClient();
   // Canonical, deterministic object key: every upload overwrites the same
-  // object, so a user holds at most one avatar (storage.rules pins writes to
-  // this exact filename). The download URL is cache-busted with ?v= below.
+  // object (upsert), so a user holds at most one avatar. The public URL is
+  // cache-busted with ?v= below.
   const storagePath = `users/${uid}/avatar/avatar`;
-  const storageRef = ref(getFirebaseStorage(), storagePath);
-  const uploadTask = uploadBytesResumable(storageRef, file, {
-    contentType: file.type,
-    customMetadata: {
-      uid,
-      kind: "profile_avatar",
-    },
-  });
+  emitCoarseProgress(file.size, onProgress);
 
-  await new Promise<void>((resolve, reject) => {
-    uploadTask.on(
-      "state_changed",
-      (snapshot) => {
-        onProgress?.({
-          bytesTransferred: snapshot.bytesTransferred,
-          totalBytes: snapshot.totalBytes,
-          percent: Math.round(
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100,
-          ),
-        });
-      },
-      reject,
-      resolve,
-    );
-  });
+  const { error: uploadError } = await supabase.storage
+    .from(publicMediaBucket)
+    .upload(storagePath, file, { contentType: file.type, upsert: true });
 
-  const downloadURL = await getDownloadURL(storageRef);
-  const photoURL = `${downloadURL}${downloadURL.includes("?") ? "&" : "?"}v=${Date.now()}`;
-
-  await updateDoc(doc(getFirestoreDb(), "users", uid), {
-    photoURL,
-    updatedAt: serverTimestamp(),
-  });
-
-  const currentUser = getFirebaseAuth().currentUser;
-
-  if (currentUser?.uid === uid) {
-    try {
-      await updateProfile(currentUser, { photoURL });
-    } catch (error) {
-      // Non-fatal: Firestore is the source of truth for the rendered avatar
-      // (see mapFirebaseUser). The Auth photoURL is only a secondary mirror,
-      // so a failure here must not lose the already-persisted upload — but it
-      // must be visible, never swallowed.
-      console.error(
-        "uploadUserAvatar: failed to mirror photoURL to Firebase Auth",
-        { uid },
-        error,
-      );
-    }
+  if (uploadError) {
+    throw uploadError;
   }
 
-  return photoURL;
+  onProgress?.({
+    bytesTransferred: file.size,
+    totalBytes: file.size,
+    percent: 100,
+  });
+
+  const publicUrl = supabase.storage
+    .from(publicMediaBucket)
+    .getPublicUrl(storagePath).data.publicUrl;
+  const photoUrl = `${publicUrl}${publicUrl.includes("?") ? "&" : "?"}v=${Date.now()}`;
+
+  const { error: updateError } = await supabase
+    .from("users")
+    .update({ photo_url: photoUrl, updated_at: new Date().toISOString() })
+    .eq("uid", uid);
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  return photoUrl;
 }
 
 /**
  * Uploads a teacher's handwritten-signature image and stores its URL on
- * `users/{uid}.teacherSignatureUrl`. The certificate issuance function reads
- * this value and snapshots it onto each issued credential. Unlike the avatar,
- * there is no Firebase Auth mirror — the signature is profile-only data.
+ * `users.teacher_signature_url`. The certificate issuance RPC reads this value
+ * and snapshots it onto each issued credential.
  */
 export async function uploadTeacherSignature(
   uid: string,
@@ -124,42 +101,40 @@ export async function uploadTeacherSignature(
     throw new Error(`Use a ${signatureRequirementLabel} image.`);
   }
 
-  // Canonical, deterministic object key (overwrite-on-upload; storage.rules
-  // pins writes to this exact filename). Cache-busted with ?v= below.
+  const supabase = getSupabaseBrowserClient();
   const storagePath = `users/${uid}/signature/signature`;
-  const storageRef = ref(getFirebaseStorage(), storagePath);
-  const uploadTask = uploadBytesResumable(storageRef, file, {
-    contentType: file.type,
-    customMetadata: {
-      uid,
-      kind: "teacher_signature",
-    },
+  emitCoarseProgress(file.size, onProgress);
+
+  const { error: uploadError } = await supabase.storage
+    .from(publicMediaBucket)
+    .upload(storagePath, file, { contentType: file.type, upsert: true });
+
+  if (uploadError) {
+    throw uploadError;
+  }
+
+  onProgress?.({
+    bytesTransferred: file.size,
+    totalBytes: file.size,
+    percent: 100,
   });
 
-  await new Promise<void>((resolve, reject) => {
-    uploadTask.on(
-      "state_changed",
-      (snapshot) => {
-        onProgress?.({
-          bytesTransferred: snapshot.bytesTransferred,
-          totalBytes: snapshot.totalBytes,
-          percent: Math.round(
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100,
-          ),
-        });
-      },
-      reject,
-      resolve,
-    );
-  });
+  const publicUrl = supabase.storage
+    .from(publicMediaBucket)
+    .getPublicUrl(storagePath).data.publicUrl;
+  const teacherSignatureUrl = `${publicUrl}${publicUrl.includes("?") ? "&" : "?"}v=${Date.now()}`;
 
-  const downloadURL = await getDownloadURL(storageRef);
-  const teacherSignatureUrl = `${downloadURL}${downloadURL.includes("?") ? "&" : "?"}v=${Date.now()}`;
+  const { error: updateError } = await supabase
+    .from("users")
+    .update({
+      teacher_signature_url: teacherSignatureUrl,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("uid", uid);
 
-  await updateDoc(doc(getFirestoreDb(), "users", uid), {
-    teacherSignatureUrl,
-    updatedAt: serverTimestamp(),
-  });
+  if (updateError) {
+    throw updateError;
+  }
 
   return teacherSignatureUrl;
 }

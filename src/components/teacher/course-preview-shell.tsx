@@ -7,15 +7,15 @@ import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-work
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { teacherCourseToLearningCourse } from "@/lib/data/published-courses";
 import { subscribeToTeacherCourse } from "@/lib/data/teacher-courses";
-import { getFirebaseClientConfig } from "@/lib/firebase/config";
+import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
 type CoursePreviewShellProps = {
   courseId: string;
 };
 
 export function CoursePreviewShell({ courseId }: CoursePreviewShellProps) {
-  const hasFirebaseConfig = Boolean(getFirebaseClientConfig());
-  const shouldLoadCourse = Boolean(courseId && hasFirebaseConfig);
+  const hasBackendConfig = Boolean(getSupabaseClientConfig());
+  const shouldLoadCourse = Boolean(courseId && hasBackendConfig);
   const [course, setCourse] = useState<TeacherCourse | null>(null);
   const [isLoading, setIsLoading] = useState(shouldLoadCourse);
   const [error, setError] = useState("");
@@ -47,11 +47,11 @@ export function CoursePreviewShell({ courseId }: CoursePreviewShellProps) {
     );
   }
 
-  if (!hasFirebaseConfig) {
+  if (!hasBackendConfig) {
     return (
       <PreviewState
         title="Preview is not connected."
-        detail="Firebase configuration is required before course previews can load."
+        detail="Backend configuration is required before course previews can load."
       />
     );
   }

@@ -11,7 +11,7 @@ import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import { teacherCourseToLearningCourse } from "@/lib/data/published-courses";
 import { subscribeToTeacherCourse } from "@/lib/data/teacher-courses";
-import { getFirebaseClientConfig } from "@/lib/firebase/config";
+import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
 export function CreatorCourseWorkspace({
   initialCourseId,
@@ -26,7 +26,7 @@ export function CreatorCourseWorkspace({
   // enrollment listener opens the workspace the moment the webhook commits.
   const cameFromCheckout = searchParams.get("checkout") === "success";
   const [checkoutGraceExpired, setCheckoutGraceExpired] = useState(false);
-  const hasFirebaseConfig = Boolean(getFirebaseClientConfig());
+  const hasBackendConfig = Boolean(getSupabaseClientConfig());
   const { user } = useAuth();
   const [enrollmentState, setEnrollmentState] = useState<{
     enrollment: Enrollment | null;
@@ -54,7 +54,7 @@ export function CreatorCourseWorkspace({
   const isLoadingEnrollment = Boolean(
     user
       && courseId
-      && hasFirebaseConfig
+      && hasBackendConfig
       && (!enrollmentState.ready || enrollmentState.key !== courseId),
   );
   const isLoadingCourse = Boolean(
@@ -75,7 +75,7 @@ export function CreatorCourseWorkspace({
   }, [cameFromCheckout]);
 
   useEffect(() => {
-    if (!user || !courseId || !hasFirebaseConfig) {
+    if (!user || !courseId || !hasBackendConfig) {
       return;
     }
 
@@ -98,7 +98,7 @@ export function CreatorCourseWorkspace({
         });
       },
     );
-  }, [courseId, hasFirebaseConfig, user]);
+  }, [courseId, hasBackendConfig, user]);
 
   useEffect(() => {
     if (!enrollment || !canOpenEnrollment(enrollment.status) || !courseId) {
@@ -134,7 +134,7 @@ export function CreatorCourseWorkspace({
     );
   }
 
-  if (!hasFirebaseConfig) {
+  if (!hasBackendConfig) {
     return (
       <CreatorWorkspaceState
         title="Creator course access is not connected."

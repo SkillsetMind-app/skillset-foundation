@@ -22,7 +22,7 @@ import {
   subscribeToUserWishlistCourseIds,
   toggleWishlistCourse,
 } from "@/lib/data/wishlist";
-import { getFirebaseClientConfig } from "@/lib/firebase/config";
+import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
 type CourseMarketplaceProps = {
   courses?: CourseCard[];
@@ -63,7 +63,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
     Set<string>
   >(() => new Set());
   const [isLoadingPublishedCourses, setIsLoadingPublishedCourses] = useState(
-    Boolean(getFirebaseClientConfig()),
+    Boolean(getSupabaseClientConfig()),
   );
   const deferredQuery = useDeferredValue(query.toLowerCase().trim());
 
@@ -99,7 +99,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   ];
 
   useEffect(() => {
-    if (!getFirebaseClientConfig()) {
+    if (!getSupabaseClientConfig()) {
       return;
     }
 

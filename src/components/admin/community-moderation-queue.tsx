@@ -12,7 +12,7 @@ import {
   subscribeToCommunityReports,
   updateCommunityReportStatus,
 } from "@/lib/data/community-posts";
-import { getFirebaseClientConfig } from "@/lib/firebase/config";
+import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
 const reviewStatuses: CommunityReportStatus[] = [
   "reviewed",
@@ -21,14 +21,14 @@ const reviewStatuses: CommunityReportStatus[] = [
 ];
 
 export function CommunityModerationQueue() {
-  const hasFirebaseConfig = Boolean(getFirebaseClientConfig());
+  const hasBackendConfig = Boolean(getSupabaseClientConfig());
   const [reports, setReports] = useState<CommunityReport[]>([]);
-  const [ready, setReady] = useState(!hasFirebaseConfig);
+  const [ready, setReady] = useState(!hasBackendConfig);
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!hasFirebaseConfig) {
+    if (!hasBackendConfig) {
       return;
     }
 
@@ -42,7 +42,7 @@ export function CommunityModerationQueue() {
         setReady(true);
       },
     );
-  }, [hasFirebaseConfig]);
+  }, [hasBackendConfig]);
 
   async function handleStatusChange(
     report: CommunityReport,
@@ -88,9 +88,9 @@ export function CommunityModerationQueue() {
         </p>
       ) : null}
 
-      {!hasFirebaseConfig ? (
+      {!hasBackendConfig ? (
         <p className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-ink-soft)]">
-          Firebase configuration is required before community reports can load.
+          Backend configuration is required before community reports can load.
         </p>
       ) : !ready ? (
         <p className="mt-5 text-sm text-[var(--color-ink-soft)]">

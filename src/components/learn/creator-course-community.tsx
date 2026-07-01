@@ -11,12 +11,12 @@ import type { CommunitySpace } from "@/domain/learning";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import { subscribeToTeacherCourse } from "@/lib/data/teacher-courses";
-import { getFirebaseClientConfig } from "@/lib/firebase/config";
+import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
 export function CreatorCourseCommunity() {
   const searchParams = useSearchParams();
   const courseId = searchParams.get("courseId") ?? "";
-  const hasFirebaseConfig = Boolean(getFirebaseClientConfig());
+  const hasBackendConfig = Boolean(getSupabaseClientConfig());
   const { user } = useAuth();
   const [enrollmentState, setEnrollmentState] = useState<{
     enrollment: Enrollment | null;
@@ -43,7 +43,7 @@ export function CreatorCourseCommunity() {
   const isLoadingEnrollment = Boolean(
     user
       && courseId
-      && hasFirebaseConfig
+      && hasBackendConfig
       && (!enrollmentState.ready || enrollmentState.key !== courseId),
   );
   const isLoadingCourse = Boolean(
@@ -51,7 +51,7 @@ export function CreatorCourseCommunity() {
   );
 
   useEffect(() => {
-    if (!user || !courseId || !hasFirebaseConfig) {
+    if (!user || !courseId || !hasBackendConfig) {
       return;
     }
 
@@ -74,7 +74,7 @@ export function CreatorCourseCommunity() {
         });
       },
     );
-  }, [courseId, hasFirebaseConfig, user]);
+  }, [courseId, hasBackendConfig, user]);
 
   useEffect(() => {
     if (!enrollment || !courseId) {
@@ -110,7 +110,7 @@ export function CreatorCourseCommunity() {
     );
   }
 
-  if (!hasFirebaseConfig) {
+  if (!hasBackendConfig) {
     return (
       <CreatorCommunityState
         title="Creator community access is not connected."

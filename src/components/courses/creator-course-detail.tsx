@@ -22,7 +22,7 @@ import {
 } from "@/lib/data/lesson-content";
 import { hasPermission } from "@/lib/permissions";
 import { isPublicFeatureEnabled } from "@/lib/feature-flags";
-import { getFirebaseClientConfig } from "@/lib/firebase/config";
+import { getSupabaseClientConfig } from "@/lib/supabase/config";
 import {
   enrollInFreeCreatorCourse,
   startCourseCheckout,
@@ -38,7 +38,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
   const searchParams = useSearchParams();
   const courseId = courseIdOverride ?? searchParams.get("courseId") ?? "";
   const checkoutStatus = searchParams.get("checkout");
-  const hasFirebaseConfig = Boolean(getFirebaseClientConfig());
+  const hasBackendConfig = Boolean(getSupabaseClientConfig());
   const checkoutEnabled = isPublicFeatureEnabled("payments.checkout");
   const [course, setCourse] = useState<TeacherCourse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,7 +56,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
   }>({ key: null, content: null });
 
   useEffect(() => {
-    if (!courseId || !hasFirebaseConfig) {
+    if (!courseId || !hasBackendConfig) {
       return;
     }
 
@@ -71,13 +71,13 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
         setIsLoading(false);
       },
     );
-  }, [courseId, hasFirebaseConfig]);
+  }, [courseId, hasBackendConfig]);
 
   // B1: one-shot fetch of the free-preview lesson's gated content. Keyed on the
   // preview lesson id so it re-runs if the educator changes the preview.
   const freePreviewLessonId = course?.freePreviewLessonId ?? null;
   useEffect(() => {
-    if (!courseId || !hasFirebaseConfig || !freePreviewLessonId) {
+    if (!courseId || !hasBackendConfig || !freePreviewLessonId) {
       // No reset here: render resolves preview content only when
       // previewContent.key matches the current course+preview lesson, so a stale
       // value is ignored and falls back to inline — avoids a setState-in-effect.
@@ -103,7 +103,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
     return () => {
       cancelled = true;
     };
-  }, [courseId, hasFirebaseConfig, freePreviewLessonId]);
+  }, [courseId, hasBackendConfig, freePreviewLessonId]);
 
   if (!courseId) {
     return (
@@ -114,7 +114,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
     );
   }
 
-  if (!hasFirebaseConfig) {
+  if (!hasBackendConfig) {
     return (
       <CourseDetailState
         title="Course details are unavailable right now."

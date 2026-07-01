@@ -16,7 +16,7 @@ import {
   subscribeToUserWishlist,
   toggleWishlistCourse,
 } from "@/lib/data/wishlist";
-import { getFirebaseClientConfig } from "@/lib/firebase/config";
+import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
 export function LearnerWishlist() {
   const { user } = useAuth();
@@ -46,7 +46,7 @@ export function LearnerWishlist() {
   }, [user]);
 
   useEffect(() => {
-    if (!getFirebaseClientConfig()) {
+    if (!getSupabaseClientConfig()) {
       return;
     }
 
