@@ -1512,6 +1512,10 @@ export type Database = {
         Args: { p_course_id: string }
         Returns: Json
       }
+      create_free_course_enrollment: {
+        Args: { p_course_id: string }
+        Returns: string
+      }
       has_enrollment_for_course_slug: {
         Args: { p_slug: string }
         Returns: boolean
