@@ -278,18 +278,18 @@ export function ProfileSettingsPanel() {
 
   if (isLoading) {
     return (
-      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="settings-section-card">
         <p className="text-sm text-[var(--color-ink-soft)]">Loading profile settings...</p>
       </section>
     );
   }
 
   return (
-    <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
+    <section className="settings-section-card">
+      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         Account identity
       </p>
-      <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+      <h3 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
         Profile settings
       </h3>
       <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
