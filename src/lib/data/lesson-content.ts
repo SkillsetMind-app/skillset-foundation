@@ -1,21 +1,13 @@
 "use client";
 
-import {
-  collection,
-  doc,
-  getDoc,
-  onSnapshot,
-  type Unsubscribe,
-} from "firebase/firestore";
-
-import { getFirestoreDb } from "@/lib/firebase/client";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { Database } from "@/lib/supabase/database.types";
 
 /**
  * B1 — paywalled lesson content moved OUT of the world-readable course doc into
- * the enrollment-gated subcollection courses/{courseId}/lessonContent/{lessonId}.
- * Doc shape is locked by firestore.rules to exactly these two keys; the backfill
- * (functions/scripts/backfill-lesson-content.mjs) and the dual-write below both
- * write the identical shape so the subcollection copy is always a faithful
+ * the enrollment-gated table course_lesson_content (lesson_id PK). The shape is
+ * locked by RLS to exactly these two columns; the backfill script and any
+ * dual-write both write the identical shape so the table is always a faithful
  * mirror of the inline fields.
  */
 export type LessonContent = {
@@ -23,81 +15,106 @@ export type LessonContent = {
   externalUrl: string | null;
 };
 
-const coursesCollection = "courses";
-const lessonContentCollection = "lessonContent";
+type LessonContentRow =
+  Database["public"]["Tables"]["course_lesson_content"]["Row"];
+
+function rowToLessonContent(row: LessonContentRow): LessonContent {
+  return {
+    contentText: row.content_text,
+    externalUrl: row.external_url,
+  };
+}
 
 /**
  * Realtime subscription to every lesson's gated content for a course, keyed by
  * lessonId. Consumers (enrolled workspace) merge this onto the matching lesson,
- * preferring the subcollection value and falling back to the inline field when
- * a doc is absent (un-migrated course during transition). Mirrors the
+ * preferring the table value and falling back to the inline field when a row is
+ * absent (un-migrated course during transition). Mirrors the
  * subscribeToCourseAssets onSnapshot style.
  */
 export function subscribeToLessonContent(
   courseId: string,
   callback: (content: Map<string, LessonContent>) => void,
   onError: (error: Error) => void,
-): Unsubscribe {
-  return onSnapshot(
-    collection(
-      getFirestoreDb(),
-      coursesCollection,
-      courseId,
-      lessonContentCollection,
-    ),
-    (snapshot) => {
-      const next = new Map<string, LessonContent>();
+): () => void {
+  const supabase = getSupabaseBrowserClient();
 
-      for (const document of snapshot.docs) {
-        const data = document.data() as Partial<LessonContent>;
-        next.set(document.id, {
-          contentText: data.contentText ?? null,
-          externalUrl: data.externalUrl ?? null,
-        });
-      }
+  const load = async () => {
+    const { data, error } = await supabase
+      .from("course_lesson_content")
+      .select("*")
+      .eq("course_id", courseId);
 
-      callback(next);
-    },
-    onError,
-  );
+    if (error) {
+      onError(error instanceof Error ? error : new Error(String(error)));
+      return;
+    }
+
+    const next = new Map<string, LessonContent>();
+    for (const row of data ?? []) {
+      next.set(row.lesson_id, rowToLessonContent(row));
+    }
+
+    callback(next);
+  };
+
+  void load();
+
+  const channel = supabase
+    .channel(`course_lesson_content:course:${courseId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "course_lesson_content",
+        filter: `course_id=eq.${courseId}`,
+      },
+      () => {
+        void load();
+      },
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }
 
 /**
  * One-shot read of a single lesson's gated content. Used by the public
- * free-preview surface, where the firestore.rules `freePreviewLessonId` branch
- * allows an unauthenticated visitor to read exactly the preview lesson's doc.
- * Returns null when the doc is absent so the caller falls back to inline.
+ * free-preview surface, where the RLS `free_preview_lesson_id` branch allows an
+ * unauthenticated visitor to read exactly the preview lesson's row. Returns null
+ * when the row is absent so the caller falls back to inline.
  */
 export async function getLessonContentDoc(
   courseId: string,
   lessonId: string,
 ): Promise<LessonContent | null> {
-  const snapshot = await getDoc(
-    doc(
-      getFirestoreDb(),
-      coursesCollection,
-      courseId,
-      lessonContentCollection,
-      lessonId,
-    ),
-  );
+  const supabase = getSupabaseBrowserClient();
 
-  if (!snapshot.exists()) {
+  const { data, error } = await supabase
+    .from("course_lesson_content")
+    .select("*")
+    .eq("lesson_id", lessonId)
+    .eq("course_id", courseId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
     return null;
   }
 
-  const data = snapshot.data() as Partial<LessonContent>;
-  return {
-    contentText: data.contentText ?? null,
-    externalUrl: data.externalUrl ?? null,
-  };
+  return rowToLessonContent(data);
 }
 
 /**
- * Resolve a lesson's effective content: prefer the gated subcollection value,
- * fall back to the inline field when the subcollection doc is absent. Shared by
- * the enrolled workspace and the public preview so the merge rule is identical
- * everywhere.
+ * Resolve a lesson's effective content: prefer the gated table value, fall back
+ * to the inline field when the row is absent. Shared by the enrolled workspace
+ * and the public preview so the merge rule is identical everywhere.
  */
 export function resolveLessonContent(
   subcollection: LessonContent | undefined,

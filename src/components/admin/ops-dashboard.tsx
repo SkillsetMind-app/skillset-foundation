@@ -118,9 +118,11 @@ const auditActionLabels: Record<string, string> = {
 };
 
 function formatAuditTimestamp(entry: AuditLogEntry) {
-  const date = entry.createdAt?.toDate?.();
+  // Postgres timestamptz comes back as an ISO string, not a Firestore Timestamp.
+  const raw = entry.createdAt;
+  const date = typeof raw === "string" && raw ? new Date(raw) : null;
 
-  if (!date) {
+  if (!date || Number.isNaN(date.getTime())) {
     return "Pending timestamp";
   }
 

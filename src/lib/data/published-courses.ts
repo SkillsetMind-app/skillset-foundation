@@ -1,16 +1,7 @@
 "use client";
 
-import {
-  collection,
-  doc,
-  limit,
-  onSnapshot,
-  query,
-  where,
-  type Unsubscribe,
-} from "firebase/firestore";
-
-import type { TeacherCourse } from "@/domain/teacher-course";
+import type { DripStrategy } from "@/domain/drip-policy";
+import type { TeacherCourse, TeacherCourseModule, TeacherCourseStatus, TeacherCoursePaymentType, MembersTheme } from "@/domain/teacher-course";
 import {
   normalizeLearningOutcomes,
   normalizeMembersText,
@@ -21,75 +12,162 @@ import {
 } from "@/domain/teacher-course";
 import type { Course } from "@/domain/learning";
 import type { CourseCard } from "@/lib/data/catalog";
-import { getFirestoreDb } from "@/lib/firebase/client";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { Database } from "@/lib/supabase/database.types";
 
-const coursesCollection = "courses";
+const coursesTable = "courses";
+
+type CourseRow = Database["public"]["Tables"]["courses"]["Row"];
+
+function rowToTeacherCourse(row: CourseRow): TeacherCourse {
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    title: row.title,
+    titleKey: row.title_key ?? undefined,
+    summary: row.summary,
+    category: row.category,
+    categories: (row.categories as string[] | null) ?? undefined,
+    learningOutcomes: (row.learning_outcomes as string[] | null) ?? undefined,
+    status: row.status as TeacherCourseStatus,
+    modules: (row.modules as unknown as TeacherCourseModule[]) ?? [],
+    lessonCount: row.lesson_count,
+    priceAmountMinor: row.price_amount_minor,
+    currency: row.currency ?? undefined,
+    paymentType: (row.payment_type as TeacherCoursePaymentType) ?? undefined,
+    installmentsEnabled: row.installments_enabled ?? undefined,
+    installmentsMax: row.installments_max ?? undefined,
+    platformFeeBps: row.platform_fee_bps ?? undefined,
+    dripStrategy: (row.drip_strategy as DripStrategy) ?? undefined,
+    dripIntervalDays: row.drip_interval_days ?? undefined,
+    freePreviewLessonId: row.free_preview_lesson_id ?? undefined,
+    coverImageUrl: row.cover_image_url ?? undefined,
+    membersTheme: (row.members_theme as MembersTheme | null) ?? undefined,
+    membersCoverAssetId: row.members_cover_asset_id ?? undefined,
+    membersTitle: row.members_title ?? undefined,
+    membersSubtitle: row.members_subtitle ?? undefined,
+    membersDescription: row.members_description ?? undefined,
+    reviewNote: row.review_note ?? undefined,
+    ratingAverage: row.rating_average ?? undefined,
+    ratingCount: row.rating_count ?? undefined,
+    reviewCount: row.review_count ?? undefined,
+    featured: row.featured ?? undefined,
+    featuredRank: row.featured_rank ?? undefined,
+    enrollmentCount: row.enrollment_count ?? undefined,
+    trendingScore: row.trending_score ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
 
 export function subscribeToPublishedTeacherCourses(
   callback: (courses: TeacherCourse[]) => void,
   onError: (error: Error) => void,
-): Unsubscribe {
+): () => void {
   // Sell-on-submit: a course that left draft (status `in_review`) must be
   // immediately listed AND purchasable — selling is NOT gated by approval.
   // Review is non-blocking; a reviewer only *removes* a course from sale by
   // flipping it out of these two states. draft / needs_changes / inactive
   // stay hidden from the public marketplace.
-  // Bounded: every public catalog visitor streams this query, and each doc
+  // Bounded: every public catalog visitor streams this query, and each row
   // carries the FULL course (modules + lesson contentText), so an unbounded
   // read scales cost with the whole marketplace. 200 covers the catalog for
   // the foreseeable horizon; past that the fix is a slim "courseCards"
   // projection + pagination, not a bigger limit.
-  const coursesQuery = query(
-    collection(getFirestoreDb(), coursesCollection),
-    where("status", "in", ["published", "in_review"]),
-    limit(200),
-  );
+  const supabase = getSupabaseBrowserClient();
 
-  return onSnapshot(
-    coursesQuery,
-    (snapshot) => {
-      callback(
-        snapshot.docs
-          .map((document) => ({
-            id: document.id,
-            ...(document.data() as Omit<TeacherCourse, "id">),
-          }))
-          .sort((left, right) => left.title.localeCompare(right.title)),
-      );
-    },
-    onError,
-  );
+  const load = async () => {
+    const { data, error } = await supabase
+      .from(coursesTable)
+      .select("*")
+      .in("status", ["published", "in_review"])
+      .limit(200);
+
+    if (error) {
+      onError(error instanceof Error ? error : new Error(String(error)));
+      return;
+    }
+
+    callback(
+      (data ?? [])
+        .map(rowToTeacherCourse)
+        .sort((left, right) => left.title.localeCompare(right.title)),
+    );
+  };
+
+  void load();
+
+  // Realtime server filters only support a single-column eq, not `in`, so watch
+  // the whole table and re-run the filtered query on any change.
+  // ponytail: table-wide change fan-in; fine for the public catalog list (status filter is applied in load()).
+  const channel = supabase
+    .channel("courses:published")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: coursesTable },
+      () => {
+        void load();
+      },
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }
 
 /**
- * Subscribe to a single course doc for the public course-detail surface.
- * Unlike the catalog list, this does NOT filter by published status: Firestore
- * rules already gate reads to the public (published courses) plus the course
- * owner and admins. Returning the raw doc lets the detail view tell an
+ * Subscribe to a single course row for the public course-detail surface.
+ * Unlike the catalog list, this does NOT filter by published status: Postgres
+ * RLS already gates reads to the public (published courses) plus the course
+ * owner and admins. Returning the raw row lets the detail view tell an
  * owner/admin that their not-yet-public course is awaiting approval instead of
  * showing a generic dead-end. A non-authorized reader of an unpublished course
- * is rejected by the rules and surfaces through `onError`.
+ * is rejected by RLS and surfaces through `onError`.
  */
 export function subscribeToViewableTeacherCourse(
   courseId: string,
   callback: (course: TeacherCourse | null) => void,
   onError: (error: Error) => void,
-): Unsubscribe {
-  return onSnapshot(
-    doc(getFirestoreDb(), coursesCollection, courseId),
-    (snapshot) => {
-      if (!snapshot.exists()) {
-        callback(null);
+): () => void {
+  const supabase = getSupabaseBrowserClient();
+
+  void supabase
+    .from(coursesTable)
+    .select("*")
+    .eq("id", courseId)
+    .maybeSingle()
+    .then(({ data, error }) => {
+      if (error) {
+        onError(error instanceof Error ? error : new Error(String(error)));
         return;
       }
+      callback(data ? rowToTeacherCourse(data) : null);
+    });
 
-      callback({
-        id: snapshot.id,
-        ...(snapshot.data() as Omit<TeacherCourse, "id">),
-      });
-    },
-    onError,
-  );
+  const channel = supabase
+    .channel(`courses:one:${courseId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: coursesTable,
+        filter: `id=eq.${courseId}`,
+      },
+      (payload) => {
+        if (payload.eventType === "DELETE") {
+          callback(null);
+          return;
+        }
+        callback(rowToTeacherCourse(payload.new as unknown as CourseRow));
+      },
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }
 
 export function teacherCourseToCourseCard(course: TeacherCourse): CourseCard {

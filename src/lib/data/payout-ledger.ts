@@ -1,45 +1,84 @@
 "use client";
 
-import {
-  collection,
-  limit,
-  onSnapshot,
-  query,
-  where,
-  type Unsubscribe,
-} from "firebase/firestore";
+import type { PayoutLedgerEntry, PayoutLedgerStatus } from "@/domain/payout-ledger";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { Database } from "@/lib/supabase/database.types";
 
-import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
-import { getFirestoreDb } from "@/lib/firebase/client";
+type PayoutLedgerRow = Database["public"]["Tables"]["payout_ledger"]["Row"];
 
-const payoutLedgerCollection = "payoutLedger";
+function rowToPayoutLedgerEntry(row: PayoutLedgerRow): PayoutLedgerEntry {
+  return {
+    id: row.id,
+    teacherId: row.teacher_id,
+    paymentId: row.payment_id ?? "",
+    // The current Postgres schema captures the core money columns; richer fields
+    // (grossAmountMinor, skillsetFeeMinor, netAmountMinor, etc.) live in the
+    // domain type but are not yet in the payout_ledger table — they will be
+    // undefined until a future migration adds them.
+    grossAmountMinor: row.amount_minor,
+    skillsetFeeMinor: row.platform_fee_minor,
+    netAmountMinor: row.amount_minor - row.platform_fee_minor,
+    currency: row.currency,
+    status: row.status as PayoutLedgerStatus,
+    createdAt: row.created_at,
+    // Fields not yet in the DB schema — domain type marks them optional.
+    teacherStripeConnectedAccountId: undefined,
+    courseId: "",
+    orderId: "",
+    stripeFeeMinor: undefined,
+    platformFeeBps: undefined,
+    releaseAt: undefined,
+    releasedAt: undefined,
+    transferId: undefined,
+    refundedAmountMinor: undefined,
+    updatedAt: undefined,
+  };
+}
 
 export function subscribeToTeacherPayoutLedger(
   teacherId: string,
   callback: (entries: PayoutLedgerEntry[]) => void,
   onError: (error: Error) => void,
-): Unsubscribe {
-  // Equality filter + bounded limit with NO orderBy (single-field index only).
-  // Without orderBy Firestore returns docs in __name__ order — effectively
-  // arbitrary — so the limit must sit ABOVE any realistic ledger count or the
-  // wallet money math sums an arbitrary subset (the old limit(50) did exactly
-  // that past 50 payouts). Callers sort client-side.
-  const payoutLedgerQuery = query(
-    collection(getFirestoreDb(), payoutLedgerCollection),
-    where("teacherId", "==", teacherId),
-    limit(500),
-  );
+): () => void {
+  const supabase = getSupabaseBrowserClient();
 
-  return onSnapshot(
-    payoutLedgerQuery,
-    (snapshot) => {
-      callback(
-        snapshot.docs.map((document) => ({
-          id: document.id,
-          ...(document.data() as Omit<PayoutLedgerEntry, "id">),
-        })),
-      );
-    },
-    onError,
-  );
+  const load = async () => {
+    // Equality filter + bounded fetch with no server-side order (single-field
+    // index only). Callers sort client-side; we fetch up to 500 rows to avoid
+    // silently summing an arbitrary subset past any hard limit.
+    const { data, error } = await supabase
+      .from("payout_ledger")
+      .select("*")
+      .eq("teacher_id", teacherId)
+      .limit(500);
+
+    if (error) {
+      onError(error instanceof Error ? error : new Error(String(error)));
+      return;
+    }
+
+    callback((data ?? []).map(rowToPayoutLedgerEntry));
+  };
+
+  void load();
+
+  const channel = supabase
+    .channel(`payout_ledger:teacher:${teacherId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "payout_ledger",
+        filter: `teacher_id=eq.${teacherId}`,
+      },
+      () => {
+        void load();
+      },
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }

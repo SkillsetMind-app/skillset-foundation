@@ -206,7 +206,7 @@ export type Database = {
           body: string
           course_slug: string
           created_at?: string | null
-          id: string
+          id?: string
           parent_id?: string | null
           post_id: string
           updated_at?: string | null
@@ -287,7 +287,7 @@ export type Database = {
           category: string
           course_slug: string
           created_at?: string | null
-          id: string
+          id?: string
           pinned?: boolean | null
           updated_at?: string | null
         }
@@ -328,7 +328,7 @@ export type Database = {
           course_slug: string
           created_at?: string | null
           detail?: string | null
-          id: string
+          id?: string
           post_id: string
           reason: string
           reporter_email?: string | null
@@ -486,7 +486,7 @@ export type Database = {
           created_at?: string
           description: string
           external_url: string
-          id: string
+          id?: string
           owner_id: string
           recording_asset_id?: string | null
           starts_at: string
@@ -658,6 +658,11 @@ export type Database = {
           installments_max: number | null
           learning_outcomes: string[] | null
           lesson_count: number
+          members_cover_asset_id: string | null
+          members_description: string | null
+          members_subtitle: string | null
+          members_theme: string | null
+          members_title: string | null
           modules: Json
           owner_id: string
           payment_type: string | null
@@ -693,6 +698,11 @@ export type Database = {
           installments_max?: number | null
           learning_outcomes?: string[] | null
           lesson_count?: number
+          members_cover_asset_id?: string | null
+          members_description?: string | null
+          members_subtitle?: string | null
+          members_theme?: string | null
+          members_title?: string | null
           modules?: Json
           owner_id: string
           payment_type?: string | null
@@ -728,6 +738,11 @@ export type Database = {
           installments_max?: number | null
           learning_outcomes?: string[] | null
           lesson_count?: number
+          members_cover_asset_id?: string | null
+          members_description?: string | null
+          members_subtitle?: string | null
+          members_theme?: string | null
+          members_title?: string | null
           modules?: Json
           owner_id?: string
           payment_type?: string | null
@@ -842,7 +857,7 @@ export type Database = {
           body: string
           course_id: string
           created_at?: string | null
-          id: string
+          id?: string
           lesson_id: string
           updated_at?: string | null
         }
@@ -977,28 +992,46 @@ export type Database = {
       orders: {
         Row: {
           amount_minor: number
+          checkout_session_id: string | null
           course_id: string | null
+          course_slug: string | null
+          course_title: string | null
           created_at: string
           currency: string
           id: string
+          payment_intent_id: string | null
+          platform_fee_bps: number | null
+          provider: string | null
           status: string
           user_id: string
         }
         Insert: {
           amount_minor: number
+          checkout_session_id?: string | null
           course_id?: string | null
+          course_slug?: string | null
+          course_title?: string | null
           created_at?: string
           currency: string
           id: string
+          payment_intent_id?: string | null
+          platform_fee_bps?: number | null
+          provider?: string | null
           status: string
           user_id: string
         }
         Update: {
           amount_minor?: number
+          checkout_session_id?: string | null
           course_id?: string | null
+          course_slug?: string | null
+          course_title?: string | null
           created_at?: string
           currency?: string
           id?: string
+          payment_intent_id?: string | null
+          platform_fee_bps?: number | null
+          provider?: string | null
           status?: string
           user_id?: string
         }
@@ -1275,7 +1308,7 @@ export type Database = {
           admin_response?: string | null
           category: string
           created_at?: string | null
-          id: string
+          id?: string
           message: string
           responded_at?: string | null
           responded_by?: string | null

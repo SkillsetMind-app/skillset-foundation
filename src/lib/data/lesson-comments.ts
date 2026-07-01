@@ -1,18 +1,9 @@
 "use client";
 
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  where,
-  type Unsubscribe,
-} from "firebase/firestore";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { Database } from "@/lib/supabase/database.types";
 
-import { getFirestoreDb } from "@/lib/firebase/client";
+type LessonCommentRow = Database["public"]["Tables"]["lesson_comments"]["Row"];
 
 export type LessonComment = {
   id: string;
@@ -21,12 +12,26 @@ export type LessonComment = {
   authorId: string;
   authorName: string;
   body: string;
-  createdAt?: unknown;
-  updatedAt?: unknown;
+  createdAt: string | null;
+  updatedAt: string | null;
 };
 
-const coursesCollection = "courses";
-const lessonCommentsCollection = "lessonComments";
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+function rowToLessonComment(row: LessonCommentRow): LessonComment {
+  return {
+    id: row.id,
+    courseId: row.course_id,
+    lessonId: row.lesson_id,
+    authorId: row.author_id,
+    authorName: row.author_name,
+    body: row.body,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
 
 export async function addLessonComment(input: {
   courseId: string;
@@ -41,34 +46,36 @@ export async function addLessonComment(input: {
     throw new Error("Comment is too short.");
   }
 
-  const commentsRef = collection(
-    getFirestoreDb(),
-    coursesCollection,
-    input.courseId,
-    lessonCommentsCollection,
-  );
+  const supabase = getSupabaseBrowserClient();
+  const timestamp = nowIso();
 
-  await addDoc(commentsRef, {
-    courseId: input.courseId,
-    lessonId: input.lessonId,
-    authorId: input.authorId,
-    authorName: input.authorName.trim() || "Skillset learner",
+  const { error } = await supabase.from("lesson_comments").insert({
+    course_id: input.courseId,
+    lesson_id: input.lessonId,
+    author_id: input.authorId,
+    author_name: input.authorName.trim() || "Skillset learner",
     body,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    created_at: timestamp,
+    updated_at: timestamp,
   });
+
+  if (error) {
+    throw error;
+  }
 }
 
 export async function deleteLessonComment(courseId: string, commentId: string) {
-  await deleteDoc(
-    doc(
-      getFirestoreDb(),
-      coursesCollection,
-      courseId,
-      lessonCommentsCollection,
-      commentId,
-    ),
-  );
+  const supabase = getSupabaseBrowserClient();
+
+  const { error } = await supabase
+    .from("lesson_comments")
+    .delete()
+    .eq("id", commentId)
+    .eq("course_id", courseId);
+
+  if (error) {
+    throw error;
+  }
 }
 
 export function subscribeToLessonComments(
@@ -76,46 +83,47 @@ export function subscribeToLessonComments(
   lessonId: string,
   callback: (comments: LessonComment[]) => void,
   onError: (error: Error) => void,
-): Unsubscribe {
-  const commentsQuery = query(
-    collection(
-      getFirestoreDb(),
-      coursesCollection,
-      courseId,
-      lessonCommentsCollection,
-    ),
-    where("lessonId", "==", lessonId),
-  );
+): () => void {
+  const supabase = getSupabaseBrowserClient();
 
-  return onSnapshot(
-    commentsQuery,
-    (snapshot) => {
-      callback(
-        snapshot.docs
-          .map((document) => ({
-            id: document.id,
-            ...(document.data() as Omit<LessonComment, "id">),
-          }))
-          .sort((left, right) => {
-            const leftTime = getMillis(left.createdAt);
-            const rightTime = getMillis(right.createdAt);
-            return leftTime - rightTime;
-          }),
-      );
-    },
-    onError,
-  );
-}
+  const load = async () => {
+    const { data, error } = await supabase
+      .from("lesson_comments")
+      .select("*")
+      .eq("course_id", courseId)
+      .eq("lesson_id", lessonId);
 
-function getMillis(value: unknown): number {
-  if (
-    typeof value === "object"
-    && value !== null
-    && "toMillis" in value
-    && typeof value.toMillis === "function"
-  ) {
-    return value.toMillis();
-  }
+    if (error) {
+      onError(error instanceof Error ? error : new Error(String(error)));
+      return;
+    }
 
-  return 0;
+    callback(
+      (data ?? []).map(rowToLessonComment).sort((left, right) => {
+        const leftTime = left.createdAt ?? "";
+        const rightTime = right.createdAt ?? "";
+        return leftTime.localeCompare(rightTime);
+      }),
+    );
+  };
+
+  void load();
+
+  // Realtime server filters only support a single-column eq, not compound
+  // course_id+lesson_id, so watch the whole table and re-run the filtered query.
+  // ponytail: table-wide change fan-in; negligible for per-lesson comment volumes.
+  const channel = supabase
+    .channel(`lesson_comments:lesson:${courseId}:${lessonId}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "lesson_comments" },
+      () => {
+        void load();
+      },
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }

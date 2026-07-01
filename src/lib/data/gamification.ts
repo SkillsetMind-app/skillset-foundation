@@ -1,54 +1,77 @@
 "use client";
 
-import {
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  onSnapshot,
-  serverTimestamp,
-  setDoc,
-  type Unsubscribe,
-} from "firebase/firestore";
-
 import type { SkillsetUser } from "@/domain/auth";
 import type {
   Leaderboard,
+  LeaderboardEntry,
   LeaderboardWindow,
   MemberStats,
 } from "@/domain/gamification";
 import { levelForPoints } from "@/domain/gamification";
-import { getFirestoreDb } from "@/lib/firebase/client";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { Database } from "@/lib/supabase/database.types";
 
-const communityPostsCollection = "communityPosts";
+type CommunityPostLikeRow =
+  Database["public"]["Tables"]["community_post_likes"]["Row"];
+type MemberStatsRow = Database["public"]["Tables"]["member_stats"]["Row"];
+type LeaderboardRow = Database["public"]["Tables"]["leaderboards"]["Row"];
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+function rowToMemberStats(row: MemberStatsRow): MemberStats {
+  const points = row.points ?? 0;
+  return {
+    uid: row.uid,
+    displayName: row.display_name && row.display_name.trim() ? row.display_name : "Member",
+    points,
+    level: row.level ?? levelForPoints(points),
+    totalLikesReceived: row.total_likes_received ?? 0,
+    updatedAt: row.updated_at,
+  };
+}
+
+function rowToLeaderboard(row: LeaderboardRow): Leaderboard {
+  return {
+    window: row.window as LeaderboardWindow,
+    entries: (row.entries as unknown as LeaderboardEntry[]) ?? [],
+    updatedAt: row.updated_at,
+  };
+}
 
 /**
- * Toggle the current user's like on a post. The like is a presence doc whose id
- * is the user's uid (one like per user); server triggers award the post author
- * +/-1 point. Liking your own post is allowed but earns nothing (the trigger
- * skips self-likes); callers should hide the control on own posts.
+ * Toggle the current user's like on a post. The like is a presence row whose
+ * primary key is (post_id, liker_id) (one like per user); server triggers award
+ * the post author +/-1 point. Liking your own post is allowed but earns nothing
+ * (the trigger skips self-likes); callers should hide the control on own posts.
  */
 export async function setCommunityPostLike(
   postId: string,
   liked: boolean,
   user: SkillsetUser,
 ): Promise<void> {
-  const likeRef = doc(
-    getFirestoreDb(),
-    communityPostsCollection,
-    postId,
-    "likes",
-    user.uid,
-  );
+  const supabase = getSupabaseBrowserClient();
 
   if (liked) {
-    await setDoc(likeRef, {
-      likerId: user.uid,
-      postId,
-      createdAt: serverTimestamp(),
-    });
+    const { error } = await supabase.from("community_post_likes").upsert(
+      {
+        post_id: postId,
+        liker_id: user.uid,
+        created_at: nowIso(),
+      },
+      { onConflict: "post_id,liker_id" },
+    );
+
+    if (error) throw error;
   } else {
-    await deleteDoc(likeRef);
+    const { error } = await supabase
+      .from("community_post_likes")
+      .delete()
+      .eq("post_id", postId)
+      .eq("liker_id", user.uid);
+
+    if (error) throw error;
   }
 }
 
@@ -62,17 +85,48 @@ export function subscribeToPostLikes(
   postId: string,
   callback: (state: PostLikeState) => void,
   onError: (error: Error) => void,
-): Unsubscribe {
-  return onSnapshot(
-    collection(getFirestoreDb(), communityPostsCollection, postId, "likes"),
-    (snapshot) => {
-      callback({
-        count: snapshot.size,
-        likerIds: snapshot.docs.map((document) => document.id),
-      });
-    },
-    onError,
-  );
+): () => void {
+  const supabase = getSupabaseBrowserClient();
+
+  const load = async () => {
+    const { data, error } = await supabase
+      .from("community_post_likes")
+      .select("liker_id")
+      .eq("post_id", postId);
+
+    if (error) {
+      onError(error instanceof Error ? error : new Error(String(error)));
+      return;
+    }
+
+    const rows = (data ?? []) as Pick<CommunityPostLikeRow, "liker_id">[];
+    callback({
+      count: rows.length,
+      likerIds: rows.map((r) => r.liker_id),
+    });
+  };
+
+  void load();
+
+  const channel = supabase
+    .channel(`community_post_likes:post:${postId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "community_post_likes",
+        filter: `post_id=eq.${postId}`,
+      },
+      () => {
+        void load();
+      },
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }
 
 function normalizeMemberStats(uid: string, data: Partial<MemberStats>): MemberStats {
@@ -98,10 +152,10 @@ function normalizeMemberStats(uid: string, data: Partial<MemberStats>): MemberSt
  * Reads each doc individually by its known uid (a `get`, not a `list`) so it
  * only ever touches members the caller already legitimately knows — the current
  * user plus authors of posts/comments in a course the viewer is enrolled in.
- * The collection deliberately forbids `list` (firestore.rules memberStats) so
- * the full member roster can never be enumerated; this scoped fetch is the
- * read path that respects that. A per-uid failure (or missing doc) simply omits
- * that badge — it never rejects the whole map or breaks the feed.
+ * The table deliberately forbids `list` (RLS member_stats) so the full member
+ * roster can never be enumerated; this scoped fetch is the read path that
+ * respects that. A per-uid failure (or missing row) simply omits that badge —
+ * it never rejects the whole map or breaks the feed.
  */
 export async function fetchMemberStatsForUids(
   uids: string[],
@@ -112,12 +166,15 @@ export async function fetchMemberStatsForUids(
   await Promise.all(
     unique.map(async (uid) => {
       try {
-        const snapshot = await getDoc(doc(getFirestoreDb(), "memberStats", uid));
-        if (snapshot.exists()) {
-          statsByUid.set(
-            uid,
-            normalizeMemberStats(uid, snapshot.data() as Partial<MemberStats>),
-          );
+        const supabase = getSupabaseBrowserClient();
+        const { data } = await supabase
+          .from("member_stats")
+          .select("*")
+          .eq("uid", uid)
+          .maybeSingle();
+
+        if (data) {
+          statsByUid.set(uid, normalizeMemberStats(uid, rowToMemberStats(data)));
         }
       } catch {
         // A single unreadable member just loses its badge; the rest still load.
@@ -133,12 +190,43 @@ export function subscribeToLeaderboard(
   window: LeaderboardWindow,
   callback: (board: Leaderboard | null) => void,
   onError: (error: Error) => void,
-): Unsubscribe {
-  return onSnapshot(
-    doc(getFirestoreDb(), "leaderboards", window),
-    (snapshot) => {
-      callback(snapshot.exists() ? (snapshot.data() as Leaderboard) : null);
-    },
-    onError,
-  );
+): () => void {
+  const supabase = getSupabaseBrowserClient();
+
+  void supabase
+    .from("leaderboards")
+    .select("*")
+    .eq("window", window)
+    .maybeSingle()
+    .then(({ data, error }) => {
+      if (error) {
+        onError(error instanceof Error ? error : new Error(String(error)));
+        return;
+      }
+      callback(data ? rowToLeaderboard(data) : null);
+    });
+
+  const channel = supabase
+    .channel(`leaderboards:window:${window}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "leaderboards",
+        filter: `window=eq.${window}`,
+      },
+      (payload) => {
+        if (payload.eventType === "DELETE") {
+          callback(null);
+          return;
+        }
+        callback(rowToLeaderboard(payload.new as unknown as LeaderboardRow));
+      },
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }
