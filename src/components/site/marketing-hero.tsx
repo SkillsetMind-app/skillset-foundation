@@ -46,6 +46,16 @@ export function MarketingHero() {
                 "linear-gradient(to right, rgba(7,23,42,0.95) 0%, rgba(7,23,42,0.85) 28%, rgba(7,23,42,0.42) 52%, rgba(7,23,42,0.05) 74%, rgba(7,23,42,0) 100%)",
             }}
           />
+          {/* Warm rim-light halo at her head/shoulder (~61% x, ~31% y — the
+              measured subject peak sits ~59% across). Screen-blended so it reads
+              as backlight lifting her off the flat navy, not a wash over the photo. */}
+          <div
+            className="absolute inset-0 mix-blend-screen"
+            style={{
+              backgroundImage:
+                "radial-gradient(42% 46% at 61% 31%, rgba(255,214,168,0.22), rgba(255,214,168,0.06) 46%, transparent 70%)",
+            }}
+          />
         </div>
       ) : null}
 
@@ -57,9 +67,34 @@ export function MarketingHero() {
         }}
       />
 
+      {/* Bottom vignette — melts the photo's waist crop into the red accent bar
+          so there's no hard horizontal seam. Section-wide, so mobile's plain
+          gradient gains the same grounded base. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-40"
+        style={{
+          backgroundImage:
+            "linear-gradient(to top, rgba(7,23,42,0.9) 0%, rgba(7,23,42,0.5) 38%, transparent 100%)",
+        }}
+      />
+
+      {/* Film grain — a ~4% fractal-noise overlay (soft-light) that breaks up the
+          flat navy so the large gradient fill doesn't band on wide/OLED screens
+          and the hero reads as textured rather than printed. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-soft-light"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+          backgroundSize: "200px 200px",
+        }}
+      />
+
       <div className="mx-auto w-full max-w-7xl px-5 pb-8 pt-28 sm:px-8 sm:pb-10 sm:pt-32 lg:pb-12 lg:pt-36">
         <div className="relative z-10 flex flex-col gap-10 lg:flex-row lg:items-center">
-          <div className="mx-auto flex max-w-xl flex-col items-center text-center lg:mx-0 lg:items-start lg:text-left">
+          <div className="hero-copy-rise mx-auto flex max-w-xl flex-col items-center text-center lg:mx-0 lg:items-start lg:text-left">
             <div className="inline-flex w-fit rounded-[8px] border border-white/20 bg-white/10 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
               For psychology &amp; wellbeing experts
             </div>
