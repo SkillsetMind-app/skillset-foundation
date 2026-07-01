@@ -171,18 +171,36 @@ export type Database = {
       checkout_locks: {
         Row: {
           acquired_at: string
+          checkout_session_id: string | null
+          checkout_url: string | null
+          course_id: string | null
           expires_at: string | null
           lock_key: string
+          order_id: string | null
+          updated_at: string
+          user_id: string | null
         }
         Insert: {
           acquired_at?: string
+          checkout_session_id?: string | null
+          checkout_url?: string | null
+          course_id?: string | null
           expires_at?: string | null
           lock_key: string
+          order_id?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Update: {
           acquired_at?: string
+          checkout_session_id?: string | null
+          checkout_url?: string | null
+          course_id?: string | null
           expires_at?: string | null
           lock_key?: string
+          order_id?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -591,24 +609,54 @@ export type Database = {
       }
       course_subscriptions: {
         Row: {
-          course_slug: string
+          cancel_at_period_end: boolean
+          course_id: string | null
+          course_slug: string | null
           created_at: string
+          current_period_end: string | null
           id: string
+          interval: string | null
+          latest_invoice_id: string | null
+          past_due: boolean
           status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          teacher_id: string | null
+          updated_at: string
           user_id: string
         }
         Insert: {
-          course_slug: string
+          cancel_at_period_end?: boolean
+          course_id?: string | null
+          course_slug?: string | null
           created_at?: string
+          current_period_end?: string | null
           id: string
+          interval?: string | null
+          latest_invoice_id?: string | null
+          past_due?: boolean
           status: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          teacher_id?: string | null
+          updated_at?: string
           user_id: string
         }
         Update: {
-          course_slug?: string
+          cancel_at_period_end?: boolean
+          course_id?: string | null
+          course_slug?: string | null
           created_at?: string
+          current_period_end?: string | null
           id?: string
+          interval?: string | null
+          latest_invoice_id?: string | null
+          past_due?: boolean
           status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          teacher_id?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -675,6 +723,8 @@ export type Database = {
           review_note: string | null
           slug: string | null
           status: string
+          stripe_connected_account_id: string | null
+          stripe_subscription_price: Json | null
           summary: string
           title: string
           title_key: string | null
@@ -715,6 +765,8 @@ export type Database = {
           review_note?: string | null
           slug?: string | null
           status?: string
+          stripe_connected_account_id?: string | null
+          stripe_subscription_price?: Json | null
           summary: string
           title: string
           title_key?: string | null
@@ -755,6 +807,8 @@ export type Database = {
           review_note?: string | null
           slug?: string | null
           status?: string
+          stripe_connected_account_id?: string | null
+          stripe_subscription_price?: Json | null
           summary?: string
           title?: string
           title_key?: string | null
@@ -999,10 +1053,22 @@ export type Database = {
           created_at: string
           currency: string
           id: string
+          latest_transfer_reversal_at: string | null
+          latest_transfer_reversal_id: string | null
+          paid_at: string | null
           payment_intent_id: string | null
+          payout_model: string | null
           platform_fee_bps: number | null
           provider: string | null
+          receipt_url: string | null
+          refund_request_id: string | null
+          refund_requested_at: string | null
+          refunded_amount_minor: number
           status: string
+          teacher_id: string | null
+          teacher_stripe_connected_account_id: string | null
+          transfer_reversed_amount_minor: number
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -1014,10 +1080,22 @@ export type Database = {
           created_at?: string
           currency: string
           id: string
+          latest_transfer_reversal_at?: string | null
+          latest_transfer_reversal_id?: string | null
+          paid_at?: string | null
           payment_intent_id?: string | null
+          payout_model?: string | null
           platform_fee_bps?: number | null
           provider?: string | null
+          receipt_url?: string | null
+          refund_request_id?: string | null
+          refund_requested_at?: string | null
+          refunded_amount_minor?: number
           status: string
+          teacher_id?: string | null
+          teacher_stripe_connected_account_id?: string | null
+          transfer_reversed_amount_minor?: number
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -1029,10 +1107,22 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          latest_transfer_reversal_at?: string | null
+          latest_transfer_reversal_id?: string | null
+          paid_at?: string | null
           payment_intent_id?: string | null
+          payout_model?: string | null
           platform_fee_bps?: number | null
           provider?: string | null
+          receipt_url?: string | null
+          refund_request_id?: string | null
+          refund_requested_at?: string | null
+          refunded_amount_minor?: number
           status?: string
+          teacher_id?: string | null
+          teacher_stripe_connected_account_id?: string | null
+          transfer_reversed_amount_minor?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -1055,29 +1145,50 @@ export type Database = {
       payments: {
         Row: {
           amount_minor: number
+          course_id: string | null
           created_at: string
           currency: string
           id: string
           order_id: string
+          provider: string | null
+          provider_payment_id: string | null
+          receipt_url: string | null
+          refunded_amount_minor: number
+          refunded_at: string | null
           status: string
+          updated_at: string
           user_id: string
         }
         Insert: {
           amount_minor: number
+          course_id?: string | null
           created_at?: string
           currency: string
           id: string
           order_id: string
+          provider?: string | null
+          provider_payment_id?: string | null
+          receipt_url?: string | null
+          refunded_amount_minor?: number
+          refunded_at?: string | null
           status: string
+          updated_at?: string
           user_id: string
         }
         Update: {
           amount_minor?: number
+          course_id?: string | null
           created_at?: string
           currency?: string
           id?: string
           order_id?: string
+          provider?: string | null
+          provider_payment_id?: string | null
+          receipt_url?: string | null
+          refunded_amount_minor?: number
+          refunded_at?: string | null
           status?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -1100,33 +1211,102 @@ export type Database = {
       payout_ledger: {
         Row: {
           amount_minor: number
+          course_id: string | null
           created_at: string
           currency: string
+          gross_amount_minor: number
           id: string
+          invoice_id: string | null
+          kind: string | null
+          latest_transfer_reversal_at: string | null
+          latest_transfer_reversal_id: string | null
+          net_amount_minor: number
+          order_id: string | null
           payment_id: string | null
+          payment_id_is_payment_intent: boolean
+          planned_transfer_amount_minor: number | null
+          platform_fee_bps: number | null
           platform_fee_minor: number
+          refund_reversal_claims: Json
+          refunded_amount_minor: number
+          refunded_at: string | null
+          release_at: string | null
+          skillset_fee_minor: number
           status: string
+          stripe_fee_minor: number
+          subscription_id: string | null
           teacher_id: string
+          teacher_stripe_connected_account_id: string | null
+          transfer_amount_minor: number | null
+          transfer_id: string | null
+          transfer_reversed_amount_minor: number
+          updated_at: string
         }
         Insert: {
           amount_minor: number
+          course_id?: string | null
           created_at?: string
           currency: string
+          gross_amount_minor?: number
           id: string
+          invoice_id?: string | null
+          kind?: string | null
+          latest_transfer_reversal_at?: string | null
+          latest_transfer_reversal_id?: string | null
+          net_amount_minor?: number
+          order_id?: string | null
           payment_id?: string | null
+          payment_id_is_payment_intent?: boolean
+          planned_transfer_amount_minor?: number | null
+          platform_fee_bps?: number | null
           platform_fee_minor?: number
+          refund_reversal_claims?: Json
+          refunded_amount_minor?: number
+          refunded_at?: string | null
+          release_at?: string | null
+          skillset_fee_minor?: number
           status: string
+          stripe_fee_minor?: number
+          subscription_id?: string | null
           teacher_id: string
+          teacher_stripe_connected_account_id?: string | null
+          transfer_amount_minor?: number | null
+          transfer_id?: string | null
+          transfer_reversed_amount_minor?: number
+          updated_at?: string
         }
         Update: {
           amount_minor?: number
+          course_id?: string | null
           created_at?: string
           currency?: string
+          gross_amount_minor?: number
           id?: string
+          invoice_id?: string | null
+          kind?: string | null
+          latest_transfer_reversal_at?: string | null
+          latest_transfer_reversal_id?: string | null
+          net_amount_minor?: number
+          order_id?: string | null
           payment_id?: string | null
+          payment_id_is_payment_intent?: boolean
+          planned_transfer_amount_minor?: number | null
+          platform_fee_bps?: number | null
           platform_fee_minor?: number
+          refund_reversal_claims?: Json
+          refunded_amount_minor?: number
+          refunded_at?: string | null
+          release_at?: string | null
+          skillset_fee_minor?: number
           status?: string
+          stripe_fee_minor?: number
+          subscription_id?: string | null
           teacher_id?: string
+          teacher_stripe_connected_account_id?: string | null
+          transfer_amount_minor?: number | null
+          transfer_id?: string | null
+          transfer_reversed_amount_minor?: number
+          updated_at?: string
         }
         Relationships: [
           {
@@ -1192,15 +1372,21 @@ export type Database = {
       }
       processed_stripe_events: {
         Row: {
+          claimed_at: string | null
           processed_at: string
+          status: string
           stripe_event_id: string
         }
         Insert: {
+          claimed_at?: string | null
           processed_at?: string
+          status?: string
           stripe_event_id: string
         }
         Update: {
+          claimed_at?: string | null
           processed_at?: string
+          status?: string
           stripe_event_id?: string
         }
         Relationships: []
@@ -1258,24 +1444,51 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          cancel_at_period_end: boolean
           created_at: string
           current_period_end: string | null
+          current_period_start: string | null
+          cycle: string | null
           id: string
+          past_due: boolean
+          plan_id: string | null
           status: string
+          stripe_customer_id: string | null
+          stripe_price_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
           user_id: string
         }
         Insert: {
+          cancel_at_period_end?: boolean
           created_at?: string
           current_period_end?: string | null
+          current_period_start?: string | null
+          cycle?: string | null
           id: string
+          past_due?: boolean
+          plan_id?: string | null
           status: string
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
           user_id: string
         }
         Update: {
+          cancel_at_period_end?: boolean
           created_at?: string
           current_period_end?: string | null
+          current_period_start?: string | null
+          cycle?: string | null
           id?: string
+          past_due?: boolean
+          plan_id?: string | null
           status?: string
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -1482,9 +1695,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      enforce_rate_limit: {
-        Args: { p_key: string; p_limit: number; p_window_ms: number }
-        Returns: undefined
+      course_title_key: { Args: { p_title: string }; Returns: string }
+      create_free_course_enrollment: {
+        Args: { p_course_id: string }
+        Returns: string
       }
       create_teacher_course_draft: {
         Args: {
@@ -1496,41 +1710,32 @@ export type Database = {
         }
         Returns: string
       }
-      update_teacher_course_builder: {
-        Args: { p_course_id: string; p_payload: Json }
-        Returns: Json
-      }
-      submit_teacher_course_for_review: {
-        Args: { p_course_id: string }
-        Returns: Json
-      }
+      delete_course_as_admin: { Args: { p_course_id: string }; Returns: Json }
       delete_teacher_course_draft: {
         Args: { p_course_id: string }
         Returns: Json
       }
-      delete_course_as_admin: {
-        Args: { p_course_id: string }
-        Returns: Json
-      }
-      create_free_course_enrollment: {
-        Args: { p_course_id: string }
-        Returns: string
+      enforce_rate_limit: {
+        Args: { p_key: string; p_limit: number; p_window_ms: number }
+        Returns: undefined
       }
       has_enrollment_for_course_slug: {
         Args: { p_slug: string }
         Returns: boolean
       }
+      is_admin: { Args: never; Returns: boolean }
+      is_moderator: { Args: never; Returns: boolean }
+      is_ops: { Args: never; Returns: boolean }
+      is_service_role: { Args: never; Returns: boolean }
+      is_support: { Args: never; Returns: boolean }
+      is_target_author: {
+        Args: { p_post_id: string; p_target_type: string }
+        Returns: boolean
+      }
+      is_teacher: { Args: never; Returns: boolean }
       issue_skillset_certificate: {
         Args: { p_enrollment_id: string; p_full_name: string }
         Returns: string
-      }
-      record_lesson_progress: {
-        Args: {
-          p_completed: boolean
-          p_enrollment_id: string
-          p_lesson_id: string
-        }
-        Returns: Json
       }
       log_audit_event: {
         Args: {
@@ -1544,28 +1749,32 @@ export type Database = {
         }
         Returns: undefined
       }
-      request_account_action: {
-        Args: { p_type: string }
-        Returns: string
+      platform_fee_bps_for_plan: { Args: { p_plan: string }; Returns: number }
+      record_lesson_progress: {
+        Args: {
+          p_completed: boolean
+          p_enrollment_id: string
+          p_lesson_id: string
+        }
+        Returns: Json
       }
+      request_account_action: { Args: { p_type: string }; Returns: string }
       submit_course_review: {
         Args: { p_body: string; p_course_id: string; p_rating: number }
+        Returns: Json
+      }
+      submit_teacher_course_for_review: {
+        Args: { p_course_id: string }
+        Returns: Json
+      }
+      update_teacher_course_builder: {
+        Args: { p_course_id: string; p_payload: Json }
         Returns: Json
       }
       verify_skillset_certificate: {
         Args: { p_code: string; p_rate_key?: string }
         Returns: Json
       }
-      is_admin: { Args: never; Returns: boolean }
-      is_moderator: { Args: never; Returns: boolean }
-      is_ops: { Args: never; Returns: boolean }
-      is_service_role: { Args: never; Returns: boolean }
-      is_support: { Args: never; Returns: boolean }
-      is_target_author: {
-        Args: { p_post_id: string; p_target_type: string }
-        Returns: boolean
-      }
-      is_teacher: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
