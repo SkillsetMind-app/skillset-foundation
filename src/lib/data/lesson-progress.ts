@@ -1,29 +1,51 @@
 "use client";
 
-import {
-  collection,
-  onSnapshot,
-  type Unsubscribe,
-} from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-import { getFirestoreDb, getFirebaseFunctions } from "@/lib/firebase/client";
-
-const enrollmentsCollection = "enrollments";
-const progressCollection = "progress";
+const lessonProgressTable = "lesson_progress";
 
 export function subscribeToCompletedLessons(
   enrollmentId: string,
   callback: (lessonIds: string[]) => void,
   onError: (error: Error) => void,
-): Unsubscribe {
-  return onSnapshot(
-    collection(getFirestoreDb(), enrollmentsCollection, enrollmentId, progressCollection),
-    (snapshot) => {
-      callback(snapshot.docs.map((document) => document.id).sort());
-    },
-    onError,
-  );
+): () => void {
+  const supabase = getSupabaseBrowserClient();
+
+  const load = async () => {
+    const { data, error } = await supabase
+      .from(lessonProgressTable)
+      .select("lesson_id")
+      .eq("enrollment_id", enrollmentId);
+
+    if (error) {
+      onError(error instanceof Error ? error : new Error(String(error)));
+      return;
+    }
+
+    callback((data ?? []).map((row) => row.lesson_id).sort());
+  };
+
+  void load();
+
+  const channel = supabase
+    .channel(`lesson_progress:${enrollmentId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: lessonProgressTable,
+        filter: `enrollment_id=eq.${enrollmentId}`,
+      },
+      () => {
+        void load();
+      },
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }
 
 export type LessonProgressResult = {
@@ -35,23 +57,28 @@ export type LessonProgressResult = {
 
 /**
  * Record (or clear) lesson completion through the server-authoritative
- * recordLessonProgress callable. The function validates the lesson belongs to
- * the course, writes the marker via the Admin SDK, and recomputes the
- * enrollment's progressPercent in one transaction. The client can no longer
- * write progress markers or progressPercent directly (both are admin-only in
- * firestore.rules), which closes the certificate/refund-cap spoof.
+ * record_lesson_progress RPC (SECURITY DEFINER). The RPC validates the lesson
+ * belongs to the course, writes the marker, and recomputes the enrollment's
+ * progressPercent/status atomically (privileged columns via the trusted-write
+ * flag). The client can no longer write progress markers or progressPercent
+ * directly (both blocked by RLS + the enrollments guard), which closes the
+ * certificate/refund-cap spoof.
  */
 export async function recordLessonProgress(
   enrollmentId: string,
   lessonId: string,
   completed: boolean,
 ): Promise<LessonProgressResult> {
-  const callable = httpsCallable<
-    { enrollmentId: string; lessonId: string; completed: boolean },
-    LessonProgressResult
-  >(getFirebaseFunctions(), "recordLessonProgress");
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase.rpc("record_lesson_progress", {
+    p_enrollment_id: enrollmentId,
+    p_lesson_id: lessonId,
+    p_completed: completed,
+  });
 
-  const result = await callable({ enrollmentId, lessonId, completed });
+  if (error) {
+    throw error;
+  }
 
-  return result.data;
+  return data as unknown as LessonProgressResult;
 }

@@ -1482,9 +1482,75 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      enforce_rate_limit: {
+        Args: { p_key: string; p_limit: number; p_window_ms: number }
+        Returns: undefined
+      }
+      create_teacher_course_draft: {
+        Args: {
+          p_categories: string[]
+          p_category: string
+          p_payment_type: string
+          p_summary: string
+          p_title: string
+        }
+        Returns: string
+      }
+      update_teacher_course_builder: {
+        Args: { p_course_id: string; p_payload: Json }
+        Returns: Json
+      }
+      submit_teacher_course_for_review: {
+        Args: { p_course_id: string }
+        Returns: Json
+      }
+      delete_teacher_course_draft: {
+        Args: { p_course_id: string }
+        Returns: Json
+      }
+      delete_course_as_admin: {
+        Args: { p_course_id: string }
+        Returns: Json
+      }
       has_enrollment_for_course_slug: {
         Args: { p_slug: string }
         Returns: boolean
+      }
+      issue_skillset_certificate: {
+        Args: { p_enrollment_id: string; p_full_name: string }
+        Returns: string
+      }
+      record_lesson_progress: {
+        Args: {
+          p_completed: boolean
+          p_enrollment_id: string
+          p_lesson_id: string
+        }
+        Returns: Json
+      }
+      log_audit_event: {
+        Args: {
+          p_action: string
+          p_actor_email: string
+          p_actor_id: string
+          p_metadata?: Json
+          p_summary: string
+          p_target_id: string
+          p_target_type: string
+        }
+        Returns: undefined
+      }
+      request_account_action: {
+        Args: { p_type: string }
+        Returns: string
+      }
+      submit_course_review: {
+        Args: { p_body: string; p_course_id: string; p_rating: number }
+        Returns: Json
+      }
+      verify_skillset_certificate: {
+        Args: { p_code: string; p_rate_key?: string }
+        Returns: Json
       }
       is_admin: { Args: never; Returns: boolean }
       is_moderator: { Args: never; Returns: boolean }

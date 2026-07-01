@@ -19,7 +19,7 @@ const coursesTable = "courses";
 
 type CourseRow = Database["public"]["Tables"]["courses"]["Row"];
 
-function rowToTeacherCourse(row: CourseRow): TeacherCourse {
+export function rowToTeacherCourse(row: CourseRow): TeacherCourse {
   return {
     id: row.id,
     ownerId: row.owner_id,

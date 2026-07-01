@@ -22,9 +22,10 @@ function formatType(type: AccountActionRequest["type"]) {
 }
 
 function formatTimestamp(value: AccountActionRequest["requestedAt"]) {
-  const date = value?.toDate?.();
+  // Postgres timestamptz arrives as an ISO string, not a Firestore Timestamp.
+  const date = value ? new Date(value) : null;
 
-  if (!date) {
+  if (!date || Number.isNaN(date.getTime())) {
     return "Pending timestamp";
   }
 
