@@ -18,6 +18,7 @@ export function NotificationBell() {
   const uid = status === "authenticated" ? user?.uid ?? null : null;
 
   const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState<"all" | "unread">("all");
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -101,7 +102,13 @@ export function NotificationBell() {
     }
   }
 
-  const preview = notifications.slice(0, 6);
+  // Filter client-side off the already-subscribed list (no re-query), then keep
+  // the existing 6-item preview slice.
+  const filtered =
+    filter === "unread"
+      ? notifications.filter((item) => !item.read)
+      : notifications;
+  const preview = filtered.slice(0, 6);
 
   return (
     <div ref={wrapperRef} className="relative">
@@ -150,6 +157,28 @@ export function NotificationBell() {
                 <X aria-hidden="true" size={16} strokeWidth={1.8} />
               </button>
             </div>
+          </div>
+          <div
+            role="tablist"
+            aria-label="Filter notifications"
+            className="flex items-center gap-1 border-b border-[var(--color-line)] px-5 py-2"
+          >
+            {(["all", "unread"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={filter === value}
+                onClick={() => setFilter(value)}
+                className={`rounded-[8px] px-2.5 py-1 text-xs font-semibold transition ${
+                  filter === value
+                    ? "bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
+                    : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)]"
+                }`}
+              >
+                {value === "all" ? "All" : `Unread${unreadCount > 0 ? ` (${unreadCount})` : ""}`}
+              </button>
+            ))}
           </div>
           {preview.length === 0 ? (
             <div className="px-5 py-10 text-center">
