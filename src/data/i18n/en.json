@@ -61,9 +61,70 @@
     "verifying": "Verifying...",
     "useDifferentAccount": "Use a different account",
     "mfaCodePrompt": "Enter the 6-digit code from your authenticator app.",
+    "page": {
+      "backToHome": "Back to home",
+      "tabCreate": "Create account",
+      "tabSignIn": "Sign in",
+      "modeAria": "Authentication mode",
+      "kickerSignup": "Join Skillset",
+      "kickerSignin": "Welcome back",
+      "titleSignup": "Create your account.",
+      "titleSignin": "Sign in to Skillset.",
+      "subSignup": "Free to start. Browse programs, save your progress, and open creator tools from the same account.",
+      "subSignin": "Pick up where you left off.",
+      "aside": {
+        "teacher": {
+          "eyebrow": "Skillset for experts",
+          "title": "Teach the world what you know.",
+          "description": "Publish a reviewed program, sell in 30+ currencies, and get paid straight to your bank. No website to build.",
+          "point1Title": "Reviewed marketplace",
+          "point1Desc": "Every program is vetted by Skillset before it goes live.",
+          "point2Title": "Paid in 30+ currencies",
+          "point2Desc": "Global checkout via Stripe, payouts straight to your bank.",
+          "point3Title": "Verifiable certificates",
+          "point3Desc": "Each completion gets a public verification URL."
+        },
+        "learner": {
+          "eyebrow": "Skillset for learners",
+          "title": "Learn from people who do the work.",
+          "description": "Every program here passed review before going live. Pay in your currency, learn at your pace, and earn certificates anyone can verify.",
+          "point1Title": "Reviewed programs",
+          "point1Desc": "Every course is vetted by Skillset before it goes live.",
+          "point2Title": "Pay in your currency",
+          "point2Desc": "Checkout via Stripe in 30+ currencies.",
+          "point3Title": "Verifiable certificates",
+          "point3Desc": "Finish a course and get a public verification URL."
+        }
+      }
+    },
+    "shell": {
+      "learnersLabel": "Learners",
+      "learnersDesc": "courses, events, community, and certificates",
+      "educatorsLabel": "Educators",
+      "educatorsDesc": "build, manage students, and publish instantly",
+      "backToHomepage": "Back to homepage"
+    },
+    "forgot": {
+      "eyebrow": "Password recovery",
+      "title": "Reset your password.",
+      "description": "Enter the email on your account and Skillset will send you a link to set a new password.",
+      "footerPrompt": "Remembered your password?",
+      "footerLink": "Return to sign in",
+      "kicker": "Recover account",
+      "heading": "Send reset link"
+    },
+    "onboardingShell": {
+      "eyebrow": "Account setup",
+      "title": "Set up your Skillset profile.",
+      "description": "Choose your path, create your public identity, and tell Skillset what you want to build or learn first.",
+      "footerPrompt": "Want to look at the catalog first?",
+      "footerLink": "Browse courses",
+      "kicker": "Onboarding",
+      "heading": "Complete your profile"
+    },
     "signup": {
-      "introLearner": "Continues into the learner setup — you can add the other side later from your profile.",
-      "introEducator": "Continues into the educator setup — you can add the other side later from your profile.",
+      "introLearner": "This starts you as a learner. You can add the educator side later from your profile.",
+      "introEducator": "This starts you as an educator. You can add the learner side later from your profile.",
       "fullName": "Full name",
       "fullNamePlaceholder": "Your name",
       "passwordPlaceholder": "At least 8 characters",
@@ -99,5 +160,97 @@
     "wishlist": "Wishlist",
     "signOut": "Sign out",
     "opensNewTab": "(opens in a new tab)"
+  },
+  "home": {
+    "hero": {
+      "eyebrow": "For psychology & wellbeing experts",
+      "title1": "Your knowledge changes lives.",
+      "title2": "Now let it reach thousands.",
+      "sub": "Built for psychologists, therapists, and personal-development coaches. No site to build, no tools to wire up. We run the checkout, the classroom, and your payouts. You teach.",
+      "trust1Title": "Reviewed",
+      "trust1Desc": "Every program on the marketplace goes through Skillset review.",
+      "trust2Title": "Global",
+      "trust2Desc": "Multi-currency checkout in 30+ currencies via Stripe.",
+      "trust3Title": "Verifiable",
+      "trust3Desc": "Every certificate has a public verification URL.",
+      "ctaDashboard": "Go to your dashboard",
+      "ctaBrowse": "Browse courses",
+      "ctaTeach": "Start teaching free",
+      "ctaPaid": "See how you get paid"
+    },
+    "how": {
+      "kicker": "How it works",
+      "title": "Three steps from your method to a published program.",
+      "step1Title": "Set up your studio",
+      "step1Desc": "Open a Teacher Studio account, accept the Teacher Terms, connect Stripe Express. Free, takes minutes.",
+      "step2Title": "Build and submit",
+      "step2Desc": "Build your modules and lessons in Course Builder. Set your price and a free preview lesson. Submit.",
+      "step3Title": "Reach people anywhere",
+      "step3Desc": "Your course goes live the moment you submit. Skillset's review runs alongside, so nothing holds up your first enrollment. Get paid in 30+ currencies, with earnings clearing {days} days after each sale."
+    },
+    "marketplace": {
+      "kicker": "The marketplace",
+      "title": "Reviewed courses, ready to learn.",
+      "sub": "Every course is built by an independent expert and reviewed by Skillset, across psychology, management, health, and professional skills.",
+      "browseAll": "Browse all courses",
+      "viewCourse": "View course"
+    },
+    "capabilities": {
+      "kicker": "Built into Skillset",
+      "title": "Everything your program needs is already built in.",
+      "sub": "No add-ons. No locked features. Every plan ships the same toolset. Your plan only changes the commission you pay per sale.",
+      "c1Title": "Course builder",
+      "c1Desc": "Modular structure, multiple lesson types, scheduled events, a free preview slot.",
+      "c2Title": "Drip-released content",
+      "c2Desc": "Release lessons by progress or on a schedule, and protect your work during the refund window.",
+      "c3Title": "Private program community",
+      "c3Desc": "Every paid course gets a private space for posts, replies, and likes. Members keep talking there after the lesson ends.",
+      "c4Title": "Multi-currency checkout",
+      "c4Desc": "Sell in 30+ currencies. Learners pay in their own currency at checkout.",
+      "c5Title": "Creator wallet, {days}-day clearance",
+      "c5Desc": "Earnings move from pending to available {days} days after each sale. Full ledger, full audit trail.",
+      "c6Title": "Verifiable certificates",
+      "c6Desc": "A public link anyone can check in seconds. Proof your members did the work."
+    },
+    "promise": {
+      "kicker": "The Skillset Promise",
+      "title": "Six commitments. Written down. Public.",
+      "sub": "Skillset puts what it owes creators in a contract anyone can read. Fees locked. Data portable. Cancel anytime. Read it before you sign up.",
+      "cardBadge": "Public record · v1.0",
+      "cardTitle": "The Skillset Promise",
+      "cardSub": "Six commitments to every creator, in writing.",
+      "clause1": "Fee-lock for 24 months",
+      "clause2": "Feature parity across all plans",
+      "clause3": "Data portability, one click",
+      "clause4": "Cancellation in one click",
+      "clause5": "Funds protection by contract",
+      "clause6": "Human support SLA",
+      "ratified": "Ratified · public & in writing",
+      "sealed": "Sealed",
+      "p1Title": "Fee-lock for 24 months",
+      "p1Desc": "Your commission rate at signup is yours for two years. No surprise hikes after you've built a business here.",
+      "p2Title": "Data portability",
+      "p2Desc": "Export every course, student, sale, and post as a ZIP in one click. Whenever. No questions asked.",
+      "p3Title": "One-click cancellation",
+      "p3Desc": "Delete your account in one click. No retention emails, no support runaround, no friction.",
+      "readFull": "Read the full Promise"
+    },
+    "creators": {
+      "eyebrow": "For psychology & wellbeing experts",
+      "title": "Reach more people than your practice ever could.",
+      "ctaStart": "Start teaching",
+      "ctaPromise": "Read the Creator Promise",
+      "bullet1": "Keep {keep}% on Free. Scale to Plus and your commission can drop to 0%.",
+      "bullet2": "Payouts clear {days} days after each sale. No subscription needed to start.",
+      "bullet3": "Drip release and a refund window protect you from abuse.",
+      "bullet4": "Course community, live sessions, and verifiable certificates on every plan."
+    },
+    "nav": {
+      "howItWorks": "How it works",
+      "capabilities": "Capabilities",
+      "forCreators": "For creators",
+      "promise": "The promise",
+      "pricing": "Pricing"
+    }
   }
 }

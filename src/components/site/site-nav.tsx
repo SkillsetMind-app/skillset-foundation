@@ -34,8 +34,8 @@ const navItems = [
 // of navigating away. Other pages don't pass `landingNav` and keep the route
 // links above (zero behavior change off the homepage).
 type LandingNavItem =
-  | { label: string; anchorId: string }
-  | { label: string; href: string };
+  | { labelKey: string; anchorId: string }
+  | { labelKey: string; href: string };
 
 type SiteNavProps = {
   landingNav?: readonly LandingNavItem[];
@@ -57,13 +57,13 @@ function resolveNavItems(
       "anchorId" in item
         ? {
             key: item.anchorId,
-            label: item.label,
+            label: t(item.labelKey),
             target: `#${item.anchorId}`,
             isAnchor: true,
           }
         : {
             key: item.href,
-            label: item.label,
+            label: t(item.labelKey),
             target: item.href,
             isAnchor: false,
           },

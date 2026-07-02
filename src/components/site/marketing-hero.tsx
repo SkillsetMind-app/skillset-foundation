@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { HeroCtas } from "@/components/site/hero-ctas";
 
 // Centered hero figure (Hotmart-style): a wide photo of a woman on a navy
@@ -15,6 +18,7 @@ import { HeroCtas } from "@/components/site/hero-ctas";
 const HERO_PERSON_SRC: string | null = "/brand/hero/hero-woman-7.png";
 
 export function MarketingHero() {
+  const { t } = useTranslation();
   // Keep the hero behind the floating nav while fitting the primary CTA
   // inside the first viewport on standard desktop screens.
   return (
@@ -96,36 +100,25 @@ export function MarketingHero() {
         <div className="relative z-10 flex flex-col gap-10 lg:flex-row lg:items-center">
           <div className="hero-copy-rise mx-auto flex max-w-xl flex-col items-center text-center lg:mx-0 lg:items-start lg:text-left">
             <div className="inline-flex w-fit rounded-[8px] border border-white/20 bg-white/10 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
-              For psychology &amp; wellbeing experts
+              {t("home.hero.eyebrow")}
             </div>
             <div className="mt-5 space-y-4 lg:mt-6">
               {/* One sentence, two lines — short and direct. */}
               <h1 className="display-title text-[clamp(2.3rem,4.6vw,3.6rem)] leading-[1.07] text-white">
-                Your knowledge changes lives.
-                <span className="block">Now let it reach thousands.</span>
+                {t("home.hero.title1")}
+                <span className="block">{t("home.hero.title2")}</span>
               </h1>
               <p className="max-w-[34rem] text-[15px] leading-[1.6] text-white/82 sm:text-base">
-                Built for psychologists, therapists, and personal-development
-                coaches. No site to build, no tools to wire up. We run the
-                checkout, the classroom, and your payouts. You teach.
+                {t("home.hero.sub")}
               </p>
               <HeroCtas />
             </div>
             {/* Keep trust signals below the CTA on tablet/desktop; mobile prioritizes the primary action. */}
             <dl className="mt-7 hidden w-full max-w-2xl gap-4 border-t border-white/20 pt-4 text-left sm:grid sm:grid-cols-3 lg:mt-8">
               {[
-                [
-                  "Reviewed",
-                  "Every program on the marketplace goes through Skillset review.",
-                ],
-                [
-                  "Global",
-                  "Multi-currency checkout in 30+ currencies via Stripe.",
-                ],
-                [
-                  "Verifiable",
-                  "Every certificate has a public verification URL.",
-                ],
+                [t("home.hero.trust1Title"), t("home.hero.trust1Desc")],
+                [t("home.hero.trust2Title"), t("home.hero.trust2Desc")],
+                [t("home.hero.trust3Title"), t("home.hero.trust3Desc")],
               ].map(([value, label]) => (
                 <div key={label}>
                   <dt className="text-sm font-bold text-white">{value}</dt>

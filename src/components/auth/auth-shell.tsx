@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { brand } from "@/data/brand";
+import { getServerTranslation } from "@/lib/i18n/server";
 
 type AuthShellProps = {
   eyebrow: string;
@@ -14,19 +15,21 @@ type AuthShellProps = {
   footer: ReactNode;
 };
 
-// Two short, factual role lines for the showcase footer (no claims/stats).
-const ROLE_LINES: ReadonlyArray<readonly [string, string]> = [
-  ["Learners", "courses, events, community, and certificates"],
-  ["Educators", "build, manage students, and publish instantly"],
-];
-
-export function AuthShell({
+export async function AuthShell({
   eyebrow,
   title,
   description,
   children,
   footer,
 }: AuthShellProps) {
+  const { t } = await getServerTranslation();
+
+  // Two short, factual role lines for the showcase footer (no claims/stats).
+  const roleLines: ReadonlyArray<readonly [string, string]> = [
+    [t("auth.shell.learnersLabel"), t("auth.shell.learnersDesc")],
+    [t("auth.shell.educatorsLabel"), t("auth.shell.educatorsDesc")],
+  ];
+
   return (
     <main className="page-shell min-h-screen">
       <div className="mx-auto grid min-h-screen w-full max-w-7xl gap-8 px-5 py-6 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch lg:gap-10">
@@ -34,14 +37,15 @@ export function AuthShell({
             to the DESIGN V2 .mb-auth-show; hidden under lg so mobile is form-only. */}
         <section className="relative hidden min-h-[600px] overflow-hidden rounded-[16px] lg:flex">
           <Image
-            src="/brand/hero/hero-woman-6.png"
+            src="/brand/hero/auth-portrait.jpg"
             alt=""
             fill
             priority
-            sizes="(min-width: 1024px) 52vw, 0px"
+            // Cover is height-driven in this tall panel; track viewport height.
+            sizes="(min-width: 1024px) 60vw, 0px"
             // ponytail: tuned to keep her face centred in the tall left panel;
             // nudge the x% if the crop ever frames her off-centre.
-            className="object-cover [object-position:66%_center]"
+            className="object-cover [object-position:40%_center]"
           />
           <div
             className="absolute inset-0"
@@ -71,14 +75,14 @@ export function AuthShell({
               </p>
             </div>
             <div className="flex flex-col gap-2.5">
-              {ROLE_LINES.map(([role, rest]) => (
+              {roleLines.map(([role, rest]) => (
                 <span
                   key={role}
                   className="inline-flex items-center gap-2.5 text-[13.5px] font-medium text-white/85"
                 >
                   <Check size={16} className="shrink-0 text-white/85" aria-hidden="true" />
                   <span>
-                    <strong className="font-bold text-white">{role}</strong> — {rest}
+                    <strong className="font-bold text-white">{role}</strong>: {rest}
                   </span>
                 </span>
               ))}
@@ -98,7 +102,7 @@ export function AuthShell({
             href="/"
             className="mt-6 inline-flex text-sm font-semibold text-[var(--color-primary)]"
           >
-            Back to homepage
+            {t("auth.shell.backToHomepage")}
           </Link>
         </section>
       </div>

@@ -61,9 +61,70 @@
     "verifying": "Verificando...",
     "useDifferentAccount": "Usar outra conta",
     "mfaCodePrompt": "Digite o código de 6 dígitos do seu app autenticador.",
+    "page": {
+      "backToHome": "Voltar ao início",
+      "tabCreate": "Criar conta",
+      "tabSignIn": "Entrar",
+      "modeAria": "Modo de autenticação",
+      "kickerSignup": "Entre para a Skillset",
+      "kickerSignin": "Bem-vindo de volta",
+      "titleSignup": "Crie sua conta.",
+      "titleSignin": "Entre na Skillset.",
+      "subSignup": "Grátis pra começar. Explore programas, salve seu progresso e use as ferramentas de criador na mesma conta.",
+      "subSignin": "Continue de onde parou.",
+      "aside": {
+        "teacher": {
+          "eyebrow": "Skillset para especialistas",
+          "title": "Ensine ao mundo o que você sabe.",
+          "description": "Publique um programa revisado, venda em mais de 30 moedas e receba direto na sua conta. Sem precisar montar site.",
+          "point1Title": "Marketplace revisado",
+          "point1Desc": "Todo programa passa pela revisão da Skillset antes de ir ao ar.",
+          "point2Title": "Receba em mais de 30 moedas",
+          "point2Desc": "Checkout global via Stripe, repasse direto pra sua conta.",
+          "point3Title": "Certificados verificáveis",
+          "point3Desc": "Cada conclusão gera um link público de verificação."
+        },
+        "learner": {
+          "eyebrow": "Skillset para alunos",
+          "title": "Aprenda com quem faz de verdade.",
+          "description": "Todo programa aqui passou por revisão antes de ir ao ar. Pague na sua moeda, estude no seu ritmo e ganhe certificados que qualquer um pode verificar.",
+          "point1Title": "Programas revisados",
+          "point1Desc": "Todo curso passa pela revisão da Skillset antes de ir ao ar.",
+          "point2Title": "Pague na sua moeda",
+          "point2Desc": "Checkout via Stripe em mais de 30 moedas.",
+          "point3Title": "Certificados verificáveis",
+          "point3Desc": "Concluiu o curso, ganhou um link público de verificação."
+        }
+      }
+    },
+    "shell": {
+      "learnersLabel": "Alunos",
+      "learnersDesc": "cursos, eventos, comunidade e certificados",
+      "educatorsLabel": "Educadores",
+      "educatorsDesc": "crie, gerencie alunos e publique na hora",
+      "backToHomepage": "Voltar à página inicial"
+    },
+    "forgot": {
+      "eyebrow": "Recuperação de senha",
+      "title": "Redefina sua senha.",
+      "description": "Digite o e-mail da sua conta e a Skillset envia um link para criar uma nova senha.",
+      "footerPrompt": "Lembrou a senha?",
+      "footerLink": "Voltar ao login",
+      "kicker": "Recuperar conta",
+      "heading": "Enviar link de redefinição"
+    },
+    "onboardingShell": {
+      "eyebrow": "Configuração da conta",
+      "title": "Monte seu perfil na Skillset.",
+      "description": "Escolha seu caminho, crie sua identidade pública e diga à Skillset o que você quer construir ou aprender primeiro.",
+      "footerPrompt": "Quer ver o catálogo antes?",
+      "footerLink": "Explorar cursos",
+      "kicker": "Onboarding",
+      "heading": "Complete seu perfil"
+    },
     "signup": {
-      "introLearner": "Segue para a configuração de aluno — você pode adicionar o outro lado depois pelo seu perfil.",
-      "introEducator": "Segue para a configuração de educador — você pode adicionar o outro lado depois pelo seu perfil.",
+      "introLearner": "Você começa como aluno. Dá pra ativar o lado de educador depois, no seu perfil.",
+      "introEducator": "Você começa como educador. Dá pra ativar o lado de aluno depois, no seu perfil.",
       "fullName": "Nome completo",
       "fullNamePlaceholder": "Seu nome",
       "passwordPlaceholder": "No mínimo 8 caracteres",
@@ -99,5 +160,97 @@
     "wishlist": "Lista de desejos",
     "signOut": "Sair",
     "opensNewTab": "(abre em uma nova aba)"
+  },
+  "home": {
+    "hero": {
+      "eyebrow": "Para especialistas em psicologia e bem-estar",
+      "title1": "Seu conhecimento muda vidas.",
+      "title2": "Agora faça ele chegar a milhares.",
+      "sub": "Feito para psicólogos, terapeutas e coaches de desenvolvimento pessoal. Sem site pra montar, sem ferramenta pra configurar. A gente cuida do checkout, da sala de aula e dos seus repasses. Você ensina.",
+      "trust1Title": "Revisado",
+      "trust1Desc": "Todo programa do marketplace passa pela revisão da Skillset.",
+      "trust2Title": "Global",
+      "trust2Desc": "Checkout em mais de 30 moedas via Stripe.",
+      "trust3Title": "Verificável",
+      "trust3Desc": "Todo certificado tem um link público de verificação.",
+      "ctaDashboard": "Ir para o seu painel",
+      "ctaBrowse": "Explorar cursos",
+      "ctaTeach": "Comece a ensinar grátis",
+      "ctaPaid": "Veja como você recebe"
+    },
+    "how": {
+      "kicker": "Como funciona",
+      "title": "Três passos do seu método a um programa publicado.",
+      "step1Title": "Monte seu estúdio",
+      "step1Desc": "Abra uma conta Teacher Studio, aceite os Termos de Professor e conecte o Stripe Express. Grátis, leva minutos.",
+      "step2Title": "Crie e envie",
+      "step2Desc": "Monte seus módulos e aulas no Course Builder. Defina o preço e uma aula grátis de amostra. Envie.",
+      "step3Title": "Alcance gente em qualquer lugar",
+      "step3Desc": "Seu curso entra no ar assim que você envia. A revisão da Skillset roda em paralelo, então nada segura sua primeira matrícula. Receba em mais de 30 moedas, com o valor liberado {days} dias após cada venda."
+    },
+    "marketplace": {
+      "kicker": "O marketplace",
+      "title": "Cursos revisados, prontos pra estudar.",
+      "sub": "Cada curso é criado por um especialista independente e revisado pela Skillset, em psicologia, gestão, saúde e habilidades profissionais.",
+      "browseAll": "Ver todos os cursos",
+      "viewCourse": "Ver curso"
+    },
+    "capabilities": {
+      "kicker": "Já vem na Skillset",
+      "title": "Tudo que seu programa precisa já está incluído.",
+      "sub": "Sem add-ons. Sem recurso trancado. Todo plano vem com as mesmas ferramentas. O plano só muda a comissão que você paga por venda.",
+      "c1Title": "Construtor de cursos",
+      "c1Desc": "Estrutura modular, vários tipos de aula, eventos agendados e uma aula grátis de amostra.",
+      "c2Title": "Conteúdo liberado aos poucos",
+      "c2Desc": "Libere aulas por progresso ou por data, e proteja seu trabalho durante a janela de reembolso.",
+      "c3Title": "Comunidade privada do programa",
+      "c3Desc": "Todo curso pago ganha um espaço privado com posts, respostas e curtidas. A turma continua conversando depois da aula.",
+      "c4Title": "Checkout multimoeda",
+      "c4Desc": "Venda em mais de 30 moedas. O aluno paga na moeda dele no checkout.",
+      "c5Title": "Carteira do criador, liberação em {days} dias",
+      "c5Desc": "O valor sai de pendente pra disponível {days} dias após cada venda. Extrato completo, trilha de auditoria completa.",
+      "c6Title": "Certificados verificáveis",
+      "c6Desc": "Um link público que qualquer um confere em segundos. Prova de que seus alunos fizeram o trabalho."
+    },
+    "promise": {
+      "kicker": "A Promessa Skillset",
+      "title": "Seis compromissos. Por escrito. Públicos.",
+      "sub": "A Skillset coloca o que deve aos criadores num contrato que qualquer um pode ler. Taxas travadas. Dados portáveis. Cancele quando quiser. Leia antes de se cadastrar.",
+      "cardBadge": "Registro público · v1.0",
+      "cardTitle": "A Promessa Skillset",
+      "cardSub": "Seis compromissos com cada criador, por escrito.",
+      "clause1": "Taxa travada por 24 meses",
+      "clause2": "Mesmos recursos em todos os planos",
+      "clause3": "Portabilidade de dados em um clique",
+      "clause4": "Cancelamento em um clique",
+      "clause5": "Proteção de fundos por contrato",
+      "clause6": "SLA de suporte humano",
+      "ratified": "Ratificado · público e por escrito",
+      "sealed": "Selado",
+      "p1Title": "Taxa travada por 24 meses",
+      "p1Desc": "Sua comissão de cadastro vale por dois anos. Sem aumento surpresa depois que você construiu um negócio aqui.",
+      "p2Title": "Portabilidade de dados",
+      "p2Desc": "Exporte todos os cursos, alunos, vendas e posts num ZIP com um clique. Quando quiser. Sem interrogatório.",
+      "p3Title": "Cancelamento em um clique",
+      "p3Desc": "Apague sua conta com um clique. Sem e-mail de retenção, sem labirinto de suporte, sem atrito.",
+      "readFull": "Leia a Promessa completa"
+    },
+    "creators": {
+      "eyebrow": "Para especialistas em psicologia e bem-estar",
+      "title": "Alcance mais gente do que seu consultório jamais alcançaria.",
+      "ctaStart": "Comece a ensinar",
+      "ctaPromise": "Leia a Promessa ao Criador",
+      "bullet1": "Fique com {keep}% no plano Free. Suba pro Plus e sua comissão pode cair a 0%.",
+      "bullet2": "Repasses liberados {days} dias após cada venda. Não precisa de assinatura pra começar.",
+      "bullet3": "Liberação gradual e janela de reembolso te protegem de abuso.",
+      "bullet4": "Comunidade do curso, sessões ao vivo e certificados verificáveis em todos os planos."
+    },
+    "nav": {
+      "howItWorks": "Como funciona",
+      "capabilities": "Recursos",
+      "forCreators": "Para criadores",
+      "promise": "A promessa",
+      "pricing": "Preços"
+    }
   }
 }

@@ -2,28 +2,31 @@ import Link from "next/link";
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
+import { getServerTranslation } from "@/lib/i18n/server";
 
-export default function ForgotPasswordPage() {
+export default async function ForgotPasswordPage() {
+  const { t } = await getServerTranslation();
+
   return (
     <AuthShell
-      eyebrow="Password recovery"
-      title="Reset your password."
-      description="Enter the email on your account and Skillset will send you a link to set a new password."
+      eyebrow={t("auth.forgot.eyebrow")}
+      title={t("auth.forgot.title")}
+      description={t("auth.forgot.description")}
       footer={
         <>
-          Remembered your password?{" "}
+          {t("auth.forgot.footerPrompt")}{" "}
           <Link href="/auth?mode=signin" className="font-semibold text-[var(--color-primary)]">
-            Return to sign in
+            {t("auth.forgot.footerLink")}
           </Link>
         </>
       }
     >
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          Recover account
+          {t("auth.forgot.kicker")}
         </p>
         <h2 className="display-title mt-3 text-4xl text-[var(--color-primary)]">
-          Send reset link
+          {t("auth.forgot.heading")}
         </h2>
         <ResetPasswordForm />
       </div>

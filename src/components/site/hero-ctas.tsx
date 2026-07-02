@@ -4,6 +4,7 @@ import { ArrowRight, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { getPrimaryWorkspaceHref } from "@/lib/auth/routing";
 
 // Client island inside the (server-rendered) marketing hero. Guests and
@@ -12,6 +13,7 @@ import { getPrimaryWorkspaceHref } from "@/lib/auth/routing";
 // page.
 export function HeroCtas() {
   const { status, user } = useAuth();
+  const { t } = useTranslation();
 
   if (status === "authenticated" && user) {
     return (
@@ -21,10 +23,10 @@ export function HeroCtas() {
           className="button-solid-light"
         >
           <LayoutDashboard aria-hidden="true" size={16} strokeWidth={1.9} />
-          Go to your dashboard
+          {t("home.hero.ctaDashboard")}
         </Link>
         <Link href="/courses" className="button-outline-light">
-          Browse courses
+          {t("home.hero.ctaBrowse")}
         </Link>
       </div>
     );
@@ -36,7 +38,7 @@ export function HeroCtas() {
         href="/auth?mode=signup&path=teacher"
         className="button-solid-light group"
       >
-        Start teaching free
+        {t("home.hero.ctaTeach")}
         <ArrowRight
           aria-hidden="true"
           size={16}
@@ -45,7 +47,7 @@ export function HeroCtas() {
         />
       </Link>
       <Link href="/pricing" className="button-outline-light">
-        See how you get paid
+        {t("home.hero.ctaPaid")}
       </Link>
     </div>
   );

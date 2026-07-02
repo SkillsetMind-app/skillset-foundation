@@ -5,28 +5,31 @@ import { Suspense } from "react";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { OnboardingChoice } from "@/components/auth/onboarding-choice";
 import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
+import { getServerTranslation } from "@/lib/i18n/server";
 
-export default function OnboardingPage() {
+export default async function OnboardingPage() {
+  const { t } = await getServerTranslation();
+
   return (
     <AuthShell
-      eyebrow="Account setup"
-      title="Set up your Skillset profile."
-      description="Choose your workspace path, create a public identity, and tell Skillset what you want to build or learn first."
+      eyebrow={t("auth.onboardingShell.eyebrow")}
+      title={t("auth.onboardingShell.title")}
+      description={t("auth.onboardingShell.description")}
       footer={
         <>
-          Need to review the public catalog first?{" "}
+          {t("auth.onboardingShell.footerPrompt")}{" "}
           <Link href="/courses" className="font-semibold text-[var(--color-primary)]">
-            Browse courses
+            {t("auth.onboardingShell.footerLink")}
           </Link>
         </>
       }
     >
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          Onboarding
+          {t("auth.onboardingShell.kicker")}
         </p>
         <h2 className="display-title mt-3 text-4xl text-[var(--color-primary)]">
-          Complete your profile
+          {t("auth.onboardingShell.heading")}
         </h2>
         <Suspense
           fallback={

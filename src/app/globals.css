@@ -1899,15 +1899,23 @@ p {
 
 @media (min-width: 1024px) {
   .auth-aside {
-    position: relative;
+    /* Pinned to the viewport: the panel (and the portrait inside it) never
+       grows past one screen even when the form column is taller. This is also
+       what keeps the photo from being blown up — the taller the panel, the
+       more the browser has to upscale the image. */
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    align-self: flex-start;
     overflow: hidden;
     flex: 0 0 44%;
     max-width: 600px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: 40px;
-    padding: 44px 48px;
+    gap: 32px;
+    padding: 40px 48px;
     background:
       radial-gradient(circle at 16% 18%, rgba(255, 255, 255, 0.1), transparent 42%),
       radial-gradient(circle at 88% 86%, rgba(178, 34, 52, 0.32), transparent 46%),
@@ -1965,9 +1973,10 @@ p {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  /* Sit high (founder: "precisa subir") with generous bottom clearance so the
-     final "Already have an account?" link always clears the fold. */
-  padding: clamp(12px, 2.5vh, 28px) 24px 48px;
+  /* Sit high (founder: "precisa subir") with bottom clearance so the final
+     "Already have an account?" link clears the fold. Tightened (was 2.5vh/48px)
+     so the signup form fits common laptop viewports without a tall page. */
+  padding: clamp(8px, 1.5vh, 20px) 24px 32px;
 }
 
 .auth-card {
@@ -1977,7 +1986,7 @@ p {
      centering, so the form sits high and reads without scrolling on common
      laptop heights. */
   margin: 0 auto;
-  padding: 24px 30px;
+  padding: 20px 28px;
   border: 1px solid var(--color-line-strong);
   border-radius: 20px;
   background: #ffffff;

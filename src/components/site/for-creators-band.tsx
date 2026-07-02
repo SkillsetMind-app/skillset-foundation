@@ -1,19 +1,27 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { RevealSection } from "@/components/shared/reveal-section";
 import { planById, payoutClearDays } from "@/data/plans";
 
 const freePlan = planById("free");
 
-const trustBullets = [
-  `Keep ${100 - freePlan.commissionPercent}% on Free. Scale to Plus and your commission can drop to 0%.`,
-  `Payouts clear ${payoutClearDays} days after each sale. No subscription needed to start.`,
-  "Drip release and a refund window protect you from abuse.",
-  "Course community, live sessions, and verifiable certificates on every plan.",
-];
-
 export function ForCreatorsBand() {
+  const { t } = useTranslation();
+
+  const trustBullets = [
+    t("home.creators.bullet1").replace(
+      "{keep}",
+      String(100 - freePlan.commissionPercent),
+    ),
+    t("home.creators.bullet2").replace("{days}", String(payoutClearDays)),
+    t("home.creators.bullet3"),
+    t("home.creators.bullet4"),
+  ];
+
   return (
     <section className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
       <RevealSection>
@@ -22,17 +30,17 @@ export function ForCreatorsBand() {
           <div className="relative z-10 grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/75">
-                For psychology &amp; wellbeing experts
+                {t("home.creators.eyebrow")}
               </p>
               <h2 className="display-title mt-3 text-4xl leading-tight text-white sm:text-5xl">
-                Reach more people than your practice ever could.
+                {t("home.creators.title")}
               </h2>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   href="/auth?mode=signup&path=teacher"
                   className="button-solid-light group inline-flex items-center gap-2 px-4 py-2.5 text-sm"
                 >
-                  Start teaching
+                  {t("home.creators.ctaStart")}
                   <ArrowRight
                     aria-hidden="true"
                     size={16}
@@ -44,7 +52,7 @@ export function ForCreatorsBand() {
                   href="/promise"
                   className="inline-flex items-center px-2 py-3 text-sm font-semibold text-white/80 underline-offset-4 transition hover:text-white hover:underline"
                 >
-                  Read the Creator Promise
+                  {t("home.creators.ctaPromise")}
                 </Link>
               </div>
             </div>

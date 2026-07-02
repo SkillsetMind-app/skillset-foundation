@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   Lock,
@@ -8,6 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { RevealSection } from "@/components/shared/reveal-section";
 
 type Promise = {
@@ -17,39 +20,41 @@ type Promise = {
   Icon: LucideIcon;
 };
 
-const promises: ReadonlyArray<Promise> = [
-  {
-    eyebrow: "01",
-    title: "Fee-lock for 24 months",
-    description: "Your commission rate at signup is yours for two years. No surprise hikes after you've built a business here.",
-    Icon: Lock,
-  },
-  {
-    eyebrow: "03",
-    title: "Data portability",
-    description: "Export every course, student, sale, and post as a ZIP in one click. Whenever. No questions asked.",
-    Icon: Download,
-  },
-  {
-    eyebrow: "04",
-    title: "One-click cancellation",
-    description: "Delete your account in one click. No retention emails, no support runaround, no friction.",
-    Icon: LogOut,
-  },
-];
-
-// All six commitments, in order — listed as the clauses of the public charter.
-// Mirrors the canonical list on /promise so the visual stays truthful.
-const charter: ReadonlyArray<{ n: string; label: string }> = [
-  { n: "01", label: "Fee-lock for 24 months" },
-  { n: "02", label: "Feature parity across all plans" },
-  { n: "03", label: "Data portability, one click" },
-  { n: "04", label: "Cancellation in one click" },
-  { n: "05", label: "Funds protection by contract" },
-  { n: "06", label: "Human support SLA" },
-];
-
 export function PromisePreviewBand() {
+  const { t } = useTranslation();
+
+  const promises: ReadonlyArray<Promise> = [
+    {
+      eyebrow: "01",
+      title: t("home.promise.p1Title"),
+      description: t("home.promise.p1Desc"),
+      Icon: Lock,
+    },
+    {
+      eyebrow: "03",
+      title: t("home.promise.p2Title"),
+      description: t("home.promise.p2Desc"),
+      Icon: Download,
+    },
+    {
+      eyebrow: "04",
+      title: t("home.promise.p3Title"),
+      description: t("home.promise.p3Desc"),
+      Icon: LogOut,
+    },
+  ];
+
+  // All six commitments, in order — listed as the clauses of the public charter.
+  // Mirrors the canonical list on /promise so the visual stays truthful.
+  const charter: ReadonlyArray<{ n: string; label: string }> = [
+    { n: "01", label: t("home.promise.clause1") },
+    { n: "02", label: t("home.promise.clause2") },
+    { n: "03", label: t("home.promise.clause3") },
+    { n: "04", label: t("home.promise.clause4") },
+    { n: "05", label: t("home.promise.clause5") },
+    { n: "06", label: t("home.promise.clause6") },
+  ];
+
   return (
     <section className="bg-[var(--color-surface-soft)] px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
       <div className="mx-auto w-full max-w-7xl">
@@ -57,15 +62,13 @@ export function PromisePreviewBand() {
           <div className="grid items-center gap-8 lg:grid-cols-[1fr_0.8fr]">
             <div className="max-w-2xl">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-                The Skillset Promise
+                {t("home.promise.kicker")}
               </p>
               <h2 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] sm:text-5xl">
-                Six commitments. Written down. Public.
+                {t("home.promise.title")}
               </h2>
               <p className="mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
-                Skillset puts what it owes creators in a contract anyone can
-                read. Fees locked. Data portable. Cancel anytime. Read it before
-                you sign up.
+                {t("home.promise.sub")}
               </p>
             </div>
             {/* The promise rendered as what it actually is: a public, written
@@ -96,15 +99,15 @@ export function PromisePreviewBand() {
                     <ScrollText size={20} strokeWidth={1.7} />
                   </span>
                   <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--color-ink-muted)]">
-                    Public record &middot; v1.0
+                    {t("home.promise.cardBadge")}
                   </span>
                 </div>
 
                 <h3 className="display-title mt-5 text-2xl leading-tight text-[var(--color-primary)]">
-                  The Skillset Promise
+                  {t("home.promise.cardTitle")}
                 </h3>
                 <p className="mt-1 text-[13px] leading-6 text-[var(--color-ink-soft)]">
-                  Six commitments to every creator &mdash; in writing.
+                  {t("home.promise.cardSub")}
                 </p>
 
                 <div className="my-5 h-px bg-[var(--color-line)]" />
@@ -127,7 +130,7 @@ export function PromisePreviewBand() {
                 <div className="flex items-end justify-between">
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--color-ink-muted)]">
-                      Ratified &middot; public &amp; in writing
+                      {t("home.promise.ratified")}
                     </p>
                     <p className="display-title mt-1 text-xl italic leading-none text-[var(--color-primary)]">
                       Skillset
@@ -140,7 +143,7 @@ export function PromisePreviewBand() {
                       className="text-[var(--color-accent-fg)]"
                       aria-hidden="true"
                     />
-                    Sealed
+                    {t("home.promise.sealed")}
                   </span>
                 </div>
               </div>
@@ -179,7 +182,7 @@ export function PromisePreviewBand() {
 
         <RevealSection delay={260}>
           <Link href="/promise" className="button-outline mt-10 px-4 py-2.5 text-sm">
-            Read the full Promise
+            {t("home.promise.readFull")}
           </Link>
         </RevealSection>
       </div>

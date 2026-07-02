@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Award,
   Calendar,
@@ -8,6 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { RevealSection } from "@/components/shared/reveal-section";
 import { payoutClearDays } from "@/data/plans";
 
@@ -17,57 +20,34 @@ type Capability = {
   Icon: LucideIcon;
 };
 
-const capabilities: ReadonlyArray<Capability> = [
-  {
-    title: "Course builder",
-    description:
-      "Modular structure, multiple lesson types, scheduled events, a free preview slot.",
-    Icon: LayoutGrid,
-  },
-  {
-    title: "Drip-released content",
-    description:
-      "Release lessons by progress or on a schedule, and protect your work during the refund window.",
-    Icon: Calendar,
-  },
-  {
-    title: "Private program community",
-    description:
-      "Every paid course gets a private space for posts, replies, and likes. Members keep talking there after the lesson ends.",
-    Icon: MessagesSquare,
-  },
-  {
-    title: "Multi-currency checkout",
-    description:
-      "Sell in 30+ currencies. Learners pay in their own currency at checkout.",
-    Icon: Globe,
-  },
-  {
-    title: `Creator wallet, ${payoutClearDays}-day clearance`,
-    description: `Earnings move from pending to available ${payoutClearDays} days after each sale. Full ledger, full audit trail.`,
-    Icon: Wallet,
-  },
-  {
-    title: "Verifiable certificates",
-    description:
-      "A public link anyone can check in seconds. Proof your members did the work.",
-    Icon: Award,
-  },
-];
-
 export function CapabilitiesGrid() {
+  const { t } = useTranslation();
+  const days = String(payoutClearDays);
+
+  const capabilities: ReadonlyArray<Capability> = [
+    { title: t("home.capabilities.c1Title"), description: t("home.capabilities.c1Desc"), Icon: LayoutGrid },
+    { title: t("home.capabilities.c2Title"), description: t("home.capabilities.c2Desc"), Icon: Calendar },
+    { title: t("home.capabilities.c3Title"), description: t("home.capabilities.c3Desc"), Icon: MessagesSquare },
+    { title: t("home.capabilities.c4Title"), description: t("home.capabilities.c4Desc"), Icon: Globe },
+    {
+      title: t("home.capabilities.c5Title").replace("{days}", days),
+      description: t("home.capabilities.c5Desc").replace("{days}", days),
+      Icon: Wallet,
+    },
+    { title: t("home.capabilities.c6Title"), description: t("home.capabilities.c6Desc"), Icon: Award },
+  ];
+
   return (
     <section className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
       <RevealSection className="max-w-2xl">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          Built into Skillset
+          {t("home.capabilities.kicker")}
         </p>
         <h2 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] sm:text-5xl">
-          Everything your program needs is already built in.
+          {t("home.capabilities.title")}
         </h2>
         <p className="mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          No add-ons. No locked features. Every plan ships the same toolset.
-          Your plan only changes the commission you pay per sale.
+          {t("home.capabilities.sub")}
         </p>
       </RevealSection>
       <div className="mt-10 grid gap-5 sm:mt-12 md:grid-cols-2 xl:grid-cols-3">
