@@ -5,6 +5,7 @@ import {
   Bell,
   GraduationCap,
   MessageCircle,
+  Radio,
   Reply,
   Star,
 } from "lucide-react";
@@ -17,6 +18,7 @@ const typeIcons: Record<NotificationType, typeof Bell> = {
   enrollment: GraduationCap,
   course_review: Star,
   certificate: Award,
+  live_event: Radio,
 };
 
 // Unread chip color per kind. Read rows keep the muted grey chip (below), so
@@ -32,13 +34,19 @@ const unreadChipByType: Record<NotificationType, string> = {
   enrollment: "bg-[var(--color-success-soft)] text-[var(--color-success-fg)]",
   certificate: "bg-[var(--color-success-soft)] text-[var(--color-success-fg)]",
   course_review: "bg-[var(--color-warning-soft)] text-[var(--color-warning)]",
+  live_event: "bg-[rgba(178,34,52,0.1)] text-[var(--color-accent-fg)]",
 };
 
 // Relative time from a Firestore server timestamp ({ seconds }). Coarse on
 // purpose — the inbox is glanceable, not an audit log.
 export function formatNotificationTime(createdAt: unknown): string {
-  const seconds = (createdAt as { seconds?: number } | undefined)?.seconds;
-  if (!seconds) {
+  // Supabase rows carry created_at as an ISO string; legacy Firestore-shaped
+  // values carry { seconds }. Accept both so timestamps render either way.
+  const seconds =
+    typeof createdAt === "string"
+      ? Date.parse(createdAt) / 1000
+      : (createdAt as { seconds?: number } | undefined)?.seconds;
+  if (!seconds || Number.isNaN(seconds)) {
     return "";
   }
   const deltaMs = Date.now() - seconds * 1000;

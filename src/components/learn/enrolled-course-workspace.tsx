@@ -23,6 +23,12 @@ import { CourseSubscriptionCard } from "@/components/learn/course-subscription-c
 import { WatermarkedVideoPlayer } from "@/components/learn/watermarked-video-player";
 import type { CourseAsset } from "@/domain/course-asset";
 import { courseAssetKindLabels, formatCourseAssetSize } from "@/domain/course-asset";
+import type { CourseEvent } from "@/domain/course-event";
+import {
+  courseEventTypeLabels,
+  formatEventDateTime,
+  isValidExternalEventUrl,
+} from "@/domain/course-event";
 import {
   getLessonUnlockState,
   type LessonUnlockState,
@@ -40,6 +46,7 @@ import {
   getNextCourseLesson,
 } from "@/domain/lesson-progress";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
+import { subscribeToCourseEvents } from "@/lib/data/course-events";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import {
   recordLessonProgress,
@@ -852,6 +859,8 @@ export function EnrolledCourseWorkspace({
         />
       ) : null}
 
+      {!previewMode ? <CourseEventsAgenda courseId={course.id} /> : null}
+
       {course.communityEnabled && !previewMode ? (
         <CourseCommunitySection course={course} />
       ) : null}
@@ -862,6 +871,102 @@ export function EnrolledCourseWorkspace({
         previewMode={previewMode}
       />
     </div>
+  );
+}
+
+// Upcoming live sessions for THIS course, right where the student studies.
+// Events are keyed by course.id in course_events.course_slug (the convention
+// teacher-event-studio writes). Renders nothing when the course has no
+// scheduled events, so lesson-only courses stay uncluttered.
+function CourseEventsAgenda({ courseId }: { courseId: string }) {
+  const [events, setEvents] = useState<CourseEvent[]>([]);
+  // "Now" is sampled when the event list loads (render must stay pure), so
+  // live-now state refreshes on every realtime change to the course's events.
+  const [now, setNow] = useState(0);
+
+  useEffect(() => {
+    return subscribeToCourseEvents(
+      courseId,
+      (nextEvents) => {
+        setEvents(nextEvents);
+        setNow(Date.now());
+      },
+      // Agenda is additive: on error just leave it empty instead of surfacing
+      // a banner inside the classroom.
+      () => setEvents([]),
+    );
+  }, [courseId]);
+
+  // Keep sessions visible for 2h after start so a student can still join a
+  // live that already began.
+  const upcoming = events.filter(
+    (event) => Date.parse(event.startsAt) > now - 2 * 60 * 60 * 1000,
+  );
+
+  if (upcoming.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="member-resource-panel">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
+          Live sessions
+        </p>
+        <h4 className="mt-2 text-lg font-semibold text-[var(--color-primary)]">
+          Upcoming sessions for this course
+        </h4>
+      </div>
+      <ul className="mt-4 grid gap-3">
+        {upcoming.map((event) => {
+          const isLiveNow = Date.parse(event.startsAt) <= now;
+          const joinUrl = isValidExternalEventUrl(event.externalUrl)
+            ? event.externalUrl
+            : null;
+
+          return (
+            <li
+              key={event.id}
+              className="flex flex-wrap items-center justify-between gap-4 rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] px-5 py-4"
+            >
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="member-meta-chip">
+                    {courseEventTypeLabels[event.type]}
+                  </span>
+                  {isLiveNow ? (
+                    <span className="rounded-full bg-[rgba(178,34,52,0.1)] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-accent-fg)]">
+                      Happening now
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-2 text-sm font-semibold text-[var(--color-primary)]">
+                  {event.title}
+                </p>
+                <p className="mt-1 text-xs font-semibold text-[var(--color-ink-soft)]">
+                  {formatEventDateTime(event.startsAt)}
+                </p>
+              </div>
+              {joinUrl ? (
+                <a
+                  href={joinUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${isLiveNow ? "button-accent" : "button-outline"} inline-flex items-center gap-2 px-5 py-2.5 text-sm`}
+                >
+                  <PlayCircle size={16} aria-hidden />
+                  {isLiveNow ? "Join now" : "Open session link"}
+                </a>
+              ) : (
+                <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
+                  Link available soon
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

@@ -3,7 +3,8 @@ export type NotificationType =
   | "community_reply"
   | "enrollment"
   | "course_review"
-  | "certificate";
+  | "certificate"
+  | "live_event";
 
 // Named `AppNotification` (not `Notification`) on purpose: `Notification` is a
 // DOM global, and shadowing it inside client components is a footgun. Docs live
