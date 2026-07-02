@@ -99,6 +99,7 @@ export async function updateTeacherCourseBuilder(
       input.membersDescription ?? null,
       MAX_MEMBERS_DESCRIPTION_LENGTH,
     ),
+    communityEnabled: input.communityEnabled === true,
   };
 
   const { error } = await supabase.rpc("update_teacher_course_builder", {

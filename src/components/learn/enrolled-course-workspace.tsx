@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { CourseCommunityFeed } from "@/components/learn/course-community-feed";
 import { CourseReviewPanel } from "@/components/learn/course-review-panel";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { CourseSubscriptionCard } from "@/components/learn/course-subscription-card";
@@ -28,7 +29,12 @@ import {
 } from "@/domain/drip-policy";
 import type { Enrollment } from "@/domain/enrollment";
 import { getSafeExternalUrl } from "@/domain/external-url";
-import type { Course, Lesson, LessonType } from "@/domain/learning";
+import type {
+  CommunitySpace,
+  Course,
+  Lesson,
+  LessonType,
+} from "@/domain/learning";
 import {
   getCourseProgressPercent,
   getNextCourseLesson,
@@ -846,12 +852,48 @@ export function EnrolledCourseWorkspace({
         />
       ) : null}
 
+      {course.communityEnabled && !previewMode ? (
+        <CourseCommunitySection course={course} />
+      ) : null}
+
       <CourseReviewPanel
         courseId={course.id}
         progressPercent={progressPercent}
         previewMode={previewMode}
       />
     </div>
+  );
+}
+
+// Teacher-opt-in community, rendered inside the members area (product decision
+// 2026-07-02: community lives here, not on a separate hub page). The space is
+// keyed by course.id — the same key CreatorCourseCommunity uses — so both
+// mounts read and write the same community_posts rows.
+function CourseCommunitySection({ course }: { course: Course }) {
+  const space: CommunitySpace = {
+    id: `creator-${course.id}`,
+    courseSlug: course.id,
+    name: `${course.title} community`,
+    description:
+      "A course-linked space for announcements, questions, resources, and cohort discussion.",
+    visibility: "enrolled_only",
+    categories: ["announcement", "discussion", "question", "resource"],
+  };
+
+  return (
+    <section className="member-resource-panel">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
+          Course community
+        </p>
+        <h4 className="mt-2 text-lg font-semibold text-[var(--color-primary)]">
+          Connect with other students in this course
+        </h4>
+      </div>
+      <div className="mt-4">
+        <CourseCommunityFeed space={space} />
+      </div>
+    </section>
   );
 }
 

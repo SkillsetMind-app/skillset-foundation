@@ -150,6 +150,15 @@ export function CreatorCourseCommunity() {
     );
   }
 
+  if (!course.communityEnabled) {
+    return (
+      <CreatorCommunityState
+        title="Community is not open for this course."
+        detail="The instructor has not turned on the community space for this course yet. You still have full access to every lesson and resource."
+      />
+    );
+  }
+
   const space: CommunitySpace = {
     id: `creator-${course.id}`,
     courseSlug: course.id,

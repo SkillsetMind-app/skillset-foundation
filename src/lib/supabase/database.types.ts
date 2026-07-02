@@ -692,6 +692,7 @@ export type Database = {
         Row: {
           categories: string[] | null
           category: string
+          community_enabled: boolean
           cover_image_url: string | null
           created_at: string | null
           currency: string | null
@@ -734,6 +735,7 @@ export type Database = {
         Insert: {
           categories?: string[] | null
           category: string
+          community_enabled?: boolean
           cover_image_url?: string | null
           created_at?: string | null
           currency?: string | null
@@ -776,6 +778,7 @@ export type Database = {
         Update: {
           categories?: string[] | null
           category?: string
+          community_enabled?: boolean
           cover_image_url?: string | null
           created_at?: string | null
           currency?: string | null

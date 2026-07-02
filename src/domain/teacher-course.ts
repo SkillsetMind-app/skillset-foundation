@@ -107,6 +107,9 @@ export type TeacherCourse = {
   membersTitle?: string | null;
   membersSubtitle?: string | null;
   membersDescription?: string | null;
+  // Teacher opt-in: the course community (feed inside the members area) only
+  // exists for students when this is true. Defaults off for new courses.
+  communityEnabled?: boolean;
   reviewNote?: string | null;
   ratingAverage?: number;
   ratingCount?: number;
@@ -157,6 +160,7 @@ export type UpdateTeacherCourseBuilderInput = {
   membersTitle?: string | null;
   membersSubtitle?: string | null;
   membersDescription?: string | null;
+  communityEnabled?: boolean;
 };
 
 export function countCourseLessons(modules: TeacherCourseModule[]): number {

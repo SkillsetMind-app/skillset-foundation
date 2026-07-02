@@ -459,6 +459,7 @@ type BuilderDraftFields = {
   membersTitle: string;
   membersSubtitle: string;
   membersDescription: string;
+  communityEnabled: boolean;
 };
 
 // Single normalization pipeline used by manual save, autosave, and the
@@ -504,6 +505,7 @@ function buildBuilderDraftPayload(input: BuilderDraftFields) {
     membersTitle: input.membersTitle.trim() || null,
     membersSubtitle: input.membersSubtitle.trim() || null,
     membersDescription: input.membersDescription.trim() || null,
+    communityEnabled: input.communityEnabled,
   };
 }
 
@@ -540,6 +542,7 @@ function builderDraftSignatureFromCourse(course: TeacherCourse): string {
       membersTitle: course.membersTitle ?? "",
       membersSubtitle: course.membersSubtitle ?? "",
       membersDescription: course.membersDescription ?? "",
+      communityEnabled: course.communityEnabled ?? false,
     }),
   );
 }
@@ -573,6 +576,7 @@ export function CourseBuilderStudio() {
   const [membersTitle, setMembersTitle] = useState("");
   const [membersSubtitle, setMembersSubtitle] = useState("");
   const [membersDescription, setMembersDescription] = useState("");
+  const [communityEnabled, setCommunityEnabled] = useState(false);
   const [moduleTitle, setModuleTitle] = useState("");
   const [moduleSummary, setModuleSummary] = useState("");
   const [lessonModuleId, setLessonModuleId] = useState("");
@@ -653,6 +657,7 @@ export function CourseBuilderStudio() {
         setMembersTitle(nextCourse.membersTitle ?? "");
         setMembersSubtitle(nextCourse.membersSubtitle ?? "");
         setMembersDescription(nextCourse.membersDescription ?? "");
+        setCommunityEnabled(nextCourse.communityEnabled ?? false);
         setLessonModuleId(nextCourse.modules?.[0]?.id ?? "");
         setError("");
         // Baseline mirrors exactly what the state setters above produce, so a
@@ -849,6 +854,7 @@ export function CourseBuilderStudio() {
         membersTitle,
         membersSubtitle,
         membersDescription,
+        communityEnabled,
       }),
     [
       title,
@@ -871,6 +877,7 @@ export function CourseBuilderStudio() {
       membersTitle,
       membersSubtitle,
       membersDescription,
+      communityEnabled,
     ],
   );
   const builderDraftSignature = useMemo(
@@ -1789,6 +1796,51 @@ export function CourseBuilderStudio() {
               setSuccess("");
             }}
           />
+        ) : null}
+
+        {activeTab === "members" && course ? (
+          <div className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="grid gap-1">
+                <p className="text-sm font-semibold text-[var(--color-ink)]">
+                  Course community
+                </p>
+                <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
+                  Adds a private discussion space inside the members area where
+                  enrolled students can post, comment, and connect. You can turn
+                  this on or off at any time, even after publishing.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={communityEnabled}
+                aria-label="Enable course community"
+                disabled={!isEditable}
+                onClick={() => {
+                  setCommunityEnabled((previous) => !previous);
+                  setSuccess("");
+                }}
+                className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                  communityEnabled
+                    ? "bg-[var(--color-primary)]"
+                    : "bg-[var(--color-line)]"
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${
+                    communityEnabled ? "left-6" : "left-1"
+                  }`}
+                />
+              </button>
+            </div>
+            <p className="mt-3 text-xs font-semibold text-[var(--color-ink-soft)]">
+              {communityEnabled
+                ? "Community is on. Students see a Community section in this course."
+                : "Community is off. Students only see lessons and resources."}
+            </p>
+          </div>
         ) : null}
 
         {activeTab === "pricing" ? (
