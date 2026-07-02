@@ -1,208 +1,321 @@
 import Link from "next/link";
 
-import { SiteNav } from "@/components/site/site-nav";
+import { Define, LegalArticle, LegalSection } from "@/components/site/legal-article";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 export const metadata = buildPageMetadata({
   title: "Privacy Policy",
-  description:
-    "How Skillset collects, uses, and protects your data.",
+  description: "How Skillset collects, uses, and protects your data.",
   path: "/legal/privacy",
 });
 
-const EFFECTIVE_DATE = "June 1, 2026";
+const EFFECTIVE_DATE = "July 2, 2026";
 const SUPPORT_EMAIL = "support@skillset.app";
+
+function SupportLink() {
+  return (
+    <a
+      className="font-semibold text-[var(--color-accent-fg)]"
+      href={`mailto:${SUPPORT_EMAIL}`}
+    >
+      {SUPPORT_EMAIL}
+    </a>
+  );
+}
 
 export default function PrivacyPage() {
   return (
-    <div className="page-shell">
-      <SiteNav />
-      <main className="mx-auto w-full max-w-5xl px-6 py-12 sm:px-8">
-        <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-8 shadow-[var(--shadow-soft)] sm:p-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Legal
+    <LegalArticle
+      kicker="Legal"
+      title="Privacy Policy"
+      effectiveDate={EFFECTIVE_DATE}
+      intro={
+        <>
+          <p>
+            This policy explains what personal information Skillset collects,
+            why, who it is shared with, and the rights you have over it. It
+            applies to visitors, learners, and educators. The data controller
+            is <Define>DEFINE: legal entity name</Define>,{" "}
+            <Define>DEFINE: registered address</Define> (&quot;Skillset,&quot;
+            &quot;we,&quot; &quot;us&quot;).
           </p>
-          <h1 className="display-title mt-4 text-6xl leading-none text-[var(--color-primary)]">
-            Privacy policy
-          </h1>
-          <p className="mt-6 text-sm leading-8 text-[var(--color-ink-soft)]">
-            This policy explains what information Skillset collects, how we use
-            it, and the choices you have. It applies to visitors, learners, and
-            educators who use the platform.
+          <p className="mt-3">
+            Short version: we collect what the platform needs to run — your
+            account, your learning activity, your purchases — plus product
+            analytics you can opt out of. We do not sell your personal
+            information.
           </p>
-          <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-            Effective {EFFECTIVE_DATE} · Current operating version
+        </>
+      }
+    >
+      <LegalSection heading="1. Information we collect">
+        <ul className="list-disc space-y-2 pl-6">
+          <li>
+            <strong className="text-[var(--color-ink)]">Account data</strong> —
+            name, email address, password (stored hashed by Supabase Auth), and
+            your role on the platform (learner and/or educator).
+          </li>
+          <li>
+            <strong className="text-[var(--color-ink)]">Profile data</strong> —
+            information you add to your profile, such as a photo, bio, or
+            professional background (for educators).
+          </li>
+          <li>
+            <strong className="text-[var(--color-ink)]">Learning activity</strong>{" "}
+            — courses you enroll in, lesson progress, certificates you earn,
+            reviews you write, and posts in course communities and live
+            sessions.
+          </li>
+          <li>
+            <strong className="text-[var(--color-ink)]">Transaction data</strong>{" "}
+            — order history, amounts, currency, and refund status. Payments are
+            processed by Stripe; we receive confirmation and receipt metadata
+            but never your full card number.
+          </li>
+          <li>
+            <strong className="text-[var(--color-ink)]">Educator payout data</strong>{" "}
+            — if you sell courses, the identity and banking information Stripe
+            Connect requires for payouts is collected and held by Stripe under
+            its own privacy terms; we see payout status and account state.
+          </li>
+          <li>
+            <strong className="text-[var(--color-ink)]">Usage data</strong> —
+            product analytics collected through PostHog: pages viewed, features
+            used, device and browser type, and approximate location derived
+            from IP.
+          </li>
+          <li>
+            <strong className="text-[var(--color-ink)]">Cookies</strong> —
+            described in Section 4 and controlled through the cookie banner.
+          </li>
+          <li>
+            <strong className="text-[var(--color-ink)]">Communications</strong>{" "}
+            — messages you send to support and notification preferences.
+          </li>
+        </ul>
+      </LegalSection>
+
+      <LegalSection heading="2. How we use it, and on what legal basis">
+        <p>
+          Under the GDPR (EU/EEA/UK) and the LGPD (Brazil), each use of
+          personal data needs a legal basis. Ours are:
+        </p>
+        <ul className="list-disc space-y-2 pl-6">
+          <li>
+            <strong className="text-[var(--color-ink)]">Performing our contract with you</strong>{" "}
+            — creating and securing your account, delivering courses you enroll
+            in, issuing certificates, processing purchases and refunds, paying
+            educators.
+          </li>
+          <li>
+            <strong className="text-[var(--color-ink)]">Legitimate interests</strong>{" "}
+            — keeping the platform safe, preventing fraud and abuse, improving
+            features based on aggregate usage, and sending service messages
+            about your account and purchases.
+          </li>
+          <li>
+            <strong className="text-[var(--color-ink)]">Consent</strong> —
+            optional analytics cookies and marketing emails. You can withdraw
+            consent at any time (cookie banner, unsubscribe link, or account
+            settings) without affecting your use of the platform.
+          </li>
+          <li>
+            <strong className="text-[var(--color-ink)]">Legal obligations</strong>{" "}
+            — tax, accounting, and lawful requests from authorities.
+          </li>
+        </ul>
+      </LegalSection>
+
+      <LegalSection heading="3. What educators can see">
+        <p>
+          When you enroll in a course, the educator who runs it can see your
+          name, email, enrollment date, and progress in their course — this is
+          how they support their students. Under our public creator commitments
+          (&quot;The Promise&quot;), each educator&apos;s student list belongs
+          to that educator. Educators must handle student data lawfully and may
+          not sell it; their obligations are set out in the{" "}
+          <Link className="font-semibold text-[var(--color-accent-fg)]" href="/legal/teacher-terms">
+            Teacher Terms
+          </Link>
+          . Educators do not see your payment details or your activity in other
+          educators&apos; courses.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="4. Cookies and analytics">
+        <p>
+          We use strictly necessary cookies for sign-in sessions and language
+          preference, and optional analytics cookies (PostHog) to understand
+          how the product is used. The cookie banner lets you accept or reject
+          the optional ones; strictly necessary cookies cannot be switched off
+          because the platform does not work without them. Analytics data is
+          used in aggregate and not to profile you for advertising.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="5. Who we share data with (subprocessors)">
+        <p>
+          We never sell your personal information. We share it only with the
+          service providers that run the platform, under contracts that limit
+          what they can do with it:
+        </p>
+        <ul className="list-disc space-y-2 pl-6">
+          <li>
+            <strong className="text-[var(--color-ink)]">Supabase</strong> —
+            authentication, database, and file storage (hosted in the United
+            States).
+          </li>
+          <li>
+            <strong className="text-[var(--color-ink)]">Stripe</strong> —
+            payment processing, refunds, and educator payouts (Stripe Connect).
+          </li>
+          <li>
+            <strong className="text-[var(--color-ink)]">Vercel</strong> —
+            application hosting and content delivery.
+          </li>
+          <li>
+            <strong className="text-[var(--color-ink)]">PostHog</strong> —
+            product analytics.
+          </li>
+        </ul>
+        <p>
+          We may also disclose data when required by law, to protect the
+          rights and safety of users, or as part of a corporate transaction
+          (merger, acquisition), in which case this policy continues to apply
+          to your data.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="6. International transfers">
+        <p>
+          Our infrastructure is hosted in the United States. If you access
+          Skillset from outside the US (including the EU/EEA, UK, or Brazil),
+          your data is transferred to and processed in the US. For transfers
+          from the EU/EEA and UK we rely on our providers&apos; Standard
+          Contractual Clauses and, where applicable, the EU-US Data Privacy
+          Framework; for Brazil, on the LGPD&apos;s international-transfer
+          provisions (art. 33).{" "}
+          <Define>
+            DEFINE: confirm each provider&apos;s DPA is signed — Supabase,
+            Stripe, Vercel, PostHog all offer standard DPAs
+          </Define>
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="7. Retention">
+        <p>
+          We keep personal data only as long as needed for the purposes above:
+        </p>
+        <ul className="list-disc space-y-2 pl-6">
+          <li>
+            Account and learning data — while your account is active, and
+            deleted or anonymized within 90 days after account deletion, except
+            where retention is legally required.
+          </li>
+          <li>
+            Certificates — the verification record persists so issued
+            certificates remain verifiable, unless you ask us to remove it.
+          </li>
+          <li>
+            Transaction records — kept for the period required by tax and
+            accounting law (typically 5&ndash;10 years depending on
+            jurisdiction).
+          </li>
+          <li>Analytics data — retained in identifiable form for no longer than 24 months.</li>
+        </ul>
+      </LegalSection>
+
+      <LegalSection heading="8. Security">
+        <p>
+          Data is encrypted in transit (TLS) and at rest by our infrastructure
+          providers. Access to production data is restricted, and database
+          access is governed by row-level security policies so users can only
+          read what belongs to them. No system is perfectly secure; if a breach
+          affects your personal data we will notify you and the competent
+          authority as required by law (including GDPR art. 33/34 and LGPD
+          art. 48).
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="9. Your rights">
+        <p>
+          You can exercise any of these rights by emailing <SupportLink /> or
+          from your account settings. We respond within the timeframe required
+          by your law (30 days under GDPR, 15 days for confirmation and access
+          requests under LGPD, 45 days under CCPA). We will never discriminate
+          against you for exercising a privacy right.
+        </p>
+        <div>
+          <h3 className="text-base font-semibold text-[var(--color-ink)]">
+            European Union, EEA, and United Kingdom (GDPR / UK GDPR)
+          </h3>
+          <p className="mt-2">
+            You have the right of access, rectification, erasure, restriction
+            of processing, data portability, objection to processing based on
+            legitimate interests, and withdrawal of consent. You may lodge a
+            complaint with your local supervisory authority.
           </p>
-        </section>
+        </div>
+        <div>
+          <h3 className="text-base font-semibold text-[var(--color-ink)]">
+            Brazil (LGPD)
+          </h3>
+          <p className="mt-2">
+            You have the rights set out in article 18 of the LGPD:
+            confirmation of processing, access, correction, anonymization or
+            deletion of unnecessary or excessive data, portability, deletion of
+            data processed with consent, information about sharing and about
+            the consequences of refusing consent, and revocation of consent.
+            You may file a complaint with the ANPD (Autoridade Nacional de
+            Prote&ccedil;&atilde;o de Dados).
+          </p>
+        </div>
+        <div>
+          <h3 className="text-base font-semibold text-[var(--color-ink)]">
+            California (CCPA / CPRA)
+          </h3>
+          <p className="mt-2">
+            You have the right to know what personal information we collect,
+            use, and disclose; to delete it; to correct it; and to opt out of
+            &quot;sale&quot; or &quot;sharing.&quot; We do not sell or share
+            personal information as defined by the CCPA, and we do not use
+            sensitive personal information beyond what is necessary to provide
+            the service. You may designate an authorized agent to submit
+            requests for you.
+          </p>
+        </div>
+      </LegalSection>
 
-        <section className="mt-6 space-y-10 rounded-[18px] border border-[var(--color-line)] bg-white p-8 text-sm leading-8 text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)] sm:p-10">
-          <div>
-            <h2 className="text-2xl font-semibold text-[var(--color-primary)]">
-              1. Information we collect
-            </h2>
-            <ul className="mt-3 list-disc space-y-2 pl-6">
-              <li>
-                <strong className="text-[var(--color-ink)]">Account details</strong>{" "}
-                — your name and email, managed through Supabase Auth, plus your
-                role (learner or educator).
-              </li>
-              <li>
-                <strong className="text-[var(--color-ink)]">Learning activity</strong>{" "}
-                — courses you enroll in, lesson progress, and certificates you
-                earn.
-              </li>
-              <li>
-                <strong className="text-[var(--color-ink)]">Purchase records</strong>{" "}
-                — enrollment and order history. Payments are processed by Stripe;
-                we receive confirmation and receipt details but not your full card
-                number.
-              </li>
-              <li>
-                <strong className="text-[var(--color-ink)]">Support and community</strong>{" "}
-                — messages you send to support and any posts or comments you make
-                in community spaces.
-              </li>
-              <li>
-                <strong className="text-[var(--color-ink)]">Usage and device data</strong>{" "}
-                — product analytics collected through PostHog, plus cookies used to
-                keep you signed in and to understand how the platform is used.
-              </li>
-            </ul>
-          </div>
+      <LegalSection heading="10. Children">
+        <p>
+          Skillset is for adults. We do not knowingly collect personal
+          information from anyone under 18. If you believe a minor has created
+          an account, contact <SupportLink /> and we will delete it.
+        </p>
+      </LegalSection>
 
-          <div>
-            <h2 className="text-2xl font-semibold text-[var(--color-primary)]">
-              2. How we use your information
-            </h2>
-            <ul className="mt-3 list-disc space-y-2 pl-6">
-              <li>provide and operate your account, courses, and certificates;</li>
-              <li>process payments, refunds, and educator payouts;</li>
-              <li>provide support and respond to your requests;</li>
-              <li>keep the platform secure and prevent fraud or abuse;</li>
-              <li>improve the product and understand how it is used;</li>
-              <li>meet legal, tax, and accounting obligations.</li>
-            </ul>
-          </div>
+      <LegalSection heading="11. Changes to this policy">
+        <p>
+          When we make material changes we will update the effective date above
+          and notify you by email or in-product notice before they take effect.
+          This policy is written in English; translations may be provided for
+          convenience, and the English version controls except where local law
+          requires otherwise.
+        </p>
+      </LegalSection>
 
-          <div>
-            <h2 className="text-2xl font-semibold text-[var(--color-primary)]">
-              3. Service providers we share with
-            </h2>
-            <p className="mt-3">
-              We use trusted providers to run the platform and share only the data
-              they need to perform their service:
-            </p>
-            <ul className="mt-3 list-disc space-y-2 pl-6">
-              <li>
-                <strong className="text-[var(--color-ink)]">Supabase</strong>{" "}
-                — authentication, database, and storage.
-              </li>
-              <li>
-                <strong className="text-[var(--color-ink)]">Stripe</strong> —
-                payment processing and payouts.
-              </li>
-              <li>
-                <strong className="text-[var(--color-ink)]">PostHog</strong> —
-                product analytics.
-              </li>
-            </ul>
-            <p className="mt-3">
-              We do not sell your personal data. We may disclose information if
-              required by law or to protect the rights and safety of our users.
-            </p>
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-semibold text-[var(--color-primary)]">
-              4. Cookies and analytics
-            </h2>
-            <p className="mt-3">
-              We use essential cookies to keep you signed in and analytics cookies
-              to understand how the platform is used. You can manage non-essential
-              cookies through the consent controls shown on the site and through
-              your browser settings.
-            </p>
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-semibold text-[var(--color-primary)]">
-              5. Data retention
-            </h2>
-            <p className="mt-3">
-              We keep your information for as long as your account is active and as
-              needed to provide the service. We retain purchase and tax records for
-              the periods required by law, even after an account is closed.
-            </p>
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-semibold text-[var(--color-primary)]">
-              6. Your rights
-            </h2>
-            <p className="mt-3">
-              You can request access to, correction of, a copy of, or deletion of
-              your personal data. Email{" "}
-              <a className="font-semibold text-[var(--color-accent-fg)]" href={`mailto:${SUPPORT_EMAIL}`}>
-                {SUPPORT_EMAIL}
-              </a>{" "}
-              and we will respond in line with applicable law. Some records, such
-              as financial history, may be retained where the law requires it.
-            </p>
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-semibold text-[var(--color-primary)]">
-              7. Security
-            </h2>
-            <p className="mt-3">
-              We protect your data with encryption in transit, access controls, and
-              rules-based authorization on our database and storage. No method of
-              transmission or storage is completely secure, but we work to protect
-              your information and to address issues promptly.
-            </p>
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-semibold text-[var(--color-primary)]">
-              8. International processing
-            </h2>
-            <p className="mt-3">
-              Skillset is operated using infrastructure located in the United
-              States. By using the platform, you understand that your information
-              may be processed there.
-            </p>
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-semibold text-[var(--color-primary)]">
-              9. Children
-            </h2>
-            <p className="mt-3">
-              Skillset is not directed to children under 13, and learners in the
-              European Union must be at least 16 or have guardian consent. We do not
-              knowingly collect data from children below these ages.
-            </p>
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-semibold text-[var(--color-primary)]">
-              10. Changes and contact
-            </h2>
-            <p className="mt-3">
-              We may update this policy as the platform evolves and will revise the
-              effective date above when we do. Questions or requests? Contact{" "}
-              <a className="font-semibold text-[var(--color-accent-fg)]" href={`mailto:${SUPPORT_EMAIL}`}>
-                {SUPPORT_EMAIL}
-              </a>{" "}
-              or visit the{" "}
-              <Link className="font-semibold text-[var(--color-accent-fg)]" href="/support">
-                support page
-              </Link>
-              .
-            </p>
-          </div>
-        </section>
-      </main>
-    </div>
+      <LegalSection heading="12. Contact and data protection officer">
+        <p>
+          Privacy questions and rights requests: <SupportLink /> or{" "}
+          <Define>DEFINE: dedicated privacy email, e.g. privacy@skillset.app</Define>
+          . Data protection contact:{" "}
+          <Define>
+            DEFINE: DPO / privacy officer name or role — LGPD requires a named
+            &quot;encarregado&quot; once operating in Brazil
+          </Define>
+          .
+        </p>
+      </LegalSection>
+    </LegalArticle>
   );
 }
