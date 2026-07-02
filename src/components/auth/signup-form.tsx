@@ -6,6 +6,7 @@ import { useMemo, useState, type FormEvent } from "react";
 
 import { GoogleMark } from "@/components/auth/google-mark";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { isGoogleAuthEnabled } from "@/lib/auth/providers";
 import {
   isStrongPassword,
   PasswordStrengthChecklist,
@@ -318,15 +319,17 @@ export function SignupForm() {
         <span className="h-px flex-1 bg-[var(--color-line)]" />
       </div>
 
-      <button
-        type="button"
-        disabled={isLoading || !legalAccepted}
-        onClick={handleGoogleSignup}
-        className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
-      >
-        <GoogleMark />
-        {t("auth.continueWithGoogle")}
-      </button>
+      {isGoogleAuthEnabled ? (
+        <button
+          type="button"
+          disabled={isLoading || !legalAccepted}
+          onClick={handleGoogleSignup}
+          className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
+        >
+          <GoogleMark />
+          {t("auth.continueWithGoogle")}
+        </button>
+      ) : null}
       <Link
         href={signinHref}
         className="mt-1 inline-flex text-sm font-semibold text-[var(--color-primary)]"

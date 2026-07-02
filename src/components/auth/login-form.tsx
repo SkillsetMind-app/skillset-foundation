@@ -7,6 +7,7 @@ import { useMemo, useState, type FormEvent } from "react";
 
 import { GoogleMark } from "@/components/auth/google-mark";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { isGoogleAuthEnabled } from "@/lib/auth/providers";
 import {
   completeMfaSignIn,
   getAuthErrorMessage,
@@ -254,15 +255,17 @@ export function LoginForm() {
       <button type="submit" disabled={isLoading} className="button-solid mt-2 px-4 py-2.5 text-sm disabled:opacity-60">
         {isLoading ? t("auth.signingIn") : t("auth.signIn")}
       </button>
-      <button
-        type="button"
-        disabled={isLoading}
-        onClick={handleGoogleLogin}
-        className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
-      >
-        <GoogleMark />
-        {t("auth.continueWithGoogle")}
-      </button>
+      {isGoogleAuthEnabled ? (
+        <button
+          type="button"
+          disabled={isLoading}
+          onClick={handleGoogleLogin}
+          className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
+        >
+          <GoogleMark />
+          {t("auth.continueWithGoogle")}
+        </button>
+      ) : null}
       <Link
         href={signupHref}
         className="inline-flex text-sm font-semibold text-[var(--color-primary)]"

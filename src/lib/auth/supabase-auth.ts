@@ -50,30 +50,52 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
 
   callback({ status: "loading", user: null });
 
-  const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
+  // Monotonic sequence so a slow profile read for an older auth event can never
+  // overwrite the state produced by a newer one.
+  let eventSeq = 0;
+
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
     const user = session?.user ?? null;
+    const seq = ++eventSeq;
 
     if (!user) {
       callback({ status: "unauthenticated", user: null });
       return;
     }
 
-    // Read-only hot path. The on_auth_user_created trigger provisions the row at
-    // signup, so this only repairs a MISSING row (defensive) before resolving.
-    let profile = await getUserProfile(user.id);
+    // Supabase holds its internal auth lock while notifying subscribers, and
+    // awaiting other Supabase calls inside this callback can deadlock — the app
+    // then hangs on "loading" forever (documented onAuthStateChange gotcha).
+    // Defer the profile read to the next tick so it runs outside the lock.
+    async function resolveProfile(currentUser: User) {
+      // Read-only hot path. The on_auth_user_created trigger provisions the row
+      // at signup, so this only repairs a MISSING row (defensive).
+      let profile = await getUserProfile(currentUser.id);
 
-    if (!profile) {
-      await upsertUserProfile({
-        uid: user.id,
-        email: user.email ?? null,
-        displayName: (user.user_metadata?.name as string | undefined) ?? null,
-        photoURL:
-          (user.user_metadata?.avatar_url as string | undefined) ?? null,
-      });
-      profile = await getUserProfile(user.id);
+      if (!profile) {
+        await upsertUserProfile({
+          uid: currentUser.id,
+          email: currentUser.email ?? null,
+          displayName:
+            (currentUser.user_metadata?.name as string | undefined) ?? null,
+          photoURL:
+            (currentUser.user_metadata?.avatar_url as string | undefined) ??
+            null,
+        });
+        profile = await getUserProfile(currentUser.id);
+      }
+
+      if (seq === eventSeq) {
+        callback({
+          status: "authenticated",
+          user: mapSupabaseUser(currentUser, profile),
+        });
+      }
     }
 
-    callback({ status: "authenticated", user: mapSupabaseUser(user, profile) });
+    window.setTimeout(() => {
+      void resolveProfile(user);
+    }, 0);
   });
 
   return () => {
