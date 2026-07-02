@@ -17,6 +17,7 @@ import {
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { CourseCommunityFeed } from "@/components/learn/course-community-feed";
+import { CourseMessagesPanel } from "@/components/learn/course-messages-panel";
 import { CourseReviewPanel } from "@/components/learn/course-review-panel";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { CourseSubscriptionCard } from "@/components/learn/course-subscription-card";
@@ -864,6 +865,8 @@ export function EnrolledCourseWorkspace({
       {course.communityEnabled && !previewMode ? (
         <CourseCommunitySection course={course} />
       ) : null}
+
+      {!previewMode ? <CourseMessagesPanel courseId={course.id} /> : null}
 
       <CourseReviewPanel
         courseId={course.id}

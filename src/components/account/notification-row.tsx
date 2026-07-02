@@ -4,6 +4,7 @@ import {
   Award,
   Bell,
   GraduationCap,
+  Mail,
   MessageCircle,
   Radio,
   Reply,
@@ -19,6 +20,7 @@ const typeIcons: Record<NotificationType, typeof Bell> = {
   course_review: Star,
   certificate: Award,
   live_event: Radio,
+  course_message: Mail,
 };
 
 // Unread chip color per kind. Read rows keep the muted grey chip (below), so
@@ -35,6 +37,7 @@ const unreadChipByType: Record<NotificationType, string> = {
   certificate: "bg-[var(--color-success-soft)] text-[var(--color-success-fg)]",
   course_review: "bg-[var(--color-warning-soft)] text-[var(--color-warning)]",
   live_event: "bg-[rgba(178,34,52,0.1)] text-[var(--color-accent-fg)]",
+  course_message: "bg-[rgba(44,82,130,0.1)] text-[var(--color-primary)]",
 };
 
 // Relative time from a Firestore server timestamp ({ seconds }). Coarse on

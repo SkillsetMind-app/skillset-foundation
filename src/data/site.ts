@@ -135,6 +135,14 @@ export const platformNav: PlatformNavItem[] = [
     permission: "teacherStudio.manageCourses",
   },
   {
+    href: "/teach/messages",
+    label: "Messages",
+    icon: "MessageCircle",
+    contexts: ["teacher"],
+    section: "Teach",
+    permission: "teacherStudio.access",
+  },
+  {
     href: "/teach/coupons",
     label: "Coupons",
     icon: "Tag",

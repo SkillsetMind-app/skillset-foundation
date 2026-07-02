@@ -566,6 +566,42 @@ export type Database = {
           },
         ]
       }
+      course_messages: {
+        Row: {
+          body: string
+          course_id: string
+          course_title: string
+          created_at: string
+          id: string
+          sender_id: string
+          student_id: string
+          student_name: string
+          teacher_id: string
+        }
+        Insert: {
+          body: string
+          course_id: string
+          course_title?: string
+          created_at?: string
+          id?: string
+          sender_id: string
+          student_id: string
+          student_name?: string
+          teacher_id: string
+        }
+        Update: {
+          body?: string
+          course_id?: string
+          course_title?: string
+          created_at?: string
+          id?: string
+          sender_id?: string
+          student_id?: string
+          student_name?: string
+          teacher_id?: string
+        }
+        Relationships: []
+      }
       course_reviews: {
         Row: {
           author_name: string
@@ -1776,6 +1812,10 @@ export type Database = {
         Returns: Json
       }
       request_account_action: { Args: { p_type: string }; Returns: string }
+      send_course_message: {
+        Args: { p_body: string; p_course_id: string; p_student_id: string }
+        Returns: Json
+      }
       submit_course_review: {
         Args: { p_body: string; p_course_id: string; p_rating: number }
         Returns: Json
