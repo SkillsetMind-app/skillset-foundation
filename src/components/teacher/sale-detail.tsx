@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { StatusChip } from "@/components/shared/status-chip";
 import type { Order } from "@/domain/order";
 import { subscribeToOrder } from "@/lib/data/orders";
+import { toDate } from "@/lib/format-date";
 
 type SaleDetailProps = {
   orderId: string;
@@ -26,13 +27,7 @@ function formatOrderRef(id: string) {
 }
 
 function formatDate(value: unknown) {
-  const maybeTimestamp = value as { toDate?: () => Date; seconds?: number } | undefined;
-  const date =
-    maybeTimestamp?.toDate?.() ??
-    (typeof maybeTimestamp?.seconds === "number"
-      ? new Date(maybeTimestamp.seconds * 1000)
-      : null);
-
+  const date = toDate(value);
   if (!date) {
     return "Timestamp pending";
   }

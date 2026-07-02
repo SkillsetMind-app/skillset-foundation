@@ -9,6 +9,7 @@ import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { logSubscriptionError } from "@/lib/data/subscription-error";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
+import { toDate } from "@/lib/format-date";
 
 const money = new Intl.NumberFormat("en", {
   style: "currency",
@@ -227,33 +228,5 @@ export function TeacherOverviewMetrics() {
 }
 
 function getTimestampMillis(value: unknown): number | null {
-  if (!value) {
-    return null;
-  }
-
-  if (value instanceof Date) {
-    return value.getTime();
-  }
-
-  if (typeof value === "number") {
-    return value;
-  }
-
-  if (typeof value === "object" && "toMillis" in value) {
-    const maybeTimestamp = value as { toMillis?: () => number };
-
-    return typeof maybeTimestamp.toMillis === "function"
-      ? maybeTimestamp.toMillis()
-      : null;
-  }
-
-  if (typeof value === "object" && "seconds" in value) {
-    const maybeTimestamp = value as { seconds?: number };
-
-    return typeof maybeTimestamp.seconds === "number"
-      ? maybeTimestamp.seconds * 1000
-      : null;
-  }
-
-  return null;
+  return toDate(value)?.getTime() ?? null;
 }

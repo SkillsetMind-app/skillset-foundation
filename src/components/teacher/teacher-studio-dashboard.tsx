@@ -13,6 +13,7 @@ import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { subscribeToTeacherPayoutLedger } from "@/lib/data/payout-ledger";
 import { logSubscriptionError } from "@/lib/data/subscription-error";
+import { toDate } from "@/lib/format-date";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 
@@ -227,33 +228,5 @@ function getNextPayoutLabel(entries: PayoutLedgerEntry[]) {
 }
 
 function getTimestampMillis(value: unknown): number | null {
-  if (!value) {
-    return null;
-  }
-
-  if (value instanceof Date) {
-    return value.getTime();
-  }
-
-  if (typeof value === "number") {
-    return value;
-  }
-
-  if (typeof value === "object" && "toMillis" in value) {
-    const maybeTimestamp = value as { toMillis?: () => number };
-
-    return typeof maybeTimestamp.toMillis === "function"
-      ? maybeTimestamp.toMillis()
-      : null;
-  }
-
-  if (typeof value === "object" && "seconds" in value) {
-    const maybeTimestamp = value as { seconds?: number };
-
-    return typeof maybeTimestamp.seconds === "number"
-      ? maybeTimestamp.seconds * 1000
-      : null;
-  }
-
-  return null;
+  return toDate(value)?.getTime() ?? null;
 }

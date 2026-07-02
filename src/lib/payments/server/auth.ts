@@ -67,6 +67,34 @@ export async function requireAdminUserId(): Promise<string> {
   return userData.user.id;
 }
 
+type ServerSupabaseClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
+
+/**
+ * Shared rate-limit gate for the payment Route Handlers. Wraps the
+ * enforce_rate_limit SECURITY DEFINER RPC and throws PaymentError(429) on limit.
+ * Single-sourcing it means a new route can't silently ship without a throttle —
+ * which is exactly how connect/refresh went unprotected. `key` scopes the
+ * bucket (convention: `${action}_${uid}`).
+ */
+export async function enforceRateLimit(
+  supabase: ServerSupabaseClient,
+  key: string,
+  limit: number,
+  windowMs: number,
+): Promise<void> {
+  const { error } = await supabase.rpc("enforce_rate_limit", {
+    p_key: key,
+    p_limit: limit,
+    p_window_ms: windowMs,
+  });
+  if (error) {
+    if (error.message?.includes("RATE_LIMIT")) {
+      throw new PaymentError("Too many attempts. Please wait before trying again.", 429);
+    }
+    throw new Error(error.message);
+  }
+}
+
 /**
  * Maps a thrown error to the JSON response the payment clients expect. Known,
  * user-safe errors are surfaced verbatim with their status + code; anything

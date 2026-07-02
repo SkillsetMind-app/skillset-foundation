@@ -20,6 +20,7 @@ import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import type { UserProfile } from "@/domain/user-profile";
 import { subscribeToTeacherPayoutLedger } from "@/lib/data/payout-ledger";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
+import { toDate } from "@/lib/format-date";
 import {
   isConnectNotEnabledError,
   refreshTeacherStripeAccountStatus,
@@ -542,13 +543,7 @@ function formatMoney(amountMinor: number, currency = "USD") {
 }
 
 function formatDate(value: unknown) {
-  const maybeTimestamp = value as { toDate?: () => Date; seconds?: number } | undefined;
-  const date =
-    maybeTimestamp?.toDate?.() ??
-    (typeof maybeTimestamp?.seconds === "number"
-      ? new Date(maybeTimestamp.seconds * 1000)
-      : null);
-
+  const date = toDate(value);
   if (!date) {
     return "Pending";
   }

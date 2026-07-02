@@ -12,6 +12,7 @@ import type { Order } from "@/domain/order";
 import type { UserProfile } from "@/domain/user-profile";
 import { subscribeToUserOrders } from "@/lib/data/orders";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
+import { toDate } from "@/lib/format-date";
 import { openBillingPortal, requestOrderRefund } from "@/lib/payments/billing";
 
 const billingTabs = [
@@ -29,15 +30,7 @@ function formatMoney(amountMinor: number, currency: string) {
 }
 
 function formatDate(value: unknown) {
-  const maybeTimestamp = value as
-    | { toDate?: () => Date; seconds?: number }
-    | undefined;
-  const date =
-    maybeTimestamp?.toDate?.() ??
-    (typeof maybeTimestamp?.seconds === "number"
-      ? new Date(maybeTimestamp.seconds * 1000)
-      : null);
-
+  const date = toDate(value);
   if (!date) {
     return "Date pending";
   }
@@ -48,16 +41,7 @@ function formatDate(value: unknown) {
 }
 
 function toMillis(value: unknown): number {
-  const maybeTimestamp = value as
-    | { toDate?: () => Date; seconds?: number }
-    | undefined;
-  if (maybeTimestamp?.toDate) {
-    return maybeTimestamp.toDate().getTime();
-  }
-  if (typeof maybeTimestamp?.seconds === "number") {
-    return maybeTimestamp.seconds * 1000;
-  }
-  return 0;
+  return toDate(value)?.getTime() ?? 0;
 }
 
 export function BillingTabs() {

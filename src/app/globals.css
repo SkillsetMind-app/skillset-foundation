@@ -1849,6 +1849,26 @@ p {
   box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.14);
 }
 
+/* Global focus fallback (WCAG 2.4.7). Many inputs/textareas across the app use
+   an ad-hoc `outline-none focus:border-...` Tailwind pattern whose only focus
+   cue is a ~1px color shift — near-invisible for keyboard/low-vision users.
+   box-shadow is the lever here: Tailwind's `outline-none` clears `outline` but
+   never box-shadow, so this reaches those fields with no specificity war and no
+   31-file className sweep. `.field-input` sets its own ring at higher
+   specificity, so it is unaffected. ponytail: box-shadow ring can be clipped by
+   an `overflow:hidden` ancestor — same known ceiling as `.field-input`. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.22);
+}
+
+[data-theme="dark"] input:focus-visible,
+[data-theme="dark"] textarea:focus-visible,
+[data-theme="dark"] select:focus-visible {
+  box-shadow: 0 0 0 3px rgba(143, 180, 228, 0.28);
+}
+
 .field-input[aria-invalid="true"] {
   border-color: var(--color-accent-fg);
   background: rgba(178, 34, 52, 0.04);

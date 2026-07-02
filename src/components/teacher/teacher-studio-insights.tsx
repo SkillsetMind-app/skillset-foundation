@@ -19,6 +19,7 @@ import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { logSubscriptionError } from "@/lib/data/subscription-error";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
+import { toDate } from "@/lib/format-date";
 
 type RevenueRange = "3m" | "6m" | "12m" | "all";
 
@@ -565,35 +566,7 @@ function formatAxisLabel(amountMinor: number) {
 }
 
 function getTimestampMillis(value: unknown): number | null {
-  if (!value) {
-    return null;
-  }
-
-  if (value instanceof Date) {
-    return value.getTime();
-  }
-
-  if (typeof value === "number") {
-    return value;
-  }
-
-  if (typeof value === "object" && "toMillis" in value) {
-    const maybeTimestamp = value as { toMillis?: () => number };
-
-    return typeof maybeTimestamp.toMillis === "function"
-      ? maybeTimestamp.toMillis()
-      : null;
-  }
-
-  if (typeof value === "object" && "seconds" in value) {
-    const maybeTimestamp = value as { seconds?: number };
-
-    return typeof maybeTimestamp.seconds === "number"
-      ? maybeTimestamp.seconds * 1000
-      : null;
-  }
-
-  return null;
+  return toDate(value)?.getTime() ?? null;
 }
 
 function renderActivityIcon(icon: ActivityItem["icon"]) {

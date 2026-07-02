@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { StatusChip } from "@/components/shared/status-chip";
 import type { Order } from "@/domain/order";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
+import { toDate } from "@/lib/format-date";
 
 function formatMoney(amountMinor: number, currency: string) {
   return new Intl.NumberFormat("en", {
@@ -16,15 +17,7 @@ function formatMoney(amountMinor: number, currency: string) {
 }
 
 function formatDate(value: unknown) {
-  const maybeTimestamp = value as
-    | { toDate?: () => Date; seconds?: number }
-    | undefined;
-  const date =
-    maybeTimestamp?.toDate?.() ??
-    (typeof maybeTimestamp?.seconds === "number"
-      ? new Date(maybeTimestamp.seconds * 1000)
-      : null);
-
+  const date = toDate(value);
   if (!date) {
     return "Date pending";
   }
@@ -35,16 +28,7 @@ function formatDate(value: unknown) {
 }
 
 function toMillis(value: unknown): number {
-  const maybeTimestamp = value as
-    | { toDate?: () => Date; seconds?: number }
-    | undefined;
-  if (maybeTimestamp?.toDate) {
-    return maybeTimestamp.toDate().getTime();
-  }
-  if (typeof maybeTimestamp?.seconds === "number") {
-    return maybeTimestamp.seconds * 1000;
-  }
-  return 0;
+  return toDate(value)?.getTime() ?? 0;
 }
 
 export function SaleList() {

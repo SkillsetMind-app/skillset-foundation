@@ -45,6 +45,14 @@ function timestampToDate(value: unknown): Date | null {
     return value;
   }
 
+  // Postgres delivers created_at as an ISO string (or epoch number); without
+  // this branch enrolledAt fell through to null and drip gating defaulted to
+  // "now", silently unlocking time-dripped lessons on the wrong schedule.
+  if (typeof value === "string" || typeof value === "number") {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
   if (typeof value === "object") {
     const timestamp = value as TimestampLike;
 
