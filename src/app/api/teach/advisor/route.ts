@@ -12,7 +12,8 @@ type AdvisorMessage = { role: "user" | "assistant"; content: string };
 
 const MAX_MESSAGES = 20; // only the tail of the thread is forwarded
 const MAX_CHARS = 4000; // per-message cap — bounds payload + model cost
-const UPSTREAM_TIMEOUT_MS = 30_000;
+// deepseek-v4-pro (reasoning) measured ~19s on complex questions; 60s gives headroom.
+const UPSTREAM_TIMEOUT_MS = 60_000;
 
 export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
