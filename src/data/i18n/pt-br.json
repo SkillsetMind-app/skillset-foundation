@@ -125,6 +125,9 @@
     "signup": {
       "introLearner": "Você começa como aluno. Dá pra ativar o lado de educador depois, no seu perfil.",
       "introEducator": "Você começa como educador. Dá pra ativar o lado de aluno depois, no seu perfil.",
+      "roleQuestion": "O que te traz pra Skillset?",
+      "roleLearn": "Quero aprender",
+      "roleTeach": "Quero ensinar",
       "fullName": "Nome completo",
       "fullNamePlaceholder": "Seu nome",
       "passwordPlaceholder": "No mínimo 8 caracteres",

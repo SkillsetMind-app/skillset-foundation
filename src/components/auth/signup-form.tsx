@@ -58,14 +58,27 @@ export function SignupForm() {
     () => getAuthPathIntentFromSearchParams(searchParams),
     [searchParams],
   );
+  // Visible learn/teach choice on the form itself. URL ?path (marketing CTAs)
+  // seeds it; toggling re-writes the URL so the aside panel — keyed by ?path —
+  // and any refresh stay in sync with the pick.
+  const [intent, setIntent] = useState<"student" | "teacher">(
+    pathIntent ?? "student",
+  );
+
+  function chooseIntent(next: "student" | "teacher") {
+    setIntent(next);
+    router.replace(
+      next === "teacher" ? "/auth?mode=signup&path=teacher" : "/auth?mode=signup&path=student",
+      { scroll: false },
+    );
+  }
+
   const intro = t(
-    pathIntent === "teacher"
+    intent === "teacher"
       ? "auth.signup.introEducator"
       : "auth.signup.introLearner",
   );
-  const signinHref = pathIntent
-    ? `/auth?mode=signin&path=${pathIntent}`
-    : "/auth?mode=signin";
+  const signinHref = `/auth?mode=signin&path=${intent}`;
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -113,10 +126,10 @@ export function SignupForm() {
         username: deriveUsername(displayName, email),
       });
       track.userSignedUp({
-        role: pathIntent === "teacher" ? "teacher" : "student",
+        role: intent === "teacher" ? "teacher" : "student",
         source: "email",
       });
-      router.push(`/welcome${getAuthPathQuery(pathIntent)}`);
+      router.push(`/welcome${getAuthPathQuery(intent)}`);
     } catch (caughtError) {
       setError(getAuthErrorMessage(caughtError));
     } finally {
@@ -143,14 +156,14 @@ export function SignupForm() {
       // identifyUser via AuthProvider instead.
       if (!profile?.onboardingCompleted) {
         track.userSignedUp({
-          role: pathIntent === "teacher" ? "teacher" : "student",
+          role: intent === "teacher" ? "teacher" : "student",
           source: "google",
         });
       }
       router.push(
         profile?.onboardingCompleted
-          ? getLoadingRoute("route", pathIntent)
-          : `/welcome${getAuthPathQuery(pathIntent)}`,
+          ? getLoadingRoute("route", intent)
+          : `/welcome${getAuthPathQuery(intent)}`,
       );
     } catch (caughtError) {
       // A returning user with TOTP enrolled trips an MFA challenge here, but
@@ -167,6 +180,31 @@ export function SignupForm() {
 
   return (
     <form className="mt-5 grid gap-3" onSubmit={handleEmailSignup}>
+      <fieldset className="grid gap-1.5">
+        <legend className="text-sm font-semibold text-[var(--color-ink)]">
+          {t("auth.signup.roleQuestion")}
+        </legend>
+        <div className="grid grid-cols-2 gap-2" role="radiogroup">
+          {(["student", "teacher"] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="radio"
+              aria-checked={intent === option}
+              onClick={() => chooseIntent(option)}
+              className={[
+                "rounded-[10px] border-[1.5px] px-4 py-2.5 text-sm font-semibold transition",
+                intent === option
+                  ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-base)]"
+                  : "border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]",
+              ].join(" ")}
+            >
+              {t(option === "student" ? "auth.signup.roleLearn" : "auth.signup.roleTeach")}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
       <p className="text-xs leading-5 text-[var(--color-ink-soft)]">{intro}</p>
 
       <div className="grid gap-3 sm:grid-cols-2">

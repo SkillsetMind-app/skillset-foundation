@@ -16,6 +16,8 @@ export type OnboardingPath = "student" | "teacher" | "both";
 
 export type OnboardingAnswers = {
   path?: OnboardingPath;
+  /** Teacher-only: what they practice (psychologist, therapist, coach, ...). */
+  profession?: string;
   sourceOfDiscovery?: string;
   alreadySold?: "yes" | "no";
   monthlyRevenue?: string;

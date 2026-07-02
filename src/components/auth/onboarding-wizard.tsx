@@ -17,6 +17,7 @@ import {
 
 type QuestionId =
   | "path"
+  | "profession"
   | "sourceOfDiscovery"
   | "alreadySold"
   | "monthlyRevenue"
@@ -29,6 +30,16 @@ type QuestionDefinition = {
   number: number;
   required: boolean;
 };
+
+// Skillset's launch audience is mental-health and personal-development
+// professionals, so the teacher branch leads with practice identity.
+const professionOptions = [
+  "Psychologist",
+  "Therapist",
+  "Coach",
+  "Mentor or consultant",
+  "Other",
+];
 
 const sourceOptions = [
   "Instagram",
@@ -86,23 +97,33 @@ function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-// P3 80/20 reduction (DECISIONS D9): the wizard now asks only the
-// highest-value questions to cut signup friction — routing (path), the
-// personalization/analytics signal (primaryGoal), and, for teachers, their
-// monetization intent (alreadySold). The other question definitions
-// (sourceOfDiscovery, monthlyRevenue, instagramHandle, audienceSize) are
-// intentionally kept in the codebase (types/renderer) so re-enabling any of
-// them is a one-line change here, not a rebuild.
+// Predis-style split flow (product decision 2026-07-02): teachers get the
+// full qualification interview (profession → category → monetization →
+// audience → Instagram) because that data drives review, personalization,
+// and outreach; students answer the minimum (interest + discovery source).
+// Follow-ups past the required core are skippable, so friction stays low.
 function getVisibleQuestions(answers: OnboardingAnswers): QuestionDefinition[] {
   const isTeacher = answers.path === "teacher";
 
-  return [
-    { id: "path", number: 1, required: true },
-    { id: "primaryGoal", number: 2, required: true },
-    ...(isTeacher
-      ? [{ id: "alreadySold", number: 3, required: true } as const]
-      : []),
-  ];
+  const ids: { id: QuestionId; required: boolean }[] = isTeacher
+    ? [
+        { id: "path", required: true },
+        { id: "profession", required: true },
+        { id: "primaryGoal", required: true },
+        { id: "alreadySold", required: true },
+        ...(answers.alreadySold === "yes"
+          ? [{ id: "monthlyRevenue" as const, required: false }]
+          : []),
+        { id: "audienceSize", required: false },
+        { id: "instagramHandle", required: false },
+      ]
+    : [
+        { id: "path", required: true },
+        { id: "primaryGoal", required: true },
+        { id: "sourceOfDiscovery", required: false },
+      ];
+
+  return ids.map((question, index) => ({ ...question, number: index + 1 }));
 }
 
 function isAnswered(question: QuestionDefinition, answers: OnboardingAnswers) {
@@ -130,6 +151,10 @@ function compactAnswers(input: OnboardingAnswers): OnboardingAnswers {
 
   if (input.path) {
     output.path = input.path;
+  }
+
+  if (input.profession) {
+    output.profession = input.profession;
   }
 
   if (input.sourceOfDiscovery) {
@@ -393,6 +418,10 @@ export function OnboardingWizard() {
       });
     }
 
+    if (answers.path === "teacher" && answers.profession) {
+      recap.push({ label: "Your work", value: answers.profession });
+    }
+
     if (answers.primaryGoal && answers.primaryGoal.length > 0) {
       recap.push({ label: "Interests", value: answers.primaryGoal.join(", ") });
     }
@@ -525,6 +554,23 @@ export function OnboardingWizard() {
                 onClick={() => void updateAnswer({ ...answers, path: "teacher" }, true)}
               />
             </div>
+            <ErrorMessage error={error} />
+          </OnboardingQuestion>
+        );
+      case "profession":
+        return (
+          <OnboardingQuestion
+            number={question.number}
+            title="What best describes your work?"
+            lead="This helps Skillset review your courses and tailor your studio."
+          >
+            <OptionGrid
+              options={professionOptions}
+              selected={answers.profession ? [answers.profession] : []}
+              onSelect={(option) =>
+                void updateAnswer({ ...answers, profession: option }, true)
+              }
+            />
             <ErrorMessage error={error} />
           </OnboardingQuestion>
         );

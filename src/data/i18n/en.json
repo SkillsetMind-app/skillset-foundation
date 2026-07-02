@@ -125,6 +125,9 @@
     "signup": {
       "introLearner": "This starts you as a learner. You can add the educator side later from your profile.",
       "introEducator": "This starts you as an educator. You can add the learner side later from your profile.",
+      "roleQuestion": "What brings you to Skillset?",
+      "roleLearn": "I want to learn",
+      "roleTeach": "I want to teach",
       "fullName": "Full name",
       "fullNamePlaceholder": "Your name",
       "passwordPlaceholder": "At least 8 characters",
