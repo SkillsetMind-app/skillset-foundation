@@ -21,8 +21,8 @@ This records what the V2 handoff mock (`screens/*.jsx`) contains that was **NOT*
 | Wishlist | `app/learn/wishlist` | existing |
 | Agenda | `learn/learn-events-hub` | existing (events) |
 | LessonUploadModal | teach upload flow | existing |
-| **Paths** | none | ⛔ DEFERRED net-new (D3) |
-| **Messages** | none | ⛔ DEFERRED net-new (D3) — see 2026-07-02 note |
+| **Paths** | `learn/learning-paths-rows` | ✅ DONE 2026-07-02 (platform-curated v1) |
+| **Messages** | `learn/course-messages-panel` + `/teach/messages` | ✅ DONE 2026-07-02 (`a47dec3`, scoped v1) |
 | **Affiliate** | none | ⛔ DEFERRED net-new (D3) |
 | **Tutorial** | `learn/welcome-tour` | ✅ DONE 2026-07-02 (`fe3a01f`) |
 | **AI sidebar** | `teacher/advisor-sidebar` + `/api/teach/advisor` | ✅ DONE 2026-07-02 (`c27e00f`, env-gated) |
@@ -71,16 +71,25 @@ hybrid video model). Dispositions after this pass:
   later swap of the upload target** — deferred by Patrick's own "conectar depois";
   no API key, and Supabase Storage works today. When wired, add a Bunny branch to
   `getTrustedLessonEmbed` (iframe) or store the Bunny URL as a hosted asset.
-- **Messages / DMs → STILL DEFERRED (recommend a scoped v1).** A full DM system is
-  a trust/safety surface (abuse, blocking, moderation, report, rate-limit) plus
-  realtime + schema — not something to invent overnight. Recommended smallest safe
-  first version for founder sign-off: **student → teacher, per-enrollment, one
-  thread per course**, teacher-reply-only-to-enrolled, reuse the existing
-  notification rail for delivery, hard rate-limit, no free-form student→student.
-  That sidesteps most of the abuse surface. Needs Patrick's OK on scope before build.
-- **Learning Paths → STILL DEFERRED.** Needs `paths` + `path_items` schema, a
-  cross-course progress rollup, and a curation decision (who authors a path —
-  platform, or teachers?). Product decision first; low urgency.
+- **Messages / DMs → SHIPPED (scoped v1, Patrick greenlit the recommended
+  scope).** Student → teacher, per-enrollment, one thread per course,
+  teacher-reply-only-to-enrolled, delivery through the notification rail, 30/h
+  rate limit, no student↔student. All writes go through the
+  `send_course_message` SECURITY DEFINER RPC; reads via RLS limited to the two
+  participants. `course_messages` + `notifications` were added to the Realtime
+  publication (threads + the bell now update live). Student UI: panel in the
+  course workspace. Teacher UI: `/teach/messages` inbox (nav item "Messages").
+- **Learning Paths → SHIPPED (platform-curated v1, Patrick greenlit
+  "Netflix-style members area").** Schema: `learning_paths` +
+  `learning_path_items` (RLS: published readable by everyone, writes
+  admin-only). Progress rolls up client-side from enrollments
+  (`computePathProgress` — not-enrolled counts as 0). UI:
+  `learning-paths-rows` renders each published path as a horizontal card row
+  in `/learn` (also on the empty dashboard, for discovery). Renders nothing
+  until a path is published. **Curating a path today** = admin inserts rows
+  (`learning_paths` with `status='published'` + `learning_path_items` with
+  course ids in `position` order) — ask the assistant or use SQL; a founder
+  authoring UI (or teacher-authored paths) is the v2 decision.
 
 ## Open decisions (status)
 

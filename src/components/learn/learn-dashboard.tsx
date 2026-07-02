@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { LearnerOverviewMetrics } from "@/components/learn/learner-overview-metrics";
+import { LearningPathsRows } from "@/components/learn/learning-paths-rows";
 import { RefundButton } from "@/components/learn/refund-button";
 import { WelcomeTour } from "@/components/learn/welcome-tour";
 import { ListingSearchBar } from "@/components/shared/listing-search-bar";
@@ -108,6 +109,7 @@ export function LearnDashboard() {
             </Link>
           </div>
         </div>
+        <LearningPathsRows enrollments={enrollments} />
       </div>
     );
   }
@@ -197,6 +199,8 @@ export function LearnDashboard() {
       </section>
 
       <LearnerOverviewMetrics />
+
+      <LearningPathsRows enrollments={enrollments} />
 
       <section className="dash-card dash-card--strong p-4 shadow-[var(--shadow-soft)] sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">

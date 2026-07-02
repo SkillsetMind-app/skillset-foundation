@@ -933,6 +933,65 @@ export type Database = {
         }
         Relationships: []
       }
+      learning_path_items: {
+        Row: {
+          course_id: string
+          id: string
+          path_id: string
+          position: number
+        }
+        Insert: {
+          course_id: string
+          id?: string
+          path_id: string
+          position?: number
+        }
+        Update: {
+          course_id?: string
+          id?: string
+          path_id?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_path_items_path_id_fkey"
+            columns: ["path_id"]
+            isOneToOne: false
+            referencedRelation: "learning_paths"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_paths: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          position: number
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          position?: number
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          position?: number
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lesson_comments: {
         Row: {
           author_id: string
