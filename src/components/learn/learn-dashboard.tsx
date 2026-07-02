@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { LearnerOverviewMetrics } from "@/components/learn/learner-overview-metrics";
 import { RefundButton } from "@/components/learn/refund-button";
+import { WelcomeTour } from "@/components/learn/welcome-tour";
 import { ListingSearchBar } from "@/components/shared/listing-search-bar";
 import { StatusChip } from "@/components/shared/status-chip";
 import {
@@ -86,6 +87,7 @@ export function LearnDashboard() {
   if (enrollments.length === 0) {
     return (
       <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+        {user ? <WelcomeTour userId={user.uid} firstName={firstName} /> : null}
         <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             My learning
@@ -131,6 +133,7 @@ export function LearnDashboard() {
 
   return (
     <div className="grid gap-8">
+      {user ? <WelcomeTour userId={user.uid} firstName={firstName} /> : null}
       <section className="learner-home-hero dash-card dash-card--strong p-5 sm:p-7">
         <div className="relative z-[1] grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
           <div>
