@@ -22,9 +22,10 @@ This records what the V2 handoff mock (`screens/*.jsx`) contains that was **NOT*
 | Agenda | `learn/learn-events-hub` | existing (events) |
 | LessonUploadModal | teach upload flow | existing |
 | **Paths** | none | ⛔ DEFERRED net-new (D3) |
-| **Messages** | none | ⛔ DEFERRED net-new (D3) |
+| **Messages** | none | ⛔ DEFERRED net-new (D3) — see 2026-07-02 note |
 | **Affiliate** | none | ⛔ DEFERRED net-new (D3) |
-| **Tutorial** | none | ⛔ DEFERRED net-new (D3) |
+| **Tutorial** | `learn/welcome-tour` | ✅ DONE 2026-07-02 (`fe3a01f`) |
+| **AI sidebar** | `teacher/advisor-sidebar` + `/api/teach/advisor` | ✅ DONE 2026-07-02 (`c27e00f`, env-gated) |
 | **ReviewsModeration** | partial (`learn/course-review-panel`) | ⛔ DEFERRED dashboard (D4) |
 
 ## Deferred net-new — what each would require (do NOT port the mock blind)
@@ -50,6 +51,36 @@ This records what the V2 handoff mock (`screens/*.jsx`) contains that was **NOT*
 ## HELD (founder opt-in, from the foundation commit `c0251f8`)
 
 The handoff `tokens.css` softens four border/surface values — surface-soft `#eef4fc→#f5f9ff`, surface-strong `#e3eef9→#ebf3fb`, `--color-line` `.28→.12`, `--color-line-strong` `.40→.18` — and darkens `--color-ink-muted` `#5a6a81→#7a8fae`. **Not applied**: the `.28/.40` border weight was a documented deliberate fix ("faint = washed out"), the Jun-30 audit concluded tokens already match, and `ink-muted #7a8fae` fails WCAG AA on light surfaces. Left as a one-line opt-in for Patrick, not a blind port.
+
+## 2026-07-02 update — advisor + tutorial shipped; Messages/Paths still deferred
+
+Patrick greenlit the AI sidebar, Tutorial, Messages, and Learning Paths (and a
+hybrid video model). Dispositions after this pass:
+
+- **AI sidebar → SHIPPED** (`c27e00f`). Floating teacher-studio advisor, env-gated
+  (`NEXT_PUBLIC_TEACHER_ADVISOR_ENABLED`), backed by `/api/teach/advisor` which
+  authenticates, rate-limits, and proxies to an n8n webhook fronting DeepSeek.
+  Founder wiring guide: `docs/teacher-advisor-setup.md`.
+- **Tutorial → SHIPPED** (`fe3a01f`). First-run welcome tour in the members area,
+  localStorage seen-state, no backend.
+- **Hybrid video (YouTube embed + upload) → ALREADY EXISTS, verified.** The lesson
+  editor (`lesson-content-modal`) already offers both upload (`lesson_video` /
+  `live_recording` → Supabase Storage) and YouTube/Vimeo embed (`externalUrl` →
+  `getTrustedLessonEmbed`). The classroom (`enrolled-course-workspace`) plays a
+  hosted upload if present, else the trusted embed. Nothing to build. **Bunny is a
+  later swap of the upload target** — deferred by Patrick's own "conectar depois";
+  no API key, and Supabase Storage works today. When wired, add a Bunny branch to
+  `getTrustedLessonEmbed` (iframe) or store the Bunny URL as a hosted asset.
+- **Messages / DMs → STILL DEFERRED (recommend a scoped v1).** A full DM system is
+  a trust/safety surface (abuse, blocking, moderation, report, rate-limit) plus
+  realtime + schema — not something to invent overnight. Recommended smallest safe
+  first version for founder sign-off: **student → teacher, per-enrollment, one
+  thread per course**, teacher-reply-only-to-enrolled, reuse the existing
+  notification rail for delivery, hard rate-limit, no free-form student→student.
+  That sidesteps most of the abuse surface. Needs Patrick's OK on scope before build.
+- **Learning Paths → STILL DEFERRED.** Needs `paths` + `path_items` schema, a
+  cross-course progress rollup, and a curation decision (who authors a path —
+  platform, or teachers?). Product decision first; low urgency.
 
 ## Open decisions (status)
 
