@@ -14,6 +14,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { PlatformNav } from "@/components/platform/platform-nav";
 import { SessionCard } from "@/components/platform/session-card";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
@@ -31,6 +32,7 @@ export function MobileSidebarDrawer({
   onClose,
 }: MobileSidebarDrawerProps) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const pathname = usePathname() ?? "";
   const touchStartX = useRef<number | null>(null);
   const drawerRef = useRef<HTMLElement>(null);
@@ -40,14 +42,14 @@ export function MobileSidebarDrawer({
     const isTeacher = user?.roles.includes("teacher");
 
     return isTeacher
-      ? { href: "/teach", label: "Teach", icon: Presentation }
-      : { href: "/learn", label: "Learn", icon: GraduationCap };
-  }, [user?.roles]);
+      ? { href: "/teach", label: t("platform.mobile.teach"), icon: Presentation }
+      : { href: "/learn", label: t("platform.mobile.learn"), icon: GraduationCap };
+  }, [user?.roles, t]);
   const primaryItems = [
-    { href: "/platform", label: "Home", icon: Home },
-    { href: "/courses", label: "Market", icon: ShoppingBag },
+    { href: "/platform", label: t("platform.mobile.home"), icon: Home },
+    { href: "/courses", label: t("platform.mobile.market"), icon: ShoppingBag },
     workspaceItem,
-    { href: "/account", label: "Profile", icon: User },
+    { href: "/account", label: t("platform.mobile.profile"), icon: User },
   ];
 
   useEffect(() => {
@@ -70,7 +72,7 @@ export function MobileSidebarDrawer({
 
   return (
     <>
-      <nav className="platform-mobile-nav" aria-label="Mobile platform navigation">
+      <nav className="platform-mobile-nav" aria-label={t("platform.mobile.navLabel")}>
         {primaryItems.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -93,10 +95,10 @@ export function MobileSidebarDrawer({
           type="button"
           onClick={onOpen}
           className="grid min-w-0 flex-1 place-items-center gap-1 px-2 py-2 text-[10px] font-bold text-[var(--color-ink-soft)]"
-          aria-label="Open more navigation"
+          aria-label={t("platform.mobile.openMore")}
         >
           <MoreHorizontal aria-hidden="true" size={21} strokeWidth={1.8} />
-          <span>More</span>
+          <span>{t("platform.mobile.more")}</span>
         </button>
       </nav>
 
@@ -105,7 +107,7 @@ export function MobileSidebarDrawer({
           <button
             type="button"
             className="absolute inset-0 bg-[rgba(15,39,68,0.45)]"
-            aria-label="Close navigation"
+            aria-label={t("platform.mobile.close")}
             onClick={onClose}
           />
           <aside
@@ -113,7 +115,7 @@ export function MobileSidebarDrawer({
             tabIndex={-1}
             role="dialog"
             aria-modal="true"
-            aria-label="Platform navigation"
+            aria-label={t("platform.mobile.drawerLabel")}
             className="relative z-[60] flex h-screen w-[280px] flex-col bg-white shadow-[0_0_60px_rgba(15,39,68,0.25)] outline-none"
             onTouchStart={(event) => {
               touchStartX.current = event.touches[0]?.clientX ?? null;
@@ -133,14 +135,14 @@ export function MobileSidebarDrawer({
               <div className="min-w-0">
                 <LogoWordmark nav href="/" />
                 <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-accent-fg)]">
-                  Beta
+                  {t("platform.mobile.beta")}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={onClose}
                 className="grid size-9 place-items-center rounded-[10px] text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
-                aria-label="Close navigation"
+                aria-label={t("platform.mobile.close")}
               >
                 <X aria-hidden="true" size={18} strokeWidth={1.8} />
               </button>

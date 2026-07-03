@@ -18,6 +18,7 @@ import {
   signUpWithEmail,
 } from "@/lib/auth/supabase-auth";
 import {
+  formatValidationMessage,
   normalizeUsername,
   validateDisplayName,
 } from "@/lib/auth/profile-validation";
@@ -103,7 +104,7 @@ export function SignupForm() {
     const displayNameError = validateDisplayName(displayName);
 
     if (displayNameError) {
-      setError(displayNameError);
+      setError(formatValidationMessage(displayNameError, t));
       return;
     }
 

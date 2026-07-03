@@ -4,29 +4,12 @@ import { usePathname } from "next/navigation";
 import { ChevronRight, Menu } from "lucide-react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { NotificationBell } from "@/components/platform/notification-bell";
 import { AccountMenu } from "@/components/site/account-menu";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { platformNav } from "@/data/site";
-
-const surfaceCopy = {
-  learn: {
-    crumb: "Learn",
-  },
-  teach: {
-    crumb: "Teach",
-  },
-  ops: {
-    crumb: "Operations",
-  },
-  account: {
-    crumb: "Account",
-  },
-  platform: {
-    crumb: "Platform",
-  },
-};
 
 export function PlatformHeader({
   onOpenMobileNav,
@@ -34,20 +17,20 @@ export function PlatformHeader({
   onOpenMobileNav?: () => void;
 }) {
   const pathname = usePathname() ?? "";
+  const { t } = useTranslation();
   const { status, user, signOut } = useAuth();
   const surface = getSurface(pathname);
-  const copy = surfaceCopy[surface];
-  const pageLabel = getPageLabel(pathname);
+  const pageLabel = getPageLabel(pathname, t);
 
   return (
     <header className="platform-topbar">
       <div className="platform-topbar__inner">
         <LogoWordmark nav href="/" className="platform-topbar__logo" />
         <nav
-          aria-label="Breadcrumb"
+          aria-label={t("platform.breadcrumbLabel")}
           className="platform-crumbs"
         >
-          <span>{copy.crumb}</span>
+          <span>{t(`platform.crumbs.${surface}`)}</span>
           <ChevronRight
             aria-hidden="true"
             size={13}
@@ -71,7 +54,7 @@ export function PlatformHeader({
             type="button"
             onClick={onOpenMobileNav}
             className="grid size-10 place-items-center rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-ink)] transition hover:bg-[var(--color-surface-strong)] sm:hidden"
-            aria-label="Open navigation menu"
+            aria-label={t("platform.openMobileNav")}
           >
             <Menu aria-hidden="true" size={18} strokeWidth={1.8} />
           </button>
@@ -81,7 +64,9 @@ export function PlatformHeader({
   );
 }
 
-function getSurface(pathname: string): keyof typeof surfaceCopy {
+type Surface = "learn" | "teach" | "ops" | "account" | "platform";
+
+function getSurface(pathname: string): Surface {
   if (pathname.startsWith("/learn")) {
     return "learn";
   }
@@ -101,7 +86,10 @@ function getSurface(pathname: string): keyof typeof surfaceCopy {
   return "platform";
 }
 
-function getPageLabel(pathname: string): string {
+function getPageLabel(
+  pathname: string,
+  t: (key: string) => string,
+): string {
   const matches = platformNav
     .filter(
       (item) =>
@@ -110,10 +98,15 @@ function getPageLabel(pathname: string): string {
     .sort((a, b) => b.href.length - a.href.length);
 
   if (matches[0]) {
-    return matches[0].label;
+    return t(matches[0].labelKey);
   }
 
-  const segment = pathname.split("/").filter(Boolean).pop() ?? "Home";
+  const segment = pathname.split("/").filter(Boolean).pop();
+
+  if (!segment) {
+    return t("platform.crumbs.home");
+  }
+
   return segment
     .replace(/-/g, " ")
     .replace(/\b\w/g, (character) => character.toUpperCase());

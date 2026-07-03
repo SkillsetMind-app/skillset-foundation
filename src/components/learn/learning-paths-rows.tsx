@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CheckCircle2, PlayCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { Enrollment } from "@/domain/enrollment";
 import type { LearningPath } from "@/domain/learning-path";
 import { computePathProgress } from "@/domain/learning-path";
@@ -17,6 +18,7 @@ import { subscribeToPublishedTeacherCourses } from "@/lib/data/published-courses
 // progress bar. Renders nothing while there are no published paths, so the
 // dashboard is unchanged until curation happens.
 export function LearningPathsRows({ enrollments }: { enrollments: Enrollment[] }) {
+  const { t } = useTranslation();
   const [paths, setPaths] = useState<LearningPath[]>([]);
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
 
@@ -76,7 +78,7 @@ export function LearningPathsRows({ enrollments }: { enrollments: Enrollment[] }
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-                  Learning path
+                  {t("learn.paths.eyebrow")}
                 </p>
                 <h3 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
                   {path.title}
@@ -89,8 +91,10 @@ export function LearningPathsRows({ enrollments }: { enrollments: Enrollment[] }
               </div>
               <div className="w-full max-w-[260px]">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">
-                  {progress.completedCount}/{path.courseIds.length} completed ·{" "}
-                  {progress.progressPercent}%
+                  {t("learn.paths.progress")
+                    .replace("{completed}", String(progress.completedCount))
+                    .replace("{total}", String(path.courseIds.length))
+                    .replace("{percent}", String(progress.progressPercent))}
                 </p>
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
                   <div
@@ -137,10 +141,15 @@ export function LearningPathsRows({ enrollments }: { enrollments: Enrollment[] }
                     </h4>
                     <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
                       {isCompleted
-                        ? "Completed"
+                        ? t("learn.paths.completed")
                         : enrollment
-                          ? `${Math.max(0, Math.min(100, enrollment.progressPercent))}% complete`
-                          : "Not enrolled yet"}
+                          ? t("learn.paths.percentComplete").replace(
+                              "{percent}",
+                              String(
+                                Math.max(0, Math.min(100, enrollment.progressPercent)),
+                              ),
+                            )
+                          : t("learn.paths.notEnrolled")}
                     </p>
                     <Link
                       href={href}
@@ -152,10 +161,10 @@ export function LearningPathsRows({ enrollments }: { enrollments: Enrollment[] }
                         <PlayCircle size={14} aria-hidden="true" />
                       )}
                       {isCompleted
-                        ? "Review course"
+                        ? t("learn.paths.reviewCourse")
                         : enrollment
-                          ? "Continue"
-                          : "View course"}
+                          ? t("learn.paths.continue")
+                          : t("learn.paths.viewCourse")}
                     </Link>
                   </li>
                 );

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { UserGoal } from "@/domain/user-profile";
 import {
+  formatValidationMessage,
   normalizeUsername,
   validateBio,
   validateDisplayName,
@@ -224,9 +225,9 @@ export function OnboardingChoice() {
 
   function validateProfileStep() {
     return (
-      validateDisplayName(displayName) ||
-      validateUsername(username) ||
-      validateBio(bio) ||
+      formatValidationMessage(validateDisplayName(displayName), t) ||
+      formatValidationMessage(validateUsername(username), t) ||
+      formatValidationMessage(validateBio(bio), t) ||
       (!timezone ? t("onboarding.errorChooseTimezone") : "")
     );
   }

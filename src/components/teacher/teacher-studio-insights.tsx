@@ -12,6 +12,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
 import type { Order } from "@/domain/order";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -23,18 +24,13 @@ import { toDate } from "@/lib/format-date";
 
 type RevenueRange = "3m" | "6m" | "12m" | "all";
 
-const revenueRanges: { value: RevenueRange; label: string }[] = [
-  { value: "3m", label: "3m" },
-  { value: "6m", label: "6m" },
-  { value: "12m", label: "12m" },
-  { value: "all", label: "All" },
-];
+const revenueRanges: RevenueRange[] = ["3m", "6m", "12m", "all"];
 
-const revenueRangeSubtitle: Record<RevenueRange, string> = {
-  "3m": "Last 3 months - all courses",
-  "6m": "Last 6 months - all courses",
-  "12m": "Last 12 months - all courses",
-  all: "All time - all courses",
+const revenueRangeSubtitleKey: Record<RevenueRange, string> = {
+  "3m": "teach.insights.range3m",
+  "6m": "teach.insights.range6m",
+  "12m": "teach.insights.range12m",
+  all: "teach.insights.rangeAll",
 };
 
 const money = new Intl.NumberFormat("en-US", {
@@ -55,6 +51,7 @@ type ActivityItem = {
 
 export function TeacherStudioInsights() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [payoutsReady, setPayoutsReady] = useState(false);
@@ -112,7 +109,7 @@ export function TeacherStudioInsights() {
     () => buildTopCourses(courses, paidOrders),
     [courses, paidOrders],
   );
-  const activity = buildActivity(courses, payoutsReady);
+  const activity = buildActivity(courses, payoutsReady, t);
 
   return (
     <div className="grid gap-8">
@@ -121,22 +118,26 @@ export function TeacherStudioInsights() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h3 className="display-title text-2xl text-[var(--color-primary)]">
-                Revenue
+                {t("teach.insights.revenue")}
               </h3>
               <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
-                {revenueRangeSubtitle[revenueRange]}
+                {t(revenueRangeSubtitleKey[revenueRange])}
               </p>
             </div>
-            <div className="studio-range-tabs" role="group" aria-label="Revenue range">
+            <div
+              className="studio-range-tabs"
+              role="group"
+              aria-label={t("teach.insights.rangeGroupLabel")}
+            >
               {revenueRanges.map((range) => (
                 <button
-                  key={range.value}
+                  key={range}
                   type="button"
-                  aria-pressed={revenueRange === range.value}
-                  onClick={() => setRevenueRange(range.value)}
-                  className={revenueRange === range.value ? "is-active" : undefined}
+                  aria-pressed={revenueRange === range}
+                  onClick={() => setRevenueRange(range)}
+                  className={revenueRange === range ? "is-active" : undefined}
                 >
-                  {range.label}
+                  {range === "all" ? t("teach.insights.rangeAllTab") : range}
                 </button>
               ))}
             </div>
@@ -146,7 +147,7 @@ export function TeacherStudioInsights() {
             <svg
               viewBox={`0 0 ${chart.width} ${chart.height}`}
               role="img"
-              aria-label="Teacher revenue chart"
+              aria-label={t("teach.insights.chartAria")}
               className="h-full w-full"
             >
               <defs>
@@ -236,8 +237,8 @@ export function TeacherStudioInsights() {
 
             {!grossMinor ? (
               <div className="studio-chart-empty">
-                <p>No revenue yet</p>
-                <span>Create, upload, preview, connect payouts, then submit for review.</span>
+                <p>{t("teach.insights.noRevenue")}</p>
+                <span>{t("teach.insights.noRevenueDetail")}</span>
               </div>
             ) : null}
           </div>
@@ -247,10 +248,10 @@ export function TeacherStudioInsights() {
           <div className="dash-card p-5">
             <div className="flex items-center justify-between gap-3">
               <h3 className="display-title text-2xl text-[var(--color-primary)]">
-                Top courses
+                {t("teach.insights.topCourses")}
               </h3>
               <Link href="/teach/builder" className="button-outline px-3.5 py-2 text-xs">
-                All courses
+                {t("teach.insights.allCourses")}
               </Link>
             </div>
             <div className="mt-4 grid gap-3">
@@ -265,7 +266,9 @@ export function TeacherStudioInsights() {
                     <span className="min-w-0">
                       <strong>{course.title}</strong>
                       <small>
-                        {course.lessonCount} lessons - {course.orders} orders
+                        {t("teach.insights.courseMeta")
+                          .replace("{lessons}", String(course.lessonCount))
+                          .replace("{orders}", String(course.orders))}
                       </small>
                     </span>
                     <span className="studio-course-row__value">
@@ -276,8 +279,8 @@ export function TeacherStudioInsights() {
                 ))
               ) : (
                 <RichEmptyLine
-                  title="No courses yet."
-                  detail="Your first course will appear here after it is created in Course Builder."
+                  title={t("teach.insights.noCoursesTitle")}
+                  detail={t("teach.insights.noCoursesDetail")}
                 />
               )}
             </div>
@@ -288,8 +291,8 @@ export function TeacherStudioInsights() {
       <section>
         <div className="sec-head">
           <div>
-            <span className="eyebrow brand">Activity</span>
-            <h2>What needs your attention today.</h2>
+            <span className="eyebrow brand">{t("teach.insights.activityEyebrow")}</span>
+            <h2>{t("teach.insights.activityTitle")}</h2>
           </div>
         </div>
         <div className="mt-5 grid gap-4 lg:grid-cols-3">
@@ -301,7 +304,7 @@ export function TeacherStudioInsights() {
               <strong>{item.title}</strong>
               <small>{item.detail}</small>
               <span className="studio-activity-card__open">
-                Open <ArrowUpRight aria-hidden="true" size={13} />
+                {t("teach.insights.open")} <ArrowUpRight aria-hidden="true" size={13} />
               </span>
             </Link>
           ))}
@@ -347,7 +350,11 @@ function buildTopCourses(courses: TeacherCourse[], paidOrders: Order[]) {
     .slice(0, 3);
 }
 
-function buildActivity(courses: TeacherCourse[], payoutsReady: boolean): ActivityItem[] {
+function buildActivity(
+  courses: TeacherCourse[],
+  payoutsReady: boolean,
+  t: (key: string) => string,
+): ActivityItem[] {
   const items: ActivityItem[] = [];
   const emptyDraft = courses.find((course) => course.status === "draft" && course.lessonCount === 0);
   const reviewReadyDraft = courses.find((course) => course.status === "draft" && course.lessonCount > 0);
@@ -356,8 +363,8 @@ function buildActivity(courses: TeacherCourse[], payoutsReady: boolean): Activit
 
   if (!payoutsReady) {
     items.push({
-      title: "Finish payout setup",
-      detail: "Connect Stripe so paid courses can sell and release creator payouts.",
+      title: t("teach.insights.actPayoutTitle"),
+      detail: t("teach.insights.actPayoutDetail"),
       href: "/account/payments#stripe-connect",
       kind: "urgent",
       icon: "alert",
@@ -366,8 +373,8 @@ function buildActivity(courses: TeacherCourse[], payoutsReady: boolean): Activit
 
   if (needsChanges) {
     items.push({
-      title: "Review requested changes",
-      detail: `${needsChanges.title} needs edits before Skillset approval.`,
+      title: t("teach.insights.actChangesTitle"),
+      detail: t("teach.insights.actChangesDetail").replace("{title}", needsChanges.title),
       href: `/teach/builder?courseId=${needsChanges.id}`,
       kind: "urgent",
       icon: "flag",
@@ -376,8 +383,8 @@ function buildActivity(courses: TeacherCourse[], payoutsReady: boolean): Activit
 
   if (emptyDraft) {
     items.push({
-      title: "Add lessons to your draft",
-      detail: `${emptyDraft.title} has no lessons yet. Open the builder and add modules.`,
+      title: t("teach.insights.actEmptyDraftTitle"),
+      detail: t("teach.insights.actEmptyDraftDetail").replace("{title}", emptyDraft.title),
       href: `/teach/builder?courseId=${emptyDraft.id}`,
       kind: "normal",
       icon: "clock",
@@ -386,8 +393,8 @@ function buildActivity(courses: TeacherCourse[], payoutsReady: boolean): Activit
 
   if (!courses.length) {
     items.push({
-      title: "Create your first course",
-      detail: "Start with title, category, pricing, modules, lessons, video, and materials.",
+      title: t("teach.insights.actFirstCourseTitle"),
+      detail: t("teach.insights.actFirstCourseDetail"),
       href: "/teach/builder?newCourse=1",
       kind: "normal",
       icon: "sparkle",
@@ -396,8 +403,8 @@ function buildActivity(courses: TeacherCourse[], payoutsReady: boolean): Activit
 
   if (reviewReadyDraft) {
     items.push({
-      title: "Submit a course for review",
-      detail: `${reviewReadyDraft.title} has lessons and can move toward review.`,
+      title: t("teach.insights.actSubmitTitle"),
+      detail: t("teach.insights.actSubmitDetail").replace("{title}", reviewReadyDraft.title),
       href: `/teach/builder?courseId=${reviewReadyDraft.id}`,
       kind: "success",
       icon: "sparkle",
@@ -406,8 +413,8 @@ function buildActivity(courses: TeacherCourse[], payoutsReady: boolean): Activit
 
   if (inReview) {
     items.push({
-      title: "Course review in progress",
-      detail: `${inReview.title} is on sale while Skillset completes its review.`,
+      title: t("teach.insights.actInReviewTitle"),
+      detail: t("teach.insights.actInReviewDetail").replace("{title}", inReview.title),
       href: `/teach/builder?courseId=${inReview.id}`,
       kind: "normal",
       icon: "clock",
@@ -415,16 +422,16 @@ function buildActivity(courses: TeacherCourse[], payoutsReady: boolean): Activit
   }
 
   items.push({
-    title: "Student questions",
-    detail: "Course discussions and lesson comments will surface here as students engage.",
+    title: t("teach.insights.actQuestionsTitle"),
+    detail: t("teach.insights.actQuestionsDetail"),
     href: "/learn/community/creator",
     kind: "normal",
     icon: "message",
   });
 
   items.push({
-    title: "Schedule the next live session",
-    detail: "Add a class, mentorship, masterclass, office hour, webinar, or deadline to the course agenda.",
+    title: t("teach.insights.actScheduleTitle"),
+    detail: t("teach.insights.actScheduleDetail"),
     href: "/teach/events",
     kind: "normal",
     icon: "clock",

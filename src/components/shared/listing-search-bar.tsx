@@ -3,6 +3,7 @@
 import { Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/cn";
 
 type ListingSearchBarProps = {
@@ -20,6 +21,7 @@ export function ListingSearchBar({
   className,
   debounceMs = 200,
 }: ListingSearchBarProps) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState(value);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -77,7 +79,7 @@ export function ListingSearchBar({
         <button
           type="button"
           onClick={clearSearch}
-          aria-label="Clear search"
+          aria-label={t("platform.clearSearch")}
           className="absolute right-2 grid size-6 place-items-center rounded-[8px] text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)]"
         >
           <X aria-hidden="true" size={14} strokeWidth={1.8} />

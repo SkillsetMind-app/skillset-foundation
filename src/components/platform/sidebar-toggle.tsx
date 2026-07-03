@@ -2,6 +2,7 @@
 
 import { ChevronsLeft, ChevronsRight } from "lucide-react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { SidebarState } from "@/lib/ui/sidebar-state";
 
 type SidebarToggleProps = {
@@ -15,8 +16,12 @@ export function SidebarToggle({
   onToggle,
   state,
 }: SidebarToggleProps) {
+  const { t } = useTranslation();
   const Icon = state === "collapsed" ? ChevronsRight : ChevronsLeft;
-  const label = state === "collapsed" ? "Expand sidebar" : "Collapse sidebar";
+  const label =
+    state === "collapsed"
+      ? t("platform.expandSidebar")
+      : t("platform.collapseSidebar");
 
   return (
     <button

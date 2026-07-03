@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { isValidE164Phone, PhoneInput } from "@/components/shared/phone-input";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import type { UserGoal } from "@/domain/user-profile";
@@ -13,6 +14,7 @@ import {
   maxCredentialLength,
 } from "@/domain/user-profile";
 import {
+  formatValidationMessage,
   normalizeCredentials,
   normalizeGoals,
   normalizeUsername,
@@ -52,6 +54,7 @@ const timezoneOptions = [
 
 export function ProfileSettingsPanel() {
   const { refreshUser, user } = useAuth();
+  const { t } = useTranslation();
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
@@ -161,10 +164,10 @@ export function ProfileSettingsPanel() {
     }
 
     const validationError =
-      validateDisplayName(displayName) ||
-      validateUsername(username) ||
-      validateBio(bio) ||
-      validateCredentials(credentials) ||
+      formatValidationMessage(validateDisplayName(displayName), t) ||
+      formatValidationMessage(validateUsername(username), t) ||
+      formatValidationMessage(validateBio(bio), t) ||
+      formatValidationMessage(validateCredentials(credentials), t) ||
       (!isValidE164Phone(phoneNumber) ? "Use a valid phone number." : "") ||
       (!timezone ? "Choose your timezone." : "");
 

@@ -20,7 +20,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { planById, type PlanId } from "@/data/plans";
-import { formatPrimaryRole, type SkillsetUser } from "@/domain/auth";
+import { primaryRoleKey, type SkillsetUser } from "@/domain/auth";
 import { getPrimaryWorkspaceHref } from "@/lib/auth/routing";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 
@@ -73,7 +73,7 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
     ? t("account.payoutsTax")
     : t("account.billing");
   const currentPlanName = planById(currentPlanId).name;
-  const accountRoleLabel = formatPrimaryRole(user.roles);
+  const accountRoleLabel = t(primaryRoleKey(user.roles));
   const memberFallback = t("account.memberFallback");
   // One account, both roles: a teacher can drop into their student side; a
   // learner can open the teacher application (the onboarding quiz). The switch
@@ -125,7 +125,7 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
             {user.displayName || user.email || memberFallback}
           </span>
           <span className="account-menu-trigger__role">
-            {formatPrimaryRole(user.roles)}
+            {accountRoleLabel}
           </span>
         </span>
         <ChevronDown

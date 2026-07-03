@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { TeacherOverviewMetrics } from "@/components/teacher/teacher-overview-metrics";
 import { TeacherStudioInsights } from "@/components/teacher/teacher-studio-insights";
 import type { Order } from "@/domain/order";
@@ -27,16 +28,22 @@ const money = new Intl.NumberFormat("en-US", {
 
 export function TeacherStudioDashboard() {
   const { user } = useAuth();
+  const { t, locale } = useTranslation();
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [ledger, setLedger] = useState<PayoutLedgerEntry[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoaded, setOrdersLoaded] = useState(false);
   const [payoutsReady, setPayoutsReady] = useState(false);
   const [coursesLoaded, setCoursesLoaded] = useState(false);
-  const firstName = user?.displayName?.trim().split(/\s+/)[0] ?? "there";
+  const firstName = user?.displayName?.trim().split(/\s+/)[0] ?? "";
   const publishedCourses = courses.filter((course) => course.status === "published");
   const draftCourses = courses.filter((course) => course.status === "draft");
-  const nextPayout = useMemo(() => getNextPayoutLabel(ledger), [ledger]);
+  const nextPayoutMillis = useMemo(() => getNextPayoutMillis(ledger), [ledger]);
+  const nextPayout = nextPayoutMillis
+    ? new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" }).format(
+        nextPayoutMillis,
+      )
+    : t("teach.dashboard.payoutFirstOrder");
 
   // Compact hero payout chip figure, computed with the CANONICAL split
   // (src/domain/payment-split): platform commission AND the Stripe processing
@@ -127,24 +134,33 @@ export function TeacherStudioDashboard() {
         <div className="relative z-[1] flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--color-accent-fg)]">
-              Teacher Studio
+              {t("teach.page.eyebrow")}
             </p>
             <h1 className="display-title mt-2 text-3xl leading-[1.05] text-[var(--color-primary)] sm:text-4xl lg:text-5xl">
-              Welcome back, {firstName}.
+              {firstName
+                ? t("teach.dashboard.welcomeBackNamed").replace("{name}", firstName)
+                : t("teach.dashboard.welcomeBack")}
             </h1>
             {coursesLoaded ? (
               <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--color-ink-soft)]">
-                You have{" "}
+                {t("teach.dashboard.summaryPrefix")}{" "}
                 <strong className="text-[var(--color-ink)]">
-                  {publishedCourses.length} published{" "}
-                  {publishedCourses.length === 1 ? "course" : "courses"}
+                  {t(
+                    publishedCourses.length === 1
+                      ? "teach.dashboard.publishedSingular"
+                      : "teach.dashboard.publishedPlural",
+                  ).replace("{count}", String(publishedCourses.length))}
                 </strong>{" "}
-                and{" "}
+                {t("teach.dashboard.summaryJoin")}{" "}
                 <strong className="text-[var(--color-ink)]">
-                  {draftCourses.length} draft{draftCourses.length === 1 ? "" : "s"}
+                  {t(
+                    draftCourses.length === 1
+                      ? "teach.dashboard.draftSingular"
+                      : "teach.dashboard.draftPlural",
+                  ).replace("{count}", String(draftCourses.length))}
                 </strong>
-                . Your next payout is{" "}
-                <strong className="text-[var(--color-ink)]">{nextPayout}</strong>.
+                {t("teach.dashboard.summaryPayoutLead")}{" "}
+                <strong className="text-[var(--color-ink)]">{nextPayout}</strong>
               </p>
             ) : (
               <div className="mt-3 h-6 w-3/4 max-w-2xl animate-pulse rounded bg-[var(--color-surface-strong)]" />
@@ -157,13 +173,18 @@ export function TeacherStudioDashboard() {
               className="studio-payout-chip"
               aria-label={
                 !ordersLoaded
-                  ? "Next payout loading — open payout settings"
+                  ? t("teach.dashboard.payoutLoadingAria")
                   : payoutsReady
-                    ? `Next payout ${money.format(netMinor / 100)} — open payout settings`
-                    : "Connect Stripe to enable payouts"
+                    ? t("teach.dashboard.payoutAria").replace(
+                        "{amount}",
+                        money.format(netMinor / 100),
+                      )
+                    : t("teach.dashboard.connectStripeAria")
               }
             >
-              <span className="studio-payout-chip__label">Next payout</span>
+              <span className="studio-payout-chip__label">
+                {t("teach.dashboard.nextPayout")}
+              </span>
               <span className="studio-payout-chip__value">
                 {ordersLoaded ? (
                   money.format(netMinor / 100)
@@ -176,7 +197,9 @@ export function TeacherStudioDashboard() {
                 )}
               </span>
               <span className="studio-payout-chip__hint">
-                {payoutsReady ? "Net after fees" : "Connect Stripe to enable"}
+                {payoutsReady
+                  ? t("teach.dashboard.netAfterFees")
+                  : t("teach.dashboard.connectStripe")}
               </span>
             </Link>
 
@@ -185,19 +208,19 @@ export function TeacherStudioDashboard() {
                 href="/account?tab=profile"
                 className="button-outline bg-white px-4 py-2.5 text-sm"
               >
-                Public profile
+                {t("teach.dashboard.publicProfile")}
               </Link>
               <Link
                 href="/teach/storefront"
                 className="button-outline bg-white px-4 py-2.5 text-sm"
               >
-                Storefront
+                {t("teach.dashboard.storefront")}
               </Link>
               <Link
                 href="/teach/builder?newCourse=1"
                 className="button-solid px-4 py-2.5 text-sm"
               >
-                New course
+                {t("teach.dashboard.newCourse")}
               </Link>
             </div>
           </div>
@@ -210,21 +233,14 @@ export function TeacherStudioDashboard() {
   );
 }
 
-function getNextPayoutLabel(entries: PayoutLedgerEntry[]) {
-  const nextRelease = entries
-    .filter((entry) => entry.status === "in_release" || entry.status === "releasing")
-    .map((entry) => getTimestampMillis(entry.releaseAt))
-    .filter((value): value is number => Boolean(value))
-    .sort((left, right) => left - right)[0];
-
-  if (!nextRelease) {
-    return "scheduled after your first paid order";
-  }
-
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-  }).format(nextRelease);
+function getNextPayoutMillis(entries: PayoutLedgerEntry[]): number | null {
+  return (
+    entries
+      .filter((entry) => entry.status === "in_release" || entry.status === "releasing")
+      .map((entry) => getTimestampMillis(entry.releaseAt))
+      .filter((value): value is number => Boolean(value))
+      .sort((left, right) => left - right)[0] ?? null
+  );
 }
 
 function getTimestampMillis(value: unknown): number | null {

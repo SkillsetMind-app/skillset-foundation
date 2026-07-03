@@ -1,14 +1,17 @@
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import { TeacherStudioDashboard } from "@/components/teacher/teacher-studio-dashboard";
+import { getServerTranslation } from "@/lib/i18n/server";
 
-export default function TeachPage() {
+export default async function TeachPage() {
+  const { t } = await getServerTranslation();
+
   return (
     <ProtectedSurface permissions={["teacherStudio.access"]}>
       <PlatformShell
-        eyebrow="Teacher Studio"
-        title="Build, ship, get paid."
-        description="Draft a course, prepare the learner experience, and submit when ready. Your course goes on sale as soon as you submit, and Skillset review follows without blocking sales."
+        eyebrow={t("teach.page.eyebrow")}
+        title={t("teach.page.title")}
+        description={t("teach.page.description")}
         hideHeader
       >
         <TeacherStudioDashboard />

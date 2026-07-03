@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { NotificationRow } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { AppNotification } from "@/domain/notification";
 import {
   markAllNotificationsAsRead,
@@ -15,6 +16,7 @@ import {
 
 export function NotificationBell() {
   const { status, user } = useAuth();
+  const { t } = useTranslation();
   const uid = status === "authenticated" ? user?.uid ?? null : null;
 
   const [open, setOpen] = useState(false);
@@ -119,8 +121,11 @@ export function NotificationBell() {
         aria-expanded={open}
         aria-label={
           unreadCount > 0
-            ? `Open notifications, ${unreadCount} unread`
-            : "Open notifications"
+            ? t("platform.notifications.openUnread").replace(
+                "{count}",
+                String(unreadCount),
+              )
+            : t("platform.notifications.open")
         }
         className="relative grid size-10 place-items-center rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-ink)] transition hover:bg-[var(--color-surface-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(44,82,130,0.28)]"
       >
@@ -136,7 +141,7 @@ export function NotificationBell() {
         <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[min(380px,calc(100vw-32px))] overflow-hidden rounded-[14px] border border-[var(--color-line)] bg-white shadow-[0_24px_48px_rgba(15,39,68,0.16)]">
           <div className="flex items-center justify-between border-b border-[var(--color-line)] px-5 py-4">
             <h4 className="text-[15px] font-bold text-[var(--color-primary)]">
-              Notifications
+              {t("platform.notifications.title")}
             </h4>
             <div className="flex items-center gap-1">
               {unreadCount > 0 ? (
@@ -145,14 +150,14 @@ export function NotificationBell() {
                   onClick={handleMarkAll}
                   className="rounded-[8px] px-2 py-1 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-soft)]"
                 >
-                  Mark all read
+                  {t("platform.notifications.markAllRead")}
                 </button>
               ) : null}
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 className="grid size-8 place-items-center rounded-[8px] text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
-                aria-label="Close notifications"
+                aria-label={t("platform.notifications.close")}
               >
                 <X aria-hidden="true" size={16} strokeWidth={1.8} />
               </button>
@@ -160,7 +165,7 @@ export function NotificationBell() {
           </div>
           <div
             role="tablist"
-            aria-label="Filter notifications"
+            aria-label={t("platform.notifications.filterLabel")}
             className="flex items-center gap-1 border-b border-[var(--color-line)] px-5 py-2"
           >
             {(["all", "unread"] as const).map((value) => (
@@ -176,7 +181,9 @@ export function NotificationBell() {
                     : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)]"
                 }`}
               >
-                {value === "all" ? "All" : `Unread${unreadCount > 0 ? ` (${unreadCount})` : ""}`}
+                {value === "all"
+                  ? t("platform.notifications.all")
+                  : `${t("platform.notifications.unread")}${unreadCount > 0 ? ` (${unreadCount})` : ""}`}
               </button>
             ))}
           </div>
@@ -189,10 +196,10 @@ export function NotificationBell() {
                 className="mx-auto text-[var(--color-ink-muted)]"
               />
               <p className="mt-3 text-sm font-semibold text-[var(--color-ink)]">
-                You&apos;re all caught up
+                {t("platform.notifications.caughtUp")}
               </p>
               <p className="mx-auto mt-2 max-w-[220px] text-xs leading-5 text-[var(--color-ink-soft)]">
-                Skillset will let you know when something needs your attention.
+                {t("platform.notifications.caughtUpDetail")}
               </p>
             </div>
           ) : (
@@ -229,7 +236,7 @@ export function NotificationBell() {
               onClick={() => setOpen(false)}
               className="text-xs font-semibold text-[var(--color-primary)]"
             >
-              View all
+              {t("platform.notifications.viewAll")}
             </Link>
           </div>
         </div>

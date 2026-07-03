@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/cn";
 
 export type StatusChipStatus =
@@ -28,28 +31,30 @@ type StatusChipProps = {
   className?: string;
 };
 
-const statusLabels: Record<string, string> = {
-  active: "Active",
-  cancelled: "Cancelled",
-  completed: "Completed",
-  dismissed: "Dismissed",
-  draft: "Draft",
-  expired: "Expired",
-  failed: "Failed",
-  inactive: "Inactive",
-  in_review: "In review",
-  needs_changes: "Needs changes",
-  open: "Open",
-  paid: "Paid",
-  partially_refunded: "Partially refunded",
-  pending: "Pending",
-  published: "Published",
-  refunded: "Refunded",
-  resolved: "Resolved",
-  reviewed: "Reviewed",
-  revoked: "Revoked",
-  succeeded: "Succeeded",
-};
+// Statuses with a dictionary entry under statusChip.* — anything else renders
+// as a prettified fallback instead of leaking a raw translation key.
+const knownStatuses = new Set([
+  "active",
+  "cancelled",
+  "completed",
+  "dismissed",
+  "draft",
+  "expired",
+  "failed",
+  "inactive",
+  "in_review",
+  "needs_changes",
+  "open",
+  "paid",
+  "partially_refunded",
+  "pending",
+  "published",
+  "refunded",
+  "resolved",
+  "reviewed",
+  "revoked",
+  "succeeded",
+]);
 
 const statusVariants: Record<string, string> = {
   active: "success",
@@ -75,10 +80,14 @@ const statusVariants: Record<string, string> = {
 };
 
 export function StatusChip({ status, label, className }: StatusChipProps) {
+  const { t } = useTranslation();
   const normalizedStatus = status.toLowerCase().replace(/\s+/g, "_");
   const variant = statusVariants[normalizedStatus] ?? "draft";
   const displayLabel =
-    label ?? statusLabels[normalizedStatus] ?? normalizedStatus.replaceAll("_", " ");
+    label ??
+    (knownStatuses.has(normalizedStatus)
+      ? t(`statusChip.${normalizedStatus}`)
+      : normalizedStatus.replaceAll("_", " "));
 
   return (
     <span

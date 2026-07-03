@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import {
   platformNav,
   type PlatformNavContext,
@@ -58,6 +59,7 @@ const iconMap: Record<string, LucideIcon> = {
 
 export function PlatformNav({ collapsed = false }: { collapsed?: boolean }) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const pathname = usePathname() ?? "";
   const subject: PermissionSubject = { roles: user?.roles ?? ["guest"] };
   const context = resolveContext(pathname, subject);
@@ -71,12 +73,15 @@ export function PlatformNav({ collapsed = false }: { collapsed?: boolean }) {
   // Flat nav — no section labels. Account items (Settings, Plans, Billing,
   // Payouts, Wishlist) live in the avatar menu, mirroring the refined design.
   return (
-    <nav className="platform-sidebar-nav mt-3 flex flex-col gap-1" aria-label="Workspace">
+    <nav
+      className="platform-sidebar-nav mt-3 flex flex-col gap-1"
+      aria-label={t("platform.sidebarNavLabel")}
+    >
       {visibleItems.map((item) => (
         <PlatformNavLink
           key={item.href}
           href={item.href}
-          label={item.label}
+          label={t(item.labelKey)}
           icon={item.icon}
           active={isActivePlatformRoute(pathname, item.href)}
           collapsed={collapsed}
@@ -147,6 +152,7 @@ function PlatformNavLink({
   collapsed: boolean;
   newTab?: boolean;
 }) {
+  const { t } = useTranslation();
   const Icon = iconMap[icon] ?? LayoutDashboard;
 
   return (
@@ -179,7 +185,9 @@ function PlatformNavLink({
           className="ml-auto shrink-0 text-[var(--color-ink-muted)] transition-colors group-hover:text-[var(--color-ink-soft)]"
         />
       ) : null}
-      {newTab ? <span className="sr-only">(opens in a new tab)</span> : null}
+      {newTab ? (
+        <span className="sr-only">{t("platform.opensInNewTab")}</span>
+      ) : null}
     </Link>
   );
 }

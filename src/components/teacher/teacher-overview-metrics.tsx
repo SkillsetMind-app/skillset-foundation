@@ -4,6 +4,7 @@ import { TrendingDown, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { Order } from "@/domain/order";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
@@ -38,6 +39,7 @@ function percentDelta(
 
 export function TeacherOverviewMetrics() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -150,31 +152,39 @@ export function TeacherOverviewMetrics() {
     delta: { label: string; up: boolean } | null;
   }[] = [
     {
-      label: "Revenue, 30d",
+      label: t("teach.metrics.revenue30d"),
       value: money.format(gross30dMinor / 100),
-      hint: paidOrders30d.length ? "Paid checkout volume" : "Ready after first sale",
+      hint: paidOrders30d.length
+        ? t("teach.metrics.revenueHintPaid")
+        : t("teach.metrics.revenueHintEmpty"),
       delta: percentDelta(gross30dMinor, grossPrev30dMinor),
     },
     {
-      label: "New students",
+      label: t("teach.metrics.newStudents"),
       value: String(paidOrders30d.length),
-      hint: paidOrders30d.length ? "Paid enrollments" : "No new students yet",
+      hint: paidOrders30d.length
+        ? t("teach.metrics.newStudentsHintPaid")
+        : t("teach.metrics.newStudentsHintEmpty"),
       delta: percentDelta(paidOrders30d.length, newStudentsPrev30d),
     },
     {
       // Completion is not measured yet: show an honest placeholder, never 0%
       // (which would read as a real measurement of zero progress).
-      label: "Completion",
+      label: t("teach.metrics.completion"),
       value: "--",
-      hint: "Appears once learners finish lessons",
+      hint: t("teach.metrics.completionHint"),
       delta: null,
     },
     {
-      label: "Avg rating",
+      label: t("teach.metrics.avgRating"),
       value: averageRating ? averageRating.toFixed(1) : "--",
       hint: ratingCount
-        ? `${ratingCount} learner review${ratingCount === 1 ? "" : "s"}`
-        : "No published course ratings yet",
+        ? t(
+            ratingCount === 1
+              ? "teach.metrics.reviewsSingular"
+              : "teach.metrics.reviewsPlural",
+          ).replace("{count}", String(ratingCount))
+        : t("teach.metrics.ratingHintEmpty"),
       delta: null,
     },
   ];
@@ -211,7 +221,7 @@ export function TeacherOverviewMetrics() {
               )}
               {card.delta.label}
               <span className="font-semibold text-[var(--color-ink-soft)]">
-                vs prev 30d
+                {t("teach.metrics.vsPrev30d")}
               </span>
             </div>
           ) : null}
@@ -221,7 +231,9 @@ export function TeacherOverviewMetrics() {
         </div>
       ))}
       <span className="sr-only">
-        Published courses: {approvedCount}. In review: {inReviewCount}.
+        {t("teach.metrics.srSummary")
+          .replace("{published}", String(approvedCount))
+          .replace("{inReview}", String(inReviewCount))}
       </span>
     </section>
   );

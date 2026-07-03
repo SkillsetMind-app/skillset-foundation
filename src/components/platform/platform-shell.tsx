@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { HelpBubble } from "@/components/platform/help-bubble";
 import { MobileSidebarDrawer } from "@/components/platform/mobile-sidebar-drawer";
 import { PlatformHeader } from "@/components/platform/platform-header";
@@ -165,7 +166,8 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
 function PlatformSidebarSearch({ pathname }: { pathname: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
-  const placeholder = getSearchPlaceholder(pathname);
+  const { t } = useTranslation();
+  const placeholder = t(getSearchPlaceholderKey(pathname));
 
   function submitSearch() {
     const query = inputRef.current?.value.trim();
@@ -208,18 +210,18 @@ function PlatformSidebarSearch({ pathname }: { pathname: string }) {
   );
 }
 
-function getSearchPlaceholder(pathname: string) {
+function getSearchPlaceholderKey(pathname: string) {
   if (pathname.startsWith("/teach")) {
-    return "Search courses, students...";
+    return "platform.searchTeachPlaceholder";
   }
 
   if (pathname.startsWith("/learn")) {
-    return "Search lessons, courses...";
+    return "platform.searchLearnPlaceholder";
   }
 
   if (pathname.startsWith("/ops")) {
-    return "Search users, reviews...";
+    return "platform.searchOpsPlaceholder";
   }
 
-  return "Search Skillset...";
+  return "platform.searchDefaultPlaceholder";
 }

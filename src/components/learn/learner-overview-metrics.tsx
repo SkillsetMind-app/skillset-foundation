@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { Certificate } from "@/domain/certificate";
 import type { CourseEvent } from "@/domain/course-event";
 import { canContinueEnrollment, type Enrollment } from "@/domain/enrollment";
@@ -15,6 +16,7 @@ const weekMillis = 7 * 24 * 60 * 60 * 1000;
 
 export function LearnerOverviewMetrics() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [eventBuckets, setEventBuckets] = useState<
@@ -130,19 +132,19 @@ export function LearnerOverviewMetrics() {
 
   const cards = [
     {
-      label: "Courses in progress",
+      label: t("learn.metrics.coursesInProgress"),
       value: String(inProgress),
-      hint: "Active learning workspaces",
+      hint: t("learn.metrics.coursesInProgressHint"),
     },
     {
-      label: "Live sessions this week",
+      label: t("learn.metrics.liveThisWeek"),
       value: String(liveThisWeek),
-      hint: "Scheduled in your enrolled courses",
+      hint: t("learn.metrics.liveThisWeekHint"),
     },
     {
-      label: "Credentials issued",
+      label: t("learn.metrics.credentialsIssued"),
       value: String(credentials),
-      hint: "Verifiable on your profile",
+      hint: t("learn.metrics.credentialsIssuedHint"),
     },
   ];
 

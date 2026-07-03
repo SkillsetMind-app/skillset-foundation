@@ -3,16 +3,18 @@
 import Link from "next/link";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { UserAvatar } from "@/components/shared/user-avatar";
-import { formatPrimaryRole } from "@/domain/auth";
+import { primaryRoleKey } from "@/domain/auth";
 
 export function SessionCard({ collapsed = false }: { collapsed?: boolean }) {
   const { status, user } = useAuth();
+  const { t } = useTranslation();
 
   if (status === "loading") {
     return (
       <div className={`mt-3 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] p-2 text-xs text-[var(--color-ink-soft)] ${collapsed ? "text-center" : ""}`}>
-        Checking session...
+        {t("platform.session.checking")}
       </div>
     );
   }
@@ -26,7 +28,7 @@ export function SessionCard({ collapsed = false }: { collapsed?: boolean }) {
       <Link
         href="/account?tab=profile"
         className="mt-3 grid place-items-center rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] p-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(44,82,130,0.28)]"
-        aria-label="Open profile settings"
+        aria-label={t("platform.session.openProfile")}
       >
         <UserAvatar
           name={user.displayName || user.email}
@@ -53,10 +55,10 @@ export function SessionCard({ collapsed = false }: { collapsed?: boolean }) {
       />
       <div className="min-w-0">
         <p className="truncate text-xs font-semibold text-[var(--color-ink)]">
-          {user.displayName || user.email || "Skillset user"}
+          {user.displayName || user.email || t("platform.session.userFallback")}
         </p>
         <p className="truncate text-[10px] text-[var(--color-ink-soft)]">
-          {formatPrimaryRole(user.roles)}
+          {t(primaryRoleKey(user.roles))}
         </p>
       </div>
     </Link>

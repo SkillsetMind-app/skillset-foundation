@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { Enrollment } from "@/domain/enrollment";
 import { requestEnrollmentRefund } from "@/lib/payments/refunds";
 
 export function RefundButton({ enrollment }: { enrollment: Enrollment }) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<"idle" | "loading" | "sent">("idle");
-  const [error, setError] = useState("");
+  const [hasError, setHasError] = useState(false);
 
   if (
     enrollment.source !== "payment"
@@ -18,22 +20,20 @@ export function RefundButton({ enrollment }: { enrollment: Enrollment }) {
   }
 
   async function handleRefund() {
-    const confirmed = window.confirm(
-      "Request a refund for this course? Refunds are available within 7 days of purchase if less than half the course is completed. If approved, your course access ends once the refund is processed.",
-    );
+    const confirmed = window.confirm(t("learn.refund.confirm"));
 
     if (!confirmed) {
       return;
     }
 
     setStatus("loading");
-    setError("");
+    setHasError(false);
 
     try {
       await requestEnrollmentRefund(enrollment.id);
       setStatus("sent");
     } catch {
-      setError("We could not submit this refund request. It may be outside the 7-day refund window — contact support if you think this is wrong.");
+      setHasError(true);
       setStatus("idle");
     }
   }
@@ -47,14 +47,14 @@ export function RefundButton({ enrollment }: { enrollment: Enrollment }) {
         className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
       >
         {status === "loading"
-          ? "Requesting refund..."
+          ? t("learn.refund.requesting")
           : status === "sent"
-            ? "Refund requested"
-            : "Request refund"}
+            ? t("learn.refund.requested")
+            : t("learn.refund.request")}
       </button>
-      {error ? (
+      {hasError ? (
         <p className="text-xs font-semibold text-[var(--color-accent-fg)]">
-          {error}
+          {t("learn.refund.error")}
         </p>
       ) : null}
     </div>

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { SkillsetUser } from "@/domain/auth";
 import type { UserProfile } from "@/domain/user-profile";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
@@ -18,6 +19,7 @@ type BannerState = {
 
 export function StatusBanner() {
   const { status, user } = useAuth();
+  const { t } = useTranslation();
   const pathname = usePathname() ?? "";
   const userId = user?.uid ?? null;
   const [profileState, setProfileState] = useState<{
@@ -45,7 +47,7 @@ export function StatusBanner() {
     return null;
   }
 
-  const banner = getAccountBanner(user, profileState.profile, pathname);
+  const banner = getAccountBanner(user, profileState.profile, pathname, t);
 
   if (!banner) {
     return null;
@@ -71,21 +73,22 @@ function getAccountBanner(
   user: SkillsetUser,
   profile: UserProfile | null,
   pathname: string,
+  t: (key: string) => string,
 ): BannerState | null {
   const roles = profile?.roles?.length ? profile.roles : user.roles;
 
   if (user.emailVerified === false) {
     return {
-      message: "Verify your email to secure your account and enable creator tools.",
-      ctaLabel: "Resend verification",
+      message: t("platform.banner.verifyEmail"),
+      ctaLabel: t("platform.banner.resendVerification"),
       ctaHref: "/account?tab=security",
     };
   }
 
   if (roles.includes("teacher") && !profile?.teacherTermsAcceptedAt) {
     return {
-      message: "Accept the Teacher Terms to publish courses.",
-      ctaLabel: "Accept terms",
+      message: t("platform.banner.acceptTerms"),
+      ctaLabel: t("platform.banner.acceptTermsCta"),
       ctaHref: "/onboarding?path=teacher",
     };
   }
@@ -102,8 +105,8 @@ function getAccountBanner(
 
   if (teacherNeedsStripeSetup && payoutContext) {
     return {
-      message: "Connect payouts before selling paid courses. Free and draft courses do not need this yet.",
-      ctaLabel: "Connect payouts",
+      message: t("platform.banner.connectPayouts"),
+      ctaLabel: t("platform.banner.connectPayoutsCta"),
       ctaHref: "/account/payments#stripe-connect",
     };
   }

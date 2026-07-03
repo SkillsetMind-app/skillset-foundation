@@ -26,7 +26,8 @@ export type PlatformNavContext = "learner" | "teacher" | "ops";
 
 export type PlatformNavItem = {
   href: string;
-  label: string;
+  /** Dictionary key for the visible label (resolved with t() at render time). */
+  labelKey: string;
   /** Lucide icon key — resolved to a component in platform-nav.tsx. */
   icon: string;
   /** Which workspace context(s) this item belongs to. */
@@ -59,7 +60,7 @@ export const platformNav: PlatformNavItem[] = [
   // --- Learner workspace ---
   {
     href: "/learn",
-    label: "Classroom",
+    labelKey: "platform.nav.classroom",
     icon: "BookOpen",
     contexts: ["learner"],
     section: "Learn",
@@ -67,7 +68,7 @@ export const platformNav: PlatformNavItem[] = [
   },
   {
     href: "/learn/community",
-    label: "Communities",
+    labelKey: "platform.nav.communities",
     icon: "Users",
     contexts: ["learner"],
     section: "Learn",
@@ -75,7 +76,7 @@ export const platformNav: PlatformNavItem[] = [
   },
   {
     href: "/learn/wishlist",
-    label: "Wishlist",
+    labelKey: "platform.nav.wishlist",
     icon: "Bookmark",
     contexts: [],
     section: "Learn",
@@ -83,7 +84,7 @@ export const platformNav: PlatformNavItem[] = [
   },
   {
     href: "/learn/events",
-    label: "Agenda",
+    labelKey: "platform.nav.agenda",
     icon: "Calendar",
     contexts: ["learner"],
     section: "Learn",
@@ -91,7 +92,7 @@ export const platformNav: PlatformNavItem[] = [
   },
   {
     href: "/learn/credentials",
-    label: "Credentials",
+    labelKey: "platform.nav.credentials",
     icon: "Award",
     contexts: ["learner"],
     section: "Learn",
@@ -102,7 +103,7 @@ export const platformNav: PlatformNavItem[] = [
   // platform-nav.tsx), above the teaching tools. Reuses the learner classroom. ---
   {
     href: "/learn",
-    label: "My courses",
+    labelKey: "platform.nav.myCourses",
     icon: "GraduationCap",
     contexts: [],
     section: "My Learning",
@@ -112,7 +113,7 @@ export const platformNav: PlatformNavItem[] = [
   // --- Teacher workspace ---
   {
     href: "/teach",
-    label: "Studio",
+    labelKey: "platform.nav.studio",
     icon: "LayoutDashboard",
     contexts: ["teacher"],
     section: "Teach",
@@ -120,7 +121,7 @@ export const platformNav: PlatformNavItem[] = [
   },
   {
     href: "/teach/builder",
-    label: "Course Builder",
+    labelKey: "platform.nav.courseBuilder",
     icon: "BookOpen",
     contexts: ["teacher"],
     section: "Teach",
@@ -128,7 +129,7 @@ export const platformNav: PlatformNavItem[] = [
   },
   {
     href: "/teach/events",
-    label: "Agenda",
+    labelKey: "platform.nav.agenda",
     icon: "Calendar",
     contexts: ["teacher"],
     section: "Teach",
@@ -136,7 +137,7 @@ export const platformNav: PlatformNavItem[] = [
   },
   {
     href: "/teach/messages",
-    label: "Messages",
+    labelKey: "platform.nav.messages",
     icon: "MessageCircle",
     contexts: ["teacher"],
     section: "Teach",
@@ -144,7 +145,7 @@ export const platformNav: PlatformNavItem[] = [
   },
   {
     href: "/teach/coupons",
-    label: "Coupons",
+    labelKey: "platform.nav.coupons",
     icon: "Tag",
     contexts: [],
     section: "Growth",
@@ -152,7 +153,7 @@ export const platformNav: PlatformNavItem[] = [
   },
   {
     href: "/teach/co-productions",
-    label: "Co-productions",
+    labelKey: "platform.nav.coProductions",
     icon: "Users",
     contexts: [],
     section: "Growth",
@@ -160,7 +161,7 @@ export const platformNav: PlatformNavItem[] = [
   },
   {
     href: "/teach/refunds",
-    label: "Reviews & refunds",
+    labelKey: "platform.nav.reviewsRefunds",
     icon: "RefreshCw",
     contexts: ["teacher"],
     section: "Teach",
@@ -168,7 +169,7 @@ export const platformNav: PlatformNavItem[] = [
   },
   {
     href: "/teach/team",
-    label: "Team",
+    labelKey: "platform.nav.team",
     icon: "UserCheck",
     contexts: [],
     section: "Setup",
@@ -176,7 +177,7 @@ export const platformNav: PlatformNavItem[] = [
   },
   {
     href: "/teach/integrations",
-    label: "Integrations",
+    labelKey: "platform.nav.integrations",
     icon: "Plug",
     contexts: [],
     section: "Setup",
@@ -185,7 +186,7 @@ export const platformNav: PlatformNavItem[] = [
   // --- Operations workspace ---
   {
     href: "/ops",
-    label: "Operations",
+    labelKey: "platform.nav.operations",
     icon: "Settings",
     contexts: ["ops"],
     section: "Operations",
@@ -194,28 +195,28 @@ export const platformNav: PlatformNavItem[] = [
   // --- Shared across every workspace ---
   {
     href: "/courses",
-    label: "Marketplace",
+    labelKey: "platform.nav.marketplace",
     icon: "ShoppingBag",
     contexts: ["learner", "teacher", "ops"],
     section: "Discover",
   },
   {
     href: "/account",
-    label: "Settings",
+    labelKey: "platform.nav.settings",
     icon: "Settings",
     contexts: [],
     section: "Account",
   },
   {
     href: "/account/plans",
-    label: "Plans & fees",
+    labelKey: "platform.nav.plansFees",
     icon: "Receipt",
     contexts: [],
     section: "Account",
   },
   {
     href: "/account/payments",
-    label: "Payouts & tax",
+    labelKey: "platform.nav.payoutsTax",
     icon: "CreditCard",
     contexts: [],
     section: "Account",
@@ -223,7 +224,7 @@ export const platformNav: PlatformNavItem[] = [
   },
   {
     href: "/account/billing",
-    label: "Billing",
+    labelKey: "platform.nav.billing",
     icon: "Receipt",
     contexts: [],
     section: "Account",

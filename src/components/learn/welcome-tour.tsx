@@ -3,6 +3,7 @@
 import { Award, GraduationCap, LifeBuoy, PlayCircle, X, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 
 // First-run welcome tour for the members area. Self-contained: no backend, no
@@ -20,27 +21,36 @@ type TourStep = {
   body: string;
 };
 
-function buildSteps(firstName: string): TourStep[] {
+function buildSteps(
+  firstName: string,
+  t: (key: string) => string,
+): TourStep[] {
+  // Every locale's welcomeNamed ends with ", {name}", so a nameless user just
+  // gets the greeting with that suffix stripped instead of "Welcome, ".
+  const welcomeTitle = firstName
+    ? t("learn.tour.welcomeNamed").replace("{name}", firstName)
+    : t("learn.tour.welcomeNamed").replace(", {name}", "");
+
   return [
     {
       icon: GraduationCap,
-      title: `Welcome, ${firstName}`,
-      body: "This is your learning home. Every course you enroll in lands here, and your progress is saved automatically as you go.",
+      title: welcomeTitle,
+      body: t("learn.tour.step1Body"),
     },
     {
       icon: PlayCircle,
-      title: "Pick up where you left off",
-      body: "Open any course to jump straight to your next lesson. Videos, downloadable materials, and lesson notes all live inside the classroom.",
+      title: t("learn.tour.step2Title"),
+      body: t("learn.tour.step2Body"),
     },
     {
       icon: Award,
-      title: "Earn certificates, join the community",
-      body: "Finish a course to unlock its certificate, and hop into the community space for courses that host one.",
+      title: t("learn.tour.step3Title"),
+      body: t("learn.tour.step3Body"),
     },
     {
       icon: LifeBuoy,
-      title: "Manage your account",
-      body: "Your plan, notifications, and profile live under Account. If anything looks off, support is one click away.",
+      title: t("learn.tour.step4Title"),
+      body: t("learn.tour.step4Body"),
     },
   ];
 }
@@ -61,12 +71,13 @@ function useHasSeenTour(seenKey: string) {
 }
 
 export function WelcomeTour({ userId, firstName }: { userId: string; firstName: string }) {
+  const { t } = useTranslation();
   const seenKey = `${SEEN_KEY_PREFIX}${userId}`;
   const hasSeen = useHasSeenTour(seenKey);
   const [dismissed, setDismissed] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const steps = buildSteps(firstName);
+  const steps = buildSteps(firstName, t);
   const open = !hasSeen && !dismissed;
 
   useModalFocus(dialogRef, open);
@@ -120,7 +131,7 @@ export function WelcomeTour({ userId, firstName }: { userId: string; firstName: 
           <button
             type="button"
             onClick={dismiss}
-            aria-label="Skip the tour"
+            aria-label={t("learn.tour.skipTour")}
             className="rounded-full p-1 text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]"
           >
             <X className="h-4 w-4" aria-hidden="true" />
@@ -157,7 +168,7 @@ export function WelcomeTour({ userId, firstName }: { userId: string; firstName: 
             onClick={dismiss}
             className="text-sm font-medium text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
           >
-            Skip
+            {t("learn.tour.skip")}
           </button>
           <div className="flex items-center gap-2">
             {stepIndex > 0 ? (
@@ -166,12 +177,12 @@ export function WelcomeTour({ userId, firstName }: { userId: string; firstName: 
                 onClick={() => setStepIndex((index) => Math.max(0, index - 1))}
                 className="button-outline px-4 py-2 text-sm"
               >
-                Back
+                {t("learn.tour.back")}
               </button>
             ) : null}
             {isLast ? (
               <button type="button" onClick={dismiss} className="button-solid px-4 py-2 text-sm">
-                Start learning
+                {t("learn.tour.startLearning")}
               </button>
             ) : (
               <button
@@ -179,7 +190,7 @@ export function WelcomeTour({ userId, firstName }: { userId: string; firstName: 
                 onClick={() => setStepIndex((index) => Math.min(steps.length - 1, index + 1))}
                 className="button-solid px-4 py-2 text-sm"
               >
-                Next
+                {t("learn.tour.next")}
               </button>
             )}
           </div>

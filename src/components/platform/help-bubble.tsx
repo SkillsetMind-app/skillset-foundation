@@ -4,14 +4,21 @@ import { BookOpen, LifeBuoy, Mail, MessageCircleQuestion } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
+
 const helpItems = [
-  { href: "/help", label: "Browse Help Center", icon: BookOpen },
-  { href: "/support", label: "Open a support ticket", icon: LifeBuoy },
-  { href: "mailto:support@skillset.app", label: "Email support", icon: Mail },
+  { href: "/help", labelKey: "platform.help.browseHelpCenter", icon: BookOpen },
+  { href: "/support", labelKey: "platform.help.openTicket", icon: LifeBuoy },
+  {
+    href: "mailto:support@skillset.app",
+    labelKey: "platform.help.emailSupport",
+    icon: Mail,
+  },
 ];
 
 export function HelpBubble() {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
 
   return (
     <div className="fixed bottom-24 right-4 z-40 min-[921px]:bottom-6 min-[921px]:right-6">
@@ -19,7 +26,7 @@ export function HelpBubble() {
         <div className="absolute bottom-[calc(100%+12px)] right-0 w-[280px] rounded-[14px] border border-[var(--color-line)] bg-white p-2 shadow-[var(--shadow-strong)]">
           <div className="px-3 py-3">
             <p className="text-sm font-bold text-[var(--color-primary)]">
-              Need help?
+              {t("platform.help.needHelp")}
             </p>
           </div>
           {helpItems.map((item) => {
@@ -32,19 +39,19 @@ export function HelpBubble() {
                 className="flex items-center gap-3 rounded-[8px] px-3 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
               >
                 <Icon aria-hidden="true" size={16} strokeWidth={1.8} />
-                {item.label}
+                {t(item.labelKey)}
               </Link>
             );
           })}
           <p className="px-3 py-2 text-[11px] leading-5 text-[var(--color-ink-muted)]">
-            We aim to reply within 24 hours.
+            {t("platform.help.replyTime")}
           </p>
         </div>
       ) : null}
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        aria-label="Open help menu"
+        aria-label={t("platform.help.openMenu")}
         className="grid size-12 place-items-center rounded-full bg-[var(--color-primary)] text-[var(--color-base)] shadow-[0_12px_28px_rgba(26,54,93,0.20)] transition duration-[220ms] hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(44,82,130,0.28)] sm:size-14"
       >
         <MessageCircleQuestion aria-hidden="true" size={22} strokeWidth={1.8} />

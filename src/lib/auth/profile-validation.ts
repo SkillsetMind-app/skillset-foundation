@@ -8,6 +8,10 @@ import {
 const usernamePattern = /^[a-z0-9][a-z0-9-]{2,31}$/;
 const userGoalSet = new Set<UserGoal>(userGoalOptions);
 
+// Validators return a dictionary key ("" when valid) so messages render in the
+// caller's locale. Resolve with formatValidationMessage(key, t) — translate()
+// has no interpolation, so the {max} placeholder is substituted there.
+
 export function normalizeUsername(value: string) {
   return value.trim().toLowerCase().replace(/^@+/, "");
 }
@@ -16,11 +20,11 @@ export function validateUsername(value: string) {
   const normalized = normalizeUsername(value);
 
   if (!normalized) {
-    return "Choose a username for your Skillset identity.";
+    return "profileValidation.usernameRequired";
   }
 
   if (!usernamePattern.test(normalized)) {
-    return "Use 3-32 lowercase letters, numbers, or hyphens. Start with a letter or number.";
+    return "profileValidation.usernameInvalid";
   }
 
   return "";
@@ -30,11 +34,11 @@ export function validateDisplayName(value: string) {
   const trimmed = value.trim();
 
   if (trimmed.length < 2) {
-    return "Enter the name people should see on Skillset.";
+    return "profileValidation.displayNameRequired";
   }
 
   if (trimmed.length > 120) {
-    return "Keep your display name under 120 characters.";
+    return "profileValidation.displayNameTooLong";
   }
 
   return "";
@@ -42,7 +46,7 @@ export function validateDisplayName(value: string) {
 
 export function validateBio(value: string) {
   if (value.trim().length > 280) {
-    return "Keep your bio under 280 characters.";
+    return "profileValidation.bioTooLong";
   }
 
   return "";
@@ -65,13 +69,29 @@ export function validateCredentials(values: string[]): string {
     .filter((value) => value.length > 0);
 
   if (normalized.length > maxCredentialEntries) {
-    return `Add up to ${maxCredentialEntries} credentials.`;
+    return "profileValidation.credentialsTooMany";
   }
 
   if (normalized.some((value) => value.length > maxCredentialLength)) {
-    return `Keep each credential under ${maxCredentialLength} characters.`;
+    return "profileValidation.credentialsTooLong";
   }
 
   return "";
 }
 
+/** Resolve a validator's key to a localized message ("" stays ""). */
+export function formatValidationMessage(
+  key: string,
+  t: (key: string) => string,
+): string {
+  if (!key) {
+    return "";
+  }
+
+  const max =
+    key === "profileValidation.credentialsTooLong"
+      ? maxCredentialLength
+      : maxCredentialEntries;
+
+  return t(key).replace("{max}", String(max));
+}

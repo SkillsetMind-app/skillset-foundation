@@ -40,6 +40,13 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
+// Learn/Teach are async server components (they resolve the locale via
+// next/headers); give them an empty request scope so they render in English.
+vi.mock("next/headers", () => ({
+  cookies: async () => ({ get: () => undefined }),
+  headers: async () => new Headers(),
+}));
+
 vi.mock("@/components/teacher/teacher-course-studio", () => ({
   TeacherCourseStudio: () => <div>Teacher course studio</div>,
 }));
@@ -102,18 +109,18 @@ vi.mock("@/components/admin/support-ticket-queue", () => ({
 }));
 
 describe("platform shells", () => {
-  it("renders the student empty state", () => {
+  it("renders the student empty state", async () => {
     mockAuthState.roles = ["student"];
-    render(<LearnPage />);
+    render(await LearnPage());
 
     expect(
       screen.getByText("Your learning, in one place."),
     ).toBeInTheDocument();
   });
 
-  it("renders the teacher publishing view", () => {
+  it("renders the teacher publishing view", async () => {
     mockAuthState.roles = ["teacher"];
-    render(<TeachPage />);
+    render(await TeachPage());
 
     expect(
       screen.getByRole("heading", { name: "Publishing flow" }),

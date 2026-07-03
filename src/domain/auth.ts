@@ -26,14 +26,14 @@ export type SignupInput = EmailPasswordCredentials & {
 };
 
 /**
- * Single human-readable label for a user's highest-priority role.
+ * Dictionary key for a user's highest-priority role (render with t()).
  * Shared by SessionCard (sidebar) and AccountMenu (top bar) so the same
  * person never sees two different words for the same role.
  */
-export function formatPrimaryRole(roles: readonly Role[]): string {
-  if (roles.includes("admin")) return "Admin";
-  if (roles.includes("support")) return "Support";
-  if (roles.includes("teacher")) return "Creator";
-  if (roles.includes("student")) return "Learner";
-  return "Member";
+export function primaryRoleKey(roles: readonly Role[]): string {
+  if (roles.includes("admin")) return "roles.admin";
+  if (roles.includes("support")) return "roles.support";
+  if (roles.includes("teacher")) return "roles.creator";
+  if (roles.includes("student")) return "roles.learner";
+  return "roles.member";
 }
