@@ -28,8 +28,8 @@ modal dark glass, Predis.ai (onboarding com barra de progresso).
 
 ### P1 — antes do deploy
 - [ ] **Deploy**: produção ainda roda o código velho — TODOS os bugs que o Patrick screenshotou continuam lá até publicar (fix do realtime + estes fixes de design).
-- [ ] **Idioma misturado**: homepage em PT-BR, dashboard/onboarding em EN ("Complete seu perfil" + campos "Public name"). Decidir: traduzir onboarding+dashboard via i18n existente (`getServerTranslation` já está no projeto) ou padronizar EN. Recomendação: PT-BR em tudo que o aluno vê.
-- [ ] **Rebrand SkillsetUSA → SkillsetMind**: lockup hardcoded em `platform-shell.tsx` (`/brand/skillset-usa-lockup.png`, alt "Skillset USA") e demais assets em `/brand/`. Aguarda os assets novos da marca.
+- [x] **Idioma misturado — onboarding** (2026-07-03, commit 98f326b): wizard de onboarding traduzido via i18n existente (67 chaves × en/pt-BR/es), detecção por cookie + Accept-Language já existia. EN-US é o default; PT-BR/ES seguem o dispositivo/região do visitante. **Resta**: chrome do members area (sidebar, dashboards /learn e /teach) ainda hardcoded EN — sweep mecânico grande, separado.
+- [ ] **Rebrand SkillsetUSA → SkillsetMind**: prompt de logo pronto em `docs/rebrand/claude-design-logo-prompt.md` (Patrick cola no Claude Design com as 31 refs e escolhe a direção). Depois: assets em `/brand/` + trocar lockup hardcoded em `platform-shell.tsx` (`/brand/skillset-usa-lockup.png`, alt "Skillset USA").
 
 ### P2 — polish
 - [ ] **Auth (login/signup)**: aplicar a mesma compactação do onboarding (o `AuthShell` é compartilhado — margens já apertadas nesta sessão; falta revisar densidade interna dos forms de login/signup).
