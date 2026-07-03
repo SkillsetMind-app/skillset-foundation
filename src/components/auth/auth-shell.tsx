@@ -95,12 +95,12 @@ export async function AuthShell({
         <section className="flex flex-col justify-center rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)] sm:p-7">
           <LogoWordmark compact className="mb-6 lg:hidden" />
           {children}
-          <div className="mt-6 border-t border-[var(--color-line)] pt-5 text-sm text-[var(--color-ink-soft)]">
+          <div className="mt-4 border-t border-[var(--color-line)] pt-4 text-sm text-[var(--color-ink-soft)]">
             {footer}
           </div>
           <Link
             href="/"
-            className="mt-6 inline-flex text-sm font-semibold text-[var(--color-primary)]"
+            className="mt-3 inline-flex text-sm font-semibold text-[var(--color-primary)]"
           >
             {t("auth.shell.backToHomepage")}
           </Link>

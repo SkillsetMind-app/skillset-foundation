@@ -467,25 +467,29 @@ export function OnboardingChoice() {
     );
   }
 
+  const stepLabels = ["Path", "Profile", "Goals"];
+
   return (
-    <div className="mt-6 grid gap-5">
-      <div className="grid grid-cols-3 gap-2">
-        {["Path", "Profile", "Goals"].map((label, index) => (
+    <div className="mt-5 grid gap-4">
+      <div className="grid gap-2">
+        <div className="flex items-center justify-between text-xs font-semibold">
+          <span className="uppercase tracking-[0.16em] text-[var(--color-primary)]">
+            {stepLabels[step]}
+          </span>
+          <span className="text-[var(--color-ink-soft)]">
+            Step {step + 1} of {stepLabels.length}
+          </span>
+        </div>
+        <div className="h-1 overflow-hidden rounded-full bg-[var(--color-surface-soft)]">
           <div
-            key={label}
-            className={`rounded-[10px] border px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] ${
-              step === index
-                ? "border-[var(--color-primary)] bg-[rgba(24,58,94,0.08)] text-[var(--color-primary)]"
-                : "border-[var(--color-line)] bg-white text-[var(--color-ink-soft)]"
-            }`}
-          >
-            {label}
-          </div>
-        ))}
+            className="h-full rounded-full bg-[var(--color-primary)] transition-[width] duration-300"
+            style={{ width: `${((step + 1) / stepLabels.length) * 100}%` }}
+          />
+        </div>
       </div>
 
       {step === 0 ? (
-        <div className="grid gap-4">
+        <div className="grid gap-2.5">
           {paths.map((path) => {
             const isSelected = selectedPath?.title === path.title;
 
@@ -494,16 +498,16 @@ export function OnboardingChoice() {
                 key={path.title}
                 type="button"
                 onClick={() => setSelectedPath(path)}
-                className={`rounded-[12px] border p-5 text-left transition-transform hover:-translate-y-1 ${
+                className={`rounded-[12px] border p-4 text-left transition-colors ${
                   isSelected
                     ? "border-[var(--color-primary)] bg-[rgba(24,58,94,0.08)]"
-                    : "border-[var(--color-line)] bg-[var(--color-surface-soft)]"
+                    : "border-[var(--color-line)] bg-[var(--color-surface-soft)] hover:border-[var(--color-primary-light)]"
                 }`}
               >
-                <h3 className="text-base font-semibold text-[var(--color-ink)]">
+                <h3 className="text-sm font-semibold text-[var(--color-ink)]">
                   {path.title}
                 </h3>
-                <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
+                <p className="mt-1 text-[13px] leading-5 text-[var(--color-ink-soft)]">
                   {path.description}
                 </p>
               </button>
@@ -586,55 +590,57 @@ export function OnboardingChoice() {
       ) : null}
 
       {step === 1 ? (
-        <div className="grid gap-4">
-          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Public name
-            <input
-              type="text"
-              value={displayName}
-              onChange={(event) => setDisplayName(event.target.value)}
-              placeholder="Your name"
-              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
-            />
-          </label>
-
-          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Username
-            <div className="flex overflow-hidden rounded-[10px] border border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]">
-              <span className="grid place-items-center border-r border-[var(--color-line)] px-3 text-sm font-semibold text-[var(--color-ink-soft)]">
-                @
-              </span>
+        <div className="grid gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
+              Public name
               <input
                 type="text"
-                value={username}
-                onChange={(event) => setUsername(normalizeUsername(event.target.value))}
-                placeholder="patrick-simon"
-                maxLength={32}
-                className="min-w-0 flex-1 px-4 py-3 text-sm font-normal outline-none"
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
+                placeholder="Your name"
+                className="rounded-[10px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
               />
-            </div>
-          </label>
+            </label>
 
-          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+            <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
+              Username
+              <div className="flex overflow-hidden rounded-[10px] border border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]">
+                <span className="grid place-items-center border-r border-[var(--color-line)] px-3 text-sm font-semibold text-[var(--color-ink-soft)]">
+                  @
+                </span>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(event) => setUsername(normalizeUsername(event.target.value))}
+                  placeholder="your-name"
+                  maxLength={32}
+                  className="min-w-0 flex-1 px-3.5 py-2.5 text-sm font-normal outline-none"
+                />
+              </div>
+            </label>
+          </div>
+
+          <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
             Short bio
             <textarea
               value={bio}
               onChange={(event) => setBio(event.target.value)}
               placeholder="A short line about your work, learning goals, or teaching focus."
-              rows={4}
-              className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              rows={3}
+              className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
             />
             <span className="text-xs font-normal text-[var(--color-ink-soft)]">
               {bio.trim().length}/280 characters
             </span>
           </label>
 
-          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+          <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
             Timezone
             <select
               value={timezone}
               onChange={(event) => setTimezone(event.target.value)}
-              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              className="rounded-[10px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
             >
               {safeTimezoneOptions.map((option) => (
                 <option key={option} value={option}>
@@ -647,7 +653,7 @@ export function OnboardingChoice() {
       ) : null}
 
       {step === 2 ? (
-        <div className="grid gap-3">
+        <div className="grid gap-2.5 sm:grid-cols-2">
           {goalOptions.map((goal) => {
             const isSelected = goals.includes(goal.value);
 
@@ -656,16 +662,16 @@ export function OnboardingChoice() {
                 key={goal.value}
                 type="button"
                 onClick={() => toggleGoal(goal.value)}
-                className={`rounded-[12px] border p-4 text-left ${
+                className={`rounded-[12px] border p-3 text-left transition-colors ${
                   isSelected
                     ? "border-[var(--color-primary)] bg-[rgba(24,58,94,0.08)]"
-                    : "border-[var(--color-line)] bg-white"
+                    : "border-[var(--color-line)] bg-white hover:border-[var(--color-primary-light)]"
                 }`}
               >
                 <span className="block text-sm font-semibold text-[var(--color-ink)]">
                   {goal.label}
                 </span>
-                <span className="mt-1 block text-sm leading-6 text-[var(--color-ink-soft)]">
+                <span className="mt-1 block text-xs leading-5 text-[var(--color-ink-soft)]">
                   {goal.description}
                 </span>
               </button>

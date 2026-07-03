@@ -28,7 +28,7 @@ export default async function OnboardingPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("auth.onboardingShell.kicker")}
         </p>
-        <h2 className="display-title mt-3 text-4xl text-[var(--color-primary)]">
+        <h2 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
           {t("auth.onboardingShell.heading")}
         </h2>
         <Suspense

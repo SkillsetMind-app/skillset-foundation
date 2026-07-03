@@ -2088,6 +2088,17 @@ select:focus-visible {
     linear-gradient(180deg, #f8fbff 0%, var(--color-surface-soft) 100%);
 }
 
+/* Dark theme: the light-mode gradient starts at near-white #f8fbff, which
+   painted a bright band behind the page heading (light-blue h1 on near-white
+   = illegible). Rebuild from dark tokens, same shape as the dark
+   .page-shell::before treatment. */
+[data-theme="dark"] .platform-shell-root {
+  background:
+    radial-gradient(circle at 18% -12%, rgba(143, 180, 228, 0.10), transparent 30rem),
+    radial-gradient(circle at 112% 12%, rgba(227, 107, 120, 0.06), transparent 28rem),
+    linear-gradient(180deg, var(--color-base) 0%, var(--color-surface-soft) 100%);
+}
+
 .platform-shell-root > header,
 .platform-shell-root > .sticky {
   flex: 0 0 auto;
