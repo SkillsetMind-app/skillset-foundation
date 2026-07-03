@@ -20,5 +20,20 @@ export function getSupabaseBrowserClient(): SupabaseClient<Database> {
   const { url, anonKey } = assertSupabaseClientConfig();
   browserClient = createBrowserClient<Database>(url, anonKey);
 
+  // Unique channel per subscription: supabase-js returns the EXISTING channel
+  // object when .channel() is called with a topic that's already live, and
+  // calling .on() on an already-subscribed channel throws ("cannot add
+  // postgres_changes callbacks after subscribe()"). Two components watching
+  // the same row (AccountMenu + StatusBanner on users:<uid>, dashboard +
+  // learning paths on enrollments:user:<uid>, ...) would crash every
+  // authenticated page. Suffixing every topic keeps channels independent;
+  // unsubscribe still works because callers hold the channel instance.
+  const originalChannel = browserClient.channel.bind(browserClient);
+  let channelSeq = 0;
+  browserClient.channel = (name, opts) => {
+    channelSeq += 1;
+    return originalChannel(`${name}#${channelSeq}`, opts);
+  };
+
   return browserClient;
 }
