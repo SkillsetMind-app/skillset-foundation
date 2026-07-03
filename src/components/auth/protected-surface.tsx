@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
 import { hasAnyPermission, type Permission } from "@/lib/permissions";
 
@@ -15,13 +16,14 @@ type ProtectedSurfaceProps = {
 
 export function ProtectedSurface({ permissions, children }: ProtectedSurfaceProps) {
   const { status, user } = useAuth();
+  const { t } = useTranslation();
   const pathname = usePathname() ?? "";
 
   if (status === "loading") {
     return (
       <SkillsetSpinner
-        title="Preparing your workspace"
-        description="Skillset is checking your account session before opening this area."
+        title={t("auth.guard.loadingTitle")}
+        description={t("auth.guard.loadingDescription")}
       />
     );
   }
@@ -47,11 +49,11 @@ export function ProtectedSurface({ permissions, children }: ProtectedSurfaceProp
 
     return (
       <AccessPanel
-        eyebrow="Sign in required"
-        title="This area needs an account."
-        description="Sign in or create an account to continue into the learning, teaching, or operations workspace."
-        cta={{ href: loginHref, label: "Sign in" }}
-        secondary={{ href: "/signup", label: "Create account" }}
+        eyebrow={t("auth.guard.signInEyebrow")}
+        title={t("auth.guard.signInTitle")}
+        description={t("auth.guard.signInDescription")}
+        cta={{ href: loginHref, label: t("auth.guard.signIn") }}
+        secondary={{ href: "/signup", label: t("auth.guard.createAccount") }}
       />
     );
   }
@@ -59,11 +61,11 @@ export function ProtectedSurface({ permissions, children }: ProtectedSurfaceProp
   if (!hasAnyPermission({ roles: user.roles }, permissions)) {
     return (
       <AccessPanel
-        eyebrow="Access limited"
-        title="Your account is not set up for this area."
-        description="Choose the right onboarding path or contact support if you believe this account should have access."
-        cta={{ href: "/onboarding", label: "Update onboarding" }}
-        secondary={{ href: "/contact", label: "Contact support" }}
+        eyebrow={t("auth.guard.limitedEyebrow")}
+        title={t("auth.guard.limitedTitle")}
+        description={t("auth.guard.limitedDescription")}
+        cta={{ href: "/onboarding", label: t("auth.guard.updateOnboarding") }}
+        secondary={{ href: "/contact", label: t("auth.guard.contactSupport") }}
       />
     );
   }

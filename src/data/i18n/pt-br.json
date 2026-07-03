@@ -145,6 +145,20 @@
       "acceptTermsForGoogle": "Aceite os Termos de Serviço e a Política de Privacidade antes de continuar com o Google.",
       "passwordRequirements": "Use uma senha que atenda a todos os requisitos.",
       "mfaUseSignIn": "Esta conta tem verificação em duas etapas ativada. Faça login para inserir o código."
+    },
+    "guard": {
+      "loadingTitle": "Preparando seu espaço de trabalho",
+      "loadingDescription": "A Skillset está verificando sua sessão antes de abrir esta área.",
+      "signInEyebrow": "Login necessário",
+      "signInTitle": "Esta área precisa de uma conta.",
+      "signInDescription": "Entre ou crie uma conta para continuar para o espaço de aprendizado, ensino ou operações.",
+      "signIn": "Entrar",
+      "createAccount": "Criar conta",
+      "limitedEyebrow": "Acesso limitado",
+      "limitedTitle": "Sua conta não está configurada para esta área.",
+      "limitedDescription": "Escolha o caminho de configuração certo ou fale com o suporte se acredita que esta conta deveria ter acesso.",
+      "updateOnboarding": "Atualizar configuração",
+      "contactSupport": "Falar com o suporte"
     }
   },
   "onboarding": {

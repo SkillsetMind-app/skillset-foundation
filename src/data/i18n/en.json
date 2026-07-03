@@ -145,6 +145,20 @@
       "acceptTermsForGoogle": "Accept the Terms of Service and Privacy Policy before continuing with Google.",
       "passwordRequirements": "Use a password that meets every requirement.",
       "mfaUseSignIn": "This account has two-step verification enabled. Please sign in instead to enter your code."
+    },
+    "guard": {
+      "loadingTitle": "Preparing your workspace",
+      "loadingDescription": "Skillset is checking your account session before opening this area.",
+      "signInEyebrow": "Sign in required",
+      "signInTitle": "This area needs an account.",
+      "signInDescription": "Sign in or create an account to continue into the learning, teaching, or operations workspace.",
+      "signIn": "Sign in",
+      "createAccount": "Create account",
+      "limitedEyebrow": "Access limited",
+      "limitedTitle": "Your account is not set up for this area.",
+      "limitedDescription": "Choose the right onboarding path or contact support if you believe this account should have access.",
+      "updateOnboarding": "Update onboarding",
+      "contactSupport": "Contact support"
     }
   },
   "onboarding": {
