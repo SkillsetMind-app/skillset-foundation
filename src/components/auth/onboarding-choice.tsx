@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { UserGoal } from "@/domain/user-profile";
 import {
   normalizeUsername,
@@ -25,29 +26,26 @@ import { getAuthPathIntentFromSearchParams } from "@/lib/auth/routing";
 
 const paths = [
   {
-    title: "Learn with structure",
-    description:
-      "Access courses, events, communities, progress, and Skillset Verified certificates.",
+    titleKey: "onboarding.pathLearnTitle",
+    descriptionKey: "onboarding.pathLearnDesc",
     roles: ["student"],
     href: "/learn",
   },
   {
-    title: "Teach and publish",
-    description:
-      "Build courses, upload materials, schedule live sessions, and submit courses for review.",
+    titleKey: "onboarding.pathTeachTitle",
+    descriptionKey: "onboarding.pathTeachDesc",
     roles: ["teacher"],
     href: "/teach",
   },
   {
-    title: "Use both sides",
-    description:
-      "Study, teach, and move between the learner area and educator studio from one account.",
+    titleKey: "onboarding.pathBothTitle",
+    descriptionKey: "onboarding.pathBothDesc",
     roles: ["student", "teacher"],
     href: "/platform",
   },
 ] as const satisfies Array<{
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
   roles: ReadonlyArray<Extract<Role, "student" | "teacher">>;
   href: string;
 }>;
@@ -55,38 +53,38 @@ const paths = [
 const goalOptions = [
   {
     value: "career_growth",
-    label: "Career growth",
-    description: "Learn skills that support stronger work opportunities.",
+    labelKey: "onboarding.goalCareerLabel",
+    descriptionKey: "onboarding.goalCareerDesc",
   },
   {
     value: "skill_certification",
-    label: "Verified learning",
-    description: "Complete structured programs and earn Skillset credentials.",
+    labelKey: "onboarding.goalCertificationLabel",
+    descriptionKey: "onboarding.goalCertificationDesc",
   },
   {
     value: "teach_online",
-    label: "Teach online",
-    description: "Turn expertise into courses, lessons, and student outcomes.",
+    labelKey: "onboarding.goalTeachLabel",
+    descriptionKey: "onboarding.goalTeachDesc",
   },
   {
     value: "build_community",
-    label: "Build a community",
-    description: "Create course-linked spaces for students and members.",
+    labelKey: "onboarding.goalCommunityLabel",
+    descriptionKey: "onboarding.goalCommunityDesc",
   },
   {
     value: "live_mentorship",
-    label: "Live mentorship",
-    description: "Run sessions, office hours, and cohort-style support.",
+    labelKey: "onboarding.goalMentorshipLabel",
+    descriptionKey: "onboarding.goalMentorshipDesc",
   },
   {
     value: "business_training",
-    label: "Team training",
-    description: "Prepare for future group, academy, or organization use.",
+    labelKey: "onboarding.goalTrainingLabel",
+    descriptionKey: "onboarding.goalTrainingDesc",
   },
 ] as const satisfies Array<{
   value: UserGoal;
-  label: string;
-  description: string;
+  labelKey: string;
+  descriptionKey: string;
 }>;
 
 const timezoneOptions = [
@@ -100,6 +98,7 @@ const timezoneOptions = [
 
 export function OnboardingChoice() {
   const router = useRouter();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const pathIntent = useMemo(
     () => getAuthPathIntentFromSearchParams(searchParams),
@@ -193,14 +192,13 @@ export function OnboardingChoice() {
             setSelectedPath(intendedPath ?? existingPath ?? null);
           }
         } catch {
-          setError(
-            "Could not load your profile. You can still complete setup.",
-          );
+          setError(t("onboarding.errorProfileLoad"));
         } finally {
           setIsBootstrapping(false);
         }
       })();
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t is stable per locale; re-subscribing auth on locale change would drop state
   }, [pathIntent, router]);
 
   const safeTimezoneOptions = useMemo(() => {
@@ -229,7 +227,7 @@ export function OnboardingChoice() {
       validateDisplayName(displayName) ||
       validateUsername(username) ||
       validateBio(bio) ||
-      (!timezone ? "Choose your timezone." : "")
+      (!timezone ? t("onboarding.errorChooseTimezone") : "")
     );
   }
 
@@ -240,9 +238,9 @@ export function OnboardingChoice() {
 
     try {
       await sendSkillsetEmailVerification();
-      setVerificationMessage("Verification email sent. Open it, confirm, then return here.");
+      setVerificationMessage(t("onboarding.verificationSent"));
     } catch {
-      setError("Could not send the verification email. Try again in a moment.");
+      setError(t("onboarding.verificationSendError"));
     } finally {
       setIsSendingVerification(false);
     }
@@ -258,11 +256,11 @@ export function OnboardingChoice() {
       setEmailVerified(verified);
       setVerificationMessage(
         verified
-          ? "Email verified. You can continue creator setup."
-          : "Email is not verified yet. Confirm it from your inbox first.",
+          ? t("onboarding.verificationOk")
+          : t("onboarding.verificationPending"),
       );
     } catch {
-      setError("Could not refresh verification status. Try again.");
+      setError(t("onboarding.verificationRefreshError"));
     } finally {
       setIsSendingVerification(false);
     }
@@ -275,9 +273,9 @@ export function OnboardingChoice() {
       setError(
         selectedPathIncludesTeacher
           ? emailVerified
-            ? "Accept the Teacher Terms before opening educator tools."
-            : "Verify your email before opening educator tools."
-          : "Choose how you want to use Skillset first.",
+            ? t("onboarding.errorAcceptTerms")
+            : t("onboarding.errorVerifyEmail")
+          : t("onboarding.errorChoosePath"),
       );
       return;
     }
@@ -298,7 +296,7 @@ export function OnboardingChoice() {
     setError("");
 
     if (!uid || !selectedPath) {
-      setError("Your session is not ready. Sign in again to finish setup.");
+      setError(t("onboarding.errorSessionNotReady"));
       return;
     }
 
@@ -315,14 +313,14 @@ export function OnboardingChoice() {
       }
 
       if (goals.length === 0) {
-        setError("Select at least one goal so Skillset can shape your workspace.");
+        setError(t("onboarding.errorSelectGoal"));
         return;
       }
     }
 
     if (selectedPathIncludesTeacher && !emailVerified) {
       setStep(0);
-      setError("Verify your email before opening educator tools.");
+      setError(t("onboarding.errorVerifyEmail"));
       return;
     }
 
@@ -344,7 +342,7 @@ export function OnboardingChoice() {
 
       router.push(selectedPath.href);
     } catch {
-      setError("Could not finish onboarding. Please try again.");
+      setError(t("onboarding.errorFinish"));
       setIsSaving(false);
     }
   }
@@ -352,7 +350,7 @@ export function OnboardingChoice() {
   if (isBootstrapping) {
     return (
       <div className="mt-6 rounded-[12px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5 text-sm font-semibold text-[var(--color-ink-soft)]">
-        Preparing your account setup...
+        {t("onboarding.preparing")}
       </div>
     );
   }
@@ -362,24 +360,18 @@ export function OnboardingChoice() {
       <div className="mt-6 grid gap-5">
         <div className="rounded-[12px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
           <p className="font-semibold text-[var(--color-ink)]">
-            One last step to open Teacher Studio
+            {t("onboarding.streamlinedTitle")}
           </p>
-          <p className="mt-1">
-            Your profile is already set from onboarding. Verify your email and
-            accept the Teacher Terms to activate educator tools.
-          </p>
+          <p className="mt-1">{t("onboarding.streamlinedDesc")}</p>
         </div>
 
         <div className="rounded-[12px] border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="font-semibold text-[var(--color-ink)]">
-                Email verification
+                {t("onboarding.emailVerificationTitle")}
               </p>
-              <p className="mt-1">
-                Educator tools require a verified email so Skillset can
-                confirm this address belongs to you.
-              </p>
+              <p className="mt-1">{t("onboarding.emailVerificationDesc")}</p>
             </div>
             <span
               className={`shrink-0 rounded-[8px] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
@@ -388,7 +380,7 @@ export function OnboardingChoice() {
                   : "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]"
               }`}
             >
-              {emailVerified ? "Verified" : "Required"}
+              {emailVerified ? t("onboarding.verified") : t("onboarding.required")}
             </span>
           </div>
           {!emailVerified ? (
@@ -399,7 +391,7 @@ export function OnboardingChoice() {
                 disabled={isSendingVerification}
                 className="button-outline px-4 py-2 text-xs disabled:opacity-60"
               >
-                Send verification email
+                {t("onboarding.sendVerification")}
               </button>
               <button
                 type="button"
@@ -407,7 +399,7 @@ export function OnboardingChoice() {
                 disabled={isSendingVerification}
                 className="button-solid px-4 py-2 text-xs disabled:opacity-60"
               >
-                I verified my email
+                {t("onboarding.iVerified")}
               </button>
             </div>
           ) : null}
@@ -426,16 +418,15 @@ export function OnboardingChoice() {
             className="mt-1 size-4 accent-[var(--color-primary)]"
           />
           <span>
-            I accept the{" "}
+            {t("onboarding.teacherTermsPrefix")}{" "}
             <Link
               href="/legal/teacher-terms"
               className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
               target="_blank"
             >
-              Teacher Terms
+              {t("onboarding.teacherTermsLink")}
             </Link>{" "}
-            and understand Skillset reviews courses once they are live on
-            the marketplace.
+            {t("onboarding.teacherTermsSuffix")}
           </span>
         </label>
 
@@ -452,7 +443,7 @@ export function OnboardingChoice() {
             disabled={isSaving}
             className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
           >
-            Skip for now
+            {t("onboarding.skipForNow")}
           </button>
           <button
             type="button"
@@ -460,14 +451,21 @@ export function OnboardingChoice() {
             disabled={isSaving || !emailVerified || !teacherTermsAccepted}
             className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
           >
-            {isSaving ? "Activating..." : "Activate teaching"}
+            {isSaving ? t("onboarding.activating") : t("onboarding.activateTeaching")}
           </button>
         </div>
       </div>
     );
   }
 
-  const stepLabels = ["Path", "Profile", "Goals"];
+  const stepLabels = [
+    t("onboarding.stepPath"),
+    t("onboarding.stepProfile"),
+    t("onboarding.stepGoals"),
+  ];
+  const stepCounter = t("onboarding.stepOf")
+    .replace("{current}", String(step + 1))
+    .replace("{total}", String(stepLabels.length));
 
   return (
     <div className="mt-5 grid gap-4">
@@ -476,9 +474,7 @@ export function OnboardingChoice() {
           <span className="uppercase tracking-[0.16em] text-[var(--color-primary)]">
             {stepLabels[step]}
           </span>
-          <span className="text-[var(--color-ink-soft)]">
-            Step {step + 1} of {stepLabels.length}
-          </span>
+          <span className="text-[var(--color-ink-soft)]">{stepCounter}</span>
         </div>
         <div className="h-1 overflow-hidden rounded-full bg-[var(--color-surface-soft)]">
           <div
@@ -491,11 +487,11 @@ export function OnboardingChoice() {
       {step === 0 ? (
         <div className="grid gap-2.5">
           {paths.map((path) => {
-            const isSelected = selectedPath?.title === path.title;
+            const isSelected = selectedPath?.titleKey === path.titleKey;
 
             return (
               <button
-                key={path.title}
+                key={path.titleKey}
                 type="button"
                 onClick={() => setSelectedPath(path)}
                 className={`rounded-[12px] border p-4 text-left transition-colors ${
@@ -505,10 +501,10 @@ export function OnboardingChoice() {
                 }`}
               >
                 <h3 className="text-sm font-semibold text-[var(--color-ink)]">
-                  {path.title}
+                  {t(path.titleKey)}
                 </h3>
                 <p className="mt-1 text-[13px] leading-5 text-[var(--color-ink-soft)]">
-                  {path.description}
+                  {t(path.descriptionKey)}
                 </p>
               </button>
             );
@@ -520,12 +516,9 @@ export function OnboardingChoice() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="font-semibold text-[var(--color-ink)]">
-                      Email verification
+                      {t("onboarding.emailVerificationTitle")}
                     </p>
-                    <p className="mt-1">
-                      Educator tools require a verified email so Skillset can
-                      confirm this address belongs to you.
-                    </p>
+                    <p className="mt-1">{t("onboarding.emailVerificationDesc")}</p>
                   </div>
                   <span
                     className={`shrink-0 rounded-[8px] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
@@ -534,7 +527,7 @@ export function OnboardingChoice() {
                         : "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]"
                     }`}
                   >
-                    {emailVerified ? "Verified" : "Required"}
+                    {emailVerified ? t("onboarding.verified") : t("onboarding.required")}
                   </span>
                 </div>
                 {!emailVerified ? (
@@ -545,7 +538,7 @@ export function OnboardingChoice() {
                       disabled={isSendingVerification}
                       className="button-outline px-4 py-2 text-xs disabled:opacity-60"
                     >
-                      Send verification email
+                      {t("onboarding.sendVerification")}
                     </button>
                     <button
                       type="button"
@@ -553,7 +546,7 @@ export function OnboardingChoice() {
                       disabled={isSendingVerification}
                       className="button-solid px-4 py-2 text-xs disabled:opacity-60"
                     >
-                      I verified my email
+                      {t("onboarding.iVerified")}
                     </button>
                   </div>
                 ) : null}
@@ -572,16 +565,15 @@ export function OnboardingChoice() {
                   className="mt-1 size-4 accent-[var(--color-primary)]"
                 />
                 <span>
-                  I accept the{" "}
+                  {t("onboarding.teacherTermsPrefix")}{" "}
                   <Link
                     href="/legal/teacher-terms"
                     className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
                     target="_blank"
                   >
-                    Teacher Terms
+                    {t("onboarding.teacherTermsLink")}
                   </Link>{" "}
-                  and understand Skillset reviews courses once they are live on
-                  the marketplace.
+                  {t("onboarding.teacherTermsSuffix")}
                 </span>
               </label>
             </div>
@@ -593,18 +585,18 @@ export function OnboardingChoice() {
         <div className="grid gap-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-              Public name
+              {t("onboarding.publicName")}
               <input
                 type="text"
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
-                placeholder="Your name"
+                placeholder={t("onboarding.publicNamePlaceholder")}
                 className="rounded-[10px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
               />
             </label>
 
             <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-              Username
+              {t("onboarding.username")}
               <div className="flex overflow-hidden rounded-[10px] border border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]">
                 <span className="grid place-items-center border-r border-[var(--color-line)] px-3 text-sm font-semibold text-[var(--color-ink-soft)]">
                   @
@@ -613,7 +605,7 @@ export function OnboardingChoice() {
                   type="text"
                   value={username}
                   onChange={(event) => setUsername(normalizeUsername(event.target.value))}
-                  placeholder="your-name"
+                  placeholder={t("onboarding.usernamePlaceholder")}
                   maxLength={32}
                   className="min-w-0 flex-1 px-3.5 py-2.5 text-sm font-normal outline-none"
                 />
@@ -622,21 +614,21 @@ export function OnboardingChoice() {
           </div>
 
           <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-            Short bio
+            {t("onboarding.shortBio")}
             <textarea
               value={bio}
               onChange={(event) => setBio(event.target.value)}
-              placeholder="A short line about your work, learning goals, or teaching focus."
+              placeholder={t("onboarding.bioPlaceholder")}
               rows={3}
               className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
             />
             <span className="text-xs font-normal text-[var(--color-ink-soft)]">
-              {bio.trim().length}/280 characters
+              {t("onboarding.bioCount").replace("{count}", String(bio.trim().length))}
             </span>
           </label>
 
           <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-            Timezone
+            {t("onboarding.timezone")}
             <select
               value={timezone}
               onChange={(event) => setTimezone(event.target.value)}
@@ -669,10 +661,10 @@ export function OnboardingChoice() {
                 }`}
               >
                 <span className="block text-sm font-semibold text-[var(--color-ink)]">
-                  {goal.label}
+                  {t(goal.labelKey)}
                 </span>
                 <span className="mt-1 block text-xs leading-5 text-[var(--color-ink-soft)]">
-                  {goal.description}
+                  {t(goal.descriptionKey)}
                 </span>
               </button>
             );
@@ -694,7 +686,7 @@ export function OnboardingChoice() {
             disabled={isSaving}
             className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
           >
-            Back
+            {t("onboarding.back")}
           </button>
         ) : null}
         {step < 2 ? (
@@ -704,7 +696,7 @@ export function OnboardingChoice() {
             disabled={isSaving}
             className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
           >
-            Continue
+            {t("onboarding.continue")}
           </button>
         ) : (
           <button
@@ -713,7 +705,7 @@ export function OnboardingChoice() {
             disabled={isSaving}
             className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
           >
-            {isSaving ? "Saving..." : "Finish setup"}
+            {isSaving ? t("onboarding.saving") : t("onboarding.finishSetup")}
           </button>
         )}
       </div>
