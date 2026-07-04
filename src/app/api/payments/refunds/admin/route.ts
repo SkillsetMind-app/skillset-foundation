@@ -84,15 +84,14 @@ export async function POST(request: Request) {
 
     const orderAmountMinor = Number(order.amount_minor || 0);
     // For a partially_refunded order, cap against what is STILL refundable
-    // (total − already refunded), not the original total.
+    // (total − already refunded), not the original total. Cap unconditionally:
+    // a stored amount_minor of 0/null must FAIL the partial (not skip the cap),
+    // so a corrupt/zero order can't wave a partial past this local guard —
+    // Stripe caps at the captured amount too, but this is the first line.
     const alreadyRefundedMinor = Number(order.refunded_amount_minor || 0);
     const remainingRefundableMinor = orderAmountMinor - alreadyRefundedMinor;
 
-    if (
-      amountMinor !== null &&
-      orderAmountMinor > 0 &&
-      amountMinor > remainingRefundableMinor
-    ) {
+    if (amountMinor !== null && amountMinor > remainingRefundableMinor) {
       throw new PaymentError(
         "Refund amount exceeds the remaining refundable balance.",
         400,

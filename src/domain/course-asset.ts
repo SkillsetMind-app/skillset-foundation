@@ -145,3 +145,24 @@ export function formatCourseAssetSize(size: number): string {
 
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+// Server-side authorization for minting a signed lesson-video token.
+// Defense-in-depth: the /api/courses/video-token route must NOT rely solely on
+// course_assets RLS to gate playback — this explicit predicate is the second
+// gate, so a missing or permissive RLS policy can't hand a signed embed URL for
+// paid content to any signed-in user enumerating assetIds. Entitled when the
+// asset is a free preview, the caller owns it (teacher), holds an active/
+// completed enrollment in its course, or is a platform admin.
+export function canViewCourseAssetVideo(params: {
+  isPreview: boolean;
+  assetOwnerId: string;
+  callerId: string;
+  enrollmentStatus: string | null;
+  isAdmin: boolean;
+}): boolean {
+  const { isPreview, assetOwnerId, callerId, enrollmentStatus, isAdmin } = params;
+  if (isPreview) return true;
+  if (assetOwnerId === callerId) return true;
+  if (enrollmentStatus === "active" || enrollmentStatus === "completed") return true;
+  return isAdmin;
+}

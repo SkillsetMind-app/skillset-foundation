@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canViewCourseAssetVideo,
   courseAssetAcceptTypes,
   courseAssetKindLabels,
   isAllowedCourseAssetFile,
@@ -56,5 +57,38 @@ describe("course asset validation", () => {
     expect(isAllowedCourseAssetFile(file("hero.mp4", "video/mp4"), "members_cover")).toBe(
       false,
     );
+  });
+});
+
+describe("lesson video access authorization", () => {
+  const base = {
+    isPreview: false,
+    assetOwnerId: "teacher-1",
+    callerId: "learner-9",
+    enrollmentStatus: null as string | null,
+    isAdmin: false,
+  };
+
+  it("denies a signed-in stranger with no enrollment (the RLS-bypass attack)", () => {
+    expect(canViewCourseAssetVideo(base)).toBe(false);
+  });
+
+  it("allows free preview lessons for anyone signed in", () => {
+    expect(canViewCourseAssetVideo({ ...base, isPreview: true })).toBe(true);
+  });
+
+  it("allows the teacher who owns the asset", () => {
+    expect(canViewCourseAssetVideo({ ...base, callerId: "teacher-1" })).toBe(true);
+  });
+
+  it("allows active and completed enrollments only", () => {
+    expect(canViewCourseAssetVideo({ ...base, enrollmentStatus: "active" })).toBe(true);
+    expect(canViewCourseAssetVideo({ ...base, enrollmentStatus: "completed" })).toBe(true);
+    expect(canViewCourseAssetVideo({ ...base, enrollmentStatus: "refunded" })).toBe(false);
+    expect(canViewCourseAssetVideo({ ...base, enrollmentStatus: "revoked" })).toBe(false);
+  });
+
+  it("allows platform admins", () => {
+    expect(canViewCourseAssetVideo({ ...base, isAdmin: true })).toBe(true);
   });
 });
