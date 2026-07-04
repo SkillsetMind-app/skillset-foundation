@@ -9,6 +9,7 @@ import type {
   SkillsetUser,
 } from "@/domain/auth";
 import type { UserProfile } from "@/domain/user-profile";
+import { assertPasswordNotBreached } from "@/lib/auth/pwned-password";
 import { getUserProfile, upsertUserProfile } from "@/lib/data/user-profiles";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
@@ -143,6 +144,10 @@ export async function signUpWithEmail({
 }: SignupInput): Promise<SkillsetUser> {
   const supabase = getSupabaseBrowserClient();
   const trimmedName = displayName.trim();
+
+  // Reject passwords known to be compromised in a breach corpus (HIBP) — the
+  // guard Supabase reserves for its Pro plan, done here on the free tier.
+  await assertPasswordNotBreached(password);
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -282,6 +287,8 @@ export async function changeSkillsetPassword(
     throw reauthError;
   }
 
+  await assertPasswordNotBreached(nextPassword);
+
   const { error } = await supabase.auth.updateUser({ password: nextPassword });
 
   if (error) {
@@ -330,6 +337,10 @@ export function getAuthErrorMessage(error: unknown): string {
 
   if (matches("user_already_exists") || matches("already registered")) {
     return "An account already exists with this email.";
+  }
+
+  if (matches("pwned_password")) {
+    return "This password appeared in a known data breach. Pick a different one to keep the account secure.";
   }
 
   if (matches("weak_password") || matches("password should be at least")) {

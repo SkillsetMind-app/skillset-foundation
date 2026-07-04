@@ -15,9 +15,9 @@
 - Copiar a nova chave e atualizar **`SUPABASE_SERVICE_ROLE_KEY`** no Vercel (Production).
 - Motivo: a chave antiga apareceu em transcript. Ela **bypassa toda RLS** = acesso root ao banco. Enquanto não rotacionar, considere o banco comprometido.
 
-### 2. Ligar proteção de senha vazada (Supabase Auth)
-- Supabase → **Authentication → Policies/Passwords → "Prevent use of leaked passwords"** = ON.
-- É o único WARN de segurança do Auth que sobrou (toggle de dashboard, não dá pra fazer por código).
+### 2. Ligar proteção de senha vazada (Supabase Auth) — ⏸️ ADIADO: só no plano Pro
+- Verificado 2026-07-04: o projeto está no plano **Free**. O toggle **"Prevent use of leaked passwords"** (Authentication → Sign In / Providers → Email) é **Pro-only** — aparece bloqueado no Free.
+- **NÃO é bloqueador de launch.** É o item de menor prioridade (o min-password-length já roda no Free). Ligar quando/se subir pro Supabase Pro (o motivo real de ir Pro num site de dinheiro é o **backup diário automático**, não este toggle).
 
 ### 3. Secrets do Stripe (LIVE) no Vercel
 Sem eles o checkout/webhook ficam dormentes (retornam 503/erro de assinatura):
@@ -62,13 +62,10 @@ Modelo **separate charges & transfers + hold de 30 dias** (igual Hotmart/Kiwify 
 
 ## 🟡 AÇÕES RECOMENDADAS (não bloqueiam operar, mas faça logo)
 
-### 6. Deploy pra produção (push)
-- Este branch está pronto e **buildando verde**. Pra publicar:
-  ```
-  git push origin HEAD:main
-  ```
-  (ou pedir pro @devops, conforme seu fluxo). Deploy é git-native no Vercel → confirmar status **READY** no dashboard.
-- **Seguro a qualquer hora:** o código de repasse/cron só age depois dos secrets acima.
+### 6. Deploy pra produção — ✅ JÁ FEITO
+- Já **pushei** pra `main` (commit `28e99af`) e o Vercel já **promoveu pra produção**: deploy `READY`, no ar em `skillsetmind.com` / `www.skillsetmind.com`.
+- Seguro por design: o código de repasse/cron continua **dormente** até você setar os secrets acima (§3–§5). Ou seja, publicou tudo, mas nada dispara dinheiro ainda.
+- Nada a fazer aqui — só está registrado pra você saber que o site vivo já é esta versão.
 
 ### 7. Snapshot das migrations no repo
 - Apliquei migrations direto no banco (via MCP) — elas estão registradas no Supabase, mas não como arquivos no repo (exceto `bunny_video_id`).
