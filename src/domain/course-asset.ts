@@ -17,6 +17,9 @@ export type CourseAsset = {
   size: number;
   storagePath: string;
   downloadUrl?: string | null;
+  // Set when the video is hosted on Bunny Stream instead of Supabase Storage;
+  // playback then uses a signed embed URL rather than a signed storage URL.
+  bunnyVideoId?: string | null;
   isPreview: boolean;
   lessonId: string | null;
   moduleId?: string | null;
@@ -59,6 +62,14 @@ export const courseAssetAcceptTypes: Record<CourseAssetKind, string> = {
 };
 
 export const courseAssetMaxBytes = 500 * 1024 * 1024;
+
+// Bunny-hosted videos upload resumably (TUS) straight to the CDN, so they are
+// not bound by the 500MB Supabase ceiling. 5GB comfortably covers long lessons.
+export const bunnyVideoMaxBytes = 5 * 1024 * 1024 * 1024;
+
+export function isAllowedBunnyVideoFile(file: File): boolean {
+  return file.type.startsWith("video/") && file.size <= bunnyVideoMaxBytes;
+}
 
 const lessonMaterialMimeTypes = new Set([
   "application/pdf",

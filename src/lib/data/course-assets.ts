@@ -35,6 +35,7 @@ function rowToCourseAsset(row: CourseAssetRow): CourseAsset {
     size: row.size,
     storagePath: row.storage_path,
     downloadUrl: row.download_url,
+    bunnyVideoId: row.bunny_video_id ?? null,
     isPreview: row.is_preview,
     lessonId: row.lesson_id,
     moduleId: row.module_id,
@@ -156,6 +157,114 @@ export async function uploadCourseAsset(input: UploadCourseAssetInput) {
   } catch (error) {
     await supabase.storage.from(bucket).remove([storagePath]).catch(() => undefined);
     throw error;
+  }
+
+  return assetId;
+}
+
+type UploadBunnyVideoInput = {
+  courseId: string;
+  ownerId: string;
+  kind: "lesson_video" | "live_recording";
+  file: File;
+  isPreview: boolean;
+  lessonId: string;
+  onProgress?: (progress: UploadCourseAssetProgress) => void;
+};
+
+/**
+ * Upload a lesson video to Bunny Stream. The server mints a Bunny video + a
+ * short-lived TUS signature; the browser then streams the bytes straight to
+ * Bunny (resumable, real per-byte progress, no serverless body limit). We record
+ * a course_assets row with bunny_video_id set and no Supabase Storage object, so
+ * playback resolves through a signed embed URL instead of a signed storage URL.
+ */
+export async function uploadLessonVideoToBunny(
+  input: UploadBunnyVideoInput,
+): Promise<string> {
+  const { Upload } = await import("tus-js-client");
+
+  // 1. Server creates the video object + signs the upload (secrets stay server).
+  const createRes = await fetch("/api/teach/video/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ courseId: input.courseId, title: input.file.name }),
+  });
+  if (!createRes.ok) {
+    throw new Error(`bunny-create-failed:${createRes.status}`);
+  }
+  const { videoId, libraryId, signature, expires, endpoint } =
+    (await createRes.json()) as {
+      videoId: string;
+      libraryId: string;
+      signature: string;
+      expires: number;
+      endpoint: string;
+    };
+
+  input.onProgress?.({
+    bytesTransferred: 0,
+    totalBytes: input.file.size,
+    percent: 0,
+    state: "running",
+  });
+
+  // 2. Browser → Bunny, resumable.
+  await new Promise<void>((resolve, reject) => {
+    const upload = new Upload(input.file, {
+      endpoint,
+      retryDelays: [0, 3000, 5000, 10000, 20000],
+      headers: {
+        AuthorizationSignature: signature,
+        AuthorizationExpire: String(expires),
+        LibraryId: libraryId,
+        VideoId: videoId,
+      },
+      metadata: {
+        filetype: input.file.type || "video/mp4",
+        title: input.file.name,
+      },
+      onError: (error) => reject(error),
+      onProgress: (bytesUploaded, bytesTotal) => {
+        input.onProgress?.({
+          bytesTransferred: bytesUploaded,
+          totalBytes: bytesTotal,
+          percent: bytesTotal ? Math.round((bytesUploaded / bytesTotal) * 100) : 0,
+          state: "running",
+        });
+      },
+      onSuccess: () => resolve(),
+    });
+    upload.start();
+  });
+
+  input.onProgress?.({
+    bytesTransferred: input.file.size,
+    totalBytes: input.file.size,
+    percent: 100,
+    state: "success",
+  });
+
+  // 3. Record the asset (no Storage object; storage_path is a marker only).
+  const supabase = getSupabaseBrowserClient();
+  const assetId = createAssetId();
+  const { error: insertError } = await supabase.from(courseAssetsTable).insert({
+    id: assetId,
+    course_id: input.courseId,
+    owner_id: input.ownerId,
+    kind: input.kind,
+    file_name: input.file.name,
+    content_type: input.file.type || "video/mp4",
+    size: input.file.size,
+    storage_path: `bunny/${videoId}`,
+    download_url: null,
+    bunny_video_id: videoId,
+    is_preview: input.isPreview,
+    lesson_id: input.lessonId,
+    module_id: null,
+  });
+  if (insertError) {
+    throw insertError;
   }
 
   return assetId;

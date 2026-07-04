@@ -15,10 +15,12 @@ import {
 
 import type { CourseAsset, CourseAssetKind } from "@/domain/course-asset";
 import {
+  bunnyVideoMaxBytes,
   courseAssetAcceptTypes,
   courseAssetKindLabels,
   courseAssetMaxBytes,
   formatCourseAssetSize,
+  isAllowedBunnyVideoFile,
   isAllowedCourseAssetFile,
 } from "@/domain/course-asset";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
@@ -32,8 +34,10 @@ import {
   deleteCourseAsset,
   subscribeToCourseAssets,
   uploadCourseAsset,
+  uploadLessonVideoToBunny,
   type UploadCourseAssetProgress,
 } from "@/lib/data/course-assets";
+import { isBunnyConfigured } from "@/lib/bunny/config";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 
 type LessonContentModalProps = {
@@ -205,7 +209,18 @@ export function LessonContentModal({
     setError("");
     setSuccess("");
 
-    if (!isAllowedCourseAssetFile(selectedFile, uploadKind)) {
+    // Videos route to Bunny Stream (HLS + CDN) when configured; everything else
+    // — and videos before Bunny is wired — stays on Supabase Storage.
+    const isVideoKind =
+      uploadKind === "lesson_video" || uploadKind === "live_recording";
+    const useBunny = isVideoKind && isBunnyConfigured;
+
+    if (useBunny) {
+      if (!isAllowedBunnyVideoFile(selectedFile)) {
+        setError(`Use a video file under ${formatCourseAssetSize(bunnyVideoMaxBytes)}.`);
+        return;
+      }
+    } else if (!isAllowedCourseAssetFile(selectedFile, uploadKind)) {
       setError(
         `Use a valid ${courseAssetKindLabels[uploadKind].toLowerCase()} file under ${formatCourseAssetSize(courseAssetMaxBytes)}.`,
       );
@@ -215,15 +230,27 @@ export function LessonContentModal({
     setIsUploading(true);
 
     try {
-      await uploadCourseAsset({
-        courseId: course.id,
-        ownerId: course.ownerId,
-        kind: uploadKind,
-        file: selectedFile,
-        isPreview: isPreviewAsset,
-        lessonId: lesson.id,
-        onProgress: setUploadProgress,
-      });
+      if (useBunny) {
+        await uploadLessonVideoToBunny({
+          courseId: course.id,
+          ownerId: course.ownerId,
+          kind: uploadKind as "lesson_video" | "live_recording",
+          file: selectedFile,
+          isPreview: isPreviewAsset,
+          lessonId: lesson.id,
+          onProgress: setUploadProgress,
+        });
+      } else {
+        await uploadCourseAsset({
+          courseId: course.id,
+          ownerId: course.ownerId,
+          kind: uploadKind,
+          file: selectedFile,
+          isPreview: isPreviewAsset,
+          lessonId: lesson.id,
+          onProgress: setUploadProgress,
+        });
+      }
       setSuccess("File uploaded to this lesson.");
       setSelectedFile(null);
       setUploadProgress(null);

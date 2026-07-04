@@ -379,6 +379,7 @@ export type Database = {
       }
       course_assets: {
         Row: {
+          bunny_video_id: string | null
           content_type: string
           course_id: string
           created_at: string | null
@@ -395,6 +396,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          bunny_video_id?: string | null
           content_type: string
           course_id: string
           created_at?: string | null
@@ -411,6 +413,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          bunny_video_id?: string | null
           content_type?: string
           course_id?: string
           created_at?: string | null
