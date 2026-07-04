@@ -6,12 +6,16 @@ import { defaultSkillsetCurrency } from "@/lib/payments/currencies";
 import {
   DEFAULT_PLATFORM_FEE_BPS,
   canonicalPlatformFeeBpsForPlan,
+  createReleasedRefundTransferReversal,
   ledgerRefundStatus,
   payoutReleaseDelayDays,
+  refundReversalClaimKey,
   resolveInvoicePaymentIntentId,
   shouldApplyOrderStatusTransition,
   shouldReleaseCheckoutLock,
+  shouldReverseReleasedPayout,
   stripeProcessingFeeMinor,
+  type TransferReversalStripeClient,
 } from "@/lib/payments/rules";
 import { getStripeClient, isStripeConfigured } from "@/lib/payments/server/stripe";
 import { courseSubscriptionInterval } from "@/lib/payments/server/stripe-helpers";
@@ -25,12 +29,10 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 // row LAST and checking it FIRST (the "re-arm guard"), plus existence-guarded
 // enrollment writes — so a retried/redelivered event never double-fulfils.
 //
-// DEFERRED to phase 2f (no transfers exist until the dailyReleaseTransfers cron
-// runs, and payments are founder-gated): the released-transfer refund reversal
-// (reverseReleasedTransferForRefund) and the payout-delay platformConfig read
-// (we use the default window). charge.refunded still marks payment/order/ledger
-// refunded and revokes the enrollment — it just doesn't claw back a transfer
-// that cannot exist yet.
+// The release engine (/api/cron/release-payouts) moves cleared payouts, and
+// charge.refunded claws back an already-released transfer proportionally
+// (reverseReleasedPayoutIfRefunded, below). The only remaining simplification is
+// the payout-delay platformConfig read — we use the default 30-day window.
 
 const HANDLED_STRIPE_EVENT_TYPES = new Set<string>([
   "checkout.session.completed",
@@ -525,7 +527,88 @@ async function handleCourseSubscriptionLifecycle(
   return true;
 }
 
-// --- charge.refunded (no released-transfer reversal — deferred to 2f) -------
+// --- released-transfer refund clawback --------------------------------------
+// Claw back an already-released payout when its sale is refunded. Only a
+// released transfer (money that actually left the platform) can be reversed; an
+// in_release/releasing payout is simply reduced by the release engine. Keyed by
+// (chargeId, cumulative amount_refunded) in refund_reversal_claims so a Stripe
+// redelivery of the same refund never double-reverses.
+//
+// ponytail: refund_reversal_claims is a plain idempotency guard, not a
+// transactional reservation. Two DISTINCT partial refunds on one charge handled
+// concurrently could each plan against the same reversed balance — but
+// releasedRefundReversalAmountMinor caps each at the transferred amount and
+// Stripe caps cumulative reversals at the transfer total, so the teacher is
+// never over-clawed. Upgrade to a SECURITY DEFINER RPC that claims the jsonb map
+// transactionally only if concurrent partial refunds ever become common.
+async function reverseReleasedPayoutIfRefunded(
+  admin: Admin,
+  ledgerId: string,
+  charge: Stripe.Charge,
+): Promise<void> {
+  const { data: ledger } = await admin
+    .from("payout_ledger")
+    .select(
+      "status,transfer_id,transfer_amount_minor,gross_amount_minor,net_amount_minor,transfer_reversed_amount_minor,refund_reversal_claims,order_id,course_id,teacher_id",
+    )
+    .eq("id", ledgerId)
+    .maybeSingle();
+  if (!ledger) return;
+
+  const releasedTransferAmountMinor = Number(ledger.transfer_amount_minor || 0);
+  if (
+    !shouldReverseReleasedPayout({
+      status: ledger.status,
+      transferId: ledger.transfer_id,
+      releasedTransferAmountMinor,
+    })
+  ) {
+    return;
+  }
+
+  const claims =
+    (ledger.refund_reversal_claims as Record<string, { state?: string }> | null) ?? {};
+  const claimKey = refundReversalClaimKey(charge.id, charge.amount_refunded);
+  if (claims[claimKey]?.state === "done") return;
+
+  const alreadyReversed = Number(ledger.transfer_reversed_amount_minor || 0);
+  const { reversalId, reversalAmountMinor } =
+    await createReleasedRefundTransferReversal({
+      stripe: getStripeClient() as unknown as TransferReversalStripeClient,
+      ledgerId,
+      transferId: ledger.transfer_id,
+      grossAmountMinor: Number(ledger.gross_amount_minor || 0),
+      refundedAmountMinor: Number(charge.amount_refunded || 0),
+      releasedTransferAmountMinor,
+      netAmountMinor: Number(ledger.net_amount_minor || 0),
+      alreadyReversedAmountMinor: alreadyReversed,
+      idempotencyKey: `reversal_${ledgerId}_${charge.amount_refunded}`,
+      metadata: {
+        orderId: String(ledger.order_id ?? ""),
+        courseId: String(ledger.course_id ?? ""),
+        teacherId: String(ledger.teacher_id ?? ""),
+        chargeId: charge.id,
+      },
+    });
+
+  const ts = nowIso();
+  await admin
+    .from("payout_ledger")
+    .update({
+      transfer_reversed_amount_minor: alreadyReversed + reversalAmountMinor,
+      ...(reversalId
+        ? { latest_transfer_reversal_id: reversalId, latest_transfer_reversal_at: ts }
+        : {}),
+      refund_reversal_claims: {
+        ...claims,
+        [claimKey]: { state: "done", plannedAmountMinor: reversalAmountMinor },
+      },
+      updated_at: ts,
+    })
+    .eq("id", ledgerId);
+}
+
+// --- charge.refunded (claws back an already-released transfer) --------------
 async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promise<void> {
   const paymentIntentId =
     typeof charge.payment_intent === "string"
@@ -563,6 +646,7 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
         updated_at: ts,
       })
       .eq("id", ledger.id);
+    await reverseReleasedPayoutIfRefunded(admin, ledger.id, charge);
     return;
   }
 
@@ -611,6 +695,8 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
       updated_at: ts,
     })
     .eq("id", orderId);
+
+  await reverseReleasedPayoutIfRefunded(admin, orderId, charge);
 
   if (isFullRefund && order.user_id && order.course_id) {
     await admin
