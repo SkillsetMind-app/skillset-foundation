@@ -121,7 +121,7 @@ export function CertificateDocument({
                 {certificate.verificationCode}
               </p>
               <p className="mt-1 text-[11px] text-[var(--color-ink-soft)]">
-                Verify at skillsetusaofficial.web.app/verify
+                Verify at skillsetmind.com/verify
               </p>
             </div>
           </footer>

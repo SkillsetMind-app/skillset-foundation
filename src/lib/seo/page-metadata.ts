@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { brand } from "@/data/brand";
 
-export const SITE_URL = "https://skillsetusaofficial.web.app";
+export const SITE_URL = "https://skillsetmind.com";
 
 type PageMetadataInput = {
   title: string;

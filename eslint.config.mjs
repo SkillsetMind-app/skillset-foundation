@@ -7,15 +7,14 @@ const eslintConfig = defineConfig([
   ...nextTs,
   // Override default ignores of eslint-config-next.
   globalIgnores([
-    // Default ignores of eslint-config-next:
     ".next/**",
-    ".firebase/**",
     "out/**",
     "build/**",
     "docs/design-reference/**",
     "docs/design-system/**",
-    "functions/lib/**",
-    "functions/node_modules/**",
+    // Stray git worktrees (e.g. agent isolation checkouts) duplicate the whole
+    // repo under here; without this, `eslint .` lints those copies too.
+    ".claude/**",
     "next-env.d.ts",
   ]),
 ]);
