@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { randomUUID } from "node:crypto";
+
 import {
   PaymentError,
   paymentErrorResponse,
@@ -127,8 +129,29 @@ export async function POST(request: Request) {
       })
       .eq("id", orderId);
 
-    // ponytail: dropped recordAuditEvent (Firestore side-channel; no gate or
-    // return-shape depends on it).
+    // Audit trail: record who refunded what. The charge.refunded webhook does
+    // the money/ledger transition; this is the who-did-what record so a rogue or
+    // compromised admin action is investigable after the fact. Best-effort — a
+    // logging failure must NEVER fail a refund Stripe already accepted.
+    const { error: auditError } = await admin.from("audit_log").insert({
+      id: randomUUID(),
+      action: "refund.issued",
+      actor_id: callerId,
+      target_type: "order",
+      target_id: orderId,
+      summary: `Admin issued a ${
+        amountMinor === null ? "full" : `${amountMinor} minor-unit`
+      } refund on order ${orderId}`,
+      metadata: {
+        refundId: refund.id,
+        amountMinor,
+        courseId: typeof order.course_id === "string" ? order.course_id : null,
+        buyerId: typeof order.user_id === "string" ? order.user_id : null,
+      },
+    });
+    if (auditError) {
+      console.error("admin refund: audit_log insert failed", auditError);
+    }
 
     return NextResponse.json({ refundId: refund.id, status: refund.status });
   } catch (error) {

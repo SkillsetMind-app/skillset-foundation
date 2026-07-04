@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // POST /api/teach/advisor — proxies a teacher's chat to an n8n webhook that
 // fronts DeepSeek. Auth + rate-limit + input caps live here (the trust
 // boundary); prompt/model orchestration lives in n8n so it can evolve without a
-// redeploy. Degrades to a friendly 503 when N8N_ADVISOR_WEBHOOK_URL is unset,
+// redeploy. Degrades to a friendly 503 when the webhook URL/secret are unset,
 // so the UI can render a calm "being set up" state instead of an error.
 
 type AdvisorMessage = { role: "user" | "assistant"; content: string };
@@ -14,6 +14,26 @@ const MAX_MESSAGES = 20; // only the tail of the thread is forwarded
 const MAX_CHARS = 4000; // per-message cap — bounds payload + model cost
 // deepseek-v4-pro (reasoning) measured ~19s on complex questions; 60s gives headroom.
 const UPSTREAM_TIMEOUT_MS = 60_000;
+
+// Reject NUL + C0/C1 control chars (tab/newline/CR allowed): they have no place
+// in a chat message and are a classic vector for smuggling a payload past a
+// downstream parser (prompt injection into the n8n/model layer). Char-code
+// check instead of a regex to keep the source free of invisible control bytes.
+function hasControlChar(s: string): boolean {
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if ((c < 0x20 && c !== 0x09 && c !== 0x0a && c !== 0x0d) || c === 0x7f) return true;
+  }
+  return false;
+}
+
+// In-process cap on concurrent upstream calls. Vercel runs one counter per warm
+// lambda, so the effective cap is MAX_INFLIGHT × instances — enough to keep a
+// burst from exhausting the n8n/DeepSeek worker pool without a shared store.
+// ponytail: per-instance; swap for a shared counter only if multi-instance
+// bursts ever become the bottleneck.
+let inFlight = 0;
+const MAX_INFLIGHT = 6;
 
 export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
@@ -24,26 +44,37 @@ export async function POST(request: Request) {
   }
   const uid = data.user.id;
 
-  // Throttle repeated calls (the enforce_rate_limit SECURITY DEFINER RPC used
-  // across the app). 30 advisor turns/hour per teacher — generous for real use,
-  // tight enough to blunt scripted abuse of a model-backed endpoint.
-  const { error: rlError } = await supabase.rpc("enforce_rate_limit", {
-    p_key: `advisor_${uid}`,
-    p_limit: 30,
-    p_window_ms: 3_600_000,
-  });
-  if (rlError) {
-    if (rlError.message?.includes("RATE_LIMIT")) {
-      return NextResponse.json(
-        { error: "Too many messages. Please wait a moment before continuing." },
-        { status: 429 },
-      );
+  // Two-window throttle on a reasoning-model-backed endpoint: an hourly burst
+  // cap (30/h) blunts scripted abuse, and a daily cap (120/day) bounds sustained
+  // economic abuse (every turn fans out to DeepSeek). Both use the shared
+  // enforce_rate_limit SECURITY DEFINER RPC.
+  for (const [key, limit, windowMs] of [
+    [`advisor_${uid}`, 30, 3_600_000],
+    [`advisor_daily_${uid}`, 120, 86_400_000],
+  ] as const) {
+    const { error: rlError } = await supabase.rpc("enforce_rate_limit", {
+      p_key: key,
+      p_limit: limit,
+      p_window_ms: windowMs,
+    });
+    if (rlError) {
+      if (rlError.message?.includes("RATE_LIMIT")) {
+        return NextResponse.json(
+          { error: "Too many messages. Please wait a moment before continuing." },
+          { status: 429 },
+        );
+      }
+      return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
     }
-    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 
   const webhookUrl = process.env.N8N_ADVISOR_WEBHOOK_URL;
-  if (!webhookUrl) {
+  const secret = process.env.N8N_ADVISOR_WEBHOOK_SECRET;
+  // Fail closed: never call the n8n webhook without the shared secret. A missing
+  // secret is a misconfiguration surfaced as the same calm "being set up" state,
+  // so the webhook can never be invoked unauthenticated — which would let anyone
+  // who discovers the URL impersonate a teacher by passing an arbitrary uid.
+  if (!webhookUrl || !secret) {
     return NextResponse.json(
       {
         error: "advisor_not_configured",
@@ -76,15 +107,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Send a message to the advisor." }, { status: 400 });
   }
 
-  // Optional shared secret n8n verifies, so the webhook can't be hit directly.
-  const secret = process.env.N8N_ADVISOR_WEBHOOK_SECRET;
+  if (cleaned.some((m) => hasControlChar(m.content))) {
+    return NextResponse.json(
+      { error: "Message contains unsupported characters." },
+      { status: 400 },
+    );
+  }
 
+  if (inFlight >= MAX_INFLIGHT) {
+    return NextResponse.json(
+      { error: "The advisor is busy right now. Please try again in a moment." },
+      { status: 429 },
+    );
+  }
+
+  inFlight += 1;
   try {
     const upstream = await fetch(webhookUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(secret ? { "x-advisor-secret": secret } : {}),
+        "x-advisor-secret": secret,
       },
       body: JSON.stringify({ teacherId: uid, messages: cleaned }),
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
@@ -118,5 +161,7 @@ export async function POST(request: Request) {
       { error: "The advisor is taking too long to respond. Please try again." },
       { status: 504 },
     );
+  } finally {
+    inFlight -= 1;
   }
 }

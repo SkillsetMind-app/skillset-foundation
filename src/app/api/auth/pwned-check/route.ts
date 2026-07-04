@@ -1,4 +1,8 @@
+import { createHash } from "node:crypto";
+
 import { NextResponse } from "next/server";
+
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // Server-side proxy for the HaveIBeenPwned "Pwned Passwords" range API. The
 // browser sends ONLY the first 5 hex chars of a password's SHA-1 hash
@@ -14,11 +18,34 @@ export const dynamic = "force-dynamic";
 
 const HIBP_TIMEOUT_MS = 3000;
 const PREFIX_RE = /^[0-9A-Fa-f]{5}$/;
+// Per-IP ceiling: a password field fires a handful of debounced checks per
+// signup, so 100/min is generous for real users while capping anyone farming
+// this as a free HIBP proxy or hammering it. Edge-cached hits (see cache-control
+// below) never reach here, so this only counts cache misses.
+const RATE_LIMIT_PER_MINUTE = 100;
+
+function rateLimitKeyFromIp(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for") ?? "";
+  const ip = forwarded.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
+  return `pwned_${createHash("sha256").update(ip).digest("hex").slice(0, 24)}`;
+}
 
 export async function GET(request: Request) {
   const prefix = new URL(request.url).searchParams.get("prefix") ?? "";
   if (!PREFIX_RE.test(prefix)) {
     return NextResponse.json({ error: "Invalid prefix." }, { status: 400 });
+  }
+
+  // Fail-open rate limit: a breach returns 429, but a limiter outage must never
+  // block the pwned check — the whole route is best-effort auth assist.
+  const supabase = await createSupabaseServerClient();
+  const { error: rlError } = await supabase.rpc("enforce_rate_limit", {
+    p_key: rateLimitKeyFromIp(request),
+    p_limit: RATE_LIMIT_PER_MINUTE,
+    p_window_ms: 60_000,
+  });
+  if (rlError?.message?.includes("RATE_LIMIT")) {
+    return NextResponse.json({ error: "Too many requests." }, { status: 429 });
   }
 
   const controller = new AbortController();

@@ -19,8 +19,29 @@ type AssistantMessage = { role: "user" | "assistant"; content: string };
 const MAX_MESSAGES = 12; // only the tail of the thread is forwarded
 const MAX_CHARS = 1200; // per-message cap — public endpoint, keep payloads tight
 const RATE_LIMIT_PER_HOUR = 20;
+const RATE_LIMIT_PER_DAY = 80; // bounds sustained economic abuse (every turn hits DeepSeek)
 // flash answers in a few seconds; the pro fallback was measured ~19s. 45s headroom.
 const UPSTREAM_TIMEOUT_MS = 45_000;
+
+// Reject NUL + C0/C1 control chars (tab/newline/CR allowed): they have no place
+// in a chat message and are a classic vector for smuggling a payload past a
+// downstream parser (prompt injection into the n8n/model layer). Char-code
+// check instead of a regex to keep the source free of invisible control bytes.
+function hasControlChar(s: string): boolean {
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if ((c < 0x20 && c !== 0x09 && c !== 0x0a && c !== 0x0d) || c === 0x7f) return true;
+  }
+  return false;
+}
+
+// In-process cap on concurrent upstream calls. Vercel runs one counter per warm
+// lambda, so the effective cap is MAX_INFLIGHT × instances — enough to keep a
+// burst from exhausting the n8n/DeepSeek worker pool without a shared store.
+// ponytail: per-instance; swap for a shared counter only if multi-instance
+// bursts ever become the bottleneck.
+let inFlight = 0;
+const MAX_INFLIGHT = 8;
 
 function rateLimitKeyFromIp(request: Request): string {
   // First hop of x-forwarded-for is the client on Vercel. Hash it so raw IPs
@@ -38,6 +59,7 @@ export async function POST(request: Request) {
 
   try {
     await enforceRateLimit(supabase, key, RATE_LIMIT_PER_HOUR, 3_600_000);
+    await enforceRateLimit(supabase, `${key}_daily`, RATE_LIMIT_PER_DAY, 86_400_000);
   } catch (error) {
     if (error instanceof PaymentError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
@@ -46,7 +68,12 @@ export async function POST(request: Request) {
   }
 
   const webhookUrl = process.env.N8N_ASSISTANT_WEBHOOK_URL;
-  if (!webhookUrl) {
+  const secret = process.env.N8N_ASSISTANT_WEBHOOK_SECRET;
+  // Fail closed: never call the n8n webhook without the shared secret. A missing
+  // secret is a misconfiguration surfaced as the calm "being set up" state, so
+  // the webhook can never be invoked unauthenticated — which would let anyone
+  // who discovers the URL burn DeepSeek credits and siphon the knowledge context.
+  if (!webhookUrl || !secret) {
     return NextResponse.json(
       {
         error: "assistant_not_configured",
@@ -79,14 +106,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Send a message to the assistant." }, { status: 400 });
   }
 
-  const secret = process.env.N8N_ASSISTANT_WEBHOOK_SECRET;
+  if (cleaned.some((m) => hasControlChar(m.content))) {
+    return NextResponse.json(
+      { error: "Message contains unsupported characters." },
+      { status: 400 },
+    );
+  }
 
+  if (inFlight >= MAX_INFLIGHT) {
+    return NextResponse.json(
+      { error: "The assistant is busy right now. Please try again in a moment." },
+      { status: 429 },
+    );
+  }
+
+  inFlight += 1;
   try {
     const upstream = await fetch(webhookUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(secret ? { "x-assistant-secret": secret } : {}),
+        "x-assistant-secret": secret,
       },
       body: JSON.stringify({ messages: cleaned, context: buildAssistantKnowledge() }),
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
@@ -118,5 +158,7 @@ export async function POST(request: Request) {
       { error: "The assistant is taking too long to respond. Please try again." },
       { status: 504 },
     );
+  } finally {
+    inFlight -= 1;
   }
 }

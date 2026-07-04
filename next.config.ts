@@ -1,5 +1,28 @@
 import type { NextConfig } from "next";
 
+// Report-only CSP: browsers evaluate it and POST any violation to
+// /api/csp-report, but NOTHING is ever blocked. This is the observe phase of a
+// CSP rollout — it lets prod traffic reveal the true directive set (Stripe.js,
+// Supabase, Google OAuth, PostHog, the Bunny/YouTube/Vimeo players) before we
+// promote to an enforcing `Content-Security-Policy`. img-src stays broad
+// (https:) because course thumbnails come from many hosts; tighten before
+// enforcing. ponytail: report-uri (not report-to) — still honored in report-only
+// and one line; add report-to only if a target browser drops report-uri.
+const CSP_REPORT_ONLY = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://us.i.posthog.com https://us-assets.i.posthog.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://ijtikldtjvsbtwszokvs.supabase.co wss://ijtikldtjvsbtwszokvs.supabase.co https://api.stripe.com https://api.pwnedpasswords.com https://us.i.posthog.com https://us-assets.i.posthog.com",
+  "frame-src https://js.stripe.com https://hooks.stripe.com https://iframe.mediadelivery.net https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://accounts.google.com",
+  "media-src 'self' blob: https://ijtikldtjvsbtwszokvs.supabase.co https://iframe.mediadelivery.net",
+  "report-uri /api/csp-report",
+].join("; ");
+
 const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
@@ -25,10 +48,10 @@ const nextConfig: NextConfig = {
   },
   // Baseline security response headers on every route. The single most common
   // gap in AI-built SaaS (2026 vibe-coded audits): no clickjacking/HSTS/sniff
-  // protection. Deliberately NOT a Content-Security-Policy here — a strict CSP
-  // must be tuned against Stripe.js, PostHog, Supabase, Google OAuth, and the
-  // Bunny/YouTube/Vimeo iframes, and adding one blind would break the site.
-  // (Founder follow-up: add a tested CSP + report-only rollout.)
+  // protection. A strict enforcing CSP is still a founder follow-up (it must be
+  // tuned against Stripe.js, PostHog, Supabase, Google OAuth, and the
+  // Bunny/YouTube/Vimeo iframes); until then we ship it REPORT-ONLY (below), so
+  // violations are observed without any risk of breaking the site.
   async headers() {
     return [
       {
@@ -52,6 +75,8 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=(), browsing-topics=()",
           },
+          // Observe-only: reports violations to /api/csp-report, blocks nothing.
+          { key: "Content-Security-Policy-Report-Only", value: CSP_REPORT_ONLY },
         ],
       },
     ];
