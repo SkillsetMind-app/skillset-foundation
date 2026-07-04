@@ -118,14 +118,17 @@ export async function getCurrentSkillsetUser(): Promise<SkillsetUser | null> {
   return mapSupabaseUser(user, await getUserProfile(user.id));
 }
 
-export async function signInWithEmail({
-  email,
-  password,
-}: EmailPasswordCredentials): Promise<SkillsetUser> {
+export async function signInWithEmail(
+  { email, password }: EmailPasswordCredentials,
+  captchaToken?: string,
+): Promise<SkillsetUser> {
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
+    // Ignored by Supabase unless CAPTCHA is enabled; undefined when the
+    // Turnstile widget is off, so this is a no-op on the default free tier.
+    options: captchaToken ? { captchaToken } : undefined,
   });
 
   if (error) {
@@ -137,11 +140,10 @@ export async function signInWithEmail({
   return mapSupabaseUser(data.user, await getUserProfile(data.user.id));
 }
 
-export async function signUpWithEmail({
-  displayName,
-  email,
-  password,
-}: SignupInput): Promise<SkillsetUser> {
+export async function signUpWithEmail(
+  { displayName, email, password }: SignupInput,
+  captchaToken?: string,
+): Promise<SkillsetUser> {
   const supabase = getSupabaseBrowserClient();
   const trimmedName = displayName.trim();
 
@@ -157,6 +159,8 @@ export async function signUpWithEmail({
         ? { display_name: trimmedName, name: trimmedName }
         : undefined,
       emailRedirectTo: authCallbackUrl("/auth/confirm"),
+      // No-op unless Supabase CAPTCHA is enabled + the Turnstile widget is on.
+      captchaToken: captchaToken || undefined,
     },
   });
 
@@ -192,10 +196,15 @@ export async function signInWithGoogle(): Promise<SkillsetUser> {
   return new Promise<SkillsetUser>(() => {});
 }
 
-export async function resetPassword(email: string): Promise<void> {
+export async function resetPassword(
+  email: string,
+  captchaToken?: string,
+): Promise<void> {
   const supabase = getSupabaseBrowserClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: authCallbackUrl("/auth/callback?next=/account"),
+    // No-op unless Supabase CAPTCHA is enabled + the Turnstile widget is on.
+    captchaToken: captchaToken || undefined,
   });
 
   if (error) {

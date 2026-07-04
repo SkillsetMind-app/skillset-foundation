@@ -2,6 +2,10 @@
 
 import { useState, type FormEvent } from "react";
 
+import {
+  TurnstileWidget,
+  isCaptchaEnabled,
+} from "@/components/auth/turnstile-widget";
 import { getAuthErrorMessage, resetPassword } from "@/lib/auth/supabase-auth";
 
 export function ResetPasswordForm() {
@@ -9,6 +13,9 @@ export function ResetPasswordForm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  // Turnstile token — empty unless the widget is enabled.
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
 
   async function handleReset(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -17,13 +24,15 @@ export function ResetPasswordForm() {
     setIsLoading(true);
 
     try {
-      await resetPassword(email);
+      await resetPassword(email, captchaToken || undefined);
       setSuccess(
         "If an account exists for this email, we've sent a reset link. It can take a minute to arrive — check your inbox and your spam or promotions folder. If you signed up with Google, use 'Continue with Google' to sign in instead.",
       );
     } catch (caughtError) {
       setError(getAuthErrorMessage(caughtError));
     } finally {
+      // Single-use token: refresh for the next attempt either way.
+      if (isCaptchaEnabled) setCaptchaResetSignal((n) => n + 1);
       setIsLoading(false);
     }
   }
@@ -59,7 +68,12 @@ export function ResetPasswordForm() {
           {success}
         </p>
       ) : null}
-      <button type="submit" disabled={isLoading} className="button-solid mt-2 px-4 py-2.5 text-sm disabled:opacity-60">
+      <TurnstileWidget onToken={setCaptchaToken} resetSignal={captchaResetSignal} />
+      <button
+        type="submit"
+        disabled={isLoading || (isCaptchaEnabled && !captchaToken)}
+        className="button-solid mt-2 px-4 py-2.5 text-sm disabled:opacity-60"
+      >
         {isLoading ? "Sending..." : "Send reset link"}
       </button>
     </form>

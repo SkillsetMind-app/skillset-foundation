@@ -5,6 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 
 import { GoogleMark } from "@/components/auth/google-mark";
+import {
+  TurnstileWidget,
+  isCaptchaEnabled,
+} from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { isGoogleAuthEnabled } from "@/lib/auth/providers";
 import {
@@ -88,6 +92,10 @@ export function SignupForm() {
   const [legalAccepted, setLegalAccepted] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  // Turnstile token — empty unless the widget is enabled. Shown on step 2 where
+  // the account is actually created (Google OAuth doesn't use a captcha token).
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
   // Two-step wizard: step 1 = identity (role/name/email/terms), step 2 = the
   // password. Splitting keeps each screen within one viewport (no scroll), the
   // market-standard signup shape. The rest of the profile is collected later at
@@ -133,7 +141,10 @@ export function SignupForm() {
     setIsLoading(true);
 
     try {
-      const user = await signUpWithEmail({ displayName, email, password });
+      const user = await signUpWithEmail(
+        { displayName, email, password },
+        captchaToken || undefined,
+      );
       await acceptUserTerms(user.uid, false);
       await updateUserIdentity(user.uid, {
         displayName,
@@ -145,6 +156,8 @@ export function SignupForm() {
       });
       router.push(`/welcome${getAuthPathQuery(intent)}`);
     } catch (caughtError) {
+      // Single-use Turnstile token — refresh for the retry.
+      if (isCaptchaEnabled) setCaptchaResetSignal((n) => n + 1);
       setError(getAuthErrorMessage(caughtError));
     } finally {
       setIsLoading(false);
@@ -369,10 +382,19 @@ export function SignupForm() {
 
           {errorNode}
 
+          <TurnstileWidget
+            onToken={setCaptchaToken}
+            resetSignal={captchaResetSignal}
+          />
+
           <button
             type="submit"
             disabled={
-              isLoading || !legalAccepted || !passwordReady || !passwordsMatch
+              isLoading ||
+              !legalAccepted ||
+              !passwordReady ||
+              !passwordsMatch ||
+              (isCaptchaEnabled && !captchaToken)
             }
             className="button-solid mt-1 px-4 py-2.5 text-sm disabled:opacity-60"
           >

@@ -6,6 +6,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 
 import { GoogleMark } from "@/components/auth/google-mark";
+import {
+  TurnstileWidget,
+  isCaptchaEnabled,
+} from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { isGoogleAuthEnabled } from "@/lib/auth/providers";
 import {
@@ -49,6 +53,9 @@ export function LoginForm() {
   // requires a TOTP second factor. Holds the original error the resolver needs.
   const [mfaError, setMfaError] = useState<MfaRequiredError | null>(null);
   const [mfaCode, setMfaCode] = useState("");
+  // Turnstile token — empty unless the widget is enabled (NEXT_PUBLIC_TURNSTILE_SITE_KEY).
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
 
   async function finishLogin(uid: string) {
     const profile = await getUserProfile(uid);
@@ -64,7 +71,10 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      const user = await signInWithEmail({ email, password });
+      const user = await signInWithEmail(
+        { email, password },
+        captchaToken || undefined,
+      );
       await finishLogin(user.uid);
     } catch (caughtError) {
       if (isMultiFactorRequiredError(caughtError)) {
@@ -72,6 +82,8 @@ export function LoginForm() {
         setMfaCode("");
         setError("");
       } else {
+        // Turnstile tokens are single-use — refresh for the retry.
+        if (isCaptchaEnabled) setCaptchaResetSignal((n) => n + 1);
         setError(getAuthErrorMessage(caughtError));
       }
     } finally {
@@ -252,7 +264,12 @@ export function LoginForm() {
           {error}
         </p>
       ) : null}
-      <button type="submit" disabled={isLoading} className="button-solid mt-2 px-4 py-2.5 text-sm disabled:opacity-60">
+      <TurnstileWidget onToken={setCaptchaToken} resetSignal={captchaResetSignal} />
+      <button
+        type="submit"
+        disabled={isLoading || (isCaptchaEnabled && !captchaToken)}
+        className="button-solid mt-2 px-4 py-2.5 text-sm disabled:opacity-60"
+      >
         {isLoading ? t("auth.signingIn") : t("auth.signIn")}
       </button>
       {isGoogleAuthEnabled ? (
