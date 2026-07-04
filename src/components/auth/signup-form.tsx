@@ -88,6 +88,11 @@ export function SignupForm() {
   const [legalAccepted, setLegalAccepted] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  // Two-step wizard: step 1 = identity (role/name/email/terms), step 2 = the
+  // password. Splitting keeps each screen within one viewport (no scroll), the
+  // market-standard signup shape. The rest of the profile is collected later at
+  // /welcome onboarding.
+  const [step, setStep] = useState<1 | 2>(1);
   const passwordReady = isStrongPassword(password);
   const passwordsMatch = password === confirmPassword;
   const showMismatch = confirmPassword.length > 0 && !passwordsMatch;
@@ -105,6 +110,13 @@ export function SignupForm() {
 
     if (displayNameError) {
       setError(formatValidationMessage(displayNameError, t));
+      return;
+    }
+
+    // Step 1 only validates identity + terms, then advances. The password lives
+    // on step 2, so the account isn't created until the second submit.
+    if (step === 1) {
+      setStep(2);
       return;
     }
 
@@ -180,163 +192,207 @@ export function SignupForm() {
     }
   }
 
+  const errorNode = error ? (
+    <p
+      role="alert"
+      aria-live="assertive"
+      className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]"
+    >
+      {error}
+    </p>
+  ) : null;
+
   return (
     <form className="mt-5 grid gap-3" onSubmit={handleEmailSignup}>
-      <fieldset className="grid gap-1.5">
-        <legend className="text-sm font-semibold text-[var(--color-ink)]">
-          {t("auth.signup.roleQuestion")}
-        </legend>
-        <div className="grid grid-cols-2 gap-2" role="radiogroup">
-          {(["student", "teacher"] as const).map((option) => (
+      {/* Progress dots — the active step widens. Signals "there's a next screen"
+          so the short step 1 doesn't read as the whole signup. */}
+      <div className="flex items-center justify-center gap-2" aria-hidden="true">
+        {[1, 2].map((n) => (
+          <span
+            key={n}
+            className={[
+              "h-1.5 rounded-full transition-all",
+              step === n ? "w-6 bg-[var(--color-primary)]" : "w-2 bg-[var(--color-line)]",
+            ].join(" ")}
+          />
+        ))}
+      </div>
+
+      {step === 1 ? (
+        <>
+          <fieldset className="grid gap-1.5">
+            <legend className="text-sm font-semibold text-[var(--color-ink)]">
+              {t("auth.signup.roleQuestion")}
+            </legend>
+            <div className="grid grid-cols-2 gap-2" role="radiogroup">
+              {(["student", "teacher"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  role="radio"
+                  aria-checked={intent === option}
+                  onClick={() => chooseIntent(option)}
+                  className={[
+                    "rounded-[10px] border-[1.5px] px-4 py-2.5 text-sm font-semibold transition",
+                    intent === option
+                      ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-base)]"
+                      : "border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]",
+                  ].join(" ")}
+                >
+                  {t(option === "student" ? "auth.signup.roleLearn" : "auth.signup.roleTeach")}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
+          <p className="text-xs leading-5 text-[var(--color-ink-soft)]">{intro}</p>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
+              {t("auth.signup.fullName")}
+              <input
+                type="text"
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
+                placeholder={t("auth.signup.fullNamePlaceholder")}
+                autoComplete="name"
+                required
+                className="field-input"
+              />
+            </label>
+
+            <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
+              {t("auth.email")}
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder={t("auth.emailPlaceholder")}
+                autoComplete="email"
+                required
+                className="field-input"
+              />
+            </label>
+          </div>
+
+          <label className="flex items-start gap-2.5 text-xs leading-5 text-[var(--color-ink-soft)]">
+            <input
+              type="checkbox"
+              checked={legalAccepted}
+              onChange={(event) => setLegalAccepted(event.target.checked)}
+              className="mt-0.5"
+              required
+            />
+            <span>
+              {t("auth.signup.agreePrefix")}
+              <Link href="/legal/terms" className="font-semibold text-[var(--color-primary)]">
+                {t("footer.termsOfService")}
+              </Link>
+              {t("auth.signup.agreeMiddle")}
+              <Link href="/legal/privacy" className="font-semibold text-[var(--color-primary)]">
+                {t("footer.privacyPolicy")}
+              </Link>
+              {t("auth.signup.agreeSuffix")}
+            </span>
+          </label>
+
+          {errorNode}
+
+          <button
+            type="submit"
+            disabled={isLoading || !legalAccepted}
+            className="button-solid mt-1 px-4 py-2.5 text-sm disabled:opacity-60"
+          >
+            {t("auth.signup.continue")}
+          </button>
+
+          <div className="flex items-center gap-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
+            <span className="h-px flex-1 bg-[var(--color-line)]" />
+            {t("auth.signup.or")}
+            <span className="h-px flex-1 bg-[var(--color-line)]" />
+          </div>
+
+          {isGoogleAuthEnabled ? (
             <button
-              key={option}
               type="button"
-              role="radio"
-              aria-checked={intent === option}
-              onClick={() => chooseIntent(option)}
-              className={[
-                "rounded-[10px] border-[1.5px] px-4 py-2.5 text-sm font-semibold transition",
-                intent === option
-                  ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-base)]"
-                  : "border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]",
-              ].join(" ")}
+              disabled={isLoading || !legalAccepted}
+              onClick={handleGoogleSignup}
+              className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
             >
-              {t(option === "student" ? "auth.signup.roleLearn" : "auth.signup.roleTeach")}
+              <GoogleMark />
+              {t("auth.continueWithGoogle")}
             </button>
-          ))}
-        </div>
-      </fieldset>
-
-      <p className="text-xs leading-5 text-[var(--color-ink-soft)]">{intro}</p>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-          {t("auth.signup.fullName")}
-          <input
-            type="text"
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-            placeholder={t("auth.signup.fullNamePlaceholder")}
-            autoComplete="name"
-            required
-            className="field-input"
-          />
-        </label>
-
-        <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-          {t("auth.email")}
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder={t("auth.emailPlaceholder")}
-            autoComplete="email"
-            required
-            className="field-input"
-          />
-        </label>
-      </div>
-
-      <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-        {t("auth.password")}
-        <input
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          placeholder={t("auth.signup.passwordPlaceholder")}
-          autoComplete="new-password"
-          minLength={8}
-          required
-          className="field-input"
-        />
-        {password ? <PasswordStrengthChecklist password={password} /> : null}
-      </label>
-
-      <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-        {t("auth.signup.confirmPassword")}
-        <input
-          type="password"
-          value={confirmPassword}
-          onChange={(event) => setConfirmPassword(event.target.value)}
-          placeholder={t("auth.signup.confirmPasswordPlaceholder")}
-          autoComplete="new-password"
-          required
-          aria-invalid={showMismatch}
-          className="field-input"
-        />
-        {showMismatch ? (
-          <span className="text-xs font-semibold text-[var(--color-accent-fg)]">
-            {t("auth.signup.passwordsDontMatch")}
-          </span>
-        ) : null}
-      </label>
-
-      <label className="flex items-start gap-3 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-        <input
-          type="checkbox"
-          checked={legalAccepted}
-          onChange={(event) => setLegalAccepted(event.target.checked)}
-          className="mt-1"
-          required
-        />
-        <span>
-          {t("auth.signup.agreePrefix")}
-          <Link href="/legal/terms" className="font-semibold text-[var(--color-primary)]">
-            {t("footer.termsOfService")}
+          ) : null}
+          <Link
+            href={signinHref}
+            className="mt-1 inline-flex text-sm font-semibold text-[var(--color-primary)]"
+          >
+            {t("auth.signup.alreadyHaveAccount")}
           </Link>
-          {t("auth.signup.agreeMiddle")}
-          <Link href="/legal/privacy" className="font-semibold text-[var(--color-primary)]">
-            {t("footer.privacyPolicy")}
-          </Link>
-          {t("auth.signup.agreeSuffix")}
-        </span>
-      </label>
+        </>
+      ) : (
+        <>
+          <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
+            {t("auth.password")}
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder={t("auth.signup.passwordPlaceholder")}
+              autoComplete="new-password"
+              minLength={8}
+              required
+              autoFocus
+              className="field-input"
+            />
+            {password ? <PasswordStrengthChecklist password={password} /> : null}
+          </label>
 
-      {error ? (
-        <p
-          role="alert"
-          aria-live="assertive"
-          className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]"
-        >
-          {error}
-        </p>
-      ) : null}
+          <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
+            {t("auth.signup.confirmPassword")}
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              placeholder={t("auth.signup.confirmPasswordPlaceholder")}
+              autoComplete="new-password"
+              required
+              aria-invalid={showMismatch}
+              className="field-input"
+            />
+            {showMismatch ? (
+              <span className="text-xs font-semibold text-[var(--color-accent-fg)]">
+                {t("auth.signup.passwordsDontMatch")}
+              </span>
+            ) : null}
+          </label>
 
-      <button
-        type="submit"
-        disabled={
-          isLoading || !legalAccepted || !passwordReady || !passwordsMatch
-        }
-        className="button-solid mt-1 px-4 py-2.5 text-sm disabled:opacity-60"
-      >
-        {isLoading
-          ? t("auth.signup.creatingAccount")
-          : t("auth.signup.createAccount")}
-      </button>
+          {errorNode}
 
-      <div className="flex items-center gap-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
-        <span className="h-px flex-1 bg-[var(--color-line)]" />
-        {t("auth.signup.or")}
-        <span className="h-px flex-1 bg-[var(--color-line)]" />
-      </div>
+          <button
+            type="submit"
+            disabled={
+              isLoading || !legalAccepted || !passwordReady || !passwordsMatch
+            }
+            className="button-solid mt-1 px-4 py-2.5 text-sm disabled:opacity-60"
+          >
+            {isLoading
+              ? t("auth.signup.creatingAccount")
+              : t("auth.signup.createAccount")}
+          </button>
 
-      {isGoogleAuthEnabled ? (
-        <button
-          type="button"
-          disabled={isLoading || !legalAccepted}
-          onClick={handleGoogleSignup}
-          className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
-        >
-          <GoogleMark />
-          {t("auth.continueWithGoogle")}
-        </button>
-      ) : null}
-      <Link
-        href={signinHref}
-        className="mt-1 inline-flex text-sm font-semibold text-[var(--color-primary)]"
-      >
-        {t("auth.signup.alreadyHaveAccount")}
-      </Link>
+          <button
+            type="button"
+            onClick={() => {
+              setError("");
+              setStep(1);
+            }}
+            className="mt-1 inline-flex items-center justify-center text-sm font-semibold text-[var(--color-primary)]"
+          >
+            {t("auth.signup.back")}
+          </button>
+        </>
+      )}
     </form>
   );
 }

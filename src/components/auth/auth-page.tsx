@@ -75,14 +75,8 @@ export function AuthPage() {
         <p className="relative text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">
           {t(`${asideKey}.eyebrow`)}
         </p>
-        <div className="relative">
-          <h2 className="display-title text-[clamp(2rem,3vw,2.9rem)] leading-[1.1] text-white">
-            {t(`${asideKey}.title`)}
-          </h2>
-          <p className="mt-4 max-w-sm text-[15px] leading-7 text-white/75">
-            {t(`${asideKey}.description`)}
-          </p>
-        </div>
+        {/* Title + description removed so the portrait's face stays uncovered;
+            the adaptive eyebrow and proof points frame it top and bottom. */}
         <ul className="relative space-y-4">
           {asideProof.map(([title, detail]) => (
             <li key={title} className="flex gap-3">

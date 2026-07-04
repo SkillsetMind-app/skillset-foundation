@@ -139,6 +139,8 @@
       "agreeSuffix": ".",
       "createAccount": "Create account",
       "creatingAccount": "Creating account...",
+      "continue": "Continue",
+      "back": "Back",
       "or": "or",
       "alreadyHaveAccount": "Already have an account?",
       "acceptTermsToCreate": "Accept the Terms of Service and Privacy Policy to create your account.",
