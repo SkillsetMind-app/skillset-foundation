@@ -5,7 +5,7 @@ import { StatusChip } from "@/components/shared/status-chip";
 
 // Single source for the support inbox a roadmap page routes interest to. Kept
 // in one place so a "Notify me" link never hardcodes the address per page.
-const SUPPORT_EMAIL = "support@skillset.app";
+const SUPPORT_EMAIL = "support@skillsetmind.com";
 
 type TeacherComingSoonPanelProps = {
   eyebrow: string;

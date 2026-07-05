@@ -11,7 +11,7 @@ export const metadata = buildPageMetadata({
 });
 
 const EFFECTIVE_DATE = "July 2, 2026";
-const SUPPORT_EMAIL = "support@skillset.app";
+const SUPPORT_EMAIL = "support@skillsetmind.com";
 
 function SupportLink() {
   return (

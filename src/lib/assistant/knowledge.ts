@@ -20,7 +20,7 @@ const PLATFORM_OVERVIEW = `Skillset is an online course marketplace where expert
 - Curated learning paths (ordered course sequences) can appear on the student learning dashboard with rolled-up progress.
 - Skillset issues course certificates that can be verified online.
 - The platform interface is available in English, Portuguese, and Spanish.
-- Support: the /support page, or email support@skillset.app. Legal terms live at /legal/terms, /legal/privacy, and /legal/teacher-terms.`;
+- Support: the /support page, or email support@skillsetmind.com. Legal terms live at /legal/terms, /legal/privacy, and /legal/teacher-terms.`;
 
 function plansSection(): string {
   const rows = plans.map((plan) => {

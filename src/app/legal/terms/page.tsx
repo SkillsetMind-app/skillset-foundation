@@ -11,7 +11,7 @@ export const metadata = buildPageMetadata({
 });
 
 const EFFECTIVE_DATE = "July 2, 2026";
-const SUPPORT_EMAIL = "support@skillset.app";
+const SUPPORT_EMAIL = "support@skillsetmind.com";
 
 function SupportLink() {
   return (
@@ -315,7 +315,7 @@ export default function TermsPage() {
           <Define>DEFINE: legal entity name</Define>,{" "}
           <Define>DEFINE: registered address</Define>. Questions about these
           Terms: <SupportLink /> or{" "}
-          <Define>DEFINE: dedicated legal contact email, e.g. legal@skillset.app</Define>
+          <Define>DEFINE: dedicated legal contact email, e.g. legal@skillsetmind.com</Define>
           .
         </p>
       </LegalSection>

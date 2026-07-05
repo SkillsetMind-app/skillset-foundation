@@ -283,14 +283,14 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
               View enrollment in workspace
             </Link>
             <a
-              href="mailto:support@skillset.app"
+              href="mailto:support@skillsetmind.com"
               className="button-outline inline-flex items-center gap-2 px-3.5 py-2 text-xs"
             >
               <Mail aria-hidden="true" size={14} />
               Contact support
             </a>
             <a
-              href={`mailto:support@skillset.app?subject=${encodeURIComponent(
+              href={`mailto:support@skillsetmind.com?subject=${encodeURIComponent(
                 `Refund request - order ${order.id}`,
               )}&body=${encodeURIComponent(
                 `Please help me process a refund for order ${order.id} (${order.courseTitle}).`,

@@ -10,7 +10,7 @@ export const metadata = buildPageMetadata({
 });
 
 const EFFECTIVE_DATE = "July 2, 2026";
-const SUPPORT_EMAIL = "support@skillset.app";
+const SUPPORT_EMAIL = "support@skillsetmind.com";
 
 function SupportLink() {
   return (
@@ -307,7 +307,7 @@ export default function PrivacyPage() {
       <LegalSection heading="12. Contact and data protection officer">
         <p>
           Privacy questions and rights requests: <SupportLink /> or{" "}
-          <Define>DEFINE: dedicated privacy email, e.g. privacy@skillset.app</Define>
+          <Define>DEFINE: dedicated privacy email, e.g. privacy@skillsetmind.com</Define>
           . Data protection contact:{" "}
           <Define>
             DEFINE: DPO / privacy officer name or role — LGPD requires a named

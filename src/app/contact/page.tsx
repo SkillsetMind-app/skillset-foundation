@@ -4,7 +4,7 @@ import { SiteFooter } from "@/components/site/site-footer";
 import { SiteNav } from "@/components/site/site-nav";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
-const SUPPORT_EMAIL = "support@skillset.app";
+const SUPPORT_EMAIL = "support@skillsetmind.com";
 
 export const metadata = buildPageMetadata({
   title: "Contact",

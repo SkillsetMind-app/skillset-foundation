@@ -29,7 +29,7 @@ export function HeroProductPreview() {
           <span className="size-2.5 rounded-full bg-white/25" />
           <span className="size-2.5 rounded-full bg-white/25" />
           <div className="ml-3 flex-1 truncate rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[11px] text-white/55">
-            skillset.app / marketplace
+            skillsetmind.com / marketplace
           </div>
         </div>
 

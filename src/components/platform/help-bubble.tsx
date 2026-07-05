@@ -10,7 +10,7 @@ const helpItems = [
   { href: "/help", labelKey: "platform.help.browseHelpCenter", icon: BookOpen },
   { href: "/support", labelKey: "platform.help.openTicket", icon: LifeBuoy },
   {
-    href: "mailto:support@skillset.app",
+    href: "mailto:support@skillsetmind.com",
     labelKey: "platform.help.emailSupport",
     icon: Mail,
   },
