@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { Define, LegalArticle, LegalSection } from "@/components/site/legal-article";
+import { LegalArticle, LegalSection } from "@/components/site/legal-article";
 import { refundWindowDays } from "@/data/plans";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
@@ -10,8 +10,9 @@ export const metadata = buildPageMetadata({
   path: "/legal/terms",
 });
 
-const EFFECTIVE_DATE = "July 2, 2026";
+const EFFECTIVE_DATE = "July 5, 2026";
 const SUPPORT_EMAIL = "support@skillsetmind.com";
+const LEGAL_EMAIL = "legal@skillsetmind.com";
 
 function SupportLink() {
   return (
@@ -34,8 +35,7 @@ export default function TermsPage() {
         <>
           <p>
             These Terms of Service (&quot;Terms&quot;) are a binding agreement
-            between you and{" "}
-            <Define>DEFINE: legal entity name, e.g. Skillset Mind LLC</Define>{" "}
+            between you and SkillsetMind{" "}
             (&quot;Skillset,&quot; &quot;we,&quot; &quot;us&quot;), the operator
             of the Skillset platform. They apply when you create an account,
             browse, enroll in a course, or publish content on Skillset.
@@ -145,13 +145,9 @@ export default function TermsPage() {
           <strong className="text-[var(--color-ink)]">
             {refundWindowDays} days
           </strong>{" "}
-          of purchase, provided the course has not been substantially completed
-          and no certificate has been issued.{" "}
-          <Define>
-            DEFINE: confirm final refund window — market standard is 7 to 30
-            days; the platform currently operates at {refundWindowDays} days
-          </Define>
-          . Request a refund from your{" "}
+          of purchase or before a certificate of completion has been issued for
+          the course, whichever comes first, provided the course has not been
+          substantially completed. Request a refund from your{" "}
           <Link className="font-semibold text-[var(--color-accent-fg)]" href="/account">
             account billing page
           </Link>{" "}
@@ -273,23 +269,18 @@ export default function TermsPage() {
 
       <LegalSection heading="16. Governing law and disputes">
         <p>
-          These Terms are governed by the laws of{" "}
-          <Define>
-            DEFINE: jurisdiction — suggested: the State of Delaware, USA, or
-            the state where the company is incorporated
-          </Define>
-          , without regard to conflict-of-law rules. Before filing any claim,
+          These Terms are governed by the laws of the State of New York,
+          United States, without regard to conflict-of-law rules. Before filing any claim,
           you agree to contact us at <SupportLink /> and attempt to resolve the
           dispute informally for 30 days.
         </p>
         <p>
-          Unresolved disputes will be settled by{" "}
-          <Define>
-            DEFINE: dispute forum — suggested: binding individual arbitration
-            under AAA rules, seat in Delaware; class actions waived to the
-            extent permitted
-          </Define>
-          . If you reside in a jurisdiction whose law guarantees you access to
+          Unresolved disputes will be settled by binding individual arbitration
+          under the Consumer Arbitration Rules of the American Arbitration
+          Association (AAA), seated in New York, New York, and each party
+          waives class actions and jury trials to the extent permitted by law.
+          Either party may instead bring an individual claim in small-claims
+          court. If you reside in a jurisdiction whose law guarantees you access to
           your local courts or protections that cannot be waived (including
           consumers in the European Union and Brazil), those rights are not
           affected by this section.
@@ -312,10 +303,14 @@ export default function TermsPage() {
 
       <LegalSection heading="18. Contact">
         <p>
-          <Define>DEFINE: legal entity name</Define>,{" "}
-          <Define>DEFINE: registered address</Define>. Questions about these
-          Terms: <SupportLink /> or{" "}
-          <Define>DEFINE: dedicated legal contact email, e.g. legal@skillsetmind.com</Define>
+          SkillsetMind, 26 Broadway, New York, NY 10006, United States.
+          Questions about these Terms: <SupportLink /> or{" "}
+          <a
+            className="font-semibold text-[var(--color-accent-fg)]"
+            href={`mailto:${LEGAL_EMAIL}`}
+          >
+            {LEGAL_EMAIL}
+          </a>
           .
         </p>
       </LegalSection>

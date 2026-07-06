@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { Define, LegalArticle, LegalSection } from "@/components/site/legal-article";
+import { LegalArticle, LegalSection } from "@/components/site/legal-article";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 export const metadata = buildPageMetadata({
@@ -9,8 +9,9 @@ export const metadata = buildPageMetadata({
   path: "/legal/privacy",
 });
 
-const EFFECTIVE_DATE = "July 2, 2026";
+const EFFECTIVE_DATE = "July 5, 2026";
 const SUPPORT_EMAIL = "support@skillsetmind.com";
+const LEGAL_EMAIL = "legal@skillsetmind.com";
 
 function SupportLink() {
   return (
@@ -35,9 +36,8 @@ export default function PrivacyPage() {
             This policy explains what personal information Skillset collects,
             why, who it is shared with, and the rights you have over it. It
             applies to visitors, learners, and educators. The data controller
-            is <Define>DEFINE: legal entity name</Define>,{" "}
-            <Define>DEFINE: registered address</Define> (&quot;Skillset,&quot;
-            &quot;we,&quot; &quot;us&quot;).
+            is SkillsetMind, 26 Broadway, New York, NY 10006, United States
+            (&quot;Skillset,&quot; &quot;we,&quot; &quot;us&quot;).
           </p>
           <p className="mt-3">
             Short version: we collect what the platform needs to run — your
@@ -194,11 +194,9 @@ export default function PrivacyPage() {
           from the EU/EEA and UK we rely on our providers&apos; Standard
           Contractual Clauses and, where applicable, the EU-US Data Privacy
           Framework; for Brazil, on the LGPD&apos;s international-transfer
-          provisions (art. 33).{" "}
-          <Define>
-            DEFINE: confirm each provider&apos;s DPA is signed — Supabase,
-            Stripe, Vercel, PostHog all offer standard DPAs
-          </Define>
+          provisions (art. 33). Data processing agreements with our
+          infrastructure providers (Supabase, Stripe, Vercel) are incorporated
+          into their respective service terms.
         </p>
       </LegalSection>
 
@@ -307,13 +305,15 @@ export default function PrivacyPage() {
       <LegalSection heading="12. Contact and data protection officer">
         <p>
           Privacy questions and rights requests: <SupportLink /> or{" "}
-          <Define>DEFINE: dedicated privacy email, e.g. privacy@skillsetmind.com</Define>
-          . Data protection contact:{" "}
-          <Define>
-            DEFINE: DPO / privacy officer name or role — LGPD requires a named
-            &quot;encarregado&quot; once operating in Brazil
-          </Define>
-          .
+          <a
+            className="font-semibold text-[var(--color-accent-fg)]"
+            href={`mailto:${LEGAL_EMAIL}`}
+          >
+            {LEGAL_EMAIL}
+          </a>
+          . Data protection contact (including as
+          &quot;encarregado&quot; under the Brazilian LGPD): Skillset Legal,
+          reachable at the same address.
         </p>
       </LegalSection>
     </LegalArticle>

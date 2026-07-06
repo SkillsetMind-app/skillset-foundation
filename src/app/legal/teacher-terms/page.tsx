@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { Define, LegalArticle, LegalSection } from "@/components/site/legal-article";
+import { LegalArticle, LegalSection } from "@/components/site/legal-article";
 import { payoutClearDays, refundWindowDays } from "@/data/plans";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
@@ -10,8 +10,9 @@ export const metadata = buildPageMetadata({
   path: "/legal/teacher-terms",
 });
 
-const EFFECTIVE_DATE = "July 2, 2026";
+const EFFECTIVE_DATE = "July 5, 2026";
 const SUPPORT_EMAIL = "support@skillsetmind.com";
+const LEGAL_EMAIL = "legal@skillsetmind.com";
 
 function SupportLink() {
   return (
@@ -242,7 +243,13 @@ export default function TeacherTermsPage() {
           Material changes to these terms — especially to commission or payout
           mechanics — will be announced before they take effect, and we will
           update the effective date above. Questions: <SupportLink /> or{" "}
-          <Define>DEFINE: dedicated legal contact email</Define>. Governing law
+          <a
+            className="font-semibold text-[var(--color-accent-fg)]"
+            href={`mailto:${LEGAL_EMAIL}`}
+          >
+            {LEGAL_EMAIL}
+          </a>
+          . Governing law
           and dispute resolution follow the{" "}
           <Link className="font-semibold text-[var(--color-accent-fg)]" href="/legal/terms">
             Terms of Service
