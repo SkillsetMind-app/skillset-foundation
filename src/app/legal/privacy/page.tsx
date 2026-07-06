@@ -36,7 +36,7 @@ export default function PrivacyPage() {
             This policy explains what personal information Skillset collects,
             why, who it is shared with, and the rights you have over it. It
             applies to visitors, learners, and educators. The data controller
-            is SkillsetMind, 26 Broadway, New York, NY 10006, United States
+            is Skillset USA, 26 Broadway, New York, NY 10006, United States
             (&quot;Skillset,&quot; &quot;we,&quot; &quot;us&quot;).
           </p>
           <p className="mt-3">

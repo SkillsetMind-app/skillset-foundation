@@ -35,7 +35,7 @@ export default function TermsPage() {
         <>
           <p>
             These Terms of Service (&quot;Terms&quot;) are a binding agreement
-            between you and SkillsetMind{" "}
+            between you and Skillset USA{" "}
             (&quot;Skillset,&quot; &quot;we,&quot; &quot;us&quot;), the operator
             of the Skillset platform. They apply when you create an account,
             browse, enroll in a course, or publish content on Skillset.
@@ -303,7 +303,7 @@ export default function TermsPage() {
 
       <LegalSection heading="18. Contact">
         <p>
-          SkillsetMind, 26 Broadway, New York, NY 10006, United States.
+          Skillset USA, 26 Broadway, New York, NY 10006, United States.
           Questions about these Terms: <SupportLink /> or{" "}
           <a
             className="font-semibold text-[var(--color-accent-fg)]"
