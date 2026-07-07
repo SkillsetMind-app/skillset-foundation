@@ -14,13 +14,20 @@ function rowToCourseSubscription(row: CourseSubscriptionRow): CourseSubscription
   return {
     id: row.id,
     userId: row.user_id,
-    // course_subscriptions only mirrors id/user_id/course_slug/status/created_at;
-    // Stripe-specific fields (stripeSubscriptionId, interval, etc.) are not stored
-    // in this table — leave them absent so callers relying on status still work.
-    courseId: row.course_slug,
-    stripeSubscriptionId: row.id,
+    courseId: row.course_slug ?? row.course_id ?? "",
+    teacherId: row.teacher_id ?? undefined,
+    stripeSubscriptionId: row.stripe_subscription_id ?? row.id,
+    stripeCustomerId: row.stripe_customer_id,
     status: row.status as CourseSubscriptionStatus,
-  } as CourseSubscription;
+    // These drive the subscription card: renewal date, cancel/resume toggle,
+    // past-due banner, interval label. Dropping them left cancelAtPeriodEnd
+    // permanently false, so the Resume button never rendered.
+    interval: (row.interval as "month" | "year" | null) ?? null,
+    currentPeriodEnd: row.current_period_end,
+    cancelAtPeriodEnd: row.cancel_at_period_end,
+    pastDue: row.past_due,
+    latestInvoiceId: row.latest_invoice_id,
+  };
 }
 
 /**

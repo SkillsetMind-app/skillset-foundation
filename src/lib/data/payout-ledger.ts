@@ -10,28 +10,27 @@ function rowToPayoutLedgerEntry(row: PayoutLedgerRow): PayoutLedgerEntry {
   return {
     id: row.id,
     teacherId: row.teacher_id,
+    teacherStripeConnectedAccountId: row.teacher_stripe_connected_account_id,
+    courseId: row.course_id ?? "",
+    orderId: row.order_id ?? "",
     paymentId: row.payment_id ?? "",
-    // The current Postgres schema captures the core money columns; richer fields
-    // (grossAmountMinor, skillsetFeeMinor, netAmountMinor, etc.) live in the
-    // domain type but are not yet in the payout_ledger table — they will be
-    // undefined until a future migration adds them.
-    grossAmountMinor: row.amount_minor,
-    skillsetFeeMinor: row.platform_fee_minor,
-    netAmountMinor: row.amount_minor - row.platform_fee_minor,
+    grossAmountMinor: row.gross_amount_minor,
+    skillsetFeeMinor: row.skillset_fee_minor,
+    stripeFeeMinor: row.stripe_fee_minor,
+    // Authoritative net the webhook computed and stored (gross - skillset fee -
+    // stripe fee). Never recompute from amount_minor - platform_fee_minor: that
+    // omits the Stripe processing fee and overstates the teacher's balance.
+    netAmountMinor: row.net_amount_minor,
     currency: row.currency,
+    platformFeeBps: row.platform_fee_bps ?? undefined,
     status: row.status as PayoutLedgerStatus,
-    createdAt: row.created_at,
-    // Fields not yet in the DB schema — domain type marks them optional.
-    teacherStripeConnectedAccountId: undefined,
-    courseId: "",
-    orderId: "",
-    stripeFeeMinor: undefined,
-    platformFeeBps: undefined,
-    releaseAt: undefined,
+    releaseAt: row.release_at ?? undefined,
+    // No released_at column — the actual-release timestamp isn't tracked yet.
     releasedAt: undefined,
-    transferId: undefined,
-    refundedAmountMinor: undefined,
-    updatedAt: undefined,
+    transferId: row.transfer_id,
+    refundedAmountMinor: row.refunded_amount_minor,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 

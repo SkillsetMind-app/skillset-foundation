@@ -3,6 +3,7 @@ export type PayoutLedgerStatus =
   | "releasing"
   | "released"
   | "released_advance"
+  | "disputed"
   | "refunded"
   | "partially_refunded";
 

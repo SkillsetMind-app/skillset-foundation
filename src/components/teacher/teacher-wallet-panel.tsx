@@ -562,7 +562,7 @@ function mapLedgerStatus(status: PayoutLedgerEntry["status"]) {
     return "paid";
   }
 
-  if (status === "refunded" || status === "partially_refunded") {
+  if (status === "refunded" || status === "partially_refunded" || status === "disputed") {
     return "refunded";
   }
 
