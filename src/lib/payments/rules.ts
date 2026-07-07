@@ -304,6 +304,19 @@ export function shouldReverseReleasedPayout(input: {
   return Boolean(input.transferId) && input.releasedTransferAmountMinor > 0;
 }
 
+/**
+ * Whether an existing enrollment should be re-activated when a new payment
+ * grants access. True for any non-live status (refunded/revoked/expired) so a
+ * learner who repurchases after a refund gets access back; false for
+ * active/completed so a webhook redelivery never resets progress. A missing
+ * enrollment is inserted by the caller, not passed here.
+ */
+export function shouldReactivateEnrollment(
+  status: string | null | undefined,
+): boolean {
+  return !["active", "completed"].includes(String(status));
+}
+
 export type TransferReversalStripeClient = {
   transfers: {
     createReversal: (

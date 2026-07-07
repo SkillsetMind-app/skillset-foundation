@@ -2,8 +2,22 @@ import { describe, expect, it } from "vitest";
 
 import {
   releasedRefundReversalAmountMinor,
+  shouldReactivateEnrollment,
   shouldReverseReleasedPayout,
 } from "@/lib/payments/rules";
+
+describe("shouldReactivateEnrollment", () => {
+  it("reactivates a refunded enrollment on repurchase (the charged-but-no-access bug)", () => {
+    expect(shouldReactivateEnrollment("refunded")).toBe(true);
+    expect(shouldReactivateEnrollment("revoked")).toBe(true);
+    expect(shouldReactivateEnrollment("expired")).toBe(true);
+  });
+
+  it("never resets an already active/completed enrollment (webhook redelivery)", () => {
+    expect(shouldReactivateEnrollment("active")).toBe(false);
+    expect(shouldReactivateEnrollment("completed")).toBe(false);
+  });
+});
 
 describe("shouldReverseReleasedPayout", () => {
   it("fires when the money left the platform even though the refund handler already flipped status to refunded (the clawback-dead bug)", () => {

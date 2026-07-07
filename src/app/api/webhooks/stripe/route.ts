@@ -12,6 +12,7 @@ import {
   refundReversalClaimKey,
   resolveInvoicePaymentIntentId,
   shouldApplyOrderStatusTransition,
+  shouldReactivateEnrollment,
   shouldReleaseCheckoutLock,
   shouldReverseReleasedPayout,
   stripeProcessingFeeMinor,
@@ -217,10 +218,19 @@ async function handleCheckoutCompleted(
     })
     .eq("id", orderId);
 
-  // Grant access if not already enrolled (never downgrade).
-  await admin.from("enrollments").upsert(
-    {
-      id: `${userId}__${courseId}`,
+  // Grant on first purchase; re-activate on repurchase after a refund/lapse;
+  // never downgrade or reset progress on an already active/completed enrollment.
+  // (ignoreDuplicates upsert used to skip existing rows entirely, so a learner
+  // who repurchased after a refund was charged but stayed enrollment=refunded.)
+  const enrollmentId = `${userId}__${courseId}`;
+  const { data: existingEnrollment } = await admin
+    .from("enrollments")
+    .select("status")
+    .eq("id", enrollmentId)
+    .maybeSingle();
+  if (!existingEnrollment) {
+    await admin.from("enrollments").insert({
+      id: enrollmentId,
       user_id: userId,
       course_id: courseId,
       course_slug: courseId,
@@ -232,9 +242,13 @@ async function handleCheckoutCompleted(
       progress_percent: 0,
       created_at: ts,
       updated_at: ts,
-    },
-    { onConflict: "id", ignoreDuplicates: true },
-  );
+    });
+  } else if (shouldReactivateEnrollment(existingEnrollment.status)) {
+    await admin
+      .from("enrollments")
+      .update({ status: "active", source: "payment", updated_at: ts })
+      .eq("id", enrollmentId);
+  }
 
   // Ledger LAST (the re-arm gate). Legacy amount_minor/platform_fee_minor are
   // mirrored (gross / skillset fee) so the table's CHECK holds.
@@ -414,7 +428,7 @@ async function handleCourseSubscriptionInvoicePaid(
       created_at: ts,
       updated_at: ts,
     });
-  } else if (!["active", "completed"].includes(String(enrollment.status))) {
+  } else if (shouldReactivateEnrollment(enrollment.status)) {
     await admin
       .from("enrollments")
       .update({
