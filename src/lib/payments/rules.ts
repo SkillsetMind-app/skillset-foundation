@@ -317,6 +317,38 @@ export function shouldReactivateEnrollment(
   return !["active", "completed"].includes(String(status));
 }
 
+/**
+ * Next payout-ledger status when a card dispute (chargeback) moves. Returns null
+ * for "no change".
+ *
+ * - created: Stripe has debited the platform and the funds are frozen. Freeze
+ *   any payout that could still pay the teacher — held (in_release/releasing) or
+ *   already transferred (released; the caller also claws the transfer back).
+ * - won: the platform kept the money. Re-arm a still-frozen, not-yet-transferred
+ *   payout so the release cron can move it. A payout already transferred was
+ *   clawed back on `created`; re-releasing it is unsafe, so leave it for a human.
+ * - lost: the money is gone for good. A frozen payout must never release, so
+ *   mark it refunded (terminal); a transfer already clawed back on `created`
+ *   needs nothing more.
+ */
+export function nextLedgerStatusOnDispute(input: {
+  event: "created" | "won" | "lost";
+  currentStatus: string | null | undefined;
+  hasTransfer: boolean;
+}): "disputed" | "in_release" | "refunded" | null {
+  const status = String(input.currentStatus);
+  if (input.event === "created") {
+    return ["in_release", "releasing", "released"].includes(status)
+      ? "disputed"
+      : null;
+  }
+  if (input.event === "won") {
+    return status === "disputed" && !input.hasTransfer ? "in_release" : null;
+  }
+  // lost
+  return status === "disputed" ? "refunded" : null;
+}
+
 export type TransferReversalStripeClient = {
   transfers: {
     createReversal: (

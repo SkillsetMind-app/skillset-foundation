@@ -8,6 +8,7 @@ import {
   canonicalPlatformFeeBpsForPlan,
   createReleasedRefundTransferReversal,
   ledgerRefundStatus,
+  nextLedgerStatusOnDispute,
   payoutReleaseDelayDays,
   refundReversalClaimKey,
   resolveInvoicePaymentIntentId,
@@ -30,10 +31,10 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 // row LAST and checking it FIRST (the "re-arm guard"), plus existence-guarded
 // enrollment writes — so a retried/redelivered event never double-fulfils.
 //
-// The release engine (/api/cron/release-payouts) moves cleared payouts, and
-// charge.refunded claws back an already-released transfer proportionally
-// (reverseReleasedPayoutIfRefunded, below). The only remaining simplification is
-// the payout-delay platformConfig read — we use the default 30-day window.
+// The release engine (/api/cron/release-payouts) moves cleared payouts;
+// charge.refunded and charge.dispute.* claw back an already-released transfer
+// proportionally (reverseReleasedPayout, below). The only remaining
+// simplification is the payout-delay platformConfig read — default 30-day window.
 
 const HANDLED_STRIPE_EVENT_TYPES = new Set<string>([
   "checkout.session.completed",
@@ -42,6 +43,8 @@ const HANDLED_STRIPE_EVENT_TYPES = new Set<string>([
   "checkout.session.expired",
   "payment_intent.payment_failed",
   "charge.refunded",
+  "charge.dispute.created",
+  "charge.dispute.closed",
   "customer.subscription.created",
   "customer.subscription.updated",
   "customer.subscription.deleted",
@@ -541,7 +544,7 @@ async function handleCourseSubscriptionLifecycle(
   return true;
 }
 
-// --- released-transfer refund clawback --------------------------------------
+// --- released-transfer clawback (refund or dispute) -------------------------
 // Claw back an already-released payout when its sale is refunded. Only a
 // released transfer (money that actually left the platform) can be reversed; an
 // in_release/releasing payout is simply reduced by the release engine. Keyed by
@@ -555,10 +558,10 @@ async function handleCourseSubscriptionLifecycle(
 // Stripe caps cumulative reversals at the transfer total, so the teacher is
 // never over-clawed. Upgrade to a SECURITY DEFINER RPC that claims the jsonb map
 // transactionally only if concurrent partial refunds ever become common.
-async function reverseReleasedPayoutIfRefunded(
+async function reverseReleasedPayout(
   admin: Admin,
   ledgerId: string,
-  charge: Stripe.Charge,
+  opts: { refundedAmountMinor: number; sourceId: string; reason: string },
 ): Promise<void> {
   const { data: ledger } = await admin
     .from("payout_ledger")
@@ -581,7 +584,7 @@ async function reverseReleasedPayoutIfRefunded(
 
   const claims =
     (ledger.refund_reversal_claims as Record<string, { state?: string }> | null) ?? {};
-  const claimKey = refundReversalClaimKey(charge.id, charge.amount_refunded);
+  const claimKey = refundReversalClaimKey(opts.sourceId, opts.refundedAmountMinor);
   if (claims[claimKey]?.state === "done") return;
 
   const alreadyReversed = Number(ledger.transfer_reversed_amount_minor || 0);
@@ -591,16 +594,17 @@ async function reverseReleasedPayoutIfRefunded(
       ledgerId,
       transferId: ledger.transfer_id,
       grossAmountMinor: Number(ledger.gross_amount_minor || 0),
-      refundedAmountMinor: Number(charge.amount_refunded || 0),
+      refundedAmountMinor: Number(opts.refundedAmountMinor || 0),
       releasedTransferAmountMinor,
       netAmountMinor: Number(ledger.net_amount_minor || 0),
       alreadyReversedAmountMinor: alreadyReversed,
-      idempotencyKey: `reversal_${ledgerId}_${charge.amount_refunded}`,
+      idempotencyKey: `reversal_${ledgerId}_${opts.sourceId}_${opts.refundedAmountMinor}`,
       metadata: {
         orderId: String(ledger.order_id ?? ""),
         courseId: String(ledger.course_id ?? ""),
         teacherId: String(ledger.teacher_id ?? ""),
-        chargeId: charge.id,
+        sourceId: opts.sourceId,
+        reason: opts.reason,
       },
     });
 
@@ -659,7 +663,11 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
         updated_at: ts,
       })
       .eq("id", ledger.id);
-    await reverseReleasedPayoutIfRefunded(admin, ledger.id, charge);
+    await reverseReleasedPayout(admin, ledger.id, {
+      refundedAmountMinor: charge.amount_refunded,
+      sourceId: charge.id,
+      reason: "refund",
+    });
     return;
   }
 
@@ -709,7 +717,11 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
     })
     .eq("id", orderId);
 
-  await reverseReleasedPayoutIfRefunded(admin, orderId, charge);
+  await reverseReleasedPayout(admin, orderId, {
+    refundedAmountMinor: charge.amount_refunded,
+    sourceId: charge.id,
+    reason: "refund",
+  });
 
   if (isFullRefund && order.user_id && order.course_id) {
     await admin
@@ -717,6 +729,70 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
       .update({ status: "refunded", updated_at: ts })
       .eq("id", `${order.user_id}__${order.course_id}`);
   }
+}
+
+// --- card disputes (chargebacks) --------------------------------------------
+// A dispute debits the platform immediately. Without this the release cron would
+// still pay the teacher for money the platform no longer holds — a fraud vector.
+async function resolveLedgerForDispute(
+  admin: Admin,
+  dispute: Stripe.Dispute,
+): Promise<{ id: string; status: string; transfer_id: string | null } | null> {
+  const paymentIntentId =
+    typeof dispute.payment_intent === "string"
+      ? dispute.payment_intent
+      : dispute.payment_intent?.id;
+  if (!paymentIntentId) return null;
+  const { data } = await admin
+    .from("payout_ledger")
+    .select("id,status,transfer_id")
+    .eq("payment_id", paymentIntentId)
+    .limit(1)
+    .maybeSingle();
+  return (data as { id: string; status: string; transfer_id: string | null } | null) ?? null;
+}
+
+async function handleDisputeCreated(admin: Admin, dispute: Stripe.Dispute): Promise<void> {
+  const ledger = await resolveLedgerForDispute(admin, dispute);
+  if (!ledger) return;
+  const next = nextLedgerStatusOnDispute({
+    event: "created",
+    currentStatus: ledger.status,
+    hasTransfer: Boolean(ledger.transfer_id),
+  });
+  if (!next) return;
+  await admin
+    .from("payout_ledger")
+    .update({ status: next, updated_at: nowIso() })
+    .eq("id", ledger.id);
+  // Payout already left the platform: claw the transfer back, the dispute took
+  // the same money from us. reverseReleasedPayout keys on transfer_id, so the
+  // status flip above does not block it.
+  if (ledger.transfer_id) {
+    await reverseReleasedPayout(admin, ledger.id, {
+      refundedAmountMinor: dispute.amount,
+      sourceId: dispute.id,
+      reason: "dispute",
+    });
+  }
+}
+
+async function handleDisputeClosed(admin: Admin, dispute: Stripe.Dispute): Promise<void> {
+  const event =
+    dispute.status === "won" ? "won" : dispute.status === "lost" ? "lost" : null;
+  if (!event) return; // warning_closed etc.: no money movement to settle
+  const ledger = await resolveLedgerForDispute(admin, dispute);
+  if (!ledger) return;
+  const next = nextLedgerStatusOnDispute({
+    event,
+    currentStatus: ledger.status,
+    hasTransfer: Boolean(ledger.transfer_id),
+  });
+  if (!next) return;
+  await admin
+    .from("payout_ledger")
+    .update({ status: next, updated_at: nowIso() })
+    .eq("id", ledger.id);
 }
 
 // --- terminal order status (expired / failed) with lock release + B2 guard --
@@ -918,6 +994,12 @@ export async function POST(request: Request) {
         break;
       case "charge.refunded":
         await handleChargeRefunded(admin, event.data.object);
+        break;
+      case "charge.dispute.created":
+        await handleDisputeCreated(admin, event.data.object);
+        break;
+      case "charge.dispute.closed":
+        await handleDisputeClosed(admin, event.data.object);
         break;
       case "customer.subscription.created":
       case "customer.subscription.updated":

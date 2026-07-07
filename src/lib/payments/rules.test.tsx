@@ -1,10 +1,51 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  nextLedgerStatusOnDispute,
   releasedRefundReversalAmountMinor,
   shouldReactivateEnrollment,
   shouldReverseReleasedPayout,
 } from "@/lib/payments/rules";
+
+describe("nextLedgerStatusOnDispute", () => {
+  it("freezes a held payout when a dispute opens (the payout-during-chargeback bug)", () => {
+    expect(
+      nextLedgerStatusOnDispute({ event: "created", currentStatus: "in_release", hasTransfer: false }),
+    ).toBe("disputed");
+    expect(
+      nextLedgerStatusOnDispute({ event: "created", currentStatus: "releasing", hasTransfer: false }),
+    ).toBe("disputed");
+    // already paid out: freeze + caller claws the transfer back
+    expect(
+      nextLedgerStatusOnDispute({ event: "created", currentStatus: "released", hasTransfer: true }),
+    ).toBe("disputed");
+  });
+
+  it("re-arms a frozen, not-yet-paid payout when the platform wins", () => {
+    expect(
+      nextLedgerStatusOnDispute({ event: "won", currentStatus: "disputed", hasTransfer: false }),
+    ).toBe("in_release");
+    // already transferred + clawed back on created: leave for a human, no auto-release
+    expect(
+      nextLedgerStatusOnDispute({ event: "won", currentStatus: "disputed", hasTransfer: true }),
+    ).toBeNull();
+  });
+
+  it("terminally blocks a frozen payout when the platform loses", () => {
+    expect(
+      nextLedgerStatusOnDispute({ event: "lost", currentStatus: "disputed", hasTransfer: false }),
+    ).toBe("refunded");
+  });
+
+  it("no-ops on terminal/unrelated states", () => {
+    expect(
+      nextLedgerStatusOnDispute({ event: "created", currentStatus: "refunded", hasTransfer: false }),
+    ).toBeNull();
+    expect(
+      nextLedgerStatusOnDispute({ event: "won", currentStatus: "in_release", hasTransfer: false }),
+    ).toBeNull();
+  });
+});
 
 describe("shouldReactivateEnrollment", () => {
   it("reactivates a refunded enrollment on repurchase (the charged-but-no-access bug)", () => {
