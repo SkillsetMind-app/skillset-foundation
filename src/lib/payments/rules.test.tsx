@@ -1,0 +1,81 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  releasedRefundReversalAmountMinor,
+  shouldReverseReleasedPayout,
+} from "@/lib/payments/rules";
+
+describe("shouldReverseReleasedPayout", () => {
+  it("fires when the money left the platform even though the refund handler already flipped status to refunded (the clawback-dead bug)", () => {
+    // handleChargeRefunded overwrites status to "refunded" BEFORE calling the
+    // reversal. A status === "released" gate would be false here and no clawback
+    // would ever run. We key on the transfer instead.
+    expect(
+      shouldReverseReleasedPayout({
+        transferId: "tr_123",
+        releasedTransferAmountMinor: 5000,
+      }),
+    ).toBe(true);
+  });
+
+  it("does not fire when nothing was transferred (payout still held)", () => {
+    expect(
+      shouldReverseReleasedPayout({
+        transferId: null,
+        releasedTransferAmountMinor: 0,
+      }),
+    ).toBe(false);
+    // transferId present but zero amount (fully-refunded-before-release payout)
+    expect(
+      shouldReverseReleasedPayout({
+        transferId: "tr_zero",
+        releasedTransferAmountMinor: 0,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("releasedRefundReversalAmountMinor", () => {
+  it("reverses the full transfer on a full refund", () => {
+    // $50 gross, $46 net transferred, full refund -> claw back all $46.
+    expect(
+      releasedRefundReversalAmountMinor({
+        grossAmountMinor: 5000,
+        refundedAmountMinor: 5000,
+        releasedTransferAmountMinor: 4600,
+      }),
+    ).toBe(4600);
+  });
+
+  it("reverses proportionally on a partial refund", () => {
+    // half refunded -> claw back half of what was transferred.
+    expect(
+      releasedRefundReversalAmountMinor({
+        grossAmountMinor: 5000,
+        refundedAmountMinor: 2500,
+        releasedTransferAmountMinor: 4600,
+      }),
+    ).toBe(2300);
+  });
+
+  it("never double-claws what was already reversed", () => {
+    expect(
+      releasedRefundReversalAmountMinor({
+        grossAmountMinor: 5000,
+        refundedAmountMinor: 5000,
+        releasedTransferAmountMinor: 4600,
+        alreadyReversedAmountMinor: 4600,
+      }),
+    ).toBe(0);
+  });
+
+  it("returns 0 when nothing was transferred", () => {
+    expect(
+      releasedRefundReversalAmountMinor({
+        grossAmountMinor: 5000,
+        refundedAmountMinor: 5000,
+        releasedTransferAmountMinor: 0,
+      }),
+    ).toBe(0);
+  });
+});

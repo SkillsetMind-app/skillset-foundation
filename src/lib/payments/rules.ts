@@ -288,22 +288,20 @@ export function ledgerRefundStatus(
 }
 
 /**
- * Whether a refund should reverse an already-released payout transfer. True only
- * when the payout actually left the platform: the ledger is "released", a
- * transferId was recorded, and a positive amount was transferred. A still-held
- * (in_release/releasing) payout has nothing to reverse — the refund simply
- * reduces what the release cron will move.
+ * Whether a refund should reverse an already-released payout transfer. True when
+ * the payout actually left the platform: a transferId was recorded and a
+ * positive amount was transferred. We key on the transfer (immutable evidence
+ * the money moved), NOT on status === "released" — the refund handler overwrites
+ * the ledger status to refunded/partially_refunded BEFORE this gate runs, so a
+ * status check would always be false and the clawback would never fire. A
+ * still-held (in_release/releasing) payout has no transferId yet, so this
+ * returns false and the refund simply reduces what the release cron will move.
  */
 export function shouldReverseReleasedPayout(input: {
-  status: string | null | undefined;
   transferId: string | null | undefined;
   releasedTransferAmountMinor: number;
 }): boolean {
-  return (
-    input.status === "released"
-    && Boolean(input.transferId)
-    && input.releasedTransferAmountMinor > 0
-  );
+  return Boolean(input.transferId) && input.releasedTransferAmountMinor > 0;
 }
 
 export type TransferReversalStripeClient = {

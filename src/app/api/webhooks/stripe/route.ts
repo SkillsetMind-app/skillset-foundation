@@ -558,7 +558,6 @@ async function reverseReleasedPayoutIfRefunded(
   const releasedTransferAmountMinor = Number(ledger.transfer_amount_minor || 0);
   if (
     !shouldReverseReleasedPayout({
-      status: ledger.status,
       transferId: ledger.transfer_id,
       releasedTransferAmountMinor,
     })
