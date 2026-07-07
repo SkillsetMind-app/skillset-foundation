@@ -1301,6 +1301,9 @@ export function CourseBuilderStudio() {
           ? "Choose one lesson as the free preview before submitting."
           : message.toLowerCase().includes("teacher setup")
           ? "Teacher setup must be complete before submitting courses."
+          : message.toLowerCase().includes("payout")
+          || message.toLowerCase().includes("onboarding")
+          ? "Finish Stripe payout onboarding before submitting a paid course — open the Payouts panel in your studio."
           : message.toLowerCase().includes("payment")
           || message.toLowerCase().includes("price")
           ? "Set a valid payment model before submitting."
