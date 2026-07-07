@@ -517,11 +517,12 @@ async function handleCourseSubscriptionLifecycle(
   );
 
   const enrollmentId = `${userId}__${courseId}`;
-  const { data: enrollment } = await admin
+  const { data: enrollment, error: enrollmentError } = await admin
     .from("enrollments")
     .select("status")
     .eq("id", enrollmentId)
     .maybeSingle();
+  if (enrollmentError) throw new Error(enrollmentError.message);
   if (!enrollment) return true; // invoice.paid creates it; lifecycle never creates
 
   const enrollmentStatus = String(enrollment.status ?? "");
@@ -563,13 +564,14 @@ async function reverseReleasedPayout(
   ledgerId: string,
   opts: { refundedAmountMinor: number; sourceId: string; reason: string },
 ): Promise<void> {
-  const { data: ledger } = await admin
+  const { data: ledger, error: ledgerError } = await admin
     .from("payout_ledger")
     .select(
       "status,transfer_id,transfer_amount_minor,gross_amount_minor,net_amount_minor,transfer_reversed_amount_minor,refund_reversal_claims,order_id,course_id,teacher_id",
     )
     .eq("id", ledgerId)
     .maybeSingle();
+  if (ledgerError) throw new Error(ledgerError.message);
   if (!ledger) return;
 
   const releasedTransferAmountMinor = Number(ledger.transfer_amount_minor || 0);
@@ -633,11 +635,12 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
       : charge.payment_intent?.id;
   if (!paymentIntentId) return;
 
-  const { data: payment } = await admin
+  const { data: payment, error: paymentError } = await admin
     .from("payments")
     .select("*")
     .eq("id", paymentIntentId)
     .maybeSingle();
+  if (paymentError) throw new Error(paymentError.message);
 
   const isFullRefund = charge.refunded === true;
   const refundedStatus = isFullRefund ? "refunded" : "partially_refunded";
@@ -647,11 +650,12 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
     // Subscription invoice charge refunded from the Dashboard: no payments doc.
     // Find the subscription payout ledger (paymentId == PI, kind subscription)
     // and mark it refunded. (Transfer clawback is deferred to 2f.)
-    const { data: ledgers } = await admin
+    const { data: ledgers, error: ledgersError } = await admin
       .from("payout_ledger")
       .select("id,status,kind")
       .eq("payment_id", paymentIntentId)
       .limit(5);
+    if (ledgersError) throw new Error(ledgersError.message);
     const ledger = (ledgers ?? []).find((l) => l.kind === "course_subscription");
     if (!ledger) return;
     await admin
@@ -681,11 +685,12 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
     .maybeSingle();
   if (!order) throw new Error(`Order ${orderId} not found for refunded payment.`);
 
-  const { data: ledger } = await admin
+  const { data: ledger, error: ledgerError } = await admin
     .from("payout_ledger")
     .select("status")
     .eq("id", orderId)
     .maybeSingle();
+  if (ledgerError) throw new Error(ledgerError.message);
   const nextLedgerStatus = ledgerRefundStatus(isFullRefund, ledger?.status);
 
   await admin
@@ -743,12 +748,13 @@ async function resolveLedgerForDispute(
       ? dispute.payment_intent
       : dispute.payment_intent?.id;
   if (!paymentIntentId) return null;
-  const { data } = await admin
+  const { data, error } = await admin
     .from("payout_ledger")
     .select("id,status,transfer_id")
     .eq("payment_id", paymentIntentId)
     .limit(1)
     .maybeSingle();
+  if (error) throw new Error(error.message);
   return (data as { id: string; status: string; transfer_id: string | null } | null) ?? null;
 }
 
@@ -804,11 +810,12 @@ async function markOrderStatus(
   if (!orderId) return;
   const ts = nowIso();
 
-  const { data: order } = await admin
+  const { data: order, error: orderError } = await admin
     .from("orders")
     .select("status,user_id,course_id")
     .eq("id", orderId)
     .maybeSingle();
+  if (orderError) throw new Error(orderError.message);
 
   // The order is always created before the Checkout session opens, so an absent
   // order means a bogus id — nothing to mark. ponytail: no partial insert (it
