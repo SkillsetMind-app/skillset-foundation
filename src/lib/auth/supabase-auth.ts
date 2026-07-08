@@ -172,6 +172,18 @@ export async function signUpWithEmail(
     throw new Error("Sign up did not return a user.");
   }
 
+  // With email confirmation on, Supabase anti-enumeration returns a FAKE
+  // success (a user with empty identities) when the email already has an
+  // account — and the existing password is untouched. Without this check the
+  // wizard reads as a working signup and the user locks themselves out with a
+  // password that was never saved.
+  if (data.user.identities && data.user.identities.length === 0) {
+    throw Object.assign(
+      new Error("An account already exists with this email."),
+      { code: "user_already_exists" },
+    );
+  }
+
   // The on_auth_user_created trigger provisions public.users (display_name from
   // the metadata above). When email confirmation is required data.session is
   // null and the client can't read the row yet — the app's verify-email
