@@ -100,6 +100,29 @@ export async function POST(request: Request) {
       );
     }
 
+    // One AUTOMATIC refund per course per user — a prior refunded order (or a
+    // refund request already in flight) routes the next one to support. Closes
+    // the buy→refund→rebuy→refund loop that repurchase-after-refund allows,
+    // and doubles as the same-order duplicate-request guard before the
+    // charge.refunded webhook lands.
+    const { data: priorRefund, error: priorRefundError } = await admin
+      .from("orders")
+      .select("id")
+      .eq("user_id", uid)
+      .eq("course_id", enrollment.course_id)
+      .or("status.in.(refunded,partially_refunded),refund_request_id.not.is.null")
+      .limit(1)
+      .maybeSingle();
+    if (priorRefundError) {
+      throw new Error(priorRefundError.message);
+    }
+    if (priorRefund) {
+      throw new PaymentError(
+        "A refund was already issued for this course. Contact support for further help.",
+        409,
+      );
+    }
+
     const querySpec = paidOrderRefundQuerySpec(uid, enrollment.course_id);
     // Firestore field names -> snake_case columns. The spec is (user_id,
     // course_id, status=paid), limit 1 — reproduced as chained eq filters.
