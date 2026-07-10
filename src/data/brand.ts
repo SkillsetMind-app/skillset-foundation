@@ -1,7 +1,7 @@
 export const brand = {
-  name: "Skillset Mind",
-  shortName: "Skillset Mind",
-  title: "Skillset Mind | Professional Course Marketplace",
+  name: "SkillsetMind",
+  shortName: "SkillsetMind",
+  title: "SkillsetMind | Professional Course Marketplace",
   description:
     "An international marketplace where independent experts publish professional courses with course communities, live sessions, and verifiable certificates.",
   logoUrl: "/brand/skillset-logo.png",

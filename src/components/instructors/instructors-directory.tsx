@@ -90,7 +90,7 @@ export function InstructorsDirectory() {
               Public instructor profiles appear after review.
             </h2>
             <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-              Skillset Mind only lists real published profiles. New creators can
+              SkillsetMind only lists real published profiles. New creators can
               finish onboarding and submit their first reviewed course before
               they appear here.
             </p>
@@ -148,7 +148,7 @@ export function InstructorsDirectory() {
 
 function InstructorCard({ profile }: { profile: PublicProfile }) {
   const name =
-    profile.displayName || profile.username || "Skillset Mind instructor";
+    profile.displayName || profile.username || "SkillsetMind instructor";
   const credentials = profile.credentials.slice(0, 2);
 
   return (
@@ -174,7 +174,7 @@ function InstructorCard({ profile }: { profile: PublicProfile }) {
       ) : (
         <p className="mt-4 text-sm leading-6 text-[var(--color-ink-soft)]">
           This instructor has published their profile and is preparing reviewed
-          learning experiences on Skillset Mind.
+          learning experiences on SkillsetMind.
         </p>
       )}
 

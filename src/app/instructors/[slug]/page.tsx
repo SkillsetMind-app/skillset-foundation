@@ -17,7 +17,7 @@ export async function generateMetadata({
   return buildPageMetadata({
     title: "Instructor",
     description:
-      "An independent expert publishing reviewed professional courses on Skillset Mind.",
+      "An independent expert publishing reviewed professional courses on SkillsetMind.",
     path: `/instructors/${slug}`,
   });
 }

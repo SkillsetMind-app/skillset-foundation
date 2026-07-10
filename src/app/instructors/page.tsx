@@ -5,7 +5,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 export const metadata = buildPageMetadata({
   title: "Instructors",
   description:
-    "Independent experts publishing reviewed professional courses on Skillset Mind.",
+    "Independent experts publishing reviewed professional courses on SkillsetMind.",
   path: "/instructors",
 });
 
@@ -14,7 +14,7 @@ export default function InstructorsPage() {
     <PublicPage
       eyebrow="Instructors"
       title="Learn from reviewed experts."
-      description="Meet independent creators whose public profiles are published after review. Skillset Mind shows real instructor identity instead of marketplace filler."
+      description="Meet independent creators whose public profiles are published after review. SkillsetMind shows real instructor identity instead of marketplace filler."
     >
       <InstructorsDirectory />
     </PublicPage>

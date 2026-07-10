@@ -238,6 +238,12 @@ html {
   white-space: nowrap;
 }
 
+/* Brand architecture: "Mind" carries the single Muted Brass accent
+   (BRAND_STRATEGY.md — one-word SkillsetMind, brass as prestige signal). */
+.logo-wordmark__accent {
+  color: #c6a15b;
+}
+
 body {
   font-family: var(--font-manrope), sans-serif;
   background: var(--color-base);
@@ -2304,7 +2310,7 @@ select:focus-visible {
 }
 
 /* Maximized sidebar header: use the shared theme-aware wordmark, not the legacy
-   Skillset USA lockup asset that predates the Skillset Mind brand direction. */
+   Skillset USA lockup asset that predates the SkillsetMind brand direction. */
 .platform-sidebar-brand__lockup-link {
   display: inline-flex;
   align-items: center;
