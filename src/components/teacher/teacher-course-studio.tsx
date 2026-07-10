@@ -275,6 +275,12 @@ export function TeacherCourseStudio({
                   ) : null}
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Link
+                      href={`/teach/courses/${course.id}/manage`}
+                      className="button-outline px-4 py-2 text-xs"
+                    >
+                      Manage
+                    </Link>
+                    <Link
                       href={`/teach/builder?courseId=${course.id}`}
                       className="button-outline px-4 py-2 text-xs"
                     >
