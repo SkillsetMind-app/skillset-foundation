@@ -3,12 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Bookmark, BookmarkCheck, LayoutGrid, List } from "lucide-react";
+import { Bookmark, BookmarkCheck, LayoutGrid, List, Search } from "lucide-react";
 import { startTransition, useDeferredValue, useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import type { CourseCard } from "@/lib/data/catalog";
-import type { TeacherCourse } from "@/domain/teacher-course";
 import { canContinueEnrollment, type Enrollment } from "@/domain/enrollment";
 import { subscribeToUserEnrollments } from "@/lib/data/enrollments";
 import {
@@ -17,6 +16,7 @@ import {
   type CourseSortKey,
 } from "@/lib/data/course-sort";
 import {
+  isInternalSmokeCourse,
   subscribeToPublishedTeacherCourses,
   teacherCourseToCourseCard,
 } from "@/lib/data/published-courses";
@@ -31,14 +31,6 @@ type CourseMarketplaceProps = {
 };
 
 const allCategoriesLabel = "All courses";
-
-// Internal live-checkout smoke-test courses (priced at $1, used to verify the
-// real Stripe pipeline end to end) are published under a deliberate `smoke-`
-// id prefix. They must stay published and reachable by direct URL for that
-// test, but must never surface in the public marketplace browse.
-function isInternalSmokeCourse(course: TeacherCourse): boolean {
-  return course.id.startsWith("smoke-");
-}
 
 export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   const { status, user } = useAuth();
@@ -233,9 +225,9 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   });
 
   return (
-    <section>
-      <div className="mb-8 grid gap-3 lg:grid-cols-[1fr_280px] lg:items-start">
-        <div className="flex flex-wrap gap-2.5">
+    <section className="marketplace-section">
+      <div className="marketplace-filter-panel">
+        <div className="marketplace-filter-list">
           {categories.map((filter) => {
             const isActive = activeCategory === filter;
 
@@ -245,33 +237,36 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => setActiveCategory(filter)}
-                className={
-                  isActive
-                    ? "button-solid px-3.5 py-2 text-xs"
-                    : "button-outline px-3.5 py-2 text-xs"
-                }
+                className={`marketplace-filter-button ${
+                  isActive ? "is-active" : ""
+                }`}
               >
-                {filter} ({categoryCount(filter)})
+                <span>{filter}</span>
+                <span className="marketplace-filter-button__count">
+                  {categoryCount(filter)}
+                </span>
               </button>
             );
           })}
         </div>
-        <div className="grid gap-3">
-          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Search
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search skill, category, or outcome"
-              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
-            />
+        <div className="marketplace-controls">
+          <label className="marketplace-field">
+            <span>Search</span>
+            <span className="marketplace-searchbox">
+              <Search aria-hidden="true" size={15} strokeWidth={2} />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search skill, category, or outcome"
+              />
+            </span>
           </label>
-          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Sort
+          <label className="marketplace-field">
+            <span>Sort by</span>
             <select
               value={sortKey}
               onChange={(event) => setSortKey(event.target.value as CourseSortKey)}
-              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              className="marketplace-select"
             >
               {courseSortOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -280,36 +275,38 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
               ))}
             </select>
           </label>
-          <div className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            View
-            <div className="flex gap-2" role="group" aria-label="View layout">
+          <div className="marketplace-view">
+            <span className="marketplace-view-label">View</span>
+            <div
+              className="marketplace-view-toggle"
+              role="group"
+              aria-label="View layout"
+            >
               <button
                 type="button"
                 aria-pressed={viewMode === "grid"}
                 aria-label="Grid view"
+                title="Grid view"
                 onClick={() => setViewMode("grid")}
-                className={
-                  viewMode === "grid"
-                    ? "button-solid inline-flex items-center gap-2 px-3.5 py-2 text-xs"
-                    : "button-outline inline-flex items-center gap-2 px-3.5 py-2 text-xs"
-                }
+                className={`marketplace-icon-button ${
+                  viewMode === "grid" ? "is-active" : ""
+                }`}
               >
                 <LayoutGrid aria-hidden="true" size={16} strokeWidth={2} />
-                Grid
+                <span className="sr-only">Grid</span>
               </button>
               <button
                 type="button"
                 aria-pressed={viewMode === "list"}
                 aria-label="List view"
+                title="List view"
                 onClick={() => setViewMode("list")}
-                className={
-                  viewMode === "list"
-                    ? "button-solid inline-flex items-center gap-2 px-3.5 py-2 text-xs"
-                    : "button-outline inline-flex items-center gap-2 px-3.5 py-2 text-xs"
-                }
+                className={`marketplace-icon-button ${
+                  viewMode === "list" ? "is-active" : ""
+                }`}
               >
                 <List aria-hidden="true" size={16} strokeWidth={2} />
-                List
+                <span className="sr-only">List</span>
               </button>
             </div>
           </div>
@@ -317,11 +314,11 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
       </div>
 
       {status === "authenticated" && continueItems.length > 0 ? (
-        <div className="mb-8">
+        <div className="marketplace-continue">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Continue learning
           </p>
-          <div className="flex gap-4 overflow-x-auto pb-1">
+          <div className="marketplace-continue__rail">
             {continueItems.map(({ enrollment, course }) => {
               const progress = Math.max(
                 0,
@@ -331,9 +328,9 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
               return (
                 <div
                   key={enrollment.id}
-                  className="surface-card flex w-[min(320px,80vw)] shrink-0 items-center gap-3 rounded-[14px] p-3"
+                  className="marketplace-continue-card"
                 >
-                  <div className="relative size-14 shrink-0 overflow-hidden rounded-[10px]">
+                  <div className="marketplace-continue-card__thumb">
                     <Image
                       src={course.image}
                       alt={course.title}
@@ -343,7 +340,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                     />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-[var(--color-primary)]">
+                    <p className="marketplace-continue-card__title">
                       {course.title}
                     </p>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
@@ -382,24 +379,29 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
       ) : null}
 
       {isLoadingPublishedCourses ? (
-        <div className="grid gap-5 lg:grid-cols-3" aria-hidden="true">
-          {[0, 1, 2].map((index) => (
-            <div
-              key={index}
-              className="surface-card animate-pulse overflow-hidden rounded-[18px]"
-            >
-              <div className="aspect-[4/3] bg-[var(--color-surface-strong)]" />
-              <div className="space-y-3 p-5">
-                <div className="h-3 w-24 rounded bg-[var(--color-surface-strong)]" />
-                <div className="h-6 w-3/4 rounded bg-[var(--color-surface-strong)]" />
-                <div className="h-16 rounded bg-[var(--color-surface-soft)]" />
+        <>
+          <p role="status" className="sr-only">
+            Loading courses...
+          </p>
+          <div className="marketplace-course-grid" aria-hidden="true">
+            {[0, 1, 2].map((index) => (
+              <div
+                key={index}
+                className="marketplace-card animate-pulse"
+              >
+                <div className="marketplace-card__media bg-[var(--color-surface-strong)]" />
+                <div className="space-y-3 p-5">
+                  <div className="h-3 w-24 rounded bg-[var(--color-surface-strong)]" />
+                  <div className="h-6 w-3/4 rounded bg-[var(--color-surface-strong)]" />
+                  <div className="h-16 rounded bg-[var(--color-surface-soft)]" />
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       ) : visibleCourses.length === 0 ? (
         hasAnyCourses && isFiltering ? (
-          <div className="rounded-[18px] border border-[var(--color-line)] bg-white p-8 text-center shadow-[var(--shadow-soft)]">
+          <div className="marketplace-empty">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               No matches
             </p>
@@ -421,7 +423,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
             </button>
           </div>
         ) : (
-          <div className="rounded-[18px] border-2 border-dashed border-[var(--color-line-strong)] bg-white p-8 text-center sm:p-12">
+          <div className="marketplace-empty">
             <div className="mx-auto grid size-14 place-items-center rounded-[14px] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
               <svg
                 aria-hidden="true"
@@ -462,8 +464,8 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
         <div
           className={
             viewMode === "list"
-              ? "grid gap-5"
-              : "grid gap-5 lg:grid-cols-3"
+              ? "marketplace-course-grid marketplace-course-grid--list"
+              : "marketplace-course-grid"
           }
         >
           {sortedCourses.map((track) => {
@@ -475,107 +477,97 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
             const isList = viewMode === "list";
 
             return (
-            <article
-              key={`${track.slug}-${track.title}`}
-              className={
-                isList
-                  ? "surface-card grid overflow-hidden rounded-[18px] md:grid-cols-[300px_1fr]"
-                  : "surface-card overflow-hidden rounded-[18px]"
-              }
-            >
-              <div
-                className={
-                  isList
-                    ? "relative aspect-[4/3] overflow-hidden md:aspect-auto"
-                    : "relative aspect-[4/3] overflow-hidden"
-                }
+              <article
+                key={`${track.slug}-${track.title}`}
+                className={`marketplace-card ${
+                  isList ? "marketplace-card--list" : ""
+                }`}
               >
-                <Image
-                  src={track.image}
-                  alt={track.title}
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 33vw"
-                  className="object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,39,68,0.84)] via-transparent to-transparent" />
-                <div className="absolute left-5 top-5 flex flex-wrap gap-2">
-                  <span className="accent-chip rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em]">
-                    {track.status}
-                  </span>
-                  <span className="accent-chip rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em]">
-                    {track.sourceLabel ?? "Preview"}
-                  </span>
+                <div className="marketplace-card__media">
+                  <Image
+                    src={track.image}
+                    alt={track.title}
+                    fill
+                    sizes={
+                      isList
+                        ? "(max-width: 768px) 100vw, 34vw"
+                        : "(max-width: 1024px) 100vw, 33vw"
+                    }
+                    className="object-cover"
+                  />
+                  <div className="marketplace-card__scrim" />
+                  <div className="marketplace-card__badges">
+                    <span className="marketplace-card__tag">{track.status}</span>
+                    <span className="marketplace-card__tag">
+                      {track.sourceLabel ?? "Preview"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    aria-pressed={isWishlisted}
+                    aria-label={
+                      isWishlisted
+                        ? `Remove ${track.title} from wishlist`
+                        : `Save ${track.title} to wishlist`
+                    }
+                    title={
+                      isWishlisted
+                        ? "Remove from wishlist"
+                        : status === "authenticated"
+                          ? "Save to wishlist"
+                          : "Sign in to save"
+                    }
+                    disabled={isWishlistPending}
+                    onClick={() => void handleToggleWishlist(track)}
+                    className={`marketplace-card__wishlist ${
+                      isWishlisted ? "is-active" : ""
+                    }`}
+                  >
+                    <WishlistIcon aria-hidden="true" size={18} strokeWidth={2} />
+                  </button>
+                  <div className="marketplace-card__media-caption">
+                    <span>{track.duration}</span>
+                    <span>{track.priceLabel}</span>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  aria-pressed={isWishlisted}
-                  aria-label={
-                    isWishlisted
-                      ? `Remove ${track.title} from wishlist`
-                      : `Save ${track.title} to wishlist`
-                  }
-                  title={
-                    isWishlisted
-                      ? "Remove from wishlist"
-                      : status === "authenticated"
-                        ? "Save to wishlist"
-                        : "Sign in to save"
-                  }
-                  disabled={isWishlistPending}
-                  onClick={() => void handleToggleWishlist(track)}
-                  className={`absolute right-5 top-5 grid size-10 place-items-center rounded-full border border-white/30 shadow-[0_12px_24px_rgba(15,39,68,0.22)] transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:opacity-60 ${
-                    isWishlisted
-                      ? "bg-[var(--color-primary)] text-[var(--color-base)]"
-                      : "bg-white/95 text-[var(--color-primary)]"
-                  }`}
-                >
-                  <WishlistIcon aria-hidden="true" size={18} strokeWidth={2} />
-                </button>
-              </div>
-              <div className="p-5">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
+                <div className="marketplace-card__body">
+                  <span className="marketplace-card__kicker">
                     {track.category}
                   </span>
-                  <span className="text-xs text-[var(--color-ink-soft)]">{track.duration}</span>
-                </div>
-                <h2 className="display-title mt-4 text-3xl leading-tight text-[var(--color-primary)]">
-                  {track.title}
-                </h2>
-                <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-                  {track.summary}
-                </p>
-                <div className="mt-5 grid gap-2 rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm">
-                  <p className="font-semibold text-[var(--color-ink)]">
-                    {track.priceLabel}
-                  </p>
-                  <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
-                    {track.freePreviewLabel}
-                  </p>
-                  {track.ratingLabel ? (
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
-                      {track.ratingLabel}
+                  <h2 className="marketplace-card__title">{track.title}</h2>
+                  <p className="marketplace-card__summary">{track.summary}</p>
+                  <div className="marketplace-card__meta-panel">
+                    <p className="marketplace-card__price">{track.priceLabel}</p>
+                    <p className="marketplace-card__meta">
+                      {track.freePreviewLabel}
                     </p>
-                  ) : null}
-                </div>
-                <div className="mt-6 flex flex-wrap gap-2">
-                  <Link
-                    href={track.href ?? `/courses/${track.slug}`}
-                    className="button-solid px-3.5 py-2 text-xs"
-                  >
-                    View course
-                  </Link>
-                  {hasFreePreview ? (
+                    {track.ratingLabel ? (
+                      <p className="marketplace-card__rating">
+                        {track.ratingLabel}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="marketplace-card__actions">
                     <Link
-                      href={track.freePreviewHref ?? `/courses/${track.slug}#free-preview`}
-                      className="button-outline px-4 py-2.5 text-sm"
+                      href={track.href ?? `/courses/${track.slug}`}
+                      className="button-solid px-3.5 py-2 text-xs"
                     >
-                      Free preview
+                      View course
                     </Link>
-                  ) : null}
+                    {hasFreePreview ? (
+                      <Link
+                        href={
+                          track.freePreviewHref ??
+                          `/courses/${track.slug}#free-preview`
+                        }
+                        className="button-outline px-4 py-2.5 text-sm"
+                      >
+                        Free preview
+                      </Link>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            </article>
+              </article>
             );
           })}
         </div>

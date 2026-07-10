@@ -102,6 +102,23 @@ export async function getPublicProfile(
   return data ? rowToPublicProfile(data) : null;
 }
 
+export async function listPublicProfiles(
+  limit = 24,
+): Promise<PublicProfile[]> {
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("public_profiles")
+    .select("*")
+    .order("updated_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(rowToPublicProfile);
+}
+
 export function subscribeToPublicProfile(
   uid: string,
   callback: (profile: PublicProfile | null) => void,

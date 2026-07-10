@@ -10,6 +10,7 @@ import {
   type CookieConsentDecision,
 } from "@/lib/consent/cookie-consent";
 import { applyAnalyticsConsent } from "@/lib/posthog/client";
+import { brand } from "@/data/brand";
 
 export function CookieConsent() {
   // Derive visibility from the consent store. The server snapshot is always
@@ -40,9 +41,9 @@ export function CookieConsent() {
     >
       <div className="cookie-consent__inner">
         <p className="cookie-consent__text">
-          Skillset uses cookies to keep you signed in and to understand how the
-          platform is used so we can improve it. You can reject non-essential
-          cookies anytime. See our{" "}
+          {brand.name} uses cookies to keep you signed in and to understand how
+          the platform is used so we can improve it. You can reject
+          non-essential cookies anytime. See our{" "}
           <Link href="/legal/privacy" className="cookie-consent__link">
             Privacy Policy
           </Link>

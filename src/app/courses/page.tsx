@@ -17,19 +17,21 @@ export default function CoursesPage() {
     <div className="page-shell">
       <SiteNav />
       <main className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
-        <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              Marketplace
+        <div className="marketplace-page-header mb-8">
+          <div className="marketplace-page-header__grid">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
+                Marketplace
+              </p>
+              <h1 className="display-title marketplace-page-title">
+                Find the right course.
+              </h1>
+            </div>
+            <p className="marketplace-page-copy">
+              Browse professional courses, filter by category, preview free
+              lessons, and enroll when you find the right fit.
             </p>
-            <h1 className="display-title mt-3 text-6xl leading-none text-[var(--color-ink)]">
-              Find the right course.
-            </h1>
           </div>
-          <p className="max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            Browse professional courses, filter by category, preview free
-            lessons, and enroll when you find the right fit.
-          </p>
         </div>
 
         <Suspense fallback={<MarketplaceSkeleton />}>
@@ -68,13 +70,13 @@ function MarketplaceSkeleton() {
           </div>
         </div>
       </div>
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="marketplace-course-grid">
         {[0, 1, 2, 3, 4, 5].map((index) => (
           <div
             key={index}
-            className="surface-card animate-pulse overflow-hidden rounded-[18px]"
+            className="marketplace-card animate-pulse"
           >
-            <div className="aspect-[4/3] bg-[var(--color-surface-strong)]" />
+            <div className="marketplace-card__media bg-[var(--color-surface-strong)]" />
             <div className="space-y-3 p-5">
               <div className="h-3 w-24 rounded bg-[var(--color-surface-strong)]" />
               <div className="h-6 w-3/4 rounded bg-[var(--color-surface-strong)]" />

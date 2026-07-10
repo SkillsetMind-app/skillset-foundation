@@ -2,7 +2,6 @@
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
 import { AccountMenu } from "@/components/site/account-menu";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import {
@@ -193,7 +192,6 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
             </>
           ) : (
             <div className="hidden items-center gap-2 min-[941px]:flex">
-              <LocaleSwitcher />
               <SignInDropdown />
               <Link href="/auth?mode=signup" className="btn-cta-hero">
                 {t("nav.getStarted")}
@@ -298,9 +296,6 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
                   </Link>
                 </div>
               )}
-              <div className="mt-3 flex justify-center border-t border-[var(--color-line)] pt-3">
-                <LocaleSwitcher />
-              </div>
             </div>
           </>
         ) : null}

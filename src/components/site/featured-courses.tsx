@@ -50,32 +50,39 @@ export function FeaturedCourses() {
             <li key={course.id}>
               <Link
                 href={`/courses/${course.slug}`}
-                className="group flex h-full flex-col overflow-hidden rounded-[14px] border fine-rule bg-white shadow-[var(--shadow-soft)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_22px_44px_rgba(15,39,68,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(44,82,130,0.35)]"
+                className="marketplace-card group focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(44,82,130,0.35)]"
               >
-                <div className="relative aspect-[16/10] overflow-hidden bg-[var(--color-surface-soft)]">
+                <div className="marketplace-card__media">
                   <Image
                     src={course.image}
                     alt={course.title}
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                    className="object-cover"
                   />
-                  <span className="absolute left-3 top-3 rounded-[8px] bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)] backdrop-blur-sm">
-                    {course.statusLabel}
-                  </span>
+                  <div className="marketplace-card__scrim" />
+                  <div className="marketplace-card__badges">
+                    <span className="marketplace-card__tag">
+                      {course.statusLabel}
+                    </span>
+                  </div>
+                  <div className="marketplace-card__media-caption">
+                    <span>{course.level}</span>
+                    <span>{course.priceLabel}</span>
+                  </div>
                 </div>
-                <div className="flex flex-1 flex-col p-5">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-accent-fg)]">
+                <div className="marketplace-card__body">
+                  <p className="marketplace-card__kicker">
                     {course.category} · {course.level}
                   </p>
-                  <h3 className="display-title mt-2 text-xl leading-snug text-[var(--color-primary)]">
+                  <h3 className="marketplace-card__title">
                     {course.title}
                   </h3>
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--color-ink-soft)]">
+                  <p className="marketplace-card__summary line-clamp-2">
                     {course.summary}
                   </p>
-                  <div className="mt-4 flex items-center justify-between gap-2 border-t border-[var(--color-line)] pt-3">
-                    <span className="text-sm font-bold text-[var(--color-ink)]">
+                  <div className="marketplace-card__actions items-center justify-between">
+                    <span className="marketplace-card__price">
                       {course.priceLabel}
                     </span>
                     <span className="inline-flex items-center gap-1 text-xs font-bold text-[var(--color-primary)]">

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   Award,
+  Bookmark,
   BookOpen,
   CheckCircle2,
   Clock,
@@ -407,8 +408,6 @@ export function EnrolledCourseWorkspace({
         )
       : [];
   const assetCountByLessonId = new Map<string, number>();
-  const thumbnailByLessonId = new Map<string, CourseAsset>();
-  const coverByModuleId = new Map<string, CourseAsset>();
   const totalLessonCount = allLessons.length;
   const completedLessonCount = completedLessonIds.length;
   const selectedModule = selectedLesson
@@ -416,9 +415,23 @@ export function EnrolledCourseWorkspace({
         module.lessons.some((lesson) => lesson.id === selectedLesson.id),
       ) ?? null
     : null;
+  const activeCurriculumModule = selectedModule ?? course.modules[0] ?? null;
+  const activeCurriculumModuleIndex = activeCurriculumModule
+    ? course.modules.findIndex((module) => module.id === activeCurriculumModule.id)
+    : -1;
   const selectedLessonNumber = selectedLesson
     ? allLessons.findIndex((lesson) => lesson.id === selectedLesson.id) + 1
     : 0;
+  const selectedLessonCompleted = selectedLesson
+    ? completedLessonIds.includes(selectedLesson.id)
+    : false;
+  const selectedLessonCanComplete = Boolean(
+    selectedLesson
+      && selectedLessonUnlockState?.unlocked
+      && !previewMode
+      && !isProgressLoading
+      && activeLessonId !== selectedLesson.id,
+  );
   // Members-area hero cover: the teacher's chosen members_cover CourseAsset
   // (resolved to a protected object URL inside the hero band). Only available
   // once Firestore assets are streamed (enableFirestoreAssets); otherwise the
@@ -440,16 +453,11 @@ export function EnrolledCourseWorkspace({
           (assetCountByLessonId.get(asset.lessonId) ?? 0) + 1,
         );
       }
-
-      if (asset.kind === "lesson_thumbnail" && asset.lessonId) {
-        thumbnailByLessonId.set(asset.lessonId, asset);
-      }
-
-      if (asset.kind === "module_cover" && asset.moduleId) {
-        coverByModuleId.set(asset.moduleId, asset);
-      }
     }
   }
+  const selectedLessonFileCount = selectedLesson
+    ? assetCountByLessonId.get(selectedLesson.id) ?? 0
+    : 0;
 
   async function toggleLessonCompletion(lessonId: string, completed: boolean) {
     if (previewMode) {
@@ -513,7 +521,10 @@ export function EnrolledCourseWorkspace({
   }
 
   return (
-    <div className="member-classroom">
+    <div
+      className="member-classroom"
+      data-members-theme={course.membersTheme ?? "light"}
+    >
       <MembersAreaHeroBand
         course={course}
         coverAsset={membersCoverAsset}
@@ -535,11 +546,11 @@ export function EnrolledCourseWorkspace({
         </section>
       ) : null}
 
-      {/* Slim action strip below the members hero — the hero already carries the
-          cover, title, description and progress, so this keeps only what it does
-          not: the at-a-glance chips and the primary continue/certificate CTAs. */}
-      <section className="member-classroom-actions flex flex-wrap items-center justify-between gap-4 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] px-5 py-4">
-        <div className="flex flex-wrap items-center gap-2">
+      {/* V2-style lesson tools: compact utility buttons, course facts, and the
+          current lesson completion action without adding fake media controls. */}
+      <section className="member-classroom-actions fine-rule">
+        <span className="member-classroom-actions__label">Lesson tools</span>
+        <div className="member-classroom-actions__summary">
           <span className="member-meta-chip">
             <BookOpen size={14} aria-hidden />
             {course.modules.length} module{course.modules.length === 1 ? "" : "s"}
@@ -556,35 +567,67 @@ export function EnrolledCourseWorkspace({
             {completedLessonCount} of {totalLessonCount} complete
           </span>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {nextLesson ? (
+        <div className="member-classroom-actions__tools">
+          <button
+            type="button"
+            onClick={() =>
+              document
+                .getElementById("member-lesson-player")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }
+            className="button-outline member-tool-button"
+          >
+            <Bookmark size={14} aria-hidden />
+            Current lesson
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              document
+                .getElementById("member-lesson-content")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }
+            disabled={!selectedLessonFileCount}
+            className="button-outline member-tool-button disabled:opacity-60"
+          >
+            <Download size={14} aria-hidden />
+            Resources {selectedLessonFileCount}
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              document
+                .getElementById("member-lesson-discussion")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }
+            className="button-outline member-tool-button"
+          >
+            <MessageCircle size={14} aria-hidden />
+            Discussion
+          </button>
+          {selectedLesson ? (
             <button
               type="button"
-              onClick={() => setSelectedLessonId(nextLesson.id)}
-              className="button-solid inline-flex items-center gap-2 px-5 py-2.5 text-sm"
+              onClick={() =>
+                toggleLessonCompletion(selectedLesson.id, selectedLessonCompleted)
+              }
+              disabled={!selectedLessonCanComplete}
+              className="button-solid member-tool-button disabled:opacity-60"
             >
-              <PlayCircle size={16} aria-hidden />
-              Continue watching
+              {activeLessonId === selectedLesson.id
+                ? "Saving..."
+                : selectedLessonCompleted
+                  ? "Mark incomplete"
+                  : selectedLessonUnlockState?.unlocked
+                    ? "Mark complete"
+                    : "Locked"}
+              <CheckCircle2 size={14} aria-hidden />
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                const firstLessonId = course.modules[0]?.lessons[0]?.id;
-                if (firstLessonId) {
-                  setSelectedLessonId(firstLessonId);
-                }
-              }}
-              className="button-outline inline-flex items-center gap-2 px-5 py-2.5 text-sm"
-            >
-              <PlayCircle size={16} aria-hidden />
-              Watch again
-            </button>
-          )}
+          ) : null}
           {progressPercent === 100 ? (
             <Link
               href="/learn/credentials"
-              className="button-accent inline-flex items-center gap-2 px-5 py-2.5 text-sm"
+              className="button-accent member-tool-button"
             >
               <Award size={16} aria-hidden />
               Get certificate
@@ -594,7 +637,7 @@ export function EnrolledCourseWorkspace({
       </section>
 
       <div className="member-classroom-layout">
-        <section className="member-classroom-player">
+        <section id="member-lesson-player" className="member-classroom-player">
         {error ? (
           <p className="mb-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
             {error}
@@ -704,150 +747,181 @@ export function EnrolledCourseWorkspace({
       </div>
 
       <section className="member-module-deck">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="member-curriculum-head">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               Curriculum
             </p>
             <h3 className="display-title mt-2 text-3xl text-[var(--color-ink)]">
-              Modules and lessons
+              {course.modules.length} module{course.modules.length === 1 ? "" : "s"} &middot; {totalLessonCount} lesson{totalLessonCount === 1 ? "" : "s"}
             </h3>
           </div>
-          <p className="text-sm font-semibold text-[var(--color-ink-soft)]">
-            Select any available lesson to open it in the player above.
-          </p>
+          <div className="member-curriculum-progress" aria-label={`${progressPercent}% complete`}>
+            <span>{progressPercent}% complete</span>
+            <div>
+              <span style={{ width: `${progressPercent}%` }} />
+            </div>
+          </div>
         </div>
 
-        <div className="mt-6 grid gap-5">
+        <div className="member-module-rail">
           {course.modules.map((module, moduleIndex) => {
             const moduleCompletedCount = module.lessons.filter((lesson) =>
               completedLessonIds.includes(lesson.id),
             ).length;
+            const moduleProgress = module.lessons.length
+              ? Math.round((moduleCompletedCount / module.lessons.length) * 100)
+              : 0;
+            const moduleIsActive = activeCurriculumModule?.id === module.id;
+            const firstLesson = module.lessons[0] ?? null;
 
             return (
-              <article key={module.id} className="member-module-row">
-                <div className="member-module-row__head">
-                  <div className="member-module-row__cover">
-                    <ProtectedAssetCover
-                      asset={coverByModuleId.get(module.id)}
-                      fallbackLabel={module.title}
-                      compact
-                    />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                      Module {moduleIndex + 1}
-                    </p>
-                    <h4 className="mt-2 text-lg font-semibold text-[var(--color-primary)]">
-                      {module.title}
-                    </h4>
-                    <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-                      {module.summary}
-                    </p>
-                  </div>
-                  <span className="member-module-progress">
-                    {moduleCompletedCount}/{module.lessons.length} complete
+              <button
+                key={module.id}
+                type="button"
+                disabled={!firstLesson}
+                onClick={() => {
+                  if (firstLesson) {
+                    setSelectedLessonId(firstLesson.id);
+                  }
+                }}
+                className={`member-module-card member-module-card--tone-${moduleIndex % 4} ${
+                  moduleIsActive ? "member-module-card--active" : ""
+                }`}
+              >
+                <div className="member-module-card__cover">
+                  <span className="member-module-card__number">
+                    {String(moduleIndex + 1).padStart(2, "0")}
+                  </span>
+                  {moduleIsActive ? (
+                    <span className="member-module-card__now">
+                      <span />
+                      Now playing
+                    </span>
+                  ) : null}
+                  {module.lessons.length > 0
+                    && moduleCompletedCount === module.lessons.length ? (
+                    <span className="member-module-card__seal">
+                      <CheckCircle2 size={13} aria-hidden />
+                    </span>
+                  ) : null}
+                  <span className="member-module-card__bar">
+                    <span style={{ width: `${moduleProgress}%` }} />
                   </span>
                 </div>
-
-                <div className="member-lesson-strip">
-                  {module.lessons.map((lesson) => {
-                    const unlockState =
-                      lessonUnlockStateById.get(lesson.id)
-                      ?? { unlocked: true, unlocksAt: null, reason: "available" };
-                    const isCompleted = completedLessonIds.includes(lesson.id);
-                    const selected = selectedLesson?.id === lesson.id;
-                    const fileCount = assetCountByLessonId.get(lesson.id) ?? 0;
-
-                    return (
-                      <article
-                        key={lesson.id}
-                        className={`member-lesson-card ${selected ? "member-lesson-card--active" : ""}`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => setSelectedLessonId(lesson.id)}
-                          className="block w-full text-left"
-                        >
-                          <div className="relative">
-                            <ProtectedAssetCover
-                              asset={thumbnailByLessonId.get(lesson.id)}
-                              fallbackLabel={lesson.title}
-                              compact
-                            />
-                            <span className="member-play-badge">
-                              {unlockState.unlocked ? (
-                                <PlayCircle size={16} aria-hidden />
-                              ) : (
-                                <LockKeyhole size={15} aria-hidden />
-                              )}
-                            </span>
-                          </div>
-                          <p className="mt-3 line-clamp-2 font-semibold text-[var(--color-ink)]">
-                            {lesson.title}
-                          </p>
-                          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                            {lessonTypeLabels[lesson.type]}
-                          </p>
-                          {!unlockState.unlocked ? (
-                            <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-accent-fg)]">
-                              {formatUnlockMessage(unlockState)}
-                            </p>
-                          ) : null}
-                        </button>
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                          <span className="member-lesson-chip">
-                            <Clock size={12} aria-hidden />
-                            {lesson.duration}
-                          </span>
-                          {fileCount ? (
-                            <span className="member-lesson-chip">
-                              <Download size={12} aria-hidden />
-                              {fileCount} file{fileCount === 1 ? "" : "s"}
-                            </span>
-                          ) : null}
-                          {isCompleted ? (
-                            <span className="member-lesson-chip member-lesson-chip--done">
-                              <CheckCircle2 size={12} aria-hidden />
-                              Done
-                            </span>
-                          ) : null}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            toggleLessonCompletion(
-                              lesson.id,
-                              isCompleted,
-                            )
-                          }
-                          disabled={
-                            previewMode
-                            ||
-                            !unlockState.unlocked
-                            || isProgressLoading
-                            || activeLessonId === lesson.id
-                          }
-                          className="button-outline mt-3 w-full px-3 py-2 text-[11px] disabled:opacity-60"
-                        >
-                          {activeLessonId === lesson.id
-                            ? "Saving..."
-                              : previewMode
-                                ? "Preview only"
-                                : isCompleted
-                              ? "Mark incomplete"
-                              : !unlockState.unlocked
-                                ? "Locked"
-                              : "Mark complete"}
-                        </button>
-                      </article>
-                    );
-                  })}
+                <div className="member-module-card__body">
+                  <span className="member-module-card__eyebrow">
+                    Module {moduleIndex + 1}
+                  </span>
+                  <span className="member-module-card__title">
+                    {module.title}
+                  </span>
+                  <span className="member-module-card__meta">
+                    <strong>{moduleCompletedCount}/{module.lessons.length}</strong> lessons
+                  </span>
                 </div>
-              </article>
+              </button>
             );
           })}
         </div>
+
+        {activeCurriculumModule ? (
+          <>
+            <div className="member-module-lessons-head">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
+                  Module {activeCurriculumModuleIndex + 1} &middot; Now playing
+                </p>
+                <h4>{activeCurriculumModule.title}</h4>
+              </div>
+              <span>
+                {activeCurriculumModule.lessons.length} lesson{activeCurriculumModule.lessons.length === 1 ? "" : "s"}
+              </span>
+            </div>
+
+            <div className="member-lesson-strip">
+              {activeCurriculumModule.lessons.map((lesson, lessonIndex) => {
+                const unlockState =
+                  lessonUnlockStateById.get(lesson.id)
+                  ?? { unlocked: true, unlocksAt: null, reason: "available" };
+                const isCompleted = completedLessonIds.includes(lesson.id);
+                const selected = selectedLesson?.id === lesson.id;
+                const fileCount = assetCountByLessonId.get(lesson.id) ?? 0;
+
+                return (
+                  <article
+                    key={lesson.id}
+                    className={`member-lesson-card ${
+                      selected ? "member-lesson-card--active" : ""
+                    } ${isCompleted ? "member-lesson-card--done" : ""} ${
+                      !unlockState.unlocked ? "member-lesson-card--locked" : ""
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setSelectedLessonId(lesson.id)}
+                      className="member-lesson-card__button"
+                    >
+                      <span className="member-lesson-card__status">
+                        {isCompleted ? (
+                          <CheckCircle2 size={13} aria-hidden />
+                        ) : selected ? (
+                          <PlayCircle size={12} aria-hidden />
+                        ) : unlockState.unlocked ? (
+                          lessonIndex + 1
+                        ) : (
+                          <LockKeyhole size={13} aria-hidden />
+                        )}
+                      </span>
+                      <span className="member-lesson-card__copy">
+                        <span className="member-lesson-card__title">
+                          {lesson.title}
+                        </span>
+                        <span className="member-lesson-card__meta">
+                          <FileText size={11} aria-hidden />
+                          {lessonTypeLabels[lesson.type]} &middot; {lesson.duration}
+                          {fileCount ? ` - ${fileCount} file${fileCount === 1 ? "" : "s"}` : ""}
+                        </span>
+                        {!unlockState.unlocked ? (
+                          <span className="member-lesson-card__lock">
+                            {formatUnlockMessage(unlockState)}
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        toggleLessonCompletion(
+                          lesson.id,
+                          isCompleted,
+                        )
+                      }
+                      disabled={
+                        previewMode
+                        ||
+                        !unlockState.unlocked
+                        || isProgressLoading
+                        || activeLessonId === lesson.id
+                      }
+                      className="member-lesson-card__complete button-outline disabled:opacity-60"
+                    >
+                      {activeLessonId === lesson.id
+                        ? "Saving..."
+                          : previewMode
+                            ? "Preview only"
+                            : isCompleted
+                          ? "Mark incomplete"
+                          : !unlockState.unlocked
+                            ? "Locked"
+                          : "Mark complete"}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+          </>
+        ) : null}
       </section>
 
       {enableFirestoreAssets ? (
@@ -1014,8 +1088,8 @@ function MembersAreaHeroBand({
   coverAsset?: CourseAsset;
   progressPercent: number | null;
 }) {
-  // Resolve the members_cover asset to a protected object URL, mirroring
-  // ProtectedAssetCover (mount-guard + revoke on unmount/asset change).
+  // Resolve the members_cover asset to a protected object URL with the same
+  // mount guard and revoke-on-unmount pattern used by protected previews.
   // Keyed by assetId so a stale resolve is ignored in render without a
   // synchronous setState clear (react-hooks/set-state-in-effect).
   const [objectUrlState, setObjectUrlState] = useState<{
@@ -1060,7 +1134,7 @@ function MembersAreaHeroBand({
 
   return (
     <MembersAreaHero
-      theme={course.membersTheme ?? "dark"}
+      theme={course.membersTheme ?? "light"}
       coverUrl={objectUrl ?? course.image ?? null}
       title={course.membersTitle ?? course.title}
       subtitle={course.membersSubtitle ?? null}
@@ -1274,7 +1348,7 @@ function LessonContentPanel({
         )}
       </div>
 
-      <div className="member-lesson-body">
+      <div id="member-lesson-content" className="member-lesson-body">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm font-semibold text-[var(--color-ink)]">
             Lesson content
@@ -1425,7 +1499,7 @@ function LessonDiscussion({
   }
 
   return (
-    <div className="mt-5 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
+    <div id="member-lesson-discussion" className="mt-5 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
@@ -1560,78 +1634,6 @@ function LessonAssetList({
           <ProtectedAssetPreview asset={asset} />
         </div>
       ))}
-    </div>
-  );
-}
-
-function ProtectedAssetCover({
-  asset,
-  compact = false,
-  fallbackLabel,
-}: {
-  asset?: CourseAsset;
-  compact?: boolean;
-  fallbackLabel: string;
-}) {
-  const [objectUrlState, setObjectUrlState] = useState<{
-    assetId: string;
-    url: string;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!asset || !asset.contentType.startsWith("image/")) {
-      return undefined;
-    }
-
-    let isMounted = true;
-    let nextObjectUrl: string | null = null;
-
-    getProtectedCourseAssetObjectUrl(asset)
-      .then((url) => {
-        nextObjectUrl = url;
-
-        if (isMounted) {
-          setObjectUrlState({
-            assetId: asset.id,
-            url,
-          });
-        }
-      })
-      .catch(() => {
-        return undefined;
-      });
-
-    return () => {
-      isMounted = false;
-
-      if (nextObjectUrl) {
-        URL.revokeObjectURL(nextObjectUrl);
-      }
-    };
-  }, [asset]);
-
-  const sizeClass = compact ? "aspect-video" : "aspect-[16/10]";
-  const objectUrl =
-    asset && objectUrlState?.assetId === asset.id ? objectUrlState.url : null;
-
-  if (objectUrl) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={objectUrl}
-        alt={fallbackLabel}
-        className={`${sizeClass} w-full rounded-[10px] object-cover`}
-      />
-    );
-  }
-
-  return (
-    <div
-      className={`${sizeClass} grid w-full place-items-center rounded-[10px] border border-[rgba(26,54,93,0.10)] bg-[linear-gradient(135deg,rgba(26,54,93,0.12),rgba(178,34,52,0.08))] px-3 text-center`}
-    >
-      <span className="line-clamp-2 text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
-        {fallbackLabel}
-      </span>
     </div>
   );
 }

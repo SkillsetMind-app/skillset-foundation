@@ -313,7 +313,7 @@ export function LearnDashboard() {
                           )
                         : t("learn.dashboard.accessStatus").replace(
                             "{status}",
-                            enrollment.status,
+                            t(`statusChip.${enrollment.status}`),
                           )}
                       {nextLesson
                         ? ` - ${t("learn.dashboard.nextLesson").replace("{title}", nextLesson.title)}`

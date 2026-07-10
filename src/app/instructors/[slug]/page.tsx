@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { InstructorProfileView } from "@/components/instructors/instructor-profile-view";
+import { SiteFooter } from "@/components/site/site-footer";
 import { SiteNav } from "@/components/site/site-nav";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
@@ -16,7 +17,7 @@ export async function generateMetadata({
   return buildPageMetadata({
     title: "Instructor",
     description:
-      "An independent expert publishing reviewed professional courses on Skillset.",
+      "An independent expert publishing reviewed professional courses on Skillset Mind.",
     path: `/instructors/${slug}`,
   });
 }
@@ -36,9 +37,10 @@ export default async function InstructorDetailPage({
   return (
     <div className="page-shell">
       <SiteNav />
-      <main className="mx-auto w-full max-w-3xl px-6 py-16 sm:px-8 sm:py-20">
+      <main className="mx-auto w-full max-w-7xl px-6 py-12 sm:px-8 sm:py-16">
         <InstructorProfileView key={slug} uid={slug} />
       </main>
+      <SiteFooter />
     </div>
   );
 }

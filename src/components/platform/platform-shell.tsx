@@ -1,10 +1,8 @@
 "use client";
 
 import { Search } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { HelpBubble } from "@/components/platform/help-bubble";
@@ -145,20 +143,7 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
 
   return (
     <div className="platform-sidebar-brand">
-      <Link
-        href="/"
-        aria-label="Skillset USA"
-        className="platform-sidebar-brand__lockup-link"
-      >
-        <Image
-          src="/brand/skillset-usa-lockup.png"
-          alt="Skillset USA"
-          width={2190}
-          height={524}
-          priority
-          className="platform-sidebar-brand__lockup"
-        />
-      </Link>
+      <LogoWordmark href="/" nav className="platform-sidebar-brand__lockup-link" />
     </div>
   );
 }
@@ -189,12 +174,21 @@ function PlatformSidebarSearch({ pathname }: { pathname: string }) {
     if (event.key === "Enter") {
       submitSearch();
     }
+  }
 
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+  useEffect(() => {
+    function focusSidebarSearch(event: globalThis.KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "k") {
+        return;
+      }
+
       event.preventDefault();
       inputRef.current?.focus();
     }
-  }
+
+    document.addEventListener("keydown", focusSidebarSearch);
+    return () => document.removeEventListener("keydown", focusSidebarSearch);
+  }, []);
 
   return (
     <label className="platform-sidebar-search mt-4">

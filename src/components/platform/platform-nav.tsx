@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -57,6 +58,17 @@ const iconMap: Record<string, LucideIcon> = {
   Users,
 };
 
+const sectionOrder = [
+  "Discover",
+  "Learn",
+  "My Learning",
+  "Teach",
+  "Growth",
+  "Setup",
+  "Operations",
+  "Account",
+];
+
 export function PlatformNav({ collapsed = false }: { collapsed?: boolean }) {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -64,32 +76,57 @@ export function PlatformNav({ collapsed = false }: { collapsed?: boolean }) {
   const subject: PermissionSubject = { roles: user?.roles ?? ["guest"] };
   const context = resolveContext(pathname, subject);
 
-  const visibleItems = platformNav.filter(
-    (item) =>
-      item.contexts.includes(context) &&
-      (!item.permission || hasPermission(subject, item.permission)),
-  );
+  const visibleItems = platformNav
+    .filter(
+      (item) =>
+        item.contexts.includes(context) &&
+        (!item.permission || hasPermission(subject, item.permission)),
+    )
+    .sort((a, b) => {
+      const sectionDelta =
+        getSectionRank(a.section) - getSectionRank(b.section);
 
-  // Flat nav — no section labels. Account items (Settings, Plans, Billing,
-  // Payouts, Wishlist) live in the avatar menu, mirroring the refined design.
+      if (sectionDelta !== 0) {
+        return sectionDelta;
+      }
+
+      return platformNav.indexOf(a) - platformNav.indexOf(b);
+    });
+
   return (
     <nav
-      className="platform-sidebar-nav mt-3 flex flex-col gap-1"
+      className="platform-sidebar-nav mt-3 flex flex-col gap-1.5"
       aria-label={t("platform.sidebarNavLabel")}
     >
-      {visibleItems.map((item) => (
-        <PlatformNavLink
-          key={item.href}
-          href={item.href}
-          label={t(item.labelKey)}
-          icon={item.icon}
-          active={isActivePlatformRoute(pathname, item.href)}
-          collapsed={collapsed}
-          newTab={item.newTab}
-        />
-      ))}
+      {visibleItems.map((item, index) => {
+        const showSection =
+          !collapsed && item.section !== visibleItems[index - 1]?.section;
+
+        return (
+          <Fragment key={item.href}>
+            {showSection ? (
+              <p className="platform-sidebar-section-label">
+                {item.section}
+              </p>
+            ) : null}
+            <PlatformNavLink
+              href={item.href}
+              label={t(item.labelKey)}
+              icon={item.icon}
+              active={isActivePlatformRoute(pathname, item.href)}
+              collapsed={collapsed}
+              newTab={item.newTab}
+            />
+          </Fragment>
+        );
+      })}
     </nav>
   );
+}
+
+function getSectionRank(section: string) {
+  const index = sectionOrder.indexOf(section);
+  return index === -1 ? sectionOrder.length : index;
 }
 
 function resolveContext(
@@ -162,7 +199,7 @@ function PlatformNavLink({
       aria-current={active ? "page" : undefined}
       target={newTab ? "_blank" : undefined}
       rel={newTab ? "noopener noreferrer" : undefined}
-      className={`platform-nav-link group flex items-center gap-2.5 rounded-[10px] border py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(44,82,130,0.24)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${collapsed ? "justify-center px-0" : "px-2.5"} ${
+      className={`platform-nav-link group relative flex items-center gap-2.5 rounded-[10px] border py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(44,82,130,0.24)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${collapsed ? "justify-center px-0" : "px-2.5"} ${
         active
           ? "platform-nav-active border-[rgba(24,58,94,0.2)] shadow-[0_10px_22px_rgba(26,54,93,0.16)]"
           : "border-transparent text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]"

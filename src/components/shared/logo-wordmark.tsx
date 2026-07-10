@@ -12,12 +12,10 @@ type LogoWordmarkProps = {
   className?: string;
 };
 
-// Rendered height per placement. Sized to read as a brand anchor (not as
-// chrome), matching reference platforms in the same SaaS-marketplace tier.
-function heightClass(nav: boolean, compact: boolean): string {
-  if (nav) return "h-10";
-  if (compact) return "h-12";
-  return "h-14";
+function textSizeClass(nav: boolean, compact: boolean): string {
+  if (nav) return "text-[1.25rem]";
+  if (compact) return "text-[1.35rem]";
+  return "text-[1.5rem]";
 }
 
 function markSizeClass(nav: boolean, compact: boolean): string {
@@ -44,24 +42,19 @@ export function LogoWordmark({
         className={`${markSizeClass(nav, compact)} w-auto object-contain`}
       />
     ) : (
-      <>
+      <span className="logo-wordmark__full">
         <Image
-          src={brand.logoFullLight}
-          alt={`${brand.name} logo`}
-          width={brand.logoFullLightSize.width}
-          height={brand.logoFullLightSize.height}
+          src={brand.logoMark}
+          alt=""
+          width={brand.logoMarkSize.width}
+          height={brand.logoMarkSize.height}
           priority
-          className={`logo-theme-light ${heightClass(nav, compact)} w-auto object-contain`}
+          className={`${markSizeClass(nav, compact)} w-auto object-contain`}
         />
-        <Image
-          src={brand.logoFullDark}
-          alt={`${brand.name} logo`}
-          width={brand.logoFullDarkSize.width}
-          height={brand.logoFullDarkSize.height}
-          priority
-          className={`logo-theme-dark ${heightClass(nav, compact)} w-auto object-contain`}
-        />
-      </>
+        <span className={`logo-wordmark__text ${textSizeClass(nav, compact)}`}>
+          {brand.shortName}
+        </span>
+      </span>
     );
 
   return (

@@ -28,6 +28,19 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+const themeInitScript = `
+(() => {
+  try {
+    const mode = window.localStorage.getItem("skillset_theme");
+    const systemDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const theme = mode === "dark" || (mode === "system" && systemDark) ? "dark" : "light";
+    document.documentElement.dataset.theme = theme;
+  } catch {
+    document.documentElement.dataset.theme = "light";
+  }
+})();
+`;
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: brand.title,
@@ -49,7 +62,11 @@ export default async function RootLayout({
     <html
       lang={LOCALE_HTML_LANG[locale]}
       className={`${manrope.variable} ${cormorant.variable} ${inter.variable} h-full scroll-smooth`}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="min-h-full bg-[var(--color-base)] text-[var(--color-ink)] antialiased">
         <ConsoleSignature />
         <PostHogProvider>

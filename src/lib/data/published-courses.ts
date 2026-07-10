@@ -19,6 +19,14 @@ const coursesTable = "courses";
 
 type CourseRow = Database["public"]["Tables"]["courses"]["Row"];
 
+// Internal live-checkout smoke-test courses (priced at $1, used to verify the
+// real Stripe pipeline end to end) are published under a deliberate `smoke-`
+// id prefix. They must stay reachable by direct URL, but never surface in
+// browse or instructor storefront lists.
+export function isInternalSmokeCourse(course: Pick<TeacherCourse, "id">): boolean {
+  return course.id.startsWith("smoke-");
+}
+
 export function rowToTeacherCourse(row: CourseRow): TeacherCourse {
   return {
     id: row.id,
@@ -106,6 +114,56 @@ export function subscribeToPublishedTeacherCourses(
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: coursesTable },
+      () => {
+        void load();
+      },
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}
+
+export function subscribeToPublishedTeacherCoursesByOwner(
+  ownerId: string,
+  callback: (courses: TeacherCourse[]) => void,
+  onError: (error: Error) => void,
+): () => void {
+  const supabase = getSupabaseBrowserClient();
+
+  const load = async () => {
+    const { data, error } = await supabase
+      .from(coursesTable)
+      .select("*")
+      .eq("owner_id", ownerId)
+      .in("status", ["published", "in_review"])
+      .limit(48);
+
+    if (error) {
+      onError(error instanceof Error ? error : new Error(String(error)));
+      return;
+    }
+
+    callback(
+      (data ?? [])
+        .map(rowToTeacherCourse)
+        .sort((left, right) => left.title.localeCompare(right.title)),
+    );
+  };
+
+  void load();
+
+  const channel = supabase
+    .channel(`courses:published:owner:${ownerId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: coursesTable,
+        filter: `owner_id=eq.${ownerId}`,
+      },
       () => {
         void load();
       },

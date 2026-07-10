@@ -3,31 +3,19 @@
 // must never be pulled into a client bundle — client code uses the
 // I18nProvider instead.
 
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 
-import {
-  LOCALE_COOKIE,
-  normalizeLocale,
-  pickLocaleFromAcceptLanguage,
-  type Locale,
-} from "./config";
+import { DEFAULT_LOCALE, type Locale } from "./config";
 import { getDictionary, translate } from "./dictionaries";
 
 /**
- * Resolve the request's locale: an explicit cookie choice wins; otherwise fall
- * back to the browser's Accept-Language so a first-time visitor still lands in
- * their language. Read in the root layout to set <html lang> and seed the
- * client provider (keeping SSR and the first client render in sync).
+ * Resolve the request locale. Launch is intentionally EN-only until the
+ * remaining primary surfaces are fully localized; historical non-English
+ * cookies are ignored so SSR never promises a partial PT/ES experience.
  */
 export async function getServerLocale(): Promise<Locale> {
-  const cookieStore = await cookies();
-  const fromCookie = cookieStore.get(LOCALE_COOKIE)?.value;
-  if (fromCookie) {
-    return normalizeLocale(fromCookie);
-  }
-
-  const headerStore = await headers();
-  return pickLocaleFromAcceptLanguage(headerStore.get("accept-language"));
+  await cookies();
+  return DEFAULT_LOCALE;
 }
 
 /** Locale-bound translator for server components: `const { t } = await getServerTranslation()`. */
