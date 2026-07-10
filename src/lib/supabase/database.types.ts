@@ -439,6 +439,165 @@ export type Database = {
           },
         ]
       }
+      course_commerce_settings: {
+        Row: {
+          affiliate_approval: string
+          affiliate_commission_pct: number
+          affiliate_enabled: boolean
+          course_id: string
+          created_at: string
+          owner_id: string
+          tax_collection: boolean
+          tax_regions: Json
+          tax_registration_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          affiliate_approval?: string
+          affiliate_commission_pct?: number
+          affiliate_enabled?: boolean
+          course_id: string
+          created_at?: string
+          owner_id: string
+          tax_collection?: boolean
+          tax_regions?: Json
+          tax_registration_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          affiliate_approval?: string
+          affiliate_commission_pct?: number
+          affiliate_enabled?: boolean
+          course_id?: string
+          created_at?: string
+          owner_id?: string
+          tax_collection?: boolean
+          tax_regions?: Json
+          tax_registration_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_commerce_settings_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: true
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_commerce_settings_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
+      course_coproducers: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          invitee_email: string
+          owner_id: string
+          revenue_share_pct: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          invitee_email: string
+          owner_id: string
+          revenue_share_pct: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          invitee_email?: string
+          owner_id?: string
+          revenue_share_pct?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_coproducers_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_coproducers_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
+      course_coupons: {
+        Row: {
+          active: boolean
+          code: string
+          course_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          max_redemptions: number
+          owner_id: string
+          percent_off: number
+          redeemed_count: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          course_id: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          max_redemptions?: number
+          owner_id: string
+          percent_off: number
+          redeemed_count?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          course_id?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          max_redemptions?: number
+          owner_id?: string
+          percent_off?: number
+          redeemed_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_coupons_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_coupons_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
       course_event_rsvps: {
         Row: {
           attendee_email: string | null
@@ -1876,6 +2035,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assert_course_owner: { Args: { p_course_id: string }; Returns: string }
       claim_checkout_lock: {
         Args: {
           p_claim_grace_ms: number
@@ -1891,6 +2051,16 @@ export type Database = {
         }[]
       }
       course_title_key: { Args: { p_title: string }; Returns: string }
+      create_course_coupon: {
+        Args: {
+          p_code: string
+          p_course_id: string
+          p_expires_at?: string
+          p_max_redemptions: number
+          p_percent_off: number
+        }
+        Returns: Json
+      }
       create_free_course_enrollment: {
         Args: { p_course_id: string }
         Returns: string
@@ -1906,6 +2076,7 @@ export type Database = {
         Returns: string
       }
       delete_course_as_admin: { Args: { p_course_id: string }; Returns: Json }
+      delete_course_coupon: { Args: { p_coupon_id: string }; Returns: Json }
       delete_teacher_course_draft: {
         Args: { p_course_id: string }
         Returns: Json
@@ -1917,6 +2088,10 @@ export type Database = {
       has_enrollment_for_course_slug: {
         Args: { p_slug: string }
         Returns: boolean
+      }
+      invite_course_coproducer: {
+        Args: { p_course_id: string; p_email: string; p_share_pct: number }
+        Returns: Json
       }
       is_admin: { Args: never; Returns: boolean }
       is_moderator: { Args: never; Returns: boolean }
@@ -1958,8 +2133,16 @@ export type Database = {
         Args: { p_case_id: string; p_review_note?: string; p_status: string }
         Returns: Json
       }
+      revoke_course_coproducer: {
+        Args: { p_coproducer_id: string }
+        Returns: Json
+      }
       send_course_message: {
         Args: { p_body: string; p_course_id: string; p_student_id: string }
+        Returns: Json
+      }
+      set_course_coupon_active: {
+        Args: { p_active: boolean; p_coupon_id: string }
         Returns: Json
       }
       submit_course_review: {
@@ -1983,6 +2166,18 @@ export type Database = {
       }
       update_teacher_course_builder: {
         Args: { p_course_id: string; p_payload: Json }
+        Returns: Json
+      }
+      upsert_course_commerce_settings: {
+        Args: {
+          p_affiliate_approval: string
+          p_affiliate_commission_pct: number
+          p_affiliate_enabled: boolean
+          p_course_id: string
+          p_tax_collection: boolean
+          p_tax_regions: Json
+          p_tax_registration_id?: string
+        }
         Returns: Json
       }
       verify_skillset_certificate: {

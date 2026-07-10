@@ -7,6 +7,13 @@ import type { ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { StatusChip } from "@/components/shared/status-chip";
+import {
+  AffiliatesPanel,
+  CoproducersPanel,
+  CouponsPanel,
+  PanelCard,
+  TaxPanel,
+} from "@/components/teacher/course-commerce-panels";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { teacherCanSubmitCourse } from "@/domain/teacher-course";
 import { fetchRequireCreatorVerification } from "@/lib/data/creator-verification";
@@ -24,19 +31,27 @@ import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 
 const manageSections = [
   { id: "overview", label: "Overview" },
+  { id: "links", label: "Promo links" },
   { id: "basic", label: "Basic info" },
   { id: "pricing", label: "Pricing" },
   { id: "content", label: "Content" },
   { id: "members", label: "Members area" },
   { id: "page", label: "Product page" },
   { id: "sales", label: "Sales" },
+  { id: "coupons", label: "Coupons" },
+  { id: "affiliates", label: "Affiliates" },
+  { id: "coproducers", label: "Co-producers" },
+  { id: "tax", label: "Tax collection" },
 ] as const;
 
 const roadmapSections = [
-  { id: "coupons", label: "Coupons", href: "/teach/coupons" },
-  { id: "affiliates", label: "Affiliates", href: null },
-  { id: "coproductions", label: "Co-productions", href: "/teach/co-productions" },
-  { id: "tax", label: "Tax & invoicing", href: null },
+  {
+    id: "assistant",
+    label: "Sales assistant",
+    title: "The sales assistant is on the roadmap.",
+    description:
+      "An AI assistant trained on this course's content that answers buyer questions on the product page. It isn't live yet — we'd rather tell you that than show a mock. Pricing is announced when it ships.",
+  },
 ] as const;
 
 type SectionId =
@@ -89,28 +104,6 @@ function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-function PanelCard({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children?: ReactNode;
-}) {
-  return (
-    <section className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-5">
-      <h3 className="text-base font-semibold text-[var(--color-ink)]">{title}</h3>
-      {description ? (
-        <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
-          {description}
-        </p>
-      ) : null}
-      {children}
-    </section>
-  );
-}
-
 export function CourseManageHub({ courseId }: { courseId: string }) {
   const { user } = useAuth();
   const router = useRouter();
@@ -126,6 +119,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitNotice, setSubmitNotice] = useState("");
+  const [copiedLink, setCopiedLink] = useState(false);
 
   useEffect(() => {
     return subscribeToTeacherCourse(
@@ -134,7 +128,14 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
         setCourse(nextCourse);
         setLoadedCourseId(courseId);
       },
-      () => setLoadedCourseId(courseId),
+      () => {
+        // A failed load after a course switch must not leave the previous
+        // course rendering under this courseId's URL.
+        setCourse((current) =>
+          current && current.id !== courseId ? null : current,
+        );
+        setLoadedCourseId(courseId);
+      },
     );
   }, [courseId]);
 
@@ -182,6 +183,10 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
 
   const isOwner = Boolean(course && user && course.ownerId === user.uid);
   const paid = course ? isPaidCourse(course) : false;
+  // Server-enforced by the commerce RPCs; surfaced here so the panels can
+  // explain the gate instead of failing on click.
+  const activationBlocked =
+    requireVerification && verificationStatus !== "approved";
 
   const checklist = useMemo(() => {
     if (!course) {
@@ -283,6 +288,22 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     }
   };
 
+  const productPagePath = `/courses/${courseId}`;
+
+  // Absolute URL built at click time — window isn't available during SSR.
+  const handleCopyProductLink = async () => {
+    try {
+      await navigator.clipboard.writeText(
+        `${window.location.origin}${productPagePath}`,
+      );
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch {
+      // Clipboard can be blocked (permissions/http) — the path stays visible
+      // in the panel for manual copy, so no error state needed.
+    }
+  };
+
   if (!courseLoaded) {
     return (
       <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
@@ -291,7 +312,9 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     );
   }
 
-  if (!course || (user && !isOwner)) {
+  // ProtectedSurface guarantees a signed-in user here, so a null user is
+  // treated the same as a non-owner instead of bypassing the guard.
+  if (!course || !user || !isOwner) {
     return (
       <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
         <h2 className="text-lg font-semibold text-[var(--color-ink)]">
@@ -495,6 +518,47 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
             </PanelCard>
           ) : null}
 
+          {section === "links" ? (
+            <PanelCard
+              title="Promo links"
+              description={
+                course.status === "published"
+                  ? "Share these anywhere you promote the course."
+                  : "Links you'll share once the course is published. Until then the product page opens only for you."
+              }
+            >
+              <div className="mt-4 rounded-[10px] border fine-rule bg-white px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+                  Product page
+                </p>
+                <p className="mt-1 break-all font-mono text-sm text-[var(--color-ink)]">
+                  {productPagePath}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleCopyProductLink()}
+                    className="button-solid px-4 py-2 text-xs"
+                  >
+                    {copiedLink ? "Copied!" : "Copy link"}
+                  </button>
+                  <Link
+                    href={productPagePath}
+                    target="_blank"
+                    className="button-outline px-4 py-2 text-xs"
+                  >
+                    Open page
+                  </Link>
+                </div>
+              </div>
+              <p className="mt-3 text-xs leading-5 text-[var(--color-ink-muted)]">
+                Direct checkout links and embeddable buy widgets ship together
+                with the discount engine — the product page is the shareable
+                surface today.
+              </p>
+            </PanelCard>
+          ) : null}
+
           {section === "basic" ? (
             <PanelCard
               title="Basic info"
@@ -688,19 +752,34 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
             </PanelCard>
           ) : null}
 
+          {section === "coupons" ? (
+            <CouponsPanel
+              courseId={course.id}
+              activationBlocked={activationBlocked}
+            />
+          ) : null}
+
+          {section === "affiliates" ? (
+            <AffiliatesPanel
+              courseId={course.id}
+              activationBlocked={activationBlocked}
+            />
+          ) : null}
+
+          {section === "coproducers" ? (
+            <CoproducersPanel courseId={course.id} />
+          ) : null}
+
+          {section === "tax" ? <TaxPanel courseId={course.id} /> : null}
+
           {roadmapSections.map((item) =>
             section === item.id ? (
               <PanelCard
                 key={item.id}
-                title={`${item.label} are on the roadmap.`}
-                description="This surface isn't live yet — we'd rather show you that honestly than a mock. It ships as part of the creator commerce rollout."
+                title={item.title}
+                description={item.description}
               >
                 <div className="mt-5 flex flex-wrap gap-2">
-                  {item.href ? (
-                    <Link href={item.href} className="button-outline px-4 py-2 text-xs">
-                      More about {item.label.toLowerCase()}
-                    </Link>
-                  ) : null}
                   <a
                     href={`mailto:support@skillsetmind.com?subject=${encodeURIComponent(
                       `Notify me: ${item.label}`,
