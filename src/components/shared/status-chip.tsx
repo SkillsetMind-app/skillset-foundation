@@ -58,6 +58,7 @@ const knownStatuses = new Set([
 
 const statusVariants: Record<string, string> = {
   active: "success",
+  approved: "success",
   completed: "success",
   paid: "success",
   published: "success",

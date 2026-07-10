@@ -9,6 +9,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { StatusChip } from "@/components/shared/status-chip";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { teacherCanSubmitCourse } from "@/domain/teacher-course";
+import { fetchRequireCreatorVerification } from "@/lib/data/creator-verification";
 import {
   submitTeacherCourseForReview,
   subscribeToTeacherCourse,
@@ -119,6 +120,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   const [loadedCourseId, setLoadedCourseId] = useState<string | null>(null);
   const [myCourses, setMyCourses] = useState<TeacherCourse[]>([]);
   const [payoutsReady, setPayoutsReady] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState("none");
+  const [requireVerification, setRequireVerification] = useState(false);
   const [section, setSection] = useState<SectionId>("overview");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -157,10 +160,25 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
             && profile?.stripeConnectPayoutsEnabled,
           ),
         );
+        setVerificationStatus(profile?.creatorVerificationStatus ?? "none");
       },
       () => setPayoutsReady(false),
     );
   }, [user]);
+
+  useEffect(() => {
+    let active = true;
+    fetchRequireCreatorVerification()
+      .then((value) => {
+        if (active) {
+          setRequireVerification(value);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const isOwner = Boolean(course && user && course.ownerId === user.uid);
   const paid = course ? isPaidCourse(course) : false;
@@ -171,7 +189,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     }
     const items: Array<{
       label: string;
-      hint: string;
+      hint: ReactNode;
       done: boolean;
       optional?: boolean;
     }> = [
@@ -215,8 +233,26 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
         done: payoutsReady,
       });
     }
+    items.push({
+      label: "Professional verification",
+      hint: (
+        <>
+          {requireVerification
+            ? "Required before this course can be sent for review. "
+            : "Optional today — becomes required when professional admission opens. "}
+          <Link
+            href="/teach/verification"
+            className="font-semibold text-[var(--color-primary)] underline"
+          >
+            Open verification
+          </Link>
+        </>
+      ),
+      done: verificationStatus === "approved",
+      optional: !requireVerification,
+    });
     return items;
-  }, [course, paid, payoutsReady]);
+  }, [course, paid, payoutsReady, requireVerification, verificationStatus]);
 
   const requiredItems = checklist.filter((item) => !item.optional);
   const requiredDone = requiredItems.filter((item) => item.done).length;

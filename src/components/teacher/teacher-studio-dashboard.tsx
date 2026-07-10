@@ -26,6 +26,16 @@ const money = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
 
+// EN-only launch copy for the verification chip states (mirrors the honest
+// wording on /teach/verification).
+const verificationChipMeta: Record<string, { value: string; hint: string }> = {
+  none: { value: "Not started", hint: "Verify your credentials" },
+  pending: { value: "In review", hint: "We'll email the decision" },
+  needs_changes: { value: "Action needed", hint: "Review the note and resubmit" },
+  approved: { value: "Approved", hint: "Professional badge active" },
+  rejected: { value: "Rejected", hint: "See the review note" },
+};
+
 export function TeacherStudioDashboard() {
   const { user } = useAuth();
   const { t, locale } = useTranslation();
@@ -34,6 +44,7 @@ export function TeacherStudioDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoaded, setOrdersLoaded] = useState(false);
   const [payoutsReady, setPayoutsReady] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState("none");
   const [coursesLoaded, setCoursesLoaded] = useState(false);
   const firstName = user?.displayName?.trim().split(/\s+/)[0] ?? "";
   const publishedCourses = courses.filter((course) => course.status === "published");
@@ -123,6 +134,7 @@ export function TeacherStudioDashboard() {
           profile?.stripeConnectChargesEnabled
           && profile?.stripeConnectPayoutsEnabled,
         ));
+        setVerificationStatus(profile?.creatorVerificationStatus ?? "none");
       },
       () => setPayoutsReady(false),
     );
@@ -200,6 +212,27 @@ export function TeacherStudioDashboard() {
                 {payoutsReady
                   ? t("teach.dashboard.netAfterFees")
                   : t("teach.dashboard.connectStripe")}
+              </span>
+            </Link>
+
+            <Link
+              href="/teach/verification"
+              className="studio-payout-chip"
+              aria-label={`Professional verification: ${
+                (verificationChipMeta[verificationStatus]
+                  ?? verificationChipMeta.none).value
+              }`}
+            >
+              <span className="studio-payout-chip__label">
+                {t("teach.dashboard.verification")}
+              </span>
+              <span className="studio-payout-chip__value">
+                {(verificationChipMeta[verificationStatus]
+                  ?? verificationChipMeta.none).value}
+              </span>
+              <span className="studio-payout-chip__hint">
+                {(verificationChipMeta[verificationStatus]
+                  ?? verificationChipMeta.none).hint}
               </span>
             </Link>
 

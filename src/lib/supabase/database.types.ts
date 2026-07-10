@@ -859,6 +859,65 @@ export type Database = {
         }
         Relationships: []
       }
+      creator_verification_cases: {
+        Row: {
+          created_at: string
+          creator_id: string
+          evidence_links: Json
+          id: string
+          note: string | null
+          profession: string
+          registration_id: string
+          registration_region: string
+          registration_type: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          evidence_links?: Json
+          id?: string
+          note?: string | null
+          profession: string
+          registration_id: string
+          registration_region: string
+          registration_type: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          evidence_links?: Json
+          id?: string
+          note?: string | null
+          profession?: string
+          registration_id?: string
+          registration_region?: string
+          registration_type?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_verification_cases_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
       enrollments: {
         Row: {
           course_category: string
@@ -1441,6 +1500,24 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       points_events: {
         Row: {
           created_at: string
@@ -1654,6 +1731,7 @@ export type Database = {
         Row: {
           bio: string | null
           created_at: string
+          creator_verification_status: string
           credentials: Json | null
           current_plan_id: string | null
           display_name: string | null
@@ -1691,6 +1769,7 @@ export type Database = {
         Insert: {
           bio?: string | null
           created_at?: string
+          creator_verification_status?: string
           credentials?: Json | null
           current_plan_id?: string | null
           display_name?: string | null
@@ -1728,6 +1807,7 @@ export type Database = {
         Update: {
           bio?: string | null
           created_at?: string
+          creator_verification_status?: string
           credentials?: Json | null
           current_plan_id?: string | null
           display_name?: string | null
@@ -1874,12 +1954,27 @@ export type Database = {
         Returns: Json
       }
       request_account_action: { Args: { p_type: string }; Returns: string }
+      review_creator_verification: {
+        Args: { p_case_id: string; p_review_note?: string; p_status: string }
+        Returns: Json
+      }
       send_course_message: {
         Args: { p_body: string; p_course_id: string; p_student_id: string }
         Returns: Json
       }
       submit_course_review: {
         Args: { p_body: string; p_course_id: string; p_rating: number }
+        Returns: Json
+      }
+      submit_creator_verification: {
+        Args: {
+          p_evidence_links?: Json
+          p_note?: string
+          p_profession: string
+          p_registration_id: string
+          p_registration_region: string
+          p_registration_type: string
+        }
         Returns: Json
       }
       submit_teacher_course_for_review: {

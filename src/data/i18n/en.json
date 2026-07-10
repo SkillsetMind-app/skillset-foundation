@@ -570,7 +570,8 @@
       "connectStripe": "Connect Stripe to enable",
       "publicProfile": "Public profile",
       "storefront": "Storefront",
-      "newCourse": "New course"
+      "newCourse": "New course",
+      "verification": "Verification"
     },
     "metrics": {
       "revenue30d": "Revenue, 30d",

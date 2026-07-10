@@ -7,6 +7,7 @@ import { AccountActionRequestsPanel } from "@/components/admin/account-action-re
 import { AdminEnrollmentPanel } from "@/components/admin/admin-enrollment-panel";
 import { CommunityModerationQueue } from "@/components/admin/community-moderation-queue";
 import { CourseReviewQueue } from "@/components/admin/course-review-queue";
+import { CreatorVerificationQueue } from "@/components/admin/creator-verification-queue";
 import { ManagedCoursePanel } from "@/components/admin/managed-course-panel";
 import { OpsOverviewMetrics } from "@/components/admin/ops-overview-metrics";
 import { PaymentOperationsPanel } from "@/components/admin/payment-operations-panel";
@@ -21,6 +22,7 @@ import {
 
 const opsTabs = [
   { value: "courses", label: "Courses in review" },
+  { value: "verification", label: "Creator verification" },
   { value: "payments", label: "Payments" },
   { value: "community", label: "Community reports" },
   { value: "support", label: "Support tickets" },
@@ -84,7 +86,9 @@ export function OpsDashboard() {
 
       <OpsOverviewMetrics />
 
-      {activeTab === "payments" ? (
+      {activeTab === "verification" ? (
+        <CreatorVerificationQueue />
+      ) : activeTab === "payments" ? (
         <>
           <PaymentOperationsPanel />
           <AdminEnrollmentPanel />

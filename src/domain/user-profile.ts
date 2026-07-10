@@ -142,6 +142,17 @@ export type UserProfile = {
   stripeConnectPayoutsEnabled?: boolean;
   stripeConnectUpdatedAt?: unknown;
   /**
+   * Professional admission review outcome, mirrored from the latest
+   * creator_verification_cases decision by the verification RPCs. Server-only
+   * writer; absent = treat as "none".
+   */
+  creatorVerificationStatus?:
+    | "none"
+    | "pending"
+    | "needs_changes"
+    | "approved"
+    | "rejected";
+  /**
    * Current effective plan, mirrored from the active subscription record.
    * Absent = treat as "free" (default). The subscription webhook is the
    * single writer; never set this from the client.
