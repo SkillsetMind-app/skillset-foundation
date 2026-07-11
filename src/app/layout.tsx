@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Cormorant_Garamond, Inter, Manrope } from "next/font/google";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -75,6 +77,9 @@ export default async function RootLayout({
             <CookieConsent />
           </I18nProvider>
         </PostHogProvider>
+        {/* Vercel Web Analytics + Speed Insights — enable both in Vercel project settings (Analytics / Speed Insights). */}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
