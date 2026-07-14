@@ -165,7 +165,7 @@ async function releaseClaimedLedger(
       amount,
       currency: normalizeSkillsetCurrency(ledger.currency).toLowerCase(),
       destination,
-      description: `Skillset course payout ${ledger.order_id ?? ledger.id}`,
+      description: `SkillsetMind course payout ${ledger.order_id ?? ledger.id}`,
       metadata: {
         ledgerId: ledger.id,
         orderId: String(ledger.order_id ?? ""),

@@ -1,5 +1,5 @@
 /**
- * PostHog event taxonomy for Skillset.
+ * PostHog event taxonomy for SkillsetMind.
  *
  * Single source of truth for analytics event names + property shapes.
  * Import the constants instead of using magic strings so we can rename

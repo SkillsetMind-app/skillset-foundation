@@ -21,7 +21,7 @@ export function AccountDataPanel() {
 
     try {
       await requestDataExportAction();
-      setMessage("Data export request received. Skillset will process it manually within 72 hours.");
+      setMessage("Data export request received. SkillsetMind will process it manually within 72 hours.");
     } catch {
       setError("Could not request your data export. Try again in a moment.");
     } finally {
@@ -41,7 +41,7 @@ export function AccountDataPanel() {
 
     try {
       await requestAccountDeletionAction();
-      setMessage("Account deletion request received. Skillset will process it manually within 72 hours.");
+      setMessage("Account deletion request received. SkillsetMind will process it manually within 72 hours.");
       setConfirmingDelete(false);
     } catch {
       setError("Could not request account deletion. Try again in a moment.");

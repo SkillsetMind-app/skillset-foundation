@@ -30,7 +30,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
         a: "After enrollment is confirmed, the course appears in the student learning portal under Classroom. Progress, lessons, and any community spaces tied to the course are reachable from there.",
       },
       {
-        q: "How do I create my Skillset account?",
+        q: "How do I create my SkillsetMind account?",
         a: "Click Get started free on the homepage. You can sign up as a learner or jump straight to the teacher application from the For creators page. The same account works for learning and teaching.",
       },
     ],
@@ -41,7 +41,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
     items: [
       {
         q: "Can creators upload courses themselves?",
-        a: "Yes. Creators draft courses inside the Studio, attach lessons and media, and publish to the marketplace on submit. Skillset review runs afterward and never blocks your launch.",
+        a: "Yes. Creators draft courses inside the Studio, attach lessons and media, and publish to the marketplace on submit. SkillsetMind review runs afterward and never blocks your launch.",
       },
       {
         id: "course-pricing",
@@ -55,8 +55,8 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       },
       {
         id: "course-review",
-        q: "How does Skillset review work?",
-        a: "Every course goes through a Skillset review, but review never blocks your launch — courses go on sale as soon as you submit. Reviewers check that lessons are complete, descriptions are accurate, pricing is reasonable, and any claims in the copy can be backed up. Typical review takes a few business days.",
+        q: "How does SkillsetMind review work?",
+        a: "Every course goes through a SkillsetMind review, but review never blocks your launch — courses go on sale as soon as you submit. Reviewers check that lessons are complete, descriptions are accurate, pricing is reasonable, and any claims in the copy can be backed up. Typical review takes a few business days.",
       },
     ],
   },
@@ -74,7 +74,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       },
       {
         q: "What if I cancel my plan?",
-        a: "Cancellation downgrades you to Free at the end of your paid period. Your courses, students, content, and history are preserved — Skillset never deletes a creator's data. Commission goes back to 8% (the Free rate) on new sales from the moment of downgrade.",
+        a: "Cancellation downgrades you to Free at the end of your paid period. Your courses, students, content, and history are preserved — SkillsetMind never deletes a creator's data. Commission goes back to 8% (the Free rate) on new sales from the moment of downgrade.",
       },
     ],
   },
@@ -108,7 +108,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
     label: "Live classes",
     items: [
       {
-        q: "Does Skillset support live classes?",
+        q: "Does SkillsetMind support live classes?",
         a: "Today's model supports external live links (Zoom, Google Meet, etc.) and recording upload workflows. Lessons can include a live session link plus a follow-up recording so learners who missed the live stay on track. Native live streaming is on the roadmap.",
       },
     ],
@@ -119,8 +119,8 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
     items: [
       {
         id: "integrations",
-        q: "What integrations does Skillset support today?",
-        a: "Skillset connects natively with Stripe for checkout, multi-currency payments, and creator payouts. Sign-in, media hosting, and file storage are built into the platform — nothing to set up. Need an integration you don't see yet? Contact support and we'll tell you where it sits on the roadmap.",
+        q: "What integrations does SkillsetMind support today?",
+        a: "SkillsetMind connects natively with Stripe for checkout, multi-currency payments, and creator payouts. Sign-in, media hosting, and file storage are built into the platform — nothing to set up. Need an integration you don't see yet? Contact support and we'll tell you where it sits on the roadmap.",
       },
     ],
   },

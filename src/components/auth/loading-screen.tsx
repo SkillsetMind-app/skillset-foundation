@@ -86,7 +86,7 @@ export function LoadingScreen() {
           Preparing your workspace
         </h1>
         <p className="mt-1 text-[13px] text-[var(--color-ink-soft)]">
-          One moment. Skillset is getting things ready.
+          One moment. SkillsetMind is getting things ready.
         </p>
         {isLongWait ? (
           <button

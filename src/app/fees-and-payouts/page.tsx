@@ -8,7 +8,7 @@ const policies = [
     "Platform fee",
     `Plan-based: ${plans
       .map((plan) => `${plan.name} ${plan.commissionPercent}%`)
-      .join(" · ")}. Every plan includes the same features — the difference is the commission Skillset takes per paid sale. Start free, upgrade when the math helps you.`,
+      .join(" · ")}. Every plan includes the same features — the difference is the commission SkillsetMind takes per paid sale. Start free, upgrade when the math helps you.`,
   ],
   [
     "Stripe processing fee",
@@ -45,7 +45,7 @@ export default function FeesAndPayoutsPage() {
     <PublicPage
       eyebrow="Fees and payouts"
       title="A payout policy built for trust."
-      description="Skillset separates the learner payment, refund window, platform fee, Stripe processing fee, and creator payout ledger so the marketplace can protect learners and creators without hiding the rules."
+      description="SkillsetMind separates the learner payment, refund window, platform fee, Stripe processing fee, and creator payout ledger so the marketplace can protect learners and creators without hiding the rules."
     >
       <section className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {policies.map(([title, detail]) => (

@@ -21,7 +21,7 @@ export type AppNotification = {
   link?: string | null;
   // Display name of whoever triggered the event (a commenter / reviewer). Null
   // for system events (enrollment / certificate). NEVER an email — producers
-  // pass the same "Skillset member" fallback used across the community.
+  // pass the same "SkillsetMind member" fallback used across the community.
   actorName?: string | null;
   // Firestore server timestamp ({ seconds } once resolved). Optional so a row
   // renders even before the timestamp materializes.

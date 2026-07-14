@@ -5,7 +5,7 @@ import { OnboardingWizard } from "@/components/auth/onboarding-wizard";
 import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
 
 export const metadata: Metadata = {
-  title: "Set up your account | Skillset",
+  title: "Set up your account | SkillsetMind",
   robots: {
     index: false,
     follow: false,
@@ -18,7 +18,7 @@ export default function WelcomePage() {
       fallback={
         <SkillsetSpinner
           title="Preparing onboarding"
-          description="One moment. Skillset is getting things ready."
+          description="One moment. SkillsetMind is getting things ready."
         />
       }
     >

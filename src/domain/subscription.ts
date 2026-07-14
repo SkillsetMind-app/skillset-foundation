@@ -18,7 +18,7 @@ export type SubscriptionStatus =
 export type Subscription = {
   /** Firebase Auth uid of the owner. */
   userId: string;
-  /** Which Skillset plan this subscription corresponds to. */
+  /** Which SkillsetMind plan this subscription corresponds to. */
   planId: PlanId;
   /** Billing cycle this subscription was started on. */
   cycle: PlanBillingCycle;

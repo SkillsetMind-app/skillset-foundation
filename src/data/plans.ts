@@ -1,8 +1,8 @@
 /**
- * Skillset pricing model — single source of truth.
+ * SkillsetMind pricing model — single source of truth.
  *
  * Four tiers. Every feature is available on every tier; the plan only
- * changes the commission rate Skillset takes per paid sale and adds an
+ * changes the commission rate SkillsetMind takes per paid sale and adds an
  * optional monthly subscription. Stripe processing fee is passed through
  * to the creator on every sale, regardless of plan (see DECISIONS.md D2
  * and src/domain/payment-split.ts).
@@ -18,7 +18,7 @@ export type PlanBillingCycle = "monthly" | "yearly";
 
 /**
  * Stripe Price IDs for the paid plans. Create the Prices in Stripe
- * Dashboard (Product catalog → Skillset {Plan} → recurring monthly/yearly
+ * Dashboard (Product catalog → SkillsetMind {Plan} → recurring monthly/yearly
  * in USD) and replace the PLACEHOLDER strings with the real `price_...`
  * IDs. The Free plan has no Stripe Price — its presence is implicit
  * (no active subscription → on Free).
@@ -78,10 +78,10 @@ export const plans: ReadonlyArray<Plan> = [
     audience: "New creators validating an idea.",
     breakEvenGmvUsd: null,
     highlights: [
-      "Every Skillset feature — no tier locks",
+      "Every SkillsetMind feature — no tier locks",
       "Publish and sell immediately",
       "Stripe checkout in 30+ currencies",
-      "Skillset Verified certificates",
+      "SkillsetMind Verified certificates",
       "Course communities and live sessions",
     ],
   },

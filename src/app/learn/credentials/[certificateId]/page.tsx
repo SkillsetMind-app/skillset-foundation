@@ -4,7 +4,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 export const metadata = buildPageMetadata({
   title: "Certificate",
-  description: "View and print your Skillset Verified certificate.",
+  description: "View and print your SkillsetMind Verified certificate.",
   path: "/learn/credentials",
 });
 

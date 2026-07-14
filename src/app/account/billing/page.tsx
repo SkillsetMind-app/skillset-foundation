@@ -7,7 +7,7 @@ export default function AccountBillingPage() {
     <ProtectedSurface permissions={["auth.signOut"]}>
       <PlatformShell
         eyebrow="Billing & receipts"
-        title="What you've paid Skillset."
+        title="What you've paid SkillsetMind."
         description="Course purchases stay accessible for life, and every receipt is downloadable. Subscription billing and payment methods live in your secure Stripe portal. Creator payouts are under Payouts."
         compact
       >

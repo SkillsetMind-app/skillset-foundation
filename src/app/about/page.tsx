@@ -5,7 +5,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 export const metadata = buildPageMetadata({
   title: "About",
   description:
-    "Skillset is an international platform for serious online courses, built around reviewed quality, creator income, and verifiable learning.",
+    "SkillsetMind is an international platform for serious online courses, built around reviewed quality, creator income, and verifiable learning.",
   path: "/about",
 });
 
@@ -20,12 +20,12 @@ export default function AboutPage() {
             About
           </p>
           <h1 className="display-title mt-4 text-6xl leading-none text-[var(--color-primary)]">
-            Skillset is a public home for learning, teaching, and trusted growth.
+            SkillsetMind is a public home for learning, teaching, and trusted growth.
           </h1>
           </div>
           <p className="mt-6 text-sm leading-8 text-[var(--color-ink-soft)]">
-            Skillset is where professional educators publish courses and learners
-            earn Skillset Verified certificates employers can check.
+            SkillsetMind is where professional educators publish courses and learners
+            earn SkillsetMind Verified certificates employers can check.
           </p>
         </section>
         <section className="mt-10 grid gap-4 sm:grid-cols-3">

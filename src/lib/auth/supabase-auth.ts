@@ -317,7 +317,7 @@ export async function changeSkillsetPassword(
   }
 }
 
-export async function signOutOfSkillset(): Promise<void> {
+export async function signOutOfSkillsetMind(): Promise<void> {
   const supabase = getSupabaseBrowserClient();
   const { error } = await supabase.auth.signOut();
 

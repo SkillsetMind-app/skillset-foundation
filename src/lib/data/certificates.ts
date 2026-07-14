@@ -19,7 +19,7 @@ function rowToCertificate(row: CertificateRow): Certificate {
     courseSlug: row.course_slug,
     courseTitle: row.course_title,
     courseCategory: row.course_category,
-    authorityLabel: "Skillset Verified",
+    authorityLabel: "SkillsetMind Verified",
     status: row.status as Certificate["status"],
     verificationCode: row.verification_code,
     studentFullName: row.student_full_name,

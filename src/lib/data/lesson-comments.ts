@@ -53,7 +53,7 @@ export async function addLessonComment(input: {
     course_id: input.courseId,
     lesson_id: input.lessonId,
     author_id: input.authorId,
-    author_name: input.authorName.trim() || "Skillset learner",
+    author_name: input.authorName.trim() || "SkillsetMind learner",
     body,
     created_at: timestamp,
     updated_at: timestamp,

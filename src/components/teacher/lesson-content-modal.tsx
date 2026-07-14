@@ -357,7 +357,7 @@ export function LessonContentModal({
                   <p className="lesson-modal__eyebrow">Primary lesson media</p>
                   <h4>{videoStatus === "Empty" ? "Add a video or embed." : "Media is connected."}</h4>
                   <p>
-                    Upload the video to Skillset or paste a YouTube/Vimeo URL.
+                    Upload the video to SkillsetMind or paste a YouTube/Vimeo URL.
                     Learners can play either one in the classroom.
                   </p>
                 </div>
@@ -410,7 +410,7 @@ export function LessonContentModal({
               <label className="lesson-modal-field">
                 <span>
                   YouTube or Vimeo URL
-                  <small>Use this when the video already lives outside Skillset.</small>
+                  <small>Use this when the video already lives outside SkillsetMind.</small>
                 </span>
                 <input
                   value={lesson.externalUrl ?? ""}
@@ -555,7 +555,7 @@ export function LessonContentModal({
               <div className="lesson-modal-setting">
                 <div>
                   <strong>Free preview</strong>
-                  <p>Make this lesson visible before purchase. Skillset recommends one strong preview lesson.</p>
+                  <p>Make this lesson visible before purchase. SkillsetMind recommends one strong preview lesson.</p>
                 </div>
                 <button
                   type="button"

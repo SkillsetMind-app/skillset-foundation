@@ -10,7 +10,7 @@ export default function TeacherBuilderPage() {
       <PlatformShell
         eyebrow="Course builder"
         title="Course Builder."
-        description="Create courses, manage drafts, configure modules, upload lessons and materials, and submit for Skillset review."
+        description="Create courses, manage drafts, configure modules, upload lessons and materials, and submit for SkillsetMind review."
       >
         <Suspense
           fallback={

@@ -14,7 +14,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 export const metadata = buildPageMetadata({
   title: "Trust and safety",
   description:
-    "Skillset is built around controlled course publication, protected student access, transparent payments, moderation, and verifiable learning outcomes.",
+    "SkillsetMind is built around controlled course publication, protected student access, transparent payments, moderation, and verifiable learning outcomes.",
   path: "/trust",
 });
 
@@ -27,7 +27,7 @@ type TrustLayer = {
 const trustLayers: ReadonlyArray<TrustLayer> = [
   {
     title: "Course review",
-    detail: "Skillset reviews every submitted course — lessons, descriptions, pricing, and claims. Review runs without blocking publication.",
+    detail: "SkillsetMind reviews every submitted course — lessons, descriptions, pricing, and claims. Review runs without blocking publication.",
     Icon: FileSearch,
   },
   {
@@ -47,7 +47,7 @@ const trustLayers: ReadonlyArray<TrustLayer> = [
   },
   {
     title: "Verifiable credentials",
-    detail: "Skillset Verified certificates carry a public verification URL employers can check.",
+    detail: "SkillsetMind Verified certificates carry a public verification URL employers can check.",
     Icon: Award,
   },
   {
@@ -62,7 +62,7 @@ export default function TrustPage() {
     <PublicPage
       eyebrow="Trust and safety"
       title="A marketplace needs rules before scale."
-      description="Skillset is built around controlled course publication, protected student access, transparent payments, moderation, and verifiable learning outcomes."
+      description="SkillsetMind is built around controlled course publication, protected student access, transparent payments, moderation, and verifiable learning outcomes."
     >
       <section className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {trustLayers.map((layer) => {

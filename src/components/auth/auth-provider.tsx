@@ -18,7 +18,7 @@ import {
 import {
   getCurrentSkillsetUser,
   listenToAuthState,
-  signOutOfSkillset,
+  signOutOfSkillsetMind,
 } from "@/lib/auth/supabase-auth";
 import {
   currentPrivacyVersion,
@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         ...session,
         refreshUser,
-        signOut: signOutOfSkillset,
+        signOut: signOutOfSkillsetMind,
       }}
     >
       <LegalAcceptanceGate />
@@ -188,10 +188,10 @@ function LegalAcceptanceGate() {
           Legal update
         </p>
         <h2 className="display-title mt-3 text-4xl text-[var(--color-primary)]">
-          Review Skillset terms to continue.
+          Review SkillsetMind terms to continue.
         </h2>
         <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-          Skillset updated its legal terms. Accept the current Terms of Service
+          SkillsetMind updated its legal terms. Accept the current Terms of Service
           and Privacy Policy to continue using your account.
         </p>
 
@@ -204,7 +204,7 @@ function LegalAcceptanceGate() {
               className="mt-1 size-4 accent-[var(--color-primary)]"
             />
             <span>
-              I agree to the current Skillset{" "}
+              I agree to the current SkillsetMind{" "}
               <Link
                 href="/legal/terms"
                 className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
@@ -223,7 +223,7 @@ function LegalAcceptanceGate() {
               className="mt-1 size-4 accent-[var(--color-primary)]"
             />
             <span>
-              I agree to the current Skillset{" "}
+              I agree to the current SkillsetMind{" "}
               <Link
                 href="/legal/privacy"
                 className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"

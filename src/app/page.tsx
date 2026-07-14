@@ -11,7 +11,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 export const metadata = buildPageMetadata({
   title: "Course platform for psychology & personal-development experts",
   description:
-    "Skillset is where psychologists, therapists, and personal-development coaches publish reviewed courses — with private communities, live sessions, and verifiable certificates. We run checkout, classroom, and payouts. You teach.",
+    "SkillsetMind is where psychologists, therapists, and personal-development coaches publish reviewed courses — with private communities, live sessions, and verifiable certificates. We run checkout, classroom, and payouts. You teach.",
   path: "/",
 });
 

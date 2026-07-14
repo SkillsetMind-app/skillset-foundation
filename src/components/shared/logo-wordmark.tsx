@@ -53,7 +53,7 @@ export function LogoWordmark({
         />
         <span className={`logo-wordmark__text ${textSizeClass(nav, compact)}`}>
           {/* One-word SkillsetMind; brass accent only on "Mind" (brand architecture). */}
-          Skillset<span className="logo-wordmark__accent">Mind</span>
+          SkillsetMind<span className="logo-wordmark__accent">Mind</span>
         </span>
       </span>
     );

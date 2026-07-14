@@ -8,7 +8,7 @@ import { isAssistantEnabled } from "@/lib/assistant/config";
 type Message = { role: "user" | "assistant"; content: string };
 
 const GREETING =
-  "Hi — I'm the Skillset assistant. Ask me anything about courses, plans, refunds, payouts, or getting started. I answer from the platform's own documentation.";
+  "Hi — I'm the SkillsetMind assistant. Ask me anything about courses, plans, refunds, payouts, or getting started. I answer from the platform's own documentation.";
 
 const SUGGESTIONS = [
   "How do refunds work?",
@@ -80,7 +80,7 @@ export function AssistantPanel() {
 
   return (
     <section
-      aria-label="Skillset assistant"
+      aria-label="SkillsetMind assistant"
       className="mb-10 rounded-[18px] border fine-rule bg-[var(--color-surface-soft)] p-5 sm:p-7"
     >
       <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">

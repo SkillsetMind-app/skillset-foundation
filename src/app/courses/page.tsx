@@ -8,7 +8,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 export const metadata = buildPageMetadata({
   title: "Browse courses",
   description:
-    "Browse professional courses on Skillset. Every course is reviewed by our team, with course communities, live sessions, and Skillset Verified certificates.",
+    "Browse professional courses on SkillsetMind. Every course is reviewed by our team, with course communities, live sessions, and SkillsetMind Verified certificates.",
   path: "/courses",
 });
 

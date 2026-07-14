@@ -23,7 +23,7 @@ export default function PricingPage() {
     <PublicPage
       eyebrow="Pricing"
       title="Pricing that lowers as you grow."
-      description="Every feature is included on every plan. The plan you pick only changes the commission Skillset takes per paid sale. Stripe's processing fee is passed through to you transparently — never hidden inside the platform percentage."
+      description="Every feature is included on every plan. The plan you pick only changes the commission SkillsetMind takes per paid sale. Stripe's processing fee is passed through to you transparently — never hidden inside the platform percentage."
     >
       {/* Quick decision hint above the cards — answers the question every
           creator actually asks: 'which plan fits me?'. Break-even numbers
@@ -215,7 +215,7 @@ export default function PricingPage() {
         <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
           A learner pays {formatUsd(sampleSaleUsd)} for a course. Stripe takes
           its standard USD processing fee of {formatUsd(sampleStripeFeeUsd)}{" "}
-          (2.9% + $0.30). Skillset takes the plan&apos;s commission. The rest
+          (2.9% + $0.30). SkillsetMind takes the plan&apos;s commission. The rest
           goes to you.
         </p>
 
@@ -304,7 +304,7 @@ export default function PricingPage() {
           <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
             Learners can self-refund within {refundWindowDays} days of purchase
             if they&apos;ve completed less than half the course. A refund reverses
-            the sale automatically, Skillset&apos;s commission included.
+            the sale automatically, SkillsetMind&apos;s commission included.
           </p>
         </article>
         <article className="rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-5">
@@ -352,11 +352,11 @@ export default function PricingPage() {
             },
             {
               q: "How do the fees work on a subscription sale?",
-              a: `Two fees come out of each sale, shown separately so the math is never hidden. Skillset takes its plan commission (8% on Free down to 0% on Plus), and Stripe's standard processing fee (2.9% + $0.30 for USD cards, an estimated 5.4% + $0.30 for non-USD) is passed through to you. Everything left over is yours.`,
+              a: `Two fees come out of each sale, shown separately so the math is never hidden. SkillsetMind takes its plan commission (8% on Free down to 0% on Plus), and Stripe's standard processing fee (2.9% + $0.30 for USD cards, an estimated 5.4% + $0.30 for non-USD) is passed through to you. Everything left over is yours.`,
             },
             {
               q: "When can a sale be refunded, and does it affect my payout?",
-              a: `Learners can self-refund within ${refundWindowDays} days of purchase if they've completed less than half the course, which reverses the sale automatically — Skillset's commission included. Your earnings clear from pending to available ${payoutClearDays} days after each sale, well past the ${refundWindowDays}-day refund window, so a cleared payout never needs to be clawed back.`,
+              a: `Learners can self-refund within ${refundWindowDays} days of purchase if they've completed less than half the course, which reverses the sale automatically — SkillsetMind's commission included. Your earnings clear from pending to available ${payoutClearDays} days after each sale, well past the ${refundWindowDays}-day refund window, so a cleared payout never needs to be clawed back.`,
             },
           ].map((item) => (
             <details
@@ -383,7 +383,7 @@ export default function PricingPage() {
       <section className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-[18px] border fine-rule bg-[var(--color-surface-soft)] p-6">
         <div>
           <p className="text-sm font-semibold text-[var(--color-ink)]">
-            Ready to publish on Skillset?
+            Ready to publish on SkillsetMind?
           </p>
           <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
             Start on Free — upgrade only when the math works in your favor.

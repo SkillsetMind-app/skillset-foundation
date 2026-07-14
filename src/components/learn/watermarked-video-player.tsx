@@ -31,7 +31,7 @@ export function WatermarkedVideoPlayer({
     return () => window.clearInterval(intervalId);
   }, []);
 
-  const watermarkText = `${viewerLabel || "Skillset learner"} - ${timestamp || "Protected playback"}`;
+  const watermarkText = `${viewerLabel || "SkillsetMind learner"} - ${timestamp || "Protected playback"}`;
 
   return (
     <div className="relative mt-3 overflow-hidden rounded-[10px] bg-[var(--color-primary)]">
@@ -47,7 +47,7 @@ export function WatermarkedVideoPlayer({
           {watermarkText}
         </div>
         <div className="absolute bottom-3 left-3 rounded-[8px] bg-[rgba(15,39,68,0.62)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/80">
-          Skillset protected playback
+          SkillsetMind protected playback
         </div>
       </div>
     </div>

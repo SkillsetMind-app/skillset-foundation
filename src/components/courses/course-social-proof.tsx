@@ -81,7 +81,7 @@ export function CourseReviewsSection({
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold text-[var(--color-ink)]">
-                {review.authorName || "Skillset learner"}
+                {review.authorName || "SkillsetMind learner"}
               </p>
               <StarRow rating={review.rating} compact />
             </div>
@@ -100,7 +100,7 @@ export function CourseReviewsSection({
       </div>
 
       <p className="mt-4 text-xs leading-6 text-[var(--color-ink-soft)]">
-        Every review here comes from an enrolled learner. Skillset does not
+        Every review here comes from an enrolled learner. SkillsetMind does not
         accept reviews from anyone else.
       </p>
     </section>
@@ -125,7 +125,7 @@ export function CourseInstructorCard({ teacherId }: { teacherId: string }) {
     return null;
   }
 
-  const name = profile.displayName || "Skillset instructor";
+  const name = profile.displayName || "SkillsetMind instructor";
 
   return (
     <div className="mt-6 rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4">

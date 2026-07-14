@@ -9,14 +9,14 @@ const creatorTools = [
   "Protected student workspace with progress, files, and certificates.",
   "Course-linked community, events, and future notifications.",
   "Stripe Connect onboarding, refund controls, and payout ledger.",
-  "Skillset review of every course, without blocking your launch.",
+  "SkillsetMind review of every course, without blocking your launch.",
   "Shareable course links for simple launch campaigns.",
 ];
 
 const freePlan = planById("free");
 
 export const metadata = buildPageMetadata({
-  title: "Teach on Skillset",
+  title: "Teach on SkillsetMind",
   description: `Publish professional courses to a global audience. Start free at ${freePlan.commissionPercent}% commission, payouts ${payoutClearDays} days after each sale, course community and certificates included on every plan.`,
   path: "/for-creators",
 });
@@ -26,7 +26,7 @@ export default function ForCreatorsPage() {
     <PublicPage
       eyebrow="For creators"
       title="Teach with a real course operating system."
-      description="Skillset is designed for experts who want to publish structured learning products, manage students, build community, and get paid without stitching together disconnected tools."
+      description="SkillsetMind is designed for experts who want to publish structured learning products, manage students, build community, and get paid without stitching together disconnected tools."
     >
       <section className="mt-8 rounded-[18px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-6 shadow-[var(--shadow-soft)]">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
@@ -90,7 +90,7 @@ export default function ForCreatorsPage() {
           </h2>
           <p className="mt-4 text-sm leading-7 text-white/78">
             Creators can draft courses immediately. Marketplace visibility
-            remains controlled by Skillset review so the platform does not turn
+            remains controlled by SkillsetMind review so the platform does not turn
             into a noisy upload directory.
           </p>
           <Link href="/auth?mode=signup&path=teacher" className="button-solid-light mt-6 px-4 py-2.5 text-sm">

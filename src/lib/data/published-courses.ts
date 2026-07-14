@@ -252,7 +252,7 @@ export function teacherCourseToCourseCard(course: TeacherCourse): CourseCard {
     summary: course.summary,
     image: course.coverImageUrl
       || "/brand/logo-mark.png",
-    detail: "Created by an approved Skillset educator.",
+    detail: "Created by an approved SkillsetMind educator.",
     priceLabel,
     freePreviewLabel: hasFreePreview
       ? "Free preview selected"
@@ -296,7 +296,7 @@ export function teacherCourseToLearningCourse(course: TeacherCourse): Course {
     status: "published",
     statusLabel: "Published",
     summary: course.summary,
-    detail: "This private workspace is connected to a teacher-published Skillset course.",
+    detail: "This private workspace is connected to a teacher-published SkillsetMind course.",
     image: course.coverImageUrl
       || "/brand/logo-mark.png",
     level: "Professional",
@@ -315,7 +315,7 @@ export function teacherCourseToLearningCourse(course: TeacherCourse): Course {
         : [
             "Complete the teacher-defined lesson path.",
             "Use course events and community spaces to support progress.",
-            "Track completion toward Skillset credential eligibility.",
+            "Track completion toward SkillsetMind credential eligibility.",
           ],
     modules: course.modules.map((module) => ({
       id: module.id,

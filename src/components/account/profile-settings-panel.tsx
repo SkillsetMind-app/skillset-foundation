@@ -296,7 +296,7 @@ export function ProfileSettingsPanel() {
         Profile settings
       </h3>
       <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        Keep your Skillset identity clear for learning, teaching, communities, and future public profiles.
+        Keep your SkillsetMind identity clear for learning, teaching, communities, and future public profiles.
       </p>
 
       <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
@@ -312,7 +312,7 @@ export function ProfileSettingsPanel() {
             </p>
             <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
               Use a clear square image ({avatarRequirementLabel}). If you skip
-              it, Skillset shows a neutral person icon instead of a letter badge.
+              it, SkillsetMind shows a neutral person icon instead of a letter badge.
             </p>
             <label
               className={`mt-3 inline-flex w-fit cursor-pointer items-center gap-2 rounded-[10px] border border-dashed border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] ${

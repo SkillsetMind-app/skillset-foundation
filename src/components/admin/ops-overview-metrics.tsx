@@ -75,7 +75,7 @@ export function OpsOverviewMetrics() {
     {
       label: "Courses in review",
       value: String(coursesInReview),
-      hint: "Awaiting a Skillset decision",
+      hint: "Awaiting a SkillsetMind decision",
     },
     {
       label: "Open support tickets",

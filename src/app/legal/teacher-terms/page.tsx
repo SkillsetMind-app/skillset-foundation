@@ -6,7 +6,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 export const metadata = buildPageMetadata({
   title: "Teacher Terms",
-  description: "The terms that govern teaching and payouts on Skillset.",
+  description: "The terms that govern teaching and payouts on SkillsetMind.",
   path: "/legal/teacher-terms",
 });
 
@@ -38,7 +38,7 @@ export default function TeacherTermsPage() {
             <Link className="font-semibold text-[var(--color-accent-fg)]" href="/legal/terms">
               Terms of Service
             </Link>{" "}
-            when you publish or sell courses on Skillset (&quot;educator,&quot;
+            when you publish or sell courses on SkillsetMind (&quot;educator,&quot;
             &quot;you&quot;). If these terms conflict with the Terms of
             Service, these terms control for your educator activity.
           </p>
@@ -54,12 +54,12 @@ export default function TeacherTermsPage() {
         </>
       }
     >
-      <LegalSection heading="1. Your relationship with Skillset">
+      <LegalSection heading="1. Your relationship with SkillsetMind">
         <p>
           You are an independent professional, not an employee, agent, or
-          partner of Skillset. You decide what to teach, how to price it
+          partner of SkillsetMind. You decide what to teach, how to price it
           (within the platform&apos;s supported options), and how to run your
-          courses. Skillset provides the technology, checkout, and marketplace
+          courses. SkillsetMind provides the technology, checkout, and marketplace
           — it does not supervise your professional practice.
         </p>
       </LegalSection>
@@ -77,7 +77,7 @@ export default function TeacherTermsPage() {
       <LegalSection heading="3. Your content stays yours">
         <p>
           You retain full ownership of the intellectual property in the
-          content you create. By publishing on Skillset you grant us a
+          content you create. By publishing on SkillsetMind you grant us a
           non-exclusive, worldwide license to host, encode, display, and
           deliver your content to your enrolled students, and to use your
           course title, description, cover image, and public profile to
@@ -101,7 +101,7 @@ export default function TeacherTermsPage() {
         <p>
           Courses go through a platform review before publication. Review
           checks quality and policy compliance; it does not transfer any
-          responsibility for your content to Skillset. Courses may be returned
+          responsibility for your content to SkillsetMind. Courses may be returned
           for changes, paused, or removed if they fail quality, trust,
           payment, or content standards.
         </p>
@@ -109,7 +109,7 @@ export default function TeacherTermsPage() {
 
       <LegalSection heading="5. Education, not treatment">
         <p>
-          Skillset serves psychologists, therapists, and personal-development
+          SkillsetMind serves psychologists, therapists, and personal-development
           professionals, so this boundary is strict:
         </p>
         <ul className="list-disc space-y-2 pl-6">
@@ -141,7 +141,7 @@ export default function TeacherTermsPage() {
           Consistent with The Promise: your student list is yours. You can see
           the name, email, enrollment date, and progress of students in your
           courses, and you can export your content and your student data at
-          any time. If you leave Skillset, you take them with you.
+          any time. If you leave SkillsetMind, you take them with you.
         </p>
         <p>
           In return, you must treat student data lawfully: use it to run and
@@ -156,13 +156,13 @@ export default function TeacherTermsPage() {
         <ul className="list-disc space-y-2 pl-6">
           <li>
             <strong className="text-[var(--color-ink)]">Checkout</strong> — all
-            sales of your courses on Skillset go through the platform&apos;s
+            sales of your courses on SkillsetMind go through the platform&apos;s
             Stripe checkout. Directing platform buyers to an off-platform
             checkout for the same course is prohibited.
           </li>
           <li>
             <strong className="text-[var(--color-ink)]">Commission</strong> —
-            Skillset keeps a commission on each sale according to your
+            SkillsetMind keeps a commission on each sale according to your
             subscription plan, as shown on the{" "}
             <Link className="font-semibold text-[var(--color-accent-fg)]" href="/pricing">
               pricing page
@@ -194,7 +194,7 @@ export default function TeacherTermsPage() {
         <p>
           You are responsible for your own taxes on your earnings, including
           income tax and any VAT/GST or local obligations that apply to you as
-          an independent professional. Skillset and Stripe may issue tax forms
+          an independent professional. SkillsetMind and Stripe may issue tax forms
           or collect tax information where the law requires.
         </p>
       </LegalSection>
@@ -227,7 +227,7 @@ export default function TeacherTermsPage() {
 
       <LegalSection heading="11. Indemnification and liability">
         <p>
-          You will indemnify Skillset against claims arising from your
+          You will indemnify SkillsetMind against claims arising from your
           content, your professional conduct, your marketing claims, or your
           handling of student data. The warranty disclaimers and liability
           limits in the{" "}

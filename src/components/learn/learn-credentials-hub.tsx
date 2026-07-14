@@ -107,14 +107,14 @@ export function LearnCredentialsHub() {
     return (
       <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          Skillset Verified
+          SkillsetMind Verified
         </p>
         <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
           Credentials appear after enrollment.
         </h3>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
           Enroll in a course, complete the required lessons, and this area will
-          show which credentials are in progress or ready for Skillset review.
+          show which credentials are in progress or ready for SkillsetMind review.
         </p>
         <div className="mt-6">
           <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
@@ -131,7 +131,7 @@ export function LearnCredentialsHub() {
         <div className="relative z-[1] flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--color-accent-fg)]">
-              Skillset Verified
+              SkillsetMind Verified
             </p>
             <h2 className="display-title mt-3 max-w-3xl text-4xl leading-[1.03] text-[var(--color-primary)] sm:text-5xl">
               Credentials from real course progress.
@@ -278,10 +278,10 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
       </div>
       <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
         {isEligible
-          ? "This course is complete. Issue your Skillset Verified certificate below."
+          ? "This course is complete. Issue your SkillsetMind Verified certificate below."
           : isIssued
-            ? "Your Skillset Verified certificate has been issued and is ready for verification."
-          : "Complete the course to become eligible for your Skillset Verified certificate."}
+            ? "Your SkillsetMind Verified certificate has been issued and is ready for verification."
+          : "Complete the course to become eligible for your SkillsetMind Verified certificate."}
       </p>
       <div className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4">
         <div className="flex items-center justify-between gap-4">

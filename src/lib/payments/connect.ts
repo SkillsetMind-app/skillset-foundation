@@ -75,7 +75,7 @@ export async function refreshTeacherStripeAccountStatus() {
 /**
  * Mints a Stripe Connect Account Session client_secret that the embedded
  * onboarding component uses to render KYC / bank / identity flow inside
- * the app. The creator never leaves Skillset.
+ * the app. The creator never leaves SkillsetMind.
  */
 export async function fetchConnectAccountSessionSecret(): Promise<string> {
   const { clientSecret } = await postPaymentRoute<{

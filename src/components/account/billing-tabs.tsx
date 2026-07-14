@@ -304,14 +304,14 @@ function OverviewTab({
         )}
         <p className="mt-4 text-xs leading-6 text-[var(--color-ink-soft)]">
           All payments are processed by <strong>Stripe</strong>. Card details
-          are never stored on Skillset.
+          are never stored on SkillsetMind.
         </p>
       </div>
     </div>
   );
 }
 
-/** Cards live in Stripe, never on Skillset — so this tab is an honest portal
+/** Cards live in Stripe, never on SkillsetMind — so this tab is an honest portal
  * delegation, not a fabricated card list. */
 function PaymentMethodsTab({
   profile,
@@ -341,7 +341,7 @@ function PaymentMethodsTab({
         Managed securely by Stripe.
       </h3>
       <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        Skillset never stores your full card details. Add, replace, or remove a
+        SkillsetMind never stores your full card details. Add, replace, or remove a
         card — and set your default — inside the Stripe Customer Portal, the same
         secure surface that holds your invoices and billing history.
       </p>

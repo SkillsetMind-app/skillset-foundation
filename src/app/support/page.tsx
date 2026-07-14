@@ -8,7 +8,7 @@ export default function SupportPage() {
       <PlatformShell
         eyebrow="Support"
         title="Get help without leaving the platform."
-        description="Create support tickets for account, course, payment, or technical issues. The Skillset support team reviews every ticket and replies on this page."
+        description="Create support tickets for account, course, payment, or technical issues. The SkillsetMind support team reviews every ticket and replies on this page."
       >
         <SupportTicketCenter />
       </PlatformShell>

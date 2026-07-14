@@ -88,7 +88,7 @@ export function CertificatePrintView({
         {state === "loading" ? (
           <CertificateNotice
             title="Preparing your certificate..."
-            description="Skillset is loading this credential record."
+            description="SkillsetMind is loading this credential record."
           />
         ) : null}
 
@@ -124,7 +124,7 @@ function buildLinkedInAddUrl(certificate: Certificate): string {
   const params = new URLSearchParams({
     startTask: "CERTIFICATION_NAME",
     name: certificate.courseTitle,
-    organizationName: "Skillset",
+    organizationName: "SkillsetMind",
     certUrl: verifyUrl,
     certId: certificate.verificationCode,
   });

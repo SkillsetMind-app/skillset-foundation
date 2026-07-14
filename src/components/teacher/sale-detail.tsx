@@ -68,7 +68,7 @@ function getTimeline(order: Order) {
   const items = [
     {
       label: "Order created",
-      detail: "Skillset created the order record.",
+      detail: "SkillsetMind created the order record.",
       time: formatDate(order.createdAt),
     },
   ];
@@ -216,7 +216,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             {[
               ["Amount", formatMoney(order.amountMinor, order.currency)],
-              ["Skillset fee", formatMoney(platformFeeMinor, order.currency)],
+              ["SkillsetMind fee", formatMoney(platformFeeMinor, order.currency)],
               ["Net before Stripe fee", formatMoney(creatorNetMinor, order.currency)],
             ].map(([label, value]) => (
               <div

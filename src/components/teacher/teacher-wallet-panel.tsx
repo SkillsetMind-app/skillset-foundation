@@ -27,10 +27,10 @@ import {
 } from "@/lib/payments/connect";
 
 // Shown (as a calm info message, never error styling) when the PLATFORM hasn't
-// enabled Stripe Connect yet — a Skillset-side configuration state, not a
+// enabled Stripe Connect yet — a SkillsetMind-side configuration state, not a
 // failure and not something the teacher can fix.
 const PAYOUTS_UNAVAILABLE_MESSAGE =
-  "Payouts aren't live on Skillset yet — Stripe Connect is still being " +
+  "Payouts aren't live on SkillsetMind yet — Stripe Connect is still being " +
   "configured on our side. No payout account is connected; onboarding will " +
   "open on this page automatically once it's ready.";
 
@@ -44,7 +44,7 @@ export function TeacherWalletPanel() {
   const [ledgerEntries, setLedgerEntries] = useState<PayoutLedgerEntry[]>([]);
   const [ledgerLoaded, setLedgerLoaded] = useState(false);
   // Platform-level truth reported by the onboarding component: when Stripe
-  // Connect isn't enabled on Skillset's Stripe account, NO stored account id is
+  // Connect isn't enabled on SkillsetMind's Stripe account, NO stored account id is
   // verifiable or usable — so the panel must not present one as "Connected".
   const [platformPayoutsUnavailable, setPlatformPayoutsUnavailable] =
     useState(false);
@@ -257,7 +257,7 @@ export function TeacherWalletPanel() {
             {money(teacherNetMinor)}
           </p>
           <p className="mt-2 text-sm text-[rgba(255,255,255,0.72)]">
-            Net across one-time and subscription sales, after Skillset commission
+            Net across one-time and subscription sales, after SkillsetMind commission
             and Stripe fees. Release state is tracked below.
           </p>
 
@@ -312,7 +312,7 @@ export function TeacherWalletPanel() {
             />
           </div>
           <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-            Skillset never stores full bank details. Stripe collects identity,
+            SkillsetMind never stores full bank details. Stripe collects identity,
             tax, and bank information inside the embedded onboarding flow.
           </p>
 
@@ -391,7 +391,7 @@ export function TeacherWalletPanel() {
                 Complete Stripe onboarding before selling paid courses.
               </h3>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-                You stay on Skillset the whole time. Stripe collects the
+                You stay on SkillsetMind the whole time. Stripe collects the
                 legally required identity, tax, and bank details in this
                 embedded step so your payout account meets payment
                 regulations.
@@ -452,7 +452,7 @@ export function TeacherWalletPanel() {
           </h3>
           <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
             Tax forms appear once you have real payout volume. Stripe Connect
-            collects your tax details, and Skillset keeps the payout ledger
+            collects your tax details, and SkillsetMind keeps the payout ledger
             fully transparent.
           </p>
         </div>

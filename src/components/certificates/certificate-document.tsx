@@ -6,15 +6,15 @@ import type { Certificate } from "@/domain/certificate";
  * Presentational, print-optimized certificate. Renders only from a `Certificate`
  * snapshot (no live lookups), so what prints is exactly the permanent record:
  * the locked learner name, the course, the teacher identity captured at
- * issuance, the Skillset authority mark, and the public verification code.
+ * issuance, the SkillsetMind authority mark, and the public verification code.
  */
 export function CertificateDocument({
   certificate,
 }: {
   certificate: Certificate;
 }) {
-  const studentName = certificate.studentFullName?.trim() || "Skillset Learner";
-  const teacherName = certificate.teacherName?.trim() || "Skillset Faculty";
+  const studentName = certificate.studentFullName?.trim() || "SkillsetMind Learner";
+  const teacherName = certificate.teacherName?.trim() || "SkillsetMind Faculty";
   const issuedOn = formatIssuedAt(certificate.issuedAt);
 
   return (
@@ -29,7 +29,7 @@ export function CertificateDocument({
             <span className="relative block h-9 w-36">
               <Image
                 src="/brand/logo-full-dark.png"
-                alt="Skillset"
+                alt="SkillsetMind"
                 fill
                 sizes="160px"
                 className="object-contain object-left"
@@ -71,7 +71,7 @@ export function CertificateDocument({
               {studentName}
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
-              has successfully completed the Skillset program
+              has successfully completed the SkillsetMind program
             </p>
             <h2 className="display-title mt-3 text-2xl text-[var(--color-ink)] sm:text-3xl">
               {certificate.courseTitle}

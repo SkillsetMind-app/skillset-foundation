@@ -5,7 +5,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 export const metadata = buildPageMetadata({
   title: "Privacy Policy",
-  description: "How Skillset collects, uses, and protects your data.",
+  description: "How SkillsetMind collects, uses, and protects your data.",
   path: "/legal/privacy",
 });
 
@@ -33,11 +33,11 @@ export default function PrivacyPage() {
       intro={
         <>
           <p>
-            This policy explains what personal information Skillset collects,
+            This policy explains what personal information SkillsetMind collects,
             why, who it is shared with, and the rights you have over it. It
             applies to visitors, learners, and educators. The data controller
             is Skillset USA, 26 Broadway, New York, NY 10006, United States
-            (&quot;Skillset,&quot; &quot;we,&quot; &quot;us&quot;).
+            (&quot;SkillsetMind,&quot; &quot;we,&quot; &quot;us&quot;).
           </p>
           <p className="mt-3">
             Short version: we collect what the platform needs to run — your
@@ -189,7 +189,7 @@ export default function PrivacyPage() {
       <LegalSection heading="6. International transfers">
         <p>
           Our infrastructure is hosted in the United States. If you access
-          Skillset from outside the US (including the EU/EEA, UK, or Brazil),
+          SkillsetMind from outside the US (including the EU/EEA, UK, or Brazil),
           your data is transferred to and processed in the US. For transfers
           from the EU/EEA and UK we rely on our providers&apos; Standard
           Contractual Clauses and, where applicable, the EU-US Data Privacy
@@ -286,7 +286,7 @@ export default function PrivacyPage() {
 
       <LegalSection heading="10. Children">
         <p>
-          Skillset is for adults. We do not knowingly collect personal
+          SkillsetMind is for adults. We do not knowingly collect personal
           information from anyone under 18. If you believe a minor has created
           an account, contact <SupportLink /> and we will delete it.
         </p>
@@ -312,7 +312,7 @@ export default function PrivacyPage() {
             {LEGAL_EMAIL}
           </a>
           . Data protection contact (including as
-          &quot;encarregado&quot; under the Brazilian LGPD): Skillset Legal,
+          &quot;encarregado&quot; under the Brazilian LGPD): SkillsetMind Legal,
           reachable at the same address.
         </p>
       </LegalSection>

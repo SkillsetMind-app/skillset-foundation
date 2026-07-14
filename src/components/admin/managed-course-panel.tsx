@@ -61,7 +61,7 @@ export function ManagedCoursePanel() {
     return runAction(
       courseId,
       () =>
-        updateCourseReviewStatus(courseId, "inactive", "Unpublished by Skillset admin."),
+        updateCourseReviewStatus(courseId, "inactive", "Unpublished by SkillsetMind admin."),
       "Course unpublished and removed from the marketplace.",
       "We could not unpublish this course. Please try again.",
     );

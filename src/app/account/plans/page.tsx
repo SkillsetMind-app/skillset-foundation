@@ -20,7 +20,7 @@ export default function AccountPlansPage() {
               Choose the plan that fits your course business.
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-              Every plan includes every Skillset feature. Paid plans lower
+              Every plan includes every SkillsetMind feature. Paid plans lower
               the platform commission, and you check out through Stripe
               without leaving this page.
             </p>
@@ -31,7 +31,7 @@ export default function AccountPlansPage() {
           <div className="grid gap-4 lg:grid-cols-3">
             <PolicyCard
               title="Stripe processing"
-              detail="Stripe processing is separate from Skillset commission and appears in the creator ledger per transaction."
+              detail="Stripe processing is separate from SkillsetMind commission and appears in the creator ledger per transaction."
             />
             <PolicyCard
               title="Refund window"

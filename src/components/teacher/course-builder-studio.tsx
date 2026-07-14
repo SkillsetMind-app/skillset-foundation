@@ -1293,7 +1293,7 @@ export function CourseBuilderStudio() {
       setSavedSignature(signatureAtSubmit);
       setAutosaveState("saved");
       await submitTeacherCourseForReview(courseId);
-      setSuccess("Course submitted for Skillset review.");
+      setSuccess("Course submitted for SkillsetMind review.");
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "";
       setError(
@@ -1579,7 +1579,7 @@ export function CourseBuilderStudio() {
                       ? "Build the curriculum."
                       : activeTab === "pricing"
                         ? "Package the offer."
-                        : "Prepare for Skillset review."}
+                        : "Prepare for SkillsetMind review."}
               </h3>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
                 {activeTab === "details"
@@ -1590,7 +1590,7 @@ export function CourseBuilderStudio() {
                       ? "Create the modules, lessons, links, text content, and upload targets that power the members area."
                       : activeTab === "pricing"
                         ? "Set access, price, release timing, and the free preview lesson before publishing."
-                        : "Skillset reviews structure, pricing, preview access, and quality — your course can start selling as soon as you submit."}
+                        : "SkillsetMind reviews structure, pricing, preview access, and quality — your course can start selling as soon as you submit."}
               </p>
             </div>
             <div className="grid gap-2 text-right text-xs font-semibold text-[var(--color-ink-soft)]">
@@ -1605,19 +1605,19 @@ export function CourseBuilderStudio() {
 
         {course?.status === "in_review" ? (
           <p className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-            This course is with Skillset for review. If changes are needed, it
+            This course is with SkillsetMind for review. If changes are needed, it
             will return here as editable.
           </p>
         ) : course?.status === "published" ? (
           <p className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             This course is live. You can keep improving the structure while
-            Skillset controls marketplace visibility.
+            SkillsetMind controls marketplace visibility.
           </p>
         ) : null}
         {course?.reviewNote ? (
           <div className="mt-5 rounded-[14px] border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.04)] p-4">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-              Skillset review note
+              SkillsetMind review note
             </p>
             <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
               {course.reviewNote}
@@ -2412,7 +2412,7 @@ export function CourseBuilderStudio() {
               Submit readiness
             </p>
             <h4 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-              Prepare for Skillset review
+              Prepare for SkillsetMind review
             </h4>
             <div className="mt-5 grid gap-3">
               {readinessItems.map((item) => (
@@ -2427,7 +2427,7 @@ export function CourseBuilderStudio() {
               ))}
             </div>
             <p className="mt-5 text-sm leading-7 text-[var(--color-ink-soft)]">
-              Review stays lightweight and does not block sales: Skillset checks
+              Review stays lightweight and does not block sales: SkillsetMind checks
               structure, basic quality, trust, and pricing readiness after you submit.
             </p>
             <InlineHelp
@@ -2436,7 +2436,7 @@ export function CourseBuilderStudio() {
               className="mt-4"
             >
               Submit only when the core promise, course structure, pricing, and
-              preview lesson are ready for Skillset review.
+              preview lesson are ready for SkillsetMind review.
             </InlineHelp>
           </div>
         ) : null}

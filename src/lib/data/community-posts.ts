@@ -105,7 +105,7 @@ export async function createCommunityPost(input: {
     // co-enrolled member of the course community, so an email fallback for a
     // learner with no displayName leaked their address as the public author
     // label. Same rule applies to the comment + report writers below.
-    author_name: input.user.displayName?.trim() || "Skillset member",
+    author_name: input.user.displayName?.trim() || "SkillsetMind member",
     author_role: input.user.roles[0] ?? "student",
     category: input.category,
     body: input.body.trim(),
@@ -198,7 +198,7 @@ export async function createCommunityComment(input: {
     post_id: input.postId,
     course_slug: input.courseSlug,
     author_id: input.user.uid,
-    author_name: input.user.displayName?.trim() || "Skillset member",
+    author_name: input.user.displayName?.trim() || "SkillsetMind member",
     author_role: input.user.roles[0] ?? "student",
     body: input.body.trim(),
     parent_id: input.parentId ?? null,
@@ -284,7 +284,7 @@ export async function createCommunityReport(input: {
     target_author_id: input.targetAuthorId,
     target_author_name: input.targetAuthorName,
     reporter_id: input.user.uid,
-    reporter_name: input.user.displayName?.trim() || "Skillset member",
+    reporter_name: input.user.displayName?.trim() || "SkillsetMind member",
     reporter_email: input.user.email ?? null,
     reason: input.reason,
     detail: input.detail?.trim() || null,

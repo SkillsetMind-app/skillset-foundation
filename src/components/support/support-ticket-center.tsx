@@ -93,7 +93,7 @@ export function SupportTicketCenter() {
         </h3>
         <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
           Use this for account, course, payment, or technical questions. The
-          Skillset support team reads every ticket and replies right here.
+          SkillsetMind support team reads every ticket and replies right here.
         </p>
         <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
           <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -186,7 +186,7 @@ export function SupportTicketCenter() {
                 {ticket.adminResponse ? (
                   <div className="mt-3 rounded-[10px] border border-[rgba(26,54,93,0.14)] bg-white p-3">
                     <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
-                      Skillset replied
+                      SkillsetMind replied
                     </p>
                     <p className="mt-1 text-sm leading-6 text-[var(--color-ink)]">
                       {ticket.adminResponse}

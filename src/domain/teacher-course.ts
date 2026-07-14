@@ -306,7 +306,7 @@ export function teacherCanSubmitCourse(status: TeacherCourseStatus): boolean {
  * A teacher may permanently delete a course only while it is fully under their
  * own control and has never reached the marketplace: drafts and
  * needs-changes courses. Submitted (in_review), published, and inactive
- * courses are governed by Skillset (review queue, live catalog, or a taken-down
+ * courses are governed by SkillsetMind (review queue, live catalog, or a taken-down
  * course that may carry enrollments/sales) and must not be hard-deleted here.
  */
 export function teacherCanDeleteCourse(status: TeacherCourseStatus): boolean {

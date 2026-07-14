@@ -36,7 +36,7 @@ const steps: ReadonlyArray<Step> = [
   {
     title: "Verify",
     detail:
-      "Meet the course requirements and earn a Skillset Verified certificate with a public verification link anyone can check.",
+      "Meet the course requirements and earn a SkillsetMind Verified certificate with a public verification link anyone can check.",
     Icon: BadgeCheck,
   },
 ];
@@ -46,7 +46,7 @@ export default function HowItWorksPage() {
     <PublicPage
       eyebrow="How it works"
       title="Course-first learning with community built in."
-      description="Skillset keeps the main loop simple: creators publish structured courses, students enroll, learning happens inside a protected workspace, and progress leads toward proof."
+      description="SkillsetMind keeps the main loop simple: creators publish structured courses, students enroll, learning happens inside a protected workspace, and progress leads toward proof."
     >
       <section className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {steps.map((step, index) => {

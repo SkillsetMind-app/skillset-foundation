@@ -67,7 +67,7 @@ export function TeacherCourseStudio({
         setIsLoadingCourses(false);
       },
       () => {
-        setError("We could not load your courses. Please refresh or contact Skillset support.");
+        setError("We could not load your courses. Please refresh or contact SkillsetMind support.");
         setIsLoadingCourses(false);
       },
     );
@@ -80,7 +80,7 @@ export function TeacherCourseStudio({
     try {
       await submitTeacherCourseForReview(courseId);
     } catch {
-      setError("We could not submit this course for review. Please try again or contact Skillset support.");
+      setError("We could not submit this course for review. Please try again or contact SkillsetMind support.");
     } finally {
       setReviewingCourseId(null);
     }
@@ -94,7 +94,7 @@ export function TeacherCourseStudio({
       await deleteTeacherCourse(courseId);
       // The live subscription removes the course from the list automatically.
     } catch {
-      setError("We could not delete this course. Please try again or contact Skillset support.");
+      setError("We could not delete this course. Please try again or contact SkillsetMind support.");
     } finally {
       setDeletingCourseId(null);
       setConfirmingDeleteId(null);
@@ -131,7 +131,7 @@ export function TeacherCourseStudio({
           </div>
           <p className="mt-5 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
             Create a draft, shape the learner path in Course Builder, and
-            submit when the structure is ready for Skillset review.
+            submit when the structure is ready for SkillsetMind review.
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
@@ -195,7 +195,7 @@ export function TeacherCourseStudio({
               </div>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
                 Drafts stay private. Approved courses can keep receiving new
-                lessons and materials while Skillset controls marketplace visibility.
+                lessons and materials while SkillsetMind controls marketplace visibility.
               </p>
             </div>
             {courses.length > 0 ? (
@@ -266,7 +266,7 @@ export function TeacherCourseStudio({
                   {course.reviewNote ? (
                     <div className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.18)] bg-white px-4 py-3">
                       <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
-                        Skillset review note
+                        SkillsetMind review note
                       </p>
                       <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
                         {course.reviewNote}

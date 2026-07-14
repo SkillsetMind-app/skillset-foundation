@@ -23,7 +23,7 @@ export function CertificateVerificationPanel() {
     const code = verificationCode.trim();
 
     if (!code) {
-      setError("Enter a Skillset verification code.");
+      setError("Enter a SkillsetMind verification code.");
       return;
     }
 
@@ -43,14 +43,14 @@ export function CertificateVerificationPanel() {
   return (
     <section className="mx-auto max-w-4xl rounded-[20px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] md:p-8">
       <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-        Skillset Verified
+        SkillsetMind Verified
       </p>
       <h1 className="display-title mt-4 text-4xl text-[var(--color-ink)] md:text-6xl">
         Verify a credential.
       </h1>
       <p className="mt-5 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)] print:hidden">
-        Enter a Skillset verification code to confirm whether a certificate was
-        issued by Skillset. This page returns only course-level verification
+        Enter a SkillsetMind verification code to confirm whether a certificate was
+        issued by SkillsetMind. This page returns only course-level verification
         data, not private learner records.
       </p>
 
@@ -85,7 +85,7 @@ export function CertificateVerificationPanel() {
             Certificate not found
           </h2>
           <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
-            This code does not match an issued Skillset certificate. Check the
+            This code does not match an issued SkillsetMind certificate. Check the
             code and try again.
           </p>
         </div>

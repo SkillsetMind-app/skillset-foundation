@@ -31,7 +31,7 @@ type QuestionDefinition = {
   required: boolean;
 };
 
-// Skillset's launch audience is mental-health and personal-development
+// SkillsetMind's launch audience is mental-health and personal-development
 // professionals, so the teacher branch leads with practice identity.
 const professionOptions = [
   "Psychologist",
@@ -443,7 +443,7 @@ export function OnboardingWizard() {
             You&apos;re all set, {firstName(user?.displayName, user?.email)}.
           </h1>
           <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
-            Skillset is preparing your workspace. Taking you there now.
+            SkillsetMind is preparing your workspace. Taking you there now.
           </p>
           {recap.length > 0 ? (
             <dl className="mx-auto mt-8 max-w-md space-y-3 rounded-[16px] border-[1.5px] border-[var(--color-line)] bg-white p-6 text-left">
@@ -535,7 +535,7 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
-            title="How will you use Skillset first?"
+            title="How will you use SkillsetMind first?"
             lead="You can do both later. This shapes your first dashboard."
           >
             <div className="grid gap-4 sm:grid-cols-2">
@@ -562,7 +562,7 @@ export function OnboardingWizard() {
           <OnboardingQuestion
             number={question.number}
             title="What best describes your work?"
-            lead="This helps Skillset review your courses and tailor your studio."
+            lead="This helps SkillsetMind review your courses and tailor your studio."
           >
             <OptionGrid
               options={professionOptions}
@@ -578,7 +578,7 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
-            title="Where did you hear about Skillset?"
+            title="Where did you hear about SkillsetMind?"
           >
             <OptionGrid
               options={sourceOptions}
@@ -606,7 +606,7 @@ export function OnboardingWizard() {
               <LargeRadio
                 selected={answers.alreadySold === "no"}
                 title={alreadySoldLabels.no}
-                description="Skillset is built for newcomers too."
+                description="SkillsetMind is built for newcomers too."
                 onClick={() =>
                   void updateAnswer(
                     { ...answers, alreadySold: "no", monthlyRevenue: undefined },
@@ -623,7 +623,7 @@ export function OnboardingWizard() {
           <OnboardingQuestion
             number={question.number}
             title="What's your monthly revenue from online sales today?"
-            lead="Honest answers help Skillset calibrate features for your scale."
+            lead="Honest answers help SkillsetMind calibrate features for your scale."
           >
             <div className="grid gap-2">
               {revenueOptions.map((option) => (
@@ -676,7 +676,7 @@ export function OnboardingWizard() {
             number={question.number}
             title={
               answers.path === "teacher"
-                ? "What's your Instagram handle? Skillset uses it for review and discovery."
+                ? "What's your Instagram handle? SkillsetMind uses it for review and discovery."
                 : "What's your Instagram handle? (optional)"
             }
             lead="Just the @ - no full URL needed."

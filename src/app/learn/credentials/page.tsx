@@ -7,8 +7,8 @@ export default function LearnCredentialsPage() {
     <ProtectedSurface permissions={["certificates.view"]}>
       <PlatformShell
         eyebrow="Credentials"
-        title="Track your Skillset Verified progress."
-        description="Credentials begin with course completion eligibility. Issuance remains controlled by Skillset so certificates can stay trustworthy."
+        title="Track your SkillsetMind Verified progress."
+        description="Credentials begin with course completion eligibility. Issuance remains controlled by SkillsetMind so certificates can stay trustworthy."
       >
         <LearnCredentialsHub />
       </PlatformShell>

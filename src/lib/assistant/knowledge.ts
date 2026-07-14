@@ -11,14 +11,14 @@ import { payoutClearDays, plans, refundWindowDays } from "@/data/plans";
 // Real, shipped platform capabilities. Keep each line traceable to a live
 // surface — this block is the only hand-written part of the corpus, so it is
 // the only part a fact-check needs to re-verify against the codebase.
-const PLATFORM_OVERVIEW = `Skillset is an online course marketplace where experts (psychologists, therapists, coaches, and other professionals) create and sell courses, and learners study them in a members area. One account can both learn and teach.
+const PLATFORM_OVERVIEW = `SkillsetMind is an online course marketplace where experts (psychologists, therapists, coaches, and other professionals) create and sell courses, and learners study them in a members area. One account can both learn and teach.
 - Checkout and subscriptions run on Stripe; creators receive payouts through Stripe Connect after connecting their account in the Studio.
 - Course video is hybrid: teachers can upload video files or embed from YouTube/Vimeo.
 - Each course can enable an opt-in community space inside the members area.
 - Teachers can schedule live sessions (external links such as Zoom/Meet); enrolled students see them in the course agenda and get an in-app notification.
 - Students can message the course teacher from inside the course; teachers reply from Studio → Messages. There is no student-to-student messaging.
 - Curated learning paths (ordered course sequences) can appear on the student learning dashboard with rolled-up progress.
-- Skillset issues course certificates that can be verified online.
+- SkillsetMind issues course certificates that can be verified online.
 - The platform interface is available in English, Portuguese, and Spanish.
 - Support: the /support page, or email support@skillsetmind.com. Legal terms live at /legal/terms, /legal/privacy, and /legal/teacher-terms.`;
 
@@ -52,7 +52,7 @@ function faqSection(): string {
 /** The full grounding context sent to the assistant on every request. */
 export function buildAssistantKnowledge(): string {
   return [
-    "# Skillset platform overview",
+    "# SkillsetMind platform overview",
     PLATFORM_OVERVIEW,
     "# Plans, fees, refunds, payouts",
     plansSection(),

@@ -411,7 +411,7 @@ function CommunityMembersPanel({
   currentUserId: string | null;
 }) {
   // Course-scoped roster: the distinct people who have posted in THIS space,
-  // joined with their global Skillset standing (level/points come from likes
+  // joined with their global SkillsetMind standing (level/points come from likes
   // received). Enrollment lists are private by design, so "contributors" is the
   // honest, privacy-safe roster we can show without a new read, rule, or any
   // fabricated "online" status. Both inputs are already subscribed by the
@@ -458,7 +458,7 @@ function CommunityMembersPanel({
         ) : null}
       </div>
       <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
-        People active in this space, ranked by their Skillset level. Levels and
+        People active in this space, ranked by their SkillsetMind level. Levels and
         points come from likes their community posts have earned.
       </p>
 
@@ -1061,7 +1061,7 @@ function ReportControl({
       });
       setDetail("");
       setIsOpen(false);
-      setMessage("Report sent to Skillset trust review.");
+      setMessage("Report sent to SkillsetMind trust review.");
     } catch {
       setMessage("We could not submit this report.");
     } finally {

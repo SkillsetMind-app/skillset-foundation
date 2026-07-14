@@ -62,7 +62,7 @@ const statusCopy: Record<TeacherCourse["status"], string> = {
   draft:
     "Private draft — only you can see this course. Complete the checklist and send it for review.",
   in_review:
-    "Skillset review in progress. Editing reopens if the review team requests changes.",
+    "SkillsetMind review in progress. Editing reopens if the review team requests changes.",
   needs_changes:
     "The review team requested changes. Address the note below, update the course, and resubmit.",
   published: "Live on the marketplace. Students can enroll right now.",
@@ -488,7 +488,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 {course.reviewNote ? (
                   <div className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.18)] bg-white px-4 py-3">
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
-                      Skillset review note
+                      SkillsetMind review note
                     </p>
                     <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
                       {course.reviewNote}

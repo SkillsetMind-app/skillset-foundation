@@ -23,7 +23,7 @@ describe("credential candidates", () => {
     expect(getCredentialCandidate(enrollment).status).toBe("in_progress");
   });
 
-  it("marks completed enrollments as eligible for Skillset review", () => {
+  it("marks completed enrollments as eligible for SkillsetMind review", () => {
     expect(
       getCredentialCandidate({
         ...enrollment,
@@ -42,7 +42,7 @@ describe("credential candidates", () => {
       courseSlug: enrollment.courseSlug,
       courseTitle: enrollment.courseTitle,
       courseCategory: enrollment.courseCategory,
-      authorityLabel: "Skillset Verified",
+      authorityLabel: "SkillsetMind Verified",
       status: "issued",
       verificationCode: "SK-COURSE-123",
     };

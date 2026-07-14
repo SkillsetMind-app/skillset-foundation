@@ -19,7 +19,7 @@ import {
 import { useTheme } from "@/lib/theme/theme-provider";
 
 /**
- * Renders Stripe's embedded creator-onboarding flow INSIDE Skillset.
+ * Renders Stripe's embedded creator-onboarding flow INSIDE SkillsetMind.
  * The creator completes KYC, identity, and bank-account verification
  * without ever being redirected to a Stripe-hosted page.
  *
@@ -30,7 +30,7 @@ import { useTheme } from "@/lib/theme/theme-provider";
  *      a fresh secret each time.
  *   3. <ConnectComponentsProvider> establishes context; the actual UI
  *      lives in <ConnectAccountOnboarding>. The component handles its
- *      own form, validation, and step navigation — Skillset just owns
+ *      own form, validation, and step navigation — SkillsetMind just owns
  *      the host page.
  *
  * onExit fires when the creator finishes (or escapes) onboarding. We
@@ -41,7 +41,7 @@ const publishableKey =
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? null;
 
 /**
- * Stripe's Appearance API runs inside an iframe and can't read Skillset's CSS
+ * Stripe's Appearance API runs inside an iframe and can't read SkillsetMind's CSS
  * variables, so we hand it concrete hex values that mirror our design tokens
  * (globals.css :root for light, [data-theme="dark"] for dark). Without this the
  * embedded KYC flow renders a white box punched into the dark UI. Kept at module
@@ -132,7 +132,7 @@ export function TeacherConnectOnboarding({
             // Connect asks again only when the session later expires.
             return fetchConnectAccountSessionSecret();
           },
-          // Inherit Skillset brand colors (light/dark) so the embedded UI doesn't
+          // Inherit SkillsetMind brand colors (light/dark) so the embedded UI doesn't
           // look like a foreign Stripe widget plopped onto the page.
           appearance: buildConnectAppearance(themeRef.current),
         });
@@ -224,7 +224,7 @@ export function TeacherConnectOnboarding({
           Payouts are being configured.
         </h4>
         <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
-          Skillset is finishing its secure payout setup with Stripe. This is on
+          SkillsetMind is finishing its secure payout setup with Stripe. This is on
           our side, not yours — there&apos;s nothing for you to fix here.
           <strong className="text-[var(--color-ink)]">
             {" "}No payout account is connected yet.
@@ -250,7 +250,7 @@ export function TeacherConnectOnboarding({
     // No client publishable key in this build, so the embedded component
     // can't initialize. Instead of a dead-end "check back soon" message,
     // offer Stripe's hosted onboarding — it only needs the server secret
-    // (already configured) and redirects back to Skillset when done. This
+    // (already configured) and redirects back to SkillsetMind when done. This
     // keeps payout setup reachable even if the publishable key is missing.
     return (
       <div className="rounded-[14px] border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]">
@@ -263,7 +263,7 @@ export function TeacherConnectOnboarding({
         <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
           Connect a payout account to start selling paid courses. Stripe
           verifies your identity and bank details on a secure page and returns
-          you to Skillset the moment you finish.
+          you to SkillsetMind the moment you finish.
         </p>
         {error ? (
           <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
@@ -365,7 +365,7 @@ function StripeConnectFallback({
       <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
         {detail} This can happen with browser privacy settings, blocked cookies,
         or when Stripe requires a stronger authentication step. The payout setup
-        still works; this fallback returns you to Skillset after completion.
+        still works; this fallback returns you to SkillsetMind after completion.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <button

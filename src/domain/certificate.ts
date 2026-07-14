@@ -10,7 +10,7 @@ export type Certificate = {
   courseSlug: string;
   courseTitle: string;
   courseCategory: string;
-  authorityLabel: "Skillset Verified";
+  authorityLabel: "SkillsetMind Verified";
   status: Extract<CertificateStatus, "issued" | "revoked">;
   verificationCode: string;
   /** Locked at issuance — the learner's full name printed on the credential. */
@@ -34,7 +34,7 @@ export type CredentialCandidate = {
   courseCategory: string;
   progressPercent: number;
   status: CertificateStatus;
-  authorityLabel: "Skillset Verified";
+  authorityLabel: "SkillsetMind Verified";
   certificateId?: string | null;
   verificationCode?: string | null;
 };
@@ -58,7 +58,7 @@ export function getCredentialCandidate(
       : isComplete
         ? "eligible"
         : "in_progress",
-    authorityLabel: "Skillset Verified",
+    authorityLabel: "SkillsetMind Verified",
     certificateId: certificate?.id ?? null,
     verificationCode: certificate?.verificationCode ?? null,
   };

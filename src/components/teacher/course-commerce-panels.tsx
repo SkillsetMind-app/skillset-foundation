@@ -504,7 +504,7 @@ export function CoproducersPanel({ courseId }: { courseId: string }) {
       await inviteCourseCoproducer({ courseId, email, sharePct });
       setEmail("");
       setNotice(
-        "Co-producer recorded. Skillset doesn't notify them yet — share the terms with them directly.",
+        "Co-producer recorded. SkillsetMind doesn't notify them yet — share the terms with them directly.",
       );
     } catch (inviteError) {
       setError(toMessage(inviteError, "Could not record the co-producer."));

@@ -17,7 +17,7 @@ type CreateBillingCheckoutResult = {
  * client never has to know it.
  *
  * The UI then renders `<EmbeddedCheckoutProvider clientSecret={...}>`
- * — the learner stays on Skillset, the card form is Stripe Elements
+ * — the learner stays on SkillsetMind, the card form is Stripe Elements
  * inside our page (PCI-compliant, no redirect).
  */
 export async function createBillingCheckoutClientSecret(

@@ -446,7 +446,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
               The first courses are on the way.
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
-              Skillset reviews every course in the catalog to keep quality
+              SkillsetMind reviews every course in the catalog to keep quality
               high. Want to be among the first educators to publish here?
               You can start today.
             </p>

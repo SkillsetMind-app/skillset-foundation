@@ -517,7 +517,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
             {!checkoutEnabled ? (
               <p className="mt-3 rounded-[10px] border border-[rgba(24,58,94,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
                 Checkout is not available yet. You can preview this course now
-                and enroll once purchasing opens on Skillset.
+                and enroll once purchasing opens on SkillsetMind.
               </p>
             ) : null}
           </>
@@ -630,7 +630,7 @@ function getUnpublishedCourseState(
       return {
         title: "This course is under review.",
         detail:
-          "You submitted it for approval. Skillset publishes it once review is complete — you'll be notified. Track its status from your teaching dashboard.",
+          "You submitted it for approval. SkillsetMind publishes it once review is complete — you'll be notified. Track its status from your teaching dashboard.",
         action: teachAction,
       };
     }
@@ -651,7 +651,7 @@ function getUnpublishedCourseState(
       return {
         title: "This course is currently unpublished.",
         detail:
-          "It is not visible to learners right now. Contact Skillset support if you need it republished.",
+          "It is not visible to learners right now. Contact SkillsetMind support if you need it republished.",
         action: teachAction,
       };
     }
@@ -673,7 +673,7 @@ function getUnpublishedCourseState(
     return {
       title: "This course is still a draft.",
       detail:
-        "Finish building it and submit it for review from your teaching dashboard. It becomes public once Skillset approves it.",
+        "Finish building it and submit it for review from your teaching dashboard. It becomes public once SkillsetMind approves it.",
       action: teachAction,
     };
   }

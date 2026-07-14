@@ -9,7 +9,7 @@ const SUPPORT_EMAIL = "support@skillsetmind.com";
 export const metadata = buildPageMetadata({
   title: "Contact",
   description:
-    "Reach the Skillset team for support, partnerships, or press.",
+    "Reach the SkillsetMind team for support, partnerships, or press.",
   path: "/contact",
 });
 
@@ -17,7 +17,7 @@ const contactRoutes = [
   {
     label: "General inquiries",
     value:
-      "Questions about programs, access, and the overall Skillset experience.",
+      "Questions about programs, access, and the overall SkillsetMind experience.",
     action: {
       label: "Email the team",
       href: `mailto:${SUPPORT_EMAIL}?subject=General%20inquiry`,
@@ -29,7 +29,7 @@ const contactRoutes = [
     value:
       "For professionals who want to teach, collaborate, or bring expertise to the platform.",
     action: {
-      label: "Explore teaching on Skillset",
+      label: "Explore teaching on SkillsetMind",
       href: "/for-creators",
       external: false,
     },

@@ -88,7 +88,7 @@ export function AccountSettingsHub() {
           Settings
         </p>
         <h1 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] lg:text-5xl">
-          Your Skillset preferences.
+          Your SkillsetMind preferences.
         </h1>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
           Profile, login email, password, alerts, learning defaults, and privacy

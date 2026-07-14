@@ -6,13 +6,13 @@ type SkillsetSpinnerProps = {
 };
 
 /**
- * The single canonical Skillset loading visual: an animated circular
+ * The single canonical SkillsetMind loading visual: an animated circular
  * spinner with a calm title/description. Used everywhere a loading
  * state is shown so the experience is consistent (no second style).
  */
 export function SkillsetSpinner({
   title = "Preparing your workspace",
-  description = "One moment. Skillset is getting things ready.",
+  description = "One moment. SkillsetMind is getting things ready.",
   fullscreen = true,
 }: SkillsetSpinnerProps) {
   const content = (

@@ -11,7 +11,7 @@ export default function NotFound() {
           This page could not be found.
         </h1>
         <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-          Use the links below to keep exploring Skillset.
+          Use the links below to keep exploring SkillsetMind.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link

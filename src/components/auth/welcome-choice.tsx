@@ -53,7 +53,7 @@ export function WelcomeChoice() {
             Welcome to Skillset
           </p>
           <h1 className="display-title mt-4 text-[38px] font-semibold leading-[1.1] text-[var(--color-primary)]">
-            How will you use Skillset?
+            How will you use SkillsetMind?
           </h1>
           <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
             You can change this later in your account settings.
@@ -75,7 +75,7 @@ export function WelcomeChoice() {
                 </span>
                 <span className="mt-2 block text-[13px] leading-6 text-[var(--color-ink-soft)]">
                   Browse programs, enroll in courses, join course communities,
-                  and earn Skillset Verified certificates.
+                  and earn SkillsetMind Verified certificates.
                 </span>
               </span>
               <ArrowRight

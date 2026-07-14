@@ -36,7 +36,7 @@ export default async function OnboardingPage() {
             <SkillsetSpinner
               fullscreen={false}
               title="Preparing onboarding"
-              description="One moment. Skillset is getting things ready."
+              description="One moment. SkillsetMind is getting things ready."
             />
           }
         >

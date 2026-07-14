@@ -12,7 +12,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 export const metadata = buildPageMetadata({
   title: "Help center",
   description:
-    "Answers about courses, payments, payouts, refunds, integrations, and getting started on Skillset.",
+    "Answers about courses, payments, payouts, refunds, integrations, and getting started on SkillsetMind.",
   path: "/help",
 });
 

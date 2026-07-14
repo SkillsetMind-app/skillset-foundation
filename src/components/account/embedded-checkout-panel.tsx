@@ -198,7 +198,7 @@ export function EmbeddedCheckoutPanel({
           You&apos;re subscribing to
         </p>
         <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
-          Skillset {plan.name}
+          SkillsetMind {plan.name}
         </h2>
         <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
           {plan.tagline}

@@ -1473,7 +1473,7 @@ function LessonDiscussion({
         authorId: user.uid,
         // No email fallback: lesson comments are readable by every enrolled
         // learner, so an email-as-name leaked the author's address.
-        authorName: user.displayName || "Skillset learner",
+        authorName: user.displayName || "SkillsetMind learner",
         body,
       });
       setBody("");
@@ -1712,7 +1712,7 @@ function ProtectedAssetPreview({ asset }: { asset: CourseAsset }) {
   const viewerLabel =
     user?.email
     || user?.displayName
-    || "Skillset learner";
+    || "SkillsetMind learner";
 
   useEffect(() => {
     let isMounted = true;

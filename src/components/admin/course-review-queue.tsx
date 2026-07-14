@@ -20,7 +20,7 @@ const actionLabels: Record<ReviewAction, string> = {
 const defaultReviewNotes: Record<ReviewAction, string> = {
   published: "Approved for marketplace publishing.",
   needs_changes: "",
-  inactive: "Kept inactive by Skillset review.",
+  inactive: "Kept inactive by SkillsetMind review.",
 };
 
 function formatTeacherCoursePrice(course: TeacherCourse): string {
@@ -140,7 +140,7 @@ export function CourseReviewQueue() {
             Course review queue
           </p>
           <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-            Courses waiting for Skillset approval
+            Courses waiting for SkillsetMind approval
           </h3>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
             Review the course structure, then approve it for the marketplace,

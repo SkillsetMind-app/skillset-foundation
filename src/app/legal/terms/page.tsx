@@ -6,7 +6,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 export const metadata = buildPageMetadata({
   title: "Terms of Service",
-  description: "The terms that govern use of the Skillset platform.",
+  description: "The terms that govern use of the SkillsetMind platform.",
   path: "/legal/terms",
 });
 
@@ -36,12 +36,12 @@ export default function TermsPage() {
           <p>
             These Terms of Service (&quot;Terms&quot;) are a binding agreement
             between you and Skillset USA{" "}
-            (&quot;Skillset,&quot; &quot;we,&quot; &quot;us&quot;), the operator
-            of the Skillset platform. They apply when you create an account,
-            browse, enroll in a course, or publish content on Skillset.
+            (&quot;SkillsetMind,&quot; &quot;we,&quot; &quot;us&quot;), the operator
+            of the SkillsetMind platform. They apply when you create an account,
+            browse, enroll in a course, or publish content on SkillsetMind.
           </p>
           <p className="mt-3">
-            Skillset is an online course marketplace for psychologists,
+            SkillsetMind is an online course marketplace for psychologists,
             therapists, and personal-development professionals. Two additional
             documents form part of this agreement: the{" "}
             <Link className="font-semibold text-[var(--color-accent-fg)]" href="/legal/privacy">
@@ -58,20 +58,20 @@ export default function TermsPage() {
     >
       <LegalSection heading="1. Acceptance and eligibility">
         <p>
-          By creating an account or using Skillset you accept these Terms. If
+          By creating an account or using SkillsetMind you accept these Terms. If
           you do not agree, do not use the platform.
         </p>
         <p>
           You must be at least <strong className="text-[var(--color-ink)]">18 years old</strong>{" "}
-          and legally capable of entering into contracts to use Skillset. If
-          you use Skillset on behalf of an organization, you confirm you are
+          and legally capable of entering into contracts to use SkillsetMind. If
+          you use SkillsetMind on behalf of an organization, you confirm you are
           authorized to bind that organization to these Terms.
         </p>
       </LegalSection>
 
       <LegalSection heading="2. Your account and roles">
         <p>
-          Skillset uses a single account with up to two roles: learner
+          SkillsetMind uses a single account with up to two roles: learner
           (enrolling in courses) and educator (publishing courses). You choose
           your role after registration and may hold both under the same
           account. Registration requires a valid email address and password;
@@ -89,10 +89,10 @@ export default function TermsPage() {
 
       <LegalSection heading="3. The platform and course review">
         <p>
-          Skillset provides the technology to host and deliver courses: video
+          SkillsetMind provides the technology to host and deliver courses: video
           classrooms, private per-course communities, live sessions, publicly
           verifiable certificates, and course reviews by enrolled learners.
-          Courses are created by independent educators, not by Skillset.
+          Courses are created by independent educators, not by SkillsetMind.
         </p>
         <p>
           Courses go through a platform review before publication. Review is a
@@ -115,7 +115,7 @@ export default function TermsPage() {
 
       <LegalSection heading="5. Not therapy or medical advice">
         <p>
-          Courses on Skillset are educational products. They are{" "}
+          Courses on SkillsetMind are educational products. They are{" "}
           <strong className="text-[var(--color-ink)]">
             not psychotherapy, counseling, medical care, or a substitute for
             treatment
@@ -132,7 +132,7 @@ export default function TermsPage() {
       <LegalSection heading="6. Payments and billing">
         <p>
           Paid enrollments and educator subscriptions are processed by Stripe.
-          Skillset does not store full payment card numbers. Prices are shown
+          SkillsetMind does not store full payment card numbers. Prices are shown
           at checkout in the listed currency, and you authorize the charge when
           you confirm a purchase. You are responsible for any taxes, duties,
           or bank fees that apply to your purchase under your local law.
@@ -161,7 +161,7 @@ export default function TermsPage() {
 
       <LegalSection heading="8. Certificates">
         <p>
-          Certificates issued on Skillset attest to completion of a specific
+          Certificates issued on SkillsetMind attest to completion of a specific
           course and are verifiable through a public URL. They are not
           professional licenses, accreditations, or clinical qualifications,
           and may not be presented as such.
@@ -172,7 +172,7 @@ export default function TermsPage() {
         <p>
           When you post in a community, join a live session, or leave a course
           review, you remain responsible for what you share. Reviews must
-          reflect your genuine experience. You grant Skillset a non-exclusive
+          reflect your genuine experience. You grant SkillsetMind a non-exclusive
           license to host and display the content you post on the platform so
           the features can function.
         </p>
@@ -192,8 +192,8 @@ export default function TermsPage() {
           <li>impersonate any person or misrepresent credentials or affiliations;</li>
           <li>harass, threaten, or abuse other learners, educators, or staff;</li>
           <li>
-            solicit platform users off-platform to circumvent Skillset checkout
-            for a course sold on Skillset;
+            solicit platform users off-platform to circumvent SkillsetMind checkout
+            for a course sold on SkillsetMind;
           </li>
           <li>use automated tools to access the platform except through interfaces we provide.</li>
         </ul>
@@ -206,12 +206,12 @@ export default function TermsPage() {
       <LegalSection heading="11. Intellectual property">
         <p>
           Course content remains the property of the educators who create it or
-          their licensors. The Skillset name, brand, design, and platform
-          software are owned by Skillset. Except for the access license in
+          their licensors. The SkillsetMind name, brand, design, and platform
+          software are owned by SkillsetMind. Except for the access license in
           Section 4, nothing in these Terms transfers any ownership to you.
         </p>
         <p>
-          If you believe content on Skillset infringes your copyright, send a
+          If you believe content on SkillsetMind infringes your copyright, send a
           notice to <SupportLink /> identifying the work, the infringing
           material, and your contact details, and we will process it under
           applicable law (including the DMCA where it applies).
@@ -247,11 +247,11 @@ export default function TermsPage() {
 
       <LegalSection heading="14. Limitation of liability">
         <p>
-          To the maximum extent permitted by law, Skillset will not be liable
+          To the maximum extent permitted by law, SkillsetMind will not be liable
           for indirect, incidental, special, consequential, or punitive
           damages, or for lost profits, data, or goodwill. Our total aggregate
           liability for any claim relating to the platform is limited to the
-          greater of (a) the amounts you paid to Skillset in the twelve months
+          greater of (a) the amounts you paid to SkillsetMind in the twelve months
           before the claim arose, or (b) USD 100. Nothing in these Terms limits
           liability that cannot be limited by law, including under mandatory
           consumer-protection rules of your country of residence.
@@ -260,7 +260,7 @@ export default function TermsPage() {
 
       <LegalSection heading="15. Indemnification">
         <p>
-          You will indemnify and hold Skillset harmless from claims, damages,
+          You will indemnify and hold SkillsetMind harmless from claims, damages,
           and reasonable legal costs arising from your content, your violation
           of these Terms, or your violation of any law or third-party right,
           except to the extent caused by our own breach of this agreement.
@@ -292,7 +292,7 @@ export default function TermsPage() {
           We may update these Terms as the platform evolves. For material
           changes we will update the effective date above and notify you by
           email or in-product notice before the changes take effect. Continuing
-          to use Skillset after that date means you accept the revised Terms.
+          to use SkillsetMind after that date means you accept the revised Terms.
         </p>
         <p>
           These Terms are written in English. Translations may be provided for

@@ -98,7 +98,7 @@ export function CreateCourseStart({ ownerId }: CreateCourseStartProps) {
           Start with the course shell.
         </h2>
         <p className="mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          Create the draft first. Then Skillset opens the full builder for cover,
+          Create the draft first. Then SkillsetMind opens the full builder for cover,
           modules, lessons, uploads, pricing, preview, and review.
         </p>
 

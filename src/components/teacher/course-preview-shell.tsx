@@ -60,7 +60,7 @@ export function CoursePreviewShell({ courseId }: CoursePreviewShellProps) {
     return (
       <PreviewState
         title="Loading preview..."
-        detail="Skillset is preparing the student-facing members area."
+        detail="SkillsetMind is preparing the student-facing members area."
       />
     );
   }

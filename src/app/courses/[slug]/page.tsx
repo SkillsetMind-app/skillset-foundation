@@ -38,7 +38,7 @@ export async function generateMetadata({
   return buildPageMetadata({
     title: "Course",
     description:
-      "Explore this Skillset course — curriculum, preview lessons, and enrollment.",
+      "Explore this SkillsetMind course — curriculum, preview lessons, and enrollment.",
     path: `/courses/${slug}`,
   });
 }
