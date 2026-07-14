@@ -4600,12 +4600,15 @@ select:focus-visible {
   white-space: nowrap;
 }
 
-/* Bulletproof active-state colors for nav items and the workspace switcher.
-   The sidebar is ALWAYS the dark navy gradient (it does not flip with theme),
-   and the active pill background is hardcoded white. So the pill's text/icon
-   must ALSO be a fixed dark navy — NOT var(--color-primary), which flips to
-   light blue (#8fb4e4) in dark mode and renders blue-on-white (low contrast).
-   #0f2744 is deep navy with ~13:1 contrast on white in both themes. */
+/* ─── Sidebar dark skin (SCOPED) ──────────────────────────────────────────
+   PlatformNav renders in TWO skins: the dark navy desktop sidebar (styled by
+   THIS block) and the white mobile drawer (styled by the component's own
+   Tailwind classes). Every rule here MUST stay scoped under .platform-sidebar
+   — an unscoped !important rule leaks white-on-white into the drawer, and an
+   edit made only in the component silently loses to this block on desktop
+   ("changes apply partially"). Desktop look → edit here; drawer look → edit
+   platform-nav.tsx. The sidebar is ALWAYS the dark navy gradient (it does not
+   flip with theme). */
 .platform-sidebar .platform-nav-link {
   color: rgba(255, 255, 255, 0.78) !important;
 }
@@ -4615,7 +4618,7 @@ select:focus-visible {
   color: #ffffff !important;
 }
 
-.platform-nav-active {
+.platform-sidebar .platform-nav-active {
   overflow: hidden;
   border-color: rgba(255, 255, 255, 0.1) !important;
   background: rgba(255, 255, 255, 0.08) !important;
@@ -4625,7 +4628,7 @@ select:focus-visible {
     0 10px 22px rgba(0, 0, 0, 0.16) !important;
 }
 
-.platform-nav-active::before {
+.platform-sidebar .platform-nav-active::before {
   content: "";
   position: absolute;
   top: 50%;
@@ -4637,7 +4640,7 @@ select:focus-visible {
   transform: translateY(-50%);
 }
 
-.platform-nav-active .platform-sidebar-label {
+.platform-sidebar .platform-nav-active .platform-sidebar-label {
   color: #ffffff !important;
 }
 
@@ -4652,7 +4655,7 @@ select:focus-visible {
   color: currentColor;
 }
 
-.platform-nav-active .platform-nav-icon-chip {
+.platform-sidebar .platform-nav-active .platform-nav-icon-chip {
   background: rgba(255, 255, 255, 0.12) !important;
   color: #ffffff !important;
   box-shadow:
@@ -4660,11 +4663,11 @@ select:focus-visible {
     inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
 }
 
-.platform-nav-active .platform-nav-icon-chip svg {
+.platform-sidebar .platform-nav-active .platform-nav-icon-chip svg {
   color: #ffffff !important;
 }
 
-.platform-nav-link:not(.platform-nav-active) .platform-nav-icon-chip {
+.platform-sidebar .platform-nav-link:not(.platform-nav-active) .platform-nav-icon-chip {
   background: rgba(255, 255, 255, 0.04);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
 }
@@ -4677,18 +4680,18 @@ select:focus-visible {
   opacity: 1;
 }
 
-.platform-sidebar .rounded-\[10px\].border:not(.platform-nav-active) {
+.platform-sidebar .platform-nav-link:not(.platform-nav-active) {
   border-color: rgba(255, 255, 255, 0.10) !important;
   background: rgba(255, 255, 255, 0.04) !important;
 }
 
 /* ─── Collapsed rail: ONE square per icon ─────────────────────────────────
    In the 64px collapsed rail the icon chip is the only square. The link's own
-   rounded-border box is neutralized (4-class selector beats the rule above)
-   so icons never show a nested double frame. Inactive chips get a clear white
-   outline; the active chip becomes a solid white button with a navy icon.
-   The expanded sidebar is untouched. */
-.sidebar-collapsed .platform-nav-link.rounded-\[10px\].border {
+   rounded-border box is neutralized (3-class selector defined later beats the
+   3-class rule above) so icons never show a nested double frame. Inactive
+   chips get a clear white outline; the active chip becomes a solid white
+   button with a navy icon. The expanded sidebar is untouched. */
+.platform-sidebar.sidebar-collapsed .platform-nav-link {
   border-color: transparent !important;
   background: transparent !important;
   box-shadow: none !important;
