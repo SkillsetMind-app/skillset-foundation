@@ -15,8 +15,8 @@
 - [x] **COM-02:** Subscription creation supports monthly/yearly interval and routes paid products to pricing.
 - [x] **COM-03:** Order mapping preserves creator ownership and all available financial detail fields.
 - [ ] **COM-04:** Versioned Supabase migrations reproduce the current schema and every RPC called by `src/`.
-- [ ] **SUB-01:** Each recurring invoice produces an idempotent sale/payment fact and payout-ledger entry.
-- [ ] **SUB-02:** Subscription charges support eligible full/partial refund with audit history and payout reversal.
+- [x] **SUB-01:** Each recurring invoice produces an idempotent sale/payment fact and payout-ledger entry.
+- [x] **SUB-02:** Subscription charges support eligible full/partial refund with audit history and payout reversal.
 - [ ] **SUB-03:** Creator has a subscriber center with status, period, delinquency, cancellation, and recovery state.
 - [ ] **SUB-04:** Reports include recurring revenue, MRR, churn, active subscribers, and renewal history.
 

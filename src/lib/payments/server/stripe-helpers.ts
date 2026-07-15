@@ -67,6 +67,23 @@ export function courseSubscriptionInterval(
   return null;
 }
 
+type SubscriptionCancellationClient = {
+  subscriptions: {
+    retrieve(subscriptionId: string): Promise<{ status: string }>;
+    cancel(subscriptionId: string): Promise<unknown>;
+  };
+};
+
+/** Cancels recurring billing once while remaining safe on request retries. */
+export async function ensureCourseSubscriptionCanceled(
+  stripe: SubscriptionCancellationClient,
+  subscriptionId: string,
+): Promise<void> {
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  if (subscription.status === "canceled") return;
+  await stripe.subscriptions.cancel(subscriptionId);
+}
+
 /**
  * Validates a course has a paid checkout price and returns the amount + a
  * lowercase Stripe currency. Throws PaymentError (surfaced verbatim) when the

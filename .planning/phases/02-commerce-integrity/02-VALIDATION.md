@@ -8,7 +8,12 @@
 | COM-02 | Monthly/yearly create the matching payment type and open Pricing | Passed |
 | COM-02 | Free creates `free` and opens Curriculum | Passed |
 | COM-03 | Complete Supabase order row preserves authorization and financial fields | Passed |
-| Regression | Full Vitest suite | 173/173 passed |
+| SUB-01 | Recurring invoice maps deterministically to canonical order and payment facts | Passed |
+| SUB-01 | Order/payment precede the payout ledger and ledger errors trigger redelivery | Passed |
+| SUB-02 | Payment and subscription enrollment sources are refundable | Passed |
+| SUB-02 | Full recurring refund cancels once; partial refund keeps billing active | Passed |
+| SUB-02 | Recurring refund does not apply one-time enrollment revocation | Passed |
+| Regression | Full Vitest suite | 180/180 passed |
 | Static correctness | TypeScript and ESLint | Passed |
 | Production compatibility | Next.js production build | Passed |
 
@@ -22,6 +27,7 @@
 ## Remaining phase gates
 
 - Reproduce production schema/RPCs from versioned migrations.
-- Verify recurring invoice idempotency across replayed Stripe events.
+- Replay recurring invoice idempotency against live Stripe test fixtures.
+- Backfill historical invoices whose webhook event is already marked done.
 - Reconcile charge, refund, reversal, and payout totals.
 - Exercise creator subscriber controls and report metrics end to end.

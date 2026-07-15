@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
 import { planByStripePriceId } from "@/data/plans";
+import { buildCourseSubscriptionSaleRecords } from "@/lib/payments/course-subscription-sale";
 import { defaultSkillsetCurrency } from "@/lib/payments/currencies";
 import {
   DEFAULT_PLATFORM_FEE_BPS,
@@ -12,7 +13,9 @@ import {
   payoutReleaseDelayDays,
   refundReversalClaimKey,
   resolveInvoicePaymentIntentId,
+  shouldCancelCourseSubscriptionForRefund,
   shouldApplyOrderStatusTransition,
+  shouldMarkEnrollmentRefundedAfterChargeRefund,
   shouldReactivateEnrollment,
   shouldReleaseCheckoutLock,
   shouldReverseReleasedPayout,
@@ -20,7 +23,10 @@ import {
   type TransferReversalStripeClient,
 } from "@/lib/payments/rules";
 import { getStripeClient, isStripeConfigured } from "@/lib/payments/server/stripe";
-import { courseSubscriptionInterval } from "@/lib/payments/server/stripe-helpers";
+import {
+  courseSubscriptionInterval,
+  ensureCourseSubscriptionCanceled,
+} from "@/lib/payments/server/stripe-helpers";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 // POST /api/webhooks/stripe — the money core. Faithful port of the stripeWebhook
@@ -370,6 +376,41 @@ async function handleCourseSubscriptionInvoicePaid(
       : subscription.customer?.id ?? null;
   const ts = nowIso();
 
+  if (!invoice.id) {
+    throw new Error("course_subscription invoice is missing its Stripe id.");
+  }
+
+  const saleRecords = buildCourseSubscriptionSaleRecords({
+    invoiceId: invoice.id,
+    paymentId,
+    paymentIntentId: resolvedPaymentIntentId,
+    subscriptionId,
+    userId,
+    teacherId,
+    connectedAccountId,
+    courseId,
+    courseSlug: course.slug || courseId,
+    courseTitle: course.title,
+    grossAmountMinor,
+    currency: currencyUpper,
+    platformFeeBps,
+    createdAt: secondsToIso(invoice.created) ?? ts,
+    paidAt: secondsToIso(invoice.status_transitions?.paid_at) ?? ts,
+    updatedAt: ts,
+  });
+
+  // Every renewal is a first-class sale. Insert-only upserts make redelivery
+  // safe and avoid changing an invoice that was subsequently refunded.
+  const { error: orderError } = await admin
+    .from("orders")
+    .upsert(saleRecords.order, { onConflict: "id", ignoreDuplicates: true });
+  if (orderError) throw new Error(orderError.message);
+
+  const { error: paymentRecordError } = await admin
+    .from("payments")
+    .upsert(saleRecords.payment, { onConflict: "id", ignoreDuplicates: true });
+  if (paymentRecordError) throw new Error(paymentRecordError.message);
+
   // Hold this invoice's net for the teacher — ledger keyed by invoice id (one
   // per invoice, idempotent against retries). Skip if it exists, gross 0, or no
   // connected account.
@@ -380,7 +421,7 @@ async function handleCourseSubscriptionInvoicePaid(
       .eq("id", invoice.id)
       .maybeSingle();
     if (!existingLedger) {
-      await admin.from("payout_ledger").insert({
+      const { error: ledgerInsertError } = await admin.from("payout_ledger").insert({
         id: invoice.id,
         teacher_id: teacherId,
         teacher_stripe_connected_account_id: connectedAccountId,
@@ -404,6 +445,7 @@ async function handleCourseSubscriptionInvoicePaid(
         created_at: ts,
         updated_at: ts,
       });
+      if (ledgerInsertError) throw new Error(ledgerInsertError.message);
     }
   }
 
@@ -652,7 +694,7 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
     // and mark it refunded. (Transfer clawback is deferred to 2f.)
     const { data: ledgers, error: ledgersError } = await admin
       .from("payout_ledger")
-      .select("id,status,kind")
+      .select("id,status,kind,subscription_id")
       .eq("payment_id", paymentIntentId)
       .limit(5);
     if (ledgersError) throw new Error(ledgersError.message);
@@ -672,6 +714,18 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
       sourceId: charge.id,
       reason: "refund",
     });
+    if (
+      shouldCancelCourseSubscriptionForRefund({
+        isFullRefund,
+        ledgerKind: ledger.kind,
+        subscriptionId: ledger.subscription_id,
+      })
+    ) {
+      await ensureCourseSubscriptionCanceled(
+        getStripeClient(),
+        String(ledger.subscription_id),
+      );
+    }
     return;
   }
 
@@ -687,7 +741,7 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
 
   const { data: ledger, error: ledgerError } = await admin
     .from("payout_ledger")
-    .select("status")
+    .select("status,kind,subscription_id")
     .eq("id", orderId)
     .maybeSingle();
   if (ledgerError) throw new Error(ledgerError.message);
@@ -728,7 +782,27 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
     reason: "refund",
   });
 
-  if (isFullRefund && order.user_id && order.course_id) {
+  if (
+    shouldCancelCourseSubscriptionForRefund({
+      isFullRefund,
+      ledgerKind: ledger?.kind,
+      subscriptionId: ledger?.subscription_id,
+    })
+  ) {
+    await ensureCourseSubscriptionCanceled(
+      getStripeClient(),
+      String(ledger?.subscription_id),
+    );
+  }
+
+  if (
+    shouldMarkEnrollmentRefundedAfterChargeRefund({
+      isFullRefund,
+      ledgerKind: ledger?.kind,
+    })
+    && order.user_id
+    && order.course_id
+  ) {
     await admin
       .from("enrollments")
       .update({ status: "refunded", updated_at: ts })
