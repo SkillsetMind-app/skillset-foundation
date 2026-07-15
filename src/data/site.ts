@@ -144,6 +144,22 @@ export const platformNav: PlatformNavItem[] = [
     permission: "teacherStudio.access",
   },
   {
+    href: "/teach/sales",
+    labelKey: "platform.nav.sales",
+    icon: "Receipt",
+    contexts: ["teacher"],
+    section: "Operations",
+    permission: "teacherStudio.access",
+  },
+  {
+    href: "/teach/subscriptions",
+    labelKey: "platform.nav.subscriptions",
+    icon: "Repeat2",
+    contexts: ["teacher"],
+    section: "Operations",
+    permission: "teacherStudio.access",
+  },
+  {
     href: "/teach/coupons",
     labelKey: "platform.nav.coupons",
     icon: "Tag",

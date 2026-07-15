@@ -6,7 +6,7 @@ import type { Database } from "@/lib/supabase/database.types";
 
 type PayoutLedgerRow = Database["public"]["Tables"]["payout_ledger"]["Row"];
 
-function rowToPayoutLedgerEntry(row: PayoutLedgerRow): PayoutLedgerEntry {
+export function rowToPayoutLedgerEntry(row: PayoutLedgerRow): PayoutLedgerEntry {
   return {
     id: row.id,
     teacherId: row.teacher_id,
@@ -14,6 +14,9 @@ function rowToPayoutLedgerEntry(row: PayoutLedgerRow): PayoutLedgerEntry {
     courseId: row.course_id ?? "",
     orderId: row.order_id ?? "",
     paymentId: row.payment_id ?? "",
+    invoiceId: row.invoice_id,
+    subscriptionId: row.subscription_id,
+    kind: row.kind,
     grossAmountMinor: row.gross_amount_minor,
     skillsetFeeMinor: row.skillset_fee_minor,
     stripeFeeMinor: row.stripe_fee_minor,

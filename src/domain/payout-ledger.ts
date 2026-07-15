@@ -14,6 +14,9 @@ export type PayoutLedgerEntry = {
   courseId: string;
   orderId: string;
   paymentId: string;
+  invoiceId?: string | null;
+  subscriptionId?: string | null;
+  kind?: string | null;
   grossAmountMinor: number;
   skillsetFeeMinor: number;
   stripeFeeMinor?: number;

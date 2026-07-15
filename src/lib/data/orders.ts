@@ -179,17 +179,15 @@ export function subscribeToTeacherOrders(
   callback: (orders: Order[]) => void,
   onError: (error: Error) => void,
 ): () => void {
-  // The Postgres orders table does not have a teacher_id column (the Firestore
-  // document did). RLS scopes the result to the caller's own rows. Callers
-  // sort client-side; revisit by adding a teacher_id column + index if
-  // per-teacher wallet/insights math is needed server-side.
-  // ponytail: table-wide change fan-in; no teacher_id column in orders schema.
+  // Scope both the initial query and realtime fan-in to this teacher. The
+  // canonical order row now carries teacher_id for one-time and recurring sales.
   const supabase = getSupabaseBrowserClient();
 
   const load = async () => {
     const { data, error } = await supabase
       .from("orders")
       .select("*")
+      .eq("teacher_id", teacherId)
       .limit(500);
 
     if (error) {
@@ -206,7 +204,12 @@ export function subscribeToTeacherOrders(
     .channel(`orders:teacher:${teacherId}`)
     .on(
       "postgres_changes",
-      { event: "*", schema: "public", table: "orders" },
+      {
+        event: "*",
+        schema: "public",
+        table: "orders",
+        filter: `teacher_id=eq.${teacherId}`,
+      },
       () => {
         void load();
       },
