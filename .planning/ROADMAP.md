@@ -6,7 +6,7 @@ Do estado atual (cursos funcionais, brand sweep feito, sidebar corrigida) até o
 
 ## Phases
 
-- [ ] **Phase 1: Vídeo híbrido** - `videoSource` explícito + seletor de fonte estilo Eduzz no modal da aula (YouTube embed e upload Bunny/Supabase já existem no código)
+- [x] **Phase 1: Vídeo híbrido** - `videoSource` explícito + seletor de fonte estilo Eduzz no modal da aula (YouTube embed e upload Bunny/Supabase já existem no código)
 - [ ] **Phase 2: IA conselheira** - sidebar flutuante de IA no painel do produtor (n8n + DeepSeek + guardrail)
 - [ ] **Phase 3: Núcleo do relançamento** - messages + tutorial + sidebar religada + passada de design Cosmos→pele SkillsetMind
 - [ ] **Phase 4: Assinatura do creator** - recorrência via Stripe Connect como formato de produto (P1.5 fast-follow)
@@ -27,9 +27,9 @@ Do estado atual (cursos funcionais, brand sweep feito, sidebar corrigida) até o
 
 Plans:
 - [x] 01-01-PLAN.md — videoSource domain field + inference + read-path mapping (VID-01, VID-06)
-- [ ] 01-02-PLAN.md — player + creator preview respect videoSource (VID-05)
-- [ ] 01-03-PLAN.md — Eduzz-style source picker + scoped design island (VID-02, VID-03, VID-04, VID-07)
-- [ ] 01-04-PLAN.md — full gate + human verification checkpoint
+- [x] 01-02-PLAN.md — player + creator preview respect videoSource (VID-05)
+- [x] 01-03-PLAN.md — Eduzz-style source picker + scoped design island (VID-02, VID-03, VID-04, VID-07)
+- [x] 01-04-PLAN.md — full gate + human verification checkpoint
 
 ### Phase 2: IA conselheira
 **Goal**: Sidebar flutuante de IA no painel do produtor respondendo com contexto do curso, via n8n + DeepSeek com guardrail prompt.
@@ -66,7 +66,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Vídeo híbrido | 1/4 | In progress | - |
+| 1. Vídeo híbrido | 4/4 | Complete | 2026-07-15 |
 | 2. IA conselheira | 0/TBD | Not started | - |
 | 3. Núcleo do relançamento | 0/TBD | Not started | - |
 | 4. Assinatura do creator | 0/TBD | Not started | - |

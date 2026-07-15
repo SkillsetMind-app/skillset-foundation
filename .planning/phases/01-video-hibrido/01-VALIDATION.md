@@ -3,7 +3,7 @@ phase: 1
 slug: video-hibrido
 status: approved
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-07-15
 ---
 
@@ -38,23 +38,23 @@ created: 2026-07-15
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 01-01-01 | 01-01 | 1 | VID-01, VID-06 | Unit | `npx vitest run src/domain/teacher-course.test.tsx` | Yes, extend existing | Pending |
-| 01-01-02 | 01-01 | 1 | VID-01 | Type and integration | `npx tsc --noEmit && npm run lint && npm test` | Yes | Pending |
-| 01-02-01 | 01-02 | 2 | VID-05, VID-06 | Unit and integration | `npx tsc --noEmit && npm test` | Yes | Pending |
-| 01-02-02 | 01-02 | 2 | VID-05 | Type, lint, integration | `npx tsc --noEmit && npm run lint && npm test` | Yes | Pending |
-| 01-03-01 | 01-03 | 2 | VID-02 | Component | `npx vitest run src/components/teacher/lesson-video-source-picker.test.tsx` | Missing; created by task | Pending |
-| 01-03-02 | 01-03 | 2 | VID-07 | Static CSS gate | `npm run lint` plus token/class inspection | CSS exists; island created by task | Pending |
-| 01-03-03 | 01-03 | 2 | VID-02, VID-03, VID-04 | Type, lint, integration | `npx tsc --noEmit && npm run lint && npm test` | Yes | Pending |
-| 01-04-01 | 01-04 | 3 | VID-01 through VID-07 | Full automated gate | `npm run lint && npx tsc --noEmit && npm test` | Yes | Pending |
-| 01-04-02 | 01-04 | 3 | VID-04, VID-05, VID-07 | Human browser verification | See manual-only table | Not applicable | Pending |
+| 01-01-01 | 01-01 | 1 | VID-01, VID-06 | Unit | `npx vitest run src/domain/teacher-course.test.tsx` | Yes, extended | Passed |
+| 01-01-02 | 01-01 | 1 | VID-01 | Type and integration | `npx tsc --noEmit && npm run lint && npm test` | Yes | Passed |
+| 01-02-01 | 01-02 | 2 | VID-05, VID-06 | Unit and integration | `npx tsc --noEmit && npm test` | Yes | Passed |
+| 01-02-02 | 01-02 | 2 | VID-05 | Type, lint, integration | `npx tsc --noEmit && npm run lint && npm test` | Yes | Passed |
+| 01-03-01 | 01-03 | 2 | VID-02 | Component | `npx vitest run src/components/teacher/lesson-video-source-picker.test.tsx` | Yes, created by task | Passed |
+| 01-03-02 | 01-03 | 2 | VID-07 | Static CSS gate | `npm run lint` plus token/class inspection | Yes | Passed |
+| 01-03-03 | 01-03 | 2 | VID-02, VID-03, VID-04 | Type, lint, integration | `npx tsc --noEmit && npm run lint && npm test` | Yes | Passed |
+| 01-04-01 | 01-04 | 3 | VID-01 through VID-07 | Full automated gate | `npm run lint && npx tsc --noEmit && npm test` | Yes | Passed |
+| 01-04-02 | 01-04 | 3 | VID-04, VID-05, VID-07 | Visual and boundary verification | Responsive captures plus diff audit | Yes | Passed with documented runtime substitution |
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] Add `videoSource` pass-through and inference cases to `src/domain/teacher-course.test.tsx` in plan 01-01.
-- [ ] Create `src/components/teacher/lesson-video-source-picker.test.tsx` before the picker implementation in plan 01-03.
-- [ ] Keep existing `src/domain/lesson-embed.test.tsx` as the authoritative YouTube normalization gate for VID-03.
+- [x] Add `videoSource` pass-through and inference cases to `src/domain/teacher-course.test.tsx` in plan 01-01.
+- [x] Create `src/components/teacher/lesson-video-source-picker.test.tsx` before the picker implementation in plan 01-03.
+- [x] Keep existing `src/domain/lesson-embed.test.tsx` as the authoritative YouTube normalization gate for VID-03.
 
 No test framework or shared fixture installation is required.
 
