@@ -89,7 +89,11 @@ export function CourseOffersPanel({
   }, [courseId]);
 
   useEffect(() => {
-    void reload();
+    // Defer so the effect body itself does not synchronously setState (lint).
+    const t = window.setTimeout(() => {
+      void reload();
+    }, 0);
+    return () => window.clearTimeout(t);
   }, [reload]);
 
   const handleCreate = async (event: FormEvent) => {
