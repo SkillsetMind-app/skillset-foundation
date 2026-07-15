@@ -219,7 +219,9 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
       : { contentText: null, externalUrl: null };
   const previewLessonContentText = resolvedPreviewContent.contentText;
   const previewLessonRawExternalUrl = resolvedPreviewContent.externalUrl;
-  const previewLessonEmbed = getTrustedLessonEmbed(previewLessonRawExternalUrl);
+  const previewLessonEmbed = previewLesson?.videoSource === "upload"
+    ? null
+    : getTrustedLessonEmbed(previewLessonRawExternalUrl);
   const previewLessonExternalUrl = getSafeExternalUrl(previewLessonRawExternalUrl);
   const lockedLessonCount = Math.max(lessons.length - (previewLesson ? 1 : 0), 0);
   const ratingLabel =
