@@ -383,3 +383,15 @@ The DESIGN-CLONE-SPEC source document itself (`PS8-OS\03-projetos\skillsetmind\D
 
 **Research date:** 2026-07-15
 **Valid until:** ~14 days (internal-codebase research; stays valid until someone else edits these exact files/RPC, whichever is sooner — re-verify the RPC body regardless of date, since that's the one item this research could not confirm statically)
+
+
+---
+
+## ADDENDUM (orchestrator, 2026-07-15) — Open Question #1 RESOLVED via live DB
+
+`pg_get_functiondef('update_teacher_course_builder')` executado no projeto Supabase `ijtikldtjvsbtwszokvs`:
+
+- **`modules` é pass-through cego:** `v_modules := coalesce(p_payload->'modules', '[]'::jsonb)` → validações apenas estruturais (é array; conta lições; free-preview id deve existir) → `update public.courses set modules = v_modules`. **Nenhum allowlist de campos de lição server-side.** `videoSource` dentro de cada objeto de lição persiste SEM migração e SEM mudança na RPC.
+- **Mirror gated confirmado:** a própria RPC upserta `course_lesson_content (lesson_id, course_id, content_text, external_url)` a partir de `v_modules` e deleta órfãos. `videoSource` NÃO precisa entrar nessa tabela (flag de roteamento, não conteúdo pago) — conclusão da pesquisa mantida.
+- Consequência para o plano: os únicos pontos de sobrevivência do campo são os já mapeados no client: `normalizeTeacherCourseModules()` (write) e o allowlist per-lesson de `teacherCourseToLearningCourse()` em `published-courses.ts` (read), mais os types (`TeacherLesson`, `Lesson`) e consumidores (player, preview do criador, modal).
+- Confiança da cadeia server-side: **HIGH** (antes LOW).
