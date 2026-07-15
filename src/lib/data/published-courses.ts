@@ -334,6 +334,7 @@ export function teacherCourseToLearningCourse(course: TeacherCourse): Course {
         description: lesson.description,
         contentText: lesson.contentText ?? null,
         externalUrl: lesson.externalUrl ?? null,
+        videoSource: lesson.videoSource ?? null,
         dripDelayDays: lesson.dripDelayDays ?? null,
       })),
     })),

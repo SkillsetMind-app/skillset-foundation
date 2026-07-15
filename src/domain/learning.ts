@@ -1,5 +1,5 @@
 import type { DripStrategy } from "@/domain/drip-policy";
-import type { MembersTheme } from "@/domain/teacher-course";
+import type { LessonVideoSource, MembersTheme } from "@/domain/teacher-course";
 
 export type CourseStatus = "draft" | "opening_soon" | "pilot" | "waitlist" | "published";
 
@@ -28,6 +28,7 @@ export type Lesson = {
   description?: string | null;
   contentText?: string | null;
   externalUrl?: string | null;
+  videoSource?: LessonVideoSource | null;
   dripDelayDays?: number | null;
 };
 
