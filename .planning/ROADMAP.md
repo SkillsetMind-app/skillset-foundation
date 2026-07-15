@@ -23,10 +23,13 @@ Do estado atual (cursos funcionais, brand sweep feito, sidebar corrigida) até o
   3. Aula com fonte upload toca o vídeo hospedado (Bunny com token assinado quando configurado; Supabase Storage caso contrário) exatamente como hoje.
   4. Aula antiga sem `videoSource` continua tocando o que tocava antes (inferência), e o modal mostra a fonte inferida corretamente.
   5. Trocar a fonte de uma aula não apaga dados da outra fonte (URL preservada / assets preservados) e o player passa a respeitar a nova escolha.
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md — videoSource domain field + inference + read-path mapping (VID-01, VID-06)
+- [ ] 01-02-PLAN.md — player + creator preview respect videoSource (VID-05)
+- [ ] 01-03-PLAN.md — Eduzz-style source picker + scoped design island (VID-02, VID-03, VID-04, VID-07)
+- [ ] 01-04-PLAN.md — full gate + human verification checkpoint
 
 ### Phase 2: IA conselheira
 **Goal**: Sidebar flutuante de IA no painel do produtor respondendo com contexto do curso, via n8n + DeepSeek com guardrail prompt.
@@ -63,7 +66,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Vídeo híbrido | 0/TBD | Not started | - |
+| 1. Vídeo híbrido | 0/4 | Not started | - |
 | 2. IA conselheira | 0/TBD | Not started | - |
 | 3. Núcleo do relançamento | 0/TBD | Not started | - |
 | 4. Assinatura do creator | 0/TBD | Not started | - |
