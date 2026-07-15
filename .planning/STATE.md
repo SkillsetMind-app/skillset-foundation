@@ -47,3 +47,11 @@ Discovery complete. Claude Hotmart research + Codex commerce work continued by G
 ## Continuity
 
 Claude → Codex `019f388d…` → Grok
+
+## Live verification 2026-07-15 (Grok)
+
+- Skillset Supabase live host: ijtikldtjvsbtwszokvs (old wbgcujw… DNS dead).
+- Live PostgREST inventory: 42 tables — supabase/LIVE_SCHEMA_INVENTORY_2026-07-15.md.
+- Commerce tables row counts: all 0 (empty project data).
+- Stripe live account: 0 charges / 0 invoices / 0 subscriptions — backfill dry-run is no-op.
+- Keys validated: Supabase service+anon PASS, Stripe balance PASS.
