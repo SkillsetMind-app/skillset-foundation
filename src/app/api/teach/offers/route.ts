@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     if (offerError) {
       throw new PaymentError(
         offerError.message?.includes("product_offers")
-          ? "Offers table is not applied yet. Run migration 20260715_hotmart_parity_money_path.sql on Supabase."
+          ? "Offers table is not applied yet. Run migration 20260715_product_offers_prices_only.sql on Supabase."
           : offerError.message,
       );
     }

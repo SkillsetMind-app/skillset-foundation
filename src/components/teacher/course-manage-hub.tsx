@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -30,19 +30,20 @@ import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 // Sections that aren't built yet render as honest roadmap cards — never as
 // fake-active features (platform "no fake data" rule).
 
+// Hotmart product hub tab order (macro IA) — labels in Skillset voice.
 const manageSections = [
-  { id: "overview", label: "Overview" },
+  { id: "overview", label: "Panel" },
   { id: "links", label: "Promo links" },
   { id: "basic", label: "Basic info" },
-  { id: "pricing", label: "Pricing" },
-  { id: "content", label: "Content" },
+  { id: "pricing", label: "Pricing & offers" },
   { id: "members", label: "Members area" },
   { id: "page", label: "Product page" },
-  { id: "sales", label: "Sales" },
-  { id: "coupons", label: "Coupons" },
+  { id: "content", label: "Content" },
   { id: "affiliates", label: "Affiliates" },
-  { id: "coproducers", label: "Co-producers" },
+  { id: "coproducers", label: "Co-productions" },
+  { id: "coupons", label: "Coupons" },
   { id: "tax", label: "Tax collection" },
+  { id: "sales", label: "Sales" },
 ] as const;
 
 const roadmapSections = [
@@ -105,9 +106,15 @@ function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
+const allSectionIds = new Set<string>([
+  ...manageSections.map((s) => s.id),
+  ...roadmapSections.map((s) => s.id),
+]);
+
 export function CourseManageHub({ courseId }: { courseId: string }) {
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [course, setCourse] = useState<TeacherCourse | null>(null);
   // Which courseId the subscription has answered for — derives the loading
   // state without a synchronous setState reset when the route param changes.
@@ -121,6 +128,14 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   const [submitError, setSubmitError] = useState("");
   const [submitNotice, setSubmitNotice] = useState("");
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Deep-link from studio checklist: ?section=pricing
+  useEffect(() => {
+    const raw = searchParams?.get("section") ?? "";
+    if (raw && allSectionIds.has(raw)) {
+      setSection(raw as SectionId);
+    }
+  }, [searchParams, courseId]);
 
   useEffect(() => {
     return subscribeToTeacherCourse(
