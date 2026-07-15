@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isRefundableEnrollmentSource,
   nextLedgerStatusOnDispute,
   releasedRefundReversalAmountMinor,
+  shouldCancelCourseSubscriptionForRefund,
+  shouldMarkEnrollmentRefundedAfterChargeRefund,
   shouldReactivateEnrollment,
   shouldReverseReleasedPayout,
 } from "@/lib/payments/rules";
@@ -132,5 +135,52 @@ describe("releasedRefundReversalAmountMinor", () => {
         releasedTransferAmountMinor: 0,
       }),
     ).toBe(0);
+  });
+});
+
+describe("subscription refund policy", () => {
+  it("allows both one-time and subscription enrollments into the refund flow", () => {
+    expect(isRefundableEnrollmentSource("payment")).toBe(true);
+    expect(isRefundableEnrollmentSource("subscription")).toBe(true);
+    expect(isRefundableEnrollmentSource("free")).toBe(false);
+  });
+
+  it("does not revoke the whole enrollment when one recurring invoice is refunded", () => {
+    expect(
+      shouldMarkEnrollmentRefundedAfterChargeRefund({
+        isFullRefund: true,
+        ledgerKind: "course_subscription",
+      }),
+    ).toBe(false);
+    expect(
+      shouldMarkEnrollmentRefundedAfterChargeRefund({
+        isFullRefund: true,
+        ledgerKind: "course_one_time",
+      }),
+    ).toBe(true);
+  });
+
+  it("cancels recurring billing only for a full subscription-invoice refund", () => {
+    expect(
+      shouldCancelCourseSubscriptionForRefund({
+        isFullRefund: true,
+        ledgerKind: "course_subscription",
+        subscriptionId: "sub_123",
+      }),
+    ).toBe(true);
+    expect(
+      shouldCancelCourseSubscriptionForRefund({
+        isFullRefund: false,
+        ledgerKind: "course_subscription",
+        subscriptionId: "sub_123",
+      }),
+    ).toBe(false);
+    expect(
+      shouldCancelCourseSubscriptionForRefund({
+        isFullRefund: true,
+        ledgerKind: "course_one_time",
+        subscriptionId: null,
+      }),
+    ).toBe(false);
   });
 });

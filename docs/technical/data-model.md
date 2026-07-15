@@ -91,6 +91,7 @@ Source type: `src/domain/teacher-course.ts`
 | `durationMinutes` | Optional duration estimate. |
 | `contentText` | Text lesson content. |
 | `externalUrl` | External video or embed URL. |
+| `videoSource` | Explicit lesson video source: `youtube` or `upload`. |
 | `dripDelayDays` | Optional lesson-specific delay. |
 | `thumbnailAssetId` | Optional lesson thumbnail asset. |
 

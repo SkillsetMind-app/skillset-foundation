@@ -55,7 +55,30 @@ export type TeacherCoursePaymentType =
   | "subscription_yearly"
   | "free";
 
+export type TeacherCourseProductFormat = "course" | "subscription" | "free";
+
+export type TeacherCourseSubscriptionInterval = "monthly" | "yearly";
+
+export function resolveTeacherCoursePaymentType(
+  format: TeacherCourseProductFormat,
+  interval: TeacherCourseSubscriptionInterval,
+): TeacherCoursePaymentType {
+  if (format === "free") {
+    return "free";
+  }
+
+  if (format === "subscription") {
+    return interval === "yearly"
+      ? "subscription_yearly"
+      : "subscription_monthly";
+  }
+
+  return "one_time";
+}
+
 export type MembersTheme = "light" | "dark";
+
+export type LessonVideoSource = "youtube" | "upload";
 
 export type TeacherLesson = {
   id: string;
@@ -65,6 +88,7 @@ export type TeacherLesson = {
   durationMinutes?: number | null;
   contentText?: string | null;
   externalUrl?: string | null;
+  videoSource?: LessonVideoSource | null;
   dripDelayDays?: number | null;
   thumbnailAssetId?: string | null;
 };
@@ -136,7 +160,7 @@ export type CreateTeacherCourseInput = {
   summary: string;
   category: string;
   categories?: string[];
-  paymentType?: Extract<TeacherCoursePaymentType, "one_time" | "free">;
+  paymentType?: TeacherCoursePaymentType;
 };
 
 export type UpdateTeacherCourseBuilderInput = {
@@ -257,6 +281,25 @@ function normalizeNullableNumber(value: number | null | undefined): number | nul
     : null;
 }
 
+function normalizeVideoSource(value: unknown): LessonVideoSource | null {
+  return value === "youtube" || value === "upload" ? value : null;
+}
+
+export function inferLessonVideoSource(params: {
+  hasVideoAsset: boolean;
+  hasTrustedEmbed: boolean;
+}): LessonVideoSource | null {
+  if (params.hasVideoAsset) {
+    return "upload";
+  }
+
+  if (params.hasTrustedEmbed) {
+    return "youtube";
+  }
+
+  return null;
+}
+
 // Serialize the builder's modules for the course-doc payload. contentText /
 // externalUrl are always kept (trimmed) so the Cloud Function receives the real
 // lesson content and can mirror it into the gated lessonContent subcollection;
@@ -277,6 +320,7 @@ export function normalizeTeacherCourseModules(
       durationMinutes: normalizeNullableNumber(lesson.durationMinutes),
       contentText: normalizeNullableText(lesson.contentText),
       externalUrl: normalizeNullableText(lesson.externalUrl),
+      videoSource: normalizeVideoSource(lesson.videoSource),
       dripDelayDays:
         typeof lesson.dripDelayDays === "number"
           ? Math.max(0, Math.round(lesson.dripDelayDays))

@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { LessonVideoSourcePicker } from "@/components/teacher/lesson-video-source-picker";
 import type { CourseAsset, CourseAssetKind } from "@/domain/course-asset";
 import {
   bunnyVideoMaxBytes,
@@ -24,11 +25,12 @@ import {
   isAllowedCourseAssetFile,
 } from "@/domain/course-asset";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
-import type {
-  LessonType,
-  TeacherCourse,
-  TeacherCourseModule,
-  TeacherLesson,
+import {
+  inferLessonVideoSource,
+  type LessonType,
+  type TeacherCourse,
+  type TeacherCourseModule,
+  type TeacherLesson,
 } from "@/domain/teacher-course";
 import {
   deleteCourseAsset,
@@ -133,6 +135,10 @@ export function LessonContentModal({
   const materialAssets = lessonAssets.filter((asset) => asset.kind === "lesson_material");
   const thumbnailAssets = lessonAssets.filter((asset) => asset.kind === "lesson_thumbnail");
   const trustedEmbed = getTrustedLessonEmbed(lesson.externalUrl);
+  const resolvedSource = lesson.videoSource ?? inferLessonVideoSource({
+    hasVideoAsset: videoAssets.length > 0,
+    hasTrustedEmbed: Boolean(trustedEmbed),
+  });
   const videoStatus = getAssetStatusLabel(lessonAssets, lesson);
 
   const dialogRef = useRef<HTMLElement>(null);
@@ -364,77 +370,98 @@ export function LessonContentModal({
                 <span>{videoStatus}</span>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-2">
-                <button
-                  type="button"
-                  className={`lesson-modal-choice ${uploadKind === "lesson_video" ? "is-active" : ""}`}
-                  onClick={() => resetUploadState("lesson_video")}
-                  disabled={!isEditable || isUploading}
-                >
-                  <Film aria-hidden="true" size={18} />
-                  <strong>Upload lesson video</strong>
-                  <small>MP4, MOV, WebM or any browser-supported video file.</small>
-                </button>
-                <button
-                  type="button"
-                  className={`lesson-modal-choice ${uploadKind === "live_recording" ? "is-active" : ""}`}
-                  onClick={() => resetUploadState("live_recording")}
-                  disabled={!isEditable || isUploading}
-                >
-                  <UploadCloud aria-hidden="true" size={18} />
-                  <strong>Upload live recording</strong>
-                  <small>Replay from cohort classes, mentorships or webinars.</small>
-                </button>
-              </div>
-
-              <LessonUploadForm
-                error={error}
-                isEditable={isEditable}
-                isPreviewAsset={isPreviewAsset}
-                isUploading={isUploading}
-                onChangePreview={setIsPreviewAsset}
-                onFileChange={(file) => {
-                  setSelectedFile(file);
-                  setUploadProgress(null);
-                  setSuccess("");
-                  setError("");
-                }}
-                onSubmit={handleUpload}
-                progressLabel={formatProgress(uploadProgress)}
-                selectedFile={selectedFile}
-                fileInputKey={fileInputKey}
-                success={success}
-                uploadKind={uploadKind}
+              <LessonVideoSourcePicker
+                value={resolvedSource}
+                disabled={!isEditable}
+                onChange={(videoSource) => onUpdateLesson({ videoSource })}
               />
 
-              <label className="lesson-modal-field">
-                <span>
-                  YouTube or Vimeo URL
-                  <small>Use this when the video already lives outside SkillsetMind.</small>
-                </span>
-                <input
-                  value={lesson.externalUrl ?? ""}
-                  onChange={(event) => onUpdateLesson({ externalUrl: event.target.value || null })}
-                  disabled={!isEditable}
-                  placeholder="https://www.youtube.com/watch?v=..."
-                />
-              </label>
-              <div className="lesson-modal-inline-status">
-                <Link2 aria-hidden="true" size={15} />
-                {trustedEmbed
-                  ? `${trustedEmbed.provider === "youtube" ? "YouTube" : "Vimeo"} embed detected.`
-                  : lesson.externalUrl
-                    ? "Link saved, but it will not play in the classroom. Use a standard YouTube or Vimeo video URL."
-                    : "No external embed URL yet."}
-              </div>
+              {resolvedSource === null ? (
+                <div className="lesson-modal-inline-status">
+                  <Film aria-hidden="true" size={15} />
+                  Choose how this lesson delivers video.
+                </div>
+              ) : null}
 
-              <LessonAssetList
-                assets={videoAssets}
-                emptyLabel="No uploaded video file yet."
-                isEditable={isEditable}
-                deletingAssetId={deletingAssetId}
-                onDelete={handleDeleteAsset}
-              />
+              {resolvedSource === "upload" ? (
+                <>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <button
+                      type="button"
+                      className={`lesson-modal-choice ${uploadKind === "lesson_video" ? "is-active" : ""}`}
+                      onClick={() => resetUploadState("lesson_video")}
+                      disabled={!isEditable || isUploading}
+                    >
+                      <Film aria-hidden="true" size={18} />
+                      <strong>Upload lesson video</strong>
+                      <small>MP4, MOV, WebM or any browser-supported video file.</small>
+                    </button>
+                    <button
+                      type="button"
+                      className={`lesson-modal-choice ${uploadKind === "live_recording" ? "is-active" : ""}`}
+                      onClick={() => resetUploadState("live_recording")}
+                      disabled={!isEditable || isUploading}
+                    >
+                      <UploadCloud aria-hidden="true" size={18} />
+                      <strong>Upload live recording</strong>
+                      <small>Replay from cohort classes, mentorships or webinars.</small>
+                    </button>
+                  </div>
+
+                  <LessonUploadForm
+                    error={error}
+                    isEditable={isEditable}
+                    isPreviewAsset={isPreviewAsset}
+                    isUploading={isUploading}
+                    onChangePreview={setIsPreviewAsset}
+                    onFileChange={(file) => {
+                      setSelectedFile(file);
+                      setUploadProgress(null);
+                      setSuccess("");
+                      setError("");
+                    }}
+                    onSubmit={handleUpload}
+                    progressLabel={formatProgress(uploadProgress)}
+                    selectedFile={selectedFile}
+                    fileInputKey={fileInputKey}
+                    success={success}
+                    uploadKind={uploadKind}
+                  />
+
+                  <LessonAssetList
+                    assets={videoAssets}
+                    emptyLabel="No uploaded video file yet."
+                    isEditable={isEditable}
+                    deletingAssetId={deletingAssetId}
+                    onDelete={handleDeleteAsset}
+                  />
+                </>
+              ) : null}
+
+              {resolvedSource === "youtube" ? (
+                <>
+                  <label className="lesson-modal-field">
+                    <span>
+                      YouTube or Vimeo URL
+                      <small>Use this when the video already lives outside SkillsetMind.</small>
+                    </span>
+                    <input
+                      value={lesson.externalUrl ?? ""}
+                      onChange={(event) => onUpdateLesson({ externalUrl: event.target.value || null })}
+                      disabled={!isEditable}
+                      placeholder="https://www.youtube.com/watch?v=..."
+                    />
+                  </label>
+                  <div className="lesson-modal-inline-status">
+                    <Link2 aria-hidden="true" size={15} />
+                    {trustedEmbed
+                      ? `${trustedEmbed.provider === "youtube" ? "YouTube" : "Vimeo"} embed detected.`
+                      : lesson.externalUrl
+                        ? "Link saved, but it will not play in the classroom. Use a standard YouTube or Vimeo video URL."
+                        : "No external embed URL yet."}
+                  </div>
+                </>
+              ) : null}
             </div>
           ) : null}
 

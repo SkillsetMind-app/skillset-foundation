@@ -2,6 +2,7 @@
 
 import type { CourseAsset, CourseAssetKind } from "@/domain/course-asset";
 import { isAllowedCourseAssetFile } from "@/domain/course-asset";
+import { getSafeMediaUrl } from "@/domain/external-url";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -145,9 +146,14 @@ export async function uploadCourseAsset(input: UploadCourseAssetInput) {
     }
 
     if (input.kind === "course_cover") {
+      // Reject tracker/external hosts even if storage returned an unexpected URL.
+      const safeCover = getSafeMediaUrl(downloadUrl);
+      if (!safeCover) {
+        throw new Error("Cover image URL is not on an allowed media host.");
+      }
       const { error: coverError } = await supabase
         .from(coursesTable)
-        .update({ cover_image_url: downloadUrl, updated_at: new Date().toISOString() })
+        .update({ cover_image_url: safeCover, updated_at: new Date().toISOString() })
         .eq("id", input.courseId);
 
       if (coverError) {

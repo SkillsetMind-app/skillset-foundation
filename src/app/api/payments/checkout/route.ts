@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
+import {
+  normalizeAffiliateRef,
+  resolveAffiliateAttribution,
+} from "@/domain/affiliate-attribution";
+import type { CourseCoupon } from "@/domain/course-commerce";
+import { normalizeCouponCode } from "@/domain/course-commerce";
+import { redeemCourseCoupon } from "@/domain/coupon-redemption";
 import { canonicalPlatformFeeBpsForPlan } from "@/lib/payments/rules";
 import {
   PaymentError,
@@ -15,6 +22,7 @@ import {
   getUserRow,
   getOrCreateBillingStripeCustomer,
   getOrCreateCourseSubscriptionPrice,
+  loadCourseProductOffers,
   normalizeCoursePrice,
 } from "@/lib/payments/server/stripe-helpers";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -32,8 +40,14 @@ export async function POST(request: Request) {
     const userId = await requireUserId();
     const body = (await request.json().catch(() => ({}))) as {
       courseId?: unknown;
+      couponCode?: unknown;
+      affiliateRef?: unknown;
     };
     const courseId = String(body.courseId ?? "").trim();
+    const couponCodeRaw = String(body.couponCode ?? "").trim();
+    const affiliateRefRaw = normalizeAffiliateRef(
+      String(body.affiliateRef ?? "").trim(),
+    );
 
     if (!courseId || courseId.length > 160) {
       throw new PaymentError("A valid courseId is required.");
@@ -74,9 +88,95 @@ export async function POST(request: Request) {
       throw new PaymentError("You can't purchase your own course.");
     }
 
-    const { amountMinor, currency } = normalizeCoursePrice(course);
+    // Dual-read: optional offer/price packages, else legacy course columns.
+    const offers = await loadCourseProductOffers(courseId);
+    const priced = normalizeCoursePrice(course, offers);
+    let amountMinor = priced.amountMinor;
+    const currency = priced.currency;
+    let appliedCouponCode: string | null = null;
+    let discountMinor = 0;
 
     const admin = getSupabaseAdminClient();
+
+    // Hotmart-parity: redeem active course coupon at checkout (one-time only).
+    if (couponCodeRaw) {
+      const code = normalizeCouponCode(couponCodeRaw);
+      const { data: couponRow, error: couponError } = await admin
+        .from("course_coupons")
+        .select("*")
+        .eq("course_id", courseId)
+        .eq("code", code)
+        .maybeSingle();
+      if (couponError) {
+        throw new Error(couponError.message);
+      }
+      const coupon: CourseCoupon | null = couponRow
+        ? {
+            id: couponRow.id,
+            courseId: couponRow.course_id,
+            ownerId: couponRow.owner_id,
+            code: couponRow.code,
+            percentOff: couponRow.percent_off,
+            maxRedemptions: couponRow.max_redemptions,
+            redeemedCount: couponRow.redeemed_count,
+            expiresAt: couponRow.expires_at ?? undefined,
+            active: couponRow.active,
+            createdAt: couponRow.created_at,
+            updatedAt: couponRow.updated_at,
+          }
+        : null;
+      const redemption = redeemCourseCoupon({
+        amountMinor,
+        coupon,
+      });
+      if (!redemption.ok) {
+        throw new PaymentError(redemption.reason);
+      }
+      // Subscriptions: percent-off coupons need Stripe coupons; keep simple —
+      // only one-time checkouts accept percent coupons here.
+      if (courseSubscriptionInterval(priced.paymentType ?? course.payment_type)) {
+        throw new PaymentError(
+          "Coupons on subscription checkouts are not supported yet. Use a one-time product.",
+        );
+      }
+      amountMinor = redemption.amountMinorAfter;
+      appliedCouponCode = redemption.code;
+      discountMinor = redemption.discountMinor;
+    }
+
+    // Hotmart-parity: capture affiliate ref on the money path (metadata).
+    // Soft-fail when disabled/invalid so checkout still completes.
+    let affiliateUserId: string | null = null;
+    let affiliateCommissionMinor = 0;
+    let affiliateCommissionPct = 0;
+    if (affiliateRefRaw) {
+      const { data: commerceSettings } = await admin
+        .from("course_commerce_settings")
+        .select("affiliate_enabled,affiliate_commission_pct")
+        .eq("course_id", courseId)
+        .maybeSingle();
+      const attribution = resolveAffiliateAttribution({
+        affiliateRef: affiliateRefRaw,
+        buyerUserId: userId,
+        teacherUserId: course.owner_id,
+        affiliateEnabled: Boolean(commerceSettings?.affiliate_enabled),
+        commissionPct: Number(commerceSettings?.affiliate_commission_pct ?? 0),
+        amountMinor,
+      });
+      if (attribution.ok) {
+        const { data: affiliateUser } = await admin
+          .from("users")
+          .select("uid")
+          .eq("uid", attribution.affiliateUserId)
+          .maybeSingle();
+        if (affiliateUser?.uid) {
+          affiliateUserId = attribution.affiliateUserId;
+          affiliateCommissionMinor = attribution.commissionMinor;
+          affiliateCommissionPct = attribution.commissionPct;
+        }
+      }
+    }
+
     const enrollmentId = `${userId}__${courseId}`;
     const { data: existingEnrollment, error: enrollmentError } = await admin
       .from("enrollments")
@@ -126,21 +226,26 @@ export async function POST(request: Request) {
     }
 
     // --- Course subscription checkout (recurring) --------------------------
-    const subscriptionInterval = courseSubscriptionInterval(course.payment_type);
+    // Prefer payment type from dual-read resolution (offer may override legacy).
+    const subscriptionInterval = courseSubscriptionInterval(
+      priced.paymentType ?? course.payment_type,
+    );
     if (subscriptionInterval) {
       const customerId = await getOrCreateBillingStripeCustomer(
         stripe,
         userId,
         userEmail ?? null,
       );
-      const subscriptionPriceId = await getOrCreateCourseSubscriptionPrice(
-        stripe,
-        course,
-        courseId,
-        amountMinor,
-        currency,
-        subscriptionInterval,
-      );
+      const subscriptionPriceId =
+        priced.stripePriceId
+        || (await getOrCreateCourseSubscriptionPrice(
+          stripe,
+          course,
+          courseId,
+          amountMinor,
+          currency,
+          subscriptionInterval,
+        ));
 
       const subscriptionSession = await stripe.checkout.sessions.create(
         {
@@ -160,6 +265,13 @@ export async function POST(request: Request) {
               connectedAccountId,
               platformFeeBps: String(platformFeeBps),
               currency: currency.toUpperCase(),
+              ...(affiliateUserId
+                ? {
+                    affiliateUserId,
+                    affiliateCommissionPct: String(affiliateCommissionPct),
+                    affiliateCommissionMinor: String(affiliateCommissionMinor),
+                  }
+                : {}),
             },
           },
           metadata: {
@@ -168,6 +280,7 @@ export async function POST(request: Request) {
             courseSlug: courseId,
             userId,
             teacherId: course.owner_id,
+            ...(affiliateUserId ? { affiliateUserId } : {}),
           },
           success_url: `${appUrl}/learn/courses/${encodeURIComponent(courseId)}?checkout=success`,
           cancel_url: `${appUrl}/courses/${encodeURIComponent(courseId)}?checkout=cancelled`,
@@ -264,9 +377,34 @@ export async function POST(request: Request) {
           },
         },
       ],
-      metadata: { orderId, courseId, courseSlug: courseId, userId },
+      metadata: {
+        orderId,
+        courseId,
+        courseSlug: courseId,
+        userId,
+        ...(appliedCouponCode
+          ? {
+              couponCode: appliedCouponCode,
+              discountMinor: String(discountMinor),
+            }
+          : {}),
+        ...(affiliateUserId
+          ? {
+              affiliateUserId,
+              affiliateCommissionPct: String(affiliateCommissionPct),
+              affiliateCommissionMinor: String(affiliateCommissionMinor),
+            }
+          : {}),
+      },
       payment_intent_data: {
-        metadata: { orderId, courseId, courseSlug: courseId, userId },
+        metadata: {
+          orderId,
+          courseId,
+          courseSlug: courseId,
+          userId,
+          ...(appliedCouponCode ? { couponCode: appliedCouponCode } : {}),
+          ...(affiliateUserId ? { affiliateUserId } : {}),
+        },
       },
       expires_at: Math.floor(Date.now() / 1000) + checkoutSessionExpiresInSec,
       success_url: `${appUrl}/learn/courses/${encodeURIComponent(courseId)}?checkout=success`,

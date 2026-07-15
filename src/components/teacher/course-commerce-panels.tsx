@@ -416,7 +416,7 @@ export function AffiliatesPanel({
   return (
     <PanelCard
       title="Affiliate program"
-      description="Set the terms partners earn for promoting this course. Partner sign-up, tracked links, and commission payouts ship with the attribution engine — the terms you save here are what it launches with."
+      description="Set commission terms for partners. Checkout already captures ?ref=<affiliateUserId> (or ?affiliate=) into Stripe metadata when the program is enabled. Settlement transfer of commissions is the remaining engine."
     >
       {activationBlocked ? (
         <GateNotice action="the affiliate program can be enabled" />

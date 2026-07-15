@@ -154,12 +154,9 @@ export function TeacherWalletPanel() {
   }
 
   // Money figures derive from the payout LEDGER — the authoritative record for
-  // BOTH one-time orders AND subscription invoices. Subscription checkout writes
-  // ledger entries but no `orders` doc, so the previous orders-only view showed
-  // $0 / "No sales yet" for subscription-selling teachers while their money was
-  // actually accruing and releasing (a self-contradiction with the release rows
-  // below). The ledger carries server-computed gross/commission/Stripe-fee/net
-  // per entry, so these are exact, not estimates.
+  // BOTH one-time orders AND subscription invoices. The ledger carries the
+  // server-computed gross/commission/Stripe-fee/net per entry, so these remain
+  // exact payout figures rather than order-level estimates.
   const financialsReady = ledgerLoaded;
   const money = (minor: number) => (financialsReady ? formatMoney(minor) : "—");
   const connected = Boolean(profile?.stripeConnectedAccountId);

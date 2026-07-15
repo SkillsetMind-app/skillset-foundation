@@ -99,6 +99,10 @@ const builderTabs = [
 
 type BuilderTab = (typeof builderTabs)[number]["value"];
 
+function isBuilderTab(value: string | null): value is BuilderTab {
+  return builderTabs.some((tab) => tab.value === value);
+}
+
 const builderStages: Array<{
   id: string;
   label: string;
@@ -550,6 +554,7 @@ function builderDraftSignatureFromCourse(course: TeacherCourse): string {
 export function CourseBuilderStudio() {
   const searchParams = useSearchParams();
   const courseId = searchParams.get("courseId");
+  const requestedTab = searchParams.get("tab");
   const { user } = useAuth();
   const [course, setCourse] = useState<TeacherCourse | null>(null);
   const [title, setTitle] = useState("");
@@ -588,7 +593,9 @@ export function CourseBuilderStudio() {
   const [lessonContentText, setLessonContentText] = useState("");
   const [lessonExternalUrl, setLessonExternalUrl] = useState("");
   const [lessonIsFreePreview, setLessonIsFreePreview] = useState(false);
-  const [activeTab, setActiveTab] = useState<BuilderTab>("details");
+  const [activeTab, setActiveTab] = useState<BuilderTab>(() =>
+    isBuilderTab(requestedTab) ? requestedTab : "details",
+  );
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(true);

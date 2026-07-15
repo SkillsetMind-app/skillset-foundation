@@ -9,6 +9,7 @@ import { getStripeClient } from "@/lib/payments/server/stripe";
 import {
   automaticRefundProgressCap,
   automaticRefundWindowDays,
+  isRefundableEnrollmentSource,
   paidOrderRefundQuerySpec,
 } from "@/lib/payments/rules";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (enrollment.source !== "payment") {
+    if (!isRefundableEnrollmentSource(enrollment.source)) {
       throw new PaymentError("Only paid enrollments can request a refund.", 400);
     }
 
@@ -139,7 +140,11 @@ export async function POST(request: Request) {
       orderQuery = orderQuery.eq(column, value);
     }
 
-    const { data: order } = await orderQuery.limit(querySpec.limit).maybeSingle();
+    const { data: order } = await orderQuery
+      .order("paid_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(querySpec.limit)
+      .maybeSingle();
 
     if (!order) {
       throw new PaymentError("Paid order not found.", 404);

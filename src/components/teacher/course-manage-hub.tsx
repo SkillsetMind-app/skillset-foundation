@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -14,6 +14,7 @@ import {
   PanelCard,
   TaxPanel,
 } from "@/components/teacher/course-commerce-panels";
+import { CourseOffersPanel } from "@/components/teacher/course-offers-panel";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { teacherCanSubmitCourse } from "@/domain/teacher-course";
 import { fetchRequireCreatorVerification } from "@/lib/data/creator-verification";
@@ -29,19 +30,20 @@ import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 // Sections that aren't built yet render as honest roadmap cards — never as
 // fake-active features (platform "no fake data" rule).
 
+// Hotmart product hub tab order (macro IA) — labels in Skillset voice.
 const manageSections = [
-  { id: "overview", label: "Overview" },
+  { id: "overview", label: "Panel" },
   { id: "links", label: "Promo links" },
   { id: "basic", label: "Basic info" },
-  { id: "pricing", label: "Pricing" },
-  { id: "content", label: "Content" },
+  { id: "pricing", label: "Pricing & offers" },
   { id: "members", label: "Members area" },
   { id: "page", label: "Product page" },
-  { id: "sales", label: "Sales" },
-  { id: "coupons", label: "Coupons" },
+  { id: "content", label: "Content" },
   { id: "affiliates", label: "Affiliates" },
-  { id: "coproducers", label: "Co-producers" },
+  { id: "coproducers", label: "Co-productions" },
+  { id: "coupons", label: "Coupons" },
   { id: "tax", label: "Tax collection" },
+  { id: "sales", label: "Sales" },
 ] as const;
 
 const roadmapSections = [
@@ -104,9 +106,15 @@ function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
+const allSectionIds = new Set<string>([
+  ...manageSections.map((s) => s.id),
+  ...roadmapSections.map((s) => s.id),
+]);
+
 export function CourseManageHub({ courseId }: { courseId: string }) {
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [course, setCourse] = useState<TeacherCourse | null>(null);
   // Which courseId the subscription has answered for — derives the loading
   // state without a synchronous setState reset when the route param changes.
@@ -120,6 +128,14 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   const [submitError, setSubmitError] = useState("");
   const [submitNotice, setSubmitNotice] = useState("");
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Deep-link from studio checklist: ?section=pricing
+  useEffect(() => {
+    const raw = searchParams?.get("section") ?? "";
+    if (raw && allSectionIds.has(raw)) {
+      setSection(raw as SectionId);
+    }
+  }, [searchParams, courseId]);
 
   useEffect(() => {
     return subscribeToTeacherCourse(
@@ -603,48 +619,54 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
           ) : null}
 
           {section === "pricing" ? (
-            <PanelCard
-              title="Pricing"
-              description="What buyers pay at checkout. Price changes go live immediately for published courses."
-            >
-              <div className="mt-4">
-                <DetailRow label="Price" value={priceLabel(course)} />
-                <DetailRow
-                  label="Payment type"
-                  value={(course.paymentType ?? "one_time").replaceAll("_", " ")}
-                />
-                <DetailRow
-                  label="Installments"
-                  value={
-                    course.installmentsEnabled
-                      ? `Up to ${course.installmentsMax ?? 1}x`
-                      : "Disabled"
-                  }
-                />
-                {paid ? (
+            <div className="grid gap-4">
+              <PanelCard
+                title="Pricing"
+                description="Legacy course price (compat). Multi-offer packages below drive dual-read checkout when present."
+              >
+                <div className="mt-4">
+                  <DetailRow label="Price" value={priceLabel(course)} />
                   <DetailRow
-                    label="Stripe payouts"
-                    value={payoutsReady ? "Ready" : "Onboarding incomplete"}
+                    label="Payment type"
+                    value={(course.paymentType ?? "one_time").replaceAll("_", " ")}
                   />
-                ) : null}
-              </div>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <Link
-                  href={`/teach/builder?courseId=${course.id}`}
-                  className="button-outline px-4 py-2 text-xs"
-                >
-                  Edit pricing in Builder
-                </Link>
-                {paid && !payoutsReady ? (
+                  <DetailRow
+                    label="Installments"
+                    value={
+                      course.installmentsEnabled
+                        ? `Up to ${course.installmentsMax ?? 1}x`
+                        : "Disabled"
+                    }
+                  />
+                  {paid ? (
+                    <DetailRow
+                      label="Stripe payouts"
+                      value={payoutsReady ? "Ready" : "Onboarding incomplete"}
+                    />
+                  ) : null}
+                </div>
+                <div className="mt-5 flex flex-wrap gap-2">
                   <Link
-                    href="/account/payments#stripe-connect"
-                    className="button-solid px-4 py-2 text-xs"
+                    href={`/teach/builder?courseId=${course.id}`}
+                    className="button-outline px-4 py-2 text-xs"
                   >
-                    Finish payout onboarding
+                    Edit pricing in Builder
                   </Link>
-                ) : null}
-              </div>
-            </PanelCard>
+                  {paid && !payoutsReady ? (
+                    <Link
+                      href="/account/payments#stripe-connect"
+                      className="button-solid px-4 py-2 text-xs"
+                    >
+                      Finish payout onboarding
+                    </Link>
+                  ) : null}
+                </div>
+              </PanelCard>
+              <CourseOffersPanel
+                courseId={course.id}
+                defaultCurrency={course.currency ?? "USD"}
+              />
+            </div>
           ) : null}
 
           {section === "content" ? (

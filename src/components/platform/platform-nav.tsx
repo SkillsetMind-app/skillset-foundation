@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Award,
+  BarChart3,
   Bookmark,
   BookOpen,
   Calendar,
@@ -18,11 +19,13 @@ import {
   Plug,
   Receipt,
   RefreshCw,
+  Repeat2,
   Settings,
   ShoppingBag,
   Tag,
   UserCheck,
   Users,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -39,6 +42,7 @@ import {
 
 const iconMap: Record<string, LucideIcon> = {
   Award,
+  BarChart3,
   Bookmark,
   BookOpen,
   Calendar,
@@ -51,19 +55,27 @@ const iconMap: Record<string, LucideIcon> = {
   Plug,
   Receipt,
   RefreshCw,
+  Repeat2,
   Settings,
   ShoppingBag,
   Tag,
   UserCheck,
   Users,
+  Wallet,
 };
 
+// Hotmart producer IA (macro groups) adapted to Skillset labels:
+// Products / Sales / Finance / Reports / Partnerships / Setup.
+// Learner + shared sections stay first/last.
 const sectionOrder = [
   "Discover",
   "Learn",
   "My Learning",
-  "Teach",
-  "Growth",
+  "Products",
+  "Sales",
+  "Finance",
+  "Reports",
+  "Partnerships",
   "Setup",
   "Operations",
   "Account",

@@ -317,6 +317,31 @@ export function shouldReactivateEnrollment(
   return !["active", "completed"].includes(String(status));
 }
 
+export function isRefundableEnrollmentSource(
+  source: string | null | undefined,
+): boolean {
+  return source === "payment" || source === "subscription";
+}
+
+export function shouldMarkEnrollmentRefundedAfterChargeRefund(input: {
+  isFullRefund: boolean;
+  ledgerKind: string | null | undefined;
+}): boolean {
+  return input.isFullRefund && input.ledgerKind !== "course_subscription";
+}
+
+export function shouldCancelCourseSubscriptionForRefund(input: {
+  isFullRefund: boolean;
+  ledgerKind: string | null | undefined;
+  subscriptionId: string | null | undefined;
+}): boolean {
+  return (
+    input.isFullRefund
+    && input.ledgerKind === "course_subscription"
+    && Boolean(input.subscriptionId)
+  );
+}
+
 /**
  * Next payout-ledger status when a card dispute (chargeback) moves. Returns null
  * for "no change".

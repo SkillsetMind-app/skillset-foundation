@@ -28,6 +28,8 @@ export type CourseSubscription = {
   cancelAtPeriodEnd?: boolean;
   pastDue?: boolean;
   latestInvoiceId?: string | null;
+  createdAt?: unknown;
+  updatedAt?: unknown;
 };
 
 /** Whether the subscription still entitles the learner to access. */

@@ -119,6 +119,22 @@ export async function listPublicProfiles(
   return (data ?? []).map(rowToPublicProfile);
 }
 
+export async function getPublicProfilesByIds(
+  userIds: string[],
+): Promise<PublicProfile[]> {
+  const ids = Array.from(new Set(userIds.filter(Boolean))).slice(0, 500);
+  if (ids.length === 0) return [];
+
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("public_profiles")
+    .select("*")
+    .in("uid", ids);
+
+  if (error) throw error;
+  return (data ?? []).map(rowToPublicProfile);
+}
+
 export function subscribeToPublicProfile(
   uid: string,
   callback: (profile: PublicProfile | null) => void,

@@ -98,13 +98,14 @@ export function SaleList() {
   const sortedOrders = [...orders].sort(
     (a, b) => toMillis(b.createdAt) - toMillis(a.createdAt),
   );
+  const visibleOrders = sortedOrders.slice(0, 50);
 
   return (
     <section className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-[var(--color-ink-soft)]">
           {orders.length} {orders.length === 1 ? "order" : "orders"} (most
-          recent 20)
+          recent 50)
         </p>
         <Link
           href="/account/payments"
@@ -114,7 +115,7 @@ export function SaleList() {
         </Link>
       </div>
       <ul className="grid gap-3">
-        {sortedOrders.map((order) => (
+        {visibleOrders.map((order) => (
           <li key={order.id}>
             <Link
               href={`/teach/sales/${order.id}`}

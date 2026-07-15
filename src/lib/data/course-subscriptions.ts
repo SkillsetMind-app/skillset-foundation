@@ -10,11 +10,11 @@ import type { Database } from "@/lib/supabase/database.types";
 type CourseSubscriptionRow =
   Database["public"]["Tables"]["course_subscriptions"]["Row"];
 
-function rowToCourseSubscription(row: CourseSubscriptionRow): CourseSubscription {
+export function rowToCourseSubscription(row: CourseSubscriptionRow): CourseSubscription {
   return {
     id: row.id,
     userId: row.user_id,
-    courseId: row.course_slug ?? row.course_id ?? "",
+    courseId: row.course_id ?? row.course_slug ?? "",
     teacherId: row.teacher_id ?? undefined,
     stripeSubscriptionId: row.stripe_subscription_id ?? row.id,
     stripeCustomerId: row.stripe_customer_id,
@@ -27,6 +27,50 @@ function rowToCourseSubscription(row: CourseSubscriptionRow): CourseSubscription
     cancelAtPeriodEnd: row.cancel_at_period_end,
     pastDue: row.past_due,
     latestInvoiceId: row.latest_invoice_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function subscribeToTeacherCourseSubscriptions(
+  teacherId: string,
+  callback: (subscriptions: CourseSubscription[]) => void,
+  onError: (error: Error) => void,
+): () => void {
+  const supabase = getSupabaseBrowserClient();
+
+  const load = async () => {
+    const { data, error } = await supabase
+      .from("course_subscriptions")
+      .select("*")
+      .eq("teacher_id", teacherId)
+      .limit(500);
+
+    if (error) {
+      onError(error instanceof Error ? error : new Error(String(error)));
+      return;
+    }
+    callback((data ?? []).map(rowToCourseSubscription));
+  };
+
+  void load();
+
+  const channel = supabase
+    .channel(`course_subscriptions:teacher:${teacherId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "course_subscriptions",
+        filter: `teacher_id=eq.${teacherId}`,
+      },
+      () => void load(),
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
   };
 }
 

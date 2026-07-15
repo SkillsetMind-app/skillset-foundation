@@ -145,7 +145,7 @@ export function TeacherCourseStudio({
               {
                 icon: Layers3,
                 title: "Step 1",
-                detail: "Choose a title, category, one-time payment or free course.",
+                detail: "Choose a title, category, and product format: course, subscription, or free.",
               },
               {
                 icon: PlayCircle,
