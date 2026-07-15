@@ -371,7 +371,9 @@
       "plansFees": "Planos e taxas",
       "payoutsTax": "Repasses e impostos",
       "billing": "Cobrança",
-      "creatorOps": "Central de operacoes"
+      "creatorOps": "Central de operacoes",
+      "reports": "Relatorios",
+      "wallet": "Carteira"
     },
     "crumbs": {
       "learn": "Aprender",

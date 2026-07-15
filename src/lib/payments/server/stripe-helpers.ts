@@ -131,14 +131,59 @@ export function normalizeCoursePrice(
 }
 
 /**
- * Soft-load product offers for dual-read pricing.
- * ponytail: product_offers/prices tables are planned but not in live types yet.
- * Always returns [] until a typed migration lands — checkout stays legacy-safe.
+ * Load product offers/prices for dual-read checkout.
+ * Returns [] if tables missing, RLS blocks, or no packages configured.
  */
 export async function loadCourseProductOffers(
-  _courseId: string,
+  courseId: string,
 ): Promise<ProductOffer[]> {
-  return [];
+  const supabase = getSupabaseAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any;
+  const { data: offerRows, error: offerError } = await db
+    .from("product_offers")
+    .select("id,course_id,name,is_default,active")
+    .eq("course_id", courseId)
+    .eq("active", true);
+  if (offerError || !Array.isArray(offerRows) || offerRows.length === 0) {
+    return [];
+  }
+
+  const offers: ProductOffer[] = [];
+  for (const row of offerRows as Array<Record<string, unknown>>) {
+    const offerId = String(row.id ?? "");
+    if (!offerId) continue;
+    const { data: priceRows } = await db
+      .from("product_prices")
+      .select(
+        "id,offer_id,amount_minor,currency,payment_type,stripe_price_id,active",
+      )
+      .eq("offer_id", offerId)
+      .eq("active", true);
+    const prices: ProductOffer["prices"] = (
+      (priceRows as Array<Record<string, unknown>> | null) ?? []
+    ).map((price) => ({
+      id: String(price.id ?? ""),
+      offerId,
+      amountMinor: Number(price.amount_minor ?? 0),
+      currency: String(price.currency ?? "USD"),
+      paymentType: String(
+        price.payment_type ?? "one_time",
+      ) as TeacherCoursePaymentType,
+      stripePriceId:
+        typeof price.stripe_price_id === "string" ? price.stripe_price_id : null,
+      active: price.active !== false,
+    }));
+    offers.push({
+      id: offerId,
+      courseId: String(row.course_id ?? courseId),
+      name: String(row.name ?? "Offer"),
+      isDefault: Boolean(row.is_default),
+      active: row.active !== false,
+      prices,
+    });
+  }
+  return offers;
 }
 
 /**

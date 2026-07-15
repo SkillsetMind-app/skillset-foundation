@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
+import type { CourseCoupon } from "@/domain/course-commerce";
+import { normalizeCouponCode } from "@/domain/course-commerce";
+import { redeemCourseCoupon } from "@/domain/coupon-redemption";
 import { canonicalPlatformFeeBpsForPlan } from "@/lib/payments/rules";
 import {
   PaymentError,
@@ -33,8 +36,10 @@ export async function POST(request: Request) {
     const userId = await requireUserId();
     const body = (await request.json().catch(() => ({}))) as {
       courseId?: unknown;
+      couponCode?: unknown;
     };
     const courseId = String(body.courseId ?? "").trim();
+    const couponCodeRaw = String(body.couponCode ?? "").trim();
 
     if (!courseId || courseId.length > 160) {
       throw new PaymentError("A valid courseId is required.");
@@ -78,9 +83,58 @@ export async function POST(request: Request) {
     // Dual-read: optional offer/price packages, else legacy course columns.
     const offers = await loadCourseProductOffers(courseId);
     const priced = normalizeCoursePrice(course, offers);
-    const { amountMinor, currency } = priced;
+    let amountMinor = priced.amountMinor;
+    const currency = priced.currency;
+    let appliedCouponCode: string | null = null;
+    let discountMinor = 0;
 
     const admin = getSupabaseAdminClient();
+
+    // Hotmart-parity: redeem active course coupon at checkout (one-time only).
+    if (couponCodeRaw) {
+      const code = normalizeCouponCode(couponCodeRaw);
+      const { data: couponRow, error: couponError } = await admin
+        .from("course_coupons")
+        .select("*")
+        .eq("course_id", courseId)
+        .eq("code", code)
+        .maybeSingle();
+      if (couponError) {
+        throw new Error(couponError.message);
+      }
+      const coupon: CourseCoupon | null = couponRow
+        ? {
+            id: couponRow.id,
+            courseId: couponRow.course_id,
+            ownerId: couponRow.owner_id,
+            code: couponRow.code,
+            percentOff: couponRow.percent_off,
+            maxRedemptions: couponRow.max_redemptions,
+            redeemedCount: couponRow.redeemed_count,
+            expiresAt: couponRow.expires_at ?? undefined,
+            active: couponRow.active,
+            createdAt: couponRow.created_at,
+            updatedAt: couponRow.updated_at,
+          }
+        : null;
+      const redemption = redeemCourseCoupon({
+        amountMinor,
+        coupon,
+      });
+      if (!redemption.ok) {
+        throw new PaymentError(redemption.reason);
+      }
+      // Subscriptions: percent-off coupons need Stripe coupons; keep simple —
+      // only one-time checkouts accept percent coupons here.
+      if (courseSubscriptionInterval(priced.paymentType ?? course.payment_type)) {
+        throw new PaymentError(
+          "Coupons on subscription checkouts are not supported yet. Use a one-time product.",
+        );
+      }
+      amountMinor = redemption.amountMinorAfter;
+      appliedCouponCode = redemption.code;
+      discountMinor = redemption.discountMinor;
+    }
     const enrollmentId = `${userId}__${courseId}`;
     const { data: existingEnrollment, error: enrollmentError } = await admin
       .from("enrollments")
@@ -273,9 +327,26 @@ export async function POST(request: Request) {
           },
         },
       ],
-      metadata: { orderId, courseId, courseSlug: courseId, userId },
+      metadata: {
+        orderId,
+        courseId,
+        courseSlug: courseId,
+        userId,
+        ...(appliedCouponCode
+          ? {
+              couponCode: appliedCouponCode,
+              discountMinor: String(discountMinor),
+            }
+          : {}),
+      },
       payment_intent_data: {
-        metadata: { orderId, courseId, courseSlug: courseId, userId },
+        metadata: {
+          orderId,
+          courseId,
+          courseSlug: courseId,
+          userId,
+          ...(appliedCouponCode ? { couponCode: appliedCouponCode } : {}),
+        },
       },
       expires_at: Math.floor(Date.now() / 1000) + checkoutSessionExpiresInSec,
       success_url: `${appUrl}/learn/courses/${encodeURIComponent(courseId)}?checkout=success`,

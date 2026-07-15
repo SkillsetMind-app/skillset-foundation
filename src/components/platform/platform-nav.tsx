@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Award,
+  BarChart3,
   Bookmark,
   BookOpen,
   Calendar,
@@ -24,6 +25,7 @@ import {
   Tag,
   UserCheck,
   Users,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -40,6 +42,7 @@ import {
 
 const iconMap: Record<string, LucideIcon> = {
   Award,
+  BarChart3,
   Bookmark,
   BookOpen,
   Calendar,
@@ -58,6 +61,7 @@ const iconMap: Record<string, LucideIcon> = {
   Tag,
   UserCheck,
   Users,
+  Wallet,
 };
 
 const sectionOrder = [

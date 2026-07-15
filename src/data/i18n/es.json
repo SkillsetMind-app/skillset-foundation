@@ -371,7 +371,9 @@
       "plansFees": "Planes y tarifas",
       "payoutsTax": "Pagos e impuestos",
       "billing": "Facturación",
-      "creatorOps": "Centro de operaciones"
+      "creatorOps": "Centro de operaciones",
+      "reports": "Informes",
+      "wallet": "Billetera"
     },
     "crumbs": {
       "learn": "Aprender",

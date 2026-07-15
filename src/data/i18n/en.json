@@ -371,7 +371,9 @@
       "plansFees": "Plans & fees",
       "payoutsTax": "Payouts & tax",
       "billing": "Billing",
-      "creatorOps": "Operations hub"
+      "creatorOps": "Operations hub",
+      "reports": "Reports",
+      "wallet": "Wallet"
     },
     "crumbs": {
       "learn": "Learn",
