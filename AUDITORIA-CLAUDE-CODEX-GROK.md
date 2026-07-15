@@ -18,7 +18,7 @@
 | 6 | Product/offers/prices sem quebrar legacy | **DONE (base)** | domain dual-read + checkout wired (`normalizeCoursePrice` + offers stub) |
 | 7 | Ops globais creator (wallet/metrics/growth) | **DONE (hub)** | `/teach/operations` + `creator-ops` rollup |
 | 8 | Logos SkillsetMind (início da sessão Codex) | **OUT OF SCOPE desta branch** | 19 PNGs em `~/.codex/generated_images/019f388d…` — não packaging SVG formal |
-| 9 | Paridade Hotmart completa (coupons/coproducer/tax/affiliate matrix) | **OPEN** | coupons/coproducer UI paths existem; deep parity residual |
+| 9 | Paridade Hotmart money-path (coupons no checkout, offers tables, reports, RPCs críticos, nav) | **DONE (core)** `…parity commit` | residual: affiliate attribution engine, tax settlement, installment processor, eNotas |
 | 10 | Schema RPC full bodies versionados | **OPEN** | 14+ RPCs app sem SQL completo no repo |
 | 11 | Live dump SQL (`supabase db dump`) | **OPEN** | precisa DB password; REST inventory feito |
 
