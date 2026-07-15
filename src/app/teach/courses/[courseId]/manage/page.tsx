@@ -27,7 +27,7 @@ export default async function CourseManagePage({
             </section>
           }
         >
-          <CourseManageHub courseId={courseId} />
+          <CourseManageHub key={courseId} courseId={courseId} />
         </Suspense>
       </PlatformShell>
     </ProtectedSurface>

@@ -116,6 +116,12 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  // Deep-link from studio checklist (?section=pricing) — read during render
+  // (no setState-in-effect) so eslint react-hooks/set-state-in-effect stays clean.
+  const sectionFromUrl = (() => {
+    const raw = searchParams?.get("section") ?? "";
+    return raw && allSectionIds.has(raw) ? (raw as SectionId) : null;
+  })();
   const [course, setCourse] = useState<TeacherCourse | null>(null);
   // Which courseId the subscription has answered for — derives the loading
   // state without a synchronous setState reset when the route param changes.
@@ -124,19 +130,15 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   const [payoutsReady, setPayoutsReady] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState("none");
   const [requireVerification, setRequireVerification] = useState(false);
-  const [section, setSection] = useState<SectionId>("overview");
+  // null = follow URL (or default overview); non-null = user clicked a tab
+  const [sectionOverride, setSectionOverride] = useState<SectionId | null>(null);
+  const section: SectionId =
+    sectionOverride ?? sectionFromUrl ?? "overview";
+  const setSection = (next: SectionId) => setSectionOverride(next);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitNotice, setSubmitNotice] = useState("");
   const [copiedLink, setCopiedLink] = useState(false);
-
-  // Deep-link from studio checklist: ?section=pricing
-  useEffect(() => {
-    const raw = searchParams?.get("section") ?? "";
-    if (raw && allSectionIds.has(raw)) {
-      setSection(raw as SectionId);
-    }
-  }, [searchParams, courseId]);
 
   useEffect(() => {
     return subscribeToTeacherCourse(
