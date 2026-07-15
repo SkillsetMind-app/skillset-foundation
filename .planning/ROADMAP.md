@@ -26,7 +26,7 @@ Do estado atual (cursos funcionais, brand sweep feito, sidebar corrigida) até o
 **Plans**: 4 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — videoSource domain field + inference + read-path mapping (VID-01, VID-06)
+- [x] 01-01-PLAN.md — videoSource domain field + inference + read-path mapping (VID-01, VID-06)
 - [ ] 01-02-PLAN.md — player + creator preview respect videoSource (VID-05)
 - [ ] 01-03-PLAN.md — Eduzz-style source picker + scoped design island (VID-02, VID-03, VID-04, VID-07)
 - [ ] 01-04-PLAN.md — full gate + human verification checkpoint
@@ -66,7 +66,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Vídeo híbrido | 0/4 | Not started | - |
+| 1. Vídeo híbrido | 1/4 | In progress | - |
 | 2. IA conselheira | 0/TBD | Not started | - |
 | 3. Núcleo do relançamento | 0/TBD | Not started | - |
 | 4. Assinatura do creator | 0/TBD | Not started | - |
