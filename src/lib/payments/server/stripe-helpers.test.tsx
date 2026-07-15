@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { ensureCourseSubscriptionCanceled } from "@/lib/payments/server/stripe-helpers";
+import {
+  ensureCourseSubscriptionCanceled,
+  normalizeCoursePrice,
+} from "@/lib/payments/server/stripe-helpers";
+import type { ProductOffer } from "@/domain/product-pricing";
+import type { CourseRow } from "@/lib/payments/server/stripe-helpers";
 
 describe("ensureCourseSubscriptionCanceled", () => {
   it("cancels an active subscription", async () => {
@@ -26,5 +31,48 @@ describe("ensureCourseSubscriptionCanceled", () => {
     );
 
     expect(cancel).not.toHaveBeenCalled();
+  });
+});
+
+describe("normalizeCoursePrice dual-read", () => {
+  const baseCourse = {
+    id: "course-1",
+    price_amount_minor: 9900,
+    currency: "BRL",
+    payment_type: "one_time",
+  } as CourseRow;
+
+  it("uses legacy columns when no offers are provided", () => {
+    const priced = normalizeCoursePrice(baseCourse, []);
+    expect(priced.source).toBe("legacy");
+    expect(priced.amountMinor).toBe(9900);
+    expect(priced.currency).toBe("brl");
+    expect(priced.paymentType).toBe("one_time");
+  });
+
+  it("prefers offer price over legacy columns", () => {
+    const offers: ProductOffer[] = [
+      {
+        id: "offer-1",
+        courseId: "course-1",
+        name: "Default",
+        isDefault: true,
+        prices: [
+          {
+            id: "price-1",
+            offerId: "offer-1",
+            amountMinor: 14900,
+            currency: "BRL",
+            paymentType: "subscription_monthly",
+            stripePriceId: "price_abc",
+          },
+        ],
+      },
+    ];
+    const priced = normalizeCoursePrice(baseCourse, offers);
+    expect(priced.source).toBe("offer");
+    expect(priced.amountMinor).toBe(14900);
+    expect(priced.paymentType).toBe("subscription_monthly");
+    expect(priced.stripePriceId).toBe("price_abc");
   });
 });

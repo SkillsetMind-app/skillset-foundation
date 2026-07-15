@@ -15,6 +15,7 @@ import {
   getUserRow,
   getOrCreateBillingStripeCustomer,
   getOrCreateCourseSubscriptionPrice,
+  loadCourseProductOffers,
   normalizeCoursePrice,
 } from "@/lib/payments/server/stripe-helpers";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -74,7 +75,10 @@ export async function POST(request: Request) {
       throw new PaymentError("You can't purchase your own course.");
     }
 
-    const { amountMinor, currency } = normalizeCoursePrice(course);
+    // Dual-read: optional offer/price packages, else legacy course columns.
+    const offers = await loadCourseProductOffers(courseId);
+    const priced = normalizeCoursePrice(course, offers);
+    const { amountMinor, currency } = priced;
 
     const admin = getSupabaseAdminClient();
     const enrollmentId = `${userId}__${courseId}`;
@@ -126,21 +130,26 @@ export async function POST(request: Request) {
     }
 
     // --- Course subscription checkout (recurring) --------------------------
-    const subscriptionInterval = courseSubscriptionInterval(course.payment_type);
+    // Prefer payment type from dual-read resolution (offer may override legacy).
+    const subscriptionInterval = courseSubscriptionInterval(
+      priced.paymentType ?? course.payment_type,
+    );
     if (subscriptionInterval) {
       const customerId = await getOrCreateBillingStripeCustomer(
         stripe,
         userId,
         userEmail ?? null,
       );
-      const subscriptionPriceId = await getOrCreateCourseSubscriptionPrice(
-        stripe,
-        course,
-        courseId,
-        amountMinor,
-        currency,
-        subscriptionInterval,
-      );
+      const subscriptionPriceId =
+        priced.stripePriceId
+        || (await getOrCreateCourseSubscriptionPrice(
+          stripe,
+          course,
+          courseId,
+          amountMinor,
+          currency,
+          subscriptionInterval,
+        ));
 
       const subscriptionSession = await stripe.checkout.sessions.create(
         {

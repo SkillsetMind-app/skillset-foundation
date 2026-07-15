@@ -55,3 +55,12 @@ Claude → Codex `019f388d…` → Grok
 - Commerce tables row counts: all 0 (empty project data).
 - Stripe live account: 0 charges / 0 invoices / 0 subscriptions — backfill dry-run is no-op.
 - Keys validated: Supabase service+anon PASS, Stripe balance PASS.
+
+## P4 + P5 closed 2026-07-15
+
+- **P4** Checkout dual-read pricing via 
+ormalizeCoursePrice + loadCourseProductOffers stub (legacy-safe).
+- **P5** Creator ops hub /teach/operations + creator-ops metrics rollup + nav.
+- Tests: product-pricing, creator-ops, stripe-helpers dual-read — green. 	sc --noEmit clean.
+- Audit: AUDITORIA-CLAUDE-CODEX-GROK.md
+

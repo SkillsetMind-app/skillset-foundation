@@ -370,7 +370,8 @@
       "settings": "Settings",
       "plansFees": "Plans & fees",
       "payoutsTax": "Payouts & tax",
-      "billing": "Billing"
+      "billing": "Billing",
+      "creatorOps": "Operations hub"
     },
     "crumbs": {
       "learn": "Learn",

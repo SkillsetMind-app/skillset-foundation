@@ -370,7 +370,8 @@
       "settings": "Configurações",
       "plansFees": "Planos e taxas",
       "payoutsTax": "Repasses e impostos",
-      "billing": "Cobrança"
+      "billing": "Cobrança",
+      "creatorOps": "Central de operacoes"
     },
     "crumbs": {
       "learn": "Aprender",

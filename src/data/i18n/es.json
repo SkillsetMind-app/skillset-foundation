@@ -370,7 +370,8 @@
       "settings": "Ajustes",
       "plansFees": "Planes y tarifas",
       "payoutsTax": "Pagos e impuestos",
-      "billing": "Facturación"
+      "billing": "Facturación",
+      "creatorOps": "Centro de operaciones"
     },
     "crumbs": {
       "learn": "Aprender",

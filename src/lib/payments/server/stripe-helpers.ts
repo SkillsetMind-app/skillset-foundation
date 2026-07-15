@@ -2,6 +2,9 @@ import type Stripe from "stripe";
 
 import { planById, hasRealStripePriceIds } from "@/data/plans";
 import type { PlanBillingCycle, PlanId } from "@/data/plans";
+import type { ProductOffer } from "@/domain/product-pricing";
+import { resolveCoursePrice } from "@/domain/product-pricing";
+import type { TeacherCoursePaymentType } from "@/domain/teacher-course";
 import { normalizeSkillsetCurrency } from "@/lib/payments/currencies";
 import { PaymentError } from "@/lib/payments/server/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -86,25 +89,56 @@ export async function ensureCourseSubscriptionCanceled(
 
 /**
  * Validates a course has a paid checkout price and returns the amount + a
- * lowercase Stripe currency. Throws PaymentError (surfaced verbatim) when the
- * course has no positive price — mirrors the failed-precondition HttpsError.
+ * lowercase Stripe currency. Dual-reads optional offer/price packages first
+ * (`resolveCoursePrice`); falls back to legacy courses.price_amount_minor.
+ * Throws PaymentError when no positive price is available.
  */
-export function normalizeCoursePrice(course: CourseRow): {
+export function normalizeCoursePrice(
+  course: CourseRow,
+  offers: ProductOffer[] = [],
+): {
   amountMinor: number;
   currency: string;
+  paymentType: string | null;
+  source: "legacy" | "offer";
+  stripePriceId?: string | null;
 } {
-  const amountMinor = course.price_amount_minor;
+  const resolved = resolveCoursePrice(
+    {
+      id: course.id,
+      priceAmountMinor: course.price_amount_minor ?? undefined,
+      currency: course.currency ?? undefined,
+      paymentType: (course.payment_type ?? undefined) as
+        | TeacherCoursePaymentType
+        | undefined,
+    },
+    offers,
+  );
 
-  if (typeof amountMinor !== "number" || amountMinor <= 0) {
+  if (!resolved || resolved.amountMinor <= 0) {
     throw new PaymentError(
       "This course does not have a paid checkout price yet.",
     );
   }
 
   return {
-    amountMinor,
-    currency: normalizeSkillsetCurrency(course.currency).toLowerCase(),
+    amountMinor: resolved.amountMinor,
+    currency: normalizeSkillsetCurrency(resolved.currency).toLowerCase(),
+    paymentType: resolved.paymentType ?? course.payment_type ?? null,
+    source: resolved.source,
+    stripePriceId: resolved.stripePriceId,
   };
+}
+
+/**
+ * Soft-load product offers for dual-read pricing.
+ * ponytail: product_offers/prices tables are planned but not in live types yet.
+ * Always returns [] until a typed migration lands — checkout stays legacy-safe.
+ */
+export async function loadCourseProductOffers(
+  _courseId: string,
+): Promise<ProductOffer[]> {
+  return [];
 }
 
 /**
