@@ -15,6 +15,7 @@ import {
   TaxPanel,
 } from "@/components/teacher/course-commerce-panels";
 import { CourseOffersPanel } from "@/components/teacher/course-offers-panel";
+import { SalesPageEditor } from "@/components/teacher/sales-page-editor";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { teacherCanSubmitCourse } from "@/domain/teacher-course";
 import { fetchRequireCreatorVerification } from "@/lib/data/creator-verification";
@@ -745,17 +746,20 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
           ) : null}
 
           {section === "page" ? (
-            <PanelCard
-              title="Product page"
-              description="The public sales page buyers see. Until the course is published, only you can open it."
-            >
-              <Link
-                href={`/courses/${course.id}`}
-                className="button-solid mt-5 inline-flex px-4 py-2 text-xs"
+            <div className="grid gap-4">
+              <SalesPageEditor course={course} />
+              <PanelCard
+                title="Public product page"
+                description="The buyer-facing URL. Until published, only you can open it."
               >
-                View product page
-              </Link>
-            </PanelCard>
+                <Link
+                  href={`/courses/${course.id}`}
+                  className="button-solid mt-5 inline-flex px-4 py-2 text-xs"
+                >
+                  Open product page
+                </Link>
+              </PanelCard>
+            </div>
           ) : null}
 
           {section === "sales" ? (
