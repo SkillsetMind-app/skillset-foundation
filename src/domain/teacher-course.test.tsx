@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   countCourseLessons,
+  inferLessonVideoSource,
   normalizeCourseCategories,
   normalizeInstallmentsMax,
   adminCanRepublishCourse,
@@ -124,6 +125,7 @@ describe("teacher course domain", () => {
               durationMinutes: undefined,
               contentText: "  Notes  ",
               externalUrl: "  https://youtu.be/dQw4w9WgXcQ  ",
+              videoSource: "youtube",
               dripDelayDays: 2.6,
               thumbnailAssetId: undefined,
             },
@@ -145,11 +147,67 @@ describe("teacher course domain", () => {
             durationMinutes: null,
             contentText: "Notes",
             externalUrl: "https://youtu.be/dQw4w9WgXcQ",
+            videoSource: "youtube",
             dripDelayDays: 3,
             thumbnailAssetId: null,
           },
         ],
       },
     ]);
+  });
+
+  it("preserves upload sources and normalizes absent or invalid sources to null", () => {
+    const modules = [
+      {
+        id: "module-1",
+        title: "Video sources",
+        lessons: [
+          {
+            id: "lesson-upload",
+            title: "Upload",
+            type: "video",
+            description: "",
+            videoSource: "upload",
+          },
+          {
+            id: "lesson-legacy",
+            title: "Legacy",
+            type: "video",
+            description: "",
+          },
+          {
+            id: "lesson-invalid",
+            title: "Invalid",
+            type: "video",
+            description: "",
+            videoSource: "vimeo",
+          },
+        ],
+      },
+    ] as unknown as TeacherCourseModule[];
+
+    const [upload, legacy, invalid] = normalizeTeacherCourseModules(modules)[0].lessons;
+
+    expect(upload.videoSource).toBe("upload");
+    expect(legacy.videoSource).toBeNull();
+    expect(invalid.videoSource).toBeNull();
+  });
+
+  it("infers upload when both a video asset and trusted embed exist", () => {
+    expect(
+      inferLessonVideoSource({ hasVideoAsset: true, hasTrustedEmbed: true }),
+    ).toBe("upload");
+  });
+
+  it("infers youtube when only a trusted embed exists", () => {
+    expect(
+      inferLessonVideoSource({ hasVideoAsset: false, hasTrustedEmbed: true }),
+    ).toBe("youtube");
+  });
+
+  it("infers no source when neither video option exists", () => {
+    expect(
+      inferLessonVideoSource({ hasVideoAsset: false, hasTrustedEmbed: false }),
+    ).toBeNull();
   });
 });
