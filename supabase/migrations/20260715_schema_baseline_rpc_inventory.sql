@@ -1,0 +1,43 @@
+-- RPC INVENTORY (not executable stubs)
+-- Functions present in database.types.ts or called from src but not fully versioned here.
+-- Do NOT invent business logic. Next step: `supabase db dump --schema public` with service role.
+
+-- TODO version RPC: public.claim_checkout_lock
+-- TODO version RPC: public.create_free_course_enrollment
+-- TODO version RPC: public.create_teacher_course_draft
+-- TODO version RPC: public.delete_teacher_course_draft
+-- TODO version RPC: public.enforce_rate_limit
+-- TODO version RPC: public.has_enrollment_for_course_slug
+-- TODO version RPC: public.is_target_author
+-- TODO version RPC: public.issue_skillset_certificate
+-- TODO version RPC: public.log_audit_event
+-- TODO version RPC: public.record_lesson_progress
+-- TODO version RPC: public.send_course_message
+-- TODO version RPC: public.submit_course_review
+-- TODO version RPC: public.update_teacher_course_builder
+-- TODO version RPC: public.verify_skillset_certificate
+
+-- RPCs referenced from application code:
+--   claim_checkout_lock  [NEEDS_VERSIONING]
+--   create_course_coupon  [VERSIONED_IN_MIG]
+--   create_free_course_enrollment  [NEEDS_VERSIONING]
+--   create_teacher_course_draft  [NEEDS_VERSIONING]
+--   delete_course_as_admin  [NEEDS_VERSIONING]
+--   delete_course_coupon  [VERSIONED_IN_MIG]
+--   delete_teacher_course_draft  [NEEDS_VERSIONING]
+--   enforce_rate_limit  [NEEDS_VERSIONING]
+--   invite_course_coproducer  [VERSIONED_IN_MIG]
+--   is_admin  [NEEDS_VERSIONING]
+--   issue_skillset_certificate  [NEEDS_VERSIONING]
+--   record_lesson_progress  [NEEDS_VERSIONING]
+--   request_account_action  [NEEDS_VERSIONING]
+--   review_creator_verification  [VERSIONED_IN_MIG]
+--   revoke_course_coproducer  [VERSIONED_IN_MIG]
+--   send_course_message  [NEEDS_VERSIONING]
+--   set_course_coupon_active  [VERSIONED_IN_MIG]
+--   submit_course_review  [NEEDS_VERSIONING]
+--   submit_creator_verification  [VERSIONED_IN_MIG]
+--   submit_teacher_course_for_review  [VERSIONED_IN_MIG]
+--   update_teacher_course_builder  [NEEDS_VERSIONING]
+--   upsert_course_commerce_settings  [VERSIONED_IN_MIG]
+--   verify_skillset_certificate  [NEEDS_VERSIONING]
