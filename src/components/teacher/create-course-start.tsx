@@ -1,14 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, CheckCircle2, CreditCard, Gift, Layers3 } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpenCheck,
+  CheckCircle2,
+  Gift,
+  Repeat2,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import {
   normalizeCourseCategories,
+  resolveTeacherCoursePaymentType,
   skillsetCourseCategories,
   type CreateTeacherCourseInput,
+  type TeacherCourseProductFormat,
+  type TeacherCourseSubscriptionInterval,
 } from "@/domain/teacher-course";
 import { createTeacherCourse } from "@/lib/data/teacher-courses";
 
@@ -17,15 +27,17 @@ type CreateCourseStartProps = {
 };
 
 const creationSteps = [
-  ["01", "Course basics", "Title, promise, category"],
-  ["02", "Course shell", "Draft saved automatically"],
-  ["03", "Builder", "Modules, lessons, uploads"],
+  ["01", "Product format", "Course, subscription, or free"],
+  ["02", "Course basics", "Title, promise, category"],
+  ["03", "Pricing and content", "Complete the builder"],
 ] as const;
 
 export function CreateCourseStart({ ownerId }: CreateCourseStartProps) {
   const router = useRouter();
-  const [courseType, setCourseType] =
-    useState<NonNullable<CreateTeacherCourseInput["paymentType"]>>("one_time");
+  const [productFormat, setProductFormat] =
+    useState<TeacherCourseProductFormat>("course");
+  const [subscriptionInterval, setSubscriptionInterval] =
+    useState<TeacherCourseSubscriptionInterval>("monthly");
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -33,6 +45,11 @@ export function CreateCourseStart({ ownerId }: CreateCourseStartProps) {
   const [error, setError] = useState("");
   const canSubmit =
     title.trim().length >= 3 && summary.trim().length >= 20 && !isSaving;
+  const courseType: NonNullable<CreateTeacherCourseInput["paymentType"]> =
+    resolveTeacherCoursePaymentType(productFormat, subscriptionInterval);
+  const nextBuilderTab = productFormat === "free" ? "content" : "pricing";
+  const submitLabel =
+    productFormat === "free" ? "Create and add content" : "Create and set pricing";
 
   function toggleCategory(nextCategory: string) {
     setSelectedCategories((current) => {
@@ -66,7 +83,7 @@ export function CreateCourseStart({ ownerId }: CreateCourseStartProps) {
         paymentType: courseType,
       });
 
-      router.push(`/teach/builder?courseId=${courseId}`);
+      router.push(`/teach/builder?courseId=${courseId}&tab=${nextBuilderTab}`);
     } catch (caughtError) {
       const message =
         caughtError instanceof Error ? caughtError.message : "";
@@ -98,8 +115,8 @@ export function CreateCourseStart({ ownerId }: CreateCourseStartProps) {
           Start with the course shell.
         </h2>
         <p className="mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          Create the draft first. Then SkillsetMind opens the full builder for cover,
-          modules, lessons, uploads, pricing, preview, and review.
+          Choose what you are selling, create the draft, then complete pricing,
+          content, preview, and review in the full builder.
         </p>
 
         <div className="mt-8 grid gap-3">
@@ -130,24 +147,61 @@ export function CreateCourseStart({ ownerId }: CreateCourseStartProps) {
 
         <div className="mt-6 grid gap-4">
           <div className="grid gap-3 text-sm font-semibold text-[var(--color-ink)]">
-            Payment model
-            <div className="grid gap-3 sm:grid-cols-2">
+            Product format
+            <div className="grid gap-3 sm:grid-cols-3">
               <PaymentChoice
-                active={courseType === "one_time"}
-                detail="Paid course with checkout and payout tracking."
-                icon="paid"
-                label="One-time payment"
-                onClick={() => setCourseType("one_time")}
+                active={productFormat === "course"}
+                detail="A complete course sold with one-time payment."
+                icon="course"
+                label="Course"
+                onClick={() => setProductFormat("course")}
               />
               <PaymentChoice
-                active={courseType === "free"}
+                active={productFormat === "subscription"}
+                detail="Ongoing access billed monthly or yearly."
+                icon="subscription"
+                label="Subscription"
+                onClick={() => setProductFormat("subscription")}
+              />
+              <PaymentChoice
+                active={productFormat === "free"}
                 detail="Open enrollment without checkout."
                 icon="free"
                 label="Free course"
-                onClick={() => setCourseType("free")}
+                onClick={() => setProductFormat("free")}
               />
             </div>
           </div>
+
+          {productFormat === "subscription" ? (
+            <div className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+              Billing interval
+              <div
+                role="group"
+                aria-label="Billing interval"
+                className="grid grid-cols-2 gap-2 rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1"
+              >
+                {(["monthly", "yearly"] as const).map((interval) => (
+                  <button
+                    key={interval}
+                    type="button"
+                    aria-pressed={subscriptionInterval === interval}
+                    onClick={() => setSubscriptionInterval(interval)}
+                    className={`rounded-[8px] px-3 py-2 text-sm font-semibold transition-colors ${
+                      subscriptionInterval === interval
+                        ? "bg-[var(--color-primary)] text-[var(--color-base)]"
+                        : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
+                    }`}
+                  >
+                    {interval === "monthly" ? "Monthly" : "Yearly"}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[11px] font-normal leading-5 text-[var(--color-ink-soft)]">
+                Price, trial, refund window, and access rules continue in Pricing.
+              </span>
+            </div>
+          ) : null}
 
           <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
             Course title
@@ -222,7 +276,7 @@ export function CreateCourseStart({ ownerId }: CreateCourseStartProps) {
             disabled={!canSubmit}
             className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
           >
-            {isSaving ? "Creating..." : "Create and open builder"}
+            {isSaving ? "Creating..." : submitLabel}
             <ArrowRight aria-hidden="true" size={14} strokeWidth={1.9} />
           </button>
         </div>
@@ -240,11 +294,12 @@ function PaymentChoice({
 }: {
   active: boolean;
   detail: string;
-  icon: "free" | "paid";
+  icon: TeacherCourseProductFormat;
   label: string;
   onClick: () => void;
 }) {
-  const Icon = icon === "paid" ? CreditCard : Gift;
+  const Icon =
+    icon === "subscription" ? Repeat2 : icon === "free" ? Gift : BookOpenCheck;
 
   return (
     <button
@@ -258,7 +313,7 @@ function PaymentChoice({
       </span>
       <strong>{label}</strong>
       <small>{detail}</small>
-      <Layers3 aria-hidden="true" className="create-course-payment__watermark" size={44} />
+      <Icon aria-hidden="true" className="create-course-payment__watermark" size={44} />
     </button>
   );
 }

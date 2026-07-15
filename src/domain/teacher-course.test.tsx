@@ -5,6 +5,7 @@ import {
   inferLessonVideoSource,
   normalizeCourseCategories,
   normalizeInstallmentsMax,
+  resolveTeacherCoursePaymentType,
   adminCanRepublishCourse,
   adminCanUnpublishCourse,
   normalizeMembersText,
@@ -18,6 +19,17 @@ import {
 } from "./teacher-course";
 
 describe("teacher course domain", () => {
+  it("maps product format and billing interval to the stored payment type", () => {
+    expect(resolveTeacherCoursePaymentType("course", "monthly")).toBe("one_time");
+    expect(resolveTeacherCoursePaymentType("free", "yearly")).toBe("free");
+    expect(resolveTeacherCoursePaymentType("subscription", "monthly")).toBe(
+      "subscription_monthly",
+    );
+    expect(resolveTeacherCoursePaymentType("subscription", "yearly")).toBe(
+      "subscription_yearly",
+    );
+  });
+
   it("counts lessons across modules", () => {
     const modules: TeacherCourseModule[] = [
       {

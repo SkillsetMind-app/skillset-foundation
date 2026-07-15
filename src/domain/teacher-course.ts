@@ -55,6 +55,27 @@ export type TeacherCoursePaymentType =
   | "subscription_yearly"
   | "free";
 
+export type TeacherCourseProductFormat = "course" | "subscription" | "free";
+
+export type TeacherCourseSubscriptionInterval = "monthly" | "yearly";
+
+export function resolveTeacherCoursePaymentType(
+  format: TeacherCourseProductFormat,
+  interval: TeacherCourseSubscriptionInterval,
+): TeacherCoursePaymentType {
+  if (format === "free") {
+    return "free";
+  }
+
+  if (format === "subscription") {
+    return interval === "yearly"
+      ? "subscription_yearly"
+      : "subscription_monthly";
+  }
+
+  return "one_time";
+}
+
 export type MembersTheme = "light" | "dark";
 
 export type LessonVideoSource = "youtube" | "upload";
@@ -139,7 +160,7 @@ export type CreateTeacherCourseInput = {
   summary: string;
   category: string;
   categories?: string[];
-  paymentType?: Extract<TeacherCoursePaymentType, "one_time" | "free">;
+  paymentType?: TeacherCoursePaymentType;
 };
 
 export type UpdateTeacherCourseBuilderInput = {

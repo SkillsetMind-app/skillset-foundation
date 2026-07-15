@@ -1,53 +1,42 @@
 # Project State
 
-## Project Reference
+## Current focus
 
-See: .planning/PROJECT.md (updated 2026-07-15)
+**Phase 2 - Commerce integrity**
+**Issue:** #4
+**Branch:** `feat/issue-4-commerce-parity` (stacked on the hybrid-video branch until PR #3 merges)
 
-**Core value:** o profissional é dono da audiência, dos dados e do contrato.
-**Current focus:** Phase 2 — IA conselheira (planning next)
+## Current position
 
-## Current Position
+The discovery pass is complete. Authenticated Hotmart captures, both attached mapping documents, the PS8 research folder, the PDF, the archived workspace, Claude history, and the canonical codebase were reconciled.
 
-Phase: 1 of 4 (Vídeo híbrido)
-Plan: 4 of 4 in current phase
-Status: Complete — ready for PR and Phase 2 planning
-Last activity: 2026-07-15 — Phase 1 concluída: videoSource explícito, picker Eduzz, playback por fonte e gates integrados verdes
+Implemented in the first slice:
 
-Progress: [██████████] 100% of Phase 1
+- Subscription is visible as a product format during creation.
+- Monthly/yearly interval maps to the existing recurring checkout types.
+- Paid products open the Pricing tab; free products open Curriculum.
+- The order mapper now preserves authorization and financial detail fields already present in Supabase types.
+- Regression tests cover the new creation flow and mapper behavior.
 
-## Performance Metrics
+## Next execution order
 
-**Velocity:**
-- Total plans completed: 4
+1. Recover and version the full Supabase schema/RPC baseline.
+2. Materialize recurring invoices as canonical sales/payment facts.
+3. Add subscription-aware refund and creator subscriber management.
+4. Introduce product/offers/prices without breaking legacy course pricing.
+5. Build global creator operations, wallet, metrics, and growth engines.
 
-| Phase | Plan | Duration | Tasks | Files |
-|-------|------|----------|-------|-------|
-| 01-video-hibrido | 01 | 7 min | 2 | 5 |
-| 01-video-hibrido | 02 | 16 min | 2 | 2 |
-| 01-video-hibrido | 03 | 17 min | 3 | 4 |
-| 01-video-hibrido | 04 | 9 min | 2 | 4 planning artifacts |
+## Known blockers and risks
 
-## Accumulated Context
+- Local migrations create only a small subset of the database represented by generated types; production cannot yet be reproduced from the repository.
+- Fourteen RPCs called by application code have no versioned definition in the repository.
+- Subscription renewals update enrollment/subscription/payout state but do not create the same order/payment facts used by current sales reports.
+- Existing coupon, affiliate, co-producer, and tax surfaces are not integrated into checkout/webhook/payout calculations.
+- Some source screenshots contain personal or SSO data; they were reviewed locally but are intentionally not committed.
 
-### Decisions
+## Verification baseline
 
-- 2026-07-14: vídeo híbrido estilo Eduzz é escopo de launch (doc-norte §9.6, VIABILIDADE §6.3)
-- 2026-07-15: recon constatou que embed YouTube (getTrustedLessonEmbed→nocookie, testado) e upload nativo (Bunny TUS + token assinado + fallback Supabase) JÁ EXISTEM — a fase entrega o `videoSource` explícito + UX do seletor, não o pipeline de vídeo
-- 2026-07-15: `videoSource` aceita apenas `youtube`/`upload`; valores ausentes ou inválidos normalizam para `null`, e a inferência legada prioriza asset de vídeo sobre embed confiável
-- 2026-07-15: escolha explícita sempre vence dados órfãos; trocar a fonte altera apenas `videoSource` e preserva URL/assets
-
-### Pending Todos
-
-None yet.
-
-### Blockers/Concerns
-
-- Founder-gates fora do dev bloqueiam o go-live (Supabase pago, rotações, Turnstile, TOTP, logo) — não bloqueiam esta fase.
-- Bunny configurado?: `isBunnyConfigured` decide Bunny vs Supabase em runtime; a fase não depende disso (abstração já cobre os dois).
-
-## Session Continuity
-
-Last session: 2026-07-15
-Stopped at: Phase 1 complete; issue #2 ready for PR
-Resume file: None
+- Before changes: 31 files, 168 tests passed.
+- New focused tests: monthly subscription, yearly subscription, free routing, product-format mapping, and complete order mapping.
+- Current result: 33 files, 173 tests passed; TypeScript, ESLint, and production build passed.
+- Visual QA passed at 1440x1100 and 390x844; evidence is stored under Phase 2.

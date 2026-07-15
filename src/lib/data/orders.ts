@@ -6,16 +6,19 @@ import type { Database } from "@/lib/supabase/database.types";
 
 type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
 
-// The orders table now carries the order-detail columns the Order domain reads
-// (course_slug/course_title/platform_fee_bps/provider/checkout_session_id/
-// payment_intent_id). Fields still absent from the Postgres schema (teacherId,
-// refundedAmountMinor, receiptUrl, paidAt, updatedAt, payoutModel,
-// teacherStripeConnectedAccountId) are optional in the domain and stay undefined
-// until the Stripe webhook + payout phases add and populate them.
-function rowToOrder(row: OrderRow): Order {
+export function mapOrderRow(row: OrderRow): Order {
+  const payoutModel =
+    row.payout_model === "separate_charges_and_transfers" ||
+    row.payout_model === "destination_charge"
+      ? row.payout_model
+      : undefined;
+
   return {
     id: row.id,
     userId: row.user_id,
+    teacherId: row.teacher_id ?? undefined,
+    teacherStripeConnectedAccountId:
+      row.teacher_stripe_connected_account_id,
     courseId: row.course_id ?? "",
     courseSlug: row.course_slug ?? "",
     courseTitle: row.course_title ?? "",
@@ -24,9 +27,14 @@ function rowToOrder(row: OrderRow): Order {
     status: row.status as OrderStatus,
     provider: (row.provider as Order["provider"] | null) ?? "stripe",
     platformFeeBps: row.platform_fee_bps ?? 0,
+    payoutModel,
     checkoutSessionId: row.checkout_session_id,
     paymentIntentId: row.payment_intent_id,
+    refundedAmountMinor: row.refunded_amount_minor,
+    receiptUrl: row.receipt_url,
     createdAt: row.created_at,
+    paidAt: row.paid_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -47,7 +55,7 @@ export function subscribeToOrder(
         onError(error instanceof Error ? error : new Error(String(error)));
         return;
       }
-      callback(data ? rowToOrder(data) : null);
+      callback(data ? mapOrderRow(data) : null);
     });
 
   const channel = supabase
@@ -65,7 +73,7 @@ export function subscribeToOrder(
           callback(null);
           return;
         }
-        callback(rowToOrder(payload.new as unknown as OrderRow));
+        callback(mapOrderRow(payload.new as unknown as OrderRow));
       },
     )
     .subscribe();
@@ -93,7 +101,7 @@ export function subscribeToRecentOrders(
       return;
     }
 
-    callback((data ?? []).map(rowToOrder));
+    callback((data ?? []).map(mapOrderRow));
   };
 
   void load();
@@ -140,7 +148,7 @@ export function subscribeToUserOrders(
       return;
     }
 
-    callback((data ?? []).map(rowToOrder));
+    callback((data ?? []).map(mapOrderRow));
   };
 
   void load();
@@ -189,7 +197,7 @@ export function subscribeToTeacherOrders(
       return;
     }
 
-    callback((data ?? []).map(rowToOrder));
+    callback((data ?? []).map(mapOrderRow));
   };
 
   void load();

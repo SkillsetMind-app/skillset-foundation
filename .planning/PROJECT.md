@@ -1,38 +1,54 @@
-# SkillsetMind — Launch (cursos + adds confirmados)
+# SkillsetMind - Practitioner Learning Marketplace
 
-## What This Is
+## What this is
 
-Marketplace de cursos + infraestrutura de negócio para psicólogos, terapeutas e profissionais de desenvolvimento pessoal (US-first, BR secundário). Next.js (Vercel) + Supabase (auth/Postgres/RLS) + Stripe Connect Express + Bunny Stream + n8n/DeepSeek. Repo: `opatricksimon/skillset-foundation`.
+SkillsetMind is a marketplace and business operating system for psychologists, therapists, and personal-development or mental-performance professionals. Practitioners publish educational products; learners buy from independent experts. The platform is US-first with international support.
 
-Este .planning cobre o **escopo de launch decidido em 2026-07-14**: vídeo híbrido → IA conselheira → messages/tutorial/sidebar religada → assinatura do creator (fast-follow). O 1:1 MVP é Fase 2 do produto (pós-launch) e fica fora deste milestone.
+## Core value
 
-## Core Value
+The practitioner owns the audience, data, and commercial relationship. Product and financial behavior must preserve the Skillset Promise: predictable fees, feature parity, one-click export and cancellation, fund protection, and human support when automation cannot resolve an exception.
 
-O profissional é dono da audiência, dos dados e do contrato (Skillset Promise: fee-lock 24m, paridade de features, export 1-clique, cancelamento 1-clique, proteção de fundos, suporte humano). Nenhuma feature pode violá-la.
+## Current milestone
 
-## Source Documents (decisões travadas — ler antes de planejar)
+The milestone moves from a functional course marketplace to launch-grade creator commerce:
 
-- `C:\Users\nicae\PS8-OS\03-projetos\skillsetmind\CONTEXTO-PRODUTO-BACKLOG-2026-07-11.md` (doc-norte; §9 = arquitetura de lançamento FINAL)
-- `C:\Users\nicae\PS8-OS\03-projetos\skillsetmind\VIABILIDADE-1A1-E-REFINO-PLANO-2026-07-14.md` (§3 encaixe no plano, §6 decisões travadas)
-- `C:\Users\nicae\PS8-OS\03-projetos\skillsetmind\DESIGN-CLONE-SPEC-HOTMART-2026-07-14.md` (pele: Ink Indigo `#14182B` + Muted Brass `#C6A15B`, radius 6-8px, alturas 40-44px, headings pesados)
-- `C:\Users\nicae\PS8-OS\03-projetos\skillsetmind\MAPEAMENTO-HOTMART-AO-VIVO-2026-07-14.md` (estrutura do painel do produtor)
+1. Hybrid video (complete).
+2. Commerce integrity and recurring operations.
+3. Product/offer architecture.
+4. Creator sales, subscription, receivables, and report operations.
+5. Growth engines.
+6. Relaunch experience, member refinements, and grounded AI.
 
-## Key Decisions
+## Source documents
 
-| Data | Decisão | Fonte |
-|------|---------|-------|
-| 2026-07-14 | Vídeo = híbrido estilo Eduzz: YouTube embed + upload nativo, ambos em todos os planos | doc-norte §9.6 |
-| 2026-07-14 | 1:1 = Fase 2 pós-launch, perfil coaching (sem HIPAA) | VIABILIDADE §6 |
-| 2026-07-14 | Código começa pelo vídeo híbrido, via GSD plan→approve→execute→verify | VIABILIDADE §6.3 |
-| 2026-07-14 | Assinatura como produto do creator = P1.5 fast-follow (não bloqueia launch) | doc-norte §9.9 |
-| 2026-07-13 | US-first; modo lançamento tudo grátis com planos dormentes atrás de flag | doc-norte §9.1-9.2 |
+- `docs/product/HOTMART_PARITY_AUDIT_2026-07-15.md` - current canonical synthesis.
+- `docs/research/hotmart-2026-07/` - supplied research and historical decisions.
+- `C:/Users/nicae/Downloads/skillset-design-v2-8-workspace/` - local authenticated capture archive and previous implementation studies.
+- `C:/Users/nicae/Downloads/Skillset USA - A premium learning marketplace.pdf` - learner marketplace/faculty reference.
+
+## Current architecture
+
+- Next.js App Router on Vercel.
+- Supabase Auth/Postgres/RLS.
+- Stripe Connect Express and Stripe Checkout.
+- Bunny Stream with Supabase Storage fallback.
+- n8n/LLM integrations for automation and advisory features.
 
 ## Constraints
 
-- Founder solo: automação > processo manual; nada que crie trabalho humano recorrente.
-- Todo money path passa pelo `audit_log`; entitlement gate do Bunny é explícito e NÃO pode ser removido.
-- Git: commit direto na main proibido — Issue→Branch→PR (issue #2 = vídeo híbrido).
-- Founder-gates bloqueiam o go-live e independem de dev: Supabase Free→pago, rotação service_role + Stripe LIVE, Turnstile, TOTP admin, logo.
+- Solo founder: prefer automation over recurring manual operations.
+- Every financial mutation needs idempotency, an audit trail, and reconciliation evidence.
+- Do not expose creator features that are only decorative configuration.
+- Git workflow is Issue -> Branch -> PR; direct commits to `main` are prohibited.
+- Founder gates remain external: paid infrastructure, secret rotation, anti-abuse, admin MFA, and final brand assets.
 
----
-*Scaffold gerado em 2026-07-15 a partir das decisões já travadas nos docs do vault (sem interrogatório novo — as respostas do new-project já existiam por escrito).*
+## Decisions
+
+| Date | Decision |
+|---|---|
+| 2026-07-14 | Hybrid video supports YouTube and native upload in every plan. |
+| 2026-07-14 | 1:1 coaching remains post-launch and separate from regulated therapy. |
+| 2026-07-15 | Existing recurring checkout is retained; renewal integrity and creator operations are the real gap. |
+| 2026-07-15 | Subscription is a product format; monthly/yearly is its billing interval. |
+| 2026-07-15 | Learner subscriptions and creator SaaS plans remain separate domains. |
+| 2026-07-15 | Product/offer separation follows financial integrity, not the other way around. |

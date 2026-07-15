@@ -1,51 +1,62 @@
 # Requirements: SkillsetMind Launch
 
-**Defined:** 2026-07-15
-**Core Value:** o profissional é dono da audiência, dos dados e do contrato; plataforma vende produto educacional.
+**Updated:** 2026-07-15
+**Core value:** The practitioner owns the audience, data, and commercial relationship; financial behavior must be auditable and predictable.
 
-## v1 Requirements (launch)
+## Completed
 
-### Vídeo híbrido (Fase 1)
+### Hybrid video
 
-- [x] **VID-01**: Lição tem campo explícito `videoSource: 'youtube' | 'upload'` persistido com o curso (hoje a fonte é implícita: asset hospedado silenciosamente ganha do embed).
-- [x] **VID-02**: Criador escolhe a fonte num seletor estilo Eduzz na aba Video do modal da aula — só o input da fonte escolhida fica visível/ativo (URL do YouTube OU upload nativo).
-- [x] **VID-03**: URL do YouTube é validada/normalizada para embed `youtube-nocookie` (mecanismo `getTrustedLessonEmbed` existente — manter e ligar ao seletor; Vimeo continua aceito).
-- [x] **VID-04**: Upload nativo continua atrás da abstração de storage existente: Bunny Stream (TUS, token assinado, entitlement gate) quando configurado, Supabase Storage como fallback. Nenhuma reescrita do pipeline de upload/playback.
-- [x] **VID-05**: Player do aluno respeita `videoSource` explicitamente (sem precedência hardcoded silenciosa); lição com fonte youtube toca o embed mesmo que exista asset órfão, e vice-versa.
-- [x] **VID-06**: Lições existentes continuam funcionando sem migração manual — `videoSource` ausente infere: asset de vídeo presente → `upload`; senão embed confiável presente → `youtube`.
-- [x] **VID-07**: Aba Video do modal segue o DESIGN-CLONE-SPEC (radius 6-8px, alturas 40-44px, pele Ink Indigo/Brass, headings pesados).
+- [x] **VID-01..VID-07:** Explicit YouTube/upload source, compatible persistence, playback, and creator UX.
 
-### IA conselheira (Fase 2)
+## Phase 2 - Commerce integrity
 
-- [ ] **AIA-01**: Sidebar de IA flutuante no painel do produtor/professor, backend n8n + DeepSeek com guardrail prompt.
+- [x] **COM-01:** Creation exposes course, subscription, and free as distinct product formats.
+- [x] **COM-02:** Subscription creation supports monthly/yearly interval and routes paid products to pricing.
+- [x] **COM-03:** Order mapping preserves creator ownership and all available financial detail fields.
+- [ ] **COM-04:** Versioned Supabase migrations reproduce the current schema and every RPC called by `src/`.
+- [ ] **SUB-01:** Each recurring invoice produces an idempotent sale/payment fact and payout-ledger entry.
+- [ ] **SUB-02:** Subscription charges support eligible full/partial refund with audit history and payout reversal.
+- [ ] **SUB-03:** Creator has a subscriber center with status, period, delinquency, cancellation, and recovery state.
+- [ ] **SUB-04:** Reports include recurring revenue, MRR, churn, active subscribers, and renewal history.
 
-### Núcleo do relançamento (Fase 3)
+## Phase 3 - Products and offers
 
-- [ ] **NUC-01**: Messages funcional; **NUC-02**: Tutorial/onboarding do professor; **NUC-03**: sidebar religada (`contexts: []` → `["teacher"]` para Cupons/Coproduções/Equipe/Integrações/Payouts) + passada de design Cosmos→pele SkillsetMind.
+- [ ] **OFF-01:** Product and offer are separate entities; subscription is a product format, not an offer toggle.
+- [ ] **OFF-02:** A product supports multiple simultaneous one-time/monthly/annual offers.
+- [ ] **OFF-03:** Offer includes price, currency, interval, trial, refund window, optional billing count, dunning, status, and code.
+- [ ] **OFF-04:** Checkout resolves an offer and snapshots its terms without breaking legacy course prices.
 
-### Assinatura do creator (Fase 4 — P1.5 fast-follow)
+## Phase 4 - Creator operations
 
-- [ ] **SUB-01**: Assinatura como formato de produto do creator (recorrência via Stripe Connect), money path novo com audit_log.
+- [ ] **OPS-01:** Global sales view is separate from the per-product management center.
+- [ ] **OPS-02:** Global subscription management supports cancel-at-period-end and recovery operations.
+- [ ] **OPS-03:** Analytics exposes sales, recurring revenue, conversion events, and exports without a 500-row client cap.
+- [ ] **OPS-04:** Commercial operations use auditable server-side actions and explicit permissions.
+- [ ] **WAL-01:** Wallet/receivables expose gross, fees, net, release date, transfer, refund, dispute, and reversal.
+- [ ] **WAL-02:** Balance holds and availability rules are predictable and visible.
+- [ ] **WAL-03:** Payout reconciliation is based on a canonical financial ledger.
 
-## v2 Requirements (pós-launch)
+## Phase 5 - Growth engines
 
-### 1:1 (Fase 2 do produto — coaching, sem HIPAA)
+- [ ] **GRW-01:** Coupons are validated and applied in checkout and settlement.
+- [ ] **GRW-02:** Affiliate attribution affects settlement and reporting.
+- [ ] **GRW-03:** Co-producer splits affect payout ledger entries.
+- [ ] **GRW-04:** Tax configuration affects checkout totals and records.
+- [ ] **GRW-05:** Commercial links, QR code, widget, sales pages, and automations use real offers.
 
-- **OTO-01**: agenda + sala de vídeo (Whereby) + Stripe-serviço (no-show, pacotes) + CRM-lite.
+## Phase 6 - Relaunch experience
 
-## Out of Scope
+- [ ] **EXP-01:** Creator advisor is grounded in current product, sales, and knowledge data.
+- [ ] **EXP-02:** Messages and creator onboarding are complete.
+- [ ] **EXP-03:** Creator navigation exposes only functional operational surfaces.
+- [ ] **EXP-04:** Member-area content/customization workflow is complete and tested.
+- [ ] **EXP-05:** Creator storefront and per-course learning area remain distinct surfaces.
+
+## Out of scope for this milestone
 
 | Feature | Reason |
-|---------|--------|
-| HIPAA / terapia clínica licenciada | decisão §6.2 — coaching only; add-on futuro |
-| Diretório/matching de atendimento | doc-norte §3.6 — fase 2 pós-tração |
-| Parcelado BR / antecipação | doutrina de taxas §9.5 — Fase 3 |
-
-## Traceability
-
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| VID-01..VID-07 | Phase 1 | Complete |
-| AIA-01 | Phase 2 | Pending |
-| NUC-01..NUC-03 | Phase 3 | Pending |
-| SUB-01 | Phase 4 | Pending |
+|---|---|
+| HIPAA clinical therapy workflow | Separate regulated product decision |
+| 1:1 coaching marketplace | Post-launch vertical after course commerce is reliable |
+| Manual moderation as the default | Conflicts with solo-founder automation requirement |

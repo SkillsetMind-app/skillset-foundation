@@ -2,71 +2,87 @@
 
 ## Overview
 
-Do estado atual (cursos funcionais, brand sweep feito, sidebar corrigida) até o launch: vídeo híbrido estilo Eduzz no builder, IA conselheira no painel do produtor, núcleo do relançamento (messages/tutorial/sidebar+design), e assinatura do creator como fast-follow. Founder-gates (Supabase pago, rotações, Turnstile, TOTP, logo) correm em paralelo e não são fases de dev.
+The launch program now follows the verified state of the code rather than the older research roadmap. Hybrid video is complete. Recurring Stripe Checkout and learner cancellation already exist, so the commerce work starts with integrity and creator operations instead of rebuilding checkout.
 
 ## Phases
 
-- [x] **Phase 1: Vídeo híbrido** - `videoSource` explícito + seletor de fonte estilo Eduzz no modal da aula (YouTube embed e upload Bunny/Supabase já existem no código)
-- [ ] **Phase 2: IA conselheira** - sidebar flutuante de IA no painel do produtor (n8n + DeepSeek + guardrail)
-- [ ] **Phase 3: Núcleo do relançamento** - messages + tutorial + sidebar religada + passada de design Cosmos→pele SkillsetMind
-- [ ] **Phase 4: Assinatura do creator** - recorrência via Stripe Connect como formato de produto (P1.5 fast-follow)
+- [x] **Phase 1: Hybrid video** - explicit source selection and compatible playback.
+- [ ] **Phase 2: Commerce integrity** - reproducible schema/RPC baseline, trustworthy order mapping, recurring financial facts, refunds, and subscription creation.
+- [ ] **Phase 3: Products and offers** - product formats plus multiple independent offers/prices, trials, guarantees, currencies, and offer-driven checkout.
+- [ ] **Phase 4: Creator operations** - global sales and subscription management, receivables, wallet transparency, MRR/churn/LTV, and exports.
+- [ ] **Phase 5: Growth engines** - coupons, affiliates, co-producers, taxes, commercial links, pages, and automations executed in the money path.
+- [ ] **Phase 6: Relaunch experience** - creator advisor, messages, onboarding, navigation, member-area refinements, storefront, and contextual AI.
 
 ## Phase Details
 
-### Phase 1: Vídeo híbrido
-**Goal**: Criador escolhe explicitamente, por aula, entre YouTube embed e upload nativo num seletor estilo Eduzz; o player do aluno respeita essa escolha; lições existentes seguem funcionando sem migração manual.
-**Depends on**: Nothing (first phase)
-**Requirements**: [VID-01, VID-02, VID-03, VID-04, VID-05, VID-06, VID-07]
-**Success Criteria** (what must be TRUE):
-  1. Na aba Video do modal da aula, o criador vê um seletor de fonte (YouTube | Upload) e só o input da fonte escolhida ativo.
-  2. Colar URL do YouTube (watch/youtu.be/shorts/live) numa aula com fonte youtube resulta em playback `youtube-nocookie` na sala do aluno.
-  3. Aula com fonte upload toca o vídeo hospedado (Bunny com token assinado quando configurado; Supabase Storage caso contrário) exatamente como hoje.
-  4. Aula antiga sem `videoSource` continua tocando o que tocava antes (inferência), e o modal mostra a fonte inferida corretamente.
-  5. Trocar a fonte de uma aula não apaga dados da outra fonte (URL preservada / assets preservados) e o player passa a respeitar a nova escolha.
-**Plans**: 4 plans
+### Phase 1: Hybrid video
 
-Plans:
-- [x] 01-01-PLAN.md — videoSource domain field + inference + read-path mapping (VID-01, VID-06)
-- [x] 01-02-PLAN.md — player + creator preview respect videoSource (VID-05)
-- [x] 01-03-PLAN.md — Eduzz-style source picker + scoped design island (VID-02, VID-03, VID-04, VID-07)
-- [x] 01-04-PLAN.md — full gate + human verification checkpoint
+**Goal:** Let creators explicitly choose YouTube or native upload while preserving legacy lesson behavior.
 
-### Phase 2: IA conselheira
-**Goal**: Sidebar flutuante de IA no painel do produtor respondendo com contexto do curso, via n8n + DeepSeek com guardrail prompt.
-**Depends on**: Phase 1
-**Requirements**: [AIA-01]
-**Success Criteria** (what must be TRUE):
-  1. Professor abre a sidebar flutuante em qualquer tela do painel e recebe respostas úteis do advisor.
-  2. Guardrail prompt ativo no fluxo n8n.
-**Plans**: TBD
+**Status:** Complete on issue #2 / PR #3.
 
-### Phase 3: Núcleo do relançamento
-**Goal**: Messages funcional, tutorial do professor, sidebar completa religada e passada de design na pele SkillsetMind.
-**Depends on**: Phase 2
-**Requirements**: [NUC-01, NUC-02, NUC-03]
-**Success Criteria** (what must be TRUE):
-  1. Messages utilizável entre aluno e professor.
-  2. Tutorial de onboarding do professor no ar.
-  3. Itens Cupons/Coproduções/Equipe/Integrações/Payouts visíveis na sidebar do professor com a pele Ink Indigo/Brass.
-**Plans**: TBD
+### Phase 2: Commerce integrity
 
-### Phase 4: Assinatura do creator
-**Goal**: Creator vende assinatura (formato de produto) com recorrência via Stripe Connect, respeitando audit_log e a Skillset Promise.
-**Depends on**: Phase 3
-**Requirements**: [SUB-01]
-**Success Criteria** (what must be TRUE):
-  1. Creator cria produto-assinatura e aluno assina com cobrança recorrente.
-  2. Repasse segue o motor release-payouts com trilha no audit_log.
-**Plans**: TBD
+**Goal:** A creator can start a subscription product and trust that every initial payment, renewal, refund, and payout is represented consistently across authorization, sales, and reporting.
+
+**Depends on:** Phase 1 only because this branch is stacked on PR #3; the commerce code itself is independent.
+
+**Requirements:** COM-01..COM-04, SUB-01..SUB-04
+
+**Success Criteria:**
+
+1. Product creation exposes course, subscription, and free formats; subscriptions support monthly/yearly interval before pricing.
+2. Order mapping preserves creator ownership, refund, receipt, payout model, and lifecycle timestamps.
+3. Versioned migrations can reproduce every table/RPC required by the application.
+4. Every recurring invoice creates a first-class financial fact visible in creator sales and revenue.
+5. Eligible subscription charges can be refunded without depending on one-time-order assumptions.
+6. Creators can view subscriber status, current period, scheduled cancellation, delinquency, and recovery.
+
+### Phase 3: Products and offers
+
+**Goal:** Separate the product being delivered from the commercial offers used to sell it.
+
+**Requirements:** OFF-01..OFF-04
+
+**Success Criteria:**
+
+1. A product can have multiple active offers, including monthly and annual prices at the same time.
+2. Offers carry amount, currency, billing interval, trial, refund window, optional billing count, dunning policy, and public code.
+3. Checkout resolves a validated offer and snapshots its commercial terms.
+4. Existing course-level prices remain compatible during migration.
+
+### Phase 4: Creator operations
+
+**Goal:** Give practitioners a global operational workspace across products.
+
+**Requirements:** OPS-01..OPS-04, WAL-01..WAL-03
+
+**Success Criteria:**
+
+1. Separate global views exist for sales, subscriptions, receivables, and analytics.
+2. Subscription controls support cancel-at-period-end and recovery actions with audit history.
+3. Wallet shows gross, fees, net, availability date, payout, refund, dispute, and reversal.
+4. Reports expose MRR, churn, active/past-due/cancelled subscribers, LTV, and CSV export.
+
+### Phase 5: Growth engines
+
+**Goal:** Make currently decorative commercial settings participate in checkout, webhook, and payout calculations.
+
+**Requirements:** GRW-01..GRW-05
+
+### Phase 6: Relaunch experience
+
+**Goal:** Complete high-value creator and learner workflows after the money path is reliable.
+
+**Requirements:** EXP-01..EXP-05
 
 ## Progress
 
-**Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Vídeo híbrido | 4/4 | Complete | 2026-07-15 |
-| 2. IA conselheira | 0/TBD | Not started | - |
-| 3. Núcleo do relançamento | 0/TBD | Not started | - |
-| 4. Assinatura do creator | 0/TBD | Not started | - |
+| Phase | Status | Completed |
+|---|---|---|
+| 1. Hybrid video | Complete | 2026-07-15 |
+| 2. Commerce integrity | In progress | - |
+| 3. Products and offers | Not started | - |
+| 4. Creator operations | Not started | - |
+| 5. Growth engines | Not started | - |
+| 6. Relaunch experience | Not started | - |
