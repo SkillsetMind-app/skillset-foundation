@@ -48,6 +48,7 @@ import {
   getNextCourseLesson,
 } from "@/domain/lesson-progress";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
+import { inferLessonVideoSource } from "@/domain/teacher-course";
 import { subscribeToCourseEvents } from "@/lib/data/course-events";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import {
@@ -1288,9 +1289,11 @@ function LessonContentPanel({
       asset.kind !== "lesson_thumbnail"
       && (!primaryHostedVideo || asset.id !== primaryHostedVideo.id),
   );
-  const trustedEmbed = locked || primaryHostedVideo
-    ? null
-    : getTrustedLessonEmbed(lesson.externalUrl);
+  const trustedEmbed = locked ? null : getTrustedLessonEmbed(lesson.externalUrl);
+  const resolvedVideoSource = lesson.videoSource ?? inferLessonVideoSource({
+    hasVideoAsset: Boolean(primaryHostedVideo),
+    hasTrustedEmbed: Boolean(trustedEmbed),
+  });
   const safeLessonExternalUrl = getSafeExternalUrl(lesson.externalUrl);
 
   return (
@@ -1317,11 +1320,11 @@ function LessonContentPanel({
             <h5>Lesson locked</h5>
             <p>{unlockState ? formatUnlockMessage(unlockState) : "Locked"}</p>
           </div>
-        ) : primaryHostedVideo?.bunnyVideoId ? (
+        ) : resolvedVideoSource === "upload" && primaryHostedVideo?.bunnyVideoId ? (
           <BunnyVideoPlayer assetId={primaryHostedVideo.id} title={lesson.title} />
-        ) : primaryHostedVideo ? (
+        ) : resolvedVideoSource === "upload" && primaryHostedVideo ? (
           <ProtectedAssetPreview asset={primaryHostedVideo} />
-        ) : trustedEmbed ? (
+        ) : resolvedVideoSource === "youtube" && trustedEmbed ? (
           <iframe
             src={trustedEmbed.embedUrl}
             title={lesson.title}
