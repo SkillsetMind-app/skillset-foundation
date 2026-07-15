@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
+import {
+  affiliateCommissionLedgerId,
+  parseAffiliateSettlementFromMetadata,
+  teacherNetAfterAffiliate,
+} from "@/domain/affiliate-attribution";
 import { planByStripePriceId } from "@/data/plans";
 import { buildCourseSubscriptionSaleRecords } from "@/lib/payments/course-subscription-sale";
 import { defaultSkillsetCurrency } from "@/lib/payments/currencies";
@@ -125,6 +130,87 @@ async function markStripeEventDone(admin: Admin, eventId: string): Promise<void>
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Settle affiliate commission into payout_ledger (kind=affiliate_commission).
+ * Idempotent on `${saleRootId}__aff`. Uses metadata stamped at checkout.
+ * Does not create Connect transfers — release-payouts cron handles that later
+ * when the affiliate has a connected account (teacher_id = affiliate uid).
+ */
+async function settleAffiliateCommissionLedger(
+  admin: Admin,
+  args: {
+    saleRootId: string;
+    courseId: string;
+    paymentId: string;
+    currency: string;
+    grossAmountMinor: number;
+    metadata: Record<string, string | undefined> | null | undefined;
+    buyerUserId?: string | null;
+    teacherUserId?: string | null;
+    invoiceId?: string | null;
+    subscriptionId?: string | null;
+    paymentIdIsPaymentIntent?: boolean;
+  },
+): Promise<number> {
+  const settled = parseAffiliateSettlementFromMetadata(
+    args.metadata,
+    args.grossAmountMinor,
+    { buyerUserId: args.buyerUserId, teacherUserId: args.teacherUserId },
+  );
+  if (!settled) return 0;
+
+  const ledgerId = affiliateCommissionLedgerId(args.saleRootId);
+  const { data: existing } = await admin
+    .from("payout_ledger")
+    .select("id")
+    .eq("id", ledgerId)
+    .maybeSingle();
+  if (existing) return settled.commissionMinor;
+
+  // Prefer affiliate's connected account when present (release cron uses it).
+  const { data: affiliateUser } = await admin
+    .from("users")
+    .select("stripe_connected_account_id")
+    .eq("uid", settled.affiliateUserId)
+    .maybeSingle();
+
+  const ts = nowIso();
+  const commission = settled.commissionMinor;
+  const { error } = await admin.from("payout_ledger").insert({
+    id: ledgerId,
+    teacher_id: settled.affiliateUserId,
+    teacher_stripe_connected_account_id:
+      affiliateUser?.stripe_connected_account_id || null,
+    course_id: args.courseId,
+    order_id: args.saleRootId,
+    invoice_id: args.invoiceId ?? null,
+    subscription_id: args.subscriptionId ?? null,
+    payment_id: args.paymentId,
+    payment_id_is_payment_intent: Boolean(args.paymentIdIsPaymentIntent),
+    kind: "affiliate_commission",
+    amount_minor: commission,
+    platform_fee_minor: 0,
+    gross_amount_minor: commission,
+    skillset_fee_minor: 0,
+    stripe_fee_minor: 0,
+    net_amount_minor: commission,
+    currency: args.currency,
+    platform_fee_bps: 0,
+    status: "in_release",
+    release_at: getPayoutReleaseAt(),
+    created_at: ts,
+    updated_at: ts,
+  });
+  if (error) {
+    // Unique race on redelivery — treat as settled.
+    if (String(error.message || "").toLowerCase().includes("duplicate")) {
+      return commission;
+    }
+    throw new Error(error.message);
+  }
+  return commission;
+}
+
 // --- one-time checkout fulfilment -------------------------------------------
 async function handleCheckoutCompleted(
   admin: Admin,
@@ -147,13 +233,26 @@ async function handleCheckoutCompleted(
   // Re-arm guard: the ledger is created exactly once per order (LAST, below). If
   // it already exists this order was fully fulfilled — a redelivery / async
   // event / replay must NOT re-run fulfilment (would re-schedule a payout for
-  // possibly-refunded money). Skip idempotently.
+  // possibly-refunded money). Still repair affiliate settlement if missing.
   const { data: existingLedger } = await admin
     .from("payout_ledger")
-    .select("id")
+    .select("id,gross_amount_minor,currency")
     .eq("id", orderId)
     .maybeSingle();
-  if (existingLedger) return;
+  if (existingLedger) {
+    await settleAffiliateCommissionLedger(admin, {
+      saleRootId: orderId,
+      courseId,
+      paymentId: paymentIntentId,
+      currency: String(existingLedger.currency || defaultSkillsetCurrency).toUpperCase(),
+      grossAmountMinor: Number(existingLedger.gross_amount_minor || 0),
+      metadata: (session.metadata ?? {}) as Record<string, string | undefined>,
+      buyerUserId: userId,
+      teacherUserId: session.metadata?.teacherId ?? null,
+      paymentIdIsPaymentIntent: true,
+    });
+    return;
+  }
 
   const { data: order } = await admin
     .from("orders")
@@ -194,7 +293,17 @@ async function handleCheckoutCompleted(
   const platformFeeBps = Number(order.platform_fee_bps ?? DEFAULT_PLATFORM_FEE_BPS);
   const skillsetFeeMinor = Math.floor((grossAmountMinor * platformFeeBps) / 10000);
   const stripeFeeMinor = stripeProcessingFeeMinor(grossAmountMinor, order.currency);
-  const netAmountMinor = Math.max(0, grossAmountMinor - skillsetFeeMinor - stripeFeeMinor);
+  const sessionMeta = (session.metadata ?? {}) as Record<string, string | undefined>;
+  const affiliatePreview = parseAffiliateSettlementFromMetadata(
+    sessionMeta,
+    grossAmountMinor,
+    { buyerUserId: userId, teacherUserId: order.teacher_id ?? course.owner_id },
+  );
+  const affiliateCommissionMinor = affiliatePreview?.commissionMinor ?? 0;
+  const netAmountMinor = teacherNetAfterAffiliate(
+    Math.max(0, grossAmountMinor - skillsetFeeMinor - stripeFeeMinor),
+    affiliateCommissionMinor,
+  );
   const ts = nowIso();
 
   // payment (id = PaymentIntent), merge-safe.
@@ -261,6 +370,7 @@ async function handleCheckoutCompleted(
 
   // Ledger LAST (the re-arm gate). Legacy amount_minor/platform_fee_minor are
   // mirrored (gross / skillset fee) so the table's CHECK holds.
+  // Teacher net is reduced by affiliate commission when metadata attributes a ref.
   await admin.from("payout_ledger").insert({
     id: orderId,
     teacher_id: course.owner_id,
@@ -285,6 +395,18 @@ async function handleCheckoutCompleted(
     release_at: getPayoutReleaseAt(),
     created_at: ts,
     updated_at: ts,
+  });
+
+  await settleAffiliateCommissionLedger(admin, {
+    saleRootId: orderId,
+    courseId,
+    paymentId: paymentIntentId,
+    currency: String(order.currency || defaultSkillsetCurrency).toUpperCase(),
+    grossAmountMinor,
+    metadata: sessionMeta,
+    buyerUserId: userId,
+    teacherUserId: order.teacher_id ?? course.owner_id,
+    paymentIdIsPaymentIntent: true,
   });
 
   // Release the in-flight checkout lock now that the purchase settled — only if
@@ -346,7 +468,17 @@ async function handleCourseSubscriptionInvoicePaid(
   const skillsetFeeMinor = Math.floor((grossAmountMinor * platformFeeBps) / 10000);
   const stripeFeeMinor =
     grossAmountMinor > 0 ? stripeProcessingFeeMinor(grossAmountMinor, currencyUpper) : 0;
-  const netAmountMinor = Math.max(0, grossAmountMinor - skillsetFeeMinor - stripeFeeMinor);
+  const subMeta = (meta ?? {}) as Record<string, string | undefined>;
+  const affiliatePreview = parseAffiliateSettlementFromMetadata(
+    subMeta,
+    grossAmountMinor,
+    { buyerUserId: userId, teacherUserId: teacherId },
+  );
+  const affiliateCommissionMinor = affiliatePreview?.commissionMinor ?? 0;
+  const netAmountMinor = teacherNetAfterAffiliate(
+    Math.max(0, grossAmountMinor - skillsetFeeMinor - stripeFeeMinor),
+    affiliateCommissionMinor,
+  );
 
   // Resolve the REAL PaymentIntent so the ledger join key matches the refund
   // clawback (charge.payment_intent). Throw when a payout-bearing ledger would
@@ -447,6 +579,21 @@ async function handleCourseSubscriptionInvoicePaid(
       });
       if (ledgerInsertError) throw new Error(ledgerInsertError.message);
     }
+
+    // Affiliate commission for this invoice (first charge + renewals use sub metadata).
+    await settleAffiliateCommissionLedger(admin, {
+      saleRootId: invoice.id,
+      courseId,
+      paymentId,
+      currency: currencyUpper,
+      grossAmountMinor,
+      metadata: subMeta,
+      buyerUserId: userId,
+      teacherUserId: teacherId,
+      invoiceId: invoice.id,
+      subscriptionId,
+      paymentIdIsPaymentIntent: Boolean(resolvedPaymentIntentId),
+    });
   }
 
   // Grant on first paid invoice; re-activate on renewal after a lapse; never
@@ -587,6 +734,54 @@ async function handleCourseSubscriptionLifecycle(
   return true;
 }
 
+/**
+ * Mark affiliate commission ledger refunded + reverse transfer if already paid.
+ * saleRootId = order id (one-time) or invoice id (subscription).
+ */
+async function clawbackAffiliateCommissionLedger(
+  admin: Admin,
+  saleRootId: string,
+  opts: { refundedAmountMinor: number; sourceId: string; isFullRefund: boolean },
+): Promise<void> {
+  const affId = affiliateCommissionLedgerId(saleRootId);
+  const { data: affLedger, error } = await admin
+    .from("payout_ledger")
+    .select("id,status,net_amount_minor")
+    .eq("id", affId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!affLedger) return;
+
+  const ts = nowIso();
+  const nextStatus = ledgerRefundStatus(opts.isFullRefund, affLedger.status);
+  // Full refund → claw entire commission; partial → proportional floor.
+  const grossAff = Number(affLedger.net_amount_minor || 0);
+  const clawMinor = opts.isFullRefund
+    ? grossAff
+    : Math.min(
+        grossAff,
+        Math.max(0, Math.floor(Number(opts.refundedAmountMinor || 0))),
+      );
+
+  await admin
+    .from("payout_ledger")
+    .update({
+      status: nextStatus,
+      refunded_amount_minor: clawMinor,
+      refunded_at: ts,
+      updated_at: ts,
+    })
+    .eq("id", affId);
+
+  if (clawMinor > 0) {
+    await reverseReleasedPayout(admin, affId, {
+      refundedAmountMinor: clawMinor,
+      sourceId: opts.sourceId,
+      reason: "refund_affiliate",
+    });
+  }
+}
+
 // --- released-transfer clawback (refund or dispute) -------------------------
 // Claw back an already-released payout when its sale is refunded. Only a
 // released transfer (money that actually left the platform) can be reversed; an
@@ -714,6 +909,12 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
       sourceId: charge.id,
       reason: "refund",
     });
+    // Subscription sales also settle affiliate against the invoice id.
+    await clawbackAffiliateCommissionLedger(admin, ledger.id, {
+      refundedAmountMinor: charge.amount_refunded,
+      sourceId: charge.id,
+      isFullRefund,
+    });
     if (
       shouldCancelCourseSubscriptionForRefund({
         isFullRefund,
@@ -780,6 +981,15 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
     refundedAmountMinor: charge.amount_refunded,
     sourceId: charge.id,
     reason: "refund",
+  });
+
+  // Affiliate commission is a separate ledger row (`{orderId}__aff`). On refund
+  // we must claw it back too — otherwise Aviator-style money glitch: affiliate
+  // keeps commission while buyer is refunded.
+  await clawbackAffiliateCommissionLedger(admin, orderId, {
+    refundedAmountMinor: charge.amount_refunded,
+    sourceId: charge.id,
+    isFullRefund,
   });
 
   if (

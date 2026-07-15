@@ -1,6 +1,6 @@
 /**
- * Affiliate attribution for checkout (Hotmart-parity: track ref at purchase).
- * Settlement/transfer split can consume the same metadata later.
+ * Affiliate attribution + settlement helpers (Hotmart-parity money path).
+ * Checkout stamps metadata; webhook settles a payout_ledger row on payment success.
  */
 export type AffiliateAttributionInput = {
   affiliateRef: string | null | undefined;
@@ -19,6 +19,12 @@ export type AffiliateAttribution =
       commissionMinor: number;
     }
   | { ok: false; reason: string };
+
+export type AffiliateSettlementFromMetadata = {
+  affiliateUserId: string;
+  commissionPct: number;
+  commissionMinor: number;
+} | null;
 
 export function normalizeAffiliateRef(raw: string | null | undefined): string {
   return String(raw ?? "")
@@ -75,4 +81,50 @@ export function resolveAffiliateAttribution(
     commissionPct,
     commissionMinor,
   };
+}
+
+/**
+ * Read affiliate settlement snapshot stamped on Stripe Checkout / Subscription metadata.
+ * Prefers explicit commissionMinor; falls back to pct * grossAmountMinor.
+ */
+export function parseAffiliateSettlementFromMetadata(
+  metadata: Record<string, string | undefined> | null | undefined,
+  grossAmountMinor: number,
+  opts?: { buyerUserId?: string | null; teacherUserId?: string | null },
+): AffiliateSettlementFromMetadata {
+  const affiliateUserId = normalizeAffiliateRef(metadata?.affiliateUserId);
+  if (!affiliateUserId) return null;
+  if (opts?.buyerUserId && affiliateUserId === opts.buyerUserId) return null;
+  if (opts?.teacherUserId && affiliateUserId === opts.teacherUserId) return null;
+
+  const pctRaw = Number(metadata?.affiliateCommissionPct ?? 0);
+  const commissionPct = Math.min(60, Math.max(0, Math.floor(pctRaw || 0)));
+
+  const stamped = Number(metadata?.affiliateCommissionMinor ?? NaN);
+  let commissionMinor = Number.isFinite(stamped) && stamped > 0 ? Math.floor(stamped) : 0;
+  if (commissionMinor <= 0 && commissionPct >= 5) {
+    commissionMinor = computeAffiliateCommissionMinor(grossAmountMinor, commissionPct);
+  }
+  if (commissionMinor <= 0) return null;
+  // Never pay more commission than the gross sale.
+  commissionMinor = Math.min(commissionMinor, Math.max(0, Math.floor(grossAmountMinor)));
+  return { affiliateUserId, commissionPct, commissionMinor };
+}
+
+/** Deterministic payout_ledger id for affiliate commission on a sale root id. */
+export function affiliateCommissionLedgerId(saleRootId: string): string {
+  return `${saleRootId}__aff`;
+}
+
+/**
+ * Teacher net after affiliate take. Platform + Stripe fees already deducted upstream.
+ */
+export function teacherNetAfterAffiliate(
+  teacherNetBeforeAffiliate: number,
+  affiliateCommissionMinor: number,
+): number {
+  return Math.max(
+    0,
+    Math.floor(teacherNetBeforeAffiliate) - Math.max(0, Math.floor(affiliateCommissionMinor)),
+  );
 }
