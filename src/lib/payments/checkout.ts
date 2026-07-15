@@ -3,10 +3,28 @@
 import { postPaymentRoute } from "@/lib/payments/client-fetch";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-export async function startCourseCheckout(courseId: string) {
+export async function startCourseCheckout(
+  courseId: string,
+  options?: { couponCode?: string; affiliateRef?: string },
+) {
+  // Capture affiliate ref from URL (?ref= / ?affiliate=) when not passed explicitly.
+  let affiliateRef = options?.affiliateRef?.trim() || "";
+  if (!affiliateRef && typeof window !== "undefined") {
+    const params = new URLSearchParams(window.location.search);
+    affiliateRef =
+      params.get("ref")?.trim()
+      || params.get("affiliate")?.trim()
+      || params.get("aff")?.trim()
+      || "";
+  }
+
   const { url } = await postPaymentRoute<{ url: string }>(
     "/api/payments/checkout",
-    { courseId },
+    {
+      courseId,
+      ...(options?.couponCode ? { couponCode: options.couponCode } : {}),
+      ...(affiliateRef ? { affiliateRef } : {}),
+    },
   );
 
   if (!url) {

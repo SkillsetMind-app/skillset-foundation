@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
+import {
+  normalizeAffiliateRef,
+  resolveAffiliateAttribution,
+} from "@/domain/affiliate-attribution";
 import type { CourseCoupon } from "@/domain/course-commerce";
 import { normalizeCouponCode } from "@/domain/course-commerce";
 import { redeemCourseCoupon } from "@/domain/coupon-redemption";
@@ -37,9 +41,13 @@ export async function POST(request: Request) {
     const body = (await request.json().catch(() => ({}))) as {
       courseId?: unknown;
       couponCode?: unknown;
+      affiliateRef?: unknown;
     };
     const courseId = String(body.courseId ?? "").trim();
     const couponCodeRaw = String(body.couponCode ?? "").trim();
+    const affiliateRefRaw = normalizeAffiliateRef(
+      String(body.affiliateRef ?? "").trim(),
+    );
 
     if (!courseId || courseId.length > 160) {
       throw new PaymentError("A valid courseId is required.");
@@ -135,6 +143,40 @@ export async function POST(request: Request) {
       appliedCouponCode = redemption.code;
       discountMinor = redemption.discountMinor;
     }
+
+    // Hotmart-parity: capture affiliate ref on the money path (metadata).
+    // Soft-fail when disabled/invalid so checkout still completes.
+    let affiliateUserId: string | null = null;
+    let affiliateCommissionMinor = 0;
+    let affiliateCommissionPct = 0;
+    if (affiliateRefRaw) {
+      const { data: commerceSettings } = await admin
+        .from("course_commerce_settings")
+        .select("affiliate_enabled,affiliate_commission_pct")
+        .eq("course_id", courseId)
+        .maybeSingle();
+      const attribution = resolveAffiliateAttribution({
+        affiliateRef: affiliateRefRaw,
+        buyerUserId: userId,
+        teacherUserId: course.owner_id,
+        affiliateEnabled: Boolean(commerceSettings?.affiliate_enabled),
+        commissionPct: Number(commerceSettings?.affiliate_commission_pct ?? 0),
+        amountMinor,
+      });
+      if (attribution.ok) {
+        const { data: affiliateUser } = await admin
+          .from("users")
+          .select("uid")
+          .eq("uid", attribution.affiliateUserId)
+          .maybeSingle();
+        if (affiliateUser?.uid) {
+          affiliateUserId = attribution.affiliateUserId;
+          affiliateCommissionMinor = attribution.commissionMinor;
+          affiliateCommissionPct = attribution.commissionPct;
+        }
+      }
+    }
+
     const enrollmentId = `${userId}__${courseId}`;
     const { data: existingEnrollment, error: enrollmentError } = await admin
       .from("enrollments")
@@ -223,6 +265,13 @@ export async function POST(request: Request) {
               connectedAccountId,
               platformFeeBps: String(platformFeeBps),
               currency: currency.toUpperCase(),
+              ...(affiliateUserId
+                ? {
+                    affiliateUserId,
+                    affiliateCommissionPct: String(affiliateCommissionPct),
+                    affiliateCommissionMinor: String(affiliateCommissionMinor),
+                  }
+                : {}),
             },
           },
           metadata: {
@@ -231,6 +280,7 @@ export async function POST(request: Request) {
             courseSlug: courseId,
             userId,
             teacherId: course.owner_id,
+            ...(affiliateUserId ? { affiliateUserId } : {}),
           },
           success_url: `${appUrl}/learn/courses/${encodeURIComponent(courseId)}?checkout=success`,
           cancel_url: `${appUrl}/courses/${encodeURIComponent(courseId)}?checkout=cancelled`,
@@ -338,6 +388,13 @@ export async function POST(request: Request) {
               discountMinor: String(discountMinor),
             }
           : {}),
+        ...(affiliateUserId
+          ? {
+              affiliateUserId,
+              affiliateCommissionPct: String(affiliateCommissionPct),
+              affiliateCommissionMinor: String(affiliateCommissionMinor),
+            }
+          : {}),
       },
       payment_intent_data: {
         metadata: {
@@ -346,6 +403,7 @@ export async function POST(request: Request) {
           courseSlug: courseId,
           userId,
           ...(appliedCouponCode ? { couponCode: appliedCouponCode } : {}),
+          ...(affiliateUserId ? { affiliateUserId } : {}),
         },
       },
       expires_at: Math.floor(Date.now() / 1000) + checkoutSessionExpiresInSec,

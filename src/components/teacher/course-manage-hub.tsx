@@ -14,6 +14,7 @@ import {
   PanelCard,
   TaxPanel,
 } from "@/components/teacher/course-commerce-panels";
+import { CourseOffersPanel } from "@/components/teacher/course-offers-panel";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { teacherCanSubmitCourse } from "@/domain/teacher-course";
 import { fetchRequireCreatorVerification } from "@/lib/data/creator-verification";
@@ -603,48 +604,54 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
           ) : null}
 
           {section === "pricing" ? (
-            <PanelCard
-              title="Pricing"
-              description="What buyers pay at checkout. Price changes go live immediately for published courses."
-            >
-              <div className="mt-4">
-                <DetailRow label="Price" value={priceLabel(course)} />
-                <DetailRow
-                  label="Payment type"
-                  value={(course.paymentType ?? "one_time").replaceAll("_", " ")}
-                />
-                <DetailRow
-                  label="Installments"
-                  value={
-                    course.installmentsEnabled
-                      ? `Up to ${course.installmentsMax ?? 1}x`
-                      : "Disabled"
-                  }
-                />
-                {paid ? (
+            <div className="grid gap-4">
+              <PanelCard
+                title="Pricing"
+                description="Legacy course price (compat). Multi-offer packages below drive dual-read checkout when present."
+              >
+                <div className="mt-4">
+                  <DetailRow label="Price" value={priceLabel(course)} />
                   <DetailRow
-                    label="Stripe payouts"
-                    value={payoutsReady ? "Ready" : "Onboarding incomplete"}
+                    label="Payment type"
+                    value={(course.paymentType ?? "one_time").replaceAll("_", " ")}
                   />
-                ) : null}
-              </div>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <Link
-                  href={`/teach/builder?courseId=${course.id}`}
-                  className="button-outline px-4 py-2 text-xs"
-                >
-                  Edit pricing in Builder
-                </Link>
-                {paid && !payoutsReady ? (
+                  <DetailRow
+                    label="Installments"
+                    value={
+                      course.installmentsEnabled
+                        ? `Up to ${course.installmentsMax ?? 1}x`
+                        : "Disabled"
+                    }
+                  />
+                  {paid ? (
+                    <DetailRow
+                      label="Stripe payouts"
+                      value={payoutsReady ? "Ready" : "Onboarding incomplete"}
+                    />
+                  ) : null}
+                </div>
+                <div className="mt-5 flex flex-wrap gap-2">
                   <Link
-                    href="/account/payments#stripe-connect"
-                    className="button-solid px-4 py-2 text-xs"
+                    href={`/teach/builder?courseId=${course.id}`}
+                    className="button-outline px-4 py-2 text-xs"
                   >
-                    Finish payout onboarding
+                    Edit pricing in Builder
                   </Link>
-                ) : null}
-              </div>
-            </PanelCard>
+                  {paid && !payoutsReady ? (
+                    <Link
+                      href="/account/payments#stripe-connect"
+                      className="button-solid px-4 py-2 text-xs"
+                    >
+                      Finish payout onboarding
+                    </Link>
+                  ) : null}
+                </div>
+              </PanelCard>
+              <CourseOffersPanel
+                courseId={course.id}
+                defaultCurrency={course.currency ?? "USD"}
+              />
+            </div>
           ) : null}
 
           {section === "content" ? (
