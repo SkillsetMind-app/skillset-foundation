@@ -8,6 +8,7 @@ import {
 import type { CourseCoupon } from "@/domain/course-commerce";
 import { normalizeCouponCode } from "@/domain/course-commerce";
 import { redeemCourseCoupon } from "@/domain/coupon-redemption";
+import { buildInstallmentPlan } from "@/domain/installments";
 import { canonicalPlatformFeeBpsForPlan } from "@/lib/payments/rules";
 import {
   PaymentError,
@@ -358,6 +359,17 @@ export async function POST(request: Request) {
       throw new Error(orderError.message);
     }
 
+    const installmentPlan = buildInstallmentPlan({
+      amountMinor,
+      installmentsEnabled: Boolean(course.installments_enabled),
+      installmentsMax: course.installments_max,
+      currency,
+    });
+    // Stripe card installments only when plan enabled AND currency is eligible
+    // (typically BRL/MXN). USD shows marketing splits only — no false promise.
+    const enableStripeCardInstallments =
+      installmentPlan.enabled && installmentPlan.stripeCardInstallmentsEligible;
+
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
       customer_email: userEmail,
@@ -382,6 +394,12 @@ export async function POST(request: Request) {
         courseId,
         courseSlug: courseId,
         userId,
+        ...(installmentPlan.enabled
+          ? {
+              installmentsEnabled: "1",
+              installmentsMax: String(installmentPlan.maxCount),
+            }
+          : {}),
         ...(appliedCouponCode
           ? {
               couponCode: appliedCouponCode,
@@ -404,7 +422,19 @@ export async function POST(request: Request) {
           userId,
           ...(appliedCouponCode ? { couponCode: appliedCouponCode } : {}),
           ...(affiliateUserId ? { affiliateUserId } : {}),
+          ...(installmentPlan.enabled
+            ? { installmentsMax: String(installmentPlan.maxCount) }
+            : {}),
         },
+        ...(enableStripeCardInstallments
+          ? {
+              payment_method_options: {
+                card: {
+                  installments: { enabled: true },
+                },
+              },
+            }
+          : {}),
       },
       expires_at: Math.floor(Date.now() / 1000) + checkoutSessionExpiresInSec,
       success_url: `${appUrl}/learn/courses/${encodeURIComponent(courseId)}?checkout=success`,
