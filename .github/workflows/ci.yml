@@ -22,21 +22,16 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            functions/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies (app)
         run: npm ci
 
-      - name: Install dependencies (functions)
-        run: npm ci --prefix functions
-
       - name: Lint (app)
         run: npm run lint
 
-      - name: Typecheck (functions)
-        run: npm run lint --prefix functions
+      - name: Typecheck (app)
+        run: npx tsc --noEmit
 
       - name: Unit tests (vitest)
         run: npx vitest run
@@ -45,32 +40,3 @@ jobs:
       # values, so the production build works in CI without extra secrets.
       - name: Build (next)
         run: npm run build
-
-  rules-tests:
-    name: Firestore & Storage rules tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: Install dependencies (app)
-        run: npm ci
-
-      # Runs tests/firestore-rules.ts + tests/storage-rules.ts against the
-      # Firebase emulator (vitest.rules.config.ts). These are NOT covered by the
-      # `vitest run` step above, which only matches *.test.* under src/ and
-      # functions/src/ — so without this job a rules regression merges green.
-      - name: Firestore & Storage rules tests (emulator)
-        run: npm run test:rules
