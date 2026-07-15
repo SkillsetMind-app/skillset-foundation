@@ -37,7 +37,7 @@ completed: 2026-07-15
 
 ## Success-Criteria Evidence
 
-1. The real picker and CSS were rendered through a temporary, uncommitted QA route at 1440x1100 and 390x844. Both options, active states, null state, selected branch visibility, 8px cards, Ink Indigo, and Brass rendered without overlap; mobile correctly stacked the cards.
+1. The real picker and CSS were rendered through a temporary, uncommitted QA route at 1440x1100 and 390x844. Both options, active states, null state, selected branch visibility, 8px cards, Ink Indigo, and Brass rendered without overlap; mobile correctly stacked the cards. Captures are retained in `evidence/video-source-picker-desktop.png` and `evidence/video-source-picker-mobile.png`.
 2. `getTrustedLessonEmbed` remains the sole embed gate, its URL variants remain covered by tests, and the student branch renders the trusted `youtube-nocookie` embed only for the resolved YouTube source.
 3. Upload playback still enters the existing `BunnyVideoPlayer` or `ProtectedAssetPreview`; upload, token, storage, and entitlement internals were not changed.
 4. Legacy source inference is covered by domain tests and is used consistently by both modal and player without persisting a guess.
@@ -45,7 +45,7 @@ completed: 2026-07-15
 
 ## Deviation
 
-The plan described a pause for founder approval. The founder explicitly requested autonomous continuation without questions, so Codex executed the checkpoint directly. The in-app browser controller failed before navigation with an internal missing-path error; visual QA therefore used the running Next app plus isolated headless Edge captures of the real component and stylesheet. Authenticated external-service playback was verified by unchanged-boundary proof and branch tests rather than by mutating production course data.
+The plan described a pause for founder approval. The founder explicitly requested autonomous continuation without questions, so Codex executed the checkpoint directly. The in-app browser controller failed before navigation with an internal missing-path error; visual QA therefore used the running Next app plus retained headless Edge captures of the real component and stylesheet. Authenticated external-service playback was verified by unchanged-boundary proof and branch tests rather than by mutating production course data.
 
 ## Phase Readiness
 
