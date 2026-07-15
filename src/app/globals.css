@@ -45,6 +45,8 @@
   --color-info-soft: #ebf3fb;
   --color-danger: #b22234;
   --color-danger-soft: rgba(178, 34, 52, 0.06);
+  --color-ink-indigo: #14182b;
+  --color-brass: #c6a15b;
   /* Dark-mode foreground variants. In :root they EQUAL the saturated base token
      (zero light-mode change); [data-theme="dark"] lightens them so semantic TEXT/
      ICON/BORDER clears WCAG AA on dark surfaces (the base tokens stay saturated
@@ -3133,6 +3135,89 @@ select:focus-visible {
   font-weight: 900;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.lesson-video-source-picker {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.lesson-video-source-picker__heading {
+  color: var(--color-ink-indigo);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.lesson-video-source-picker__options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.lesson-video-source-picker__option {
+  display: grid;
+  min-height: 44px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+  padding: 0.7rem 0.9rem;
+  color: var(--color-ink-soft);
+  font-weight: 400;
+  text-align: left;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease;
+}
+
+.lesson-video-source-picker__option span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.lesson-video-source-picker__option strong {
+  font-size: 0.875rem;
+  font-weight: inherit;
+}
+
+.lesson-video-source-picker__option small {
+  color: inherit;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.lesson-video-source-picker__option:hover:not(:disabled) {
+  border-color: var(--color-brass);
+  color: var(--color-ink-indigo);
+}
+
+.lesson-video-source-picker__option.is-active {
+  border-color: var(--color-brass);
+  background: color-mix(in srgb, var(--color-ink-indigo) 4%, #ffffff);
+  box-shadow: inset 3px 0 0 var(--color-brass);
+  color: var(--color-ink-indigo);
+  font-weight: 700;
+}
+
+.lesson-video-source-picker__option:focus-visible {
+  outline: 2px solid var(--color-ink-indigo);
+  outline-offset: 2px;
+}
+
+.lesson-video-source-picker__option:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.lesson-video-source-picker__primary {
+  height: 40px;
+  border-radius: var(--radius-xs);
+  font-weight: 400;
 }
 
 .lesson-modal-choice {
