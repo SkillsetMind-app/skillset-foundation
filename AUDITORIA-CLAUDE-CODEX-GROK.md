@@ -39,7 +39,7 @@
 
 ### Commits (worktree)
 ```
-(pending P4/P5 commit)
+12eaff9 feat(commerce): dual-read checkout pricing + creator ops hub  (P4+P5)
 501fbd0 docs(db): live schema inventory + backfill dry-run
 beae9fe feat(commerce): dual-read product pricing domain
 5b3d717 feat(db): schema baseline tables from types
