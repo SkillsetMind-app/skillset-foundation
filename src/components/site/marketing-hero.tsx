@@ -1,48 +1,110 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { HeroCtas } from "@/components/site/hero-ctas";
 
-// Centered hero figure (Hotmart-style): a wide photo of a woman on a navy
-// backdrop so it melts into the hero. Lives behind the copy + card and shows
-// through the clear center. Set to null to fall back to the navy gradient.
-//   hero-woman-7.png  ~21:9 (1926x816) photoreal portrait — woman in round glasses
-//   turned over her shoulder with a warm smile, dark blazer, hugging a MacBook on the
-//   brand navy. Subject center-of-mass sits ~58% across (72% of her mass in the right
-//   half), leaving wide clean navy on the left for the headline; her face lands in the
-//   clear zone past the scrim. object-cover object-center crops only the navy margins
-//   and keeps her whole (she spans ~23%-80% of the frame). Do NOT mirror — it flips the
-//   Apple logo and shoves her into the copy.
-const HERO_PERSON_SRC: string | null = "/brand/hero/hero-woman-7.png";
+const HERO_PORTRAITS = [
+  "/brand/hero/01_blonde_expert_green_macbook.png",
+  "/brand/hero/02_white_male_tobacco_knit.png",
+  "/brand/hero/03_black_female_terracotta_seated.png",
+  "/brand/hero/04_black_male_burgundy_polo.png",
+  "/brand/hero/05_indian_female_aubergine_notebook.png",
+  "/brand/hero/06_middle_eastern_male_petrol_notebook.png",
+  "/brand/hero/07_east_asian_female_offwhite_tablet.png",
+  "/brand/hero/08_east_asian_male_camel_blazer.png",
+  "/brand/hero/09_brazilian_latina_emerald_blouse.png",
+  "/brand/hero/10_brazilian_latino_burgundy_knit.png",
+] as const;
+
+const HERO_PORTRAIT_INTERVAL_MS = 8_000;
+const HERO_PORTRAIT_FADE_MS = 1_400;
 
 export function MarketingHero() {
   const { t } = useTranslation();
+  const activeIndexRef = useRef(0);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  useEffect(() => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let intervalId: number | undefined;
+    let transitionTimeoutId: number | undefined;
+
+    const stopTimers = () => {
+      if (intervalId !== undefined) window.clearInterval(intervalId);
+      if (transitionTimeoutId !== undefined) {
+        window.clearTimeout(transitionTimeoutId);
+      }
+      intervalId = undefined;
+      transitionTimeoutId = undefined;
+    };
+
+    const startCycle = () => {
+      intervalId = window.setInterval(() => {
+        setIsTransitioning(true);
+        transitionTimeoutId = window.setTimeout(() => {
+          const nextIndex =
+            (activeIndexRef.current + 1) % HERO_PORTRAITS.length;
+          activeIndexRef.current = nextIndex;
+          setActiveIndex(nextIndex);
+          setIsTransitioning(false);
+          transitionTimeoutId = undefined;
+        }, HERO_PORTRAIT_FADE_MS);
+      }, HERO_PORTRAIT_INTERVAL_MS);
+    };
+
+    const handleMotionPreference = () => {
+      stopTimers();
+      setIsTransitioning(false);
+      if (!reducedMotion.matches) startCycle();
+    };
+
+    if (!reducedMotion.matches) startCycle();
+    reducedMotion.addEventListener("change", handleMotionPreference);
+
+    return () => {
+      stopTimers();
+      reducedMotion.removeEventListener("change", handleMotionPreference);
+    };
+  }, []);
+
+  const nextIndex = (activeIndex + 1) % HERO_PORTRAITS.length;
   // Keep the hero behind the floating nav while fitting the primary CTA
   // inside the first viewport on standard desktop screens.
   return (
     <section className="relative -mt-24 flex min-h-[100svh] items-center overflow-hidden bg-[var(--color-primary)] text-white lg:-mt-32">
-      <div className="absolute inset-0 bg-gradient-to-br from-[#07172a] via-[#102944] to-[#1a365d]" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[#071523] via-[#102a43] to-[#173a59]" />
 
-      {/* Centered woman behind the content (desktop only — mobile keeps the
-          clean gradient so the CTA stays prominent). The photo already sits on
-          navy, so its edges melt into the hero; the scrim darkens the copy
-          (left) and card (right) zones while the center stays clear. */}
-      {HERO_PERSON_SRC ? (
-        <div aria-hidden="true" className="absolute inset-0 hidden lg:block">
-          {/* Full-bleed ultrawide: the source is already 21:9 with the subject
-              centered inside wide navy margins, so object-cover fills the hero
-              edge-to-edge and only ever crops the navy — her face and hands
-              stay intact on every desktop ratio. */}
+      {/* Two full-bleed layers keep the upcoming portrait warm in the browser
+          cache, so each transition starts immediately without loading flashes. */}
+      <div aria-hidden="true" className="absolute inset-0 hidden lg:block">
+        <div className="absolute inset-0">
           <Image
-            src={HERO_PERSON_SRC}
+            key={`active-${HERO_PORTRAITS[activeIndex]}`}
+            src={HERO_PORTRAITS[activeIndex]}
             alt=""
             fill
-            priority
+            priority={activeIndex === 0}
             sizes="100vw"
-            className="object-cover object-center"
+            className={`object-cover object-center transition-opacity duration-[1400ms] ease-in-out motion-reduce:transition-none ${
+              isTransitioning ? "opacity-0" : "opacity-100"
+            }`}
           />
+          <Image
+            key={`next-${HERO_PORTRAITS[nextIndex]}`}
+            src={HERO_PORTRAITS[nextIndex]}
+            alt=""
+            fill
+            loading="lazy"
+            sizes="100vw"
+            className={`object-cover object-center transition-opacity duration-[1400ms] ease-in-out motion-reduce:transition-none ${
+              isTransitioning ? "opacity-100" : "opacity-0"
+            }`}
+          />
+        </div>
           <div
             className="absolute inset-0"
             style={{
@@ -50,28 +112,9 @@ export function MarketingHero() {
                 "linear-gradient(to right, rgba(7,23,42,0.95) 0%, rgba(7,23,42,0.85) 28%, rgba(7,23,42,0.42) 52%, rgba(7,23,42,0.05) 74%, rgba(7,23,42,0) 100%)",
             }}
           />
-          {/* Warm rim-light halo at her head/shoulder (~61% x, ~31% y — the
-              measured subject peak sits ~59% across). Screen-blended so it reads
-              as backlight lifting her off the flat navy, not a wash over the photo. */}
-          <div
-            className="absolute inset-0 mix-blend-screen"
-            style={{
-              backgroundImage:
-                "radial-gradient(42% 46% at 61% 31%, rgba(255,214,168,0.22), rgba(255,214,168,0.06) 46%, transparent 70%)",
-            }}
-          />
-        </div>
-      ) : null}
+      </div>
 
-      <div
-        className="absolute inset-0 opacity-[0.12]"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 82% 62%, rgba(178,34,52,0.50), transparent 40%)",
-        }}
-      />
-
-      {/* Bottom vignette — melts the photo's waist crop into the red accent bar
+      {/* Bottom vignette — melts the photo's waist crop into the accent bar
           so there's no hard horizontal seam. Section-wide, so mobile's plain
           gradient gains the same grounded base. */}
       <div
