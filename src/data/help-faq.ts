@@ -41,12 +41,17 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
     items: [
       {
         q: "Can creators upload courses themselves?",
-        a: "Yes. Creators draft courses inside the Studio, attach lessons and media, and publish to the marketplace on submit. SkillsetMind review runs afterward and never blocks your launch.",
+        a: "Yes. Creators can draft and build products before professional verification is complete. Once their professional credential is approved and the product checks pass, they publish directly and public links, catalog visibility, and sales open immediately.",
+      },
+      {
+        id: "course-categories",
+        q: "How should I choose course categories?",
+        a: "Choose the most specific category that matches the professional outcome first; it becomes the product's primary marketplace category. Add only genuinely relevant secondary categories so learners can discover the course without weakening its positioning.",
       },
       {
         id: "course-pricing",
         q: "How do I set pricing for my course?",
-        a: "Pricing is set per course inside Studio → course builder. You choose a one-time price in the currency of your choice; Stripe handles multi-currency checkout at the learner's end. The platform commission (8% on Free, 4% on Starter, 1% on Pro, 0% on Plus) plus the Stripe processing fee are shown clearly in the wallet ledger for every sale.",
+        a: "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (8% on Free, 4% on Starter, 1% on Pro, 0% on Plus) plus the Stripe processing fee are shown clearly in the wallet ledger for every sale.",
       },
       {
         id: "drip-release",
@@ -54,9 +59,9 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
         a: "Drip release lets you make lessons available on a schedule instead of all at once after enrollment. Useful for cohort-style programs or to pace learners across weeks. Configure per lesson in the course builder.",
       },
       {
-        id: "course-review",
-        q: "How does SkillsetMind review work?",
-        a: "Every course goes through a SkillsetMind review, but review never blocks your launch — courses go on sale as soon as you submit. Reviewers check that lessons are complete, descriptions are accurate, pricing is reasonable, and any claims in the copy can be backed up. Typical review takes a few business days.",
+        id: "course-publishing",
+        q: "How does publishing work?",
+        a: "SkillsetMind verifies the professional rather than manually approving every course. Approved creators publish directly after the builder checks the course structure, price, payout setup, and public preview reference. Automated compliance checks may flag exceptional cases after publication without silently taking a product down.",
       },
     ],
   },

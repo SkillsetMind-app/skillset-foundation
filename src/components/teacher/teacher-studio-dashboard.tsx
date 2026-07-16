@@ -300,7 +300,7 @@ function StudioReadinessCard({
       id: "product",
       label: "Create a product",
       done: courses.length > 0,
-      href: "/teach/builder?newCourse=1",
+      href: "/teach/builder?newCourse=1&format=course",
       action: "Create",
     },
     {
@@ -319,9 +319,9 @@ function StudioReadinessCard({
     {
       id: "content",
       label: "Add content (modules / lessons)",
-      done: courses.some((c) => c.status === "published" || c.status === "in_review"),
+      done: courses.some((c) => c.lessonCount > 0),
       href: courses[0]
-        ? `/teach/builder?courseId=${encodeURIComponent(courses[0].id)}`
+        ? `/teach/builder?courseId=${encodeURIComponent(courses[0].id)}&tab=content`
         : "/teach/builder",
       action: "Open builder",
     },
@@ -534,12 +534,12 @@ function StudioSellFormatsSection() {
     {
       title: "Online course",
       detail: "Modules, lessons, drip, certificate — core product.",
-      href: "/teach/builder?newCourse=1",
+      href: "/teach/builder?newCourse=1&format=subscription",
     },
     {
       title: "Subscription",
       detail: "Recurring access billed monthly or yearly via Stripe.",
-      href: "/teach/builder?newCourse=1",
+      href: "/teach/builder?newCourse=1&format=free",
     },
     {
       title: "Free program",

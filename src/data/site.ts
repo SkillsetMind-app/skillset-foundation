@@ -129,7 +129,7 @@ export const platformNav: PlatformNavItem[] = [
     permission: "teacherStudio.manageCourses",
   },
   {
-    href: "/teach/storefront",
+    href: "/teach/members",
     labelKey: "platform.nav.membersArea",
     icon: "Image",
     contexts: ["teacher"],

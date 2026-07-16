@@ -62,5 +62,74 @@ describe("resolveCoursePrice", () => {
       },
     ];
     expect(resolveCoursePrice(course, offers)?.source).toBe("legacy");
+    expect(resolveCoursePrice(course, offers, { offerId: "empty" })).toBeNull();
+  });
+
+  it("resolves an explicitly selected non-default offer by public code", () => {
+    const offers: ProductOffer[] = [
+      {
+        id: "offer-default",
+        courseId: "course-1",
+        name: "Standard",
+        isDefault: true,
+        prices: [
+          {
+            id: "price-default",
+            offerId: "offer-default",
+            amountMinor: 9900,
+            currency: "BRL",
+            paymentType: "one_time",
+          },
+        ],
+      },
+      {
+        id: "offer-launch",
+        courseId: "course-1",
+        name: "Launch",
+        publicCode: "LAUNCH",
+        prices: [
+          {
+            id: "price-launch",
+            offerId: "offer-launch",
+            amountMinor: 7900,
+            currency: "BRL",
+            paymentType: "one_time",
+          },
+        ],
+      },
+    ];
+
+    expect(
+      resolveCoursePrice(course, offers, { publicCode: "launch" }),
+    ).toMatchObject({
+      source: "offer",
+      offerId: "offer-launch",
+      priceId: "price-launch",
+      amountMinor: 7900,
+    });
+  });
+
+  it("never falls back when an explicit offer selection is invalid", () => {
+    const offers: ProductOffer[] = [
+      {
+        id: "offer-default",
+        courseId: "course-1",
+        name: "Standard",
+        isDefault: true,
+        prices: [
+          {
+            id: "price-default",
+            offerId: "offer-default",
+            amountMinor: 9900,
+            currency: "BRL",
+            paymentType: "one_time",
+          },
+        ],
+      },
+    ];
+
+    expect(
+      resolveCoursePrice(course, offers, { publicCode: "missing" }),
+    ).toBeNull();
   });
 });

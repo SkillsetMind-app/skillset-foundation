@@ -185,7 +185,7 @@ export function CreatorVerificationPanel() {
           Verify your professional credentials to earn reviewed-instructor
           standing.{" "}
           {requireVerification
-            ? "Verification is required before a course can be submitted for publishing."
+            ? "Verification is required before you can publish a course."
             : "Verification is optional today — it becomes required to publish once professional admission opens."}
         </p>
         <p className="mt-2 text-xs text-[var(--color-ink-soft)]">

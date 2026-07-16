@@ -11,11 +11,13 @@ import { buildCourseSubscriptionSaleRecords } from "@/lib/payments/course-subscr
 import { defaultSkillsetCurrency } from "@/lib/payments/currencies";
 import {
   DEFAULT_PLATFORM_FEE_BPS,
+  affiliateCommissionRefundTargetMinor,
   canonicalPlatformFeeBpsForPlan,
   createReleasedRefundTransferReversal,
   ledgerRefundStatus,
   nextLedgerStatusOnDispute,
   payoutReleaseDelayDays,
+  releasedRefundReversalAmountMinor,
   refundReversalClaimKey,
   resolveInvoicePaymentIntentId,
   shouldCancelCourseSubscriptionForRefund,
@@ -64,6 +66,69 @@ const HANDLED_STRIPE_EVENT_TYPES = new Set<string>([
 ]);
 
 type Admin = ReturnType<typeof getSupabaseAdminClient>;
+
+type SupabaseWrite = PromiseLike<{
+  error: { message: string } | null;
+}>;
+
+async function requireSupabaseWrite(
+  operation: SupabaseWrite,
+  context: string,
+): Promise<void> {
+  const { error } = await operation;
+  if (error) throw new Error(`${context}: ${error.message}`);
+}
+
+type RefundReversalClaimRow = {
+  action: "skip" | "execute";
+  planned_amount_minor: number | string | null;
+};
+
+async function claimRefundTransferReversal(
+  admin: Admin,
+  args: {
+    ledgerId: string;
+    claimKey: string;
+    targetReversalAmountMinor: number;
+  },
+): Promise<number> {
+  const result = (await admin.rpc(
+    "claim_payout_transfer_reversal",
+    {
+      p_ledger_id: args.ledgerId,
+      p_claim_key: args.claimKey,
+      p_target_amount_minor: args.targetReversalAmountMinor,
+    },
+  )) as unknown as {
+    data: RefundReversalClaimRow[] | RefundReversalClaimRow | null;
+    error: { message: string } | null;
+  };
+  if (result.error) throw new Error(result.error.message);
+
+  const row = Array.isArray(result.data) ? result.data[0] : result.data;
+  if (!row || row.action === "skip") return 0;
+
+  const plannedAmountMinor = Number(row.planned_amount_minor ?? 0);
+  if (!Number.isFinite(plannedAmountMinor) || plannedAmountMinor <= 0) {
+    throw new Error("Refund reversal claim returned an invalid planned amount.");
+  }
+  return Math.floor(plannedAmountMinor);
+}
+
+async function completeRefundTransferReversal(
+  admin: Admin,
+  args: { ledgerId: string; claimKey: string; reversalId: string },
+): Promise<void> {
+  const result = (await admin.rpc(
+    "complete_payout_transfer_reversal",
+    {
+      p_ledger_id: args.ledgerId,
+      p_claim_key: args.claimKey,
+      p_reversal_id: args.reversalId,
+    },
+  )) as unknown as { error: { message: string } | null };
+  if (result.error) throw new Error(result.error.message);
+}
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -212,6 +277,28 @@ async function settleAffiliateCommissionLedger(
 }
 
 // --- one-time checkout fulfilment -------------------------------------------
+async function finalizeCourseCouponReservation(
+  admin: Admin,
+  orderId: string,
+): Promise<void> {
+  const { error } = await admin.rpc(
+    "finalize_course_coupon_reservation",
+    { p_order_id: orderId },
+  );
+  if (error) throw new Error(error.message);
+}
+
+async function releaseCourseCouponReservation(
+  admin: Admin,
+  orderId: string,
+): Promise<void> {
+  const { error } = await admin.rpc(
+    "release_course_coupon_reservation",
+    { p_order_id: orderId },
+  );
+  if (error) throw new Error(error.message);
+}
+
 async function handleCheckoutCompleted(
   admin: Admin,
   session: Stripe.Checkout.Session,
@@ -224,6 +311,8 @@ async function handleCheckoutCompleted(
   if (!orderId || !courseId || !userId) {
     throw new Error("Missing required Checkout metadata.");
   }
+
+  await finalizeCourseCouponReservation(admin, orderId);
 
   const paymentIntentId =
     typeof session.payment_intent === "string"
@@ -307,34 +396,40 @@ async function handleCheckoutCompleted(
   const ts = nowIso();
 
   // payment (id = PaymentIntent), merge-safe.
-  await admin.from("payments").upsert(
-    {
-      id: paymentIntentId,
-      order_id: orderId,
-      user_id: userId,
-      course_id: courseId,
-      amount_minor: order.amount_minor,
-      currency: order.currency,
-      provider: "stripe",
-      provider_payment_id: paymentIntentId,
-      status: "succeeded",
-      ...(receiptUrl ? { receipt_url: receiptUrl } : {}),
-      updated_at: ts,
-    },
-    { onConflict: "id" },
+  await requireSupabaseWrite(
+    admin.from("payments").upsert(
+      {
+        id: paymentIntentId,
+        order_id: orderId,
+        user_id: userId,
+        course_id: courseId,
+        amount_minor: order.amount_minor,
+        currency: order.currency,
+        provider: "stripe",
+        provider_payment_id: paymentIntentId,
+        status: "succeeded",
+        ...(receiptUrl ? { receipt_url: receiptUrl } : {}),
+        updated_at: ts,
+      },
+      { onConflict: "id" },
+    ),
+    "Persist checkout payment",
   );
 
-  await admin
-    .from("orders")
-    .update({
-      status: "paid",
-      checkout_session_id: session.id,
-      payment_intent_id: paymentIntentId,
-      ...(receiptUrl ? { receipt_url: receiptUrl } : {}),
-      paid_at: ts,
-      updated_at: ts,
-    })
-    .eq("id", orderId);
+  await requireSupabaseWrite(
+    admin
+      .from("orders")
+      .update({
+        status: "paid",
+        checkout_session_id: session.id,
+        payment_intent_id: paymentIntentId,
+        ...(receiptUrl ? { receipt_url: receiptUrl } : {}),
+        paid_at: ts,
+        updated_at: ts,
+      })
+      .eq("id", orderId),
+    "Mark checkout order paid",
+  );
 
   // Grant on first purchase; re-activate on repurchase after a refund/lapse;
   // never downgrade or reset progress on an already active/completed enrollment.
@@ -347,55 +442,64 @@ async function handleCheckoutCompleted(
     .eq("id", enrollmentId)
     .maybeSingle();
   if (!existingEnrollment) {
-    await admin.from("enrollments").insert({
-      id: enrollmentId,
-      user_id: userId,
-      course_id: courseId,
-      course_slug: courseId,
-      course_title: course.title,
-      course_category: course.category,
-      course_image: course.cover_image_url || "/brand/logo-mark.png",
-      status: "active",
-      source: "payment",
-      progress_percent: 0,
-      created_at: ts,
-      updated_at: ts,
-    });
+    await requireSupabaseWrite(
+      admin.from("enrollments").insert({
+        id: enrollmentId,
+        user_id: userId,
+        course_id: courseId,
+        course_slug: courseId,
+        course_title: course.title,
+        course_category: course.category,
+        course_image: course.cover_image_url || "/brand/logo-mark.png",
+        status: "active",
+        source: "payment",
+        progress_percent: 0,
+        created_at: ts,
+        updated_at: ts,
+      }),
+      "Create checkout enrollment",
+    );
   } else if (shouldReactivateEnrollment(existingEnrollment.status)) {
-    await admin
-      .from("enrollments")
-      .update({ status: "active", source: "payment", updated_at: ts })
-      .eq("id", enrollmentId);
+    await requireSupabaseWrite(
+      admin
+        .from("enrollments")
+        .update({ status: "active", source: "payment", updated_at: ts })
+        .eq("id", enrollmentId),
+      "Reactivate checkout enrollment",
+    );
   }
 
   // Ledger LAST (the re-arm gate). Legacy amount_minor/platform_fee_minor are
   // mirrored (gross / skillset fee) so the table's CHECK holds.
   // Teacher net is reduced by affiliate commission when metadata attributes a ref.
-  await admin.from("payout_ledger").insert({
-    id: orderId,
-    teacher_id: course.owner_id,
-    teacher_stripe_connected_account_id:
-      order.teacher_stripe_connected_account_id ||
-      course.stripe_connected_account_id ||
-      null,
-    course_id: courseId,
-    order_id: orderId,
-    payment_id: paymentIntentId,
-    payment_id_is_payment_intent: true,
-    kind: "course_one_time",
-    amount_minor: grossAmountMinor,
-    platform_fee_minor: skillsetFeeMinor,
-    gross_amount_minor: grossAmountMinor,
-    skillset_fee_minor: skillsetFeeMinor,
-    stripe_fee_minor: stripeFeeMinor,
-    net_amount_minor: netAmountMinor,
-    currency: order.currency,
-    platform_fee_bps: platformFeeBps,
-    status: "in_release",
-    release_at: getPayoutReleaseAt(),
-    created_at: ts,
-    updated_at: ts,
-  });
+  await requireSupabaseWrite(
+    admin.from("payout_ledger").insert({
+      id: orderId,
+      teacher_id: course.owner_id,
+      teacher_stripe_connected_account_id:
+        order.teacher_stripe_connected_account_id ||
+        course.stripe_connected_account_id ||
+        null,
+      course_id: courseId,
+      order_id: orderId,
+      payment_id: paymentIntentId,
+      payment_id_is_payment_intent: true,
+      kind: "course_one_time",
+      amount_minor: grossAmountMinor,
+      platform_fee_minor: skillsetFeeMinor,
+      gross_amount_minor: grossAmountMinor,
+      skillset_fee_minor: skillsetFeeMinor,
+      stripe_fee_minor: stripeFeeMinor,
+      net_amount_minor: netAmountMinor,
+      currency: order.currency,
+      platform_fee_bps: platformFeeBps,
+      status: "in_release",
+      release_at: getPayoutReleaseAt(),
+      created_at: ts,
+      updated_at: ts,
+    }),
+    "Create checkout payout ledger",
+  );
 
   await settleAffiliateCommissionLedger(admin, {
     saleRootId: orderId,
@@ -418,7 +522,10 @@ async function handleCheckoutCompleted(
     .eq("lock_key", lockKey)
     .maybeSingle();
   if (lock && shouldReleaseCheckoutLock(lock.order_id, orderId)) {
-    await admin.from("checkout_locks").delete().eq("lock_key", lockKey);
+    await requireSupabaseWrite(
+      admin.from("checkout_locks").delete().eq("lock_key", lockKey),
+      "Release settled checkout lock",
+    );
   }
 }
 
@@ -605,51 +712,60 @@ async function handleCourseSubscriptionInvoicePaid(
     .eq("id", enrollmentId)
     .maybeSingle();
   if (!enrollment) {
-    await admin.from("enrollments").insert({
-      id: enrollmentId,
-      user_id: userId,
-      course_id: courseId,
-      course_slug: courseId,
-      course_title: course.title,
-      course_category: course.category,
-      course_image: course.cover_image_url || "/brand/logo-mark.png",
-      status: "active",
-      source: "subscription",
-      subscription_id: subscriptionId,
-      progress_percent: 0,
-      created_at: ts,
-      updated_at: ts,
-    });
-  } else if (shouldReactivateEnrollment(enrollment.status)) {
-    await admin
-      .from("enrollments")
-      .update({
+    await requireSupabaseWrite(
+      admin.from("enrollments").insert({
+        id: enrollmentId,
+        user_id: userId,
+        course_id: courseId,
+        course_slug: courseId,
+        course_title: course.title,
+        course_category: course.category,
+        course_image: course.cover_image_url || "/brand/logo-mark.png",
         status: "active",
         source: "subscription",
         subscription_id: subscriptionId,
+        progress_percent: 0,
+        created_at: ts,
         updated_at: ts,
-      })
-      .eq("id", enrollmentId);
+      }),
+      "Create subscription enrollment",
+    );
+  } else if (shouldReactivateEnrollment(enrollment.status)) {
+    await requireSupabaseWrite(
+      admin
+        .from("enrollments")
+        .update({
+          status: "active",
+          source: "subscription",
+          subscription_id: subscriptionId,
+          updated_at: ts,
+        })
+        .eq("id", enrollmentId),
+      "Reactivate subscription enrollment",
+    );
   }
 
   // Mirror the subscription for the learner's cancel UI + lifecycle handler.
-  await admin.from("course_subscriptions").upsert(
-    {
-      id: subscriptionId,
-      user_id: userId,
-      course_id: courseId,
-      course_slug: courseId,
-      teacher_id: teacherId,
-      stripe_subscription_id: subscriptionId,
-      stripe_customer_id: stripeCustomerId,
-      status: subscription.status,
-      interval: courseSubscriptionInterval(course.payment_type),
-      current_period_end: periodEndIso,
-      cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
-      latest_invoice_id: invoice.id,
-      updated_at: ts,
-    },
-    { onConflict: "id" },
+  await requireSupabaseWrite(
+    admin.from("course_subscriptions").upsert(
+      {
+        id: subscriptionId,
+        user_id: userId,
+        course_id: courseId,
+        course_slug: courseId,
+        teacher_id: teacherId,
+        stripe_subscription_id: subscriptionId,
+        stripe_customer_id: stripeCustomerId,
+        status: subscription.status,
+        interval: courseSubscriptionInterval(course.payment_type),
+        current_period_end: periodEndIso,
+        cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
+        latest_invoice_id: invoice.id,
+        updated_at: ts,
+      },
+      { onConflict: "id" },
+    ),
+    "Persist paid course subscription",
   );
 }
 
@@ -686,23 +802,26 @@ async function handleCourseSubscriptionLifecycle(
       : subscription.customer?.id ?? null;
   const ts = nowIso();
 
-  await admin.from("course_subscriptions").upsert(
-    {
-      id: subscription.id,
-      user_id: userId,
-      course_id: courseId,
-      course_slug: courseId,
-      ...(teacherId ? { teacher_id: teacherId } : {}),
-      stripe_subscription_id: subscription.id,
-      stripe_customer_id: stripeCustomerId,
-      status,
-      interval,
-      current_period_end: periodEndIso,
-      cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
-      past_due: status === "past_due" || status === "unpaid",
-      updated_at: ts,
-    },
-    { onConflict: "id" },
+  await requireSupabaseWrite(
+    admin.from("course_subscriptions").upsert(
+      {
+        id: subscription.id,
+        user_id: userId,
+        course_id: courseId,
+        course_slug: courseId,
+        ...(teacherId ? { teacher_id: teacherId } : {}),
+        stripe_subscription_id: subscription.id,
+        stripe_customer_id: stripeCustomerId,
+        status,
+        interval,
+        current_period_end: periodEndIso,
+        cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
+        past_due: status === "past_due" || status === "unpaid",
+        updated_at: ts,
+      },
+      { onConflict: "id" },
+    ),
+    "Persist course subscription lifecycle",
   );
 
   const enrollmentId = `${userId}__${courseId}`;
@@ -716,20 +835,26 @@ async function handleCourseSubscriptionLifecycle(
 
   const enrollmentStatus = String(enrollment.status ?? "");
   if (revoke && enrollmentStatus === "active") {
-    await admin
-      .from("enrollments")
-      .update({ status: "revoked", updated_at: ts })
-      .eq("id", enrollmentId);
+    await requireSupabaseWrite(
+      admin
+        .from("enrollments")
+        .update({ status: "revoked", updated_at: ts })
+        .eq("id", enrollmentId),
+      "Revoke course subscription enrollment",
+    );
   } else if (entitled && enrollmentStatus === "revoked") {
-    await admin
-      .from("enrollments")
-      .update({
-        status: "active",
-        source: "subscription",
-        subscription_id: subscription.id,
-        updated_at: ts,
-      })
-      .eq("id", enrollmentId);
+    await requireSupabaseWrite(
+      admin
+        .from("enrollments")
+        .update({
+          status: "active",
+          source: "subscription",
+          subscription_id: subscription.id,
+          updated_at: ts,
+        })
+        .eq("id", enrollmentId),
+      "Restore course subscription enrollment",
+    );
   }
   return true;
 }
@@ -741,12 +866,17 @@ async function handleCourseSubscriptionLifecycle(
 async function clawbackAffiliateCommissionLedger(
   admin: Admin,
   saleRootId: string,
-  opts: { refundedAmountMinor: number; sourceId: string; isFullRefund: boolean },
+  opts: {
+    refundedAmountMinor: number;
+    saleGrossAmountMinor: number;
+    sourceId: string;
+    isFullRefund: boolean;
+  },
 ): Promise<void> {
   const affId = affiliateCommissionLedgerId(saleRootId);
   const { data: affLedger, error } = await admin
     .from("payout_ledger")
-    .select("id,status,net_amount_minor")
+    .select("id,status,net_amount_minor,refunded_amount_minor")
     .eq("id", affId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -755,23 +885,30 @@ async function clawbackAffiliateCommissionLedger(
   const ts = nowIso();
   const nextStatus = ledgerRefundStatus(opts.isFullRefund, affLedger.status);
   // Full refund → claw entire commission; partial → proportional floor.
-  const grossAff = Number(affLedger.net_amount_minor || 0);
-  const clawMinor = opts.isFullRefund
-    ? grossAff
-    : Math.min(
-        grossAff,
-        Math.max(0, Math.floor(Number(opts.refundedAmountMinor || 0))),
-      );
+  const commissionMinor = Number(affLedger.net_amount_minor || 0);
+  const clawMinor = affiliateCommissionRefundTargetMinor({
+    commissionAmountMinor: commissionMinor,
+    saleGrossAmountMinor: opts.saleGrossAmountMinor,
+    refundedSaleAmountMinor: opts.isFullRefund
+      ? opts.saleGrossAmountMinor
+      : opts.refundedAmountMinor,
+    alreadyRefundedCommissionMinor: Number(
+      affLedger.refunded_amount_minor || 0,
+    ),
+  });
 
-  await admin
-    .from("payout_ledger")
-    .update({
-      status: nextStatus,
-      refunded_amount_minor: clawMinor,
-      refunded_at: ts,
-      updated_at: ts,
-    })
-    .eq("id", affId);
+  await requireSupabaseWrite(
+    admin
+      .from("payout_ledger")
+      .update({
+        status: nextStatus,
+        refunded_amount_minor: clawMinor,
+        refunded_at: ts,
+        updated_at: ts,
+      })
+      .eq("id", affId),
+    "Update affiliate refund ledger",
+  );
 
   if (clawMinor > 0) {
     await reverseReleasedPayout(admin, affId, {
@@ -788,14 +925,9 @@ async function clawbackAffiliateCommissionLedger(
 // in_release/releasing payout is simply reduced by the release engine. Keyed by
 // (chargeId, cumulative amount_refunded) in refund_reversal_claims so a Stripe
 // redelivery of the same refund never double-reverses.
-//
-// ponytail: refund_reversal_claims is a plain idempotency guard, not a
-// transactional reservation. Two DISTINCT partial refunds on one charge handled
-// concurrently could each plan against the same reversed balance — but
-// releasedRefundReversalAmountMinor caps each at the transferred amount and
-// Stripe caps cumulative reversals at the transfer total, so the teacher is
-// never over-clawed. Upgrade to a SECURITY DEFINER RPC that claims the jsonb map
-// transactionally only if concurrent partial refunds ever become common.
+// The claim RPC locks the ledger and reserves the cumulative target before the
+// Stripe call. A retry receives the same planned amount and reuses the same
+// Stripe idempotency key; completion only promotes that claim to done.
 async function reverseReleasedPayout(
   admin: Admin,
   ledgerId: string,
@@ -821,12 +953,23 @@ async function reverseReleasedPayout(
     return;
   }
 
-  const claims =
-    (ledger.refund_reversal_claims as Record<string, { state?: string }> | null) ?? {};
   const claimKey = refundReversalClaimKey(opts.sourceId, opts.refundedAmountMinor);
-  if (claims[claimKey]?.state === "done") return;
+  const targetReversalAmountMinor = releasedRefundReversalAmountMinor({
+    grossAmountMinor: Number(ledger.gross_amount_minor || 0),
+    refundedAmountMinor: Number(opts.refundedAmountMinor || 0),
+    releasedTransferAmountMinor,
+    netAmountMinor: Number(ledger.net_amount_minor || 0),
+    alreadyReversedAmountMinor: 0,
+  });
+  if (targetReversalAmountMinor <= 0) return;
 
-  const alreadyReversed = Number(ledger.transfer_reversed_amount_minor || 0);
+  const plannedAmountMinor = await claimRefundTransferReversal(admin, {
+    ledgerId,
+    claimKey,
+    targetReversalAmountMinor,
+  });
+  if (plannedAmountMinor <= 0) return;
+
   const { reversalId, reversalAmountMinor } =
     await createReleasedRefundTransferReversal({
       stripe: getStripeClient() as unknown as TransferReversalStripeClient,
@@ -836,8 +979,8 @@ async function reverseReleasedPayout(
       refundedAmountMinor: Number(opts.refundedAmountMinor || 0),
       releasedTransferAmountMinor,
       netAmountMinor: Number(ledger.net_amount_minor || 0),
-      alreadyReversedAmountMinor: alreadyReversed,
-      idempotencyKey: `reversal_${ledgerId}_${opts.sourceId}_${opts.refundedAmountMinor}`,
+      fixedReversalAmountMinor: plannedAmountMinor,
+      idempotencyKey: `reversal_${ledgerId}_${claimKey}`,
       metadata: {
         orderId: String(ledger.order_id ?? ""),
         courseId: String(ledger.course_id ?? ""),
@@ -846,22 +989,15 @@ async function reverseReleasedPayout(
         reason: opts.reason,
       },
     });
+  if (!reversalId || reversalAmountMinor !== plannedAmountMinor) {
+    throw new Error("Stripe refund reversal did not match its reserved claim.");
+  }
 
-  const ts = nowIso();
-  await admin
-    .from("payout_ledger")
-    .update({
-      transfer_reversed_amount_minor: alreadyReversed + reversalAmountMinor,
-      ...(reversalId
-        ? { latest_transfer_reversal_id: reversalId, latest_transfer_reversal_at: ts }
-        : {}),
-      refund_reversal_claims: {
-        ...claims,
-        [claimKey]: { state: "done", plannedAmountMinor: reversalAmountMinor },
-      },
-      updated_at: ts,
-    })
-    .eq("id", ledgerId);
+  await completeRefundTransferReversal(admin, {
+    ledgerId,
+    claimKey,
+    reversalId,
+  });
 }
 
 // --- charge.refunded (claws back an already-released transfer) --------------
@@ -895,15 +1031,18 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
     if (ledgersError) throw new Error(ledgersError.message);
     const ledger = (ledgers ?? []).find((l) => l.kind === "course_subscription");
     if (!ledger) return;
-    await admin
-      .from("payout_ledger")
-      .update({
-        status: ledgerRefundStatus(isFullRefund, ledger.status),
-        refunded_amount_minor: charge.amount_refunded,
-        refunded_at: ts,
-        updated_at: ts,
-      })
-      .eq("id", ledger.id);
+    await requireSupabaseWrite(
+      admin
+        .from("payout_ledger")
+        .update({
+          status: ledgerRefundStatus(isFullRefund, ledger.status),
+          refunded_amount_minor: charge.amount_refunded,
+          refunded_at: ts,
+          updated_at: ts,
+        })
+        .eq("id", ledger.id),
+      "Update subscription refund ledger",
+    );
     await reverseReleasedPayout(admin, ledger.id, {
       refundedAmountMinor: charge.amount_refunded,
       sourceId: charge.id,
@@ -912,6 +1051,7 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
     // Subscription sales also settle affiliate against the invoice id.
     await clawbackAffiliateCommissionLedger(admin, ledger.id, {
       refundedAmountMinor: charge.amount_refunded,
+      saleGrossAmountMinor: charge.amount,
       sourceId: charge.id,
       isFullRefund,
     });
@@ -948,34 +1088,43 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
   if (ledgerError) throw new Error(ledgerError.message);
   const nextLedgerStatus = ledgerRefundStatus(isFullRefund, ledger?.status);
 
-  await admin
-    .from("payments")
-    .update({
-      status: refundedStatus,
-      refunded_amount_minor: charge.amount_refunded,
-      refunded_at: ts,
-      updated_at: ts,
-    })
-    .eq("id", paymentIntentId);
+  await requireSupabaseWrite(
+    admin
+      .from("payments")
+      .update({
+        status: refundedStatus,
+        refunded_amount_minor: charge.amount_refunded,
+        refunded_at: ts,
+        updated_at: ts,
+      })
+      .eq("id", paymentIntentId),
+    "Update refunded payment",
+  );
 
-  await admin
-    .from("orders")
-    .update({
-      status: refundedStatus,
-      refunded_amount_minor: charge.amount_refunded,
-      updated_at: ts,
-    })
-    .eq("id", orderId);
+  await requireSupabaseWrite(
+    admin
+      .from("orders")
+      .update({
+        status: refundedStatus,
+        refunded_amount_minor: charge.amount_refunded,
+        updated_at: ts,
+      })
+      .eq("id", orderId),
+    "Update refunded order",
+  );
 
-  await admin
-    .from("payout_ledger")
-    .update({
-      status: nextLedgerStatus,
-      refunded_amount_minor: charge.amount_refunded,
-      refunded_at: ts,
-      updated_at: ts,
-    })
-    .eq("id", orderId);
+  await requireSupabaseWrite(
+    admin
+      .from("payout_ledger")
+      .update({
+        status: nextLedgerStatus,
+        refunded_amount_minor: charge.amount_refunded,
+        refunded_at: ts,
+        updated_at: ts,
+      })
+      .eq("id", orderId),
+    "Update refunded payout ledger",
+  );
 
   await reverseReleasedPayout(admin, orderId, {
     refundedAmountMinor: charge.amount_refunded,
@@ -988,6 +1137,7 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
   // keeps commission while buyer is refunded.
   await clawbackAffiliateCommissionLedger(admin, orderId, {
     refundedAmountMinor: charge.amount_refunded,
+    saleGrossAmountMinor: charge.amount,
     sourceId: charge.id,
     isFullRefund,
   });
@@ -1013,10 +1163,13 @@ async function handleChargeRefunded(admin: Admin, charge: Stripe.Charge): Promis
     && order.user_id
     && order.course_id
   ) {
-    await admin
-      .from("enrollments")
-      .update({ status: "refunded", updated_at: ts })
-      .eq("id", `${order.user_id}__${order.course_id}`);
+    await requireSupabaseWrite(
+      admin
+        .from("enrollments")
+        .update({ status: "refunded", updated_at: ts })
+        .eq("id", `${order.user_id}__${order.course_id}`),
+      "Refund course enrollment",
+    );
   }
 }
 
@@ -1051,10 +1204,13 @@ async function handleDisputeCreated(admin: Admin, dispute: Stripe.Dispute): Prom
     hasTransfer: Boolean(ledger.transfer_id),
   });
   if (!next) return;
-  await admin
-    .from("payout_ledger")
-    .update({ status: next, updated_at: nowIso() })
-    .eq("id", ledger.id);
+  await requireSupabaseWrite(
+    admin
+      .from("payout_ledger")
+      .update({ status: next, updated_at: nowIso() })
+      .eq("id", ledger.id),
+    "Mark payout disputed",
+  );
   // Payout already left the platform: claw the transfer back, the dispute took
   // the same money from us. reverseReleasedPayout keys on transfer_id, so the
   // status flip above does not block it.
@@ -1079,10 +1235,13 @@ async function handleDisputeClosed(admin: Admin, dispute: Stripe.Dispute): Promi
     hasTransfer: Boolean(ledger.transfer_id),
   });
   if (!next) return;
-  await admin
-    .from("payout_ledger")
-    .update({ status: next, updated_at: nowIso() })
-    .eq("id", ledger.id);
+  await requireSupabaseWrite(
+    admin
+      .from("payout_ledger")
+      .update({ status: next, updated_at: nowIso() })
+      .eq("id", ledger.id),
+    "Resolve payout dispute",
+  );
 }
 
 // --- terminal order status (expired / failed) with lock release + B2 guard --
@@ -1115,14 +1274,21 @@ async function markOrderStatus(
       .eq("lock_key", lockKey)
       .maybeSingle();
     if (lock && shouldReleaseCheckoutLock(lock.order_id, orderId)) {
-      await admin.from("checkout_locks").delete().eq("lock_key", lockKey);
+      await requireSupabaseWrite(
+        admin.from("checkout_locks").delete().eq("lock_key", lockKey),
+        "Release failed checkout lock",
+      );
     }
   }
 
   // Never overwrite a settled money outcome (paid/refunded). [B2]
   if (!shouldApplyOrderStatusTransition(order.status)) return;
 
-  await admin.from("orders").update({ status, updated_at: ts }).eq("id", orderId);
+  await releaseCourseCouponReservation(admin, orderId);
+  await requireSupabaseWrite(
+    admin.from("orders").update({ status, updated_at: ts }).eq("id", orderId),
+    "Mark checkout order terminal",
+  );
 }
 
 // --- plan subscription sync (currentPlanId + commission) --------------------
@@ -1173,33 +1339,39 @@ async function syncSubscriptionFromStripe(
   );
   const ts = nowIso();
 
-  await admin.from("subscriptions").upsert(
-    {
-      id: subscription.id,
-      user_id: uid,
-      plan_id: planId,
-      cycle,
-      stripe_customer_id:
-        typeof subscription.customer === "string"
-          ? subscription.customer
-          : subscription.customer.id,
-      stripe_subscription_id: subscription.id,
-      stripe_price_id: priceId,
-      status: subscription.status,
-      past_due: subscription.status === "past_due" || subscription.status === "unpaid",
-      current_period_start: periodStart,
-      current_period_end: periodEnd,
-      cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
-      updated_at: ts,
-    },
-    { onConflict: "id" },
+  await requireSupabaseWrite(
+    admin.from("subscriptions").upsert(
+      {
+        id: subscription.id,
+        user_id: uid,
+        plan_id: planId,
+        cycle,
+        stripe_customer_id:
+          typeof subscription.customer === "string"
+            ? subscription.customer
+            : subscription.customer.id,
+        stripe_subscription_id: subscription.id,
+        stripe_price_id: priceId,
+        status: subscription.status,
+        past_due: subscription.status === "past_due" || subscription.status === "unpaid",
+        current_period_start: periodStart,
+        current_period_end: periodEnd,
+        cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
+        updated_at: ts,
+      },
+      { onConflict: "id" },
+    ),
+    "Persist plan subscription",
   );
 
   const entitled = subscription.status === "active" || subscription.status === "trialing";
-  await admin
-    .from("users")
-    .update({ current_plan_id: entitled ? planId : "free", updated_at: ts })
-    .eq("uid", uid);
+  await requireSupabaseWrite(
+    admin
+      .from("users")
+      .update({ current_plan_id: entitled ? planId : "free", updated_at: ts })
+      .eq("uid", uid),
+    "Update subscriber plan",
+  );
 }
 
 async function handleInvoicePaymentFailed(
@@ -1210,23 +1382,31 @@ async function handleInvoicePaymentFailed(
   if (!subscriptionId) return;
   const ts = nowIso();
 
+  let subscription: Stripe.Subscription | null = null;
   try {
-    const subscription = await getStripeClient().subscriptions.retrieve(subscriptionId);
-    if (subscription.metadata?.purpose === "course_subscription") {
-      await admin
-        .from("course_subscriptions")
-        .update({ past_due: true, updated_at: ts })
-        .eq("id", subscriptionId);
-      return;
-    }
+    subscription = await getStripeClient().subscriptions.retrieve(subscriptionId);
   } catch {
     // fall through to plan-subscription handling
   }
 
-  await admin
-    .from("subscriptions")
-    .update({ past_due: true, updated_at: ts })
-    .eq("id", subscriptionId);
+  if (subscription?.metadata?.purpose === "course_subscription") {
+    await requireSupabaseWrite(
+      admin
+        .from("course_subscriptions")
+        .update({ past_due: true, updated_at: ts })
+        .eq("id", subscriptionId),
+      "Mark course subscription past due",
+    );
+    return;
+  }
+
+  await requireSupabaseWrite(
+    admin
+      .from("subscriptions")
+      .update({ past_due: true, updated_at: ts })
+      .eq("id", subscriptionId),
+    "Mark plan subscription past due",
+  );
 }
 
 export async function POST(request: Request) {

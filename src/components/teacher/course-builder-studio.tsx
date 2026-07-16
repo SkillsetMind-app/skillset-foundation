@@ -5,9 +5,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarClock,
-  Check,
   CheckCircle2,
-  ChevronDown,
   CloudOff,
   CreditCard,
   ExternalLink,
@@ -21,7 +19,7 @@ import {
   Trash2,
   UploadCloud,
 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -41,6 +39,7 @@ import { InlineHelp } from "@/components/shared/inline-help";
 import { StatusChip } from "@/components/shared/status-chip";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { CourseAssetUploader } from "@/components/teacher/course-asset-uploader";
+import { CourseCategorySelect } from "@/components/teacher/course-category-select";
 import { LessonContentModal } from "@/components/teacher/lesson-content-modal";
 import type { DripStrategy } from "@/domain/drip-policy";
 import type {
@@ -60,11 +59,11 @@ import {
   normalizeTeacherCourseModules,
   skillsetCourseCategories,
   teacherCanEditCourse,
-  teacherCanSubmitCourse,
+  teacherCanPublishCourse,
 } from "@/domain/teacher-course";
 import {
   subscribeToTeacherCourse,
-  submitTeacherCourseForReview,
+  publishTeacherCourse,
   updateTeacherCourseBuilder,
 } from "@/lib/data/teacher-courses";
 import {
@@ -79,6 +78,7 @@ import {
   type UploadCourseAssetProgress,
 } from "@/lib/data/course-assets";
 import type { CourseAsset } from "@/domain/course-asset";
+import { isPublicFeatureEnabled } from "@/lib/feature-flags";
 import {
   defaultSkillsetCurrency,
   getCurrencyLabel,
@@ -91,10 +91,10 @@ const secondaryCurrencies = supportedStripeCurrencies.filter(
 );
 const builderTabs = [
   { value: "details", label: "Details", sub: "Title, categories, promise" },
-  { value: "members", label: "Members Area", sub: "Theme, cover, title" },
-  { value: "content", label: "Curriculum", sub: "Modules, lessons, uploads" },
   { value: "pricing", label: "Pricing", sub: "Payment, drip, preview" },
-  { value: "review", label: "Review", sub: "Readiness and submission" },
+  { value: "content", label: "Curriculum", sub: "Modules, lessons, uploads" },
+  { value: "members", label: "Members Area", sub: "Theme, cover, title" },
+  { value: "review", label: "Publish", sub: "Readiness and launch" },
 ] as const;
 
 type BuilderTab = (typeof builderTabs)[number]["value"];
@@ -111,147 +111,11 @@ const builderStages: Array<{
   anchor: string;
 }> = [
   { id: "basics", label: "Course basics", sub: "Info, cover, promise", target: "details", anchor: "builder-sec-cover" },
-  { id: "modules", label: "Modules", sub: "Structure", target: "content", anchor: "builder-sec-modules" },
-  { id: "lessons", label: "Lessons", sub: "Video, text, files", target: "content", anchor: "builder-sec-lessons" },
   { id: "pricing", label: "Pricing", sub: "Access model", target: "pricing", anchor: "builder-sec-pricing" },
-  { id: "submit", label: "Submit", sub: "Review", target: "review", anchor: "builder-sec-review" },
+  { id: "content", label: "Curriculum", sub: "Modules and lessons", target: "content", anchor: "builder-sec-modules" },
+  { id: "members", label: "Members area", sub: "Learner experience", target: "members", anchor: "builder-sec-members" },
+  { id: "publish", label: "Publish", sub: "Final checks", target: "review", anchor: "builder-sec-review" },
 ];
-function CategoryMultiSelect({
-  options,
-  selected,
-  onToggle,
-  disabled,
-  max = 5,
-}: {
-  options: readonly string[];
-  selected: string[];
-  onToggle: (value: string) => void;
-  disabled: boolean;
-  max?: number;
-}) {
-  const [open, setOpen] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const atMax = selected.length >= max;
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    function handlePointerDown(event: MouseEvent) {
-      if (
-        wrapperRef.current &&
-        !wrapperRef.current.contains(event.target as Node)
-      ) {
-        setOpen(false);
-      }
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
-
-  return (
-    <div ref={wrapperRef} className="relative font-normal">
-      <button
-        type="button"
-        disabled={disabled}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        onClick={() => setOpen((current) => !current)}
-        className="flex w-full items-center gap-2 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-2.5 text-left text-sm outline-none transition-colors focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)] disabled:opacity-60"
-      >
-        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-          {selected.length === 0 ? (
-            <span className="text-[var(--color-ink-muted)]">
-              Select categories
-            </span>
-          ) : (
-            selected.map((item, index) => (
-              <span
-                key={item}
-                className={`inline-flex items-center gap-1 rounded-[8px] px-2 py-0.5 text-xs font-semibold ${
-                  index === 0
-                    ? "bg-[var(--color-primary)] text-[var(--color-base)]"
-                    : "bg-[var(--color-surface-strong)] text-[var(--color-ink)]"
-                }`}
-              >
-                {item}
-                {index === 0 ? (
-                  <span className="text-[9px] font-bold uppercase tracking-wide opacity-80">
-                    Primary
-                  </span>
-                ) : null}
-              </span>
-            ))
-          )}
-        </span>
-        <ChevronDown
-          aria-hidden="true"
-          size={16}
-          strokeWidth={1.8}
-          className={`shrink-0 text-[var(--color-ink-muted)] transition-transform duration-200 ${
-            open ? "rotate-180" : ""
-          }`}
-        />
-      </button>
-
-      {open ? (
-        <div
-          role="listbox"
-          aria-multiselectable="true"
-          className="absolute z-20 mt-2 max-h-64 w-full overflow-y-auto rounded-[12px] border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
-        >
-          {options.map((item) => {
-            const isSelected = selected.includes(item);
-            const isLockedOut = !isSelected && atMax;
-
-            return (
-              <button
-                key={item}
-                type="button"
-                role="option"
-                aria-selected={isSelected}
-                disabled={isLockedOut}
-                onClick={() => onToggle(item)}
-                className={`flex w-full items-center gap-2.5 rounded-[8px] px-3 py-2 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                  isSelected
-                    ? "bg-[var(--color-surface-soft)] font-semibold text-[var(--color-primary)]"
-                    : "text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
-                }`}
-              >
-                <span
-                  className={`grid size-4 shrink-0 place-items-center rounded-[4px] border transition-colors ${
-                    isSelected
-                      ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-base)]"
-                      : "border-[var(--color-line-strong)] bg-white"
-                  }`}
-                >
-                  {isSelected ? (
-                    <Check aria-hidden="true" size={11} strokeWidth={3} />
-                  ) : null}
-                </span>
-                <span className="min-w-0 flex-1 truncate">{item}</span>
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 type ActiveLessonStudio = {
   moduleId: string;
   lessonId: string;
@@ -486,7 +350,7 @@ function buildBuilderDraftPayload(input: BuilderDraftFields) {
     ...input.selectedCategories,
     input.category,
   ]);
-  const nextCategory = nextCategories[0] ?? "Other";
+  const nextCategory = nextCategories[0] ?? "";
 
   return {
     title: input.title.trim(),
@@ -541,7 +405,7 @@ function builderDraftSignatureFromCourse(course: TeacherCourse): string {
       dripIntervalDays: String(course.dripIntervalDays ?? 1),
       freePreviewLessonId: course.freePreviewLessonId ?? "",
       platformFeeBps: course.platformFeeBps ?? 800,
-      membersTheme: course.membersTheme ?? "dark",
+      membersTheme: course.membersTheme ?? "light",
       membersCoverAssetId: course.membersCoverAssetId ?? null,
       membersTitle: course.membersTitle ?? "",
       membersSubtitle: course.membersSubtitle ?? "",
@@ -552,9 +416,21 @@ function builderDraftSignatureFromCourse(course: TeacherCourse): string {
 }
 
 export function CourseBuilderStudio() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const courseId = searchParams.get("courseId");
   const requestedTab = searchParams.get("tab");
+  const activeTab: BuilderTab = isBuilderTab(requestedTab)
+    ? requestedTab
+    : "details";
+  const selectTab = useCallback(
+    (nextTab: BuilderTab) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("tab", nextTab);
+      router.push(`/teach/builder?${params.toString()}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
   const { user } = useAuth();
   const [course, setCourse] = useState<TeacherCourse | null>(null);
   const [title, setTitle] = useState("");
@@ -574,7 +450,7 @@ export function CourseBuilderStudio() {
   const [dripStrategy, setDripStrategy] = useState<DripStrategy>("instant");
   const [dripIntervalDays, setDripIntervalDays] = useState("1");
   const [freePreviewLessonId, setFreePreviewLessonId] = useState("");
-  const [membersTheme, setMembersTheme] = useState<MembersTheme>("dark");
+  const [membersTheme, setMembersTheme] = useState<MembersTheme>("light");
   const [membersCoverAssetId, setMembersCoverAssetId] = useState<string | null>(
     null,
   );
@@ -593,9 +469,6 @@ export function CourseBuilderStudio() {
   const [lessonContentText, setLessonContentText] = useState("");
   const [lessonExternalUrl, setLessonExternalUrl] = useState("");
   const [lessonIsFreePreview, setLessonIsFreePreview] = useState(false);
-  const [activeTab, setActiveTab] = useState<BuilderTab>(() =>
-    isBuilderTab(requestedTab) ? requestedTab : "details",
-  );
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -659,7 +532,7 @@ export function CourseBuilderStudio() {
         setDripStrategy(nextCourse.dripStrategy ?? "instant");
         setDripIntervalDays(String(nextCourse.dripIntervalDays ?? 1));
         setFreePreviewLessonId(nextCourse.freePreviewLessonId ?? "");
-        setMembersTheme(nextCourse.membersTheme ?? "dark");
+        setMembersTheme(nextCourse.membersTheme ?? "light");
         setMembersCoverAssetId(nextCourse.membersCoverAssetId ?? null);
         setMembersTitle(nextCourse.membersTitle ?? "");
         setMembersSubtitle(nextCourse.membersSubtitle ?? "");
@@ -681,9 +554,16 @@ export function CourseBuilderStudio() {
 
   const isOwner = course && user?.uid === course.ownerId;
   const isEditable = Boolean(isOwner && course && teacherCanEditCourse(course.status));
-  const canSubmitForReview = Boolean(
-    isOwner && course && teacherCanSubmitCourse(course.status),
+  const canPublish = Boolean(
+    isOwner && course && teacherCanPublishCourse(course.status),
   );
+  const cardInstallmentsConfigured = isPublicFeatureEnabled(
+    "payments.cardInstallments",
+  );
+  const canConfigureCardInstallments =
+    paymentType === "one_time"
+    && currency === "MXN"
+    && cardInstallmentsConfigured;
   const lessonCount = countCourseLessons(modules);
   const allLessons = modules.flatMap((module) =>
     module.lessons.map((lesson) => ({
@@ -720,18 +600,19 @@ export function CourseBuilderStudio() {
       ready: summary.trim().length >= 20,
     },
     {
+      label:
+        selectedCategories.length > 0
+          ? "Marketplace category is set."
+          : "Choose at least one marketplace category.",
+      ready: selectedCategories.length > 0,
+    },
+    {
       label: modules.length > 0 ? "At least one module exists." : "Add at least one module.",
       ready: modules.length > 0,
     },
     {
       label: lessonCount > 0 ? "At least one lesson exists." : "Add at least one lesson.",
       ready: lessonCount > 0,
-    },
-    {
-      label: freePreviewLessonId
-        ? "Free preview lesson is selected."
-        : "Choose one lesson as the free preview.",
-      ready: Boolean(freePreviewLessonId),
     },
     {
       label:
@@ -798,24 +679,27 @@ export function CourseBuilderStudio() {
           }).format(parsedPriceAmountMinor / 100)}${priceIntervalSuffix}`
         : "Set price";
   const tabCompletion: Record<BuilderTab, boolean> = {
-    details: Boolean(title.trim() && summary.trim().length >= 20),
-    // Members-area customization is fully optional (the hero falls back to the
-    // course's own title/cover and the dark default), so this tab never blocks.
+    details: Boolean(
+      title.trim()
+      && summary.trim().length >= 20
+      && selectedCategories.length > 0
+    ),
+    // Members-area customization is optional; the learner workspace falls back
+    // to the course title, cover, and light theme.
     members: true,
     content: modules.length > 0 && lessonCount > 0,
     pricing:
       pricingModelIsReady &&
       priceFieldIsValid &&
-      installmentsAreValid &&
-      Boolean(freePreviewLessonId),
+      installmentsAreValid,
     review: readinessProgress === 100,
   };
   const stageCompletion: Record<string, boolean> = {
     basics: tabCompletion.details,
-    modules: modules.length > 0,
-    lessons: lessonCount > 0,
     pricing: tabCompletion.pricing,
-    submit: tabCompletion.review,
+    content: tabCompletion.content,
+    members: tabCompletion.members,
+    publish: tabCompletion.review,
   };
   const completedStageCount = builderStages.filter(
     (stage) => stageCompletion[stage.id],
@@ -940,7 +824,7 @@ export function CourseBuilderStudio() {
         : [...current, nextCategory];
       const normalizedCategories = normalizeCourseCategories(nextCategories);
 
-      setCategory(normalizedCategories[0] ?? "Other");
+      setCategory(normalizedCategories[0] ?? "");
       return normalizedCategories;
     });
     setSuccess("");
@@ -1259,8 +1143,8 @@ export function CourseBuilderStudio() {
     }
   }
 
-  async function submitForReview() {
-    if (!courseId || !canSubmitForReview) {
+  async function publishCourse() {
+    if (!courseId || !canPublish) {
       return;
     }
 
@@ -1272,23 +1156,23 @@ export function CourseBuilderStudio() {
       return;
     }
 
+    if (selectedCategories.length === 0) {
+      setError("Choose at least one marketplace category before publishing.");
+      return;
+    }
+
     if (!pricingModelIsReady) {
-      setError("Set a paid price greater than $0, or choose Free as the payment model before submitting.");
+      setError("Set a paid price greater than $0, or choose Free as the payment model before publishing.");
       return;
     }
 
     if (!installmentsAreValid) {
-      setError("Set a valid installment limit before submitting.");
+      setError("Set a valid installment limit before publishing.");
       return;
     }
 
     if (draftStructureError) {
       setError(draftStructureError);
-      return;
-    }
-
-    if (!freePreviewLessonId) {
-      setError("Choose one lesson as the free preview before submitting.");
       return;
     }
 
@@ -1299,22 +1183,24 @@ export function CourseBuilderStudio() {
       await updateTeacherCourseBuilder(courseId, builderDraftPayload);
       setSavedSignature(signatureAtSubmit);
       setAutosaveState("saved");
-      await submitTeacherCourseForReview(courseId);
-      setSuccess("Course submitted for SkillsetMind review.");
+      await publishTeacherCourse(courseId);
+      setSuccess("Course published. Its product page is now live.");
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "";
       setError(
         message.toLowerCase().includes("preview")
-          ? "Choose one lesson as the free preview before submitting."
+          ? "Clear the invalid free preview or choose a lesson from this course."
           : message.toLowerCase().includes("teacher setup")
-          ? "Teacher setup must be complete before submitting courses."
+          ? "Teacher setup must be complete before publishing courses."
+          : message.toLowerCase().includes("verification")
+          ? "Professional verification must be approved before publishing."
           : message.toLowerCase().includes("payout")
           || message.toLowerCase().includes("onboarding")
-          ? "Finish Stripe payout onboarding before submitting a paid course — open the Payouts panel in your studio."
+          ? "Finish Stripe payout onboarding before publishing a paid course — open the Payouts panel in your studio."
           : message.toLowerCase().includes("payment")
           || message.toLowerCase().includes("price")
-          ? "Set a valid payment model before submitting."
-          : "We could not submit this course for review. Please try again.",
+          ? "Set a valid payment model before publishing."
+          : "We could not publish this course. Please try again.",
       );
     } finally {
       setIsSubmitting(false);
@@ -1481,11 +1367,17 @@ export function CourseBuilderStudio() {
           </h2>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
             Build the course learners will actually experience: details, modules,
-            lessons, media, pricing, drip rules, and the review checklist in one
+            lessons, media, pricing, drip rules, and publication checks in one
             guided workspace.
           </p>
         </div>
         <div className="course-builder-hero__actions">
+          <Link
+            href={`/teach/courses/${encodeURIComponent(courseId ?? "")}/manage`}
+            className="button-outline px-4 py-2.5 text-sm"
+          >
+            Manage product
+          </Link>
           <Link
             href={`/teach/builder/${courseId}/preview`}
             target="_blank"
@@ -1515,7 +1407,7 @@ export function CourseBuilderStudio() {
             <p className="mt-1 truncate text-sm font-semibold leading-snug text-[var(--color-ink-soft)]">
               Next:{" "}
               <span className="text-[var(--color-primary)]">
-                {nextReadinessItem?.label ?? "Course is ready to submit."}
+                {nextReadinessItem?.label ?? "Course is ready to publish."}
               </span>
             </p>
           </div>
@@ -1523,12 +1415,12 @@ export function CourseBuilderStudio() {
             <div className="flex items-center justify-between gap-4 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
               <span>{completedStageCount} of {builderStages.length} stages ready</span>
               <span className="text-[var(--color-primary)]">
-                Review readiness {readinessProgress}%
+                Publish readiness {readinessProgress}%
               </span>
             </div>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-strong)]">
               <div
-                className="h-full rounded-full bg-[linear-gradient(90deg,var(--color-primary),var(--color-accent))] transition-[width] duration-300"
+                className="h-full rounded-full bg-[var(--color-primary)] transition-[width] duration-300"
                 style={{ width: `${builderStepProgress}%` }}
               />
             </div>
@@ -1549,7 +1441,7 @@ export function CourseBuilderStudio() {
                   if (activeTab === stage.target) {
                     scrollPendingSectionIntoView();
                   } else {
-                    setActiveTab(stage.target);
+                    selectTab(stage.target);
                   }
                 }}
                 className={`course-builder-step ${isActive ? "is-active" : ""} ${isDone ? "is-done" : ""}`}
@@ -1586,18 +1478,18 @@ export function CourseBuilderStudio() {
                       ? "Build the curriculum."
                       : activeTab === "pricing"
                         ? "Package the offer."
-                        : "Prepare for SkillsetMind review."}
+                        : "Publish to the marketplace."}
               </h3>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
                 {activeTab === "details"
-                  ? "This is the information learners and reviewers use to understand the promise of the course."
+                  ? "This is the information learners use to understand the promise of the course."
                   : activeTab === "members"
                     ? "Choose the theme, cover, and copy enrolled students see at the top of their course workspace."
                     : activeTab === "content"
                       ? "Create the modules, lessons, links, text content, and upload targets that power the members area."
                       : activeTab === "pricing"
                         ? "Set access, price, release timing, and the free preview lesson before publishing."
-                        : "SkillsetMind reviews structure, pricing, preview access, and quality — your course can start selling as soon as you submit."}
+                        : "Your professional credential is the gate. Once the product checks pass, publishing opens sales and the public link immediately."}
               </p>
             </div>
             <div className="grid gap-2 text-right text-xs font-semibold text-[var(--color-ink-soft)]">
@@ -1612,13 +1504,13 @@ export function CourseBuilderStudio() {
 
         {course?.status === "in_review" ? (
           <p className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-            This course is with SkillsetMind for review. If changes are needed, it
-            will return here as editable.
+            This course carries a legacy review status. Complete the checks and
+            publish it directly from this workspace.
           </p>
         ) : course?.status === "published" ? (
           <p className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-            This course is live. You can keep improving the structure while
-            SkillsetMind controls marketplace visibility.
+            This course is live. You can keep improving its content and learner
+            experience without creating a new review cycle.
           </p>
         ) : null}
         {course?.reviewNote ? (
@@ -1654,10 +1546,10 @@ export function CourseBuilderStudio() {
           <div className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
             Categories
             <p className="text-xs font-normal leading-5 text-[var(--color-ink-soft)]">
-              Optional. Select up to five. The first selected category becomes
+              Required. Select up to five. The first selected category becomes
               the primary marketplace category.
             </p>
-            <CategoryMultiSelect
+                  <CourseCategorySelect
               options={skillsetCourseCategories}
               selected={selectedCategories}
               onToggle={toggleCategory}
@@ -1685,7 +1577,7 @@ export function CourseBuilderStudio() {
             >
               {summary.trim().length >= 20
                 ? `${summary.trim().length} characters`
-                : `${summary.trim().length}/20 characters minimum for review`}
+                : `${summary.trim().length}/20 characters minimum for publication`}
             </span>
           </label>
           <div id="builder-sec-outcomes" className="scroll-mt-24 grid gap-3">
@@ -1863,7 +1755,20 @@ export function CourseBuilderStudio() {
             </p>
             <div className="mt-4">
               <PlanSelectorCards
-                label="Payment model"
+                label={
+                  <span className="flex items-center gap-2">
+                    Payment model
+                    <InlineHelp
+                      topic="Course pricing"
+                      href="/help#course-pricing"
+                    >
+                      Choose free access, a one-time purchase, or recurring
+                      monthly or yearly access. Paid products require a positive
+                      price and payout-ready Stripe Connect account before they
+                      can be published.
+                    </InlineHelp>
+                  </span>
+                }
                 options={paymentModelOptions}
                 value={paymentType}
                 onChange={handlePaymentTypeChange}
@@ -1888,7 +1793,13 @@ export function CourseBuilderStudio() {
                 Currency
                 <select
                   value={currency}
-                  onChange={(event) => setCurrency(event.target.value)}
+                  onChange={(event) => {
+                    const nextCurrency = event.target.value;
+                    setCurrency(nextCurrency);
+                    if (nextCurrency !== "MXN") {
+                      setInstallmentsEnabled(false);
+                    }
+                  }}
                   disabled={!isEditable}
                   className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 >
@@ -1909,12 +1820,44 @@ export function CourseBuilderStudio() {
                 </select>
               </label>
             </div>
-            {/* Installments UI is hidden until Stripe checkout actually honors it
-                (today one-time checkout always charges the full price upfront, so
-                the toggle was a misleading paid-feature promise). State +
-                validation are kept so existing course values persist and no new
-                course can enable a non-functional option.
-                See docs/plans/2026-06-23-launch-readiness.md (H5). */}
+            <div className="mt-4 flex flex-wrap items-start justify-between gap-4 rounded-[12px] border border-[var(--color-line)] bg-white p-4">
+              <div className="max-w-xl">
+                <p className="text-sm font-semibold text-[var(--color-ink)]">
+                  Card installments
+                </p>
+                <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
+                  {paymentType !== "one_time"
+                    ? "Installments apply only to one-time payments."
+                    : !cardInstallmentsConfigured
+                      ? "Unavailable with the current Stripe account. Stripe requires a Mexico platform account and MXN pricing."
+                      : currency !== "MXN"
+                        ? "Select MXN to configure installments for eligible Mexican cards."
+                        : "Eligible cards choose from the plans configured in Stripe. Card issuer and minimum amount rules apply."}
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={installmentsEnabled && canConfigureCardInstallments}
+                aria-label="Enable card installments"
+                disabled={!isEditable || !canConfigureCardInstallments}
+                onClick={() => setInstallmentsEnabled((previous) => !previous)}
+                className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                  installmentsEnabled && canConfigureCardInstallments
+                    ? "bg-[var(--color-primary)]"
+                    : "bg-[var(--color-line)]"
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${
+                    installmentsEnabled && canConfigureCardInstallments
+                      ? "left-6"
+                      : "left-1"
+                  }`}
+                />
+              </button>
+            </div>
             <div className="mt-4 grid gap-4 md:grid-cols-[1fr_180px]">
               <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                 Content release
@@ -1975,14 +1918,6 @@ export function CourseBuilderStudio() {
               These fields prepare the public listing. Paid access still requires
               Stripe checkout before enrollment opens.
             </p>
-            <InlineHelp
-              topic="course pricing"
-              href="/help#course-pricing"
-              className="mt-4"
-            >
-              Set the public payment model before review so checkout, free access,
-              and creator payouts can be checked consistently.
-            </InlineHelp>
           </div>
         ) : null}
 
@@ -2025,17 +1960,17 @@ export function CourseBuilderStudio() {
             id="builder-sec-lessons"
             className="scroll-mt-24 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
-            <h4 className="text-sm font-semibold text-[var(--color-ink)]">
+            <h4 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
               Add lesson
+              <InlineHelp
+                topic="Lesson access and drip release"
+                href="/help#drip-release"
+              >
+                Use lesson delays to pace access after enrollment. A free
+                preview is optional and must point to a lesson in this course;
+                it helps buyers inspect the teaching style before enrolling.
+              </InlineHelp>
             </h4>
-            <InlineHelp
-              topic="drip-released content"
-              href="/help#drip-release"
-              className="mt-3"
-            >
-              Use lesson delays and preview selection to protect the course while
-              still giving learners enough context before enrollment.
-            </InlineHelp>
             <form className="mt-3 grid gap-3" onSubmit={handleAddLesson}>
               <div className="grid gap-3 md:grid-cols-2">
                 <select
@@ -2416,10 +2351,19 @@ export function CourseBuilderStudio() {
             className="mt-6 scroll-mt-24 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-5"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-              Submit readiness
+              Publish readiness
             </p>
-            <h4 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-              Prepare for SkillsetMind review
+            <h4 className="display-title mt-3 flex items-center gap-2 text-3xl text-[var(--color-ink)]">
+              Ready the product for launch
+              <InlineHelp
+                topic="Course publishing"
+                href="/help#course-publishing"
+              >
+                SkillsetMind verifies the professional rather than manually
+                approving every course. Once these product checks pass, an
+                approved creator publishes directly and the marketplace link
+                opens immediately.
+              </InlineHelp>
             </h4>
             <div className="mt-5 grid gap-3">
               {readinessItems.map((item) => (
@@ -2434,17 +2378,9 @@ export function CourseBuilderStudio() {
               ))}
             </div>
             <p className="mt-5 text-sm leading-7 text-[var(--color-ink-soft)]">
-              Review stays lightweight and does not block sales: SkillsetMind checks
-              structure, basic quality, trust, and pricing readiness after you submit.
+              SkillsetMind gates the professional, not each course. Product,
+              pricing, and payout checks run before the marketplace link opens.
             </p>
-            <InlineHelp
-              topic="course review"
-              href="/help#course-review"
-              className="mt-4"
-            >
-              Submit only when the core promise, course structure, pricing, and
-              preview lesson are ready for SkillsetMind review.
-            </InlineHelp>
           </div>
         ) : null}
 
@@ -2454,7 +2390,7 @@ export function CourseBuilderStudio() {
             onClick={() => {
               const previousTab = builderTabs[selectedTabIndex - 1];
               if (previousTab) {
-                setActiveTab(previousTab.value);
+                selectTab(previousTab.value);
               }
             }}
             disabled={selectedTabIndex <= 0}
@@ -2471,7 +2407,7 @@ export function CourseBuilderStudio() {
               onClick={() => {
                 const nextTab = builderTabs[selectedTabIndex + 1];
                 if (nextTab) {
-                  setActiveTab(nextTab.value);
+                  selectTab(nextTab.value);
                 }
               }}
               className="button-solid inline-flex items-center gap-2 px-4 py-2.5 text-sm"
@@ -2481,7 +2417,7 @@ export function CourseBuilderStudio() {
             </button>
           ) : (
             <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
-              Finish in the review checklist to submit.
+              Finish the publication checks to go live.
             </span>
           )}
         </div>
@@ -2561,11 +2497,12 @@ export function CourseBuilderStudio() {
 
         <section className="settings-section-card">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Review readiness
+            Publish readiness
           </p>
           <div className="mt-4 grid gap-2 text-sm text-[var(--color-ink-soft)]">
             <p>{title.trim() ? "Course title is set." : "Add a course title."}</p>
             <p>{summary.trim().length >= 20 ? "Summary is ready." : "Add a clearer summary."}</p>
+            <p>{selectedCategories.length > 0 ? "Marketplace category is set." : "Choose at least one marketplace category."}</p>
             <p>{modules.length > 0 ? "At least one module exists." : "Add at least one module."}</p>
             <p>{lessonCount > 0 ? "At least one lesson exists." : "Add at least one lesson."}</p>
             <p>{pricingModelIsReady ? "Enrollment model is ready." : "Set price or mark the course as Free."}</p>
@@ -2591,22 +2528,22 @@ export function CourseBuilderStudio() {
             </button>
             <button
               type="button"
-              onClick={submitForReview}
+              onClick={publishCourse}
               disabled={
-                !canSubmitForReview
+                !canPublish
                 || isSubmitting
                 || !title.trim()
                 || summary.trim().length < 20
+                || selectedCategories.length === 0
                 || modules.length === 0
                 || lessonCount === 0
-                || !freePreviewLessonId
                 || !priceFieldIsValid
                 || !pricingModelIsReady
                 || !installmentsAreValid
               }
               className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
             >
-              {isSubmitting ? "Submitting..." : "Submit for review"}
+              {isSubmitting ? "Publishing..." : "Publish product"}
             </button>
             <Link href="/teach" className="button-outline px-4 py-2.5 text-sm">
               Back to Teacher Studio
@@ -2903,12 +2840,15 @@ function MembersAreaTab({
   const previewTitle = title.trim() || course.title || "Untitled course";
 
   return (
-    <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_360px] lg:items-start">
+    <div
+      id="builder-sec-members"
+      className="mt-6 grid scroll-mt-24 gap-4 lg:grid-cols-[1fr_360px] lg:items-start"
+    >
       <div className="grid gap-4">
         <div className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
           Theme
           <p className="text-xs font-normal leading-5 text-[var(--color-ink-soft)]">
-            Sets the look of the enrolled-student hero. Dark is the default.
+            Sets the look of the enrolled-student hero. Light is the default.
           </p>
           <div className="inline-flex w-fit gap-1 rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
             {(

@@ -140,7 +140,7 @@ export function InstructorProfileView({ uid }: { uid: string }) {
           <aside className="instructor-storefront-metrics">
             <InstructorMetric
               icon={BookOpen}
-              label="Reviewed courses"
+              label="Published courses"
               value={String(stats.courseCount)}
             />
             <InstructorMetric
@@ -216,8 +216,9 @@ export function InstructorProfileView({ uid }: { uid: string }) {
               This instructor&apos;s first courses will appear here.
             </h3>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
-              {brand.name} only shows real reviewed courses on instructor
-              storefronts. Browse the marketplace to see what is live now.
+              {brand.name} only shows published courses from verified
+              professionals on instructor storefronts. Browse the marketplace
+              to see what is live now.
             </p>
             <Link href="/courses" className="button-solid mt-6 px-4 py-2.5 text-sm">
               Browse marketplace

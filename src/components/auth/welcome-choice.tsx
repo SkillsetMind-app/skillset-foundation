@@ -100,7 +100,7 @@ export function WelcomeChoice() {
                   I&apos;m here to teach
                 </span>
                 <span className="mt-2 block text-[13px] leading-6 text-[var(--color-ink-soft)]">
-                  Build courses, publish to the marketplace as soon as you submit,
+                  Build courses, submit them for review, and publish after approval,
                   and get paid through Stripe.
                 </span>
               </span>

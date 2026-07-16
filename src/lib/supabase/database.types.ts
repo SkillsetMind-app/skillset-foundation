@@ -171,6 +171,7 @@ export type Database = {
       checkout_locks: {
         Row: {
           acquired_at: string
+          claimed_at: string | null
           checkout_session_id: string | null
           checkout_url: string | null
           course_id: string | null
@@ -182,6 +183,7 @@ export type Database = {
         }
         Insert: {
           acquired_at?: string
+          claimed_at?: string | null
           checkout_session_id?: string | null
           checkout_url?: string | null
           course_id?: string | null
@@ -193,6 +195,7 @@ export type Database = {
         }
         Update: {
           acquired_at?: string
+          claimed_at?: string | null
           checkout_session_id?: string | null
           checkout_url?: string | null
           course_id?: string | null
@@ -598,6 +601,44 @@ export type Database = {
           },
         ]
       }
+      course_coupon_reservations: {
+        Row: {
+          coupon_id: string
+          created_at: string
+          expires_at: string
+          order_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coupon_id: string
+          created_at?: string
+          expires_at: string
+          order_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coupon_id?: string
+          created_at?: string
+          expires_at?: string
+          order_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_coupon_reservations_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "course_coupons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_event_rsvps: {
         Row: {
           attendee_email: string | null
@@ -811,11 +852,15 @@ export type Database = {
           course_id: string | null
           course_slug: string | null
           created_at: string
+          currency: string | null
           current_period_end: string | null
           id: string
           interval: string | null
           latest_invoice_id: string | null
+          offer_id: string | null
           past_due: boolean
+          price_amount_minor: number | null
+          price_id: string | null
           status: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
@@ -828,11 +873,15 @@ export type Database = {
           course_id?: string | null
           course_slug?: string | null
           created_at?: string
+          currency?: string | null
           current_period_end?: string | null
           id: string
           interval?: string | null
           latest_invoice_id?: string | null
+          offer_id?: string | null
           past_due?: boolean
+          price_amount_minor?: number | null
+          price_id?: string | null
           status: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -845,11 +894,15 @@ export type Database = {
           course_id?: string | null
           course_slug?: string | null
           created_at?: string
+          currency?: string | null
           current_period_end?: string | null
           id?: string
           interval?: string | null
           latest_invoice_id?: string | null
+          offer_id?: string | null
           past_due?: boolean
+          price_amount_minor?: number | null
+          price_id?: string | null
           status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -1366,18 +1419,22 @@ export type Database = {
         Row: {
           amount_minor: number
           checkout_session_id: string | null
+          coupon_code: string | null
           course_id: string | null
           course_slug: string | null
           course_title: string | null
           created_at: string
           currency: string
+          discount_minor: number
           id: string
           latest_transfer_reversal_at: string | null
           latest_transfer_reversal_id: string | null
+          offer_id: string | null
           paid_at: string | null
           payment_intent_id: string | null
           payout_model: string | null
           platform_fee_bps: number | null
+          price_id: string | null
           provider: string | null
           receipt_url: string | null
           refund_request_id: string | null
@@ -1393,18 +1450,22 @@ export type Database = {
         Insert: {
           amount_minor: number
           checkout_session_id?: string | null
+          coupon_code?: string | null
           course_id?: string | null
           course_slug?: string | null
           course_title?: string | null
           created_at?: string
           currency: string
+          discount_minor?: number
           id: string
           latest_transfer_reversal_at?: string | null
           latest_transfer_reversal_id?: string | null
+          offer_id?: string | null
           paid_at?: string | null
           payment_intent_id?: string | null
           payout_model?: string | null
           platform_fee_bps?: number | null
+          price_id?: string | null
           provider?: string | null
           receipt_url?: string | null
           refund_request_id?: string | null
@@ -1420,18 +1481,22 @@ export type Database = {
         Update: {
           amount_minor?: number
           checkout_session_id?: string | null
+          coupon_code?: string | null
           course_id?: string | null
           course_slug?: string | null
           course_title?: string | null
           created_at?: string
           currency?: string
+          discount_minor?: number
           id?: string
           latest_transfer_reversal_at?: string | null
           latest_transfer_reversal_id?: string | null
+          offer_id?: string | null
           paid_at?: string | null
           payment_intent_id?: string | null
           payout_model?: string | null
           platform_fee_bps?: number | null
+          price_id?: string | null
           provider?: string | null
           receipt_url?: string | null
           refund_request_id?: string | null
@@ -2050,6 +2115,22 @@ export type Database = {
           checkout_url: string
         }[]
       }
+      claim_payout_transfer_reversal: {
+        Args: {
+          p_claim_key: string
+          p_ledger_id: string
+          p_target_amount_minor: number
+        }
+        Returns: Json
+      }
+      complete_payout_transfer_reversal: {
+        Args: {
+          p_claim_key: string
+          p_ledger_id: string
+          p_reversal_id: string
+        }
+        Returns: Json
+      }
       course_title_key: { Args: { p_title: string }; Returns: string }
       create_course_coupon: {
         Args: {
@@ -2064,6 +2145,21 @@ export type Database = {
       create_free_course_enrollment: {
         Args: { p_course_id: string }
         Returns: string
+      }
+      create_product_offer_atomic: {
+        Args: {
+          p_amount_minor: number
+          p_course_id: string
+          p_currency: string
+          p_is_default: boolean
+          p_name: string
+          p_offer_id: string
+          p_owner_id: string
+          p_payment_type: string
+          p_price_id: string
+          p_public_code?: string | null
+        }
+        Returns: Json
       }
       create_teacher_course_draft: {
         Args: {
@@ -2083,6 +2179,10 @@ export type Database = {
       }
       enforce_rate_limit: {
         Args: { p_key: string; p_limit: number; p_window_ms: number }
+        Returns: undefined
+      }
+      finalize_course_coupon_reservation: {
+        Args: { p_order_id: string }
         Returns: undefined
       }
       has_enrollment_for_course_slug: {
@@ -2120,6 +2220,10 @@ export type Database = {
         Returns: undefined
       }
       platform_fee_bps_for_plan: { Args: { p_plan: string }; Returns: number }
+      publish_teacher_course: {
+        Args: { p_course_id: string }
+        Returns: Json
+      }
       record_lesson_progress: {
         Args: {
           p_completed: boolean
@@ -2127,6 +2231,19 @@ export type Database = {
           p_lesson_id: string
         }
         Returns: Json
+      }
+      release_course_coupon_reservation: {
+        Args: { p_order_id: string }
+        Returns: undefined
+      }
+      reserve_course_coupon: {
+        Args: {
+          p_coupon_id: string
+          p_expires_at: string
+          p_order_id: string
+          p_user_id: string
+        }
+        Returns: undefined
       }
       request_account_action: { Args: { p_type: string }; Returns: string }
       review_creator_verification: {
@@ -2144,6 +2261,10 @@ export type Database = {
       set_course_coupon_active: {
         Args: { p_active: boolean; p_coupon_id: string }
         Returns: Json
+      }
+      set_default_product_offer: {
+        Args: { p_course_id: string; p_offer_id: string }
+        Returns: undefined
       }
       submit_course_review: {
         Args: { p_body: string; p_course_id: string; p_rating: number }

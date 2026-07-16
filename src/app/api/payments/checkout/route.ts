@@ -9,6 +9,7 @@ import type { CourseCoupon } from "@/domain/course-commerce";
 import { normalizeCouponCode } from "@/domain/course-commerce";
 import { redeemCourseCoupon } from "@/domain/coupon-redemption";
 import { buildInstallmentPlan } from "@/domain/installments";
+import { isCoursePubliclySellable } from "@/domain/teacher-course";
 import { canonicalPlatformFeeBpsForPlan } from "@/lib/payments/rules";
 import {
   PaymentError,
@@ -16,7 +17,10 @@ import {
   requireUserId,
 } from "@/lib/payments/server/auth";
 import { getAppUrl } from "@/lib/payments/server/app-url";
-import { getStripeClient } from "@/lib/payments/server/stripe";
+import {
+  getStripeClient,
+  getStripePlatformAccountCountry,
+} from "@/lib/payments/server/stripe";
 import {
   courseSubscriptionInterval,
   getCourseRow,
@@ -27,7 +31,15 @@ import {
   normalizeCoursePrice,
 } from "@/lib/payments/server/stripe-helpers";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+const COURSE_SUBSCRIPTION_CHECKOUT_BLOCKING_STATUSES = [
+  "active",
+  "trialing",
+  "past_due",
+  "unpaid",
+  "incomplete",
+  "paused",
+];
 
 // POST /api/payments/checkout — opens a Stripe Checkout Session for a paid
 // course. Faithful port of the createCheckoutSession Firebase callable
@@ -37,15 +49,27 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // charges. Free enrollment is a separate rpc (create_free_course_enrollment),
 // called directly by the client — not this route.
 export async function POST(request: Request) {
+  let releasableCouponReservation: {
+    admin: ReturnType<typeof getSupabaseAdminClient>;
+    orderId: string;
+  } | null = null;
+
   try {
     const userId = await requireUserId();
+    const admin = getSupabaseAdminClient();
     const body = (await request.json().catch(() => ({}))) as {
       courseId?: unknown;
       couponCode?: unknown;
       affiliateRef?: unknown;
+      offerId?: unknown;
+      offerCode?: unknown;
+      priceId?: unknown;
     };
     const courseId = String(body.courseId ?? "").trim();
     const couponCodeRaw = String(body.couponCode ?? "").trim();
+    const offerId = String(body.offerId ?? "").trim();
+    const offerCode = String(body.offerCode ?? "").trim().toUpperCase();
+    const priceId = String(body.priceId ?? "").trim();
     const affiliateRefRaw = normalizeAffiliateRef(
       String(body.affiliateRef ?? "").trim(),
     );
@@ -53,9 +77,14 @@ export async function POST(request: Request) {
     if (!courseId || courseId.length > 160) {
       throw new PaymentError("A valid courseId is required.");
     }
+    if (offerId.length > 160 || priceId.length > 160) {
+      throw new PaymentError("The selected offer is invalid.");
+    }
+    if (offerCode.length > 24 || (offerCode && !/^[A-Z0-9-]+$/.test(offerCode))) {
+      throw new PaymentError("The selected offer code is invalid.");
+    }
 
-    const rate = await createSupabaseServerClient();
-    const { error: rateError } = await rate.rpc("enforce_rate_limit", {
+    const { error: rateError } = await admin.rpc("enforce_rate_limit", {
       p_key: `checkout_${userId}`,
       p_limit: 10,
       p_window_ms: 60 * 60 * 1000,
@@ -75,9 +104,9 @@ export async function POST(request: Request) {
       throw new PaymentError("Course not found.", 404);
     }
 
-    // Sell-on-submit: a course that left draft (in_review) sells immediately;
-    // approval is non-blocking. inactive/needs_changes blocks purchase again.
-    if (course.status !== "published" && course.status !== "in_review") {
+    // Professional verification is the soft gate: creators can build while
+    // pending, but only a directly published product can take payment.
+    if (!isCoursePubliclySellable(course.status)) {
       throw new PaymentError(
         "This course is not available for purchase right now.",
       );
@@ -91,13 +120,16 @@ export async function POST(request: Request) {
 
     // Dual-read: optional offer/price packages, else legacy course columns.
     const offers = await loadCourseProductOffers(courseId);
-    const priced = normalizeCoursePrice(course, offers);
+    const priced = normalizeCoursePrice(course, offers, {
+      ...(offerId ? { offerId } : {}),
+      ...(offerCode ? { publicCode: offerCode } : {}),
+      ...(priceId ? { priceId } : {}),
+    });
     let amountMinor = priced.amountMinor;
     const currency = priced.currency;
+    let appliedCouponId: string | null = null;
     let appliedCouponCode: string | null = null;
     let discountMinor = 0;
-
-    const admin = getSupabaseAdminClient();
 
     // Hotmart-parity: redeem active course coupon at checkout (one-time only).
     if (couponCodeRaw) {
@@ -141,6 +173,7 @@ export async function POST(request: Request) {
         );
       }
       amountMinor = redemption.amountMinorAfter;
+      appliedCouponId = coupon?.id ?? null;
       appliedCouponCode = redemption.code;
       discountMinor = redemption.discountMinor;
     }
@@ -197,6 +230,27 @@ export async function POST(request: Request) {
       );
     }
 
+    const subscriptionInterval = courseSubscriptionInterval(
+      priced.paymentType ?? course.payment_type,
+    );
+    if (subscriptionInterval) {
+      const { data: existingSubscription, error: subscriptionError } = await admin
+        .from("course_subscriptions")
+        .select("id,status")
+        .eq("user_id", userId)
+        .eq("course_id", courseId)
+        .in("status", COURSE_SUBSCRIPTION_CHECKOUT_BLOCKING_STATUSES)
+        .limit(1)
+        .maybeSingle();
+      if (subscriptionError) throw new Error(subscriptionError.message);
+      if (existingSubscription) {
+        throw new PaymentError(
+          "You already have a subscription for this course.",
+          409,
+        );
+      }
+    }
+
     const buyer = await getUserRow(userId);
     const userEmail = buyer?.email ?? undefined;
     const appUrl = getAppUrl();
@@ -227,77 +281,149 @@ export async function POST(request: Request) {
     }
 
     // --- Course subscription checkout (recurring) --------------------------
-    // Prefer payment type from dual-read resolution (offer may override legacy).
-    const subscriptionInterval = courseSubscriptionInterval(
-      priced.paymentType ?? course.payment_type,
-    );
     if (subscriptionInterval) {
-      const customerId = await getOrCreateBillingStripeCustomer(
-        stripe,
-        userId,
-        userEmail ?? null,
-      );
-      const subscriptionPriceId =
-        priced.stripePriceId
-        || (await getOrCreateCourseSubscriptionPrice(
-          stripe,
-          course,
-          courseId,
-          amountMinor,
-          currency,
-          subscriptionInterval,
-        ));
-
-      const subscriptionSession = await stripe.checkout.sessions.create(
+      const checkoutSessionExpiresInSec = 31 * 60;
+      const lockTtlMs = (checkoutSessionExpiresInSec + 4 * 60) * 1000;
+      const checkoutAttemptId = crypto.randomUUID();
+      const lockKey = `${userId}__${courseId}`;
+      const { data: lockRows, error: lockError } = await admin.rpc(
+        "claim_checkout_lock",
         {
-          mode: "subscription",
-          customer: customerId,
-          line_items: [{ price: subscriptionPriceId, quantity: 1 }],
-          // Carry the full fulfilment context on the SUBSCRIPTION so every
-          // future invoice.paid / lifecycle event resolves course, buyer,
-          // teacher, connected account and fee without a DB lookup.
-          subscription_data: {
+          p_user_id: userId,
+          p_course_id: courseId,
+          p_order_id: checkoutAttemptId,
+          p_now: new Date().toISOString(),
+          p_session_ttl_ms: lockTtlMs,
+          p_claim_grace_ms: lockTtlMs,
+        },
+      );
+      if (lockError) throw new Error(lockError.message);
+
+      const lock = lockRows?.[0];
+      if (lock?.action === "reuse" && lock.checkout_url) {
+        return NextResponse.json({ url: lock.checkout_url });
+      }
+      if (lock?.action === "wait") {
+        throw new PaymentError(
+          "A subscription checkout for this course is already starting. Please try again in a moment.",
+          409,
+        );
+      }
+      if (!lock || !["claim", "proceed"].includes(String(lock.action))) {
+        throw new Error("Checkout lock returned an invalid action.");
+      }
+
+      let stripeCreateStarted = false;
+      let subscriptionSession: Stripe.Checkout.Session | null = null;
+      try {
+        const customerId = await getOrCreateBillingStripeCustomer(
+          stripe,
+          userId,
+          userEmail ?? null,
+        );
+        const subscriptionPriceId =
+          priced.stripePriceId
+          || (await getOrCreateCourseSubscriptionPrice(
+            stripe,
+            course,
+            courseId,
+            amountMinor,
+            currency,
+            subscriptionInterval,
+          ));
+
+        stripeCreateStarted = true;
+        subscriptionSession = await stripe.checkout.sessions.create(
+          {
+            mode: "subscription",
+            customer: customerId,
+            line_items: [{ price: subscriptionPriceId, quantity: 1 }],
+            // Carry the full fulfilment context on the SUBSCRIPTION so every
+            // future invoice.paid / lifecycle event resolves course, buyer,
+            // teacher, connected account and fee without a DB lookup.
+            subscription_data: {
+              metadata: {
+                purpose: "course_subscription",
+                courseId,
+                courseSlug: courseId,
+                userId,
+                teacherId: course.owner_id,
+                connectedAccountId,
+                platformFeeBps: String(platformFeeBps),
+                currency: currency.toUpperCase(),
+                ...(priced.offerId ? { offerId: priced.offerId } : {}),
+                ...(priced.priceId ? { priceId: priced.priceId } : {}),
+                ...(affiliateUserId
+                  ? {
+                      affiliateUserId,
+                      affiliateCommissionPct: String(affiliateCommissionPct),
+                      affiliateCommissionMinor: String(affiliateCommissionMinor),
+                    }
+                  : {}),
+              },
+            },
             metadata: {
               purpose: "course_subscription",
               courseId,
               courseSlug: courseId,
               userId,
               teacherId: course.owner_id,
-              connectedAccountId,
-              platformFeeBps: String(platformFeeBps),
-              currency: currency.toUpperCase(),
-              ...(affiliateUserId
-                ? {
-                    affiliateUserId,
-                    affiliateCommissionPct: String(affiliateCommissionPct),
-                    affiliateCommissionMinor: String(affiliateCommissionMinor),
-                  }
-                : {}),
+              ...(priced.offerId ? { offerId: priced.offerId } : {}),
+              ...(priced.priceId ? { priceId: priced.priceId } : {}),
+              ...(affiliateUserId ? { affiliateUserId } : {}),
             },
+            expires_at: Math.floor(Date.now() / 1000) + checkoutSessionExpiresInSec,
+            success_url: `${appUrl}/learn/courses/${encodeURIComponent(courseId)}?checkout=success`,
+            cancel_url: `${appUrl}/courses/${encodeURIComponent(courseId)}?checkout=cancelled`,
           },
-          metadata: {
-            purpose: "course_subscription",
-            courseId,
-            courseSlug: courseId,
-            userId,
-            teacherId: course.owner_id,
-            ...(affiliateUserId ? { affiliateUserId } : {}),
-          },
-          success_url: `${appUrl}/learn/courses/${encodeURIComponent(courseId)}?checkout=success`,
-          cancel_url: `${appUrl}/courses/${encodeURIComponent(courseId)}?checkout=cancelled`,
-        },
-        {
-          idempotencyKey: `course_sub_checkout_${userId}_${courseId}_${Math.floor(
-            Date.now() / 60000,
-          )}`,
-        },
-      );
+          { idempotencyKey: `course_sub_checkout_${checkoutAttemptId}` },
+        );
 
-      if (!subscriptionSession.url) {
-        throw new Error("Stripe did not return a Checkout URL.");
+        if (!subscriptionSession.url) {
+          throw new Error("Stripe did not return a Checkout URL.");
+        }
+
+        const { data: publishedLock, error: publishLockError } = await admin
+          .from("checkout_locks")
+          .update({
+            checkout_url: subscriptionSession.url,
+            order_id: checkoutAttemptId,
+            checkout_session_id: subscriptionSession.id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("lock_key", lockKey)
+          .eq("order_id", checkoutAttemptId)
+          .select("lock_key")
+          .maybeSingle();
+        if (publishLockError) throw new Error(publishLockError.message);
+        if (!publishedLock) {
+          throw new Error("Checkout lock disappeared before the session was published.");
+        }
+
+        return NextResponse.json({ url: subscriptionSession.url });
+      } catch (error) {
+        let lockCanBeReleased = !stripeCreateStarted;
+        if (subscriptionSession?.id) {
+          try {
+            await stripe.checkout.sessions.expire(subscriptionSession.id);
+            lockCanBeReleased = true;
+          } catch (expireError) {
+            lockCanBeReleased = false;
+            console.error("[checkout/subscription-expire]", expireError);
+          }
+        }
+        if (lockCanBeReleased) {
+          const { error: releaseLockError } = await admin
+            .from("checkout_locks")
+            .delete()
+            .eq("lock_key", lockKey)
+            .eq("order_id", checkoutAttemptId);
+          if (releaseLockError) {
+            console.error("[checkout/subscription-lock-release]", releaseLockError.message);
+          }
+        }
+        throw error;
       }
-
-      return NextResponse.json({ url: subscriptionSession.url });
     }
 
     // --- One-time checkout with the B3 in-flight lock ----------------------
@@ -308,6 +434,7 @@ export async function POST(request: Request) {
     const checkoutSessionExpiresInSec = 31 * 60;
     const nowIso = new Date().toISOString();
     const orderId = crypto.randomUUID();
+    const lockKey = `${userId}__${courseId}`;
 
     const { data: lockRows, error: lockError } = await admin.rpc(
       "claim_checkout_lock",
@@ -327,6 +454,32 @@ export async function POST(request: Request) {
 
     if (lock?.action === "reuse" && lock.checkout_url) {
       // A sibling request already has a live session — hand back the SAME url.
+      const { data: existingLock, error: existingLockError } = await admin
+        .from("checkout_locks")
+        .select("order_id")
+        .eq("lock_key", lockKey)
+        .maybeSingle();
+      if (existingLockError) throw new Error(existingLockError.message);
+
+      const { data: existingOrder, error: existingOrderError } = existingLock?.order_id
+        ? await admin
+            .from("orders")
+            .select("offer_id,price_id")
+            .eq("id", existingLock.order_id)
+            .maybeSingle()
+        : { data: null, error: null };
+      if (existingOrderError) throw new Error(existingOrderError.message);
+      if (
+        !existingOrder
+        || (existingOrder.offer_id ?? null) !== (priced.offerId ?? null)
+        || (existingOrder.price_id ?? null) !== (priced.priceId ?? null)
+      ) {
+        throw new PaymentError(
+          "Another offer already has an active checkout. Close it or wait for it to expire before switching offers.",
+          409,
+        );
+      }
+
       return NextResponse.json({ url: lock.checkout_url });
     }
     if (lock?.action === "wait") {
@@ -334,6 +487,34 @@ export async function POST(request: Request) {
         "A checkout for this course is already starting. Please try again in a moment.",
         409,
       );
+    }
+    if (!lock || !["claim", "proceed"].includes(String(lock.action))) {
+      throw new Error("Checkout lock returned an invalid action.");
+    }
+
+    if (appliedCouponId) {
+      const { error: reservationError } = await admin.rpc(
+        "reserve_course_coupon",
+        {
+          p_coupon_id: appliedCouponId,
+          p_order_id: orderId,
+          p_user_id: userId,
+          p_expires_at: new Date(
+            Date.now() + 7 * 24 * 60 * 60 * 1000,
+          ).toISOString(),
+        },
+      );
+      if (reservationError) {
+        const message = String(reservationError.message ?? "");
+        if (message.includes("COUPON_LIMIT_REACHED")) {
+          throw new PaymentError("This coupon has reached its redemption limit.");
+        }
+        if (message.includes("COUPON_EXPIRED")) {
+          throw new PaymentError("This coupon has expired.");
+        }
+        throw new PaymentError("This coupon is no longer available.");
+      }
+      releasableCouponReservation = { admin, orderId };
     }
 
     const { error: orderError } = await admin.from("orders").insert({
@@ -347,6 +528,10 @@ export async function POST(request: Request) {
       amount_minor: amountMinor,
       currency: currency.toUpperCase(),
       platform_fee_bps: platformFeeBps,
+      offer_id: priced.offerId ?? null,
+      price_id: priced.priceId ?? null,
+      coupon_code: appliedCouponCode,
+      discount_minor: discountMinor,
       payout_model: "separate_charges_and_transfers",
       status: "pending",
       provider: "stripe",
@@ -359,14 +544,19 @@ export async function POST(request: Request) {
       throw new Error(orderError.message);
     }
 
+    const stripeAccountCountry = course.installments_enabled
+      && currency.toUpperCase() === "MXN"
+      ? await getStripePlatformAccountCountry(stripe)
+      : null;
     const installmentPlan = buildInstallmentPlan({
       amountMinor,
       installmentsEnabled: Boolean(course.installments_enabled),
       installmentsMax: course.installments_max,
       currency,
+      stripeAccountCountry,
     });
-    // Stripe card installments only when plan enabled AND currency is eligible
-    // (typically BRL/MXN). USD shows marketing splits only — no false promise.
+    // Stripe card installments require a Mexico platform account and MXN. Card
+    // issuer and amount eligibility remain Stripe's responsibility at Checkout.
     const enableStripeCardInstallments =
       installmentPlan.enabled && installmentPlan.stripeCardInstallmentsEligible;
 
@@ -394,6 +584,8 @@ export async function POST(request: Request) {
         courseId,
         courseSlug: courseId,
         userId,
+        ...(priced.offerId ? { offerId: priced.offerId } : {}),
+        ...(priced.priceId ? { priceId: priced.priceId } : {}),
         ...(installmentPlan.enabled
           ? {
               installmentsEnabled: "1",
@@ -420,6 +612,8 @@ export async function POST(request: Request) {
           courseId,
           courseSlug: courseId,
           userId,
+          ...(priced.offerId ? { offerId: priced.offerId } : {}),
+          ...(priced.priceId ? { priceId: priced.priceId } : {}),
           ...(appliedCouponCode ? { couponCode: appliedCouponCode } : {}),
           ...(affiliateUserId ? { affiliateUserId } : {}),
           ...(installmentPlan.enabled
@@ -444,11 +638,15 @@ export async function POST(request: Request) {
     const session = await stripe.checkout.sessions.create(sessionParams, {
       idempotencyKey: `checkout_${orderId}`,
     });
+    releasableCouponReservation = null;
 
-    await admin
+    const { error: orderSessionError } = await admin
       .from("orders")
       .update({ checkout_session_id: session.id, updated_at: new Date().toISOString() })
       .eq("id", orderId);
+    if (orderSessionError) {
+      throw new Error(orderSessionError.message);
+    }
 
     if (!session.url) {
       throw new Error("Stripe did not return a Checkout URL.");
@@ -456,7 +654,7 @@ export async function POST(request: Request) {
 
     // Publish the live session on the lock so a concurrent sibling reuses THIS
     // url instead of opening a second charge. [B3]
-    await admin
+    const { data: publishedLock, error: publishLockError } = await admin
       .from("checkout_locks")
       .update({
         checkout_url: session.url,
@@ -464,10 +662,27 @@ export async function POST(request: Request) {
         checkout_session_id: session.id,
         updated_at: new Date().toISOString(),
       })
-      .eq("lock_key", `${userId}__${courseId}`);
+      .eq("lock_key", lockKey)
+      .select("lock_key")
+      .maybeSingle();
+    if (publishLockError) {
+      throw new Error(publishLockError.message);
+    }
+    if (!publishedLock) {
+      throw new Error("Checkout lock disappeared before the session was published.");
+    }
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
+    if (releasableCouponReservation) {
+      const { error: releaseError } = await releasableCouponReservation.admin
+        .rpc("release_course_coupon_reservation", {
+          p_order_id: releasableCouponReservation.orderId,
+        });
+      if (releaseError) {
+        console.error("[checkout/coupon-release]", releaseError.message);
+      }
+    }
     return paymentErrorResponse(error);
   }
 }

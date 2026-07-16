@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { HelpBubble } from "@/components/platform/help-bubble";
 import { MobileSidebarDrawer } from "@/components/platform/mobile-sidebar-drawer";
 import { PlatformHeader } from "@/components/platform/platform-header";
 import { PlatformNav } from "@/components/platform/platform-nav";
@@ -121,7 +120,6 @@ export function PlatformShell({
           onOpen={() => setMobileNavOpen(true)}
           onClose={() => setMobileNavOpen(false)}
         />
-        <HelpBubble />
       </main>
     </ThemeProvider>
   );

@@ -58,8 +58,8 @@ export async function POST(request: Request) {
   const key = data.user ? `assistant_${data.user.id}` : rateLimitKeyFromIp(request);
 
   try {
-    await enforceRateLimit(supabase, key, RATE_LIMIT_PER_HOUR, 3_600_000);
-    await enforceRateLimit(supabase, `${key}_daily`, RATE_LIMIT_PER_DAY, 86_400_000);
+    await enforceRateLimit(key, RATE_LIMIT_PER_HOUR, 3_600_000);
+    await enforceRateLimit(`${key}_daily`, RATE_LIMIT_PER_DAY, 86_400_000);
   } catch (error) {
     if (error instanceof PaymentError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

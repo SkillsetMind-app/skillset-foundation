@@ -12,9 +12,10 @@ import {
   normalizeMembersTheme,
   MAX_MEMBERS_TITLE_LENGTH,
   normalizeTeacherCourseModules,
+  isCoursePubliclySellable,
   teacherCanDeleteCourse,
   teacherCanEditCourse,
-  teacherCanSubmitCourse,
+  teacherCanPublishCourse,
   type TeacherCourseModule,
 } from "./teacher-course";
 
@@ -52,16 +53,17 @@ describe("teacher course domain", () => {
     expect(countCourseLessons(modules)).toBe(3);
   });
 
-  it("models the lightweight review workflow", () => {
+  it("models direct publication and legacy review states", () => {
     expect(teacherCanEditCourse("draft")).toBe(true);
     expect(teacherCanEditCourse("needs_changes")).toBe(true);
     expect(teacherCanEditCourse("published")).toBe(true);
     expect(teacherCanEditCourse("in_review")).toBe(false);
 
-    expect(teacherCanSubmitCourse("draft")).toBe(true);
-    expect(teacherCanSubmitCourse("needs_changes")).toBe(true);
-    expect(teacherCanSubmitCourse("inactive")).toBe(true);
-    expect(teacherCanSubmitCourse("published")).toBe(false);
+    expect(teacherCanPublishCourse("draft")).toBe(true);
+    expect(teacherCanPublishCourse("in_review")).toBe(true);
+    expect(teacherCanPublishCourse("needs_changes")).toBe(true);
+    expect(teacherCanPublishCourse("inactive")).toBe(true);
+    expect(teacherCanPublishCourse("published")).toBe(false);
 
     expect(teacherCanDeleteCourse("draft")).toBe(true);
     expect(teacherCanDeleteCourse("needs_changes")).toBe(true);
@@ -80,6 +82,14 @@ describe("teacher course domain", () => {
     expect(adminCanRepublishCourse("in_review")).toBe(false);
   });
 
+  it("sells only courses approved for publication", () => {
+    expect(isCoursePubliclySellable("published")).toBe(true);
+    expect(isCoursePubliclySellable("in_review")).toBe(false);
+    expect(isCoursePubliclySellable("draft")).toBe(false);
+    expect(isCoursePubliclySellable("needs_changes")).toBe(false);
+    expect(isCoursePubliclySellable("inactive")).toBe(false);
+  });
+
   it("normalizes installment limits for one-time courses", () => {
     expect(normalizeInstallmentsMax(12)).toBe(12);
     expect(normalizeInstallmentsMax(40)).toBe(36);
@@ -90,12 +100,15 @@ describe("teacher course domain", () => {
   it("deduplicates selected course categories", () => {
     expect(
       normalizeCourseCategories([
-        "Marketing and sales",
-        " marketing and sales ",
-        "Technology and software",
+        "Mental Health Foundations",
+        " mental health foundations ",
+        "Supervision & Continuing Education",
         "",
       ]),
-    ).toEqual(["Marketing and sales", "Technology and software"]);
+    ).toEqual([
+      "Mental Health Foundations",
+      "Supervision & Continuing Education",
+    ]);
   });
 
   it("accepts only light/dark for the members-area theme", () => {

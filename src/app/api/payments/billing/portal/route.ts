@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  enforceRateLimit,
   PaymentError,
   paymentErrorResponse,
   requireUserId,
@@ -8,7 +9,6 @@ import {
 import { getStripeClient } from "@/lib/payments/server/stripe";
 import { getAppUrl } from "@/lib/payments/server/app-url";
 import { getUserRow } from "@/lib/payments/server/stripe-helpers";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // Ports createBillingPortalSession: opens the Stripe billing portal for an
 // existing subscriber. Faithful to source — refuses (failed-precondition) when
@@ -18,21 +18,7 @@ export async function POST() {
   try {
     const uid = await requireUserId();
 
-    const supabase = await createSupabaseServerClient();
-    const { error: rateError } = await supabase.rpc("enforce_rate_limit", {
-      p_key: `billing_portal_${uid}`,
-      p_limit: 20,
-      p_window_ms: 60 * 60 * 1000,
-    });
-    if (rateError) {
-      if (rateError.message?.includes("RATE_LIMIT")) {
-        throw new PaymentError(
-          "Too many attempts. Please wait before trying again.",
-          429,
-        );
-      }
-      throw new Error(rateError.message);
-    }
+    await enforceRateLimit(`billing_portal_${uid}`, 20, 60 * 60 * 1000);
 
     const profile = await getUserRow(uid);
     if (!profile?.stripe_customer_id) {

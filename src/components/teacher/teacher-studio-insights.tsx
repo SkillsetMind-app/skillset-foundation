@@ -375,7 +375,7 @@ function buildActivity(
     items.push({
       title: t("teach.insights.actChangesTitle"),
       detail: t("teach.insights.actChangesDetail").replace("{title}", needsChanges.title),
-      href: `/teach/builder?courseId=${needsChanges.id}`,
+      href: `/teach/builder?courseId=${encodeURIComponent(needsChanges.id)}&tab=review`,
       kind: "urgent",
       icon: "flag",
     });
@@ -405,7 +405,7 @@ function buildActivity(
     items.push({
       title: t("teach.insights.actSubmitTitle"),
       detail: t("teach.insights.actSubmitDetail").replace("{title}", reviewReadyDraft.title),
-      href: `/teach/builder?courseId=${reviewReadyDraft.id}`,
+      href: `/teach/builder?courseId=${encodeURIComponent(reviewReadyDraft.id)}&tab=review`,
       kind: "success",
       icon: "sparkle",
     });
@@ -415,7 +415,7 @@ function buildActivity(
     items.push({
       title: t("teach.insights.actInReviewTitle"),
       detail: t("teach.insights.actInReviewDetail").replace("{title}", inReview.title),
-      href: `/teach/builder?courseId=${inReview.id}`,
+      href: `/teach/builder?courseId=${encodeURIComponent(inReview.id)}&tab=review`,
       kind: "normal",
       icon: "clock",
     });

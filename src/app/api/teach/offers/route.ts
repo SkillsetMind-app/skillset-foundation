@@ -50,6 +50,17 @@ export async function POST(request: Request) {
     ) {
       throw new PaymentError("Invalid paymentType.");
     }
+    if (paymentType === "free" && amountMinor !== 0) {
+      throw new PaymentError("A free offer must have a zero price.");
+    }
+    if (paymentType !== "free" && amountMinor <= 0) {
+      throw new PaymentError("A paid offer must have a positive price.");
+    }
+    if (paymentType === "free" && !isDefault) {
+      throw new PaymentError(
+        "Free access must be the default offer so enrollment rules stay consistent.",
+      );
+    }
 
     const admin = getSupabaseAdminClient();
     const { data: course, error: courseError } = await admin
@@ -63,84 +74,39 @@ export async function POST(request: Request) {
       throw new PaymentError("Only the course owner can manage offers.", 403);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db = admin as any;
     const offerId = crypto.randomUUID();
     const priceId = crypto.randomUUID();
-    const now = new Date().toISOString();
-
-    if (isDefault) {
-      await db
-        .from("product_offers")
-        .update({ is_default: false, updated_at: now })
-        .eq("course_id", courseId);
-    }
-
-    const { error: offerError } = await db.from("product_offers").insert({
-      id: offerId,
-      course_id: courseId,
-      name,
-      is_default: isDefault,
-      active: true,
-      public_code: publicCode || null,
-      created_at: now,
-      updated_at: now,
-    });
-    if (offerError) {
-      throw new PaymentError(
-        offerError.message?.includes("product_offers")
-          ? "Offers table is not applied yet. Run migration 20260715_product_offers_prices_only.sql on Supabase."
-          : offerError.message,
-      );
-    }
-
-    const { error: priceError } = await db.from("product_prices").insert({
-      id: priceId,
-      offer_id: offerId,
-      amount_minor: amountMinor,
-      currency,
-      payment_type: paymentType,
-      stripe_price_id: null,
-      active: true,
-      created_at: now,
-      updated_at: now,
-    });
-    if (priceError) {
-      throw new Error(priceError.message);
-    }
-
-    // Keep legacy columns in sync when this is the default offer (compat adapter).
-    if (isDefault && paymentType !== "free") {
-      await admin
-        .from("courses")
-        .update({
-          price_amount_minor: amountMinor,
-          currency,
-          payment_type: paymentType,
-          updated_at: now,
-        })
-        .eq("id", courseId);
-    }
-
-    return NextResponse.json({
-      offerId,
-      priceId,
-      name,
-      amountMinor,
-      currency,
-      paymentType,
-      isDefault,
-      publicCode: publicCode || null,
-    });
-  } catch (error) {
-    if (error instanceof PaymentError) {
-      return paymentErrorResponse(error);
-    }
-    console.error("[teach/offers]", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Offer create failed." },
-      { status: 500 },
+    const { data: createdOffer, error: createError } = await admin.rpc(
+      "create_product_offer_atomic",
+      {
+        p_course_id: courseId,
+        p_owner_id: userId,
+        p_offer_id: offerId,
+        p_price_id: priceId,
+        p_name: name,
+        p_amount_minor: amountMinor,
+        p_currency: currency,
+        p_payment_type: paymentType,
+        p_is_default: isDefault,
+        p_public_code: publicCode || null,
+      },
     );
+    if (createError) throw new Error(createError.message);
+
+    return NextResponse.json(
+      createdOffer ?? {
+        offerId,
+        priceId,
+        name,
+        amountMinor,
+        currency,
+        paymentType,
+        isDefault,
+        publicCode: publicCode || null,
+      },
+    );
+  } catch (error) {
+    return paymentErrorResponse(error);
   }
 }
 

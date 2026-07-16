@@ -4,13 +4,17 @@ import type {
   CourseSubscription,
   CourseSubscriptionStatus,
 } from "@/domain/course-subscription";
+import type { CreatorCourseSubscription } from "@/domain/creator-subscriptions";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
 
 type CourseSubscriptionRow =
   Database["public"]["Tables"]["course_subscriptions"]["Row"];
+const TEACHER_PAGE_SIZE = 500;
 
-export function rowToCourseSubscription(row: CourseSubscriptionRow): CourseSubscription {
+export function rowToCourseSubscription(
+  row: CourseSubscriptionRow,
+): CreatorCourseSubscription {
   return {
     id: row.id,
     userId: row.user_id,
@@ -27,6 +31,10 @@ export function rowToCourseSubscription(row: CourseSubscriptionRow): CourseSubsc
     cancelAtPeriodEnd: row.cancel_at_period_end,
     pastDue: row.past_due,
     latestInvoiceId: row.latest_invoice_id,
+    priceAmountMinor: row.price_amount_minor,
+    currency: row.currency,
+    offerId: row.offer_id,
+    priceId: row.price_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -38,19 +46,37 @@ export function subscribeToTeacherCourseSubscriptions(
   onError: (error: Error) => void,
 ): () => void {
   const supabase = getSupabaseBrowserClient();
+  let loadVersion = 0;
+  let stopped = false;
 
   const load = async () => {
-    const { data, error } = await supabase
-      .from("course_subscriptions")
-      .select("*")
-      .eq("teacher_id", teacherId)
-      .limit(500);
+    const version = ++loadVersion;
+    const rows: CourseSubscriptionRow[] = [];
 
-    if (error) {
-      onError(error instanceof Error ? error : new Error(String(error)));
-      return;
+    for (let from = 0; ; from += TEACHER_PAGE_SIZE) {
+      const { data, error } = await supabase
+        .from("course_subscriptions")
+        .select("*")
+        .eq("teacher_id", teacherId)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + TEACHER_PAGE_SIZE - 1);
+
+      if (error) {
+        if (!stopped && version === loadVersion) {
+          onError(error instanceof Error ? error : new Error(String(error)));
+        }
+        return;
+      }
+
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < TEACHER_PAGE_SIZE) break;
     }
-    callback((data ?? []).map(rowToCourseSubscription));
+
+    if (!stopped && version === loadVersion) {
+      callback(rows.map(rowToCourseSubscription));
+    }
   };
 
   void load();
@@ -70,6 +96,8 @@ export function subscribeToTeacherCourseSubscriptions(
     .subscribe();
 
   return () => {
+    stopped = true;
+    loadVersion += 1;
     void supabase.removeChannel(channel);
   };
 }

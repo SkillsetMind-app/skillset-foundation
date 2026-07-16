@@ -13,7 +13,6 @@ import {
   isUnusableConnectedAccountError,
 } from "@/lib/payments/connect-self-heal";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // Ported from Firebase callable refreshTeacherStripeAccount
 // (functions/src/index.ts). Retrieves the connected account and reconciles the
@@ -22,8 +21,7 @@ export async function POST() {
   try {
     const uid = await requireUserId();
 
-    const supabase = await createSupabaseServerClient();
-    await enforceRateLimit(supabase, `connect_refresh_${uid}`, 20, 3600000);
+    await enforceRateLimit(`connect_refresh_${uid}`, 20, 3600000);
 
     const user = await getUserRow(uid);
     if (!user) {

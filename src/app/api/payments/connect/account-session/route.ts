@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  enforceRateLimit,
   PaymentError,
   paymentErrorResponse,
   requireUserId,
@@ -11,7 +12,6 @@ import {
   isConnectNotEnabledError,
   runWithOrphanedAccountSelfHeal,
 } from "@/lib/payments/connect-self-heal";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // Ported from Firebase callable createConnectAccountSession
 // (functions/src/index.ts). Mints a Stripe Connect Account Session
@@ -20,18 +20,7 @@ export async function POST() {
   try {
     const uid = await requireUserId();
 
-    const supabase = await createSupabaseServerClient();
-    const { error: rlError } = await supabase.rpc("enforce_rate_limit", {
-      p_key: `connect_session_${uid}`,
-      p_limit: 30,
-      p_window_ms: 3600000,
-    });
-    if (rlError) {
-      if (rlError.message?.includes("RATE_LIMIT")) {
-        throw new PaymentError("Too many attempts. Please wait before trying again.", 429);
-      }
-      throw new Error(rlError.message);
-    }
+    await enforceRateLimit(`connect_session_${uid}`, 30, 3600000);
 
     const user = await getUserRow(uid);
     if (!user) {

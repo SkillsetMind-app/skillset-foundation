@@ -1,87 +1,51 @@
 # Schema Baseline Report
 
-**Generated:** 2026-07-15  
-**Source of truth (types):** `src/lib/supabase/database.types.ts`  
-**Migrations before:** 5 tables, 10 functions  
-**Types:** 42 tables, 22 functions  
+**Generated:** 2026-07-15
+**Updated:** 2026-07-15
+**Type source:** `src/lib/supabase/database.types.ts`
+**Live project:** `ijtikldtjvsbtwszokvs`
 
-## Gap
+## Sources used
 
-| Kind | In types | In migrations | Missing from migrations |
-|------|----------|---------------|-------------------------|
-| Tables | 42 | 5 | 37 |
-| Functions | 22 | 10 | 14 |
+- Canonical read-only artifacts:
+  `LIVE_SCHEMA_INVENTORY_2026-07-15.md` and
+  `live_schema_inventory_2026-07-15.json`.
+- Live PostgREST OpenAPI fetched read-only with the local Skillset service role;
+  used only to confirm exposed RPC names and argument signatures.
+- Live `pg_get_functiondef` results captured on 2026-07-07 and 2026-07-15.
+- Exact SQL migrations previously applied to the live project for functions not
+  present in those `pg_get_functiondef` result sets.
 
-## Artifacts
+No command in this work changed the live database. No secret was printed or
+written to the repository.
 
-- `20260715_schema_baseline_tables_from_types.sql` — `CREATE TABLE IF NOT EXISTS` for 37 missing tables
-- `20260715_schema_baseline_rpc_inventory.sql` — inventory of RPCs still needing real SQL bodies
+## Table baseline
 
-## Missing tables
+The type-derived table baseline intends to add 37 tables that were absent from
+the older migration history:
 
-- `account_action_requests`
-- `audit_log`
-- `certificates`
-- `checkout_locks`
-- `community_comments`
-- `community_post_likes`
-- `community_posts`
-- `community_reports`
-- `course_assets`
-- `course_event_rsvps`
-- `course_events`
-- `course_lesson_content`
-- `course_messages`
-- `course_reviews`
-- `course_subscriptions`
-- `course_title_keys`
-- `courses`
-- `enrollments`
-- `leaderboards`
-- `learning_path_items`
-- `learning_paths`
-- `lesson_comments`
-- `lesson_progress`
-- `member_stats`
-- `notifications`
-- `orders`
-- `payments`
-- `payout_ledger`
-- `platform_config`
-- `points_events`
-- `processed_stripe_events`
-- `public_profiles`
-- `rate_limits`
-- `subscriptions`
-- `support_tickets`
-- `users`
-- `wishlists`
+- `20260715_schema_baseline_tables_from_types.sql`
 
-## Missing / unversioned functions (types)
+This file remains a structural approximation. The reserved
+`leaderboards.window` column is quoted so the migration parses, but types such
+as timestamps, arrays, constraints, indexes, foreign keys, triggers, RLS
+policies, grants, and defaults must ultimately be replaced by a real schema-only
+database dump.
 
-- `claim_checkout_lock`
-- `create_free_course_enrollment`
-- `create_teacher_course_draft`
-- `delete_teacher_course_draft`
-- `enforce_rate_limit`
-- `has_enrollment_for_course_slug`
-- `is_target_author`
-- `issue_skillset_certificate`
-- `log_audit_event`
-- `record_lesson_progress`
-- `send_course_message`
-- `submit_course_review`
-- `update_teacher_course_builder`
-- `verify_skillset_certificate`
+## RPC baseline added
 
-## App RPC calls needing versioning
+The application had 12 directly called RPCs with no local function body. They
+are now versioned in two idempotent migrations:
 
-- `claim_checkout_lock`
+- `20260716000100_live_teacher_course_rpcs.sql`
+- `20260716000200_live_application_rpcs.sql`
+
+Directly called RPCs added:
+
 - `create_free_course_enrollment`
 - `create_teacher_course_draft`
 - `delete_course_as_admin`
 - `delete_teacher_course_draft`
-- `enforce_rate_limit`
 - `is_admin`
 - `issue_skillset_certificate`
 - `record_lesson_progress`
@@ -91,19 +55,71 @@
 - `update_teacher_course_builder`
 - `verify_skillset_certificate`
 
-## How to replace with live dump (when service role available)
+Required helpers added with the same baseline:
 
-```bash
-# Load Skillset env (NOT Lugano keys from the vault file)
-# Required: NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in project .env.local
-npx supabase db dump --schema public -f supabase/migrations/20260715_live_schema_dump.sql
-```
+- `course_title_key`
+- `log_audit_event`
+- `platform_fee_bps_for_plan`
 
-**Note:** Vault `Todas as APIs Oficial.env` currently exposes **Lugano** Supabase keys (`LUGANO_SUPABASE_*`), not Skillset. Use Skillset project keys only.
+`enforce_rate_limit` and `claim_checkout_lock` remain owned by
+`20260715_hotmart_parity_money_path.sql`. The application RPC baseline removes
+the obsolete `enforce_rate_limit(text, integer, bigint)` overload after the
+versioned integer signature exists, preventing named-argument ambiguity in
+PostgREST.
 
-## Safety
+## Coverage check
 
-- Baseline uses `IF NOT EXISTS` only.
-- Column types are TS approximations (text/numeric/boolean/jsonb).
-- No RLS policies generated here — add after live dump.
-- No secrets in this report.
+The current worktree contains 27 literal `.rpc(...)` names. A source-to-migration
+scan found a `CREATE FUNCTION` or `CREATE OR REPLACE FUNCTION` body for all 27.
+Five checkout/offer RPCs and their untracked migration were added concurrently
+by another worker and were not modified here.
+
+The live OpenAPI signatures for all 12 RPCs listed above match the signatures in
+the new migrations. In particular:
+
+- `create_teacher_course_draft(text, text, text, text[], text) returns text`
+- `update_teacher_course_builder(text, jsonb) returns jsonb`
+
+The 2026-07-15 live `pg_get_functiondef` for
+`update_teacher_course_builder` includes blind `modules` JSONB pass-through,
+lesson-content mirroring, and `community_enabled`; all are preserved.
+
+## Validation performed
+
+- PostgreSQL 18 with `check_function_bodies = on` and
+  `plpgsql.extra_warnings = 'all'`.
+- Both RPC migrations applied successfully to a disposable local database.
+- Both RPC migrations reapplied successfully, checking idempotence.
+- Local smoke flow executed all 15 versioned functions/helpers involved in the
+  RPC baseline, including create/update/delete teacher course, free enrollment,
+  progress, certificate issue/verify, account action, message, and review.
+- `20260704_add_bunny_video_id.sql` applied successfully with `course_assets`
+  absent, then present, then reapplied; exactly one `bunny_video_id text` column
+  remained.
+- Static coverage check: 27 application RPC names, zero missing function bodies.
+
+All disposable databases and test roles were removed after validation.
+
+## Remaining live-only schema surface
+
+The following typed/RLS helper functions still have no local body and are not
+directly invoked through `.rpc(...)` by the application:
+
+- `has_enrollment_for_course_slug`
+- `is_moderator`
+- `is_ops`
+- `is_service_role`
+- `is_support`
+- `is_target_author`
+- `is_teacher`
+
+A complete schema-only dump is still required to reproduce these helpers,
+triggers, policies, grants, and production-accurate table definitions. The local
+vault exposes only Lugano Supabase variables; the Skillset `.env.local` service
+role can read PostgREST metadata but cannot execute `pg_get_functiondef` or
+`supabase db dump` without database/management credentials.
+
+The RPC layer covered by this report is reproducible once its table prerequisites
+exist. A full clean `supabase db reset` still requires reconciling older
+pre-baseline policy migrations and replacing the type-derived table
+approximation with a real dump.

@@ -8,8 +8,16 @@ import {
 import type { Order } from "@/domain/order";
 import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import type { TeacherCourse } from "@/domain/teacher-course";
+import { rowToCourseSubscription } from "@/lib/data/course-subscriptions";
 
 const now = new Date("2026-07-15T12:00:00.000Z");
+
+type ContractSnapshotFields = {
+  priceAmountMinor?: number | null;
+  currency?: string | null;
+  offerId?: string | null;
+  priceId?: string | null;
+};
 
 function course(
   id: string,
@@ -36,8 +44,8 @@ function subscription(
   id: string,
   courseId: string,
   status: string,
-  options: Partial<CourseSubscription> = {},
-): CourseSubscription {
+  options: Partial<CourseSubscription & ContractSnapshotFields> = {},
+): CourseSubscription & ContractSnapshotFields {
   return {
     id,
     userId: `learner-${id}`,
@@ -50,31 +58,60 @@ function subscription(
 }
 
 describe("calculateCreatorSubscriptionMetrics", () => {
-  it("normalizes annual value to MRR and keeps currencies separate", () => {
+  it("uses invoice snapshots and contracted cadence after a course price changes", () => {
     const subscriptions = [
-      subscription("monthly", "monthly-brl", "active", { interval: "month" }),
+      subscription("monthly", "monthly-brl", "active", {
+        interval: "month",
+        latestInvoiceId: "in-monthly",
+        priceAmountMinor: 10_000,
+        currency: "BRL",
+        offerId: "offer-monthly",
+        priceId: "price-monthly",
+      }),
       subscription("yearly", "yearly-brl", "active", {
         interval: "year",
         cancelAtPeriodEnd: true,
+        latestInvoiceId: "in-yearly",
+        priceAmountMinor: 120_000,
+        currency: "BRL",
       }),
       subscription("past-due", "past-due-brl", "past_due", {
         interval: "month",
         pastDue: true,
+        latestInvoiceId: "in-past-due",
+        priceAmountMinor: 10_000,
+        currency: "BRL",
       }),
-      subscription("usd", "monthly-usd", "active", { interval: "month" }),
+      subscription("usd", "monthly-usd", "active", {
+        interval: "month",
+        latestInvoiceId: "in-usd",
+        priceAmountMinor: 5_000,
+        currency: "USD",
+      }),
       subscription("recent-cancel", "monthly-brl", "canceled"),
       subscription("old-cancel", "monthly-brl", "canceled", {
         updatedAt: "2026-04-01T12:00:00.000Z",
       }),
     ];
     const courses = [
-      course("monthly-brl", 10_000, "BRL", "subscription_monthly"),
-      course("yearly-brl", 120_000, "BRL", "subscription_yearly"),
-      course("past-due-brl", 10_000, "BRL", "subscription_monthly"),
-      course("monthly-usd", 5_000, "USD", "subscription_monthly"),
+      course("monthly-brl", 99_000, "BRL", "subscription_monthly"),
+      course("yearly-brl", 999_000, "BRL", "subscription_yearly"),
+      course("past-due-brl", 99_000, "BRL", "subscription_monthly"),
+      course("monthly-usd", 99_000, "USD", "subscription_monthly"),
     ];
+    const orders = [
+      { id: "in-monthly", amountMinor: 10_000, currency: "BRL" },
+      { id: "in-yearly", amountMinor: 120_000, currency: "BRL" },
+      { id: "in-past-due", amountMinor: 10_000, currency: "BRL" },
+      { id: "in-usd", amountMinor: 5_000, currency: "USD" },
+    ] as Order[];
 
-    expect(calculateCreatorSubscriptionMetrics(subscriptions, courses, now)).toEqual({
+    expect(calculateCreatorSubscriptionMetrics(
+      subscriptions,
+      courses,
+      now,
+      { orders, ledgers: [] },
+    )).toEqual({
       activeCount: 3,
       pastDueCount: 1,
       cancelScheduledCount: 1,
@@ -84,17 +121,105 @@ describe("calculateCreatorSubscriptionMetrics", () => {
         { currency: "BRL", amountMinor: 30_000 },
         { currency: "USD", amountMinor: 5_000 },
       ],
+      mrrSnapshotMissingCount: 0,
+      mrrLegacyFallbackCount: 0,
     });
   });
 
+  it("uses the latest recurring ledger snapshot as a fallback and reports gaps", () => {
+    const subscriptions = [
+      subscription("ledger-backed", "course-1", "active", {
+        interval: "year",
+        priceAmountMinor: null,
+        currency: "BRL",
+      }),
+      subscription("missing-price", "course-2", "active", { interval: "month" }),
+      subscription("missing-cadence", "course-3", "past_due", {
+        latestInvoiceId: "in-no-cadence",
+      }),
+    ];
+    const ledgers = [
+      {
+        id: "in-old",
+        subscriptionId: "ledger-backed",
+        kind: "course_subscription",
+        grossAmountMinor: 120_000,
+        currency: "BRL",
+        createdAt: "2026-06-01T00:00:00.000Z",
+      },
+      {
+        id: "in-new",
+        subscriptionId: "ledger-backed",
+        kind: "course_subscription",
+        grossAmountMinor: 240_000,
+        currency: "BRL",
+        createdAt: "2026-07-01T00:00:00.000Z",
+      },
+    ] as PayoutLedgerEntry[];
+    const orders = [
+      { id: "in-no-cadence", amountMinor: 5_000, currency: "USD" },
+    ] as Order[];
+
+    const metrics = calculateCreatorSubscriptionMetrics(
+      subscriptions,
+      [],
+      now,
+      { orders, ledgers },
+    );
+
+    expect(metrics.mrrByCurrency).toEqual([
+      { currency: "BRL", amountMinor: 20_000 },
+    ]);
+    expect(metrics.mrrSnapshotMissingCount).toBe(2);
+    expect(metrics.mrrLegacyFallbackCount).toBe(1);
+  });
+
   it("returns honest zeroes when there is no recurring activity", () => {
-    expect(calculateCreatorSubscriptionMetrics([], [], now)).toEqual({
+    expect(calculateCreatorSubscriptionMetrics([], [], now, {
+      orders: [],
+      ledgers: [],
+    })).toEqual({
       activeCount: 0,
       pastDueCount: 0,
       cancelScheduledCount: 0,
       canceledLast30Days: 0,
       observedChurnRate: 0,
       mrrByCurrency: [],
+      mrrSnapshotMissingCount: 0,
+      mrrLegacyFallbackCount: 0,
+    });
+  });
+});
+
+describe("rowToCourseSubscription", () => {
+  it("maps the immutable contract pricing identity", () => {
+    const row = {
+      cancel_at_period_end: false,
+      course_id: "course-1",
+      course_slug: "course-1",
+      created_at: "2026-07-15T10:00:00.000Z",
+      current_period_end: "2026-08-15T10:00:00.000Z",
+      currency: "BRL",
+      id: "sub-1",
+      interval: "month",
+      latest_invoice_id: "in-1",
+      offer_id: "offer-1",
+      past_due: false,
+      price_amount_minor: 9900,
+      price_id: "price-1",
+      status: "active",
+      stripe_customer_id: "cus-1",
+      stripe_subscription_id: "sub-1",
+      teacher_id: "teacher-1",
+      updated_at: "2026-07-15T10:00:00.000Z",
+      user_id: "learner-1",
+    } as Parameters<typeof rowToCourseSubscription>[0];
+
+    expect(rowToCourseSubscription(row)).toMatchObject({
+      priceAmountMinor: 9900,
+      currency: "BRL",
+      offerId: "offer-1",
+      priceId: "price-1",
     });
   });
 });

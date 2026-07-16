@@ -73,11 +73,7 @@ export function subscribeToPublishedTeacherCourses(
   callback: (courses: TeacherCourse[]) => void,
   onError: (error: Error) => void,
 ): () => void {
-  // Sell-on-submit: a course that left draft (status `in_review`) must be
-  // immediately listed AND purchasable — selling is NOT gated by approval.
-  // Review is non-blocking; a reviewer only *removes* a course from sale by
-  // flipping it out of these two states. draft / needs_changes / inactive
-  // stay hidden from the public marketplace.
+  // Only approved courses are public. Draft and review states stay in Studio.
   // Bounded: every public catalog visitor streams this query, and each row
   // carries the FULL course (modules + lesson contentText), so an unbounded
   // read scales cost with the whole marketplace. 200 covers the catalog for
@@ -89,7 +85,7 @@ export function subscribeToPublishedTeacherCourses(
     const { data, error } = await supabase
       .from(coursesTable)
       .select("*")
-      .in("status", ["published", "in_review"])
+      .eq("status", "published")
       .limit(200);
 
     if (error) {
@@ -137,7 +133,7 @@ export function subscribeToPublishedTeacherCoursesByOwner(
       .from(coursesTable)
       .select("*")
       .eq("owner_id", ownerId)
-      .in("status", ["published", "in_review"])
+      .eq("status", "published")
       .limit(48);
 
     if (error) {

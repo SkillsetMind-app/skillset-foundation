@@ -33,19 +33,19 @@
 
 **System outcome:** A `courses/{courseId}` document exists with builder data and a course asset subcollection.
 
-### Step 4: Review
+### Step 4: Professional Verification And Launch Checks
 
-**What:** Teacher submits the course for Skillset review.
+**What:** Skillset verifies the professional. The builder checks product completeness, pricing, content, category, terms, and payout readiness.
 
-**Why:** Public marketplace quality depends on review before publication.
+**Why:** Marketplace trust comes from credentialed professionals and deterministic product safeguards without making every course wait for manual approval.
 
-**System outcome:** Course status changes from `draft` or `needs_changes` to `in_review`.
+**System outcome:** An approved professional with a complete product can publish directly. Incomplete or ineligible products remain private drafts.
 
 ### Step 5: Publish And Sell
 
-**What:** Admin approves the course and it becomes publicly visible.
+**What:** Teacher publishes the course and it becomes publicly visible immediately.
 
-**Why:** Learners can only buy real reviewed courses.
+**Why:** Learners can only buy complete published courses from verified professionals.
 
 **System outcome:** Course status becomes `published`; checkout or free enrollment becomes available.
 
@@ -83,7 +83,8 @@
 
 | Workflow | Purpose |
 |----------|---------|
-| Course review | Approve, reject, or request changes before publication. |
+| Professional verification | Resolve credential exceptions and appeals that automation cannot verify. |
+| Marketplace compliance | Review reports and monitor published programs without automatic unpublishing. |
 | Payment oversight | Inspect orders, payouts, refunds, and Stripe readiness. |
 | Support | Respond to account, billing, and learning issues. |
 | Moderation | Handle community reports and unsafe content. |
@@ -93,7 +94,7 @@
 ## Core Product Loop
 
 1. Teacher creates valuable course.
-2. Skillset reviews and publishes.
+2. Skillset verifies the professional; the teacher publishes a complete product.
 3. Learner buys or enrolls.
 4. Learner completes lessons and receives value.
 5. Teacher earns revenue.

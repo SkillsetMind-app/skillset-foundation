@@ -86,12 +86,12 @@ export default function ForCreatorsPage() {
             Creator path
           </p>
           <h2 className="display-title mt-3 text-4xl">
-            Start as a creator, publish after review.
+            Start as a creator, publish after verification.
           </h2>
           <p className="mt-4 text-sm leading-7 text-white/78">
-            Creators can draft courses immediately. Marketplace visibility
-            remains controlled by SkillsetMind review so the platform does not turn
-            into a noisy upload directory.
+            Creators can draft courses immediately. Professional verification
+            and deterministic launch checks protect marketplace quality without
+            making every course wait for manual approval.
           </p>
           <Link href="/auth?mode=signup&path=teacher" className="button-solid-light mt-6 px-4 py-2.5 text-sm">
             Create account

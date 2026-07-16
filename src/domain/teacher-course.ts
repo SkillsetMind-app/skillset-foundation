@@ -1,36 +1,14 @@
 import type { DripStrategy } from "@/domain/drip-policy";
 
 export const skillsetCourseCategories = [
-  "Business and management",
-  "Marketing and sales",
-  "Technology and software",
-  "Design and creative",
-  "Health and wellness",
-  "Personal development",
-  "Leadership",
-  "Finance and investing",
-  "Entrepreneurship",
-  "Productivity",
-  "Psychology",
-  "Education and teaching",
-  "Languages",
-  "Career development",
-  "Data and analytics",
-  "AI and automation",
-  "Photography and video",
-  "Writing and communication",
-  "Operations",
-  "Customer success",
-  "Legal and compliance",
-  "Real estate",
-  "Beauty and aesthetics",
-  "Fitness",
-  "Nutrition",
-  "Parenting and family",
-  "Music and audio",
-  "Spirituality",
-  "Trades and practical skills",
-  "Other",
+  "Clinical Psychology & Approaches",
+  "Hypnotherapy",
+  "Integrative & Holistic Therapies",
+  "Family Constellations & Systemic Work",
+  "Mental Health Foundations",
+  "Personal Development",
+  "The Therapist's Business",
+  "Supervision & Continuing Education",
 ] as const;
 
 export type TeacherCourseStatus =
@@ -342,16 +320,21 @@ export function teacherCanEditCourse(status: TeacherCourseStatus): boolean {
   return ["draft", "needs_changes", "published", "inactive"].includes(status);
 }
 
-export function teacherCanSubmitCourse(status: TeacherCourseStatus): boolean {
-  return ["draft", "needs_changes", "inactive"].includes(status);
+export function teacherCanPublishCourse(status: TeacherCourseStatus): boolean {
+  return ["draft", "in_review", "needs_changes", "inactive"].includes(status);
+}
+
+export function isCoursePubliclySellable(
+  status: string | null | undefined,
+): boolean {
+  return status === "published";
 }
 
 /**
  * A teacher may permanently delete a course only while it is fully under their
  * own control and has never reached the marketplace: drafts and
- * needs-changes courses. Submitted (in_review), published, and inactive
- * courses are governed by SkillsetMind (review queue, live catalog, or a taken-down
- * course that may carry enrollments/sales) and must not be hard-deleted here.
+ * needs-changes courses. Legacy in-review, published, and inactive courses may
+ * carry marketplace state, enrollments, or sales and must not be hard-deleted here.
  */
 export function teacherCanDeleteCourse(status: TeacherCourseStatus): boolean {
   return ["draft", "needs_changes"].includes(status);

@@ -5,6 +5,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
 
 type PayoutLedgerRow = Database["public"]["Tables"]["payout_ledger"]["Row"];
+const TEACHER_PAGE_SIZE = 500;
 
 export function rowToPayoutLedgerEntry(row: PayoutLedgerRow): PayoutLedgerEntry {
   return {
@@ -43,23 +44,37 @@ export function subscribeToTeacherPayoutLedger(
   onError: (error: Error) => void,
 ): () => void {
   const supabase = getSupabaseBrowserClient();
+  let loadVersion = 0;
+  let stopped = false;
 
   const load = async () => {
-    // Equality filter + bounded fetch with no server-side order (single-field
-    // index only). Callers sort client-side; we fetch up to 500 rows to avoid
-    // silently summing an arbitrary subset past any hard limit.
-    const { data, error } = await supabase
-      .from("payout_ledger")
-      .select("*")
-      .eq("teacher_id", teacherId)
-      .limit(500);
+    const version = ++loadVersion;
+    const rows: PayoutLedgerRow[] = [];
 
-    if (error) {
-      onError(error instanceof Error ? error : new Error(String(error)));
-      return;
+    for (let from = 0; ; from += TEACHER_PAGE_SIZE) {
+      const { data, error } = await supabase
+        .from("payout_ledger")
+        .select("*")
+        .eq("teacher_id", teacherId)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + TEACHER_PAGE_SIZE - 1);
+
+      if (error) {
+        if (!stopped && version === loadVersion) {
+          onError(error instanceof Error ? error : new Error(String(error)));
+        }
+        return;
+      }
+
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < TEACHER_PAGE_SIZE) break;
     }
 
-    callback((data ?? []).map(rowToPayoutLedgerEntry));
+    if (!stopped && version === loadVersion) {
+      callback(rows.map(rowToPayoutLedgerEntry));
+    }
   };
 
   void load();
@@ -81,6 +96,8 @@ export function subscribeToTeacherPayoutLedger(
     .subscribe();
 
   return () => {
+    stopped = true;
+    loadVersion += 1;
     void supabase.removeChannel(channel);
   };
 }

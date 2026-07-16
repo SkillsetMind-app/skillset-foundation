@@ -87,7 +87,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection heading="3. The platform and course review">
+      <LegalSection heading="3. The platform and marketplace standards">
         <p>
           SkillsetMind provides the technology to host and deliver courses: video
           classrooms, private per-course communities, live sessions, publicly
@@ -95,10 +95,11 @@ export default function TermsPage() {
           Courses are created by independent educators, not by SkillsetMind.
         </p>
         <p>
-          Courses go through a platform review before publication. Review is a
-          quality and policy screen only: it is not an endorsement,
-          certification, or guarantee of any course&apos;s accuracy,
-          effectiveness, or fitness for your needs.
+          Educators must complete professional verification before publishing.
+          SkillsetMind monitors live programs and may review reported content for
+          policy compliance. Verification and monitoring are not an endorsement,
+          certification, or guarantee of any course&apos;s accuracy, effectiveness,
+          or fitness for your needs.
         </p>
       </LegalSection>
 

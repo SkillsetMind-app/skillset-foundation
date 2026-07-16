@@ -26,8 +26,8 @@ type TrustLayer = {
 
 const trustLayers: ReadonlyArray<TrustLayer> = [
   {
-    title: "Course review",
-    detail: "SkillsetMind reviews every submitted course — lessons, descriptions, pricing, and claims. Review runs without blocking publication.",
+    title: "Verified professionals",
+    detail: "SkillsetMind verifies professional eligibility before publication and monitors live programs for marketplace compliance.",
     Icon: FileSearch,
   },
   {

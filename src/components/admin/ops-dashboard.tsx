@@ -6,7 +6,6 @@ import { startTransition, useEffect, useMemo, useState } from "react";
 import { AccountActionRequestsPanel } from "@/components/admin/account-action-requests-panel";
 import { AdminEnrollmentPanel } from "@/components/admin/admin-enrollment-panel";
 import { CommunityModerationQueue } from "@/components/admin/community-moderation-queue";
-import { CourseReviewQueue } from "@/components/admin/course-review-queue";
 import { CreatorVerificationQueue } from "@/components/admin/creator-verification-queue";
 import { ManagedCoursePanel } from "@/components/admin/managed-course-panel";
 import { OpsOverviewMetrics } from "@/components/admin/ops-overview-metrics";
@@ -21,8 +20,8 @@ import {
 } from "@/lib/data/audit-log";
 
 const opsTabs = [
-  { value: "courses", label: "Courses in review" },
   { value: "verification", label: "Creator verification" },
+  { value: "catalog", label: "Published catalog" },
   { value: "payments", label: "Payments" },
   { value: "community", label: "Community reports" },
   { value: "support", label: "Support tickets" },
@@ -50,7 +49,7 @@ const statusOptions = [
 export function OpsDashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const activeTab = searchParams.get("tab") ?? "courses";
+  const activeTab = searchParams.get("tab") ?? "verification";
   const period = searchParams.get("period") ?? "last_7d";
   const status = searchParams.get("status") ?? "all";
   const filters = useMemo(
@@ -88,6 +87,8 @@ export function OpsDashboard() {
 
       {activeTab === "verification" ? (
         <CreatorVerificationQueue />
+      ) : activeTab === "catalog" ? (
+        <ManagedCoursePanel />
       ) : activeTab === "payments" ? (
         <>
           <PaymentOperationsPanel />
@@ -104,12 +105,7 @@ export function OpsDashboard() {
         </>
       ) : activeTab === "audit" ? (
         <AuditLogPanel />
-      ) : (
-        <>
-          <CourseReviewQueue />
-          <ManagedCoursePanel />
-        </>
-      )}
+      ) : null}
     </div>
   );
 }

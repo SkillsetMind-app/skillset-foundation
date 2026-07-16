@@ -112,9 +112,9 @@ export async function updateTeacherCourseBuilder(
   }
 }
 
-export async function submitTeacherCourseForReview(courseId: string) {
+export async function publishTeacherCourse(courseId: string) {
   const supabase = getSupabaseBrowserClient();
-  const { error } = await supabase.rpc("submit_teacher_course_for_review", {
+  const { error } = await supabase.rpc("publish_teacher_course", {
     p_course_id: courseId,
   });
 

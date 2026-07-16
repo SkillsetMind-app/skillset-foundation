@@ -296,7 +296,7 @@ CREATE TABLE IF NOT EXISTS public.enrollments (
 CREATE TABLE IF NOT EXISTS public.leaderboards (
   entries jsonb,
   updated_at text,
-  window text
+  "window" text
 );
 
 -- Table: public.learning_path_items

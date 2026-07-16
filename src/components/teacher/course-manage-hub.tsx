@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -17,10 +18,9 @@ import {
 import { CourseOffersPanel } from "@/components/teacher/course-offers-panel";
 import { SalesPageEditor } from "@/components/teacher/sales-page-editor";
 import type { TeacherCourse } from "@/domain/teacher-course";
-import { teacherCanSubmitCourse } from "@/domain/teacher-course";
+import { teacherCanPublishCourse } from "@/domain/teacher-course";
 import { fetchRequireCreatorVerification } from "@/lib/data/creator-verification";
 import {
-  submitTeacherCourseForReview,
   subscribeToTeacherCourse,
   subscribeToTeacherCourses,
 } from "@/lib/data/teacher-courses";
@@ -63,14 +63,14 @@ type SectionId =
 
 const statusCopy: Record<TeacherCourse["status"], string> = {
   draft:
-    "Private draft — only you can see this course. Complete the checklist and send it for review.",
+    "Private draft — only you can see this course. Complete the checklist, then publish when ready.",
   in_review:
-    "SkillsetMind review in progress. Editing reopens if the review team requests changes.",
+    "Legacy review status — open the builder to complete the checks and publish directly.",
   needs_changes:
-    "The review team requested changes. Address the note below, update the course, and resubmit.",
+    "Changes were previously requested. Address the note, update the course, and publish when ready.",
   published: "Live on the marketplace. Students can enroll right now.",
   inactive:
-    "Hidden from the marketplace. Republishing goes through review again.",
+    "Hidden from the marketplace. An approved professional can republish it directly.",
 };
 
 function isPaidCourse(course: TeacherCourse): boolean {
@@ -130,14 +130,20 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   const [payoutsReady, setPayoutsReady] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState("none");
   const [requireVerification, setRequireVerification] = useState(false);
-  // null = follow URL (or default overview); non-null = user clicked a tab
-  const [sectionOverride, setSectionOverride] = useState<SectionId | null>(null);
-  const section: SectionId =
-    sectionOverride ?? sectionFromUrl ?? "overview";
-  const setSection = (next: SectionId) => setSectionOverride(next);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState("");
-  const [submitNotice, setSubmitNotice] = useState("");
+  const section: SectionId = sectionFromUrl ?? "overview";
+  const setSection = (next: SectionId) => {
+    const params = new URLSearchParams(searchParams?.toString());
+    if (next === "overview") {
+      params.delete("section");
+    } else {
+      params.set("section", next);
+    }
+    const query = params.toString();
+    router.push(
+      `/teach/courses/${encodeURIComponent(courseId)}/manage${query ? `?${query}` : ""}`,
+      { scroll: false },
+    );
+  };
   const [copiedLink, setCopiedLink] = useState(false);
 
   useEffect(() => {
@@ -220,17 +226,20 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
       {
         label: "Title & summary",
         hint: "Name the course and describe the outcome in the summary.",
-        done: course.title.trim().length > 0 && course.summary.trim().length > 0,
+        done:
+          course.title.trim().length >= 3
+          && course.summary.trim().length >= 20,
       },
       {
         label: "Category",
         hint: "Pick the category buyers browse by.",
-        done: course.category.trim().length > 0,
+        done: course.category.trim().length >= 2,
       },
       {
         label: "Cover image",
         hint: "Upload a cover — it fronts the product page and marketplace cards.",
         done: Boolean(course.coverImageUrl),
+        optional: true,
       },
       {
         label: "Curriculum",
@@ -253,7 +262,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     if (paid) {
       items.push({
         label: "Stripe payouts",
-        hint: "Paid courses need payout onboarding finished before review.",
+        hint: "Paid courses need payout onboarding finished before publishing.",
         done: payoutsReady,
       });
     }
@@ -262,7 +271,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
       hint: (
         <>
           {requireVerification
-            ? "Required before this course can be sent for review. "
+            ? "Required before this course can be published. "
             : "Optional today — becomes required when professional admission opens. "}
           <Link
             href="/teach/verification"
@@ -283,29 +292,6 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   const progressPercent = requiredItems.length
     ? Math.round((requiredDone / requiredItems.length) * 100)
     : 0;
-
-  const handleSubmitForReview = async () => {
-    if (!course) {
-      return;
-    }
-    setIsSubmitting(true);
-    setSubmitError("");
-    setSubmitNotice("");
-    try {
-      await submitTeacherCourseForReview(course.id);
-      setSubmitNotice("Course submitted for review.");
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Could not submit the course.";
-      setSubmitError(
-        message.toLowerCase().includes("payout")
-          ? "Finish Stripe payout onboarding before submitting a paid course — open the Payouts panel in your studio."
-          : message,
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const productPagePath = `/courses/${courseId}`;
 
@@ -354,11 +340,18 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   );
 
   return (
-    <div className="grid gap-6">
-      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
+    <div className="grid gap-5">
+      <section className="border-b border-[var(--color-line)] bg-white pb-5">
+        <Link
+          href="/teach/builder"
+          className="mb-4 inline-flex min-h-9 items-center gap-2 text-xs font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"
+        >
+          <ArrowLeft aria-hidden="true" size={14} strokeWidth={1.9} />
+          My products
+        </Link>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-4">
-            <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-[10px] border fine-rule bg-[var(--color-surface-soft)]">
+            <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-[6px] border fine-rule bg-[var(--color-surface-soft)]">
               {course.coverImageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -395,7 +388,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 onChange={(event) =>
                   router.push(`/teach/courses/${event.target.value}/manage`)
                 }
-                className="rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold text-[var(--color-ink)]"
+                className="min-h-10 rounded-[6px] border fine-rule bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink)]"
               >
                 <option value={course.id}>{course.title}</option>
                 {switchableCourses.map((candidate) => (
@@ -406,8 +399,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               </select>
             ) : null}
             <Link
-              href={`/teach/builder?courseId=${course.id}`}
-              className="button-solid px-4 py-2 text-xs"
+              href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=details`}
+              className="button-solid min-h-10 px-4 text-xs"
             >
               Edit in Builder
             </Link>
@@ -415,34 +408,34 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[220px_1fr] lg:items-start">
+      <div className="grid gap-5 lg:grid-cols-[240px_1fr] lg:items-start">
         <nav
           aria-label="Course management sections"
-          className="rounded-[14px] border border-[var(--color-line)] bg-white p-3 shadow-[var(--shadow-soft)]"
+          className="min-w-0 border-b border-[var(--color-line)] bg-white pb-2 lg:sticky lg:top-20 lg:rounded-[8px] lg:border lg:p-2"
         >
-          <p className="px-2 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
+          <p className="hidden px-2 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)] lg:block">
             Manage
           </p>
-          <div className="grid gap-1">
+          <div className="flex gap-1 overflow-x-auto lg:grid">
             {manageSections.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => setSection(item.id)}
-                className={`rounded-[8px] px-3 py-2 text-left text-sm font-semibold transition ${
+                className={`min-h-10 shrink-0 whitespace-nowrap rounded-[6px] border-b-2 px-3 py-2 text-left text-sm font-semibold transition lg:w-full lg:border-b-0 lg:border-l-2 ${
                   section === item.id
-                    ? "bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
-                    : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)]"
+                    ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
+                    : "border-transparent text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)]"
                 }`}
               >
                 {item.label}
               </button>
             ))}
           </div>
-          <p className="px-2 pb-2 pt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
+          <p className="hidden px-2 pb-2 pt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)] lg:block">
             On the roadmap
           </p>
-          <div className="grid gap-1">
+          <div className="hidden gap-1 lg:grid">
             {roadmapSections.map((item) => (
               <button
                 key={item.id}
@@ -514,25 +507,13 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                     </p>
                   </div>
                 ) : null}
-                {submitError ? (
-                  <p className="mt-4 text-sm font-semibold text-[var(--color-accent-fg)]">
-                    {submitError}
-                  </p>
-                ) : null}
-                {submitNotice ? (
-                  <p className="mt-4 text-sm font-semibold text-[var(--color-primary)]">
-                    {submitNotice}
-                  </p>
-                ) : null}
-                {teacherCanSubmitCourse(course.status) ? (
-                  <button
-                    type="button"
-                    onClick={handleSubmitForReview}
-                    disabled={isSubmitting || requiredDone < requiredItems.length}
-                    className="button-solid mt-5 px-5 py-2.5 text-xs disabled:opacity-60"
+                {teacherCanPublishCourse(course.status) ? (
+                  <Link
+                    href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=review`}
+                    className="button-solid mt-5 inline-flex px-5 py-2.5 text-xs"
                   >
-                    {isSubmitting ? "Submitting..." : "Send for review"}
-                  </button>
+                    Review & publish
+                  </Link>
                 ) : null}
             </PanelCard>
           ) : null}
@@ -613,7 +594,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 />
               </div>
               <Link
-                href={`/teach/builder?courseId=${course.id}`}
+                href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=details`}
                 className="button-outline mt-5 inline-flex px-4 py-2 text-xs"
               >
                 Edit basics in Builder
@@ -650,7 +631,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 </div>
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Link
-                    href={`/teach/builder?courseId=${course.id}`}
+                    href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=pricing`}
                     className="button-outline px-4 py-2 text-xs"
                   >
                     Edit pricing in Builder
@@ -699,7 +680,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 </p>
               )}
               <Link
-                href={`/teach/builder?courseId=${course.id}`}
+                href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=content`}
                 className="button-outline mt-5 inline-flex px-4 py-2 text-xs"
               >
                 Edit content in Builder
@@ -738,7 +719,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   Preview members area
                 </Link>
                 <Link
-                  href={`/teach/builder?courseId=${course.id}`}
+                  href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=members`}
                   className="button-outline px-4 py-2 text-xs"
                 >
                   Edit in Builder

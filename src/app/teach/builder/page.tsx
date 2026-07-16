@@ -8,9 +8,8 @@ export default function TeacherBuilderPage() {
   return (
     <ProtectedSurface permissions={["teacherStudio.manageCourses"]}>
       <PlatformShell
-        eyebrow="Course builder"
-        title="Course Builder."
-        description="Create courses, manage drafts, configure modules, upload lessons and materials, and submit for SkillsetMind review."
+        title="My products"
+        hideHeader
       >
         <Suspense
           fallback={

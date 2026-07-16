@@ -10,6 +10,7 @@ export type InstallmentPlanInput = {
   installmentsEnabled: boolean;
   installmentsMax: number | null | undefined;
   currency: string;
+  stripeAccountCountry?: string | null;
 };
 
 export type InstallmentPlan = {
@@ -17,11 +18,9 @@ export type InstallmentPlan = {
   maxCount: number;
   /** Equal-split display rows (no interest) for buyer-facing UI. */
   options: { count: number; amountMinor: number; label: string }[];
-  /** Currencies where Stripe Checkout card installments are commonly available. */
+  /** Stripe Mexico account + MXN eligibility; card eligibility remains Stripe-owned. */
   stripeCardInstallmentsEligible: boolean;
 };
-
-const STRIPE_INSTALLMENT_CURRENCIES = new Set(["BRL", "MXN"]);
 
 export function normalizeInstallmentsMax(raw: unknown): number {
   const n = Math.floor(Number(raw));
@@ -31,6 +30,9 @@ export function normalizeInstallmentsMax(raw: unknown): number {
 
 export function buildInstallmentPlan(input: InstallmentPlanInput): InstallmentPlan {
   const currency = String(input.currency || "USD").toUpperCase();
+  const stripeAccountCountry = String(input.stripeAccountCountry || "").toUpperCase();
+  const stripeCardInstallmentsEligible =
+    currency === "MXN" && stripeAccountCountry === "MX";
   const maxCount = normalizeInstallmentsMax(input.installmentsMax ?? 1);
   const enabled =
     Boolean(input.installmentsEnabled) &&
@@ -43,7 +45,7 @@ export function buildInstallmentPlan(input: InstallmentPlanInput): InstallmentPl
       enabled: false,
       maxCount: 1,
       options: [],
-      stripeCardInstallmentsEligible: STRIPE_INSTALLMENT_CURRENCIES.has(currency),
+      stripeCardInstallmentsEligible,
     };
   }
 
@@ -61,7 +63,7 @@ export function buildInstallmentPlan(input: InstallmentPlanInput): InstallmentPl
     enabled: true,
     maxCount,
     options,
-    stripeCardInstallmentsEligible: STRIPE_INSTALLMENT_CURRENCIES.has(currency),
+    stripeCardInstallmentsEligible,
   };
 }
 

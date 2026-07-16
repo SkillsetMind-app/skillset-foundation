@@ -1,59 +1,80 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpenCheck, Layers3, PlayCircle, Sparkles } from "lucide-react";
+import { BookOpen, Layers3, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { ListingSearchBar } from "@/components/shared/listing-search-bar";
 import { StatusChip } from "@/components/shared/status-chip";
-import { StatusFilterDropdown } from "@/components/shared/status-filter-dropdown";
 import { CreateCourseStart } from "@/components/teacher/create-course-start";
-import type { TeacherCourse } from "@/domain/teacher-course";
+import type {
+  TeacherCourse,
+  TeacherCourseProductFormat,
+} from "@/domain/teacher-course";
 import {
   teacherCanDeleteCourse,
-  teacherCanSubmitCourse,
+  teacherCanPublishCourse,
 } from "@/domain/teacher-course";
 import {
   deleteTeacherCourse,
   subscribeToTeacherCourses,
-  submitTeacherCourseForReview,
 } from "@/lib/data/teacher-courses";
 
-const statusFilterMatches: Record<string, (course: TeacherCourse) => boolean> = {
-  active: (course) => course.status === "published",
-  all: () => true,
-  draft: (course) => course.status === "draft",
-  in_review: (course) => course.status === "in_review",
-  inactive: (course) => course.status === "inactive",
-  needs_changes: (course) => course.status === "needs_changes",
-};
+type ProductFilter =
+  | "all"
+  | "draft"
+  | "in_review"
+  | "published"
+  | "attention";
+
+const productFilters: Array<{ id: ProductFilter; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "draft", label: "Drafts" },
+  { id: "in_review", label: "Legacy review" },
+  { id: "published", label: "Live" },
+  { id: "attention", label: "Needs attention" },
+];
+
+function filterMatches(course: TeacherCourse, filter: ProductFilter) {
+  if (filter === "all") return true;
+  if (filter === "attention") {
+    return course.status === "needs_changes" || course.status === "inactive";
+  }
+  return course.status === filter;
+}
+
+function accessModelLabel(course: TeacherCourse) {
+  if (course.paymentType === "free") return "Free";
+  if (course.paymentType === "subscription_monthly") return "Monthly subscription";
+  if (course.paymentType === "subscription_yearly") return "Yearly subscription";
+  return "One-time purchase";
+}
 
 export function TeacherCourseStudio({
   autoOpenCreate = false,
+  initialFormat = "course",
 }: {
   autoOpenCreate?: boolean;
+  initialFormat?: TeacherCourseProductFormat;
 }) {
   const { user } = useAuth();
   const [courseQuery, setCourseQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<ProductFilter>("all");
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [error, setError] = useState("");
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
-  const [reviewingCourseId, setReviewingCourseId] = useState<string | null>(null);
   const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const normalizedCourseQuery = courseQuery.toLowerCase().trim();
-  const visibleCourses = normalizedCourseQuery
-    ? courses.filter((course) =>
-        `${course.title} ${course.summary} ${course.category} ${course.status}`
+  const visibleCourses = courses.filter((course) => {
+    const matchesSearch = normalizedCourseQuery
+      ? `${course.title} ${course.summary} ${course.category} ${course.status}`
           .toLowerCase()
-          .includes(normalizedCourseQuery),
-      )
-    : courses;
-  const statusFilteredCourses = visibleCourses.filter(
-    statusFilterMatches[statusFilter] ?? statusFilterMatches.all,
-  );
+          .includes(normalizedCourseQuery)
+      : true;
+    return matchesSearch && filterMatches(course, statusFilter);
+  });
 
   useEffect(() => {
     if (!user) {
@@ -67,24 +88,13 @@ export function TeacherCourseStudio({
         setIsLoadingCourses(false);
       },
       () => {
-        setError("We could not load your courses. Please refresh or contact SkillsetMind support.");
+        setError(
+          "We could not load your products. Please refresh or contact SkillsetMind support.",
+        );
         setIsLoadingCourses(false);
       },
     );
   }, [user]);
-
-  async function handleSubmitForReview(courseId: string) {
-    setError("");
-    setReviewingCourseId(courseId);
-
-    try {
-      await submitTeacherCourseForReview(courseId);
-    } catch {
-      setError("We could not submit this course for review. Please try again or contact SkillsetMind support.");
-    } finally {
-      setReviewingCourseId(null);
-    }
-  }
 
   async function handleDeleteCourse(courseId: string) {
     setError("");
@@ -92,9 +102,10 @@ export function TeacherCourseStudio({
 
     try {
       await deleteTeacherCourse(courseId);
-      // The live subscription removes the course from the list automatically.
     } catch {
-      setError("We could not delete this course. Please try again or contact SkillsetMind support.");
+      setError(
+        "We could not delete this draft. Please try again or contact SkillsetMind support.",
+      );
     } finally {
       setDeletingCourseId(null);
       setConfirmingDeleteId(null);
@@ -103,200 +114,206 @@ export function TeacherCourseStudio({
 
   if (autoOpenCreate) {
     return user ? (
-      <CreateCourseStart ownerId={user.uid} />
+      <CreateCourseStart ownerId={user.uid} initialFormat={initialFormat} />
     ) : (
-      <p className="rounded-[10px] border border-[var(--color-line)] bg-white p-4 text-sm text-[var(--color-ink-soft)]">
-        Sign in as a creator to start a course.
+      <p className="rounded-[8px] border border-[var(--color-line)] bg-white p-4 text-sm text-[var(--color-ink-soft)]">
+        Sign in as a creator to start a product.
       </p>
     );
   }
 
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-6">
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--color-line)] pb-5">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
+            Products
+          </p>
+          <h1 className="mt-2 text-3xl font-semibold leading-tight text-[var(--color-primary)]">
+            My products
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+            Create private drafts, complete the product checks, and publish
+            directly once your professional verification is approved.
+          </p>
+        </div>
+        <Link
+          href="/teach/builder?newCourse=1"
+          className="button-solid min-h-10 px-4 text-sm"
+        >
+          <Plus aria-hidden="true" size={16} strokeWidth={2} />
+          New product
+        </Link>
+      </header>
+
       {error ? (
-        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+        <p
+          role="alert"
+          className="rounded-[8px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]"
+        >
           {error}
         </p>
       ) : null}
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-        <section className="dash-card dash-card--strong p-5 sm:p-6">
-          <div className="flex items-baseline gap-2 border-b border-[var(--color-line)] pb-5">
-            <h3 className="text-base font-bold text-[var(--color-ink)]">
-              Start a course submission
-            </h3>
-            <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
-              Course submissions
-            </span>
+      <section aria-labelledby="product-list-title">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2
+              id="product-list-title"
+              className="text-lg font-semibold text-[var(--color-ink)]"
+            >
+              Product workspace
+            </h2>
+            <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
+              {isLoadingCourses
+                ? "Loading products..."
+                : `${courses.length} ${courses.length === 1 ? "product" : "products"}`}
+            </p>
           </div>
-          <p className="mt-5 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            Create a draft, shape the learner path in Course Builder, and
-            submit when the structure is ready for SkillsetMind review.
-          </p>
+          {courses.length > 0 ? (
+            <ListingSearchBar
+              value={courseQuery}
+              onChange={setCourseQuery}
+              placeholder="Search products..."
+            />
+          ) : null}
+        </div>
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/teach/builder?newCourse=1" className="button-solid px-4 py-2.5 text-sm">
-              New course
-            </Link>
-          </div>
-
-          <div className="mt-7 grid gap-3">
-            {[
-              {
-                icon: Layers3,
-                title: "Step 1",
-                detail: "Choose a title, category, and product format: course, subscription, or free.",
-              },
-              {
-                icon: PlayCircle,
-                title: "Step 2",
-                detail: "Add modules, lessons, videos, embeds, and lesson materials.",
-              },
-              {
-                icon: Sparkles,
-                title: "Step 3",
-                detail: "Set pricing, select a free preview, and submit for review.",
-              },
-            ].map((item) => {
-              const Icon = item.icon;
+        {courses.length > 0 ? (
+          <div
+            className="mt-4 flex gap-1 overflow-x-auto border-b border-[var(--color-line)]"
+            aria-label="Product status filters"
+          >
+            {productFilters.map((filter) => {
+              const count = courses.filter((course) =>
+                filterMatches(course, filter.id),
+              ).length;
 
               return (
-                <div
-                  key={item.title}
-                  className="course-submission-step rounded-[12px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
+                <button
+                  key={filter.id}
+                  type="button"
+                  aria-pressed={statusFilter === filter.id}
+                  onClick={() => setStatusFilter(filter.id)}
+                  className={`min-h-10 shrink-0 border-b-2 px-3 text-sm font-semibold transition-colors ${
+                    statusFilter === filter.id
+                      ? "border-[var(--color-primary)] text-[var(--color-primary)]"
+                      : "border-transparent text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
+                  }`}
                 >
-                  <span className="grid size-9 place-items-center rounded-[10px] bg-white text-[var(--color-primary)] shadow-[var(--shadow-avatar)]">
-                    <Icon aria-hidden="true" size={17} strokeWidth={1.8} />
+                  {filter.label}
+                  <span className="ml-1.5 text-xs tabular-nums text-[var(--color-ink-muted)]">
+                    {count}
                   </span>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-primary-light)]">
-                      {item.title}
-                    </p>
-                    <p className="mt-1 text-sm font-semibold leading-6 text-[var(--color-ink)]">
-                      {item.detail}
-                    </p>
-                  </div>
-                </div>
+                </button>
               );
             })}
           </div>
-        </section>
+        ) : null}
 
-        <section className="dash-card dash-card--strong p-5 sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--color-line)] pb-5">
-            <div>
-              <div className="flex items-baseline gap-2">
-                <h3 className="text-base font-bold text-[var(--color-ink)]">
-                  Courses in progress
-                </h3>
-                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
-                  Your submissions
-                </span>
-              </div>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-                Drafts stay private. Approved courses can keep receiving new
-                lessons and materials while SkillsetMind controls marketplace visibility.
-              </p>
+        <div className="mt-2">
+          {isLoadingCourses ? (
+            <div className="grid gap-0" aria-label="Loading products">
+              {[1, 2, 3].map((item) => (
+                <div
+                  key={item}
+                  className="h-24 animate-pulse border-b border-[var(--color-line)] bg-[var(--color-surface-soft)]"
+                />
+              ))}
             </div>
-            {courses.length > 0 ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <ListingSearchBar
-                  value={courseQuery}
-                  onChange={setCourseQuery}
-                  placeholder="Search your courses..."
-                />
-                <StatusFilterDropdown
-                  value={statusFilter}
-                  onChange={setStatusFilter}
-                />
-              </div>
-            ) : null}
-          </div>
-
-          <div className="mt-6 grid gap-3">
-            {isLoadingCourses ? (
-              <p className="rounded-[12px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-ink-soft)]">
-                Loading your courses...
+          ) : courses.length === 0 ? (
+            <div className="grid place-items-center border-y border-dashed border-[var(--color-line-strong)] px-5 py-14 text-center">
+              <span className="grid size-11 place-items-center rounded-[8px] border border-[var(--color-line)] bg-white text-[var(--color-primary)]">
+                <BookOpen aria-hidden="true" size={20} strokeWidth={1.8} />
+              </span>
+              <h3 className="mt-4 text-lg font-semibold text-[var(--color-ink)]">
+                No products yet
+              </h3>
+              <p className="mt-2 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
+                Start a course, subscription, or free program. The draft stays
+                private until you complete the checks and publish it.
               </p>
-            ) : courses.length === 0 ? (
-              <div className="course-empty-showcase rounded-[18px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 sm:p-8">
-                <span className="grid size-12 place-items-center rounded-[14px] bg-white text-[var(--color-primary)] shadow-[var(--shadow-avatar)]">
-                  <BookOpenCheck aria-hidden="true" size={21} strokeWidth={1.8} />
-                </span>
-                <p className="mt-5 text-xs font-bold uppercase tracking-[0.24em] text-[var(--color-accent-fg)]">
-                  First course
-                </p>
-                <h4 className="mt-3 max-w-sm text-xl font-bold leading-tight text-[var(--color-ink)]">
-                  No courses yet.
-                </h4>
-                <p className="mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
-                  Use{" "}
-                  <span className="font-semibold text-[var(--color-ink)]">New course</span>{" "}
-                  to create your first draft. It opens the builder for modules, lessons,
-                  pricing, uploads, preview, and review — and your draft will appear here.
-                </p>
-              </div>
-            ) : statusFilteredCourses.length === 0 ? (
-              <p className="rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-                No courses match these filters.
-              </p>
-            ) : (
-              statusFilteredCourses.map((course) => (
+              <Link
+                href="/teach/builder?newCourse=1"
+                className="button-solid mt-5 min-h-10 px-4 text-sm"
+              >
+                <Plus aria-hidden="true" size={16} strokeWidth={2} />
+                Create product
+              </Link>
+            </div>
+          ) : visibleCourses.length === 0 ? (
+            <p className="border-y border-[var(--color-line)] py-10 text-center text-sm text-[var(--color-ink-soft)]">
+              No products match this search and status filter.
+            </p>
+          ) : (
+            <div className="divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
+              {visibleCourses.map((course) => (
                 <article
                   key={course.id}
-                  className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 transition hover:-translate-y-0.5 hover:bg-[var(--color-surface-hover)] hover:shadow-[var(--shadow-soft)]"
+                  className="grid gap-4 bg-white px-3 py-4 transition-colors hover:bg-[var(--color-surface-soft)] sm:px-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(150px,0.55fr)_minmax(140px,0.5fr)_auto] lg:items-center"
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-[6px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
+                      {course.coverImageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={course.coverImageUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Layers3 aria-hidden="true" size={19} strokeWidth={1.7} />
+                      )}
+                    </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                        {course.category}
+                      <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
+                        {course.title || "Untitled product"}
                       </p>
-                      <h4 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
-                        {course.title}
-                      </h4>
-                      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                        {course.modules.length} modules - {course.lessonCount} lessons
+                      <p className="mt-1 truncate text-xs text-[var(--color-ink-soft)]">
+                        {course.category || "Uncategorized"}
+                      </p>
+                      <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
+                        {course.modules.length} modules · {course.lessonCount} lessons
                       </p>
                     </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)] lg:hidden">
+                      Status
+                    </p>
                     <StatusChip status={course.status} />
                   </div>
-                  <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-                    {course.summary}
-                  </p>
-                  {course.reviewNote ? (
-                    <div className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.18)] bg-white px-4 py-3">
-                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
-                        SkillsetMind review note
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
-                        {course.reviewNote}
-                      </p>
-                    </div>
-                  ) : null}
-                  <div className="mt-4 flex flex-wrap gap-2">
+
+                  <div>
+                    <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)] lg:hidden">
+                      Access model
+                    </p>
+                    <p className="text-xs font-semibold text-[var(--color-ink-soft)]">
+                      {accessModelLabel(course)}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                     <Link
-                      href={`/teach/courses/${course.id}/manage`}
-                      className="button-outline px-4 py-2 text-xs"
+                      href={`/teach/courses/${encodeURIComponent(course.id)}/manage`}
+                      className="button-solid min-h-9 px-3 text-xs"
                     >
                       Manage
                     </Link>
                     <Link
-                      href={`/teach/builder?courseId=${course.id}`}
-                      className="button-outline px-4 py-2 text-xs"
+                      href={`/teach/builder?courseId=${encodeURIComponent(course.id)}`}
+                      className="button-outline min-h-9 px-3 text-xs"
                     >
-                      Continue course
+                      Edit
                     </Link>
-                    {teacherCanSubmitCourse(course.status) ? (
-                      <button
-                        type="button"
-                        onClick={() => handleSubmitForReview(course.id)}
-                        disabled={reviewingCourseId === course.id}
-                        className="button-solid px-4 py-2 text-xs disabled:opacity-60"
+                    {teacherCanPublishCourse(course.status) ? (
+                      <Link
+                        href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=review`}
+                        className="button-outline min-h-9 px-3 text-xs"
                       >
-                        {reviewingCourseId === course.id
-                          ? "Submitting..."
-                          : "Send for review"}
-                      </button>
+                        Review & publish
+                      </Link>
                     ) : null}
                     {teacherCanDeleteCourse(course.status) ? (
                       confirmingDeleteId === course.id ? (
@@ -305,7 +322,7 @@ export function TeacherCourseStudio({
                             type="button"
                             onClick={() => handleDeleteCourse(course.id)}
                             disabled={deletingCourseId === course.id}
-                            className="button-accent px-4 py-2 text-xs disabled:opacity-60"
+                            className="button-accent min-h-9 px-3 text-xs disabled:opacity-60"
                           >
                             {deletingCourseId === course.id
                               ? "Deleting..."
@@ -315,28 +332,28 @@ export function TeacherCourseStudio({
                             type="button"
                             onClick={() => setConfirmingDeleteId(null)}
                             disabled={deletingCourseId === course.id}
-                            className="button-outline px-4 py-2 text-xs disabled:opacity-60"
+                            className="button-outline min-h-9 px-3 text-xs disabled:opacity-60"
                           >
-                            Keep draft
+                            Cancel
                           </button>
                         </>
                       ) : (
                         <button
                           type="button"
                           onClick={() => setConfirmingDeleteId(course.id)}
-                          className="button-outline px-4 py-2 text-xs text-[var(--color-accent-fg)]"
+                          className="min-h-9 px-2 text-xs font-semibold text-[var(--color-accent-fg)] underline-offset-4 hover:underline"
                         >
-                          Delete draft
+                          Delete
                         </button>
                       )
                     ) : null}
                   </div>
                 </article>
-              ))
-            )}
-          </div>
-        </section>
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

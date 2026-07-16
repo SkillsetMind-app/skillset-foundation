@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 
 import {
+  enforceRateLimit,
   PaymentError,
   paymentErrorResponse,
   requireUserId,
 } from "@/lib/payments/server/auth";
 import { getStripeClient } from "@/lib/payments/server/stripe";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // Learner-facing course-subscription management. Cancels at period end (the
 // learner keeps access through the period they already paid for — the market
@@ -36,21 +36,7 @@ export async function POST(request: Request) {
     }
     const resume = body?.resume === true;
 
-    const supabase = await createSupabaseServerClient();
-    const { error: rateError } = await supabase.rpc("enforce_rate_limit", {
-      p_key: `course_sub_cancel_${uid}`,
-      p_limit: 20,
-      p_window_ms: 60 * 60 * 1000,
-    });
-    if (rateError) {
-      if (rateError.message?.includes("RATE_LIMIT")) {
-        throw new PaymentError(
-          "Too many attempts. Please wait before trying again.",
-          429,
-        );
-      }
-      throw new Error(rateError.message);
-    }
+    await enforceRateLimit(`course_sub_cancel_${uid}`, 20, 60 * 60 * 1000);
 
     const admin = getSupabaseAdminClient();
     const { data: enrollment } = await admin

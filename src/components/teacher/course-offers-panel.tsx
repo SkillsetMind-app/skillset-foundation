@@ -126,7 +126,7 @@ export function CourseOffersPanel({
       if (!res.ok) {
         throw new Error(data.error || "Could not create offer.");
       }
-      setNotice("Offer created. Dual-read checkout will prefer the default offer.");
+      setNotice("Offer created. Its buyer link now resolves this exact price.");
       setPublicCode("");
       await reload();
     } catch (createError) {
@@ -143,7 +143,7 @@ export function CourseOffersPanel({
   return (
     <PanelCard
       title="Offers & prices"
-      description="Hotmart-style packages: create additional prices (one-time or subscription). The default offer drives checkout; legacy course price stays as fallback."
+      description="Create one-time or subscription packages. The default drives the main page; every active offer has an exact buyer link."
     >
       <form onSubmit={(e) => void handleCreate(e)} className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">
@@ -203,9 +203,11 @@ export function CourseOffersPanel({
           </span>
           <select
             value={paymentType}
-            onChange={(e) =>
-              setPaymentType(e.target.value as TeacherCoursePaymentType)
-            }
+            onChange={(e) => {
+              const next = e.target.value as TeacherCoursePaymentType;
+              setPaymentType(next);
+              if (next === "free") setIsDefault(true);
+            }}
             className={inputClass}
           >
             <option value="one_time">One-time</option>
@@ -218,6 +220,7 @@ export function CourseOffersPanel({
           <input
             type="checkbox"
             checked={isDefault}
+            disabled={paymentType === "free"}
             onChange={(e) => setIsDefault(e.target.checked)}
           />
           Default offer (drives checkout + syncs legacy price)
@@ -243,13 +246,13 @@ export function CourseOffersPanel({
       {loading ? (
         <p className="mt-4 text-sm text-[var(--color-ink-soft)]">Loading offers…</p>
       ) : offers.length ? (
-        <ul className="mt-4 grid gap-2">
+        <ul className="mt-4 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
           {offers.map((offer) => {
             const price = offer.prices[0];
             return (
               <li
                 key={offer.id}
-                className="rounded-[10px] border fine-rule bg-white px-4 py-3"
+                className="px-1 py-3"
               >
                 <p className="text-sm font-semibold text-[var(--color-ink)]">
                   {offer.name}
@@ -266,6 +269,20 @@ export function CourseOffersPanel({
                   {offer.publicCode ? ` · code ${offer.publicCode}` : ""}
                   {offer.active ? "" : " · inactive"}
                 </p>
+                {offer.active && price ? (
+                  <a
+                    href={`/courses/${encodeURIComponent(courseId)}?${
+                      offer.publicCode
+                        ? `offer=${encodeURIComponent(offer.publicCode)}`
+                        : `offerId=${encodeURIComponent(offer.id)}`
+                    }`}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="mt-2 inline-flex text-xs font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+                  >
+                    Open buyer link
+                  </a>
+                ) : null}
               </li>
             );
           })}

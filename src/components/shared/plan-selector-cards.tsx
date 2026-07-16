@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
@@ -13,7 +14,7 @@ export type PlanSelectorOption<TValue extends string> = {
 };
 
 type PlanSelectorCardsProps<TValue extends string> = {
-  label: string;
+  label: ReactNode;
   options: PlanSelectorOption<TValue>[];
   value: TValue;
   onChange: (value: TValue) => void;

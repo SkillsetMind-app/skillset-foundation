@@ -117,7 +117,7 @@ export function PlatformNav({ collapsed = false }: { collapsed?: boolean }) {
         return (
           <Fragment key={item.href}>
             {showSection ? (
-              <p className="platform-sidebar-section-label">
+              <p className="platform-sidebar-section-label shrink-0">
                 {item.section}
               </p>
             ) : null}
@@ -169,6 +169,10 @@ function resolveContext(
 }
 
 function isActivePlatformRoute(pathname: string, href: string) {
+  if (href === "/teach/builder" && pathname.startsWith("/teach/courses/")) {
+    return true;
+  }
+
   if (href === "/account") {
     return (
       pathname === "/account" ||
@@ -211,7 +215,7 @@ function PlatformNavLink({
       aria-current={active ? "page" : undefined}
       target={newTab ? "_blank" : undefined}
       rel={newTab ? "noopener noreferrer" : undefined}
-      className={`platform-nav-link group relative flex items-center gap-2.5 rounded-[10px] border py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(44,82,130,0.24)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${collapsed ? "justify-center px-0" : "px-2.5"} ${
+      className={`platform-nav-link group relative flex min-h-[50px] shrink-0 items-center gap-2.5 rounded-[10px] border py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(44,82,130,0.24)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${collapsed ? "justify-center px-0" : "px-2.5"} ${
         active
           ? "platform-nav-active border-[rgba(24,58,94,0.2)] shadow-[0_10px_22px_rgba(26,54,93,0.16)]"
           : "border-transparent text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]"

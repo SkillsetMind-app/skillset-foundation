@@ -10,27 +10,38 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
-import { buildCreatorOpsSnapshot } from "@/domain/creator-ops";
+import {
+  buildCreatorOpsSnapshot,
+  type CurrencyAmount,
+} from "@/domain/creator-ops";
 import { calculateCreatorSubscriptionMetrics } from "@/domain/creator-subscriptions";
 import type { Order } from "@/domain/order";
 import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import type { CourseSubscription } from "@/domain/course-subscription";
-import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToTeacherCourseSubscriptions } from "@/lib/data/course-subscriptions";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { subscribeToTeacherPayoutLedger } from "@/lib/data/payout-ledger";
-import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
+
+type ReadState = "loading" | "ready" | "error";
 
 function money(amountMinor: number, currency: string): string {
   try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: currency || "USD",
+    const formatted = new Intl.NumberFormat(undefined, {
       maximumFractionDigits: 0,
     }).format(amountMinor / 100);
+    return `${currency} ${formatted}`;
   } catch {
-    return `${(amountMinor / 100).toFixed(2)} ${currency}`;
+    return `${currency} ${(amountMinor / 100).toFixed(2)}`;
   }
+}
+
+function moneyBreakdown(values: CurrencyAmount[]): string {
+  if (!values.length) return "No activity";
+  return values.map((value) => money(value.amountMinor, value.currency)).join(" + ");
+}
+
+function unavailableValue(state: ReadState): string {
+  return state === "error" ? "Unavailable" : "—";
 }
 
 export function CreatorOpsHub() {
@@ -38,19 +49,38 @@ export function CreatorOpsHub() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [ledgers, setLedgers] = useState<PayoutLedgerEntry[]>([]);
   const [subscriptions, setSubscriptions] = useState<CourseSubscription[]>([]);
-  const [courses, setCourses] = useState<TeacherCourse[]>([]);
+  const [ordersState, setOrdersState] = useState<ReadState>("loading");
+  const [ledgersState, setLedgersState] = useState<ReadState>("loading");
+  const [subscriptionsState, setSubscriptionsState] =
+    useState<ReadState>("loading");
 
   useEffect(() => {
     if (!user) return;
     const unsubs = [
-      subscribeToTeacherOrders(user.uid, setOrders, () => setOrders([])),
-      subscribeToTeacherPayoutLedger(user.uid, setLedgers, () => setLedgers([])),
+      subscribeToTeacherOrders(
+        user.uid,
+        (next) => {
+          setOrders(next);
+          setOrdersState("ready");
+        },
+        () => setOrdersState("error"),
+      ),
+      subscribeToTeacherPayoutLedger(
+        user.uid,
+        (next) => {
+          setLedgers(next);
+          setLedgersState("ready");
+        },
+        () => setLedgersState("error"),
+      ),
       subscribeToTeacherCourseSubscriptions(
         user.uid,
-        setSubscriptions,
-        () => setSubscriptions([]),
+        (next) => {
+          setSubscriptions(next);
+          setSubscriptionsState("ready");
+        },
+        () => setSubscriptionsState("error"),
       ),
-      subscribeToTeacherCourses(user.uid, setCourses, () => setCourses([])),
     ];
     return () => {
       for (const unsub of unsubs) unsub?.();
@@ -60,35 +90,78 @@ export function CreatorOpsHub() {
   const snap = useMemo(() => {
     const subscriptionMetrics = calculateCreatorSubscriptionMetrics(
       subscriptions,
-      courses,
+      [],
+      undefined,
+      { orders, ledgers },
     );
     return buildCreatorOpsSnapshot({
       orders,
       ledgers,
       subscriptionMetrics,
     });
-  }, [orders, ledgers, subscriptions, courses]);
+  }, [orders, ledgers, subscriptions]);
+
+  const financialFallbackState: ReadState =
+    ordersState === "error" && ledgersState === "error"
+      ? "error"
+      : ordersState === "ready" || ledgersState === "ready"
+        ? "ready"
+        : "loading";
+  const mrrState: ReadState =
+    subscriptionsState !== "ready"
+      ? subscriptionsState
+      : snap.mrrSnapshotMissingCount === 0
+        ? "ready"
+        : financialFallbackState;
+  const mrrDetail = mrrState === "ready"
+    ? [
+        `${moneyBreakdown(snap.mrrByCurrency)} MRR`,
+        `${snap.pastDueSubscribers} past due`,
+        snap.mrrLegacyFallbackCount > 0
+          ? `${snap.mrrLegacyFallbackCount} legacy invoice fallback`
+          : null,
+        snap.mrrSnapshotMissingCount > 0
+          ? `${snap.mrrSnapshotMissingCount} contract snapshot missing`
+          : null,
+      ].filter(Boolean).join(" · ")
+    : mrrState === "error"
+      ? "Recurring revenue could not be loaded"
+      : "Loading recurring revenue";
 
   const cards = [
     {
       href: "/teach/sales",
       label: "Sales",
-      value: String(snap.salesCount),
-      detail: money(snap.salesGrossMinor, snap.salesCurrency),
+      value: ordersState === "ready"
+        ? String(snap.salesCount)
+        : unavailableValue(ordersState),
+      detail: ordersState === "ready"
+        ? moneyBreakdown(snap.salesGrossByCurrency)
+        : ordersState === "error"
+          ? "Sales data could not be loaded"
+          : "Loading sales",
       icon: BadgeDollarSign,
     },
     {
       href: "/teach/subscriptions",
       label: "Subscribers",
-      value: String(snap.activeSubscribers),
-      detail: `${money(snap.mrrMinor, snap.mrrCurrency)} MRR · ${snap.pastDueSubscribers} past due`,
+      value: subscriptionsState === "ready"
+        ? String(snap.activeSubscribers)
+        : unavailableValue(subscriptionsState),
+      detail: mrrDetail,
       icon: Repeat2,
     },
     {
       href: "/account/payments",
       label: "Wallet",
-      value: money(snap.walletReleasedMinor, snap.salesCurrency),
-      detail: `${money(snap.walletInReleaseMinor, snap.salesCurrency)} in release`,
+      value: ledgersState === "ready"
+        ? moneyBreakdown(snap.walletReleasedByCurrency)
+        : unavailableValue(ledgersState),
+      detail: ledgersState === "ready"
+        ? `${moneyBreakdown(snap.walletInReleaseByCurrency)} in release`
+        : ledgersState === "error"
+          ? "Wallet data could not be loaded"
+          : "Loading wallet",
       icon: Wallet,
     },
   ];
@@ -113,9 +186,9 @@ export function CreatorOpsHub() {
               <div className="text-2xl font-semibold text-[var(--color-ink)]">
                 {card.value}
               </div>
-              <div className="mt-1 flex items-center gap-1 text-sm text-[var(--color-ink-soft)]">
-                {card.detail}
-                <ArrowUpRight className="h-3.5 w-3.5 opacity-0 transition group-hover:opacity-100" />
+              <div className="mt-1 flex items-start gap-1 text-sm text-[var(--color-ink-soft)]">
+                <span className="min-w-0 break-words">{card.detail}</span>
+                <ArrowUpRight className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-0 transition group-hover:opacity-100" />
               </div>
             </Link>
           );

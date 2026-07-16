@@ -18,9 +18,16 @@ export type ProductOffer = {
   id: string;
   courseId: string;
   name: string;
+  publicCode?: string | null;
   isDefault?: boolean;
   active?: boolean;
   prices: ProductPrice[];
+};
+
+export type ProductPriceSelection = {
+  offerId?: string;
+  publicCode?: string;
+  priceId?: string;
 };
 
 export type ResolvedCoursePrice = {
@@ -42,20 +49,34 @@ export function resolveCoursePrice(
     "id" | "priceAmountMinor" | "currency" | "paymentType"
   >,
   offers: ProductOffer[] = [],
+  selection: ProductPriceSelection = {},
 ): ResolvedCoursePrice | null {
   const activeOffers = offers.filter(
     (offer) => offer.active !== false && offer.courseId === course.id,
   );
-  const preferred =
-    activeOffers.find((offer) => offer.isDefault)
-    ?? activeOffers[0]
-    ?? null;
+  const offerId = selection.offerId?.trim();
+  const publicCode = selection.publicCode?.trim().toUpperCase();
+  const hasExplicitOffer = Boolean(offerId || publicCode);
+  const preferred = hasExplicitOffer
+    ? activeOffers.find(
+        (offer) =>
+          (!offerId || offer.id === offerId)
+          && (!publicCode || offer.publicCode?.toUpperCase() === publicCode),
+      ) ?? null
+    : activeOffers.find((offer) => offer.isDefault) ?? activeOffers[0] ?? null;
+
+  if (hasExplicitOffer && !preferred) {
+    return null;
+  }
 
   if (preferred) {
-    const price =
-      preferred.prices.find((entry) => entry.active !== false)
-      ?? preferred.prices[0]
-      ?? null;
+    const activePrices = preferred.prices.filter((entry) => entry.active !== false);
+    const price = selection.priceId
+      ? activePrices.find((entry) => entry.id === selection.priceId) ?? null
+      : activePrices[0] ?? null;
+    if (selection.priceId && !price) {
+      return null;
+    }
     if (price && price.amountMinor >= 0) {
       return {
         source: "offer",
@@ -67,6 +88,10 @@ export function resolveCoursePrice(
         stripePriceId: price.stripePriceId,
       };
     }
+  }
+
+  if (hasExplicitOffer) {
+    return null;
   }
 
   const amount = Number(course.priceAmountMinor ?? 0);

@@ -18,7 +18,7 @@ const course = {
   modules: [],
   lessonCount: 0,
   paymentType: "subscription_monthly",
-  priceAmountMinor: 9900,
+  priceAmountMinor: 19900,
   currency: "BRL",
 } as TeacherCourse;
 
@@ -92,7 +92,7 @@ describe("CreatorSubscriptionCenterView", () => {
     expect(screen.getAllByText("Maria Silva").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Clinical Focus").length).toBeGreaterThan(0);
     expect(screen.getByText("1 active")).toBeInTheDocument();
-    expect(screen.getByText(/BRL/)).toBeInTheDocument();
+    expect(screen.getByText("BRL 99.00")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Search subscribers"), {
       target: { value: "does-not-match" },
@@ -116,5 +116,24 @@ describe("CreatorSubscriptionCenterView", () => {
     expect(screen.getByText("Renewal in-1")).toBeInTheDocument();
     expect(screen.getByText(/Maria Silva/)).toBeInTheDocument();
     expect(screen.getByText(/Gross BRL 99.00/)).toBeInTheDocument();
+  });
+
+  it("marks financial metrics and renewals unavailable after a read failure", () => {
+    render(
+      <CreatorSubscriptionCenterView
+        subscriptions={[subscription]}
+        courses={[course]}
+        orders={[]}
+        ledgers={[]}
+        profiles={[profile]}
+        financialState="error"
+      />,
+    );
+
+    expect(screen.getByText("Unavailable")).toBeInTheDocument();
+    expect(screen.queryByText("No MRR yet")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Renewals" }));
+    expect(screen.getByText("Renewal history is unavailable.")).toBeInTheDocument();
   });
 });
