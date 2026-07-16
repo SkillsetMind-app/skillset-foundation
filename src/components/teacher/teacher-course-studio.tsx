@@ -1,32 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, Layers3, Plus } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  CalendarDays,
+  Handshake,
+  Layers3,
+  Megaphone,
+  Plus,
+  UsersRound,
+} from "lucide-react";
 import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { ListingSearchBar } from "@/components/shared/listing-search-bar";
 import { StatusChip } from "@/components/shared/status-chip";
 import { CreateCourseStart } from "@/components/teacher/create-course-start";
-import type {
-  TeacherCourse,
-  TeacherCourseProductFormat,
-} from "@/domain/teacher-course";
-import {
-  teacherCanDeleteCourse,
-  teacherCanPublishCourse,
-} from "@/domain/teacher-course";
-import {
-  deleteTeacherCourse,
-  subscribeToTeacherCourses,
-} from "@/lib/data/teacher-courses";
+import type { TeacherCourse, TeacherCourseProductFormat } from "@/domain/teacher-course";
+import { teacherCanDeleteCourse, teacherCanPublishCourse } from "@/domain/teacher-course";
+import { deleteTeacherCourse, subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 
-type ProductFilter =
-  | "all"
-  | "draft"
-  | "in_review"
-  | "published"
-  | "attention";
+type ProductFilter = "all" | "draft" | "in_review" | "published" | "attention";
 
 const productFilters: Array<{ id: ProductFilter; label: string }> = [
   { id: "all", label: "All" },
@@ -59,6 +55,9 @@ export function TeacherCourseStudio({
   initialFormat?: TeacherCourseProductFormat;
 }) {
   const { user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const productView = searchParams.get("view") === "communities" ? "communities" : "products";
   const [courseQuery, setCourseQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProductFilter>("all");
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
@@ -68,6 +67,10 @@ export function TeacherCourseStudio({
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const normalizedCourseQuery = courseQuery.toLowerCase().trim();
   const visibleCourses = courses.filter((course) => {
+    if (productView === "communities" && !course.communityEnabled) {
+      return false;
+    }
+
     const matchesSearch = normalizedCourseQuery
       ? `${course.title} ${course.summary} ${course.category} ${course.status}`
           .toLowerCase()
@@ -89,10 +92,10 @@ export function TeacherCourseStudio({
       },
       () => {
         setError(
-          "We could not load your products. Please refresh or contact SkillsetMind support.",
+          "We could not load your products. Please refresh or contact SkillsetMind support."
         );
         setIsLoadingCourses(false);
-      },
+      }
     );
   }, [user]);
 
@@ -103,9 +106,7 @@ export function TeacherCourseStudio({
     try {
       await deleteTeacherCourse(courseId);
     } catch {
-      setError(
-        "We could not delete this draft. Please try again or contact SkillsetMind support.",
-      );
+      setError("We could not delete this draft. Please try again or contact SkillsetMind support.");
     } finally {
       setDeletingCourseId(null);
       setConfirmingDeleteId(null);
@@ -122,6 +123,11 @@ export function TeacherCourseStudio({
     );
   }
 
+  const createHref =
+    productView === "communities"
+      ? "/teach/builder?newCourse=1&format=community"
+      : "/teach/builder?newCourse=1&format=course";
+
   return (
     <div className="grid gap-6">
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--color-line)] pb-5">
@@ -133,16 +139,13 @@ export function TeacherCourseStudio({
             My products
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-            Create private drafts, complete the product checks, and publish
-            directly once your professional verification is approved.
+            Create private drafts, complete the product checks, and publish directly once your
+            professional verification is approved.
           </p>
         </div>
-        <Link
-          href="/teach/builder?newCourse=1"
-          className="button-solid min-h-10 px-4 text-sm"
-        >
+        <Link href={createHref} className="button-solid min-h-10 px-4 text-sm">
           <Plus aria-hidden="true" size={16} strokeWidth={2} />
-          New product
+          {productView === "communities" ? "New community" : "New product"}
         </Link>
       </header>
 
@@ -155,26 +158,116 @@ export function TeacherCourseStudio({
         </p>
       ) : null}
 
+      <nav
+        aria-label="Product workspace shortcuts"
+        className="grid overflow-hidden rounded-[8px] border border-[var(--color-line)] sm:grid-cols-2 xl:grid-cols-4"
+      >
+        {[
+          {
+            title: "Members & communities",
+            detail: "Customize delivery and learner spaces",
+            href: "/teach/members",
+            icon: UsersRound,
+          },
+          {
+            title: "Online events",
+            detail: "Schedule workshops and live sessions",
+            href: "/teach/events",
+            icon: CalendarDays,
+          },
+          {
+            title: "Marketing workspace",
+            detail: "Pages, media, messages, and promotions",
+            href: "/teach/marketing",
+            icon: Megaphone,
+          },
+          {
+            title: "Affiliate programs",
+            detail: "Configure product-level partner terms",
+            href: "/teach/affiliates",
+            icon: Handshake,
+          },
+        ].map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="group flex min-h-28 items-start gap-3 border-b border-[var(--color-line)] bg-white p-4 last:border-b-0 hover:bg-[var(--color-surface-soft)] sm:[&:nth-last-child(-n+2)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0"
+            >
+              <span className="grid size-9 shrink-0 place-items-center rounded-[7px] border border-[var(--color-line)] text-[var(--color-primary)]">
+                <Icon aria-hidden="true" size={17} strokeWidth={1.8} />
+              </span>
+              <span className="min-w-0">
+                <strong className="block text-sm text-[var(--color-ink)]">{item.title}</strong>
+                <small className="mt-1 block text-xs leading-5 text-[var(--color-ink-soft)]">
+                  {item.detail}
+                </small>
+                <ArrowRight
+                  aria-hidden="true"
+                  className="mt-2 text-[var(--color-primary)] transition-transform group-hover:translate-x-1"
+                  size={14}
+                  strokeWidth={1.9}
+                />
+              </span>
+            </Link>
+          );
+        })}
+      </nav>
+
       <section aria-labelledby="product-list-title">
+        <div
+          className="mb-5 inline-grid grid-cols-2 rounded-[7px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1"
+          role="radiogroup"
+          aria-label="Product content type"
+        >
+          {(["products", "communities"] as const).map((view) => (
+            <button
+              key={view}
+              type="button"
+              role="radio"
+              aria-checked={productView === view}
+              onClick={() =>
+                router.push(
+                  view === "communities" ? "/teach/builder?view=communities" : "/teach/builder"
+                )
+              }
+              className={`min-h-9 rounded-[5px] px-4 text-sm font-semibold transition-colors ${
+                productView === view
+                  ? "bg-[var(--color-primary)] text-white"
+                  : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
+              }`}
+            >
+              {view === "products" ? "Products" : "Communities"}
+            </button>
+          ))}
+        </div>
+
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2
-              id="product-list-title"
-              className="text-lg font-semibold text-[var(--color-ink)]"
-            >
-              Product workspace
+            <h2 id="product-list-title" className="text-lg font-semibold text-[var(--color-ink)]">
+              {productView === "communities" ? "Community workspace" : "Product workspace"}
             </h2>
             <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
               {isLoadingCourses
                 ? "Loading products..."
-                : `${courses.length} ${courses.length === 1 ? "product" : "products"}`}
+                : productView === "communities"
+                  ? `${courses.filter((course) => course.communityEnabled).length} ${
+                      courses.filter((course) => course.communityEnabled).length === 1
+                        ? "community"
+                        : "communities"
+                    }`
+                  : `${courses.length} ${courses.length === 1 ? "product" : "products"}`}
             </p>
           </div>
           {courses.length > 0 ? (
             <ListingSearchBar
               value={courseQuery}
               onChange={setCourseQuery}
-              placeholder="Search products..."
+              placeholder={
+                productView === "communities" ? "Search communities..." : "Search products..."
+              }
             />
           ) : null}
         </div>
@@ -185,9 +278,7 @@ export function TeacherCourseStudio({
             aria-label="Product status filters"
           >
             {productFilters.map((filter) => {
-              const count = courses.filter((course) =>
-                filterMatches(course, filter.id),
-              ).length;
+              const count = courses.filter((course) => filterMatches(course, filter.id)).length;
 
               return (
                 <button
@@ -221,24 +312,24 @@ export function TeacherCourseStudio({
                 />
               ))}
             </div>
-          ) : courses.length === 0 ? (
+          ) : courses.length === 0 ||
+            (productView === "communities" &&
+              !courses.some((course) => course.communityEnabled)) ? (
             <div className="grid place-items-center border-y border-dashed border-[var(--color-line-strong)] px-5 py-14 text-center">
               <span className="grid size-11 place-items-center rounded-[8px] border border-[var(--color-line)] bg-white text-[var(--color-primary)]">
                 <BookOpen aria-hidden="true" size={20} strokeWidth={1.8} />
               </span>
               <h3 className="mt-4 text-lg font-semibold text-[var(--color-ink)]">
-                No products yet
+                {productView === "communities" ? "No communities yet" : "No products yet"}
               </h3>
               <p className="mt-2 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
-                Start a course, subscription, or free program. The draft stays
-                private until you complete the checks and publish it.
+                {productView === "communities"
+                  ? "Create a recurring members space for posts, discussion, and practitioner-led exchange."
+                  : "Start a course, subscription, community, event, or free program. The draft stays private until you publish it."}
               </p>
-              <Link
-                href="/teach/builder?newCourse=1"
-                className="button-solid mt-5 min-h-10 px-4 text-sm"
-              >
+              <Link href={createHref} className="button-solid mt-5 min-h-10 px-4 text-sm">
                 <Plus aria-hidden="true" size={16} strokeWidth={2} />
-                Create product
+                {productView === "communities" ? "Create community" : "Create product"}
               </Link>
             </div>
           ) : visibleCourses.length === 0 ? (
@@ -274,6 +365,7 @@ export function TeacherCourseStudio({
                       </p>
                       <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
                         {course.modules.length} modules · {course.lessonCount} lessons
+                        {course.communityEnabled ? " · Community on" : ""}
                       </p>
                     </div>
                   </div>
@@ -324,9 +416,7 @@ export function TeacherCourseStudio({
                             disabled={deletingCourseId === course.id}
                             className="button-accent min-h-9 px-3 text-xs disabled:opacity-60"
                           >
-                            {deletingCourseId === course.id
-                              ? "Deleting..."
-                              : "Confirm delete"}
+                            {deletingCourseId === course.id ? "Deleting..." : "Confirm delete"}
                           </button>
                           <button
                             type="button"

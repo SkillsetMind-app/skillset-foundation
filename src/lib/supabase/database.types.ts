@@ -2165,6 +2165,7 @@ export type Database = {
         Args: {
           p_categories: string[]
           p_category: string
+          p_community_enabled: boolean
           p_payment_type: string
           p_summary: string
           p_title: string

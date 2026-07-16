@@ -5,9 +5,11 @@ import {
   ArrowLeft,
   ArrowRight,
   BookOpenCheck,
+  CalendarDays,
   Check,
   Gift,
   Repeat2,
+  UsersRound,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -30,19 +32,15 @@ type CreateCourseStartProps = {
 };
 
 const creationSteps = [
-  ["01", "Product format", "Course, subscription, or free"],
+  ["01", "Product format", "Course, subscription, community, event, or free"],
   ["02", "Basic information", "Title, promise, and categories"],
   ["03", "Pricing and content", "Continue in the product builder"],
 ] as const;
 
-export function CreateCourseStart({
-  ownerId,
-  initialFormat = "course",
-}: CreateCourseStartProps) {
+export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateCourseStartProps) {
   const router = useRouter();
   const [step, setStep] = useState<"format" | "basics">("format");
-  const [productFormat, setProductFormat] =
-    useState<TeacherCourseProductFormat>(initialFormat);
+  const [productFormat, setProductFormat] = useState<TeacherCourseProductFormat>(initialFormat);
   const [subscriptionInterval, setSubscriptionInterval] =
     useState<TeacherCourseSubscriptionInterval>("monthly");
   const [title, setTitle] = useState("");
@@ -53,10 +51,10 @@ export function CreateCourseStart({
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
   const previousStepRef = useRef(step);
   const canSubmit =
-    title.trim().length >= 3
-    && summary.trim().length >= 20
-    && selectedCategories.length > 0
-    && !isSaving;
+    title.trim().length >= 3 &&
+    summary.trim().length >= 20 &&
+    selectedCategories.length > 0 &&
+    !isSaving;
   const courseType: NonNullable<CreateTeacherCourseInput["paymentType"]> =
     resolveTeacherCoursePaymentType(productFormat, subscriptionInterval);
   const nextBuilderTab = productFormat === "free" ? "content" : "pricing";
@@ -106,12 +104,12 @@ export function CreateCourseStart({
         category: primaryCategory,
         categories,
         paymentType: courseType,
+        communityEnabled: productFormat === "community",
       });
 
       router.push(`/teach/builder?courseId=${courseId}&tab=${nextBuilderTab}`);
     } catch (caughtError) {
-      const message =
-        caughtError instanceof Error ? caughtError.message : "";
+      const message = caughtError instanceof Error ? caughtError.message : "";
       setError(
         message.toLowerCase().includes("already")
           ? "A course with this title already exists. Choose a more specific name."
@@ -119,7 +117,7 @@ export function CreateCourseStart({
             ? "Course creation is blocked until creator setup is complete. Verify your email and accept Teacher Terms first."
             : message.toLowerCase().includes("summary")
               ? "Add a course summary with at least 20 characters."
-              : "We could not create this course. Please try again.",
+              : "We could not create this course. Please try again."
       );
       setIsSaving(false);
     }
@@ -139,12 +137,15 @@ export function CreateCourseStart({
         <h1 className="display-title mt-3 text-3xl leading-[1.08] text-white sm:text-4xl">
           Build the product foundation.
         </h1>
-        <p className="mt-4 max-w-md text-sm leading-6">
-          Start with the access model and essential information. Pricing,
-          curriculum, members area, and publication follow in the builder.
+        <p className="create-course-screen__intro-copy mt-4 max-w-md text-sm leading-6">
+          Start with the access model and essential information. Pricing, curriculum, members area,
+          and publication follow in the builder.
         </p>
 
-        <ol className="mt-8 grid gap-2" aria-label="Product creation progress">
+        <ol
+          className="create-course-screen__progress mt-8 grid gap-2"
+          aria-label="Product creation progress"
+        >
           {creationSteps.map(([number, label, detail], index) => {
             const complete = index < activeStep;
             const current = index === activeStep;
@@ -156,11 +157,7 @@ export function CreateCourseStart({
                 aria-current={current ? "step" : undefined}
               >
                 <span>
-                  {complete ? (
-                    <Check aria-hidden="true" size={14} strokeWidth={2.4} />
-                  ) : (
-                    number
-                  )}
+                  {complete ? <Check aria-hidden="true" size={14} strokeWidth={2.4} /> : number}
                 </span>
                 <div>
                   <strong>{label}</strong>
@@ -179,18 +176,22 @@ export function CreateCourseStart({
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
                 Step 1 of 2
               </p>
-              <h2 ref={stepHeadingRef} tabIndex={-1} className="mt-2 text-3xl font-semibold leading-tight text-[var(--color-primary)]">
+              <h2
+                ref={stepHeadingRef}
+                tabIndex={-1}
+                className="mt-2 text-3xl font-semibold leading-tight text-[var(--color-primary)]"
+              >
                 Choose a product format
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-                The format defines how learners receive access. Commercial terms
-                remain editable in Pricing and offers.
+                The format defines how learners receive access. Commercial terms remain editable in
+                Pricing and offers.
               </p>
             </div>
 
             <fieldset className="mt-6">
               <legend className="sr-only">Product format</legend>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <PaymentChoice
                   active={productFormat === "course"}
                   detail="One-time purchase with permanent or managed access."
@@ -206,23 +207,41 @@ export function CreateCourseStart({
                   onClick={() => setProductFormat("subscription")}
                 />
                 <PaymentChoice
+                  active={productFormat === "community"}
+                  detail="A recurring members space built for posts and peer exchange."
+                  icon="community"
+                  label="Community"
+                  onClick={() => setProductFormat("community")}
+                />
+                <PaymentChoice
                   active={productFormat === "free"}
                   detail="Open enrollment with no checkout or payment."
                   icon="free"
                   label="Free program"
                   onClick={() => setProductFormat("free")}
                 />
+                <Link href="/teach/events?newEvent=1" className="create-course-payment">
+                  <span>
+                    <CalendarDays aria-hidden="true" size={18} strokeWidth={1.8} />
+                  </span>
+                  <strong>Online event</strong>
+                  <small>Live workshops, cohorts, and scheduled group sessions.</small>
+                  <ArrowRight
+                    aria-hidden="true"
+                    className="create-course-payment__selected"
+                    size={15}
+                    strokeWidth={2.2}
+                  />
+                </Link>
               </div>
             </fieldset>
 
-            {productFormat === "subscription" ? (
+            {productFormat === "subscription" || productFormat === "community" ? (
               <fieldset className="mt-5">
                 <legend className="text-sm font-semibold text-[var(--color-ink)]">
                   Initial billing interval
                 </legend>
-                <div
-                  className="mt-2 grid grid-cols-2 gap-1 rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1"
-                >
+                <div className="mt-2 grid grid-cols-2 gap-1 rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
                   {(["monthly", "yearly"] as const).map((interval) => (
                     <button
                       key={interval}
@@ -259,12 +278,16 @@ export function CreateCourseStart({
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
                 Step 2 of 2
               </p>
-              <h2 ref={stepHeadingRef} tabIndex={-1} className="mt-2 text-3xl font-semibold leading-tight text-[var(--color-primary)]">
+              <h2
+                ref={stepHeadingRef}
+                tabIndex={-1}
+                className="mt-2 text-3xl font-semibold leading-tight text-[var(--color-primary)]"
+              >
                 Add the essential information
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-                This creates a private draft. Nothing becomes visible or sellable
-                before professional verification and publication.
+                This creates a private draft. Nothing becomes visible or sellable before
+                professional verification and publication.
               </p>
             </div>
 
@@ -300,14 +323,10 @@ export function CreateCourseStart({
               <div className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                 <span className="flex items-center gap-2">
                   Categories
-                  <InlineHelp
-                    topic="Course categories"
-                    href="/help#course-categories"
-                  >
-                    Categories determine where buyers discover the product and
-                    how SkillsetMind groups related expertise. Choose the most
-                    specific fit first; that first selection becomes the primary
-                    marketplace category.
+                  <InlineHelp topic="Course categories" href="/help#course-categories">
+                    Categories determine where buyers discover the product and how SkillsetMind
+                    groups related expertise. Choose the most specific fit first; that first
+                    selection becomes the primary marketplace category.
                   </InlineHelp>
                 </span>
                 <CourseCategorySelect
@@ -371,7 +390,13 @@ function PaymentChoice({
   onClick: () => void;
 }) {
   const Icon =
-    icon === "subscription" ? Repeat2 : icon === "free" ? Gift : BookOpenCheck;
+    icon === "subscription"
+      ? Repeat2
+      : icon === "community"
+        ? UsersRound
+        : icon === "free"
+          ? Gift
+          : BookOpenCheck;
 
   return (
     <button

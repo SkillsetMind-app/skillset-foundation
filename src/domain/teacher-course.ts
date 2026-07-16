@@ -33,22 +33,20 @@ export type TeacherCoursePaymentType =
   | "subscription_yearly"
   | "free";
 
-export type TeacherCourseProductFormat = "course" | "subscription" | "free";
+export type TeacherCourseProductFormat = "course" | "subscription" | "community" | "free";
 
 export type TeacherCourseSubscriptionInterval = "monthly" | "yearly";
 
 export function resolveTeacherCoursePaymentType(
   format: TeacherCourseProductFormat,
-  interval: TeacherCourseSubscriptionInterval,
+  interval: TeacherCourseSubscriptionInterval
 ): TeacherCoursePaymentType {
   if (format === "free") {
     return "free";
   }
 
-  if (format === "subscription") {
-    return interval === "yearly"
-      ? "subscription_yearly"
-      : "subscription_monthly";
+  if (format === "subscription" || format === "community") {
+    return interval === "yearly" ? "subscription_yearly" : "subscription_monthly";
   }
 
   return "one_time";
@@ -139,6 +137,7 @@ export type CreateTeacherCourseInput = {
   category: string;
   categories?: string[];
   paymentType?: TeacherCoursePaymentType;
+  communityEnabled?: boolean;
 };
 
 export type UpdateTeacherCourseBuilderInput = {
@@ -236,10 +235,7 @@ export function normalizeMembersTheme(value: unknown): MembersTheme | null {
   return value === "light" || value === "dark" ? value : null;
 }
 
-export function normalizeMembersText(
-  value: unknown,
-  maxLength: number,
-): string | null {
+export function normalizeMembersText(value: unknown, maxLength: number): string | null {
   if (typeof value !== "string") {
     return null;
   }
@@ -254,9 +250,7 @@ function normalizeNullableText(value: string | null | undefined): string | null 
 }
 
 function normalizeNullableNumber(value: number | null | undefined): number | null {
-  return typeof value === "number" && Number.isFinite(value)
-    ? Math.round(value)
-    : null;
+  return typeof value === "number" && Number.isFinite(value) ? Math.round(value) : null;
 }
 
 function normalizeVideoSource(value: unknown): LessonVideoSource | null {
@@ -284,7 +278,7 @@ export function inferLessonVideoSource(params: {
 // the function alone decides — via its own WRITE_LESSON_CONTENT_INLINE flag —
 // whether to also keep the content inline on the world-readable course doc.
 export function normalizeTeacherCourseModules(
-  modules: TeacherCourseModule[],
+  modules: TeacherCourseModule[]
 ): TeacherCourseModule[] {
   return modules.map((module) => ({
     ...module,
@@ -324,9 +318,7 @@ export function teacherCanPublishCourse(status: TeacherCourseStatus): boolean {
   return ["draft", "in_review", "needs_changes", "inactive"].includes(status);
 }
 
-export function isCoursePubliclySellable(
-  status: string | null | undefined,
-): boolean {
+export function isCoursePubliclySellable(status: string | null | undefined): boolean {
   return status === "published";
 }
 

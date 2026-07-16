@@ -33,7 +33,13 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
     t: (key: string) =>
       ({
         "platform.sidebarNavLabel": "Workspace",
+        "platform.nav.studio": "Home",
         "platform.nav.courseBuilder": "My products",
+        "platform.nav.membersArea": "Members & communities",
+        "platform.nav.marketingOverview": "Marketing overview",
+        "platform.nav.storefrontPages": "Storefront & pages",
+        "platform.nav.mediaLibrary": "Media library",
+        "platform.nav.affiliatePrograms": "Affiliate programs",
         "platform.help.needHelp": "Need help?",
         "platform.help.browseHelpCenter": "Browse Help Center",
         "platform.help.openTicket": "Open a support ticket",
@@ -57,9 +63,7 @@ describe("creator shell regressions", () => {
   it("renders the consumer brand name exactly once", () => {
     render(<LogoWordmark />);
 
-    expect(screen.getByRole("link", { name: "SkillsetMind" })).toHaveTextContent(
-      /^SkillsetMind$/,
-    );
+    expect(screen.getByRole("link", { name: "SkillsetMind" })).toHaveTextContent(/^SkillsetMind$/);
   });
 
   it("keeps the active navigation row at the same fixed height as its peers", () => {
@@ -88,6 +92,16 @@ describe("creator shell regressions", () => {
     expect(screen.queryByRole("link", { name: "My products" })).toBeNull();
   });
 
+  it("keeps Home direct while grouping the producer workspace by workflow", () => {
+    render(<PlatformNav />);
+
+    expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("href", "/teach");
+    expect(screen.getByRole("button", { name: "Products" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Marketing" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Partnerships" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tools" })).toBeInTheDocument();
+  });
+
   it("uses category icons only in the collapsed rail", () => {
     const onRequestExpand = vi.fn();
     render(<PlatformNav collapsed onRequestExpand={onRequestExpand} />);
@@ -105,9 +119,7 @@ describe("creator shell regressions", () => {
 
   it("keeps the mobile drawer above the sticky application chrome", () => {
     const onClose = vi.fn();
-    render(
-      <MobileSidebarDrawer open onOpen={vi.fn()} onClose={onClose} />,
-    );
+    render(<MobileSidebarDrawer open onOpen={vi.fn()} onClose={onClose} />);
 
     const drawer = screen.getByRole("dialog");
     expect(drawer.parentElement).toHaveClass("z-[100]");
@@ -123,7 +135,7 @@ describe("creator shell regressions", () => {
 
     expect(screen.getByRole("link", { name: "My products" })).toHaveAttribute(
       "aria-current",
-      "page",
+      "page"
     );
   });
 
@@ -141,8 +153,9 @@ describe("creator shell regressions", () => {
   it("places the advisor in the single global floating slot", () => {
     render(<AdvisorSidebar />);
 
-    expect(
-      screen.getByRole("button", { name: "Open studio advisor" }).parentElement,
-    ).toHaveClass("floating-action", "floating-action--advisor");
+    expect(screen.getByRole("button", { name: "Open studio advisor" }).parentElement).toHaveClass(
+      "floating-action",
+      "floating-action--advisor"
+    );
   });
 });

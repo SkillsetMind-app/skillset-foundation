@@ -11,15 +11,15 @@
      correct affordance) instead of flashing literal white — which the global
      `.bg-white` override can't reach on `hover:`/`focus:` compound selectors. */
   --color-surface-hover: #ffffff;
-  --color-brand: #1a365d;
-  --color-primary: #1a365d;
-  --color-primary-dark: #0f2744;
-  --color-primary-light: #2c5282;
-  --color-accent: #b22234;
-  --color-accent-hover: #9e1f2f;
-  --color-accent-soft: #f3d6dc;
-  --color-ink: #163252;
-  --color-ink-soft: #4d6785;
+  --color-brand: #102a43;
+  --color-primary: #102a43;
+  --color-primary-dark: #091d2f;
+  --color-primary-light: #315a7d;
+  --color-accent: #c99a46;
+  --color-accent-hover: #b48333;
+  --color-accent-soft: #f4e8ce;
+  --color-ink: #102a43;
+  --color-ink-soft: #4a6278;
   /* Muted ink. Previous #7a8fae failed WCAG AA on every light surface
      (3.30:1 on white, 2.81:1 on surface-strong). Darkened by a uniform 0.74x
      (identical hue) to clear AA-normal everywhere: 5.51:1 white, 4.98:1
@@ -31,8 +31,8 @@
      every `border-[var(--color-line)]` (279 usages) a visible edge.
      (V2 handoff's tokens.css softens these to .12/.18; HELD pending founder pick
      per the "no blind porting" rule — see docs/design-v2 morning report.) */
-  --color-line: rgba(26, 54, 93, 0.28);
-  --color-line-strong: rgba(26, 54, 93, 0.40);
+  --color-line: rgba(16, 42, 67, 0.28);
+  --color-line-strong: rgba(16, 42, 67, 0.4);
   --color-success: #1f8a5b;
   --color-success-soft: #e4f3eb;
   /* Saturated success green for solid fills carrying WHITE text. The base
@@ -41,17 +41,17 @@
   --color-success-solid: #157f50;
   --color-warning: #c07b0a;
   --color-warning-soft: #fcefd2;
-  --color-info: #2c5282;
+  --color-info: #315a7d;
   --color-info-soft: #ebf3fb;
   --color-danger: #b22234;
   --color-danger-soft: rgba(178, 34, 52, 0.06);
   --color-ink-indigo: #14182b;
-  --color-brass: #c6a15b;
+  --color-brass: #c99a46;
   /* Dark-mode foreground variants. In :root they EQUAL the saturated base token
      (zero light-mode change); [data-theme="dark"] lightens them so semantic TEXT/
      ICON/BORDER clears WCAG AA on dark surfaces (the base tokens stay saturated
      for white-bearing solid fills, which never use these). See A1-cont record. */
-  --color-accent-fg: #b22234;
+  --color-accent-fg: #795615;
   --color-success-fg: #1f8a5b;
   --shadow-soft: 0 1px 2px rgba(26, 54, 93, 0.08), 0 10px 24px rgba(26, 54, 93, 0.11);
   --shadow-strong: 0 18px 44px rgba(15, 39, 68, 0.14);
@@ -66,7 +66,7 @@
   --radius-4xl: 22px;
   /* Design V2 net-new tokens (additive — no existing value changed) */
   --color-on-primary: #ffffff;
-  --color-on-accent: #ffffff;
+  --color-on-accent: #102a43;
   --shadow-button: 0 10px 22px rgba(26, 54, 93, 0.14);
   --shadow-button-strong: 0 14px 28px rgba(15, 39, 68, 0.28);
   /* Spacing scale (4px base) */
@@ -86,7 +86,7 @@
   --container-max: 1280px;
   --container-pad-mobile: 20px;
   --container-pad-desktop: 32px;
-  --sidebar-width: 252px;
+  --sidebar-width: 260px;
   /* Type scale (raw px) */
   --fs-10: 10px;
   --fs-11: 11px;
@@ -134,7 +134,7 @@
   --color-surface-strong: #1c2841;
   /* Hover lifts one step above the soft card surface (no white flash). */
   --color-surface-hover: #1c2841;
-  --color-brand: #7fa7dc;
+  --color-brand: #d9e5ef;
   --color-primary: #8fb4e4;
   --color-primary-dark: #d9e8fb;
   --color-primary-light: #b8d2f0;
@@ -146,7 +146,7 @@
      four dark surfaces (worst 4.73:1) while staying a step darker than dark
      --color-ink-soft #a4b3c8, preserving the muted<soft hierarchy. */
   --color-ink-muted: #8493ad;
-  --color-line: rgba(255, 255, 255, 0.20);
+  --color-line: rgba(255, 255, 255, 0.2);
   --color-line-strong: rgba(255, 255, 255, 0.32);
   --color-success-soft: rgba(31, 138, 91, 0.18);
   --color-warning-soft: rgba(192, 123, 10, 0.18);
@@ -158,9 +158,10 @@
      surface, 12px-bold normal text), 5.71:1 on surface #0f1626, 5.69:1 on base
      #0a0f1a. success-fg #5fc99a = 5.95:1 on surface-strong, 8.86:1 on surface.
      Base --color-accent/--color-success untouched, so white-on-fill pairs hold. */
-  --color-accent-fg: #e36b78;
+  --color-accent-fg: #e2bd72;
+  --color-on-accent: #102a43;
   --color-success-fg: #5fc99a;
-  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.20), 0 14px 34px rgba(0, 0, 0, 0.32);
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.2), 0 14px 34px rgba(0, 0, 0, 0.32);
   --shadow-strong: 0 22px 54px rgba(0, 0, 0, 0.42);
 }
 
@@ -175,8 +176,17 @@
 /* Tabular numeric display (Design V2): Inter with lining/tabular figures for
    metrics, prices, counts, streaks — so digits align in columns and don't jitter. */
 .num {
-  font-family: var(--font-num), "Inter", -apple-system, system-ui, sans-serif;
-  font-feature-settings: "tnum" 1, "lnum" 1, "ss01" 1, "cv11" 1;
+  font-family:
+    var(--font-num),
+    "Inter",
+    -apple-system,
+    system-ui,
+    sans-serif;
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1,
+    "ss01" 1,
+    "cv11" 1;
   font-variant-numeric: tabular-nums lining-nums;
   letter-spacing: -0.01em;
 }
@@ -619,11 +629,7 @@ p {
 }
 
 .blue-panel {
-  background: linear-gradient(
-    135deg,
-    rgba(26, 54, 93, 0.98) 0%,
-    rgba(44, 82, 130, 0.96) 100%
-  );
+  background: linear-gradient(135deg, rgba(26, 54, 93, 0.98) 0%, rgba(44, 82, 130, 0.96) 100%);
   color: white;
 }
 
@@ -805,15 +811,18 @@ p {
   box-shadow: 0 14px 28px rgba(15, 39, 68, 0.22);
 }
 
-.button-accent *,
-.button-accent:hover *,
 .button-solid *,
 .button-solid:hover *,
-.button-solid-light *,
-.button-solid-light:hover *,
 .button-outline-light *,
 .button-outline-light:hover * {
   color: #ffffff !important;
+}
+
+.button-accent *,
+.button-accent:hover *,
+.button-solid-light *,
+.button-solid-light:hover * {
+  color: var(--color-on-accent) !important;
 }
 
 .button-solid:focus-visible,
@@ -855,21 +864,20 @@ p {
   border-color: var(--color-line-strong);
 }
 
-/* Accent CTA — mirrors the design's .btn-accent (crimson fill, crimson glow).
-   --color-accent stays crimson in dark mode, so white-on-crimson holds AA. */
+/* Accent CTAs use the reserved antique-gold signal with dark ink for AA contrast. */
 .button-accent {
   border: 1px solid var(--color-accent);
   background: var(--color-accent);
-  color: #ffffff !important;
-  box-shadow: 0 8px 18px rgba(178, 34, 52, 0.22);
+  color: var(--color-on-accent) !important;
+  box-shadow: 0 8px 18px rgba(121, 86, 21, 0.22);
 }
 
 .button-accent:hover {
   border-color: var(--color-accent-hover);
   background: var(--color-accent-hover);
-  color: #ffffff !important;
+  color: var(--color-on-accent) !important;
   transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(178, 34, 52, 0.26);
+  box-shadow: 0 12px 24px rgba(121, 86, 21, 0.28);
 }
 
 .button-solid-light,
@@ -893,15 +901,16 @@ p {
 }
 
 .button-solid-light {
-  border: 1px solid rgba(178, 34, 52, 0.92);
+  border: 1px solid var(--color-accent);
   background: var(--color-accent);
-  color: #ffffff !important;
+  color: var(--color-on-accent) !important;
   box-shadow: 0 14px 28px rgba(15, 39, 68, 0.28);
 }
 
 .button-solid-light:hover {
   transform: translateY(-1px);
-  background: #9e1f2f;
+  border-color: var(--color-accent-hover);
+  background: var(--color-accent-hover);
 }
 
 .button-outline-light {
@@ -1044,11 +1053,7 @@ p {
 }
 
 [data-theme="dark"] .account-status-banner {
-  background: linear-gradient(
-    90deg,
-    rgba(192, 123, 10, 0.18) 0%,
-    rgba(192, 123, 10, 0.26) 100%
-  );
+  background: linear-gradient(90deg, rgba(192, 123, 10, 0.18) 0%, rgba(192, 123, 10, 0.26) 100%);
   border-bottom-color: rgba(245, 158, 11, 0.42);
   color: #fad79f;
 }
@@ -1452,7 +1457,7 @@ p {
 }
 
 [data-theme="dark"] .account-menu-trigger:hover {
-  background: rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 @media (max-width: 640px) {
@@ -2081,10 +2086,7 @@ select:focus-visible {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 18% -12%, rgba(44, 82, 130, 0.10), transparent 30rem),
-    radial-gradient(circle at 112% 12%, rgba(178, 34, 52, 0.07), transparent 28rem),
-    linear-gradient(180deg, #f8fbff 0%, var(--color-surface-soft) 100%);
+  background: linear-gradient(180deg, #f8fbff 0%, var(--color-surface-soft) 100%);
 }
 
 /* Dark theme: the light-mode gradient starts at near-white #f8fbff, which
@@ -2092,10 +2094,7 @@ select:focus-visible {
    = illegible). Rebuild from dark tokens, same shape as the dark
    .page-shell::before treatment. */
 [data-theme="dark"] .platform-shell-root {
-  background:
-    radial-gradient(circle at 18% -12%, rgba(143, 180, 228, 0.10), transparent 30rem),
-    radial-gradient(circle at 112% 12%, rgba(227, 107, 120, 0.06), transparent 28rem),
-    linear-gradient(180deg, var(--color-base) 0%, var(--color-surface-soft) 100%);
+  background: linear-gradient(180deg, var(--color-base) 0%, var(--color-surface-soft) 100%);
 }
 
 .platform-shell-root > header,
@@ -2224,7 +2223,7 @@ select:focus-visible {
   display: grid;
   height: 100%;
   min-height: 0;
-  grid-template-columns: var(--platform-sidebar-width, 232px) minmax(0, 1fr);
+  grid-template-columns: var(--platform-sidebar-width, var(--sidebar-width)) minmax(0, 1fr);
   transition: grid-template-columns 240ms cubic-bezier(0.2, 0.6, 0.2, 1);
 }
 
@@ -2248,7 +2247,7 @@ select:focus-visible {
 }
 
 .platform-sidebar-panel {
-  width: var(--platform-sidebar-width, 232px);
+  width: var(--platform-sidebar-width, var(--sidebar-width));
   display: flex;
   flex-direction: column;
   gap: 0.875rem;
@@ -2256,7 +2255,7 @@ select:focus-visible {
   background: linear-gradient(180deg, #0b1020 0%, #0e213b 52%, #0f2b47 100%);
   color: rgba(255, 255, 255, 0.86);
   padding: 1.25rem 0.875rem 0.875rem;
-  box-shadow: 18px 0 44px rgba(7, 23, 42, 0.10);
+  box-shadow: 18px 0 44px rgba(7, 23, 42, 0.1);
   transition: width 240ms cubic-bezier(0.2, 0.6, 0.2, 1);
 }
 
@@ -2415,14 +2414,12 @@ select:focus-visible {
 .platform-sidebar > button[aria-label="Collapse sidebar"]:hover,
 .platform-sidebar > button[aria-label="Expand sidebar"]:hover {
   background: var(--color-accent);
-  color: #ffffff !important;
+  color: var(--color-on-accent) !important;
   transform: scale(1.08);
 }
 
-/* Dark mode: the chevron's rest background is --color-primary, which inverts to
-   light blue (#8fb4e4) — a white glyph drops to 2.14:1. Use a dark glyph at rest
-   (8.96:1); :hover flips the fill to accent red, so the glyph returns to white
-   (6.6:1). The dark :hover rule follows the dark rest rule, so it wins on hover. */
+/* Dark mode: the chevron rests on the light primary token and uses dark ink.
+   Hover keeps the same dark foreground against the reserved gold accent. */
 [data-theme="dark"] .platform-sidebar > button[aria-label="Collapse sidebar"],
 [data-theme="dark"] .platform-sidebar > button[aria-label="Expand sidebar"] {
   color: var(--color-base) !important;
@@ -2430,7 +2427,7 @@ select:focus-visible {
 
 [data-theme="dark"] .platform-sidebar > button[aria-label="Collapse sidebar"]:hover,
 [data-theme="dark"] .platform-sidebar > button[aria-label="Expand sidebar"]:hover {
-  color: #ffffff !important;
+  color: var(--color-on-accent) !important;
 }
 
 .platform-grid--collapsed .platform-sidebar-panel {
@@ -2539,7 +2536,7 @@ select:focus-visible {
 
 .platform-sidebar-search:focus-within {
   border-color: rgba(255, 255, 255, 0.36);
-  background: rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.1);
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
 }
 
@@ -2586,7 +2583,7 @@ select:focus-visible {
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.70);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .platform-content {
@@ -3598,7 +3595,7 @@ select:focus-visible {
 [data-theme="dark"] .lesson-modal {
   border-color: var(--color-line-strong);
   background:
-    radial-gradient(circle at 92% 0%, rgba(227, 107, 120, 0.10), transparent 20rem),
+    radial-gradient(circle at 92% 0%, rgba(227, 107, 120, 0.1), transparent 20rem),
     linear-gradient(180deg, var(--color-surface) 0%, var(--color-base) 100%);
 }
 
@@ -3715,7 +3712,12 @@ select:focus-visible {
   background:
     radial-gradient(circle at 92% 10%, rgba(178, 34, 52, 0.12), transparent 18rem),
     radial-gradient(circle at 10% 0%, rgba(44, 82, 130, 0.12), transparent 20rem),
-    linear-gradient(135deg, #ffffff 0%, var(--color-surface-soft) 52%, var(--color-surface-strong) 100%);
+    linear-gradient(
+      135deg,
+      #ffffff 0%,
+      var(--color-surface-soft) 52%,
+      var(--color-surface-strong) 100%
+    );
 }
 
 .member-classroom-hero__copy {
@@ -4636,11 +4638,15 @@ select:focus-visible {
   color: var(--ma-accent) !important;
 }
 
-.member-classroom[data-members-theme="light"] .member-lesson-card--active .member-lesson-card__title {
+.member-classroom[data-members-theme="light"]
+  .member-lesson-card--active
+  .member-lesson-card__title {
   color: var(--color-primary);
 }
 
-.member-classroom[data-members-theme="dark"] .member-lesson-card--active .member-lesson-card__title {
+.member-classroom[data-members-theme="dark"]
+  .member-lesson-card--active
+  .member-lesson-card__title {
   color: #ffffff;
 }
 
@@ -4796,7 +4802,7 @@ select:focus-visible {
 
 .platform-sidebar .platform-nav-link:not(.platform-nav-active) .platform-nav-icon-chip {
   background: rgba(255, 255, 255, 0.04);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .platform-nav-link:not(.platform-nav-active) svg {
@@ -4808,7 +4814,7 @@ select:focus-visible {
 }
 
 .platform-sidebar .platform-nav-link:not(.platform-nav-active) {
-  border-color: rgba(255, 255, 255, 0.10) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
   background: rgba(255, 255, 255, 0.04) !important;
 }
 
@@ -4935,7 +4941,12 @@ select:focus-visible {
   border-left: 3px solid var(--color-accent-fg);
   background:
     radial-gradient(circle at 92% 8%, rgba(178, 34, 52, 0.08), transparent 18rem),
-    linear-gradient(135deg, #ffffff 0%, var(--color-surface-soft) 58%, var(--color-surface-strong) 100%);
+    linear-gradient(
+      135deg,
+      #ffffff 0%,
+      var(--color-surface-soft) 58%,
+      var(--color-surface-strong) 100%
+    );
 }
 
 .platform-hero-card::after {
@@ -4946,8 +4957,12 @@ select:focus-visible {
   bottom: 0;
   width: 38%;
   pointer-events: none;
-  background:
-    linear-gradient(120deg, transparent 0 44%, rgba(26, 54, 93, 0.045) 44% 45%, transparent 45% 100%);
+  background: linear-gradient(
+    120deg,
+    transparent 0 44%,
+    rgba(26, 54, 93, 0.045) 44% 45%,
+    transparent 45% 100%
+  );
 }
 
 .studio-welcome-card {
@@ -4956,7 +4971,12 @@ select:focus-visible {
   background:
     radial-gradient(circle at 86% 20%, rgba(178, 34, 52, 0.12), transparent 16rem),
     radial-gradient(circle at 16% 0%, rgba(44, 82, 130, 0.12), transparent 18rem),
-    linear-gradient(135deg, #ffffff 0%, var(--color-surface-soft) 56%, var(--color-surface-strong) 100%);
+    linear-gradient(
+      135deg,
+      #ffffff 0%,
+      var(--color-surface-soft) 56%,
+      var(--color-surface-strong) 100%
+    );
 }
 
 .studio-welcome-card::after {
@@ -4966,7 +4986,12 @@ select:focus-visible {
   width: min(28rem, 44%);
   pointer-events: none;
   background:
-    linear-gradient(120deg, transparent 0 34%, rgba(26, 54, 93, 0.06) 34% 35%, transparent 35% 100%),
+    linear-gradient(
+      120deg,
+      transparent 0 34%,
+      rgba(26, 54, 93, 0.06) 34% 35%,
+      transparent 35% 100%
+    ),
     radial-gradient(circle at 72% 50%, rgba(26, 54, 93, 0.08), transparent 11rem);
 }
 
@@ -5303,9 +5328,7 @@ button:hover > .dash-card,
   min-height: 100%;
   border: 1px solid var(--color-line);
   border-radius: 16px;
-  background:
-    radial-gradient(circle at 90% 12%, rgba(26, 54, 93, 0.07), transparent 9rem),
-    #ffffff;
+  background: radial-gradient(circle at 90% 12%, rgba(26, 54, 93, 0.07), transparent 9rem), #ffffff;
   box-shadow: 0 12px 28px rgba(26, 54, 93, 0.04);
   padding: 1.25rem;
   text-decoration: none;
@@ -5441,8 +5464,7 @@ button:hover > .dash-card,
   width: 18rem;
   height: 18rem;
   border-radius: 999px;
-  background:
-    radial-gradient(circle, rgba(44, 82, 130, 0.1), transparent 70%);
+  background: radial-gradient(circle, rgba(44, 82, 130, 0.1), transparent 70%);
   pointer-events: none;
 }
 
@@ -5452,7 +5474,12 @@ button:hover > .dash-card,
   background:
     radial-gradient(circle at 82% 22%, rgba(31, 138, 91, 0.12), transparent 15rem),
     radial-gradient(circle at 14% 0%, rgba(44, 82, 130, 0.13), transparent 17rem),
-    linear-gradient(135deg, #ffffff 0%, var(--color-surface-soft) 58%, var(--color-surface-strong) 100%);
+    linear-gradient(
+      135deg,
+      #ffffff 0%,
+      var(--color-surface-soft) 58%,
+      var(--color-surface-strong) 100%
+    );
 }
 
 .learner-home-hero::after {
@@ -5462,7 +5489,12 @@ button:hover > .dash-card,
   width: min(26rem, 42%);
   pointer-events: none;
   background:
-    linear-gradient(120deg, transparent 0 38%, rgba(26, 54, 93, 0.055) 38% 39%, transparent 39% 100%),
+    linear-gradient(
+      120deg,
+      transparent 0 38%,
+      rgba(26, 54, 93, 0.055) 38% 39%,
+      transparent 39% 100%
+    ),
     radial-gradient(circle at 72% 55%, rgba(178, 34, 52, 0.07), transparent 10rem);
 }
 
@@ -5471,8 +5503,7 @@ button:hover > .dash-card,
   border: 1px solid var(--color-line);
   border-radius: 18px;
   background:
-    radial-gradient(circle at 88% 18%, rgba(178, 34, 52, 0.08), transparent 8rem),
-    #ffffff;
+    radial-gradient(circle at 88% 18%, rgba(178, 34, 52, 0.08), transparent 8rem), #ffffff;
   box-shadow: var(--shadow-soft);
   padding: 1.25rem;
 }
@@ -5501,7 +5532,12 @@ button:hover > .dash-card,
   background:
     radial-gradient(circle at 86% 18%, rgba(178, 34, 52, 0.1), transparent 14rem),
     radial-gradient(circle at 12% 0%, rgba(26, 54, 93, 0.11), transparent 17rem),
-    linear-gradient(135deg, #ffffff 0%, var(--color-surface-soft) 56%, var(--color-surface-strong) 100%);
+    linear-gradient(
+      135deg,
+      #ffffff 0%,
+      var(--color-surface-soft) 56%,
+      var(--color-surface-strong) 100%
+    );
 }
 
 .credential-hero::after {
@@ -5510,8 +5546,12 @@ button:hover > .dash-card,
   inset: 0 0 0 auto;
   width: min(25rem, 42%);
   pointer-events: none;
-  background:
-    linear-gradient(120deg, transparent 0 34%, rgba(26, 54, 93, 0.05) 34% 35%, transparent 35% 100%);
+  background: linear-gradient(
+    120deg,
+    transparent 0 34%,
+    rgba(26, 54, 93, 0.05) 34% 35%,
+    transparent 35% 100%
+  );
 }
 
 .credential-metric-card {
@@ -5589,8 +5629,7 @@ button:hover > .dash-card,
   border: 1px solid var(--color-line);
   border-radius: 18px;
   background:
-    radial-gradient(circle at 88% 18%, rgba(178, 34, 52, 0.08), transparent 9rem),
-    #ffffff;
+    radial-gradient(circle at 88% 18%, rgba(178, 34, 52, 0.08), transparent 9rem), #ffffff;
   box-shadow: var(--shadow-soft);
   padding: 1.25rem;
 }
@@ -5702,6 +5741,33 @@ button:hover > .dash-card,
   .platform-topbar__inner {
     min-height: 58px;
     padding-inline: 1rem;
+  }
+
+  .create-course-screen {
+    gap: 0.75rem;
+  }
+
+  .create-course-screen__intro {
+    padding: 1rem 1.125rem;
+  }
+
+  .create-course-screen__back {
+    margin-bottom: 1rem;
+  }
+
+  .create-course-screen__intro-copy,
+  .create-course-screen__progress {
+    display: none;
+  }
+
+  .create-course-screen__intro .display-title {
+    margin-top: 0.5rem;
+    font-size: 1.75rem;
+    line-height: 1.1;
+  }
+
+  .create-course-screen__form {
+    padding: 1.125rem;
   }
 
   .course-builder-hero {
@@ -5831,7 +5897,15 @@ button:hover > .dash-card,
   --ma-ink: #eef1f6;
   --ma-ink-soft: #9aa6b6;
   --ma-ink-muted: #67717f;
-  --ma-hero-scrim: linear-gradient(90deg, rgba(7, 9, 13, 0.96) 0%, rgba(7, 9, 13, 0.78) 32%, rgba(7, 9, 13, 0.3) 62%, rgba(7, 9, 13, 0.1) 100%), linear-gradient(0deg, rgba(7, 9, 13, 0.7), rgba(7, 9, 13, 0) 40%);
+  --ma-hero-scrim:
+    linear-gradient(
+      90deg,
+      rgba(7, 9, 13, 0.96) 0%,
+      rgba(7, 9, 13, 0.78) 32%,
+      rgba(7, 9, 13, 0.3) 62%,
+      rgba(7, 9, 13, 0.1) 100%
+    ),
+    linear-gradient(0deg, rgba(7, 9, 13, 0.7), rgba(7, 9, 13, 0) 40%);
   --ma-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
 }
 [data-members-theme="light"] {
@@ -5845,7 +5919,15 @@ button:hover > .dash-card,
   --ma-ink: #0f2744;
   --ma-ink-soft: #526172;
   --ma-ink-muted: #7c8794;
-  --ma-hero-scrim: linear-gradient(90deg, rgba(8, 20, 38, 0.9) 0%, rgba(8, 20, 38, 0.66) 34%, rgba(8, 20, 38, 0.22) 64%, rgba(8, 20, 38, 0.04) 100%), linear-gradient(0deg, rgba(8, 20, 38, 0.54), rgba(8, 20, 38, 0) 42%);
+  --ma-hero-scrim:
+    linear-gradient(
+      90deg,
+      rgba(8, 20, 38, 0.9) 0%,
+      rgba(8, 20, 38, 0.66) 34%,
+      rgba(8, 20, 38, 0.22) 64%,
+      rgba(8, 20, 38, 0.04) 100%
+    ),
+    linear-gradient(0deg, rgba(8, 20, 38, 0.54), rgba(8, 20, 38, 0) 42%);
   --ma-shadow: 0 16px 40px rgba(15, 39, 68, 0.1);
 }
 [data-members-theme] {
@@ -6119,8 +6201,7 @@ button:hover > .dash-card,
   overflow: hidden;
   border: 1px solid var(--color-line);
   border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(245, 249, 255, 0.92));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(245, 249, 255, 0.92));
   box-shadow: var(--shadow-soft);
 }
 
@@ -6403,7 +6484,9 @@ button:hover > .dash-card,
 }
 
 .marketplace-card__media img {
-  transition: transform 500ms cubic-bezier(0.2, 0.6, 0.2, 1), filter 220ms ease;
+  transition:
+    transform 500ms cubic-bezier(0.2, 0.6, 0.2, 1),
+    filter 220ms ease;
 }
 
 .marketplace-card:hover .marketplace-card__media img {
@@ -6456,7 +6539,7 @@ button:hover > .dash-card,
   width: 2.4rem;
   height: 2.4rem;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.30);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.94);
   color: var(--color-primary);
@@ -6531,8 +6614,7 @@ button:hover > .dash-card,
   margin-top: 1.1rem;
   border: 1px solid var(--color-line);
   border-radius: 12px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.68), var(--color-surface-soft));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.68), var(--color-surface-soft));
   padding: 0.95rem;
 }
 
@@ -6585,7 +6667,12 @@ button:hover > .dash-card,
 .instructor-storefront-hero__band {
   display: grid;
   gap: 2rem;
-  background: linear-gradient(135deg, #ffffff 0%, var(--color-surface-soft) 62%, var(--color-surface-strong) 100%);
+  background: linear-gradient(
+    135deg,
+    #ffffff 0%,
+    var(--color-surface-soft) 62%,
+    var(--color-surface-strong) 100%
+  );
   padding: clamp(1.5rem, 4vw, 2.5rem);
 }
 

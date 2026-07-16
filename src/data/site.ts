@@ -46,7 +46,7 @@ export type PlatformNavItem = {
 export const featuredTracks: Track[] = getFeaturedCourseCards();
 
 export const productSurfaces: Surface[] = getProductSurfaces().map(
-  ({ title, href, label, summary }) => ({ title, href, label, summary }),
+  ({ title, href, label, summary }) => ({ title, href, label, summary })
 );
 
 export const marketplaceHighlights = [
@@ -98,28 +98,28 @@ export const platformNav: PlatformNavItem[] = [
     section: "Learn",
     permission: "certificates.view",
   },
-  // --- Teacher-as-student: a teacher also buys courses. Pinned to the very top
-  // of the teacher workspace (its own "My Learning" section is ordered first in
-  // platform-nav.tsx), above the teaching tools. Reuses the learner classroom. ---
+  // --- Teacher-as-student: a teacher also buys courses. Kept as a direct
+  // workspace destination after the producer tools. Reuses the learner classroom. ---
   {
     href: "/learn",
     labelKey: "platform.nav.myCourses",
     icon: "GraduationCap",
-    contexts: [],
+    contexts: ["teacher"],
     section: "My Learning",
     permission: "courses.viewLearning",
     newTab: true,
   },
-  // --- Teacher workspace (Hotmart producer macro IA; Skillset labels/skin) ---
-  // Products
+  // --- Teacher workspace: workflow hierarchy informed by the live producer
+  // audit, using only SkillsetMind routes and capabilities. ---
   {
     href: "/teach",
     labelKey: "platform.nav.studio",
     icon: "LayoutDashboard",
     contexts: ["teacher"],
-    section: "Products",
+    section: "Home",
     permission: "teacherStudio.access",
   },
+  // Products
   {
     href: "/teach/builder",
     labelKey: "platform.nav.courseBuilder",
@@ -138,10 +138,34 @@ export const platformNav: PlatformNavItem[] = [
   },
   {
     href: "/teach/events",
-    labelKey: "platform.nav.agenda",
+    labelKey: "platform.nav.onlineEvents",
     icon: "Calendar",
     contexts: ["teacher"],
     section: "Products",
+    permission: "teacherStudio.manageCourses",
+  },
+  {
+    href: "/teach/marketing",
+    labelKey: "platform.nav.marketingOverview",
+    icon: "Megaphone",
+    contexts: ["teacher"],
+    section: "Marketing",
+    permission: "teacherStudio.access",
+  },
+  {
+    href: "/teach/storefront",
+    labelKey: "platform.nav.storefrontPages",
+    icon: "Store",
+    contexts: ["teacher"],
+    section: "Marketing",
+    permission: "teacherStudio.manageCourses",
+  },
+  {
+    href: "/teach/media",
+    labelKey: "platform.nav.mediaLibrary",
+    icon: "Image",
+    contexts: ["teacher"],
+    section: "Marketing",
     permission: "teacherStudio.manageCourses",
   },
   {
@@ -149,7 +173,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.messages",
     icon: "MessageCircle",
     contexts: ["teacher"],
-    section: "Products",
+    section: "Marketing",
     permission: "teacherStudio.access",
   },
   // Sales
@@ -177,13 +201,13 @@ export const platformNav: PlatformNavItem[] = [
     section: "Sales",
     permission: "teacherStudio.access",
   },
-  // Finance (receivables)
+  // Wallet (receivables)
   {
     href: "/account/payments",
     labelKey: "platform.nav.wallet",
     icon: "Wallet",
     contexts: ["teacher"],
-    section: "Finance",
+    section: "Wallet",
     permission: "teacherStudio.access",
   },
   // Reports
@@ -204,6 +228,14 @@ export const platformNav: PlatformNavItem[] = [
     permission: "teacherStudio.access",
   },
   // Partnerships
+  {
+    href: "/teach/affiliates",
+    labelKey: "platform.nav.affiliatePrograms",
+    icon: "Handshake",
+    contexts: ["teacher"],
+    section: "Partnerships",
+    permission: "teacherStudio.access",
+  },
   {
     href: "/teach/coupons",
     labelKey: "platform.nav.coupons",
@@ -228,13 +260,13 @@ export const platformNav: PlatformNavItem[] = [
     section: "Partnerships",
     permission: "teacherStudio.access",
   },
-  // Setup
+  // Tools
   {
     href: "/teach/verification",
     labelKey: "platform.nav.verification",
     icon: "UserCheck",
     contexts: ["teacher"],
-    section: "Setup",
+    section: "Tools",
     permission: "teacherStudio.access",
   },
   {
@@ -242,7 +274,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.integrations",
     icon: "Plug",
     contexts: ["teacher"],
-    section: "Setup",
+    section: "Tools",
     permission: "teacherStudio.access",
   },
   // --- Operations workspace ---

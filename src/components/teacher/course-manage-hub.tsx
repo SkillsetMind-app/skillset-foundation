@@ -20,10 +20,7 @@ import { SalesPageEditor } from "@/components/teacher/sales-page-editor";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { teacherCanPublishCourse } from "@/domain/teacher-course";
 import { fetchRequireCreatorVerification } from "@/lib/data/creator-verification";
-import {
-  subscribeToTeacherCourse,
-  subscribeToTeacherCourses,
-} from "@/lib/data/teacher-courses";
+import { subscribeToTeacherCourse, subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 
 // Per-course management central (Hotmart-style "product hub"): one place with
@@ -44,6 +41,7 @@ const manageSections = [
   { id: "coproducers", label: "Co-productions" },
   { id: "coupons", label: "Coupons" },
   { id: "tax", label: "Tax collection" },
+  { id: "tools", label: "Tools" },
   { id: "sales", label: "Sales" },
 ] as const;
 
@@ -57,20 +55,16 @@ const roadmapSections = [
   },
 ] as const;
 
-type SectionId =
-  | (typeof manageSections)[number]["id"]
-  | (typeof roadmapSections)[number]["id"];
+type SectionId = (typeof manageSections)[number]["id"] | (typeof roadmapSections)[number]["id"];
 
 const statusCopy: Record<TeacherCourse["status"], string> = {
   draft:
     "Private draft — only you can see this course. Complete the checklist, then publish when ready.",
-  in_review:
-    "Legacy review status — open the builder to complete the checks and publish directly.",
+  in_review: "Legacy review status — open the builder to complete the checks and publish directly.",
   needs_changes:
     "Changes were previously requested. Address the note, update the course, and publish when ready.",
   published: "Live on the marketplace. Students can enroll right now.",
-  inactive:
-    "Hidden from the marketplace. An approved professional can republish it directly.",
+  inactive: "Hidden from the marketplace. An approved professional can republish it directly.",
 };
 
 function isPaidCourse(course: TeacherCourse): boolean {
@@ -100,9 +94,7 @@ function DetailRow({ label, value }: { label: string; value: ReactNode }) {
       <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
         {label}
       </span>
-      <span className="min-w-0 text-sm leading-6 text-[var(--color-ink)]">
-        {value}
-      </span>
+      <span className="min-w-0 text-sm leading-6 text-[var(--color-ink)]">{value}</span>
     </div>
   );
 }
@@ -141,7 +133,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     const query = params.toString();
     router.push(
       `/teach/courses/${encodeURIComponent(courseId)}/manage${query ? `?${query}` : ""}`,
-      { scroll: false },
+      { scroll: false }
     );
   };
   const [copiedLink, setCopiedLink] = useState(false);
@@ -156,11 +148,9 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
       () => {
         // A failed load after a course switch must not leave the previous
         // course rendering under this courseId's URL.
-        setCourse((current) =>
-          current && current.id !== courseId ? null : current,
-        );
+        setCourse((current) => (current && current.id !== courseId ? null : current));
         setLoadedCourseId(courseId);
-      },
+      }
     );
   }, [courseId]);
 
@@ -181,14 +171,11 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
       user.uid,
       (profile) => {
         setPayoutsReady(
-          Boolean(
-            profile?.stripeConnectChargesEnabled
-            && profile?.stripeConnectPayoutsEnabled,
-          ),
+          Boolean(profile?.stripeConnectChargesEnabled && profile?.stripeConnectPayoutsEnabled)
         );
         setVerificationStatus(profile?.creatorVerificationStatus ?? "none");
       },
-      () => setPayoutsReady(false),
+      () => setPayoutsReady(false)
     );
   }, [user]);
 
@@ -210,8 +197,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   const paid = course ? isPaidCourse(course) : false;
   // Server-enforced by the commerce RPCs; surfaced here so the panels can
   // explain the gate instead of failing on click.
-  const activationBlocked =
-    requireVerification && verificationStatus !== "approved";
+  const activationBlocked = requireVerification && verificationStatus !== "approved";
 
   const checklist = useMemo(() => {
     if (!course) {
@@ -226,9 +212,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
       {
         label: "Title & summary",
         hint: "Name the course and describe the outcome in the summary.",
-        done:
-          course.title.trim().length >= 3
-          && course.summary.trim().length >= 20,
+        done: course.title.trim().length >= 3 && course.summary.trim().length >= 20,
       },
       {
         label: "Category",
@@ -249,8 +233,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
       {
         label: "Pricing",
         hint: "Set a price or mark the course as free.",
-        done:
-          course.paymentType === "free" || (course.priceAmountMinor ?? 0) > 0,
+        done: course.paymentType === "free" || (course.priceAmountMinor ?? 0) > 0,
       },
       {
         label: "Learning outcomes",
@@ -298,9 +281,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   // Absolute URL built at click time — window isn't available during SSR.
   const handleCopyProductLink = async () => {
     try {
-      await navigator.clipboard.writeText(
-        `${window.location.origin}${productPagePath}`,
-      );
+      await navigator.clipboard.writeText(`${window.location.origin}${productPagePath}`);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
     } catch {
@@ -335,9 +316,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     );
   }
 
-  const switchableCourses = myCourses.filter(
-    (candidate) => candidate.id !== course.id,
-  );
+  const switchableCourses = myCourses.filter((candidate) => candidate.id !== course.id);
 
   return (
     <div className="grid gap-5">
@@ -375,7 +354,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <StatusChip status={course.status} />
                 <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                  {course.modules.length} modules - {course.lessonCount} lessons - {priceLabel(course)}
+                  {course.modules.length} modules - {course.lessonCount} lessons -{" "}
+                  {priceLabel(course)}
                 </span>
               </div>
             </div>
@@ -385,9 +365,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               <select
                 aria-label="Switch course"
                 value={course.id}
-                onChange={(event) =>
-                  router.push(`/teach/courses/${event.target.value}/manage`)
-                }
+                onChange={(event) => router.push(`/teach/courses/${event.target.value}/manage`)}
                 className="min-h-10 rounded-[6px] border fine-rule bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink)]"
               >
                 <option value={course.id}>{course.title}</option>
@@ -455,66 +433,61 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
 
         <div className="grid gap-4">
           {section === "overview" ? (
-            <PanelCard
-              title="Publish checklist"
-              description={statusCopy[course.status]}
-            >
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--color-surface-hover)]">
-                  <div
-                    className="h-full rounded-full bg-[var(--color-primary)] transition-all"
-                    style={{ width: `${progressPercent}%` }}
-                  />
+            <PanelCard title="Publish checklist" description={statusCopy[course.status]}>
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--color-surface-hover)]">
+                <div
+                  className="h-full rounded-full bg-[var(--color-primary)] transition-all"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+                {requiredDone} of {requiredItems.length} required steps done
+              </p>
+              <ul className="mt-4 grid gap-3">
+                {checklist.map((item) => (
+                  <li key={item.label} className="flex items-start gap-3">
+                    <span
+                      aria-hidden
+                      className={`mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                        item.done
+                          ? "bg-[var(--color-primary)] text-white"
+                          : "border fine-rule bg-white text-[var(--color-ink-muted)]"
+                      }`}
+                    >
+                      {item.done ? "✓" : ""}
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--color-ink)]">
+                        {item.label}
+                        {item.optional ? (
+                          <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+                            Optional
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="text-xs leading-5 text-[var(--color-ink-soft)]">{item.hint}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {course.reviewNote ? (
+                <div className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.18)] bg-white px-4 py-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
+                    SkillsetMind review note
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
+                    {course.reviewNote}
+                  </p>
                 </div>
-                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                  {requiredDone} of {requiredItems.length} required steps done
-                </p>
-                <ul className="mt-4 grid gap-3">
-                  {checklist.map((item) => (
-                    <li key={item.label} className="flex items-start gap-3">
-                      <span
-                        aria-hidden
-                        className={`mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
-                          item.done
-                            ? "bg-[var(--color-primary)] text-white"
-                            : "border fine-rule bg-white text-[var(--color-ink-muted)]"
-                        }`}
-                      >
-                        {item.done ? "✓" : ""}
-                      </span>
-                      <div>
-                        <p className="text-sm font-semibold text-[var(--color-ink)]">
-                          {item.label}
-                          {item.optional ? (
-                            <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                              Optional
-                            </span>
-                          ) : null}
-                        </p>
-                        <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
-                          {item.hint}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-                {course.reviewNote ? (
-                  <div className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.18)] bg-white px-4 py-3">
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
-                      SkillsetMind review note
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
-                      {course.reviewNote}
-                    </p>
-                  </div>
-                ) : null}
-                {teacherCanPublishCourse(course.status) ? (
-                  <Link
-                    href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=review`}
-                    className="button-solid mt-5 inline-flex px-5 py-2.5 text-xs"
-                  >
-                    Review & publish
-                  </Link>
-                ) : null}
+              ) : null}
+              {teacherCanPublishCourse(course.status) ? (
+                <Link
+                  href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=review`}
+                  className="button-solid mt-5 inline-flex px-5 py-2.5 text-xs"
+                >
+                  Review & publish
+                </Link>
+              ) : null}
             </PanelCard>
           ) : null}
 
@@ -552,9 +525,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 </div>
               </div>
               <p className="mt-3 text-xs leading-5 text-[var(--color-ink-muted)]">
-                Direct checkout links and embeddable buy widgets ship together
-                with the discount engine — the product page is the shareable
-                surface today.
+                Direct checkout links and embeddable buy widgets ship together with the discount
+                engine — the product page is the shareable surface today.
               </p>
             </PanelCard>
           ) : null}
@@ -568,10 +540,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 <DetailRow label="Title" value={course.title} />
                 <DetailRow label="Category" value={course.category} />
                 {course.categories && course.categories.length > 1 ? (
-                  <DetailRow
-                    label="All categories"
-                    value={course.categories.join(", ")}
-                  />
+                  <DetailRow label="All categories" value={course.categories.join(", ")} />
                 ) : null}
                 <DetailRow label="Summary" value={course.summary || "—"} />
                 <DetailRow
@@ -605,8 +574,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
           {section === "pricing" ? (
             <div className="grid gap-4">
               <PanelCard
-                title="Pricing"
-                description="Legacy course price (compat). Multi-offer packages below drive dual-read checkout when present."
+                title="Pricing & checkout"
+                description="Set the access model and base commercial terms, then create targeted offers for distinct buyer links."
               >
                 <div className="mt-4">
                   <DetailRow label="Price" value={priceLabel(course)} />
@@ -622,6 +591,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                         : "Disabled"
                     }
                   />
+                  <DetailRow label="Checkout" value="Secure Stripe checkout" />
                   {paid ? (
                     <DetailRow
                       label="Stripe payouts"
@@ -646,10 +616,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   ) : null}
                 </div>
               </PanelCard>
-              <CourseOffersPanel
-                courseId={course.id}
-                defaultCurrency={course.currency ?? "USD"}
-              />
+              <CourseOffersPanel courseId={course.id} defaultCurrency={course.currency ?? "USD"} />
             </div>
           ) : null}
 
@@ -694,18 +661,9 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               description="The workspace enrolled students land in after purchase."
             >
               <div className="mt-4">
-                <DetailRow
-                  label="Theme"
-                  value={course.membersTheme ?? "light"}
-                />
-                <DetailRow
-                  label="Welcome title"
-                  value={course.membersTitle || "Default"}
-                />
-                <DetailRow
-                  label="Subtitle"
-                  value={course.membersSubtitle || "Default"}
-                />
+                <DetailRow label="Theme" value={course.membersTheme ?? "light"} />
+                <DetailRow label="Welcome title" value={course.membersTitle || "Default"} />
+                <DetailRow label="Subtitle" value={course.membersSubtitle || "Default"} />
                 <DetailRow
                   label="Community"
                   value={course.communityEnabled ? "Enabled" : "Disabled"}
@@ -761,37 +719,68 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
             </PanelCard>
           ) : null}
 
+          {section === "tools" ? (
+            <PanelCard
+              title="Product tools"
+              description="Open the supporting workspaces used to prepare, promote, and operate this product."
+            >
+              <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                {[
+                  {
+                    label: "Marketing workspace",
+                    detail: "Pages, media, buyer messages, and promotions",
+                    href: "/teach/marketing",
+                  },
+                  {
+                    label: "Media library",
+                    detail: "Course covers and delivery assets",
+                    href: "/teach/media",
+                  },
+                  {
+                    label: "Integrations",
+                    detail: "Connected delivery and business services",
+                    href: "/teach/integrations",
+                  },
+                  {
+                    label: "Professional verification",
+                    detail: "Credentials and marketplace admission",
+                    href: "/teach/verification",
+                  },
+                ].map((tool) => (
+                  <Link
+                    key={tool.href}
+                    href={tool.href}
+                    className="rounded-[8px] border fine-rule bg-white px-4 py-3 hover:bg-[var(--color-surface-soft)]"
+                  >
+                    <strong className="block text-sm text-[var(--color-ink)]">{tool.label}</strong>
+                    <span className="mt-1 block text-xs leading-5 text-[var(--color-ink-soft)]">
+                      {tool.detail}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </PanelCard>
+          ) : null}
+
           {section === "coupons" ? (
-            <CouponsPanel
-              courseId={course.id}
-              activationBlocked={activationBlocked}
-            />
+            <CouponsPanel courseId={course.id} activationBlocked={activationBlocked} />
           ) : null}
 
           {section === "affiliates" ? (
-            <AffiliatesPanel
-              courseId={course.id}
-              activationBlocked={activationBlocked}
-            />
+            <AffiliatesPanel courseId={course.id} activationBlocked={activationBlocked} />
           ) : null}
 
-          {section === "coproducers" ? (
-            <CoproducersPanel courseId={course.id} />
-          ) : null}
+          {section === "coproducers" ? <CoproducersPanel courseId={course.id} /> : null}
 
           {section === "tax" ? <TaxPanel courseId={course.id} /> : null}
 
           {roadmapSections.map((item) =>
             section === item.id ? (
-              <PanelCard
-                key={item.id}
-                title={item.title}
-                description={item.description}
-              >
+              <PanelCard key={item.id} title={item.title} description={item.description}>
                 <div className="mt-5 flex flex-wrap gap-2">
                   <a
                     href={`mailto:support@skillsetmind.com?subject=${encodeURIComponent(
-                      `Notify me: ${item.label}`,
+                      `Notify me: ${item.label}`
                     )}`}
                     className="button-outline px-4 py-2 text-xs"
                   >
@@ -799,7 +788,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   </a>
                 </div>
               </PanelCard>
-            ) : null,
+            ) : null
           )}
         </div>
       </div>

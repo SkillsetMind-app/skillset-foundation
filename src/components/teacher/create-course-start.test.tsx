@@ -17,13 +17,11 @@ vi.mock("@/lib/data/teacher-courses", () => ({
 }));
 
 function selectPrimaryCategory() {
-  fireEvent.click(
-    screen.getByRole("button", { name: /Select up to 5 categories/i }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: /Select up to 5 categories/i }));
   fireEvent.click(
     screen.getByRole("checkbox", {
       name: "Clinical Psychology & Approaches",
-    }),
+    })
   );
 }
 
@@ -59,12 +57,10 @@ describe("CreateCourseStart", () => {
         expect.objectContaining({
           ownerId: "teacher-1",
           paymentType,
-        }),
+        })
       );
     });
-    expect(mocks.push).toHaveBeenCalledWith(
-      "/teach/builder?courseId=course-123&tab=pricing",
-    );
+    expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=pricing");
   });
 
   it("keeps free products out of the pricing step", async () => {
@@ -83,37 +79,57 @@ describe("CreateCourseStart", () => {
 
     await waitFor(() => {
       expect(mocks.createTeacherCourse).toHaveBeenCalledWith(
-        expect.objectContaining({ paymentType: "free" }),
+        expect.objectContaining({ paymentType: "free" })
       );
     });
-    expect(mocks.push).toHaveBeenCalledWith(
-      "/teach/builder?courseId=course-123&tab=content",
-    );
+    expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=content");
+  });
+
+  it("creates a recurring community product with its members community enabled", async () => {
+    render(<CreateCourseStart ownerId="teacher-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Community/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
+    fireEvent.change(screen.getByLabelText("Product title"), {
+      target: { value: "Clinical supervision community" },
+    });
+    fireEvent.change(screen.getByLabelText(/Product promise/), {
+      target: {
+        value: "Create a protected peer space for recurring clinical supervision.",
+      },
+    });
+    selectPrimaryCategory();
+    fireEvent.click(screen.getByRole("button", { name: /Create and set pricing/i }));
+
+    await waitFor(() => {
+      expect(mocks.createTeacherCourse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          paymentType: "subscription_monthly",
+          communityEnabled: true,
+        })
+      );
+    });
+    expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=pricing");
   });
 
   it("starts on format selection and keeps categories collapsed", () => {
-    render(
-      <CreateCourseStart ownerId="teacher-1" initialFormat="subscription" />,
-    );
+    render(<CreateCourseStart ownerId="teacher-1" initialFormat="subscription" />);
 
-    expect(
-      screen.getByRole("button", { name: /Subscription/i }),
-    ).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /Subscription/i })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
     expect(screen.queryByRole("group", { name: /Course categories/i })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
 
-    expect(
-      screen.getByRole("heading", { name: /Add the essential information/i }),
-    ).toHaveFocus();
+    expect(screen.getByRole("heading", { name: /Add the essential information/i })).toHaveFocus();
 
     const categoryTrigger = screen.getByRole("button", {
       name: /Select up to 5 categories/i,
     });
     expect(categoryTrigger).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(categoryTrigger);
-    expect(
-      screen.getByRole("group", { name: /Course categories/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /Course categories/i })).toBeInTheDocument();
   });
 });

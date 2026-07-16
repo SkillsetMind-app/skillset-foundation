@@ -7,7 +7,7 @@ import { TeacherCourseStudio } from "@/components/teacher/teacher-course-studio"
 import type { TeacherCourseProductFormat } from "@/domain/teacher-course";
 
 function parseProductFormat(value: string | null): TeacherCourseProductFormat {
-  return value === "subscription" || value === "free" ? value : "course";
+  return value === "subscription" || value === "community" || value === "free" ? value : "course";
 }
 
 export function TeacherBuilderHub() {
@@ -20,10 +20,5 @@ export function TeacherBuilderHub() {
     return <CourseBuilderStudio />;
   }
 
-  return (
-    <TeacherCourseStudio
-      autoOpenCreate={newCourseRequested}
-      initialFormat={initialFormat}
-    />
-  );
+  return <TeacherCourseStudio autoOpenCreate={newCourseRequested} initialFormat={initialFormat} />;
 }
