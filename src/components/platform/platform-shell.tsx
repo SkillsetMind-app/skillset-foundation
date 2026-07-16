@@ -144,7 +144,12 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
 
   return (
     <div className="platform-sidebar-brand">
-      <LogoWordmark href="/" nav className="platform-sidebar-brand__lockup-link" />
+      <LogoWordmark
+        href="/"
+        nav
+        tone="dark"
+        className="platform-sidebar-brand__lockup-link"
+      />
     </div>
   );
 }
