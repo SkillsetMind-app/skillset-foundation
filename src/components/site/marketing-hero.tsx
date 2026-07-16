@@ -29,7 +29,10 @@ export function MarketingHero() {
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const reducedMotion =
+      typeof window.matchMedia === "function"
+        ? window.matchMedia("(prefers-reduced-motion: reduce)")
+        : null;
     let intervalId: number | undefined;
     let transitionTimeoutId: number | undefined;
 
@@ -55,6 +58,8 @@ export function MarketingHero() {
         }, HERO_PORTRAIT_FADE_MS);
       }, HERO_PORTRAIT_INTERVAL_MS);
     };
+
+    if (!reducedMotion) return stopTimers;
 
     const handleMotionPreference = () => {
       stopTimers();
