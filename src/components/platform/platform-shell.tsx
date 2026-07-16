@@ -59,7 +59,10 @@ export function PlatformShell({
                   isCollapsed ? "sidebar-collapsed" : "sidebar-expanded"
                 }`}
               >
-                <SidebarBrand collapsed={isCollapsed} />
+                <SidebarBrand
+                  collapsed={isCollapsed}
+                  href={workspaceHomeHref(pathname)}
+                />
                 <SidebarToggle
                   state={persistentState}
                   isCollapsed={isCollapsed}
@@ -128,14 +131,15 @@ export function PlatformShell({
   );
 }
 
-function SidebarBrand({ collapsed }: { collapsed: boolean }) {
+function SidebarBrand({ collapsed, href }: { collapsed: boolean; href: string }) {
   if (collapsed) {
     return (
       <div className="platform-sidebar-brand">
         <LogoWordmark
-          href="/"
+          href={href}
           nav
           variant="mark"
+          tone="dark"
           className="platform-sidebar-brand__mark"
         />
       </div>
@@ -145,13 +149,29 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
   return (
     <div className="platform-sidebar-brand">
       <LogoWordmark
-        href="/"
+        href={href}
         nav
         tone="dark"
         className="platform-sidebar-brand__lockup-link"
       />
     </div>
   );
+}
+
+function workspaceHomeHref(pathname: string) {
+  if (pathname.startsWith("/teach") || pathname.startsWith("/account/payments")) {
+    return "/teach";
+  }
+
+  if (pathname.startsWith("/ops")) {
+    return "/ops";
+  }
+
+  if (pathname.startsWith("/learn")) {
+    return "/learn";
+  }
+
+  return "/platform";
 }
 
 function PlatformSidebarSearch({ pathname }: { pathname: string }) {

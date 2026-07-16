@@ -8,6 +8,7 @@ import {
   CalendarDays,
   Check,
   Gift,
+  Route,
   Repeat2,
   UsersRound,
 } from "lucide-react";
@@ -32,7 +33,7 @@ type CreateCourseStartProps = {
 };
 
 const creationSteps = [
-  ["01", "Product format", "Course, subscription, community, event, or free"],
+  ["01", "Product format", "Choose the delivery model that matches the offer"],
   ["02", "Basic information", "Title, promise, and categories"],
   ["03", "Pricing and content", "Continue in the product builder"],
 ] as const;
@@ -206,6 +207,13 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                   icon="course"
                   label="Online course"
                   onClick={() => setProductFormat("course")}
+                />
+                <PaymentChoice
+                  active={productFormat === "program"}
+                  detail="A sequenced pathway combining learning, practice, and optional live touchpoints."
+                  icon="program"
+                  label="Guided program"
+                  onClick={() => setProductFormat("program")}
                 />
                 <PaymentChoice
                   active={productFormat === "event"}
@@ -396,6 +404,8 @@ function PaymentChoice({
       ? Repeat2
       : icon === "community"
         ? UsersRound
+        : icon === "program"
+          ? Route
         : icon === "event"
           ? CalendarDays
           : icon === "free"

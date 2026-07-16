@@ -63,6 +63,7 @@ const HANDLED_STRIPE_EVENT_TYPES = new Set<string>([
   "customer.subscription.deleted",
   "invoice.payment_failed",
   "invoice.paid",
+  "account.updated",
 ]);
 
 type Admin = ReturnType<typeof getSupabaseAdminClient>;
@@ -1409,10 +1410,52 @@ async function handleInvoicePaymentFailed(
   );
 }
 
+async function handleConnectedAccountUpdated(
+  admin: Admin,
+  account: Stripe.Account,
+): Promise<void> {
+  const ts = nowIso();
+  const ready = Boolean(account.charges_enabled && account.payouts_enabled);
+
+  await requireSupabaseWrite(
+    admin
+      .from("users")
+      .update({
+        stripe_connect_status: ready ? "ready" : "onboarding_required",
+        stripe_connect_charges_enabled: Boolean(account.charges_enabled),
+        stripe_connect_payouts_enabled: Boolean(account.payouts_enabled),
+        stripe_connect_updated_at: ts,
+        updated_at: ts,
+      })
+      .eq("stripe_connected_account_id", account.id),
+    "Sync connected account readiness",
+  );
+}
+
+function constructStripeWebhookEvent(
+  rawBody: string,
+  signature: string,
+  webhookSecrets: string[],
+): Stripe.Event | null {
+  const stripe = getStripeClient();
+
+  for (const secret of webhookSecrets) {
+    try {
+      return stripe.webhooks.constructEvent(rawBody, signature, secret);
+    } catch {
+      // Stripe assigns a distinct signing secret to each webhook endpoint.
+    }
+  }
+
+  return null;
+}
+
 export async function POST(request: Request) {
-  // Founder-gated dormant state: no key/secret yet. Stripe isn't calling this.
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!isStripeConfigured() || !webhookSecret) {
+  const webhookSecrets = [
+    process.env.STRIPE_WEBHOOK_SECRET,
+    process.env.STRIPE_CONNECT_WEBHOOK_SECRET,
+  ].filter((secret): secret is string => Boolean(secret));
+  if (!isStripeConfigured() || webhookSecrets.length === 0) {
     return NextResponse.json(
       { error: "Stripe webhook is not configured.", code: "payments_not_configured" },
       { status: 503 },
@@ -1425,10 +1468,8 @@ export async function POST(request: Request) {
   }
 
   const rawBody = await request.text();
-  let event: Stripe.Event;
-  try {
-    event = getStripeClient().webhooks.constructEvent(rawBody, signature, webhookSecret);
-  } catch {
+  const event = constructStripeWebhookEvent(rawBody, signature, webhookSecrets);
+  if (!event) {
     return NextResponse.json({ error: "Invalid Stripe webhook signature." }, { status: 400 });
   }
 
@@ -1490,6 +1531,9 @@ export async function POST(request: Request) {
         break;
       case "invoice.paid":
         await handleCourseSubscriptionInvoicePaid(admin, event.data.object);
+        break;
+      case "account.updated":
+        await handleConnectedAccountUpdated(admin, event.data.object);
         break;
     }
 

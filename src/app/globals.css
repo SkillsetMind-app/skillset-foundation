@@ -235,7 +235,7 @@ html {
   scrollbar-gutter: stable;
 }
 
-.logo-wordmark__full {
+.logo-wordmark__themed {
   display: inline-grid;
   align-items: center;
 }
@@ -249,14 +249,20 @@ html {
   display: none;
 }
 
-.logo-wordmark__full--dark .logo-wordmark__asset--light,
-[data-theme="dark"] .logo-wordmark__full--auto .logo-wordmark__asset--light {
+.logo-wordmark__themed--dark .logo-wordmark__asset--light,
+[data-theme="dark"] .logo-wordmark__themed--auto .logo-wordmark__asset--light {
   display: none;
 }
 
-.logo-wordmark__full--dark .logo-wordmark__asset--dark,
-[data-theme="dark"] .logo-wordmark__full--auto .logo-wordmark__asset--dark {
+.logo-wordmark__themed--dark .logo-wordmark__asset--dark,
+[data-theme="dark"] .logo-wordmark__themed--auto .logo-wordmark__asset--dark {
   display: block;
+}
+
+@media (min-width: 1024px) {
+  .hero-portrait-image {
+    transform: translateY(clamp(6rem, 10vh, 8rem));
+  }
 }
 
 body {
@@ -1524,6 +1530,12 @@ p {
   background: var(--color-primary);
   color: var(--color-base);
   box-shadow: 0 12px 24px rgba(26, 54, 93, 0.16);
+}
+
+.account-settings-tab--active:hover {
+  border-color: rgba(26, 54, 93, 0.18);
+  background: var(--color-primary);
+  color: var(--color-base);
 }
 
 .account-settings-tab--active span:last-child span:last-child {
@@ -4850,7 +4862,10 @@ body:has([aria-label="Course categories"]) .floating-action--advisor {
    chips get a clear white outline; the active chip becomes a solid white
    button with a navy icon. The expanded sidebar is untouched. */
 .platform-sidebar.sidebar-collapsed .platform-nav-link {
+  width: 100%;
+  justify-content: center;
   gap: 0;
+  padding-inline: 0 !important;
   border-color: transparent !important;
   background: transparent !important;
   box-shadow: none !important;

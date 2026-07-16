@@ -15,9 +15,9 @@ type LogoWordmarkProps = {
 };
 
 function fullSizeClass(nav: boolean, compact: boolean): string {
-  if (nav) return "h-12";
-  if (compact) return "h-12";
-  return "h-14";
+  if (nav) return "h-8";
+  if (compact) return "h-9";
+  return "h-10";
 }
 
 function markSizeClass(nav: boolean, compact: boolean): string {
@@ -36,16 +36,30 @@ export function LogoWordmark({
 }: LogoWordmarkProps) {
   const inner =
     variant === "mark" ? (
-      <Image
-        src={brand.logoMark}
-        alt=""
-        width={brand.logoMarkSize.width}
-        height={brand.logoMarkSize.height}
-        priority
-        className={`${markSizeClass(nav, compact)} w-auto object-contain`}
-      />
+      <span
+        className={`logo-wordmark__themed logo-wordmark__mark logo-wordmark__themed--${tone}`}
+      >
+        <Image
+          src={brand.logoMarkLight}
+          alt=""
+          width={brand.logoMarkSize.width}
+          height={brand.logoMarkSize.height}
+          priority
+          className={`logo-wordmark__asset logo-wordmark__asset--light ${markSizeClass(nav, compact)} w-auto object-contain`}
+        />
+        <Image
+          src={brand.logoMarkDark}
+          alt=""
+          width={brand.logoMarkSize.width}
+          height={brand.logoMarkSize.height}
+          priority
+          className={`logo-wordmark__asset logo-wordmark__asset--dark ${markSizeClass(nav, compact)} w-auto object-contain`}
+        />
+      </span>
     ) : (
-      <span className={`logo-wordmark__full logo-wordmark__full--${tone}`}>
+      <span
+        className={`logo-wordmark__themed logo-wordmark__full logo-wordmark__themed--${tone}`}
+      >
         <Image
           src={brand.logoFullLight}
           alt=""

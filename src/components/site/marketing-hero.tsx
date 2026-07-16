@@ -94,7 +94,7 @@ export function MarketingHero() {
             fill
             priority={activeIndex === 0}
             sizes="100vw"
-            className={`object-cover object-[78%_center] transition-opacity duration-[1400ms] ease-in-out motion-reduce:transition-none sm:object-[74%_center] md:object-[68%_center] lg:object-center ${
+            className={`hero-portrait-image object-cover object-[78%_center] transition-opacity duration-[1400ms] ease-in-out motion-reduce:transition-none sm:object-[74%_center] md:object-[68%_center] lg:object-center ${
               isTransitioning ? "opacity-0" : "opacity-100"
             }`}
           />
@@ -105,7 +105,7 @@ export function MarketingHero() {
             fill
             loading="lazy"
             sizes="100vw"
-            className={`object-cover object-[78%_center] transition-opacity duration-[1400ms] ease-in-out motion-reduce:transition-none sm:object-[74%_center] md:object-[68%_center] lg:object-center ${
+            className={`hero-portrait-image object-cover object-[78%_center] transition-opacity duration-[1400ms] ease-in-out motion-reduce:transition-none sm:object-[74%_center] md:object-[68%_center] lg:object-center ${
               isTransitioning ? "opacity-100" : "opacity-0"
             }`}
           />

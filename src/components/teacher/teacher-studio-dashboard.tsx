@@ -11,6 +11,7 @@ import {
   Gift,
   Plus,
   Repeat2,
+  Route,
   Store,
   UsersRound,
   Wallet,
@@ -390,6 +391,12 @@ function StudioSellFormatsSection() {
       icon: BookOpenCheck,
     },
     {
+      title: "Guided program",
+      detail: "A sequenced pathway of learning, practice, and optional live touchpoints.",
+      href: "/teach/builder?newCourse=1&format=program",
+      icon: Route,
+    },
+    {
       title: "Subscription",
       detail: "Recurring access billed monthly or yearly.",
       href: "/teach/builder?newCourse=1&format=subscription",
@@ -429,7 +436,7 @@ function StudioSellFormatsSection() {
       >
         Choose a product format
       </h2>
-      <ul className="mt-5 grid gap-px overflow-hidden rounded-[8px] border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2 xl:grid-cols-5">
+      <ul className="mt-5 grid gap-px overflow-hidden rounded-[8px] border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2 lg:grid-cols-3">
         {formats.map((format) => {
           const Icon = format.icon;
 

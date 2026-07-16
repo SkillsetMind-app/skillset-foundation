@@ -8,17 +8,17 @@ import type { NextConfig } from "next";
 // (https:) because course thumbnails come from many hosts; tighten before
 // enforcing. ponytail: report-uri (not report-to) — still honored in report-only
 // and one line; add report-to only if a target browser drops report-uri.
-const CSP_REPORT_ONLY = [
+export const CSP_REPORT_ONLY = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://us.i.posthog.com https://us-assets.i.posthog.com https://challenges.cloudflare.com https://va.vercel-scripts.com",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect-js.stripe.com https://js.stripe.com https://us.i.posthog.com https://us-assets.i.posthog.com https://challenges.cloudflare.com https://va.vercel-scripts.com",
+  "style-src 'self' 'unsafe-inline' 'sha256-0hAheEzaMe6uXIKV4EehS9pu1am1lj/KnnzrOYqckXk='",
+  "img-src 'self' data: blob: https: https://*.stripe.com",
   "font-src 'self' data:",
   "connect-src 'self' https://ijtikldtjvsbtwszokvs.supabase.co wss://ijtikldtjvsbtwszokvs.supabase.co https://api.stripe.com https://api.pwnedpasswords.com https://us.i.posthog.com https://us-assets.i.posthog.com https://va.vercel-scripts.com https://vitals.vercel-insights.com",
-  "frame-src https://js.stripe.com https://hooks.stripe.com https://iframe.mediadelivery.net https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://accounts.google.com https://challenges.cloudflare.com",
+  "frame-src https://connect-js.stripe.com https://js.stripe.com https://hooks.stripe.com https://iframe.mediadelivery.net https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://accounts.google.com https://challenges.cloudflare.com",
   "media-src 'self' blob: https://ijtikldtjvsbtwszokvs.supabase.co https://iframe.mediadelivery.net",
   "report-uri /api/csp-report",
 ].join("; ");

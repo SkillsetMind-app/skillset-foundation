@@ -48,8 +48,9 @@ export const metadata: Metadata = {
   title: brand.title,
   description: brand.description,
   icons: {
-    icon: brand.faviconUrl,
-    shortcut: brand.faviconUrl,
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: brand.faviconUrl,
   },
 };
 

@@ -101,5 +101,9 @@ describe("TeacherStudioDashboard", () => {
       "href",
       "/teach/builder?newCourse=1&format=event"
     );
+    expect(screen.getByRole("link", { name: /Guided program/i })).toHaveAttribute(
+      "href",
+      "/teach/builder?newCourse=1&format=program"
+    );
   });
 });

@@ -4,8 +4,8 @@ import { brand } from "@/data/brand";
 
 export const dynamic = "force-static";
 
-// Served at /manifest.webmanifest. Colors and vector icons mirror the official
-// SkillsetMind identity handoff.
+// Served at /manifest.webmanifest. The solid tile keeps the reversible symbol
+// legible against both light and dark browser surfaces.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: brand.title,
@@ -17,15 +17,16 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#102A43",
     icons: [
       {
-        src: brand.logoMark,
-        sizes: "any",
-        type: "image/svg+xml",
+        src: brand.faviconUrl,
+        sizes: "512x512",
+        type: "image/png",
         purpose: "any",
       },
       {
         src: brand.faviconUrl,
-        sizes: "any",
-        type: "image/svg+xml",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
       },
     ],
   };

@@ -6,15 +6,16 @@ export const brand = {
     "A vertical business and learning platform for psychology, therapy and human development.",
   logoAlt: "SkillsetMind — two profiles forming a chalice",
   // Kept as a compatibility alias for metadata and legacy consumers.
-  logoUrl: "/brand/logo-full-light.svg",
-  faviconUrl: "/brand/favicon.svg",
-  // Official outlined lockups from the rebranding handoff.
-  logoFullLight: "/brand/logo-full-light.svg",
-  logoFullDark: "/brand/logo-full-dark.svg",
-  logoFullLightSize: { width: 2200, height: 720 },
-  logoFullDarkSize: { width: 2200, height: 720 },
-  // Reversed symbol remains legible on both the light shell and dark sidebar.
-  logoMark: "/brand/logo-mark.svg",
-  logoMarkSize: { width: 1254, height: 1254 },
-  faviconSize: { width: 1254, height: 1254 },
+  logoUrl: "/brand/logo-full-light-v2.png",
+  faviconUrl: "/brand/favicon-solid.png",
+  // Exact transparent lockups supplied in the rebranding handoff.
+  logoFullLight: "/brand/logo-full-light-v2.png",
+  logoFullDark: "/brand/logo-full-dark-v2.png",
+  logoFullLightSize: { width: 1600, height: 320 },
+  logoFullDarkSize: { width: 1600, height: 320 },
+  logoMark: "/brand/logo-mark-navy.png",
+  logoMarkLight: "/brand/logo-mark-navy.png",
+  logoMarkDark: "/brand/logo-mark-white.png",
+  logoMarkSize: { width: 512, height: 512 },
+  faviconSize: { width: 512, height: 512 },
 } as const;

@@ -7,7 +7,11 @@ import { TeacherCourseStudio } from "@/components/teacher/teacher-course-studio"
 import type { TeacherCourseProductFormat } from "@/domain/teacher-course";
 
 function parseProductFormat(value: string | null): TeacherCourseProductFormat {
-  return value === "subscription" || value === "community" || value === "event" || value === "free"
+  return value === "program"
+    || value === "subscription"
+    || value === "community"
+    || value === "event"
+    || value === "free"
     ? value
     : "course";
 }

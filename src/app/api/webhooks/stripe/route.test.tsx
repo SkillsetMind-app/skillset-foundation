@@ -38,6 +38,7 @@ type AdminState = {
   refundClaims: Record<string, RefundClaim>;
   ledger: Record<string, unknown>;
   rpcCalls: Array<{ name: string; args: Record<string, unknown> }>;
+  userUpdates: Array<Record<string, unknown>>;
 };
 
 type Filter = { column: string; value: unknown };
@@ -68,6 +69,7 @@ function createAdmin(mode: AdminState["mode"], failAt?: FailurePoint) {
     refundClaims: {},
     ledger: baseLedger(),
     rpcCalls: [],
+    userUpdates: [],
   };
 
   class Query {
@@ -159,6 +161,15 @@ function createAdmin(mode: AdminState["mode"], failAt?: FailurePoint) {
           this.operation === "update"
         ) {
           Object.assign(state.ledger, this.values);
+        }
+
+        if (this.table === "users" && this.operation === "update") {
+          state.userUpdates.push({
+            ...this.values,
+            stripe_connected_account_id: this.filterValue(
+              "stripe_connected_account_id",
+            ),
+          });
         }
 
         return { data: null, error: null };
@@ -368,6 +379,7 @@ function deferred() {
 describe("Stripe webhook financial integrity", () => {
   beforeEach(() => {
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
+    process.env.STRIPE_CONNECT_WEBHOOK_SECRET = "whsec_connect_test";
     mocks.getAdmin.mockReset();
     mocks.reversalCreate.mockReset().mockResolvedValue({ id: "trr_1" });
     mocks.subscriptionRetrieve.mockReset().mockResolvedValue({
@@ -393,6 +405,7 @@ describe("Stripe webhook financial integrity", () => {
 
   afterEach(() => {
     delete process.env.STRIPE_WEBHOOK_SECRET;
+    delete process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
     vi.restoreAllMocks();
   });
 
@@ -419,6 +432,35 @@ describe("Stripe webhook financial integrity", () => {
 
     expect(response.status).toBe(500);
     expect(admin.state.doneEvents).not.toContain("evt_invoice_failed");
+  });
+
+  it("syncs connected-account readiness from a Connect webhook", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const response = await postEvent({
+      id: "evt_account_updated",
+      type: "account.updated",
+      account: "acct_teacher",
+      data: {
+        object: {
+          id: "acct_teacher",
+          object: "account",
+          charges_enabled: true,
+          payouts_enabled: true,
+        },
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(admin.state.userUpdates).toContainEqual(
+      expect.objectContaining({
+        stripe_connected_account_id: "acct_teacher",
+        stripe_connect_status: "ready",
+        stripe_connect_charges_enabled: true,
+        stripe_connect_payouts_enabled: true,
+      }),
+    );
   });
 
   it("serializes distinct cumulative partial refunds before calling Stripe", async () => {

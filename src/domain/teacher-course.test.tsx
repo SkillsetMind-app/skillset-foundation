@@ -23,6 +23,7 @@ describe("teacher course domain", () => {
   it("maps product format and billing interval to the stored payment type", () => {
     expect(resolveTeacherCoursePaymentType("course", "monthly")).toBe("one_time");
     expect(resolveTeacherCoursePaymentType("event", "monthly")).toBe("one_time");
+    expect(resolveTeacherCoursePaymentType("program", "monthly")).toBe("one_time");
     expect(resolveTeacherCoursePaymentType("free", "yearly")).toBe("free");
     expect(resolveTeacherCoursePaymentType("subscription", "monthly")).toBe(
       "subscription_monthly",

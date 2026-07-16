@@ -140,6 +140,28 @@ describe("CreateCourseStart", () => {
     expect(mocks.push).toHaveBeenCalledWith("/teach/events?courseId=course-123&newEvent=1");
   });
 
+  it("creates a guided program as a structured paid-content preset", async () => {
+    render(<CreateCourseStart ownerId="teacher-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Guided program/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
+    fireEvent.change(screen.getByLabelText("Product title"), {
+      target: { value: "Eight-week resilience program" },
+    });
+    fireEvent.change(screen.getByLabelText(/Product promise/), {
+      target: { value: "Follow a sequenced eight-week path of learning, practice, and reflection." },
+    });
+    selectPrimaryCategory();
+    fireEvent.click(screen.getByRole("button", { name: /Create and set pricing/i }));
+
+    await waitFor(() => {
+      expect(mocks.createTeacherCourse).toHaveBeenCalledWith(
+        expect.objectContaining({ paymentType: "one_time" }),
+      );
+    });
+    expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=pricing");
+  });
+
   it("starts on format selection and keeps categories collapsed", () => {
     render(<CreateCourseStart ownerId="teacher-1" initialFormat="subscription" />);
 

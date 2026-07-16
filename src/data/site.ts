@@ -114,7 +114,7 @@ export const platformNav: PlatformNavItem[] = [
   {
     href: "/teach",
     labelKey: "platform.nav.studio",
-    icon: "LayoutDashboard",
+    icon: "House",
     contexts: ["teacher"],
     section: "Home",
     permission: "teacherStudio.access",
