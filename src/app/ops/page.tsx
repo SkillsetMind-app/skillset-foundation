@@ -4,12 +4,12 @@ import { PlatformShell } from "@/components/platform/platform-shell";
 
 const opsCards = [
   {
-    title: "Course review",
-    description: "Review submitted courses, check quality standards, and publish approved learning experiences.",
+    title: "Professional verification",
+    description: "Resolve credential exceptions and appeals before a professional can publish.",
   },
   {
-    title: "Educator approvals",
-    description: "Review new educators and make sure each profile is ready for the public learning experience.",
+    title: "Marketplace compliance",
+    description: "Triage reports and monitor published programs without delaying legitimate launches.",
   },
   {
     title: "Learner support",
@@ -23,7 +23,7 @@ export default function OpsPage() {
       <PlatformShell
         eyebrow="Support and safety"
         title="A calm operations layer behind the learning experience."
-        description="Course review, educator approvals, and learner support keep the platform trustworthy as it grows."
+        description="Professional verification, marketplace compliance, and learner support keep the platform trustworthy as it grows."
       >
         <div className="grid gap-5 lg:grid-cols-3">
           {opsCards.map((card) => (

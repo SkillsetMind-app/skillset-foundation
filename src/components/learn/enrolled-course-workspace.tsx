@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import { CourseCommunityFeed } from "@/components/learn/course-community-feed";
 import { CourseMessagesPanel } from "@/components/learn/course-messages-panel";
 import { CourseReviewPanel } from "@/components/learn/course-review-panel";
@@ -1638,73 +1639,6 @@ function LessonAssetList({
         </div>
       ))}
     </div>
-  );
-}
-
-// Bunny-hosted lesson video. We ask the server for a signed embed URL (access
-// gated by course_assets RLS — owner/enrolled/admin only) and render Bunny's
-// player, which handles HLS adaptive streaming, captions and thumbnails. The
-// token is short-lived; a failure degrades to a clear message, not a blank box.
-function BunnyVideoPlayer({ assetId, title }: { assetId: string; title: string }) {
-  const [embedUrl, setEmbedUrl] = useState<string | null>(null);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let active = true;
-
-    fetch("/api/courses/video-token", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ assetId }),
-    })
-      .then((res) =>
-        res.ok ? res.json() : Promise.reject(new Error(String(res.status))),
-      )
-      .then((data: { embedUrl: string }) => {
-        if (active) {
-          setEmbedUrl(data.embedUrl);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setError("We could not load this video. Refresh your session and try again.");
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [assetId]);
-
-  if (error) {
-    return (
-      <div className="member-video-empty">
-        <PlayCircle size={34} aria-hidden />
-        <h5>Video unavailable</h5>
-        <p>{error}</p>
-      </div>
-    );
-  }
-
-  if (!embedUrl) {
-    return (
-      <div className="member-video-empty">
-        <PlayCircle size={34} aria-hidden />
-        <h5>Loading secure video...</h5>
-        <p>Preparing protected playback.</p>
-      </div>
-    );
-  }
-
-  return (
-    <iframe
-      src={embedUrl}
-      title={title}
-      className="aspect-video w-full"
-      loading="lazy"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-      allowFullScreen
-    />
   );
 }
 

@@ -1,36 +1,14 @@
 import type { DripStrategy } from "@/domain/drip-policy";
 
 export const skillsetCourseCategories = [
-  "Business and management",
-  "Marketing and sales",
-  "Technology and software",
-  "Design and creative",
-  "Health and wellness",
-  "Personal development",
-  "Leadership",
-  "Finance and investing",
-  "Entrepreneurship",
-  "Productivity",
-  "Psychology",
-  "Education and teaching",
-  "Languages",
-  "Career development",
-  "Data and analytics",
-  "AI and automation",
-  "Photography and video",
-  "Writing and communication",
-  "Operations",
-  "Customer success",
-  "Legal and compliance",
-  "Real estate",
-  "Beauty and aesthetics",
-  "Fitness",
-  "Nutrition",
-  "Parenting and family",
-  "Music and audio",
-  "Spirituality",
-  "Trades and practical skills",
-  "Other",
+  "Clinical Psychology & Approaches",
+  "Hypnotherapy",
+  "Integrative & Holistic Therapies",
+  "Family Constellations & Systemic Work",
+  "Mental Health Foundations",
+  "Personal Development",
+  "The Therapist's Business",
+  "Supervision & Continuing Education",
 ] as const;
 
 export type TeacherCourseStatus =
@@ -55,22 +33,20 @@ export type TeacherCoursePaymentType =
   | "subscription_yearly"
   | "free";
 
-export type TeacherCourseProductFormat = "course" | "subscription" | "free";
+export type TeacherCourseProductFormat = "course" | "subscription" | "community" | "event" | "free";
 
 export type TeacherCourseSubscriptionInterval = "monthly" | "yearly";
 
 export function resolveTeacherCoursePaymentType(
   format: TeacherCourseProductFormat,
-  interval: TeacherCourseSubscriptionInterval,
+  interval: TeacherCourseSubscriptionInterval
 ): TeacherCoursePaymentType {
   if (format === "free") {
     return "free";
   }
 
-  if (format === "subscription") {
-    return interval === "yearly"
-      ? "subscription_yearly"
-      : "subscription_monthly";
+  if (format === "subscription" || format === "community") {
+    return interval === "yearly" ? "subscription_yearly" : "subscription_monthly";
   }
 
   return "one_time";
@@ -161,6 +137,7 @@ export type CreateTeacherCourseInput = {
   category: string;
   categories?: string[];
   paymentType?: TeacherCoursePaymentType;
+  communityEnabled?: boolean;
 };
 
 export type UpdateTeacherCourseBuilderInput = {
@@ -258,10 +235,7 @@ export function normalizeMembersTheme(value: unknown): MembersTheme | null {
   return value === "light" || value === "dark" ? value : null;
 }
 
-export function normalizeMembersText(
-  value: unknown,
-  maxLength: number,
-): string | null {
+export function normalizeMembersText(value: unknown, maxLength: number): string | null {
   if (typeof value !== "string") {
     return null;
   }
@@ -276,9 +250,7 @@ function normalizeNullableText(value: string | null | undefined): string | null 
 }
 
 function normalizeNullableNumber(value: number | null | undefined): number | null {
-  return typeof value === "number" && Number.isFinite(value)
-    ? Math.round(value)
-    : null;
+  return typeof value === "number" && Number.isFinite(value) ? Math.round(value) : null;
 }
 
 function normalizeVideoSource(value: unknown): LessonVideoSource | null {
@@ -306,7 +278,7 @@ export function inferLessonVideoSource(params: {
 // the function alone decides — via its own WRITE_LESSON_CONTENT_INLINE flag —
 // whether to also keep the content inline on the world-readable course doc.
 export function normalizeTeacherCourseModules(
-  modules: TeacherCourseModule[],
+  modules: TeacherCourseModule[]
 ): TeacherCourseModule[] {
   return modules.map((module) => ({
     ...module,
@@ -342,16 +314,19 @@ export function teacherCanEditCourse(status: TeacherCourseStatus): boolean {
   return ["draft", "needs_changes", "published", "inactive"].includes(status);
 }
 
-export function teacherCanSubmitCourse(status: TeacherCourseStatus): boolean {
-  return ["draft", "needs_changes", "inactive"].includes(status);
+export function teacherCanPublishCourse(status: TeacherCourseStatus): boolean {
+  return ["draft", "in_review", "needs_changes", "inactive"].includes(status);
+}
+
+export function isCoursePubliclySellable(status: string | null | undefined): boolean {
+  return status === "published";
 }
 
 /**
  * A teacher may permanently delete a course only while it is fully under their
  * own control and has never reached the marketplace: drafts and
- * needs-changes courses. Submitted (in_review), published, and inactive
- * courses are governed by SkillsetMind (review queue, live catalog, or a taken-down
- * course that may carry enrollments/sales) and must not be hard-deleted here.
+ * needs-changes courses. Legacy in-review, published, and inactive courses may
+ * carry marketplace state, enrollments, or sales and must not be hard-deleted here.
  */
 export function teacherCanDeleteCourse(status: TeacherCourseStatus): boolean {
   return ["draft", "needs_changes"].includes(status);

@@ -2,7 +2,10 @@ import type Stripe from "stripe";
 
 import { planById, hasRealStripePriceIds } from "@/data/plans";
 import type { PlanBillingCycle, PlanId } from "@/data/plans";
-import type { ProductOffer } from "@/domain/product-pricing";
+import type {
+  ProductOffer,
+  ProductPriceSelection,
+} from "@/domain/product-pricing";
 import { resolveCoursePrice } from "@/domain/product-pricing";
 import type { TeacherCoursePaymentType } from "@/domain/teacher-course";
 import { normalizeSkillsetCurrency } from "@/lib/payments/currencies";
@@ -96,11 +99,14 @@ export async function ensureCourseSubscriptionCanceled(
 export function normalizeCoursePrice(
   course: CourseRow,
   offers: ProductOffer[] = [],
+  selection: ProductPriceSelection = {},
 ): {
   amountMinor: number;
   currency: string;
   paymentType: string | null;
   source: "legacy" | "offer";
+  offerId?: string;
+  priceId?: string;
   stripePriceId?: string | null;
 } {
   const resolved = resolveCoursePrice(
@@ -113,6 +119,7 @@ export function normalizeCoursePrice(
         | undefined,
     },
     offers,
+    selection,
   );
 
   if (!resolved || resolved.amountMinor <= 0) {
@@ -126,13 +133,16 @@ export function normalizeCoursePrice(
     currency: normalizeSkillsetCurrency(resolved.currency).toLowerCase(),
     paymentType: resolved.paymentType ?? course.payment_type ?? null,
     source: resolved.source,
+    offerId: resolved.offerId,
+    priceId: resolved.priceId,
     stripePriceId: resolved.stripePriceId,
   };
 }
 
 /**
  * Load product offers/prices for dual-read checkout.
- * Returns [] if tables missing, RLS blocks, or no packages configured.
+ * Returns [] only when no packages are configured. Query failures are fatal so
+ * checkout never silently charges a legacy price after an offer read failed.
  */
 export async function loadCourseProductOffers(
   courseId: string,
@@ -142,10 +152,15 @@ export async function loadCourseProductOffers(
   const db = supabase as any;
   const { data: offerRows, error: offerError } = await db
     .from("product_offers")
-    .select("id,course_id,name,is_default,active")
+    .select("id,course_id,name,is_default,active,public_code")
     .eq("course_id", courseId)
-    .eq("active", true);
-  if (offerError || !Array.isArray(offerRows) || offerRows.length === 0) {
+    .eq("active", true)
+    .order("is_default", { ascending: false })
+    .order("created_at", { ascending: true });
+  if (offerError) {
+    throw new Error(`Failed to load course offers: ${offerError.message}`);
+  }
+  if (!Array.isArray(offerRows) || offerRows.length === 0) {
     return [];
   }
 
@@ -153,13 +168,17 @@ export async function loadCourseProductOffers(
   for (const row of offerRows as Array<Record<string, unknown>>) {
     const offerId = String(row.id ?? "");
     if (!offerId) continue;
-    const { data: priceRows } = await db
+    const { data: priceRows, error: priceError } = await db
       .from("product_prices")
       .select(
         "id,offer_id,amount_minor,currency,payment_type,stripe_price_id,active",
       )
       .eq("offer_id", offerId)
-      .eq("active", true);
+      .eq("active", true)
+      .order("created_at", { ascending: true });
+    if (priceError) {
+      throw new Error(`Failed to load prices for offer ${offerId}: ${priceError.message}`);
+    }
     const prices: ProductOffer["prices"] = (
       (priceRows as Array<Record<string, unknown>> | null) ?? []
     ).map((price) => ({
@@ -178,6 +197,8 @@ export async function loadCourseProductOffers(
       id: offerId,
       courseId: String(row.course_id ?? courseId),
       name: String(row.name ?? "Offer"),
+      publicCode:
+        typeof row.public_code === "string" ? row.public_code : null,
       isDefault: Boolean(row.is_default),
       active: row.active !== false,
       prices,

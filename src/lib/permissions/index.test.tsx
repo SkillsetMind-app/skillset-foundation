@@ -26,7 +26,8 @@ describe("permissions", () => {
   it("keeps privileged capabilities away from lower roles", () => {
     expect(roleHasPermission("guest", "payments.checkout")).toBe(false);
     expect(roleHasPermission("student", "teacherStudio.access")).toBe(false);
-    expect(roleHasPermission("teacher", "courses.publish")).toBe(false);
+    expect(roleHasPermission("teacher", "courses.publish")).toBe(true);
+    expect(roleHasPermission("teacher", "courses.submitForReview")).toBe(false);
     expect(roleHasPermission("teacher", "certificates.issue")).toBe(false);
     expect(roleHasPermission("support", "platform.accessAdmin")).toBe(false);
     expect(roleHasPermission("moderator", "certificates.revoke")).toBe(false);

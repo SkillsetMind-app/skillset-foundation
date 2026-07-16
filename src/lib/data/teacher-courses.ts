@@ -32,10 +32,7 @@ type CourseRow = Database["public"]["Tables"]["courses"]["Row"];
 export async function createTeacherCourse(input: CreateTeacherCourseInput) {
   const supabase = getSupabaseBrowserClient();
   const paymentType = input.paymentType ?? "one_time";
-  const categories = normalizeCourseCategories([
-    ...(input.categories ?? []),
-    input.category,
-  ]);
+  const categories = normalizeCourseCategories([...(input.categories ?? []), input.category]);
 
   const { data, error } = await supabase.rpc("create_teacher_course_draft", {
     p_title: input.title,
@@ -43,6 +40,7 @@ export async function createTeacherCourse(input: CreateTeacherCourseInput) {
     p_category: categories[0] ?? input.category,
     p_categories: categories,
     p_payment_type: paymentType,
+    p_community_enabled: input.communityEnabled === true,
   });
 
   if (error) {
@@ -59,13 +57,10 @@ export async function createTeacherCourse(input: CreateTeacherCourseInput) {
 // and writes the frozen platform_fee_bps through the trusted-write flag.
 export async function updateTeacherCourseBuilder(
   courseId: string,
-  input: UpdateTeacherCourseBuilderInput,
+  input: UpdateTeacherCourseBuilderInput
 ) {
   const supabase = getSupabaseBrowserClient();
-  const categories = normalizeCourseCategories([
-    ...(input.categories ?? []),
-    input.category,
-  ]);
+  const categories = normalizeCourseCategories([...(input.categories ?? []), input.category]);
 
   const payload = {
     title: input.title.trim(),
@@ -83,21 +78,15 @@ export async function updateTeacherCourseBuilder(
     dripIntervalDays: input.dripIntervalDays,
     freePreviewLessonId: input.freePreviewLessonId,
     membersTheme: normalizeMembersTheme(input.membersTheme),
-    membersCoverAssetId: normalizeMembersText(
-      input.membersCoverAssetId ?? null,
-      160,
-    ),
-    membersTitle: normalizeMembersText(
-      input.membersTitle ?? null,
-      MAX_MEMBERS_TITLE_LENGTH,
-    ),
+    membersCoverAssetId: normalizeMembersText(input.membersCoverAssetId ?? null, 160),
+    membersTitle: normalizeMembersText(input.membersTitle ?? null, MAX_MEMBERS_TITLE_LENGTH),
     membersSubtitle: normalizeMembersText(
       input.membersSubtitle ?? null,
-      MAX_MEMBERS_SUBTITLE_LENGTH,
+      MAX_MEMBERS_SUBTITLE_LENGTH
     ),
     membersDescription: normalizeMembersText(
       input.membersDescription ?? null,
-      MAX_MEMBERS_DESCRIPTION_LENGTH,
+      MAX_MEMBERS_DESCRIPTION_LENGTH
     ),
     communityEnabled: input.communityEnabled === true,
   };
@@ -112,9 +101,9 @@ export async function updateTeacherCourseBuilder(
   }
 }
 
-export async function submitTeacherCourseForReview(courseId: string) {
+export async function publishTeacherCourse(courseId: string) {
   const supabase = getSupabaseBrowserClient();
-  const { error } = await supabase.rpc("submit_teacher_course_for_review", {
+  const { error } = await supabase.rpc("publish_teacher_course", {
     p_course_id: courseId,
   });
 
@@ -154,7 +143,7 @@ export async function deleteCourseAsAdmin(courseId: string) {
 export async function updateCourseReviewStatus(
   courseId: string,
   status: Extract<TeacherCourseStatus, "published" | "needs_changes" | "inactive">,
-  reviewNote: string | null = null,
+  reviewNote: string | null = null
 ) {
   const supabase = getSupabaseBrowserClient();
   const { error } = await supabase
@@ -181,7 +170,7 @@ export async function updateCourseReviewStatus(
 export async function setCourseFeatured(
   courseId: string,
   featured: boolean,
-  featuredRank: number | null = null,
+  featuredRank: number | null = null
 ) {
   const supabase = getSupabaseBrowserClient();
   const rank = featured
@@ -207,7 +196,7 @@ export async function setCourseFeatured(
 export function subscribeToTeacherCourse(
   courseId: string,
   callback: (course: TeacherCourse | null) => void,
-  onError: (error: Error) => void,
+  onError: (error: Error) => void
 ): () => void {
   const supabase = getSupabaseBrowserClient();
 
@@ -244,7 +233,7 @@ export function subscribeToTeacherCourse(
           return;
         }
         callback(rowToTeacherCourse(payload.new as unknown as CourseRow));
-      },
+      }
     )
     .subscribe();
 
@@ -256,15 +245,12 @@ export function subscribeToTeacherCourse(
 export function subscribeToTeacherCourses(
   ownerId: string,
   callback: (courses: TeacherCourse[]) => void,
-  onError: (error: Error) => void,
+  onError: (error: Error) => void
 ): () => void {
   const supabase = getSupabaseBrowserClient();
 
   const load = async () => {
-    const { data, error } = await supabase
-      .from(coursesTable)
-      .select("*")
-      .eq("owner_id", ownerId);
+    const { data, error } = await supabase.from(coursesTable).select("*").eq("owner_id", ownerId);
 
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
@@ -288,7 +274,7 @@ export function subscribeToTeacherCourses(
       },
       () => {
         void load();
-      },
+      }
     )
     .subscribe();
 
@@ -299,15 +285,12 @@ export function subscribeToTeacherCourses(
 
 export function subscribeToCoursesInReview(
   callback: (courses: TeacherCourse[]) => void,
-  onError: (error: Error) => void,
+  onError: (error: Error) => void
 ): () => void {
   const supabase = getSupabaseBrowserClient();
 
   const load = async () => {
-    const { data, error } = await supabase
-      .from(coursesTable)
-      .select("*")
-      .eq("status", "in_review");
+    const { data, error } = await supabase.from(coursesTable).select("*").eq("status", "in_review");
 
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
@@ -331,7 +314,7 @@ export function subscribeToCoursesInReview(
       },
       () => {
         void load();
-      },
+      }
     )
     .subscribe();
 
@@ -342,7 +325,7 @@ export function subscribeToCoursesInReview(
 
 export function subscribeToManagedCourses(
   callback: (courses: TeacherCourse[]) => void,
-  onError: (error: Error) => void,
+  onError: (error: Error) => void
 ): () => void {
   const supabase = getSupabaseBrowserClient();
 
@@ -367,13 +350,9 @@ export function subscribeToManagedCourses(
   // ponytail: table-wide change fan-in; the status filter is applied in load().
   const channel = supabase
     .channel("courses:managed")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: coursesTable },
-      () => {
-        void load();
-      },
-    )
+    .on("postgres_changes", { event: "*", schema: "public", table: coursesTable }, () => {
+      void load();
+    })
     .subscribe();
 
   return () => {

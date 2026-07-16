@@ -58,6 +58,13 @@ export const featureFlagDefinitions = {
       description: "Enables recurring subscription management.",
       defaultEnabled: false,
     },
+    cardInstallments: {
+      key: "payments.cardInstallments",
+      area: "payments",
+      label: "Card installments",
+      description: "Enables Mexico-only Stripe card installment controls.",
+      defaultEnabled: false,
+    },
   },
   community: {
     spaces: {
@@ -198,6 +205,13 @@ export function getPublicFeatureFlagOverrides(): FeatureFlagOverrides {
 
   if (checkoutFlag === "true" || checkoutFlag === "false") {
     overrides["payments.checkout"] = checkoutFlag === "true";
+  }
+
+  const cardInstallmentsFlag =
+    process.env.NEXT_PUBLIC_PAYMENTS_CARD_INSTALLMENTS_ENABLED;
+
+  if (cardInstallmentsFlag === "true" || cardInstallmentsFlag === "false") {
+    overrides["payments.cardInstallments"] = cardInstallmentsFlag === "true";
   }
 
   const mfaFlag = process.env.NEXT_PUBLIC_AUTH_MFA_ENABLED;

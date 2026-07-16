@@ -9,18 +9,40 @@ describe("installments", () => {
     expect(normalizeInstallmentsMax(99)).toBe(24);
   });
 
-  it("builds equal-split options when enabled", () => {
+  it("enables Stripe card installments only for MXN on a Mexico account", () => {
     const plan = buildInstallmentPlan({
       amountMinor: 12_000,
       installmentsEnabled: true,
       installmentsMax: 3,
-      currency: "BRL",
+      currency: "MXN",
+      stripeAccountCountry: "MX",
     });
     expect(plan.enabled).toBe(true);
     expect(plan.options).toHaveLength(2);
     expect(plan.options[0].count).toBe(2);
     expect(plan.options[0].amountMinor).toBe(6000);
     expect(plan.stripeCardInstallmentsEligible).toBe(true);
+  });
+
+  it("rejects BRL and MXN on a non-Mexico Stripe account", () => {
+    expect(
+      buildInstallmentPlan({
+        amountMinor: 10_000,
+        installmentsEnabled: true,
+        installmentsMax: 6,
+        currency: "BRL",
+        stripeAccountCountry: "BR",
+      }).stripeCardInstallmentsEligible,
+    ).toBe(false);
+    expect(
+      buildInstallmentPlan({
+        amountMinor: 10_000,
+        installmentsEnabled: true,
+        installmentsMax: 6,
+        currency: "MXN",
+        stripeAccountCountry: "US",
+      }).stripeCardInstallmentsEligible,
+    ).toBe(false);
   });
 
   it("disables for free/zero and marks USD as non-stripe-eligible", () => {
@@ -30,6 +52,7 @@ describe("installments", () => {
         installmentsEnabled: true,
         installmentsMax: 6,
         currency: "USD",
+        stripeAccountCountry: "MX",
       }).enabled,
     ).toBe(false);
     expect(
@@ -38,6 +61,7 @@ describe("installments", () => {
         installmentsEnabled: true,
         installmentsMax: 6,
         currency: "USD",
+        stripeAccountCountry: "MX",
       }).stripeCardInstallmentsEligible,
     ).toBe(false);
   });

@@ -91,7 +91,7 @@ export default function TeacherTermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection heading="4. Content responsibility and review">
+      <LegalSection heading="4. Content responsibility and compliance">
         <p>
           You are solely responsible for the accuracy, originality, legality,
           and student safety of everything you publish — videos, materials,
@@ -99,11 +99,13 @@ export default function TeacherTermsPage() {
           to everything in your course, including music, images, and excerpts.
         </p>
         <p>
-          Courses go through a platform review before publication. Review
-          checks quality and policy compliance; it does not transfer any
-          responsibility for your content to SkillsetMind. Courses may be returned
-          for changes, paused, or removed if they fail quality, trust,
-          payment, or content standards.
+          You must complete professional verification before publishing.
+          SkillsetMind monitors live programs and may review reported content
+          for policy compliance; this does not transfer responsibility for your
+          content to SkillsetMind. Automated compliance signals do not
+          automatically unpublish a course. After a human operations decision,
+          courses may be paused or removed if they fail trust, payment, safety,
+          or content standards.
         </p>
       </LegalSection>
 

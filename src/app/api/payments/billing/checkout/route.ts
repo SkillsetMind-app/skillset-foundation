@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  enforceRateLimit,
   PaymentError,
   paymentErrorResponse,
   requireUserId,
@@ -12,7 +13,6 @@ import {
   getUserRow,
   resolvePriceId,
 } from "@/lib/payments/server/stripe-helpers";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { PlanBillingCycle, PlanId } from "@/data/plans";
 
 // Ports createBillingCheckoutSession: embedded Stripe Checkout for a plan
@@ -22,21 +22,7 @@ export async function POST(request: Request) {
   try {
     const uid = await requireUserId();
 
-    const supabase = await createSupabaseServerClient();
-    const { error: rateError } = await supabase.rpc("enforce_rate_limit", {
-      p_key: `billing_checkout_${uid}`,
-      p_limit: 10,
-      p_window_ms: 60 * 60 * 1000,
-    });
-    if (rateError) {
-      if (rateError.message?.includes("RATE_LIMIT")) {
-        throw new PaymentError(
-          "Too many attempts. Please wait before trying again.",
-          429,
-        );
-      }
-      throw new Error(rateError.message);
-    }
+    await enforceRateLimit(`billing_checkout_${uid}`, 10, 60 * 60 * 1000);
 
     const body = (await request.json().catch(() => ({}))) as {
       planId?: string;

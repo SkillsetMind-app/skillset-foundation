@@ -1,0 +1,463 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  getAdmin: vi.fn(),
+  getStripe: vi.fn(),
+  isStripeConfigured: vi.fn(() => true),
+  reversalCreate: vi.fn(),
+  subscriptionRetrieve: vi.fn(),
+}));
+
+vi.mock("@/lib/supabase/admin", () => ({
+  getSupabaseAdminClient: mocks.getAdmin,
+}));
+
+vi.mock("@/lib/payments/server/stripe", () => ({
+  getStripeClient: mocks.getStripe,
+  isStripeConfigured: mocks.isStripeConfigured,
+}));
+
+import { POST } from "@/app/api/webhooks/stripe/route";
+
+type FailurePoint =
+  | "payments.upsert"
+  | "orders.update"
+  | "enrollments.insert"
+  | "payout_ledger.insert"
+  | "course_subscriptions.update";
+
+type RefundClaim = {
+  state: "pending" | "done";
+  plannedAmountMinor: number;
+};
+
+type AdminState = {
+  mode: "checkout" | "refund";
+  failAt?: FailurePoint;
+  doneEvents: Set<string>;
+  refundClaims: Record<string, RefundClaim>;
+  ledger: Record<string, unknown>;
+  rpcCalls: Array<{ name: string; args: Record<string, unknown> }>;
+};
+
+type Filter = { column: string; value: unknown };
+
+function baseLedger() {
+  return {
+    id: "order_1",
+    status: "released",
+    kind: "course_one_time",
+    subscription_id: null,
+    transfer_id: "tr_1",
+    transfer_amount_minor: 8000,
+    gross_amount_minor: 10000,
+    net_amount_minor: 8000,
+    transfer_reversed_amount_minor: 0,
+    refund_reversal_claims: {},
+    order_id: "order_1",
+    course_id: "course_1",
+    teacher_id: "teacher_1",
+  };
+}
+
+function createAdmin(mode: AdminState["mode"], failAt?: FailurePoint) {
+  const state: AdminState = {
+    mode,
+    failAt,
+    doneEvents: new Set(),
+    refundClaims: {},
+    ledger: baseLedger(),
+    rpcCalls: [],
+  };
+
+  class Query {
+    private operation: "select" | "upsert" | "update" | "insert" | "delete" =
+      "select";
+    private values: Record<string, unknown> = {};
+    private filters: Filter[] = [];
+
+    constructor(private readonly table: string) {}
+
+    select() {
+      return this;
+    }
+
+    upsert(values: Record<string, unknown>) {
+      this.operation = "upsert";
+      this.values = values;
+      return this;
+    }
+
+    update(values: Record<string, unknown>) {
+      this.operation = "update";
+      this.values = values;
+      return this;
+    }
+
+    insert(values: Record<string, unknown>) {
+      this.operation = "insert";
+      this.values = values;
+      return this;
+    }
+
+    delete() {
+      this.operation = "delete";
+      return this;
+    }
+
+    eq(column: string, value: unknown) {
+      this.filters.push({ column, value });
+      return this;
+    }
+
+    limit() {
+      return this;
+    }
+
+    maybeSingle() {
+      return Promise.resolve(this.evaluate(true));
+    }
+
+    then<TResult1 = unknown, TResult2 = never>(
+      onfulfilled?: ((value: unknown) => TResult1 | PromiseLike<TResult1>) | null,
+      onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+    ) {
+      return Promise.resolve(this.evaluate(false)).then(onfulfilled, onrejected);
+    }
+
+    private filterValue(column: string) {
+      return this.filters.find((filter) => filter.column === column)?.value;
+    }
+
+    private evaluate(single: boolean) {
+      if (this.operation !== "select") {
+        const point = `${this.table}.${this.operation}`;
+        if (state.failAt === point) {
+          return { data: null, error: { message: `forced ${point} failure` } };
+        }
+
+        if (this.table === "processed_stripe_events") {
+          const eventId = String(
+            this.values.stripe_event_id ?? this.filterValue("stripe_event_id") ?? "",
+          );
+          if (this.operation === "update" && this.values.status === "done") {
+            state.doneEvents.add(eventId);
+          }
+          return {
+            data:
+              this.operation === "upsert"
+                ? [{ stripe_event_id: eventId }]
+                : null,
+            error: null,
+          };
+        }
+
+        if (
+          state.mode === "refund" &&
+          this.table === "payout_ledger" &&
+          this.filterValue("id") === "order_1" &&
+          this.operation === "update"
+        ) {
+          Object.assign(state.ledger, this.values);
+        }
+
+        return { data: null, error: null };
+      }
+
+      let data: Record<string, unknown> | null = null;
+      if (this.table === "orders") {
+        data = {
+          id: "order_1",
+          user_id: "user_1",
+          course_id: "course_1",
+          teacher_id: "teacher_1",
+          amount_minor: 10000,
+          currency: "USD",
+          platform_fee_bps: 1000,
+          status: "pending",
+        };
+      } else if (this.table === "courses") {
+        data = {
+          id: "course_1",
+          owner_id: "teacher_1",
+          title: "Course",
+          category: "Clinical Psychology & Approaches",
+          cover_image_url: null,
+          stripe_connected_account_id: "acct_teacher",
+        };
+      } else if (this.table === "payments" && state.mode === "refund") {
+        data = {
+          id: "pi_1",
+          order_id: "order_1",
+          user_id: "user_1",
+          course_id: "course_1",
+        };
+      } else if (this.table === "payout_ledger" && state.mode === "refund") {
+        const id = this.filterValue("id");
+        data = id === "order_1" ? { ...state.ledger } : null;
+      }
+
+      return {
+        data: single ? data : data ? [data] : [],
+        error: null,
+      };
+    }
+  }
+
+  const admin = {
+    from: vi.fn((table: string) => new Query(table)),
+    rpc: vi.fn(async (name: string, args: Record<string, unknown>) => {
+      state.rpcCalls.push({ name, args });
+      if (name === "claim_payout_transfer_reversal") {
+        const claimKey = String(args.p_claim_key);
+        const existing = state.refundClaims[claimKey];
+        if (existing?.state === "done") {
+          return {
+            data: {
+              claimKey,
+              state: "done",
+              plannedAmountMinor: existing.plannedAmountMinor,
+              shouldExecute: false,
+              redelivery: true,
+              action: "skip",
+              planned_amount_minor: 0,
+            },
+            error: null,
+          };
+        }
+        if (existing?.state === "pending") {
+          return {
+            data: {
+              claimKey,
+              state: "pending",
+              plannedAmountMinor: existing.plannedAmountMinor,
+              shouldExecute: true,
+              redelivery: true,
+              action: "execute",
+              planned_amount_minor: existing.plannedAmountMinor,
+            },
+            error: null,
+          };
+        }
+
+        const target = Number(args.p_target_amount_minor || 0);
+        const reversed = Number(state.ledger.transfer_reversed_amount_minor || 0);
+        const planned = Math.max(0, target - reversed);
+        if (planned <= 0) {
+          return {
+            data: {
+              claimKey,
+              state: "done",
+              plannedAmountMinor: 0,
+              targetAmountMinor: target,
+              shouldExecute: false,
+              redelivery: false,
+              action: "skip",
+              planned_amount_minor: 0,
+            },
+            error: null,
+          };
+        }
+
+        state.refundClaims[claimKey] = {
+          state: "pending",
+          plannedAmountMinor: planned,
+        };
+        state.ledger.transfer_reversed_amount_minor = reversed + planned;
+        return {
+          data: {
+            claimKey,
+            state: "pending",
+            plannedAmountMinor: planned,
+            targetAmountMinor: target,
+            shouldExecute: true,
+            redelivery: false,
+            action: "execute",
+            planned_amount_minor: planned,
+          },
+          error: null,
+        };
+      }
+
+      if (name === "complete_payout_transfer_reversal") {
+        const claimKey = String(args.p_claim_key);
+        const claim = state.refundClaims[claimKey];
+        if (claim?.state === "pending") {
+          claim.state = "done";
+        }
+      }
+
+      return { data: null, error: null };
+    }),
+    state,
+  };
+
+  return admin;
+}
+
+function checkoutEvent() {
+  return {
+    id: "evt_checkout",
+    type: "checkout.session.completed",
+    data: {
+      object: {
+        id: "cs_1",
+        mode: "payment",
+        payment_status: "paid",
+        payment_intent: "pi_1",
+        metadata: {
+          orderId: "order_1",
+          courseId: "course_1",
+          userId: "user_1",
+          teacherId: "teacher_1",
+        },
+      },
+    },
+  };
+}
+
+function refundEvent(eventId: string, refundedAmountMinor: number) {
+  return {
+    id: eventId,
+    type: "charge.refunded",
+    data: {
+      object: {
+        id: "ch_1",
+        payment_intent: "pi_1",
+        amount: 10000,
+        amount_refunded: refundedAmountMinor,
+        refunded: false,
+      },
+    },
+  };
+}
+
+function failedInvoiceEvent() {
+  return {
+    id: "evt_invoice_failed",
+    type: "invoice.payment_failed",
+    data: {
+      object: {
+        id: "in_1",
+        parent: {
+          subscription_details: { subscription: "sub_1" },
+        },
+      },
+    },
+  };
+}
+
+async function postEvent(event: Record<string, unknown>) {
+  return POST(
+    new Request("http://localhost/api/webhooks/stripe", {
+      method: "POST",
+      headers: { "stripe-signature": "test_signature" },
+      body: JSON.stringify(event),
+    }),
+  );
+}
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
+describe("Stripe webhook financial integrity", () => {
+  beforeEach(() => {
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
+    mocks.getAdmin.mockReset();
+    mocks.reversalCreate.mockReset().mockResolvedValue({ id: "trr_1" });
+    mocks.subscriptionRetrieve.mockReset().mockResolvedValue({
+      metadata: { purpose: "course_subscription" },
+    });
+    mocks.isStripeConfigured.mockReturnValue(true);
+    mocks.getStripe.mockReset().mockReturnValue({
+      webhooks: {
+        constructEvent: (rawBody: string) => JSON.parse(rawBody),
+      },
+      paymentIntents: {
+        retrieve: vi.fn().mockResolvedValue({ latest_charge: null }),
+      },
+      transfers: {
+        createReversal: mocks.reversalCreate,
+      },
+      subscriptions: {
+        retrieve: mocks.subscriptionRetrieve,
+      },
+    });
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    delete process.env.STRIPE_WEBHOOK_SECRET;
+    vi.restoreAllMocks();
+  });
+
+  it.each<FailurePoint>([
+    "payments.upsert",
+    "orders.update",
+    "enrollments.insert",
+    "payout_ledger.insert",
+  ])("returns 500 and leaves the event retryable when %s fails", async (failAt) => {
+    const admin = createAdmin("checkout", failAt);
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const response = await postEvent(checkoutEvent());
+
+    expect(response.status).toBe(500);
+    expect(admin.state.doneEvents).not.toContain("evt_checkout");
+  });
+
+  it("does not swallow a failed course subscription status write", async () => {
+    const admin = createAdmin("checkout", "course_subscriptions.update");
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const response = await postEvent(failedInvoiceEvent());
+
+    expect(response.status).toBe(500);
+    expect(admin.state.doneEvents).not.toContain("evt_invoice_failed");
+  });
+
+  it("serializes distinct cumulative partial refunds before calling Stripe", async () => {
+    const admin = createAdmin("refund");
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const firstReversalStarted = deferred();
+    const secondReversalStarted = deferred();
+    const releaseFirstReversal = deferred();
+    mocks.reversalCreate.mockImplementation(async () => {
+      const callNumber = mocks.reversalCreate.mock.calls.length;
+      if (callNumber === 1) {
+        firstReversalStarted.resolve();
+        await releaseFirstReversal.promise;
+      } else {
+        secondReversalStarted.resolve();
+      }
+      return { id: `trr_${callNumber}` };
+    });
+
+    const first = postEvent(refundEvent("evt_refund_30", 3000));
+    await firstReversalStarted.promise;
+    const second = postEvent(refundEvent("evt_refund_60", 6000));
+    await secondReversalStarted.promise;
+    releaseFirstReversal.resolve();
+
+    const responses = await Promise.all([first, second]);
+    expect(responses.map((response) => response.status)).toEqual([200, 200]);
+    expect(
+      mocks.reversalCreate.mock.calls.reduce(
+        (total, call) => total + Number(call[1].amount),
+        0,
+      ),
+    ).toBe(4800);
+    expect(admin.state.ledger.transfer_reversed_amount_minor).toBe(4800);
+    expect(
+      admin.state.rpcCalls.filter(
+        (call) => call.name === "claim_payout_transfer_reversal",
+      ),
+    ).toHaveLength(2);
+  });
+});

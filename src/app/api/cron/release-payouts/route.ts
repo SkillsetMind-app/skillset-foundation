@@ -88,37 +88,59 @@ async function recoverStuckReleases(admin: Admin): Promise<number> {
   return data?.length ?? 0;
 }
 
-// Atomically claim a due ledger (in_release -> releasing). The WHERE clause is
-// applied inside a single UPDATE, so only one caller can win the flip; a losing
-// caller (or one racing a refund) gets no row back. Freezes the transfer amount
-// once so every retry moves an identical sum under the stable idempotency key.
+// Atomically claim a due ledger (in_release -> releasing). The refund predicate
+// makes the selection snapshot part of the compare-and-swap: if a refund lands
+// before this UPDATE, no row is claimed and the next run selects the new state.
+// The first winning claim freezes the amount while that exact refund state is
+// current. Retries reuse that persisted amount because the Stripe idempotency
+// key is stable for the ledger and therefore its request parameters must be too.
 async function claimLedger(
   admin: Admin,
   ledger: LedgerRow,
 ): Promise<LedgerRow | null> {
-  const planned =
-    ledger.planned_transfer_amount_minor ??
-    plannedReleaseTransferAmountMinor({
-      netAmountMinor: ledger.net_amount_minor,
-      grossAmountMinor: ledger.gross_amount_minor,
-      refundedAmountMinor: ledger.refunded_amount_minor,
-    });
-
-  const { data, error } = await admin
+  const selectedRefundedAmount = Number(ledger.refunded_amount_minor ?? 0);
+  const { data: claimed, error: claimError } = await admin
     .from("payout_ledger")
     .update({
       status: "releasing",
-      planned_transfer_amount_minor: planned,
       updated_at: nowIso(),
     })
     .eq("id", ledger.id)
     .eq("status", "in_release")
+    .eq("refunded_amount_minor", selectedRefundedAmount)
     .lte("release_at", nowIso())
     .select(LEDGER_COLUMNS)
     .maybeSingle();
 
-  if (error) throw new Error(error.message);
-  return (data as LedgerRow | null) ?? null;
+  if (claimError) throw new Error(claimError.message);
+  if (!claimed) return null;
+
+  const claimedLedger = claimed as unknown as LedgerRow;
+  const claimedRefundedAmount = Number(
+    claimedLedger.refunded_amount_minor ?? 0,
+  );
+  const planned =
+    claimedLedger.planned_transfer_amount_minor ??
+    plannedReleaseTransferAmountMinor({
+      netAmountMinor: claimedLedger.net_amount_minor,
+      grossAmountMinor: claimedLedger.gross_amount_minor,
+      refundedAmountMinor: claimedRefundedAmount,
+    });
+
+  const { data: frozen, error: freezeError } = await admin
+    .from("payout_ledger")
+    .update({
+      planned_transfer_amount_minor: planned,
+      updated_at: nowIso(),
+    })
+    .eq("id", claimedLedger.id)
+    .eq("status", "releasing")
+    .eq("refunded_amount_minor", claimedRefundedAmount)
+    .select(LEDGER_COLUMNS)
+    .maybeSingle();
+
+  if (freezeError) throw new Error(freezeError.message);
+  return (frozen as LedgerRow | null) ?? null;
 }
 
 async function releaseClaimedLedger(

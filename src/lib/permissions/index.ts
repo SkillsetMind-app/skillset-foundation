@@ -272,7 +272,7 @@ const teacherPermissions = [
   "teacherStudio.manageCourses",
   "teacherStudio.manageStorefront",
   "courses.create",
-  "courses.submitForReview",
+  "courses.publish",
 ] as const satisfies readonly Permission[];
 
 const supportPermissions = [
@@ -292,7 +292,7 @@ const moderatorPermissions = [
   "community.moderate",
 ] as const satisfies readonly Permission[];
 
-// Operations team: reviews and blocks courses (non-blocking review) and opens
+// Operations team: handles post-publication compliance exceptions and opens
 // the /ops workspace. Deliberately WITHOUT users.manage (no role escalation),
 // payments.refund, or certificates.issue/revoke — those stay admin-only.
 const opsPermissions = [

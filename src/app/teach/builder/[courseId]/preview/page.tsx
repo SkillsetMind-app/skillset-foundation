@@ -20,7 +20,7 @@ export default async function TeacherBuilderPreviewPage({
       <PlatformShell
         eyebrow="Course preview"
         title="Preview the members area."
-        description="Review the student-facing course workspace before publishing or submitting changes."
+        description="Inspect the student-facing course workspace before publishing changes."
       >
         <Suspense
           fallback={

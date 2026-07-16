@@ -9,7 +9,7 @@ import { RevealSection } from "@/components/shared/reveal-section";
 import { demoCourses } from "@/data/demo/courses";
 
 // A curated slice of the catalog, shown on the homepage so visitors see real,
-// reviewed programs (with cover art) instead of marketing copy alone. Uses the
+// expert-led programs (with cover art) instead of marketing copy alone. Uses the
 // static demo catalog so the band always renders for the landing page; the
 // full, live marketplace lives at /courses.
 const featuredCourses = demoCourses.slice(0, 6);

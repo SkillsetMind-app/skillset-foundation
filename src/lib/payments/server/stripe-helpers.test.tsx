@@ -75,4 +75,47 @@ describe("normalizeCoursePrice dual-read", () => {
     expect(priced.paymentType).toBe("subscription_monthly");
     expect(priced.stripePriceId).toBe("price_abc");
   });
+
+  it("snapshots the explicitly selected offer and price", () => {
+    const offers: ProductOffer[] = [
+      {
+        id: "offer-default",
+        courseId: "course-1",
+        name: "Default",
+        isDefault: true,
+        prices: [
+          {
+            id: "price-default",
+            offerId: "offer-default",
+            amountMinor: 14900,
+            currency: "BRL",
+            paymentType: "one_time",
+          },
+        ],
+      },
+      {
+        id: "offer-launch",
+        courseId: "course-1",
+        name: "Launch",
+        publicCode: "LAUNCH",
+        prices: [
+          {
+            id: "price-launch",
+            offerId: "offer-launch",
+            amountMinor: 7900,
+            currency: "BRL",
+            paymentType: "one_time",
+          },
+        ],
+      },
+    ];
+
+    expect(
+      normalizeCoursePrice(baseCourse, offers, { publicCode: "launch" }),
+    ).toMatchObject({
+      amountMinor: 7900,
+      offerId: "offer-launch",
+      priceId: "price-launch",
+    });
+  });
 });

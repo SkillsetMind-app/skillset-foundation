@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { OnboardingProgress } from "@/components/auth/onboarding-progress";
 import { OnboardingQuestion } from "@/components/auth/onboarding-question";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
+import { skillsetCourseCategories } from "@/domain/teacher-course";
 import type { OnboardingAnswers } from "@/domain/user-profile";
 import { getAuthPathIntentFromSearchParams } from "@/lib/auth/routing";
 import {
@@ -60,15 +61,7 @@ const revenueOptions = [
   "I'd rather not say",
 ];
 
-const categoryOptions = [
-  "Business and management",
-  "Technology and software",
-  "Design and creative",
-  "Health and wellness",
-  "Marketing and sales",
-  "Personal development",
-  "Other",
-];
+const categoryOptions = [...skillsetCourseCategories];
 
 const audienceOptions = [
   "Less than 1,000 followers",

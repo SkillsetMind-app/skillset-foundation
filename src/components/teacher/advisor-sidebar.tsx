@@ -6,6 +6,10 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { isAdvisorEnabled } from "@/lib/advisor/config";
 import { hasAnyPermission } from "@/lib/permissions";
+import {
+  announceFloatingAction,
+  onFloatingActionOpened,
+} from "@/lib/ui/floating-action";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -27,6 +31,12 @@ export function AdvisorSidebar() {
   const [notice, setNotice] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  function closeAdvisor() {
+    setOpen(false);
+    triggerRef.current?.focus();
+  }
 
   useEffect(() => {
     if (open) {
@@ -47,11 +57,22 @@ export function AdvisorSidebar() {
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setOpen(false);
+        triggerRef.current?.focus();
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
+
+  useEffect(
+    () =>
+      onFloatingActionOpened((action) => {
+        if (action !== "advisor") {
+          setOpen(false);
+        }
+      }),
+    [],
+  );
 
   // Hidden until the backend is wired (NEXT_PUBLIC_TEACHER_ADVISOR_ENABLED) and
   // only for teachers. The layout renders outside each page's ProtectedSurface,
@@ -104,13 +125,21 @@ export function AdvisorSidebar() {
     void send(input);
   }
 
+  function toggleAdvisor() {
+    const nextOpen = !open;
+    if (nextOpen) {
+      announceFloatingAction("advisor");
+    }
+    setOpen(nextOpen);
+  }
+
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3">
+    <div className="floating-action floating-action--advisor flex flex-col items-end gap-3">
       {open ? (
         <section
           role="dialog"
           aria-label="Studio advisor"
-          className="flex h-[min(560px,75vh)] w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-[16px] border border-[var(--color-line)] bg-white shadow-[0_18px_50px_rgba(15,31,58,0.22)]"
+          className="advisor-panel flex w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-[16px] border border-[var(--color-line)] bg-white shadow-[0_18px_50px_rgba(15,31,58,0.22)]"
         >
           <header className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3">
             <span className="flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">
@@ -119,7 +148,7 @@ export function AdvisorSidebar() {
             </span>
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              onClick={closeAdvisor}
               aria-label="Close advisor"
               className="rounded-full p-1 text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-line)] hover:text-[var(--color-ink)]"
             >
@@ -199,6 +228,7 @@ export function AdvisorSidebar() {
                 }
               }}
               placeholder="Ask about videos, pricing, structure…"
+              aria-label="Message to studio advisor"
               rows={1}
               maxLength={4000}
               className="field-input max-h-28 flex-1 resize-none"
@@ -216,14 +246,15 @@ export function AdvisorSidebar() {
       ) : null}
 
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggleAdvisor}
         aria-label={open ? "Close advisor" : "Open studio advisor"}
         aria-expanded={open}
-        className="flex items-center gap-2 rounded-full bg-[var(--color-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-base)] shadow-[0_10px_30px_rgba(15,31,58,0.3)] transition-transform hover:scale-[1.03]"
+        className="advisor-trigger flex items-center gap-2 rounded-full bg-[var(--color-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-base)] shadow-[0_10px_30px_rgba(15,31,58,0.3)] transition-transform hover:scale-[1.03]"
       >
         <Sparkles className="h-4 w-4" aria-hidden="true" />
-        {open ? "Close" : "Advisor"}
+        <span className="advisor-trigger-label">{open ? "Close" : "Advisor"}</span>
       </button>
     </div>
   );

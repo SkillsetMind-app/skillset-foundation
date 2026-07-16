@@ -37,12 +37,40 @@ Based on:
 | Email marketing / page builder / eNotas | P2 / BR |
 | Pixel-perfect Cosmos tokens | Skin stays Skillset; only macro IA |
 
-## Still needed for “launch ready” producer UX
+## Issue #10 refinement completed
 
-- Merge/deploy branch so Vercel production gets this IA  
-- Populate offers via manage → Pricing & offers  
-- Manual QA of checklist → manage deep links  
-- Optional: installments Stripe PaymentIntent options when multi-country card installments are enabled on the account  
+1. **Creator shell regressions**
+   - Fixed the duplicated `SkillsetMind` lockup and active navigation rows shrinking in the sidebar.
+   - Kept the Advisor as the only global floating action.
+   - Replaced the generic floating help action with field-level help icons that open an accessible right-side drawer with backdrop, outside-click close, Escape close, and focus restoration.
+
+2. **Short product creation flow**
+   - Exposes course, monthly/yearly subscription, and free formats before draft creation.
+   - Requires at least one of the eight practitioner-marketplace categories.
+   - Keeps categories collapsed in a scrollable multi-select instead of rendering the full list in the page flow.
+
+3. **Builder and product operations**
+   - Builder order is Details → Pricing → Curriculum → Members Area → Publish.
+   - Manage links deep-link to the same builder tabs; publication lives in one place.
+   - Added `/teach/members` as the producer-level members-area hub.
+   - Approved professionals publish directly after deterministic product checks; professional credentialing is the gate, not manual review of every course.
+
+4. **Commerce integrity**
+   - Checkout resolves a concrete offer and persists its immutable terms.
+   - Offer synchronization, coupon reservation, payout release, refund transitions, and recurring financial facts use database-backed locking/idempotency paths.
+   - Paid publication requires a payout-ready Stripe Connect account.
+
+5. **Verification evidence**
+   - 245 Vitest assertions pass across 47 test files.
+   - Full ESLint, TypeScript, and Next.js production build pass.
+   - Desktop and mobile captures cover the shell, help drawer, short creation flow, and collapsed category picker under `.planning/phases/02-commerce-integrity/evidence/`.
+
+## Still needed after this release
+
+- Replay live Stripe test fixtures and reconcile historical production financial events.
+- Backfill historical invoices whose webhook event is already marked done.
+- Complete multi-offer sales-page editing, dunning/recovery automation, and deeper members-area discovery/resume flows.
+- Add country-gated payment methods only when launch-market operations and provider configuration support them.
 
 ## PIX note
 

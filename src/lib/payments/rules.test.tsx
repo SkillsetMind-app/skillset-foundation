@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  affiliateCommissionRefundTargetMinor,
   isRefundableEnrollmentSource,
   nextLedgerStatusOnDispute,
   releasedRefundReversalAmountMinor,
@@ -9,6 +10,68 @@ import {
   shouldReactivateEnrollment,
   shouldReverseReleasedPayout,
 } from "@/lib/payments/rules";
+
+describe("affiliateCommissionRefundTargetMinor", () => {
+  it("claws back the same proportion of commission as the cumulative sale refund", () => {
+    expect(
+      affiliateCommissionRefundTargetMinor({
+        commissionAmountMinor: 1000,
+        saleGrossAmountMinor: 10000,
+        refundedSaleAmountMinor: 2000,
+      }),
+    ).toBe(200);
+  });
+
+  it("is idempotent for a redelivered cumulative refund and grows only to the new target", () => {
+    const input = {
+      commissionAmountMinor: 1000,
+      saleGrossAmountMinor: 10000,
+      refundedSaleAmountMinor: 4000,
+    };
+
+    expect(affiliateCommissionRefundTargetMinor(input)).toBe(400);
+    expect(affiliateCommissionRefundTargetMinor(input)).toBe(400);
+    expect(
+      affiliateCommissionRefundTargetMinor({
+        ...input,
+        refundedSaleAmountMinor: 6000,
+      }),
+    ).toBe(600);
+    expect(
+      affiliateCommissionRefundTargetMinor({
+        ...input,
+        alreadyRefundedCommissionMinor: 600,
+      }),
+    ).toBe(600);
+  });
+
+  it("never exceeds the total commission, even for an over-reported refund", () => {
+    expect(
+      affiliateCommissionRefundTargetMinor({
+        commissionAmountMinor: 1000,
+        saleGrossAmountMinor: 10000,
+        refundedSaleAmountMinor: 15000,
+      }),
+    ).toBe(1000);
+  });
+
+  it("returns zero for invalid or non-positive money inputs", () => {
+    expect(
+      affiliateCommissionRefundTargetMinor({
+        commissionAmountMinor: 1000,
+        saleGrossAmountMinor: 0,
+        refundedSaleAmountMinor: 500,
+      }),
+    ).toBe(0);
+    expect(
+      affiliateCommissionRefundTargetMinor({
+        commissionAmountMinor: 1000,
+        saleGrossAmountMinor: 10000,
+        refundedSaleAmountMinor: 0,
+      }),
+    ).toBe(0);
+  });
+});
 
 describe("nextLedgerStatusOnDispute", () => {
   it("freezes a held payout when a dispute opens (the payout-during-chargeback bug)", () => {

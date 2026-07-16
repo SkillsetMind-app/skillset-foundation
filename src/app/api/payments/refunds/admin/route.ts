@@ -3,13 +3,13 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 
 import {
+  enforceRateLimit,
   PaymentError,
   paymentErrorResponse,
   requireAdminUserId,
 } from "@/lib/payments/server/auth";
 import { getStripeClient } from "@/lib/payments/server/stripe";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // Admin refund (ported from Firebase issueAdminRefund). requireAdminUserId()
 // replaces the roles.includes("admin") gate. Full refund when amountMinor is
@@ -44,21 +44,7 @@ export async function POST(request: Request) {
       amountMinor = parsed;
     }
 
-    const supabase = await createSupabaseServerClient();
-    const { error: rateError } = await supabase.rpc("enforce_rate_limit", {
-      p_key: `admin_refund_${callerId}`,
-      p_limit: 30,
-      p_window_ms: 60 * 60 * 1000,
-    });
-    if (rateError) {
-      if (rateError.message?.includes("RATE_LIMIT")) {
-        throw new PaymentError(
-          "Too many attempts. Please wait before trying again.",
-          429,
-        );
-      }
-      throw new Error(rateError.message);
-    }
+    await enforceRateLimit(`admin_refund_${callerId}`, 30, 60 * 60 * 1000);
 
     const admin = getSupabaseAdminClient();
     const { data: order } = await admin

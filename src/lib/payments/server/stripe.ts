@@ -35,6 +35,7 @@ export class StripeConfigError extends Error {
 }
 
 let cached: { key: string; client: Stripe } | null = null;
+let cachedPlatformAccountCountry: string | null = null;
 
 /** Whether a usable Stripe secret is configured (drives dormant-state gates). */
 export function isStripeConfigured(): boolean {
@@ -58,6 +59,7 @@ export function getStripeClient(): Stripe {
   }
 
   if (cached?.key !== result.key) {
+    cachedPlatformAccountCountry = null;
     cached = {
       key: result.key,
       client: new Stripe(result.key),
@@ -65,4 +67,21 @@ export function getStripeClient(): Stripe {
   }
 
   return cached.client;
+}
+
+export async function getStripePlatformAccountCountry(
+  stripe: Stripe,
+): Promise<string | null> {
+  if (cachedPlatformAccountCountry) {
+    return cachedPlatformAccountCountry;
+  }
+
+  try {
+    const account = await stripe.accounts.retrieve(null);
+    const country = account.country?.trim().toUpperCase() || null;
+    if (country) cachedPlatformAccountCountry = country;
+    return country;
+  } catch {
+    return null;
+  }
 }

@@ -3,23 +3,23 @@
 import { useEffect, useState } from "react";
 
 import type { CommunityReport } from "@/domain/community-report";
+import type { CreatorVerificationCase } from "@/domain/creator-verification";
 import type { SupportTicket } from "@/domain/support-ticket";
-import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToCommunityReports } from "@/lib/data/community-posts";
+import { subscribeToVerificationQueue } from "@/lib/data/creator-verification";
 import { subscribeToAdminSupportTickets } from "@/lib/data/support-tickets";
-import { subscribeToCoursesInReview } from "@/lib/data/teacher-courses";
 
 export function OpsOverviewMetrics() {
-  const [courses, setCourses] = useState<TeacherCourse[]>([]);
+  const [verificationCases, setVerificationCases] = useState<CreatorVerificationCase[]>([]);
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [reports, setReports] = useState<CommunityReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     try {
-      return subscribeToCoursesInReview(
-        (nextCourses) => {
-          setCourses(nextCourses);
+      return subscribeToVerificationQueue(
+        (nextCases) => {
+          setVerificationCases(nextCases);
           setIsLoading(false);
         },
         () => setIsLoading(false),
@@ -29,7 +29,7 @@ export function OpsOverviewMetrics() {
       // empty state instead of crashing the whole ops surface. Deliberate
       // one-shot recovery reset.
       console.warn(
-        "OpsOverviewMetrics: courses-in-review subscription unavailable",
+        "OpsOverviewMetrics: creator-verification subscription unavailable",
         error,
       );
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -63,7 +63,7 @@ export function OpsOverviewMetrics() {
     }
   }, []);
 
-  const coursesInReview = courses.length;
+  const pendingVerifications = verificationCases.length;
   const openTickets = tickets.filter(
     (ticket) => ticket.status !== "resolved",
   ).length;
@@ -73,9 +73,9 @@ export function OpsOverviewMetrics() {
 
   const cards = [
     {
-      label: "Courses in review",
-      value: String(coursesInReview),
-      hint: "Awaiting a SkillsetMind decision",
+      label: "Verification exceptions",
+      value: String(pendingVerifications),
+      hint: "Pending professional admission decisions",
     },
     {
       label: "Open support tickets",

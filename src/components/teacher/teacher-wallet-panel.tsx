@@ -10,12 +10,16 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { InlineHelp } from "@/components/shared/inline-help";
 import { StatusChip } from "@/components/shared/status-chip";
 import { TeacherConnectOnboarding } from "@/components/teacher/teacher-connect-onboarding";
+import {
+  summarizeCreatorWallet,
+  type CurrencyAmount,
+} from "@/domain/creator-ops";
 import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import type { UserProfile } from "@/domain/user-profile";
 import { subscribeToTeacherPayoutLedger } from "@/lib/data/payout-ledger";
@@ -34,6 +38,8 @@ const PAYOUTS_UNAVAILABLE_MESSAGE =
   "configured on our side. No payout account is connected; onboarding will " +
   "open on this page automatically once it's ready.";
 
+type LedgerReadState = "loading" | "ready" | "error";
+
 export function TeacherWalletPanel() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -42,7 +48,7 @@ export function TeacherWalletPanel() {
   const [error, setError] = useState("");
   const [isRefreshingStripe, setIsRefreshingStripe] = useState(false);
   const [ledgerEntries, setLedgerEntries] = useState<PayoutLedgerEntry[]>([]);
-  const [ledgerLoaded, setLedgerLoaded] = useState(false);
+  const [ledgerState, setLedgerState] = useState<LedgerReadState>("loading");
   // Platform-level truth reported by the onboarding component: when Stripe
   // Connect isn't enabled on SkillsetMind's Stripe account, NO stored account id is
   // verifiable or usable — so the panel must not present one as "Connected".
@@ -77,10 +83,10 @@ export function TeacherWalletPanel() {
       user.uid,
       (entries) => {
         setLedgerEntries(entries);
-        setLedgerLoaded(true);
+        setLedgerState("ready");
       },
       () => {
-        setLedgerLoaded(true);
+        setLedgerState("error");
         setError("We could not load payout release reporting.");
       },
     );
@@ -157,8 +163,17 @@ export function TeacherWalletPanel() {
   // BOTH one-time orders AND subscription invoices. The ledger carries the
   // server-computed gross/commission/Stripe-fee/net per entry, so these remain
   // exact payout figures rather than order-level estimates.
-  const financialsReady = ledgerLoaded;
-  const money = (minor: number) => (financialsReady ? formatMoney(minor) : "—");
+  const financialsReady = ledgerState === "ready";
+  const financials = useMemo(
+    () => summarizeCreatorWallet(ledgerEntries),
+    [ledgerEntries],
+  );
+  const money = (values: CurrencyAmount[]) =>
+    ledgerState === "ready"
+      ? formatCurrencyBreakdown(values)
+      : ledgerState === "error"
+        ? "Unavailable"
+        : "—";
   const connected = Boolean(profile?.stripeConnectedAccountId);
   // A panel must never claim "Ready" while the platform itself can't run
   // Connect — stale profile flags don't outrank the live platform signal.
@@ -167,42 +182,6 @@ export function TeacherWalletPanel() {
     && Boolean(
       profile?.stripeConnectChargesEnabled
       && profile?.stripeConnectPayoutsEnabled,
-    );
-  // Earnings = ledger entries that aren't refunded. Fully/partially refunded
-  // entries are excluded here (so net is never overstated) and surfaced in the
-  // "Refunded" row instead.
-  const earningEntries = ledgerEntries.filter(
-    (entry) =>
-      entry.status !== "refunded" && entry.status !== "partially_refunded",
-  );
-  const salesCount = earningEntries.length;
-  const grossPaidMinor = earningEntries.reduce(
-    (sum, entry) => sum + entry.grossAmountMinor,
-    0,
-  );
-  const platformFeeMinor = earningEntries.reduce(
-    (sum, entry) => sum + entry.skillsetFeeMinor,
-    0,
-  );
-  const stripeFeeMinor = earningEntries.reduce(
-    (sum, entry) => sum + (entry.stripeFeeMinor ?? 0),
-    0,
-  );
-  const teacherNetMinor = earningEntries.reduce(
-    (sum, entry) => sum + entry.netAmountMinor,
-    0,
-  );
-  const inReleaseMinor = ledgerEntries
-    .filter((entry) => ["in_release", "releasing"].includes(entry.status))
-    .reduce((sum, entry) => sum + entry.netAmountMinor, 0);
-  const releasedMinor = ledgerEntries
-    .filter((entry) => ["released", "released_advance"].includes(entry.status))
-    .reduce((sum, entry) => sum + entry.netAmountMinor, 0);
-  const refundedMinor = ledgerEntries
-    .filter((entry) => ["refunded", "partially_refunded"].includes(entry.status))
-    .reduce(
-      (sum, entry) => sum + (entry.refundedAmountMinor ?? entry.grossAmountMinor),
-      0,
     );
   const statusLabel = platformPayoutsUnavailable
     ? "Not available yet"
@@ -219,8 +198,13 @@ export function TeacherWalletPanel() {
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Payouts & tax
           </p>
-          <h2 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)]">
+          <h2 className="display-title mt-3 flex items-center gap-2 text-4xl leading-tight text-[var(--color-primary)]">
             Your earnings, your payout setup.
+            <InlineHelp topic="Payout schedule" href="/help#payouts">
+              Earnings move from pending to available 30 days after each sale,
+              beyond the standard refund window. Stripe Connect must have both
+              charges and payouts enabled before a paid product can go live.
+            </InlineHelp>
           </h2>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
             Track paid orders, payout release status, Stripe Connect readiness,
@@ -250,8 +234,8 @@ export function TeacherWalletPanel() {
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[rgba(255,255,255,0.66)]">
             Creator net estimate
           </p>
-          <p className="display-title mt-3 text-5xl leading-none text-white">
-            {money(teacherNetMinor)}
+          <p className="display-title mt-3 break-words text-3xl leading-tight text-white sm:text-4xl">
+            {money(financials.teacherNetByCurrency)}
           </p>
           <p className="mt-2 text-sm text-[rgba(255,255,255,0.72)]">
             Net across one-time and subscription sales, after SkillsetMind commission
@@ -259,9 +243,9 @@ export function TeacherWalletPanel() {
           </p>
 
           <div className="mt-6 grid gap-3">
-            <BalanceRow label="Pending release" value={money(inReleaseMinor)} />
-            <BalanceRow label="Released" value={money(releasedMinor)} />
-            <BalanceRow label="Refunded" value={money(refundedMinor)} />
+            <BalanceRow label="Pending release" value={money(financials.walletInReleaseByCurrency)} />
+            <BalanceRow label="Released" value={money(financials.walletReleasedByCurrency)} />
+            <BalanceRow label="Refunded" value={money(financials.refundedByCurrency)} />
           </div>
 
           <div className="mt-6 flex flex-wrap gap-2">
@@ -365,17 +349,18 @@ export function TeacherWalletPanel() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <MetricCard label="Paid sales" value={financialsReady ? String(salesCount) : "—"} />
-        <MetricCard label="Gross sales" value={money(grossPaidMinor)} />
-        <MetricCard label="Platform fee est." value={money(platformFeeMinor)} />
-        <MetricCard label="Stripe fee est." value={money(stripeFeeMinor)} />
+        <MetricCard
+          label="Paid sales"
+          value={financialsReady
+            ? String(financials.salesCount)
+            : ledgerState === "error"
+              ? "Unavailable"
+              : "—"}
+        />
+        <MetricCard label="Gross sales" value={money(financials.grossPaidByCurrency)} />
+        <MetricCard label="Platform fee est." value={money(financials.platformFeeByCurrency)} />
+        <MetricCard label="Stripe fee est." value={money(financials.stripeFeeByCurrency)} />
       </div>
-
-      <InlineHelp topic="Payout schedule" href="/help#payouts">
-        Earnings clear from pending to available 30 days after each sale, well
-        past the 7-day refund window so cleared payouts never need to be clawed
-        back.
-      </InlineHelp>
 
       {ready ? null : (
         <section id="stripe-connect" className="scroll-mt-24 rounded-[18px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
@@ -420,9 +405,13 @@ export function TeacherWalletPanel() {
         </div>
 
         <div className="mt-5 overflow-hidden rounded-[14px] border border-[var(--color-line)]">
-          {!ledgerLoaded ? (
+          {ledgerState === "loading" ? (
             <div className="bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink-soft)]">
               Loading payout ledger…
+            </div>
+          ) : ledgerState === "error" ? (
+            <div className="bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink-soft)]">
+              Payout ledger is unavailable.
             </div>
           ) : ledgerEntries.length === 0 ? (
             <div className="bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -537,6 +526,13 @@ function formatMoney(amountMinor: number, currency = "USD") {
     style: "currency",
     currency,
   }).format(amountMinor / 100);
+}
+
+function formatCurrencyBreakdown(values: CurrencyAmount[]): string {
+  if (!values.length) return "0";
+  return values
+    .map((value) => `${value.currency} ${(value.amountMinor / 100).toFixed(2)}`)
+    .join(" + ");
 }
 
 function formatDate(value: unknown) {

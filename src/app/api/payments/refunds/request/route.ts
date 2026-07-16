@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  enforceRateLimit,
   PaymentError,
   paymentErrorResponse,
   requireUserId,
@@ -13,7 +14,6 @@ import {
   paidOrderRefundQuerySpec,
 } from "@/lib/payments/rules";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // Self-serve refund request (ported from Firebase requestRefund). Enforces the
 // automatic-refund policy EXACTLY: paid enrollment, active/completed, under the
@@ -34,21 +34,7 @@ export async function POST(request: Request) {
       throw new PaymentError("A valid enrollmentId is required.", 400);
     }
 
-    const supabase = await createSupabaseServerClient();
-    const { error: rateError } = await supabase.rpc("enforce_rate_limit", {
-      p_key: `refund_${uid}`,
-      p_limit: 5,
-      p_window_ms: 60 * 60 * 1000,
-    });
-    if (rateError) {
-      if (rateError.message?.includes("RATE_LIMIT")) {
-        throw new PaymentError(
-          "Too many attempts. Please wait before trying again.",
-          429,
-        );
-      }
-      throw new Error(rateError.message);
-    }
+    await enforceRateLimit(`refund_${uid}`, 5, 60 * 60 * 1000);
 
     const admin = getSupabaseAdminClient();
 

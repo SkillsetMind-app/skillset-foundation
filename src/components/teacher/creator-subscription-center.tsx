@@ -23,6 +23,7 @@ import { getPublicProfilesByIds } from "@/lib/data/user-profiles";
 import { toDate } from "@/lib/format-date";
 
 type SubscriberFilter = "all" | "active" | "attention" | "canceling" | "ended";
+type ReadState = "loading" | "ready" | "error";
 
 export function CreatorSubscriptionCenter() {
   const { user } = useAuth();
@@ -32,6 +33,9 @@ export function CreatorSubscriptionCenter() {
   const [ledgers, setLedgers] = useState<PayoutLedgerEntry[]>([]);
   const [profiles, setProfiles] = useState<PublicProfile[]>([]);
   const [loaded, setLoaded] = useState({ subscriptions: false, courses: false });
+  const [failed, setFailed] = useState({ subscriptions: false, courses: false });
+  const [ordersState, setOrdersState] = useState<ReadState>("loading");
+  const [ledgersState, setLedgersState] = useState<ReadState>("loading");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -40,10 +44,12 @@ export function CreatorSubscriptionCenter() {
       user.uid,
       (next) => {
         setSubscriptions(next);
+        setFailed((current) => ({ ...current, subscriptions: false }));
         setLoaded((current) => ({ ...current, subscriptions: true }));
       },
       () => {
         setError("We could not load your subscribers.");
+        setFailed((current) => ({ ...current, subscriptions: true }));
         setLoaded((current) => ({ ...current, subscriptions: true }));
       },
     );
@@ -55,10 +61,12 @@ export function CreatorSubscriptionCenter() {
       user.uid,
       (next) => {
         setCourses(next);
+        setFailed((current) => ({ ...current, courses: false }));
         setLoaded((current) => ({ ...current, courses: true }));
       },
       () => {
         setError("We could not load subscription products.");
+        setFailed((current) => ({ ...current, courses: true }));
         setLoaded((current) => ({ ...current, courses: true }));
       },
     );
@@ -66,16 +74,32 @@ export function CreatorSubscriptionCenter() {
 
   useEffect(() => {
     if (!user) return;
-    return subscribeToTeacherOrders(user.uid, setOrders, () => {
-      setError("Renewal order details are temporarily unavailable.");
-    });
+    return subscribeToTeacherOrders(
+      user.uid,
+      (next) => {
+        setOrders(next);
+        setOrdersState("ready");
+      },
+      () => {
+        setOrdersState("error");
+        setError("Renewal order details are temporarily unavailable.");
+      },
+    );
   }, [user]);
 
   useEffect(() => {
     if (!user) return;
-    return subscribeToTeacherPayoutLedger(user.uid, setLedgers, () => {
-      setError("Renewal payout details are temporarily unavailable.");
-    });
+    return subscribeToTeacherPayoutLedger(
+      user.uid,
+      (next) => {
+        setLedgers(next);
+        setLedgersState("ready");
+      },
+      () => {
+        setLedgersState("error");
+        setError("Renewal payout details are temporarily unavailable.");
+      },
+    );
   }, [user]);
 
   useEffect(() => {
@@ -96,6 +120,21 @@ export function CreatorSubscriptionCenter() {
     return <SubscriptionCenterLoading />;
   }
 
+  if (failed.subscriptions || failed.courses) {
+    return (
+      <p className="rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+        {error || "Subscription reporting is temporarily unavailable."}
+      </p>
+    );
+  }
+
+  const financialState: ReadState =
+    ordersState === "error" || ledgersState === "error"
+      ? "error"
+      : ordersState === "ready" && ledgersState === "ready"
+        ? "ready"
+        : "loading";
+
   return (
     <>
       {error ? (
@@ -109,6 +148,7 @@ export function CreatorSubscriptionCenter() {
         orders={orders}
         ledgers={ledgers}
         profiles={profiles}
+        financialState={financialState}
       />
     </>
   );
@@ -120,19 +160,26 @@ export function CreatorSubscriptionCenterView({
   orders,
   ledgers,
   profiles,
+  financialState = "ready",
 }: {
   subscriptions: CourseSubscription[];
   courses: TeacherCourse[];
   orders: Order[];
   ledgers: PayoutLedgerEntry[];
   profiles: PublicProfile[];
+  financialState?: ReadState;
 }) {
   const [tab, setTab] = useState<"subscribers" | "renewals">("subscribers");
   const [filter, setFilter] = useState<SubscriberFilter>("all");
   const [query, setQuery] = useState("");
   const metrics = useMemo(
-    () => calculateCreatorSubscriptionMetrics(subscriptions, courses),
-    [subscriptions, courses],
+    () => calculateCreatorSubscriptionMetrics(
+      subscriptions,
+      courses,
+      undefined,
+      { orders, ledgers },
+    ),
+    [subscriptions, courses, orders, ledgers],
   );
   const renewals = useMemo(
     () => buildCreatorRenewalHistory(ledgers, orders),
@@ -190,8 +237,16 @@ export function CreatorSubscriptionCenterView({
         />
         <MetricCard
           label="Monthly recurring revenue"
-          value={formatMrr(metrics.mrrByCurrency)}
-          detail="Annual contracts normalized to one month"
+          value={financialState === "ready"
+            ? formatMrr(metrics.mrrByCurrency)
+            : financialState === "error"
+              ? "Unavailable"
+              : "—"}
+          detail={financialState === "ready"
+            ? formatMrrDetail(metrics)
+            : financialState === "error"
+              ? "Contract pricing snapshots could not be loaded"
+              : "Loading contract pricing snapshots"}
           icon={Receipt}
         />
         <MetricCard
@@ -355,7 +410,15 @@ export function CreatorSubscriptionCenterView({
           </div>
         ) : (
           <div className="mt-5 grid gap-0">
-            {renewals.length ? renewals.slice(0, 50).map((renewal) => {
+            {financialState === "loading" ? (
+              <p className="border-y border-[var(--color-line)] py-8 text-center text-sm text-[var(--color-ink-soft)]">
+                Loading renewal history...
+              </p>
+            ) : financialState === "error" ? (
+              <p className="border-y border-[var(--color-line)] py-8 text-center text-sm text-[var(--color-ink-soft)]">
+                Renewal history is unavailable.
+              </p>
+            ) : renewals.length ? renewals.slice(0, 50).map((renewal) => {
               const profile = renewal.userId ? profilesById.get(renewal.userId) : null;
               return (
                 <article key={renewal.id} className="flex flex-col justify-between gap-3 border-b border-[var(--color-line)] py-4 sm:flex-row sm:items-center">
@@ -437,6 +500,21 @@ function isRecurringCourse(course: TeacherCourse): boolean {
 function formatMrr(values: Array<{ currency: string; amountMinor: number }>): string {
   if (!values.length) return "No MRR yet";
   return values.map((value) => `${value.currency} ${(value.amountMinor / 100).toFixed(2)}`).join(" + ");
+}
+
+function formatMrrDetail(metrics: ReturnType<typeof calculateCreatorSubscriptionMetrics>): string {
+  const details = ["Annual contracts normalized to one month"];
+  if (metrics.mrrLegacyFallbackCount > 0) {
+    details.push(
+      `${metrics.mrrLegacyFallbackCount} legacy contract priced from invoice history`,
+    );
+  }
+  if (metrics.mrrSnapshotMissingCount > 0) {
+    details.push(
+      `${metrics.mrrSnapshotMissingCount} contract pricing snapshot missing`,
+    );
+  }
+  return details.join(" · ");
 }
 
 function formatStatus(status: string): string {

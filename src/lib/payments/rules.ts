@@ -202,6 +202,42 @@ export function plannedReleaseTransferAmountMinor(input: {
 }
 
 /**
+ * Cumulative affiliate commission to claw back for a cumulative sale refund.
+ * Keeping this as a monotonic target makes webhook redelivery and out-of-order
+ * partial-refund events idempotent: callers persist the target, while transfer
+ * reversal logic moves only the not-yet-reversed difference.
+ */
+export function affiliateCommissionRefundTargetMinor(input: {
+  commissionAmountMinor: number;
+  saleGrossAmountMinor: number;
+  refundedSaleAmountMinor: number;
+  alreadyRefundedCommissionMinor?: number | null;
+}): number {
+  const normalize = (value: number | null | undefined) => {
+    const parsed = Number(value ?? 0);
+    return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0;
+  };
+
+  const commission = normalize(input.commissionAmountMinor);
+  const saleGross = normalize(input.saleGrossAmountMinor);
+  const refundedSale = normalize(input.refundedSaleAmountMinor);
+  const alreadyRefunded = Math.min(
+    commission,
+    normalize(input.alreadyRefundedCommissionMinor),
+  );
+
+  if (commission <= 0 || saleGross <= 0 || refundedSale <= 0) {
+    return alreadyRefunded;
+  }
+
+  const cappedRefund = Math.min(refundedSale, saleGross);
+  const proportionalTarget = Math.floor(
+    (commission * cappedRefund) / saleGross,
+  );
+  return Math.min(commission, Math.max(alreadyRefunded, proportionalTarget));
+}
+
+/**
  * Minimal structural view of a Stripe Invoice for PaymentIntent resolution.
  * Kept dependency-free (no `stripe` import) so this stays pure and unit-testable;
  * the real Stripe.Invoice satisfies it structurally.

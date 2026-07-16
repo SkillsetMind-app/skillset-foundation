@@ -4,10 +4,8 @@ import { brand } from "@/data/brand";
 
 export const dynamic = "force-static";
 
-// Served at /manifest.webmanifest. Next.js injects the
-// <link rel="manifest"> tag automatically when this file exists.
-// Colors mirror the design tokens in globals.css
-// (--color-primary #1a365d, --color-base #ffffff).
+// Served at /manifest.webmanifest. Colors and vector icons mirror the official
+// SkillsetMind identity handoff.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: brand.title,
@@ -15,19 +13,19 @@ export default function manifest(): MetadataRoute.Manifest {
     description: brand.description,
     start_url: "/",
     display: "standalone",
-    background_color: "#ffffff",
-    theme_color: "#1a365d",
+    background_color: "#F7F6F2",
+    theme_color: "#102A43",
     icons: [
       {
         src: brand.logoMark,
-        sizes: `${brand.logoMarkSize.width}x${brand.logoMarkSize.height}`,
-        type: "image/png",
+        sizes: "any",
+        type: "image/svg+xml",
         purpose: "any",
       },
       {
         src: brand.faviconUrl,
-        sizes: `${brand.faviconSize.width}x${brand.faviconSize.height}`,
-        type: "image/png",
+        sizes: "any",
+        type: "image/svg+xml",
       },
     ],
   };

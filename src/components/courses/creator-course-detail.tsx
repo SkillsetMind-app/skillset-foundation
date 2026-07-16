@@ -6,14 +6,22 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import {
   CourseInstructorCard,
   CourseReviewsSection,
 } from "@/components/courses/course-social-proof";
 import { getSafeExternalUrl } from "@/domain/external-url";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
+import {
+  resolveCoursePrice,
+  type ProductOffer,
+} from "@/domain/product-pricing";
 import type { TeacherCourse, TeacherCourseStatus } from "@/domain/teacher-course";
-import { normalizeLearningOutcomes } from "@/domain/teacher-course";
+import {
+  isCoursePubliclySellable,
+  normalizeLearningOutcomes,
+} from "@/domain/teacher-course";
 import { subscribeToViewableTeacherCourse } from "@/lib/data/published-courses";
 import {
   getLessonContentDoc,
@@ -38,14 +46,23 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
   const searchParams = useSearchParams();
   const courseId = courseIdOverride ?? searchParams.get("courseId") ?? "";
   const checkoutStatus = searchParams.get("checkout");
+  const requestedOfferId = searchParams.get("offerId")?.trim() ?? "";
+  const requestedOfferCode = searchParams.get("offer")?.trim().toUpperCase() ?? "";
+  const requestedPriceId = searchParams.get("priceId")?.trim() ?? "";
   const hasBackendConfig = Boolean(getSupabaseClientConfig());
   const checkoutEnabled = isPublicFeatureEnabled("payments.checkout");
   const [course, setCourse] = useState<TeacherCourse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
+  const [couponCode, setCouponCode] = useState("");
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isEnrollingFree, setIsEnrollingFree] = useState(false);
+  const [offerLoadError, setOfferLoadError] = useState("");
+  const [offerState, setOfferState] = useState<{
+    courseId: string | null;
+    offers: ProductOffer[];
+  }>({ courseId: null, offers: [] });
   // B1: the free-preview lesson body/link now live in the gated subcollection.
   // The firestore.rules freePreviewLessonId branch lets an unauthenticated
   // visitor read exactly this one doc, so fetch it and fall back to the inline
@@ -105,6 +122,38 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
     };
   }, [courseId, hasBackendConfig, freePreviewLessonId]);
 
+  useEffect(() => {
+    if (!courseId || !isCoursePubliclySellable(course?.status)) {
+      return;
+    }
+
+    const controller = new AbortController();
+    void fetch(`/api/courses/${encodeURIComponent(courseId)}/offers`, {
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const body = (await response.json()) as {
+          offers?: ProductOffer[];
+          error?: string;
+        };
+        if (!response.ok) {
+          throw new Error(body.error || "Offers are temporarily unavailable.");
+        }
+        setOfferLoadError("");
+        setOfferState({ courseId, offers: body.offers ?? [] });
+      })
+      .catch((loadError: unknown) => {
+        if (controller.signal.aborted) return;
+        setOfferLoadError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Offers are temporarily unavailable.",
+        );
+      });
+
+    return () => controller.abort();
+  }, [course?.status, courseId]);
+
   if (!courseId) {
     return (
       <CourseDetailState
@@ -145,10 +194,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
     );
   }
 
-  // Sell-on-submit: published AND in_review both render the full public sales
-  // page (a submitted course sells immediately; approval is non-blocking).
-  // Only draft / needs_changes / inactive fall through to owner/admin messaging.
-  const isSellable = course.status === "published" || course.status === "in_review";
+  const isSellable = isCoursePubliclySellable(course.status);
   if (!isSellable) {
     const isOwner = user != null && course.ownerId === user.uid;
     const isAdmin = hasPermission({ roles: user?.roles }, "platform.accessAdmin");
@@ -160,39 +206,56 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
     );
   }
 
+  const offersLoaded = offerState.courseId === course.id;
+  const offers = offersLoaded ? offerState.offers : [];
+  const hasExplicitOffer = Boolean(
+    requestedOfferId || requestedOfferCode || requestedPriceId,
+  );
+  const resolvedPrice = offersLoaded
+    ? resolveCoursePrice(course, offers, {
+        ...(requestedOfferId ? { offerId: requestedOfferId } : {}),
+        ...(requestedOfferCode ? { publicCode: requestedOfferCode } : {}),
+        ...(requestedPriceId ? { priceId: requestedPriceId } : {}),
+      })
+    : null;
+  const pricingReady = offersLoaded && !offerLoadError;
   const courseIsFree =
-    course.paymentType === "free"
-    || (typeof course.priceAmountMinor === "number" && course.priceAmountMinor === 0);
+    resolvedPrice?.paymentType === "free" || resolvedPrice?.amountMinor === 0;
   const subscriptionInterval =
-    course.paymentType === "subscription_monthly"
+    resolvedPrice?.paymentType === "subscription_monthly"
       ? "month"
-      : course.paymentType === "subscription_yearly"
+      : resolvedPrice?.paymentType === "subscription_yearly"
         ? "year"
         : null;
   const priceLabel =
-    courseIsFree
+    !pricingReady
+      ? offerLoadError
+        ? "Pricing unavailable"
+        : "Loading pricing..."
+      : !resolvedPrice && hasExplicitOffer
+        ? "Offer unavailable"
+        : courseIsFree
       ? "Free"
-      : typeof course.priceAmountMinor === "number"
+      : resolvedPrice
       ? `${new Intl.NumberFormat("en", {
           style: "currency",
-          currency: course.currency ?? "USD",
-        }).format(course.priceAmountMinor / 100)}${
+          currency: resolvedPrice.currency,
+        }).format(resolvedPrice.amountMinor / 100)}${
           subscriptionInterval ? ` / ${subscriptionInterval}` : ""
         }`
       : "Pricing pending";
   const canCheckout =
-    checkoutEnabled
+    pricingReady
+    && checkoutEnabled
     && authStatus === "authenticated"
     && Boolean(user)
-    && typeof course.priceAmountMinor === "number"
-    && course.priceAmountMinor > 0;
+    && Boolean(resolvedPrice)
+    && (resolvedPrice?.amountMinor ?? 0) > 0;
   const hasPaidPrice =
-    authStatus === "authenticated"
-    && Boolean(user)
-    && typeof course.priceAmountMinor === "number"
-    && course.priceAmountMinor > 0;
+    pricingReady && Boolean(resolvedPrice) && (resolvedPrice?.amountMinor ?? 0) > 0;
   const canEnrollFree =
-    authStatus === "authenticated"
+    pricingReady
+    && authStatus === "authenticated"
     && Boolean(user)
     && courseIsFree;
   const lessons = course.modules.flatMap((module) =>
@@ -231,7 +294,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
   const learningOutcomes = normalizeLearningOutcomes(course.learningOutcomes);
 
   async function handleCheckout() {
-    if (!course || !canCheckout || !checkoutEnabled) {
+    if (!course || !resolvedPrice || !canCheckout || !checkoutEnabled) {
       return;
     }
 
@@ -240,7 +303,12 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
     setIsCheckingOut(true);
 
     try {
-      await startCourseCheckout(checkoutCourseId);
+      await startCourseCheckout(checkoutCourseId, {
+        ...(couponCode.trim() ? { couponCode: couponCode.trim() } : {}),
+        ...(resolvedPrice.offerId ? { offerId: resolvedPrice.offerId } : {}),
+        ...(requestedOfferCode ? { offerCode: requestedOfferCode } : {}),
+        ...(resolvedPrice.priceId ? { priceId: resolvedPrice.priceId } : {}),
+      });
     } catch (checkoutError) {
       setCheckoutError(
         checkoutError instanceof Error && checkoutError.message
@@ -270,6 +338,19 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
       );
       setIsEnrollingFree(false);
     }
+  }
+
+  function handleOfferSelection(offerId: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("offer");
+    params.delete("priceId");
+    params.delete("checkout");
+    params.set("offerId", offerId);
+    const query = params.toString();
+    router.replace(
+      `/courses/${encodeURIComponent(courseId)}${query ? `?${query}` : ""}`,
+      { scroll: false },
+    );
   }
 
   return (
@@ -347,6 +428,15 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
                   />
                 </div>
               ) : null}
+              {previewLesson.videoSource === "upload" ? (
+                <div className="overflow-hidden rounded-[12px] border border-[var(--color-line)] bg-[var(--color-primary)]">
+                  <BunnyVideoPlayer
+                    courseId={course.id}
+                    lessonId={previewLesson.id}
+                    title={previewLesson.title}
+                  />
+                </div>
+              ) : null}
               {previewLessonExternalUrl && !previewLessonEmbed ? (
                 <a
                   href={previewLessonExternalUrl}
@@ -357,7 +447,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
                   Open preview resource
                 </a>
               ) : null}
-              {!previewLessonRawExternalUrl ? (
+              {!previewLessonRawExternalUrl && previewLesson.videoSource !== "upload" ? (
                 <p className="rounded-[12px] bg-white p-4 text-xs leading-6 text-[var(--color-ink-soft)]">
                   Preview media can be attached by the educator as a video,
                   external lesson link, or text resource.
@@ -431,13 +521,60 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           At a glance
         </p>
+        {offers.length > 1 ? (
+          <fieldset className="mt-5 border-y border-[var(--color-line)] py-4">
+            <legend className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
+              Choose an offer
+            </legend>
+            <div className="mt-2 divide-y divide-[var(--color-line)]">
+              {offers.map((offer) => {
+                const price = offer.prices.find((entry) => entry.active !== false);
+                const interval =
+                  price?.paymentType === "subscription_monthly"
+                    ? " / month"
+                    : price?.paymentType === "subscription_yearly"
+                      ? " / year"
+                      : "";
+                return (
+                  <label
+                    key={offer.id}
+                    className="flex min-h-12 cursor-pointer items-center gap-3 py-3"
+                  >
+                    <input
+                      type="radio"
+                      name="course-offer"
+                      value={offer.id}
+                      checked={resolvedPrice?.offerId === offer.id}
+                      onChange={() => handleOfferSelection(offer.id)}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-[var(--color-ink)]">
+                        {offer.name}
+                      </span>
+                      <span className="block text-xs text-[var(--color-ink-soft)]">
+                        {price
+                          ? price.amountMinor === 0
+                            ? "Free"
+                            : `${new Intl.NumberFormat("en", {
+                                style: "currency",
+                                currency: price.currency,
+                              }).format(price.amountMinor / 100)}${interval}`
+                          : "Unavailable"}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+        ) : null}
         <dl className="mt-5 grid gap-4">
           {[
             ["Category", course.category],
             // Don't leak the internal "in_review" state to buyers, and don't
             // falsely claim "Published" — an in_review course on sale is
             // truthfully "Available".
-            ["Status", course.status === "published" ? "Published" : "Available"],
+            ["Status", "Published"],
             ["Lessons", String(course.lessonCount)],
             ["Price", priceLabel],
             ["Rating", ratingLabel],
@@ -482,6 +619,12 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
           </p>
         ) : null}
 
+        {offerLoadError || (pricingReady && hasExplicitOffer && !resolvedPrice) ? (
+          <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+            {offerLoadError || "The selected offer is no longer available."}
+          </p>
+        ) : null}
+
         {authStatus !== "authenticated" ? (
           <div className="mt-6 grid gap-3">
             <Link href="/auth?mode=signup" className="button-solid w-full justify-center px-5 py-2.5 text-sm">
@@ -493,6 +636,27 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
           </div>
         ) : (
           <>
+            {canCheckout && !subscriptionInterval ? (
+              <label className="mt-6 block">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
+                  Coupon code
+                </span>
+                <input
+                  value={couponCode}
+                  onChange={(event) =>
+                    setCouponCode(
+                      event.target.value
+                        .toUpperCase()
+                        .replace(/[^A-Z0-9-]/g, "")
+                        .slice(0, 32),
+                    )
+                  }
+                  autoComplete="off"
+                  placeholder="Optional"
+                  className="mt-2 w-full rounded-[10px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
+                />
+              </label>
+            ) : null}
             {canEnrollFree ? (
               <button
                 type="button"

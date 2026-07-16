@@ -22,8 +22,8 @@ export const demoProductSurfaces: ProductSurface[] = [
     href: "/ops",
     label: "For the team",
     summary:
-      "Internal queues for course review, support, moderation, certificates, and payment oversight.",
-    modules: ["Approvals", "Moderation", "Support", "Payments", "Audit"],
+      "Internal queues for professional verification, support, moderation, certificates, and payment oversight.",
+    modules: ["Verification", "Moderation", "Support", "Payments", "Audit"],
   },
 ];
 

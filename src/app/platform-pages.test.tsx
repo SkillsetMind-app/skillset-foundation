@@ -72,12 +72,12 @@ vi.mock("@/components/learn/learn-dashboard", () => ({
   LearnDashboard: () => <div>Learn dashboard</div>,
 }));
 
-vi.mock("@/components/admin/course-review-queue", () => ({
-  CourseReviewQueue: () => <div>Course review queue</div>,
-}));
-
 vi.mock("@/components/admin/managed-course-panel", () => ({
   ManagedCoursePanel: () => <div>Managed course panel</div>,
+}));
+
+vi.mock("@/components/admin/creator-verification-queue", () => ({
+  CreatorVerificationQueue: () => <div>Creator verification queue</div>,
 }));
 
 vi.mock("@/components/admin/admin-enrollment-panel", () => ({

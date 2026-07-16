@@ -82,7 +82,7 @@ export function CoursePreviewShell({ courseId }: CoursePreviewShellProps) {
     <EnrolledCourseWorkspace
       course={teacherCourseToLearningCourse(course)}
       enableFirestoreAssets
-      previewExitHref={`/teach/builder?courseId=${course.id}`}
+      previewExitHref={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=members`}
       previewMode
     />
   );

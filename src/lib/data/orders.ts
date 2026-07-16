@@ -5,6 +5,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
 
 type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
+const TEACHER_PAGE_SIZE = 500;
 
 export function mapOrderRow(row: OrderRow): Order {
   const payoutModel =
@@ -182,20 +183,37 @@ export function subscribeToTeacherOrders(
   // Scope both the initial query and realtime fan-in to this teacher. The
   // canonical order row now carries teacher_id for one-time and recurring sales.
   const supabase = getSupabaseBrowserClient();
+  let loadVersion = 0;
+  let stopped = false;
 
   const load = async () => {
-    const { data, error } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("teacher_id", teacherId)
-      .limit(500);
+    const version = ++loadVersion;
+    const rows: OrderRow[] = [];
 
-    if (error) {
-      onError(error instanceof Error ? error : new Error(String(error)));
-      return;
+    for (let from = 0; ; from += TEACHER_PAGE_SIZE) {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("teacher_id", teacherId)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + TEACHER_PAGE_SIZE - 1);
+
+      if (error) {
+        if (!stopped && version === loadVersion) {
+          onError(error instanceof Error ? error : new Error(String(error)));
+        }
+        return;
+      }
+
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < TEACHER_PAGE_SIZE) break;
     }
 
-    callback((data ?? []).map(mapOrderRow));
+    if (!stopped && version === loadVersion) {
+      callback(rows.map(mapOrderRow));
+    }
   };
 
   void load();
@@ -217,6 +235,8 @@ export function subscribeToTeacherOrders(
     .subscribe();
 
   return () => {
+    stopped = true;
+    loadVersion += 1;
     void supabase.removeChannel(channel);
   };
 }

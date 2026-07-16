@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { runRateLimit } from "@/lib/supabase/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // POST /api/teach/advisor — proxies a teacher's chat to an n8n webhook that
@@ -52,19 +53,25 @@ export async function POST(request: Request) {
     [`advisor_${uid}`, 30, 3_600_000],
     [`advisor_daily_${uid}`, 120, 86_400_000],
   ] as const) {
-    const { error: rlError } = await supabase.rpc("enforce_rate_limit", {
-      p_key: key,
-      p_limit: limit,
-      p_window_ms: windowMs,
-    });
-    if (rlError) {
-      if (rlError.message?.includes("RATE_LIMIT")) {
+    try {
+      const { error: rlError } = await runRateLimit(key, limit, windowMs);
+      if (rlError) {
+        if (rlError.message?.includes("RATE_LIMIT")) {
+          return NextResponse.json(
+            { error: "Too many messages. Please wait a moment before continuing." },
+            { status: 429 },
+          );
+        }
         return NextResponse.json(
-          { error: "Too many messages. Please wait a moment before continuing." },
-          { status: 429 },
+          { error: "Something went wrong. Please try again." },
+          { status: 500 },
         );
       }
-      return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
+    } catch {
+      return NextResponse.json(
+        { error: "Something went wrong. Please try again." },
+        { status: 500 },
+      );
     }
   }
 

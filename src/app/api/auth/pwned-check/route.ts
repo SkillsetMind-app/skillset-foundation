@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { runRateLimit } from "@/lib/supabase/rate-limit";
 
 // Server-side proxy for the HaveIBeenPwned "Pwned Passwords" range API. The
 // browser sends ONLY the first 5 hex chars of a password's SHA-1 hash
@@ -38,14 +38,17 @@ export async function GET(request: Request) {
 
   // Fail-open rate limit: a breach returns 429, but a limiter outage must never
   // block the pwned check — the whole route is best-effort auth assist.
-  const supabase = await createSupabaseServerClient();
-  const { error: rlError } = await supabase.rpc("enforce_rate_limit", {
-    p_key: rateLimitKeyFromIp(request),
-    p_limit: RATE_LIMIT_PER_MINUTE,
-    p_window_ms: 60_000,
-  });
-  if (rlError?.message?.includes("RATE_LIMIT")) {
-    return NextResponse.json({ error: "Too many requests." }, { status: 429 });
+  try {
+    const { error: rlError } = await runRateLimit(
+      rateLimitKeyFromIp(request),
+      RATE_LIMIT_PER_MINUTE,
+      60_000,
+    );
+    if (rlError?.message?.includes("RATE_LIMIT")) {
+      return NextResponse.json({ error: "Too many requests." }, { status: 429 });
+    }
+  } catch {
+    // Deliberately fail open: this endpoint is a best-effort password signal.
   }
 
   const controller = new AbortController();
