@@ -19,7 +19,7 @@ const HERO_PORTRAITS = [
   "/brand/hero/10_brazilian_latino_burgundy_knit.png",
 ] as const;
 
-const HERO_PORTRAIT_INTERVAL_MS = 8_000;
+const HERO_PORTRAIT_INTERVAL_MS = 3_000;
 const HERO_PORTRAIT_FADE_MS = 1_400;
 
 export function MarketingHero() {
