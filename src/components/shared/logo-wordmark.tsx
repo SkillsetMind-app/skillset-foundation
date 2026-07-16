@@ -74,6 +74,7 @@ export function LogoWordmark({
         .join(" ")}
     >
       {inner}
+      <span className="sr-only">{brand.name}</span>
     </Link>
   );
 }
