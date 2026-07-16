@@ -57,7 +57,7 @@ export async function AuthShell({
           <div className="relative z-10 flex w-full flex-col justify-between p-10 sm:p-12">
             <Image
               src={brand.logoFullDark}
-              alt={brand.name}
+              alt={brand.logoAlt}
               width={brand.logoFullDarkSize.width}
               height={brand.logoFullDarkSize.height}
               priority
