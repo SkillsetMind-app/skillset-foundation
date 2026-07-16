@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import {
@@ -48,9 +49,10 @@ function toDateTimeLocalValue(iso: string): string {
 
 export function TeacherEventStudio() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [events, setEvents] = useState<CourseEvent[]>([]);
-  const [courseId, setCourseId] = useState("");
+  const [courseId, setCourseId] = useState(searchParams.get("courseId") ?? "");
   const [type, setType] = useState<CourseEventType>("live_class");
   const [title, setTitle] = useState("");
   const [startsAt, setStartsAt] = useState("");
@@ -299,7 +301,7 @@ export function TeacherEventStudio() {
               onChange={(event) => setTitle(event.target.value)}
               required
               minLength={3}
-                placeholder="Example: Leadership clinic with live Q&A"
+              placeholder="Example: Leadership clinic with live Q&A"
               className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
             />
           </label>
@@ -323,7 +325,7 @@ export function TeacherEventStudio() {
               required
               minLength={12}
               rows={4}
-                placeholder="What should learners expect in this event?"
+              placeholder="What should learners expect in this event?"
               className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
             />
           </label>

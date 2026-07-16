@@ -112,6 +112,34 @@ describe("CreateCourseStart", () => {
     expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=pricing");
   });
 
+  it("creates an event product before opening its linked scheduling form", async () => {
+    render(<CreateCourseStart ownerId="teacher-1" initialFormat="event" />);
+
+    expect(screen.getByRole("button", { name: /Online event/i })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
+    fireEvent.change(screen.getByLabelText("Product title"), {
+      target: { value: "Live clinical supervision intensive" },
+    });
+    fireEvent.change(screen.getByLabelText(/Product promise/), {
+      target: { value: "Practice advanced supervision methods in a live facilitated cohort." },
+    });
+    selectPrimaryCategory();
+    fireEvent.click(screen.getByRole("button", { name: /Create and schedule event/i }));
+
+    await waitFor(() => {
+      expect(mocks.createTeacherCourse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          paymentType: "one_time",
+          communityEnabled: false,
+        })
+      );
+    });
+    expect(mocks.push).toHaveBeenCalledWith("/teach/events?courseId=course-123&newEvent=1");
+  });
+
   it("starts on format selection and keeps categories collapsed", () => {
     render(<CreateCourseStart ownerId="teacher-1" initialFormat="subscription" />);
 

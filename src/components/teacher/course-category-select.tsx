@@ -112,7 +112,7 @@ export function CourseCategorySelect({
           id={optionsId}
           role="group"
           aria-label="Course categories"
-          className="absolute z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-[8px] border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
+          className="course-category-menu absolute z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-[8px] border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
         >
           {visibleOptions.map((item) => {
             const isSelected = selected.includes(item);

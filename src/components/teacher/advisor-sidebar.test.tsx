@@ -30,4 +30,14 @@ describe("AdvisorSidebar", () => {
     expect(screen.queryByRole("dialog", { name: "Studio advisor" })).toBeNull();
     expect(trigger).toHaveFocus();
   });
+
+  it("uses the viewport-constrained panel layout", () => {
+    render(<AdvisorSidebar />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open studio advisor" }));
+
+    expect(screen.getByRole("dialog", { name: "Studio advisor" })).toHaveClass(
+      "advisor-panel",
+    );
+  });
 });

@@ -59,7 +59,11 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
     resolveTeacherCoursePaymentType(productFormat, subscriptionInterval);
   const nextBuilderTab = productFormat === "free" ? "content" : "pricing";
   const submitLabel =
-    productFormat === "free" ? "Create and add content" : "Create and set pricing";
+    productFormat === "event"
+      ? "Create and schedule event"
+      : productFormat === "free"
+        ? "Create and add content"
+        : "Create and set pricing";
   const activeStep = step === "format" ? 0 : 1;
 
   useEffect(() => {
@@ -107,7 +111,11 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
         communityEnabled: productFormat === "community",
       });
 
-      router.push(`/teach/builder?courseId=${courseId}&tab=${nextBuilderTab}`);
+      router.push(
+        productFormat === "event"
+          ? `/teach/events?courseId=${encodeURIComponent(courseId)}&newEvent=1`
+          : `/teach/builder?courseId=${courseId}&tab=${nextBuilderTab}`
+      );
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "";
       setError(
@@ -191,13 +199,20 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
 
             <fieldset className="mt-6">
               <legend className="sr-only">Product format</legend>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
                 <PaymentChoice
                   active={productFormat === "course"}
                   detail="One-time purchase with permanent or managed access."
                   icon="course"
                   label="Online course"
                   onClick={() => setProductFormat("course")}
+                />
+                <PaymentChoice
+                  active={productFormat === "event"}
+                  detail="Live workshops, cohorts, and scheduled group sessions."
+                  icon="event"
+                  label="Online event"
+                  onClick={() => setProductFormat("event")}
                 />
                 <PaymentChoice
                   active={productFormat === "subscription"}
@@ -220,19 +235,6 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                   label="Free program"
                   onClick={() => setProductFormat("free")}
                 />
-                <Link href="/teach/events?newEvent=1" className="create-course-payment">
-                  <span>
-                    <CalendarDays aria-hidden="true" size={18} strokeWidth={1.8} />
-                  </span>
-                  <strong>Online event</strong>
-                  <small>Live workshops, cohorts, and scheduled group sessions.</small>
-                  <ArrowRight
-                    aria-hidden="true"
-                    className="create-course-payment__selected"
-                    size={15}
-                    strokeWidth={2.2}
-                  />
-                </Link>
               </div>
             </fieldset>
 
@@ -394,9 +396,11 @@ function PaymentChoice({
       ? Repeat2
       : icon === "community"
         ? UsersRound
-        : icon === "free"
-          ? Gift
-          : BookOpenCheck;
+        : icon === "event"
+          ? CalendarDays
+          : icon === "free"
+            ? Gift
+            : BookOpenCheck;
 
   return (
     <button

@@ -385,7 +385,7 @@ function StudioSellFormatsSection() {
   }> = [
     {
       title: "Online course",
-      detail: "Video, text, quiz, downloads, certificates, and structured lessons.",
+      detail: "Video, text, downloads, certificates, and structured lessons.",
       href: "/teach/builder?newCourse=1&format=course",
       icon: BookOpenCheck,
     },
@@ -404,7 +404,7 @@ function StudioSellFormatsSection() {
     {
       title: "Online event",
       detail: "Live workshops, cohorts, and scheduled group sessions.",
-      href: "/teach/events?newEvent=1",
+      href: "/teach/builder?newCourse=1&format=event",
       icon: CalendarDays,
     },
     {

@@ -99,7 +99,7 @@ describe("TeacherStudioDashboard", () => {
     );
     expect(screen.getByRole("link", { name: /Online event/i })).toHaveAttribute(
       "href",
-      "/teach/events?newEvent=1"
+      "/teach/builder?newCourse=1&format=event"
     );
   });
 });

@@ -139,7 +139,7 @@ export function AdvisorSidebar() {
         <section
           role="dialog"
           aria-label="Studio advisor"
-          className="flex h-[min(560px,calc(100dvh-7rem))] w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-[16px] border border-[var(--color-line)] bg-white shadow-[0_18px_50px_rgba(15,31,58,0.22)]"
+          className="advisor-panel flex w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-[16px] border border-[var(--color-line)] bg-white shadow-[0_18px_50px_rgba(15,31,58,0.22)]"
         >
           <header className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3">
             <span className="flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">

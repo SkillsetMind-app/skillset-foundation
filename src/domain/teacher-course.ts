@@ -33,7 +33,7 @@ export type TeacherCoursePaymentType =
   | "subscription_yearly"
   | "free";
 
-export type TeacherCourseProductFormat = "course" | "subscription" | "community" | "free";
+export type TeacherCourseProductFormat = "course" | "subscription" | "community" | "event" | "free";
 
 export type TeacherCourseSubscriptionInterval = "monthly" | "yearly";
 

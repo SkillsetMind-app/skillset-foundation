@@ -2463,11 +2463,20 @@ select:focus-visible {
 .floating-action {
   position: fixed;
   bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
-  z-index: 50;
+  z-index: 68;
 }
 
 .floating-action--advisor {
   inset-inline-end: 1rem;
+}
+
+.advisor-panel {
+  height: min(560px, calc(100dvh - 7rem));
+}
+
+body:has(.cookie-consent) .floating-action--advisor,
+body:has([aria-label="Course categories"]) .floating-action--advisor {
+  display: none;
 }
 
 @media (min-width: 1024px) {
@@ -2886,6 +2895,19 @@ select:focus-visible {
 .create-course-screen__form {
   background: rgba(255, 255, 255, 0.98);
   padding: 1.75rem;
+}
+
+[data-theme="dark"] .create-course-screen__intro {
+  background: #091d2f;
+}
+
+[data-theme="dark"] .create-course-screen__form,
+[data-theme="dark"] .create-course-payment {
+  background: var(--color-surface);
+}
+
+[data-theme="dark"] .create-course-payment.is-active {
+  background: var(--color-surface-strong);
 }
 
 .create-course-step {
@@ -5835,6 +5857,20 @@ button:hover > .dash-card,
 
   .advisor-trigger-label {
     display: none;
+  }
+
+  .advisor-panel {
+    height: min(560px, calc(100dvh - 11rem - env(safe-area-inset-bottom, 0px)));
+  }
+
+  .course-category-menu {
+    position: fixed;
+    z-index: 67;
+    inset-inline: 1rem;
+    bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-height: min(24rem, calc(100dvh - 7rem));
+    margin-top: 0;
   }
 }
 
