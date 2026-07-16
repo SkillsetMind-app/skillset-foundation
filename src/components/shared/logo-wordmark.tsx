@@ -5,17 +5,19 @@ import { brand } from "@/data/brand";
 
 type LogoWordmarkProps = {
   href?: string;
-  /** "full" = wordmark (theme-aware). "mark" = round emblem only. */
+  /** "full" = official wordmark lockup. "mark" = compact symbol only. */
   variant?: "full" | "mark";
+  /** "auto" follows the app theme; fixed tones support permanently dark surfaces. */
+  tone?: "auto" | "light" | "dark";
   compact?: boolean;
   nav?: boolean;
   className?: string;
 };
 
-function textSizeClass(nav: boolean, compact: boolean): string {
-  if (nav) return "text-[1.25rem]";
-  if (compact) return "text-[1.35rem]";
-  return "text-[1.5rem]";
+function fullSizeClass(nav: boolean, compact: boolean): string {
+  if (nav) return "h-12";
+  if (compact) return "h-12";
+  return "h-14";
 }
 
 function markSizeClass(nav: boolean, compact: boolean): string {
@@ -27,6 +29,7 @@ function markSizeClass(nav: boolean, compact: boolean): string {
 export function LogoWordmark({
   href = "/",
   variant = "full",
+  tone = "auto",
   compact = false,
   nav = false,
   className,
@@ -35,33 +38,37 @@ export function LogoWordmark({
     variant === "mark" ? (
       <Image
         src={brand.logoMark}
-        alt={`${brand.name} emblem`}
+        alt=""
         width={brand.logoMarkSize.width}
         height={brand.logoMarkSize.height}
         priority
         className={`${markSizeClass(nav, compact)} w-auto object-contain`}
       />
     ) : (
-      <span className="logo-wordmark__full">
+      <span className={`logo-wordmark__full logo-wordmark__full--${tone}`}>
         <Image
-          src={brand.logoMark}
+          src={brand.logoFullLight}
           alt=""
-          width={brand.logoMarkSize.width}
-          height={brand.logoMarkSize.height}
+          width={brand.logoFullLightSize.width}
+          height={brand.logoFullLightSize.height}
           priority
-          className={`${markSizeClass(nav, compact)} w-auto object-contain`}
+          className={`logo-wordmark__asset logo-wordmark__asset--light ${fullSizeClass(nav, compact)} w-auto object-contain`}
         />
-        <span className={`logo-wordmark__text ${textSizeClass(nav, compact)}`}>
-          {/* One-word SkillsetMind; brass accent only on "Mind" (brand architecture). */}
-          Skillset<span className="logo-wordmark__accent">Mind</span>
-        </span>
+        <Image
+          src={brand.logoFullDark}
+          alt=""
+          width={brand.logoFullDarkSize.width}
+          height={brand.logoFullDarkSize.height}
+          priority
+          className={`logo-wordmark__asset logo-wordmark__asset--dark ${fullSizeClass(nav, compact)} w-auto object-contain`}
+        />
       </span>
     );
 
   return (
     <Link
       href={href}
-      aria-label={brand.name}
+      aria-label={brand.logoAlt}
       className={["inline-flex shrink-0 items-center", className]
         .filter(Boolean)
         .join(" ")}
