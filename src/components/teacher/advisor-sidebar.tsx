@@ -251,10 +251,10 @@ export function AdvisorSidebar() {
         onClick={toggleAdvisor}
         aria-label={open ? "Close advisor" : "Open studio advisor"}
         aria-expanded={open}
-        className="flex items-center gap-2 rounded-full bg-[var(--color-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-base)] shadow-[0_10px_30px_rgba(15,31,58,0.3)] transition-transform hover:scale-[1.03]"
+        className="advisor-trigger flex items-center gap-2 rounded-full bg-[var(--color-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-base)] shadow-[0_10px_30px_rgba(15,31,58,0.3)] transition-transform hover:scale-[1.03]"
       >
         <Sparkles className="h-4 w-4" aria-hidden="true" />
-        {open ? "Close" : "Advisor"}
+        <span className="advisor-trigger-label">{open ? "Close" : "Advisor"}</span>
       </button>
     </div>
   );

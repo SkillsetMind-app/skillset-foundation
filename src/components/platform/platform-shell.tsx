@@ -66,7 +66,10 @@ export function PlatformShell({
                   onToggle={toggle}
                 />
                 {!isCollapsed ? <PlatformSidebarSearch pathname={pathname} /> : null}
-                <PlatformNav collapsed={isCollapsed} />
+                <PlatformNav
+                  collapsed={isCollapsed}
+                  onRequestExpand={toggle}
+                />
               </aside>
 
               <div className="platform-main-column">

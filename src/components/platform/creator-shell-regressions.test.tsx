@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { MobileSidebarDrawer } from "@/components/platform/mobile-sidebar-drawer";
 import { PlatformNav } from "@/components/platform/platform-nav";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { AdvisorSidebar } from "@/components/teacher/advisor-sidebar";
@@ -61,13 +62,58 @@ describe("creator shell regressions", () => {
     );
   });
 
-  it("keeps the active navigation row from shrinking inside the scroll rail", () => {
+  it("keeps the active navigation row at the same fixed height as its peers", () => {
     render(<PlatformNav />);
 
     const activeLink = screen.getByRole("link", { name: "My products" });
     expect(activeLink).toHaveAttribute("aria-current", "page");
     expect(activeLink).toHaveClass("shrink-0");
-    expect(activeLink).toHaveClass("min-h-[50px]");
+    expect(activeLink).toHaveClass("h-11", "min-h-11");
+  });
+
+  it("opens the active category and lets the user switch accordion groups", () => {
+    render(<PlatformNav />);
+
+    const products = screen.getByRole("button", { name: "Products" });
+    const sales = screen.getByRole("button", { name: "Sales" });
+
+    expect(products).toHaveAttribute("aria-expanded", "true");
+    expect(sales).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("link", { name: "My products" })).toBeInTheDocument();
+
+    fireEvent.click(sales);
+
+    expect(products).toHaveAttribute("aria-expanded", "false");
+    expect(sales).toHaveAttribute("aria-expanded", "true");
+    expect(screen.queryByRole("link", { name: "My products" })).toBeNull();
+  });
+
+  it("uses category icons only in the collapsed rail", () => {
+    const onRequestExpand = vi.fn();
+    render(<PlatformNav collapsed onRequestExpand={onRequestExpand} />);
+
+    const products = screen.getByRole("button", {
+      name: "Open Products navigation",
+    });
+
+    expect(products).toHaveClass("platform-nav-active");
+    expect(screen.queryByRole("link", { name: "My products" })).toBeNull();
+
+    fireEvent.click(products);
+    expect(onRequestExpand).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the mobile drawer above the sticky application chrome", () => {
+    const onClose = vi.fn();
+    render(
+      <MobileSidebarDrawer open onOpen={vi.fn()} onClose={onClose} />,
+    );
+
+    const drawer = screen.getByRole("dialog");
+    expect(drawer.parentElement).toHaveClass("z-[100]");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it("keeps My products active inside a product management route", () => {

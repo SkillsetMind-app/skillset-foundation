@@ -103,7 +103,7 @@ export function MobileSidebarDrawer({
       </nav>
 
       {open ? (
-        <div className="fixed inset-0 z-[55] min-[921px]:hidden">
+        <div className="fixed inset-0 z-[100] min-[1024px]:hidden">
           <button
             type="button"
             className="absolute inset-0 bg-[rgba(15,39,68,0.45)]"
@@ -116,7 +116,7 @@ export function MobileSidebarDrawer({
             role="dialog"
             aria-modal="true"
             aria-label={t("platform.mobile.drawerLabel")}
-            className="relative z-[60] flex h-screen w-[280px] flex-col bg-white shadow-[0_0_60px_rgba(15,39,68,0.25)] outline-none"
+            className="relative z-[1] flex h-screen w-[280px] flex-col bg-white shadow-[0_0_60px_rgba(15,39,68,0.25)] outline-none"
             onTouchStart={(event) => {
               touchStartX.current = event.touches[0]?.clientX ?? null;
             }}

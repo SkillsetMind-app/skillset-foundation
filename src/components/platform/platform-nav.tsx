@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from "react";
+import { useId, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -9,6 +9,7 @@ import {
   Bookmark,
   BookOpen,
   Calendar,
+  ChevronDown,
   CreditCard,
   ExternalLink,
   GraduationCap,
@@ -81,10 +82,37 @@ const sectionOrder = [
   "Account",
 ];
 
-export function PlatformNav({ collapsed = false }: { collapsed?: boolean }) {
+const sectionIconMap: Record<string, LucideIcon> = {
+  Discover: ShoppingBag,
+  Learn: GraduationCap,
+  "My Learning": BookOpen,
+  Products: LayoutDashboard,
+  Sales: Receipt,
+  Finance: Wallet,
+  Reports: BarChart3,
+  Partnerships: Users,
+  Setup: Settings,
+  Operations: UserCheck,
+  Account: Settings,
+};
+
+type PlatformNavProps = {
+  collapsed?: boolean;
+  onRequestExpand?: () => void;
+};
+
+export function PlatformNav({
+  collapsed = false,
+  onRequestExpand,
+}: PlatformNavProps) {
   const { user } = useAuth();
   const { t } = useTranslation();
   const pathname = usePathname() ?? "";
+  const panelIdPrefix = useId();
+  const [sectionChoice, setSectionChoice] = useState<{
+    pathname: string;
+    section: string | null;
+  }>({ pathname: "", section: null });
   const subject: PermissionSubject = { roles: user?.roles ?? ["guest"] };
   const context = resolveContext(pathname, subject);
 
@@ -105,31 +133,104 @@ export function PlatformNav({ collapsed = false }: { collapsed?: boolean }) {
       return platformNav.indexOf(a) - platformNav.indexOf(b);
     });
 
+  const groups: Array<{ section: string; items: typeof visibleItems }> = [];
+  for (const item of visibleItems) {
+    const currentGroup = groups.at(-1);
+    if (!currentGroup || currentGroup.section !== item.section) {
+      groups.push({ section: item.section, items: [item] });
+    } else {
+      currentGroup.items.push(item);
+    }
+  }
+
+  const activeSection = groups.find((group) =>
+    group.items.some((item) => isActivePlatformRoute(pathname, item.href)),
+  )?.section;
+  const expandedSection =
+    sectionChoice.pathname === pathname
+      ? sectionChoice.section
+      : (activeSection ?? groups[0]?.section ?? null);
+
+  function toggleSection(section: string) {
+    if (collapsed) {
+      setSectionChoice({ pathname, section });
+      onRequestExpand?.();
+      return;
+    }
+
+    setSectionChoice({
+      pathname,
+      section: expandedSection === section ? null : section,
+    });
+  }
+
   return (
     <nav
-      className="platform-sidebar-nav mt-3 flex flex-col gap-1.5"
+      className="platform-sidebar-nav mt-3 flex flex-col"
       aria-label={t("platform.sidebarNavLabel")}
     >
-      {visibleItems.map((item, index) => {
-        const showSection =
-          !collapsed && item.section !== visibleItems[index - 1]?.section;
+      {groups.map((group) => {
+        const SectionIcon = sectionIconMap[group.section] ?? LayoutDashboard;
+        const isActiveSection = group.section === activeSection;
+        const isExpanded = !collapsed && expandedSection === group.section;
+        const panelId = `${panelIdPrefix}-${group.section.toLowerCase().replace(/\s+/g, "-")}`;
 
         return (
-          <Fragment key={item.href}>
-            {showSection ? (
-              <p className="platform-sidebar-section-label shrink-0">
-                {item.section}
-              </p>
+          <div className="platform-nav-section shrink-0" key={group.section}>
+            <button
+              type="button"
+              onClick={() => toggleSection(group.section)}
+              aria-controls={collapsed ? undefined : panelId}
+              aria-expanded={collapsed ? undefined : isExpanded}
+              aria-label={collapsed ? `Open ${group.section} navigation` : undefined}
+              title={collapsed ? group.section : undefined}
+              className={`platform-nav-link platform-nav-section-trigger group relative flex w-full shrink-0 items-center rounded-[10px] border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(44,82,130,0.24)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+                collapsed ? "justify-center px-0" : "px-2"
+              } ${
+                collapsed && isActiveSection
+                  ? "platform-nav-active"
+                  : isActiveSection
+                    ? "platform-nav-section-active"
+                    : ""
+              }`}
+            >
+              <span className="platform-nav-icon-chip">
+                <SectionIcon aria-hidden="true" size={17} strokeWidth={2} />
+              </span>
+              <span className="platform-sidebar-label min-w-0 truncate">
+                {group.section}
+              </span>
+              {!collapsed ? (
+                <ChevronDown
+                  aria-hidden="true"
+                  size={15}
+                  strokeWidth={2}
+                  className={`platform-nav-section-chevron ${
+                    isExpanded ? "is-open" : ""
+                  }`}
+                />
+              ) : null}
+            </button>
+
+            {isExpanded ? (
+              <div
+                id={panelId}
+                className="platform-nav-section-items"
+                data-section={group.section}
+              >
+                {group.items.map((item) => (
+                  <PlatformNavLink
+                    key={item.href}
+                    href={item.href}
+                    label={t(item.labelKey)}
+                    icon={item.icon}
+                    active={isActivePlatformRoute(pathname, item.href)}
+                    newTab={item.newTab}
+                  />
+                ))}
+              </div>
             ) : null}
-            <PlatformNavLink
-              href={item.href}
-              label={t(item.labelKey)}
-              icon={item.icon}
-              active={isActivePlatformRoute(pathname, item.href)}
-              collapsed={collapsed}
-              newTab={item.newTab}
-            />
-          </Fragment>
+          </div>
         );
       })}
     </nav>
@@ -195,14 +296,12 @@ function PlatformNavLink({
   label,
   icon,
   active,
-  collapsed,
   newTab = false,
 }: {
   href: string;
   label: string;
   icon: string;
   active: boolean;
-  collapsed: boolean;
   newTab?: boolean;
 }) {
   const { t } = useTranslation();
@@ -211,11 +310,10 @@ function PlatformNavLink({
   return (
     <Link
       href={href}
-      title={collapsed ? label : undefined}
       aria-current={active ? "page" : undefined}
       target={newTab ? "_blank" : undefined}
       rel={newTab ? "noopener noreferrer" : undefined}
-      className={`platform-nav-link group relative flex min-h-[50px] shrink-0 items-center gap-2.5 rounded-[10px] border py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(44,82,130,0.24)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${collapsed ? "justify-center px-0" : "px-2.5"} ${
+      className={`platform-nav-link group relative flex h-11 min-h-11 shrink-0 items-center gap-2.5 rounded-[10px] border px-2.5 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(44,82,130,0.24)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
         active
           ? "platform-nav-active border-[rgba(24,58,94,0.2)] shadow-[0_10px_22px_rgba(26,54,93,0.16)]"
           : "border-transparent text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]"
@@ -229,8 +327,8 @@ function PlatformNavLink({
           className="shrink-0"
         />
       </span>
-      <span className="platform-sidebar-label">{label}</span>
-      {newTab && !collapsed ? (
+      <span className="platform-sidebar-label min-w-0 truncate">{label}</span>
+      {newTab ? (
         <ExternalLink
           aria-hidden="true"
           size={14}

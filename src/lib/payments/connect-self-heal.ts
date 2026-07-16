@@ -144,9 +144,9 @@ export function isUnusableConnectedAccountError(error: unknown): boolean {
 //      https://dashboard.stripe.com/account/applications/settings."
 // We MUST recognize both, or the honest degradation red-flashes for whichever
 // users have a stale id. Only the owner enabling Connect resolves either case.
-// (Confirmed live via read-only probe, 2026-06-09.)
+// (Confirmed against the live platform state, 2026-07-15.)
 const CONNECT_NOT_ENABLED_MESSAGE =
-  /signed up for Connect|Only Stripe Connect platforms can work/i;
+  /signed up for Connect|Only Stripe Connect platforms can work|complete your platform profile to use Connect/i;
 const CONNECT_NOT_ENABLED_CODE = "platform_account_required";
 
 /**
@@ -161,7 +161,7 @@ const CONNECT_NOT_ENABLED_CODE = "platform_account_required";
  * "payouts not available yet" precondition — never self-heal, never retry.
  *
  * Gated on the authoritative `platform_account_required` code OR the two
- * "Connect not set up" phrasings (not class/status alone): the orphan and
+ * platform setup phrasings (not class/status alone): the orphan and
  * revoked predicates above also live on 400/403 invalid-request errors, so only
  * these signals distinguish the platform-config case. Stays disjoint from
  * isOrphanedAccountError, which excludes StripePermissionError at Gate 2 and

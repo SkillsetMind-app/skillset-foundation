@@ -2,9 +2,54 @@
 -- Bodies come from live pg_get_functiondef snapshots where available, and from
 -- the exact migrations applied to the live project for the remaining RPCs.
 
--- The older live function used bigint for p_window_ms. The versioned money-path
--- migration standardizes this argument as integer. Keep one PostgREST signature
--- so calls by named arguments cannot become ambiguous after both histories meet.
+-- The older live function used bigint for p_window_ms. Recreate its live
+-- semantics with the versioned integer signature before removing the old
+-- overload, so this migration does not depend on an untracked predecessor.
+create or replace function public.enforce_rate_limit(
+  p_key text,
+  p_limit integer,
+  p_window_ms integer
+)
+returns void
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_now timestamptz := now();
+  v_window_started timestamptz;
+  v_count integer;
+  v_in_window boolean;
+begin
+  select window_started_at, count
+    into v_window_started, v_count
+  from public.rate_limits
+  where key = p_key
+  for update;
+
+  v_in_window := v_window_started is not null
+    and (extract(epoch from (v_now - v_window_started)) * 1000) < p_window_ms;
+
+  if v_in_window and v_count >= p_limit then
+    raise exception 'RATE_LIMIT: too many attempts, please wait before trying again'
+      using errcode = 'P0001';
+  end if;
+
+  insert into public.rate_limits (key, count, window_started_at, updated_at)
+  values (p_key, 1, v_now, v_now)
+  on conflict (key) do update
+  set count = case
+        when v_in_window then public.rate_limits.count + 1
+        else 1
+      end,
+      window_started_at = case
+        when v_in_window then public.rate_limits.window_started_at
+        else v_now
+      end,
+      updated_at = v_now;
+end;
+$function$;
+
 drop function if exists public.enforce_rate_limit(text, integer, bigint);
 
 revoke execute on function public.enforce_rate_limit(text, integer, integer)

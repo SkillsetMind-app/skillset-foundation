@@ -1777,7 +1777,7 @@ p {
   color: var(--color-primary);
 }
 
-@media (max-width: 920px) {
+@media (max-width: 1023px) {
   .payouts-grid {
     grid-template-columns: 1fr;
   }
@@ -1797,7 +1797,7 @@ p {
   }
 }
 
-@media (max-width: 920px) {
+@media (max-width: 1023px) {
   .account-settings-grid {
     grid-template-columns: 1fr;
   }
@@ -2452,10 +2452,12 @@ select:focus-visible {
 }
 
 .platform-sidebar-nav {
+  gap: 0.35rem;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding-bottom: 0.5rem;
+  padding-bottom: 0;
   scrollbar-width: thin;
 }
 
@@ -2471,7 +2473,7 @@ select:focus-visible {
   inset-inline-end: 1rem;
 }
 
-@media (min-width: 921px) {
+@media (min-width: 1024px) {
   .floating-action {
     bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
   }
@@ -3650,7 +3652,7 @@ select:focus-visible {
   }
 }
 
-@media (max-width: 920px) {
+@media (max-width: 1023px) {
   .course-builder-hero,
   .course-builder-grid {
     grid-template-columns: 1fr;
@@ -4387,7 +4389,7 @@ select:focus-visible {
   }
 }
 
-@media (max-width: 920px) {
+@media (max-width: 1023px) {
   .member-classroom-hero {
     grid-template-columns: 1fr;
   }
@@ -4817,6 +4819,7 @@ select:focus-visible {
    chips get a clear white outline; the active chip becomes a solid white
    button with a navy icon. The expanded sidebar is untouched. */
 .platform-sidebar.sidebar-collapsed .platform-nav-link {
+  gap: 0;
   border-color: transparent !important;
   background: transparent !important;
   box-shadow: none !important;
@@ -4846,6 +4849,79 @@ select:focus-visible {
 
 .sidebar-collapsed .platform-nav-active .platform-nav-icon-chip svg {
   color: #ffffff !important;
+}
+
+/* Category accordions keep the producer information architecture visible while
+   showing only the active branch. In the collapsed rail, these category buttons
+   become the seven stable icon targets; leaf links never compete for 64px. */
+.platform-nav-section {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.platform-sidebar .platform-nav-link.platform-nav-section-trigger {
+  min-height: 38px;
+  gap: 0.5rem;
+  border-color: transparent !important;
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.66) !important;
+  box-shadow: none !important;
+}
+
+.platform-sidebar .platform-nav-link.platform-nav-section-trigger:hover,
+.platform-sidebar .platform-nav-link.platform-nav-section-trigger.platform-nav-section-active {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #ffffff !important;
+}
+
+.platform-nav-section-trigger .platform-nav-icon-chip {
+  width: 28px;
+  height: 28px;
+  flex-basis: 28px;
+}
+
+.platform-nav-section-trigger .platform-sidebar-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.platform-nav-section-chevron {
+  margin-inline-start: auto;
+  flex: 0 0 auto;
+  transition: transform 160ms ease;
+}
+
+.platform-nav-section-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.platform-nav-section-items {
+  display: grid;
+  gap: 0.125rem;
+  min-width: 0;
+  padding-inline-start: 0.5rem;
+}
+
+.platform-sidebar.sidebar-collapsed .platform-nav-section {
+  display: block;
+}
+
+.platform-sidebar.sidebar-collapsed .platform-nav-section-trigger {
+  min-height: 48px;
+  justify-content: center;
+  padding: 0;
+}
+
+.platform-sidebar.sidebar-collapsed .platform-nav-section-trigger .platform-nav-icon-chip {
+  width: 36px;
+  height: 36px;
+  flex-basis: 36px;
+}
+
+.platform-sidebar.sidebar-collapsed .platform-nav-section-trigger.platform-nav-active {
+  overflow: visible;
 }
 
 .platform-sidebar .grid.grid-cols-2 {
@@ -5662,7 +5738,7 @@ button:hover > .dash-card,
   box-shadow: var(--shadow-strong);
 }
 
-@media (max-width: 920px) {
+@media (max-width: 1023px) {
   .platform-grid {
     grid-template-columns: 1fr;
   }
@@ -5676,11 +5752,23 @@ button:hover > .dash-card,
   }
 
   .platform-content {
-    padding-bottom: 80px;
+    padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
+    scroll-padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
   }
 
   .platform-mobile-nav {
     display: flex;
+  }
+
+  .advisor-trigger {
+    width: 48px;
+    height: 48px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .advisor-trigger-label {
+    display: none;
   }
 }
 
