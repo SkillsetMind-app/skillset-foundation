@@ -236,24 +236,27 @@ html {
 }
 
 .logo-wordmark__full {
-  display: inline-flex;
+  display: inline-grid;
   align-items: center;
-  gap: 0.4rem;
-  color: currentColor;
 }
 
-.logo-wordmark__text {
-  color: currentColor;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1;
-  white-space: nowrap;
+.logo-wordmark__asset {
+  grid-area: 1 / 1;
+  display: block;
 }
 
-/* Brand architecture: "Mind" carries the single Muted Brass accent
-   (BRAND_STRATEGY.md — one-word SkillsetMind, brass as prestige signal). */
-.logo-wordmark__accent {
-  color: #c6a15b;
+.logo-wordmark__asset--dark {
+  display: none;
+}
+
+.logo-wordmark__full--dark .logo-wordmark__asset--light,
+[data-theme="dark"] .logo-wordmark__full--auto .logo-wordmark__asset--light {
+  display: none;
+}
+
+.logo-wordmark__full--dark .logo-wordmark__asset--dark,
+[data-theme="dark"] .logo-wordmark__full--auto .logo-wordmark__asset--dark {
+  display: block;
 }
 
 body {
