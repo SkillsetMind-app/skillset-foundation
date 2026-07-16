@@ -85,8 +85,8 @@ export function MarketingHero() {
 
       {/* Two full-bleed layers keep the upcoming portrait warm in the browser
           cache, so each transition starts immediately without loading flashes. */}
-      <div aria-hidden="true" className="absolute inset-0 hidden lg:block">
-        <div className="absolute inset-0">
+      <div aria-hidden="true" className="absolute inset-0">
+        <div className="absolute inset-0 opacity-65 lg:opacity-100">
           <Image
             key={`active-${HERO_PORTRAITS[activeIndex]}`}
             src={HERO_PORTRAITS[activeIndex]}
@@ -94,7 +94,7 @@ export function MarketingHero() {
             fill
             priority={activeIndex === 0}
             sizes="100vw"
-            className={`object-cover object-center transition-opacity duration-[1400ms] ease-in-out motion-reduce:transition-none ${
+            className={`object-cover object-[78%_center] transition-opacity duration-[1400ms] ease-in-out motion-reduce:transition-none sm:object-[74%_center] md:object-[68%_center] lg:object-center ${
               isTransitioning ? "opacity-0" : "opacity-100"
             }`}
           />
@@ -105,11 +105,12 @@ export function MarketingHero() {
             fill
             loading="lazy"
             sizes="100vw"
-            className={`object-cover object-center transition-opacity duration-[1400ms] ease-in-out motion-reduce:transition-none ${
+            className={`object-cover object-[78%_center] transition-opacity duration-[1400ms] ease-in-out motion-reduce:transition-none sm:object-[74%_center] md:object-[68%_center] lg:object-center ${
               isTransitioning ? "opacity-100" : "opacity-0"
             }`}
           />
         </div>
+          <div className="absolute inset-0 bg-[#071523]/55 lg:bg-transparent" />
           <div
             className="absolute inset-0"
             style={{
