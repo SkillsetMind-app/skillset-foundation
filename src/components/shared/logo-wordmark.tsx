@@ -68,7 +68,7 @@ export function LogoWordmark({
   return (
     <Link
       href={href}
-      aria-label={brand.logoAlt}
+      aria-label={brand.name}
       className={["inline-flex shrink-0 items-center", className]
         .filter(Boolean)
         .join(" ")}
