@@ -6,7 +6,6 @@ import {
   FileText,
   Film,
   Image as ImageIcon,
-  Link2,
   Settings,
   UploadCloud,
   X,
@@ -19,10 +18,12 @@ import {
   bunnyVideoMaxBytes,
   courseAssetAcceptTypes,
   courseAssetKindLabels,
-  courseAssetMaxBytes,
+  courseAssetUploadLimitMessage,
   formatCourseAssetSize,
+  getCourseAssetUploadErrorMessage,
   isAllowedBunnyVideoFile,
   isAllowedCourseAssetFile,
+  supabaseUploadLimitBytes,
 } from "@/domain/course-asset";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import {
@@ -228,8 +229,14 @@ export function LessonContentModal({
       }
     } else if (!isAllowedCourseAssetFile(selectedFile, uploadKind)) {
       setError(
-        `Use a valid ${courseAssetKindLabels[uploadKind].toLowerCase()} file under ${formatCourseAssetSize(courseAssetMaxBytes)}.`,
+        `Use a valid ${courseAssetKindLabels[uploadKind].toLowerCase()} file under ${formatCourseAssetSize(supabaseUploadLimitBytes)}.`,
       );
+      return;
+    } else if (selectedFile.size > supabaseUploadLimitBytes) {
+      // Without Bunny the bytes go to Supabase Storage, whose plan-level cap
+      // (default 50MB) is far below the 500MB bucket ceiling — validate against
+      // the limit the API will actually enforce.
+      setError(courseAssetUploadLimitMessage());
       return;
     }
 
@@ -262,8 +269,15 @@ export function LessonContentModal({
       setUploadProgress(null);
       setIsPreviewAsset(false);
       setFileInputKey((current) => current + 1);
-    } catch {
-      setError("We could not upload this file. Check the file type and course permissions.");
+    } catch (caughtError) {
+      // Show the real blocker (413 size cap, 403 permission, ...) instead of a
+      // generic message that made failures look random.
+      setError(
+        getCourseAssetUploadErrorMessage(
+          caughtError,
+          useBunny ? bunnyVideoMaxBytes : supabaseUploadLimitBytes,
+        ),
+      );
     } finally {
       setIsUploading(false);
     }
@@ -372,16 +386,27 @@ export function LessonContentModal({
 
               <LessonVideoSourcePicker
                 value={resolvedSource}
-                disabled={!isEditable}
+                disabled={!isEditable || isUploading}
+                accept={courseAssetAcceptTypes[uploadKind]}
+                externalUrl={lesson.externalUrl ?? ""}
+                embedStatus={
+                  trustedEmbed
+                    ? `${trustedEmbed.provider === "youtube" ? "YouTube" : "Vimeo"} embed detected.`
+                    : lesson.externalUrl
+                      ? "Link saved, but it will not play in the classroom. Use a standard YouTube or Vimeo video URL."
+                      : "Paste a link when the video already lives outside SkillsetMind."
+                }
                 onChange={(videoSource) => onUpdateLesson({ videoSource })}
+                onSelectFile={(file) => {
+                  setSelectedFile(file);
+                  setUploadProgress(null);
+                  setSuccess("");
+                  setError("");
+                }}
+                onExternalUrlChange={(nextUrl) =>
+                  onUpdateLesson({ externalUrl: nextUrl || null })
+                }
               />
-
-              {resolvedSource === null ? (
-                <div className="lesson-modal-inline-status">
-                  <Film aria-hidden="true" size={15} />
-                  Choose how this lesson delivers video.
-                </div>
-              ) : null}
 
               {resolvedSource === "upload" ? (
                 <>
@@ -438,30 +463,6 @@ export function LessonContentModal({
                 </>
               ) : null}
 
-              {resolvedSource === "youtube" ? (
-                <>
-                  <label className="lesson-modal-field">
-                    <span>
-                      YouTube or Vimeo URL
-                      <small>Use this when the video already lives outside SkillsetMind.</small>
-                    </span>
-                    <input
-                      value={lesson.externalUrl ?? ""}
-                      onChange={(event) => onUpdateLesson({ externalUrl: event.target.value || null })}
-                      disabled={!isEditable}
-                      placeholder="https://www.youtube.com/watch?v=..."
-                    />
-                  </label>
-                  <div className="lesson-modal-inline-status">
-                    <Link2 aria-hidden="true" size={15} />
-                    {trustedEmbed
-                      ? `${trustedEmbed.provider === "youtube" ? "YouTube" : "Vimeo"} embed detected.`
-                      : lesson.externalUrl
-                        ? "Link saved, but it will not play in the classroom. Use a standard YouTube or Vimeo video URL."
-                        : "No external embed URL yet."}
-                  </div>
-                </>
-              ) : null}
             </div>
           ) : null}
 

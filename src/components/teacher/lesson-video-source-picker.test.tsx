@@ -3,69 +3,124 @@ import { describe, expect, it, vi } from "vitest";
 
 import { LessonVideoSourcePicker } from "@/components/teacher/lesson-video-source-picker";
 
+type PickerProps = Parameters<typeof LessonVideoSourcePicker>[0];
+
+function renderPicker(overrides: Partial<PickerProps> = {}) {
+  const props: PickerProps = {
+    value: null,
+    accept: "video/*",
+    externalUrl: "",
+    embedStatus: "Paste a link when the video already lives outside SkillsetMind.",
+    onChange: vi.fn(),
+    onSelectFile: vi.fn(),
+    onExternalUrlChange: vi.fn(),
+    ...overrides,
+  };
+
+  render(<LessonVideoSourcePicker {...props} />);
+  return props;
+}
+
+function videoFile(name = "lesson.mp4") {
+  return new File(["video-bytes"], name, { type: "video/mp4" });
+}
+
 describe("LessonVideoSourcePicker", () => {
-  it("renders exactly two source options and reflects the active source", () => {
-    const { rerender } = render(
-      <LessonVideoSourcePicker value="youtube" onChange={() => undefined} />,
-    );
+  it("renders the dropzone and the URL field immediately, with no source-choice step", () => {
+    renderPicker();
 
-    const youtubeOption = screen.getByRole("button", { name: /YouTube link/i });
-    const uploadOption = screen.getByRole("button", { name: /Video upload/i });
-
-    expect(screen.getAllByRole("button")).toHaveLength(2);
-    expect(youtubeOption).toHaveAttribute("aria-pressed", "true");
-    expect(youtubeOption).toHaveClass("is-active");
-    expect(uploadOption).toHaveAttribute("aria-pressed", "false");
-    expect(uploadOption).not.toHaveClass("is-active");
-
-    rerender(
-      <LessonVideoSourcePicker value="upload" onChange={() => undefined} />,
-    );
-
-    expect(youtubeOption).toHaveAttribute("aria-pressed", "false");
-    expect(youtubeOption).not.toHaveClass("is-active");
-    expect(uploadOption).toHaveAttribute("aria-pressed", "true");
-    expect(uploadOption).toHaveClass("is-active");
+    expect(screen.getByLabelText("Upload a lesson video")).toBeInTheDocument();
+    expect(screen.getByText(/Drag & drop your video here/i)).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("https://www.youtube.com/watch?v=..."),
+    ).toBeInTheDocument();
   });
 
-  it("leaves both options inactive when no source is selected", () => {
-    render(<LessonVideoSourcePicker value={null} onChange={() => undefined} />);
+  it("selects a dropped video file and switches the source to upload", () => {
+    const props = renderPicker();
+    const file = videoFile();
 
-    expect(screen.getByRole("button", { name: /YouTube link/i })).toHaveAttribute(
-      "aria-pressed",
-      "false",
+    fireEvent.drop(screen.getByText(/Drag & drop your video here/i), {
+      dataTransfer: { files: [file] },
+    });
+
+    expect(props.onChange).toHaveBeenCalledWith("upload");
+    expect(props.onSelectFile).toHaveBeenCalledWith(file);
+  });
+
+  it("ignores dropped non-video files", () => {
+    const props = renderPicker();
+
+    fireEvent.drop(screen.getByText(/Drag & drop your video here/i), {
+      dataTransfer: {
+        files: [new File(["x"], "notes.pdf", { type: "application/pdf" })],
+      },
+    });
+
+    expect(props.onChange).not.toHaveBeenCalled();
+    expect(props.onSelectFile).not.toHaveBeenCalled();
+  });
+
+  it("selects a browsed file through the hidden input", () => {
+    const props = renderPicker();
+    const file = videoFile();
+
+    fireEvent.change(screen.getByLabelText("Upload a lesson video"), {
+      target: { files: [file] },
+    });
+
+    expect(props.onChange).toHaveBeenCalledWith("upload");
+    expect(props.onSelectFile).toHaveBeenCalledWith(file);
+  });
+
+  it("reports URL typing and switches the source to youtube only when needed", () => {
+    const props = renderPicker();
+    const urlInput = screen.getByPlaceholderText(
+      "https://www.youtube.com/watch?v=...",
     );
-    expect(screen.getByRole("button", { name: /Video upload/i })).toHaveAttribute(
-      "aria-pressed",
-      "false",
+
+    fireEvent.change(urlInput, {
+      target: { value: "https://www.youtube.com/watch?v=abc" },
+    });
+
+    expect(props.onChange).toHaveBeenCalledWith("youtube");
+    expect(props.onExternalUrlChange).toHaveBeenCalledWith(
+      "https://www.youtube.com/watch?v=abc",
+    );
+
+    const activeProps = renderPicker({ value: "youtube" });
+    const inputs = screen.getAllByPlaceholderText(
+      "https://www.youtube.com/watch?v=...",
+    );
+    fireEvent.change(inputs[inputs.length - 1], {
+      target: { value: "https://vimeo.com/123" },
+    });
+
+    expect(activeProps.onChange).not.toHaveBeenCalled();
+    expect(activeProps.onExternalUrlChange).toHaveBeenCalledWith(
+      "https://vimeo.com/123",
     );
   });
 
-  it("reports the selected source", () => {
-    const onChange = vi.fn();
-    render(<LessonVideoSourcePicker value={null} onChange={onChange} />);
+  it("shows the embed status label", () => {
+    renderPicker({ embedStatus: "YouTube embed detected." });
 
-    fireEvent.click(screen.getByRole("button", { name: /YouTube link/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Video upload/i }));
-
-    expect(onChange).toHaveBeenNthCalledWith(1, "youtube");
-    expect(onChange).toHaveBeenNthCalledWith(2, "upload");
+    expect(screen.getByText("YouTube embed detected.")).toBeInTheDocument();
   });
 
-  it("disables both options without reporting changes", () => {
-    const onChange = vi.fn();
-    render(
-      <LessonVideoSourcePicker value="youtube" disabled onChange={onChange} />,
-    );
+  it("disables both inputs and ignores drops when disabled", () => {
+    const props = renderPicker({ disabled: true });
 
-    const options = screen.getAllByRole("button");
-    expect(options).toHaveLength(2);
+    expect(screen.getByLabelText("Upload a lesson video")).toBeDisabled();
+    expect(
+      screen.getByPlaceholderText("https://www.youtube.com/watch?v=..."),
+    ).toBeDisabled();
 
-    for (const option of options) {
-      expect(option).toBeDisabled();
-      fireEvent.click(option);
-    }
+    fireEvent.drop(screen.getByText(/Drag & drop your video here/i), {
+      dataTransfer: { files: [videoFile()] },
+    });
 
-    expect(onChange).not.toHaveBeenCalled();
+    expect(props.onChange).not.toHaveBeenCalled();
+    expect(props.onSelectFile).not.toHaveBeenCalled();
   });
 });

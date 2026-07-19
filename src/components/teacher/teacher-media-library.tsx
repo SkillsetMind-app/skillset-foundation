@@ -100,6 +100,22 @@ export function TeacherMediaLibrary() {
             Review assets uploaded through the builder. Private lesson files stay protected;
             this library is for organization and course production control.
           </p>
+          <p className="mt-3 max-w-2xl rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold leading-6 text-[var(--color-ink)]">
+            Lesson videos live in the course builder
+            {selectedCourse ? (
+              <>
+                {" — "}
+                <Link
+                  href={`/teach/builder?courseId=${selectedCourse.id}&tab=content`}
+                  className="underline underline-offset-2"
+                >
+                  Open builder
+                </Link>
+              </>
+            ) : (
+              ". Create or open a course to add them."
+            )}
+          </p>
         </div>
         {selectedCourse ? (
           <Link

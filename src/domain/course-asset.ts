@@ -63,6 +63,84 @@ export const courseAssetAcceptTypes: Record<CourseAssetKind, string> = {
 
 export const courseAssetMaxBytes = 500 * 1024 * 1024;
 
+// The Supabase *plan-level* per-upload cap wins over the bucket's 500MB
+// setting — the free plan cuts every Storage upload at 50MB with a 413. Client
+// validation must use the effective (smaller) limit, overridable via env when
+// the plan changes.
+const parsedSupabaseUploadLimitMb = Number(
+  process.env.NEXT_PUBLIC_SUPABASE_UPLOAD_LIMIT_MB,
+);
+export const supabaseUploadLimitBytes = Math.min(
+  (Number.isFinite(parsedSupabaseUploadLimitMb) && parsedSupabaseUploadLimitMb > 0
+    ? parsedSupabaseUploadLimitMb
+    : 50) *
+    1024 *
+    1024,
+  courseAssetMaxBytes,
+);
+
+export function courseAssetUploadLimitMessage(
+  limitBytes: number = supabaseUploadLimitBytes,
+): string {
+  return `This file exceeds the current upload limit (~${formatCourseAssetSize(limitBytes)}). Use a YouTube link or a smaller file.`;
+}
+
+function readUploadErrorStatus(error: unknown): number | null {
+  if (typeof error !== "object" || error === null) {
+    return null;
+  }
+
+  // Supabase StorageApiError exposes `status`/`statusCode`; duck-type both so
+  // this stays decoupled from the supabase-js error classes.
+  const { status, statusCode } = error as {
+    status?: unknown;
+    statusCode?: unknown;
+  };
+
+  for (const candidate of [status, statusCode]) {
+    const parsed = Number(candidate);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+// Turns a storage/database upload failure into copy the teacher can act on.
+// The generic "we could not upload" message hid the real blocker (the 413 from
+// the plan-level size cap) and made failures look random.
+export function getCourseAssetUploadErrorMessage(
+  error: unknown,
+  limitBytes: number = supabaseUploadLimitBytes,
+): string {
+  const status = readUploadErrorStatus(error);
+  const message = error instanceof Error ? error.message : "";
+
+  if (
+    status === 413 ||
+    /exceeded the maximum allowed size|payload too large|exceeds the current upload limit/i.test(
+      message,
+    )
+  ) {
+    // A pre-flight limit error already carries the right limit in its message.
+    return /exceeds the current upload limit/i.test(message)
+      ? message
+      : courseAssetUploadLimitMessage(limitBytes);
+  }
+
+  if (
+    status === 403 ||
+    /row-level security|not authorized|permission/i.test(message)
+  ) {
+    return "You do not have permission to upload files to this course.";
+  }
+
+  return message.trim()
+    ? message
+    : "We could not upload this file. Check the file type and course permissions.";
+}
+
 // Bunny-hosted videos upload resumably (TUS) straight to the CDN, so they are
 // not bound by the 500MB Supabase ceiling. 5GB comfortably covers long lessons.
 export const bunnyVideoMaxBytes = 5 * 1024 * 1024 * 1024;

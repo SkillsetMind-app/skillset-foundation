@@ -4,7 +4,9 @@ import {
   canViewCourseAssetVideo,
   courseAssetAcceptTypes,
   courseAssetKindLabels,
+  getCourseAssetUploadErrorMessage,
   isAllowedCourseAssetFile,
+  supabaseUploadLimitBytes,
 } from "./course-asset";
 
 function file(name: string, type: string, size = 1024) {
@@ -56,6 +58,48 @@ describe("course asset validation", () => {
     );
     expect(isAllowedCourseAssetFile(file("hero.mp4", "video/mp4"), "members_cover")).toBe(
       false,
+    );
+  });
+});
+
+describe("upload error mapping", () => {
+  it("defaults the effective Supabase limit to 50MB when the env override is unset", () => {
+    expect(supabaseUploadLimitBytes).toBe(50 * 1024 * 1024);
+  });
+
+  it("maps the storage 413 to the actionable size-limit message", () => {
+    expect(
+      getCourseAssetUploadErrorMessage({ status: 413 }, 50 * 1024 * 1024),
+    ).toBe(
+      "This file exceeds the current upload limit (~50.0 MB). Use a YouTube link or a smaller file.",
+    );
+    expect(
+      getCourseAssetUploadErrorMessage({ statusCode: "413" }),
+    ).toContain("exceeds the current upload limit");
+    expect(
+      getCourseAssetUploadErrorMessage(
+        new Error("The object exceeded the maximum allowed size"),
+      ),
+    ).toContain("exceeds the current upload limit");
+  });
+
+  it("maps permission failures to a permission message", () => {
+    expect(getCourseAssetUploadErrorMessage({ status: 403 })).toBe(
+      "You do not have permission to upload files to this course.",
+    );
+    expect(
+      getCourseAssetUploadErrorMessage(
+        new Error("new row violates row-level security policy"),
+      ),
+    ).toContain("permission");
+  });
+
+  it("passes other error messages through and keeps a generic fallback", () => {
+    expect(getCourseAssetUploadErrorMessage(new Error("Network request failed"))).toBe(
+      "Network request failed",
+    );
+    expect(getCourseAssetUploadErrorMessage(undefined)).toBe(
+      "We could not upload this file. Check the file type and course permissions.",
     );
   });
 });
