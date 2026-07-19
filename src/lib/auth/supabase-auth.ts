@@ -214,10 +214,39 @@ export async function resetPassword(
 ): Promise<void> {
   const supabase = getSupabaseBrowserClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: authCallbackUrl("/auth/callback?next=/account"),
+    // Lands on the dedicated reset page — /account's change-password form
+    // demands the current password, which is exactly what the user forgot.
+    redirectTo: authCallbackUrl("/auth/callback?next=/reset-password"),
     // No-op unless Supabase CAPTCHA is enabled + the Turnstile widget is on.
     captchaToken: captchaToken || undefined,
   });
+
+  if (error) {
+    throw error;
+  }
+}
+
+/**
+ * Sets a new password for the recovery session established by the reset link
+ * (via /auth/callback). No current password required — that's the point.
+ */
+export async function completePasswordRecovery(
+  newPassword: string,
+): Promise<void> {
+  const supabase = getSupabaseBrowserClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error(
+      "This reset link is invalid or has expired. Request a new one.",
+    );
+  }
+
+  await assertPasswordNotBreached(newPassword);
+
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
 
   if (error) {
     throw error;
