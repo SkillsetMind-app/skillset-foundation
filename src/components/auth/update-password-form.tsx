@@ -15,10 +15,17 @@ import {
 
 /**
  * Second half of the forgot-password flow. The reset email lands on
- * /auth/callback, which exchanges the recovery code for a session and forwards
- * here — so an authenticated session IS the proof the link was valid.
+ * /auth/callback, which exchanges the recovery code for a session, sets the
+ * recovery cookie and forwards here. A session alone is NOT proof of a valid
+ * reset link — any signed-in user has one — so the form also requires
+ * `recoveryVerified` (the server-read recovery cookie) before offering a
+ * password change that skips the current-password check.
  */
-export function UpdatePasswordForm() {
+export function UpdatePasswordForm({
+  recoveryVerified,
+}: {
+  recoveryVerified: boolean;
+}) {
   const { status } = useAuth();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -55,19 +62,10 @@ export function UpdatePasswordForm() {
     }
   }
 
-  if (status === "loading") {
-    return (
-      <p
-        className="mt-6 text-sm leading-6 text-[var(--color-ink-soft)]"
-        aria-busy="true"
-      >
-        Checking your reset link...
-      </p>
-    );
-  }
-
-  // No recovery session — the link was expired, already used, or invalid.
-  if (status === "unauthenticated") {
+  // No recovery cookie (a regular signed-in session navigated here directly)
+  // or no session at all (link expired, already used, or invalid) — either
+  // way, refuse the no-current-password form.
+  if (!recoveryVerified || status === "unauthenticated") {
     return (
       <div className="mt-6 grid gap-4">
         <p
@@ -84,6 +82,17 @@ export function UpdatePasswordForm() {
           Request a new reset link
         </Link>
       </div>
+    );
+  }
+
+  if (status === "loading") {
+    return (
+      <p
+        className="mt-6 text-sm leading-6 text-[var(--color-ink-soft)]"
+        aria-busy="true"
+      >
+        Checking your reset link...
+      </p>
     );
   }
 

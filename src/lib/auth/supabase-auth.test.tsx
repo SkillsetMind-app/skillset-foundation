@@ -6,9 +6,7 @@ describe("getAuthErrorMessage", () => {
   it("maps invalid credentials by message, case-insensitively", () => {
     expect(
       getAuthErrorMessage({ message: "Invalid Login Credentials" }),
-    ).toBe(
-      "Incorrect email or password. If you signed up recently, your account may not have been created — please sign up again.",
-    );
+    ).toBe("Incorrect email or password.");
   });
 
   it("maps invalid credentials by error code", () => {
@@ -26,12 +24,17 @@ describe("getAuthErrorMessage", () => {
     );
   });
 
-  it("maps confirmation email send failures (message, code, and HTTP 500)", () => {
-    const expected =
-      "We could not send the confirmation email. Please try again in a few minutes or contact support.";
+  it("maps confirmation email send failures by message", () => {
     expect(
       getAuthErrorMessage({ message: "Error sending confirmation email" }),
-    ).toBe(expected);
+    ).toBe(
+      "We could not send the confirmation email. Please try again in a few minutes or contact support.",
+    );
+  });
+
+  it("maps generic server failures to neutral copy, not email copy", () => {
+    const expected =
+      "Something went wrong on our end. Please try again in a few minutes.";
     expect(getAuthErrorMessage({ code: "unexpected_failure" })).toBe(expected);
     expect(
       getAuthErrorMessage({ message: "Internal server error", status: 500 }),

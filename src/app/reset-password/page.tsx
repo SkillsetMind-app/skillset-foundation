@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { UpdatePasswordForm } from "@/components/auth/update-password-form";
+import { PASSWORD_RECOVERY_COOKIE } from "@/lib/auth/recovery-cookie";
 
 export const metadata: Metadata = {
   title: "Set a new password | SkillsetMind",
@@ -13,8 +15,13 @@ export const metadata: Metadata = {
 };
 
 // Landing page for the password reset email link (after /auth/callback
-// exchanges the recovery code for a session).
-export default function ResetPasswordPage() {
+// exchanges the recovery code for a session). The recovery cookie set by the
+// callback is what distinguishes that flow from a regular signed-in session —
+// without it the form refuses to offer a no-current-password reset.
+export default async function ResetPasswordPage() {
+  const cookieStore = await cookies();
+  const recoveryVerified = cookieStore.has(PASSWORD_RECOVERY_COOKIE);
+
   return (
     <AuthShell
       eyebrow="Password recovery"
@@ -39,7 +46,7 @@ export default function ResetPasswordPage() {
         <h2 className="display-title mt-3 text-4xl text-[var(--color-primary)]">
           Choose a new password
         </h2>
-        <UpdatePasswordForm />
+        <UpdatePasswordForm recoveryVerified={recoveryVerified} />
       </div>
     </AuthShell>
   );

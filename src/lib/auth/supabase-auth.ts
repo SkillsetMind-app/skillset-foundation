@@ -380,7 +380,7 @@ export function getAuthErrorMessage(error: unknown): string {
     matches("invalid login credentials") ||
     matches("invalid-credential")
   ) {
-    return "Incorrect email or password. If you signed up recently, your account may not have been created — please sign up again.";
+    return "Incorrect email or password.";
   }
 
   if (matches("email_not_confirmed") || matches("email not confirmed")) {
@@ -433,14 +433,17 @@ export function getAuthErrorMessage(error: unknown): string {
     return "We could not send the password reset email. Please try again in a few minutes or contact support.";
   }
 
-  // GoTrue signals a broken SMTP pipeline as unexpected_failure / HTTP 500 and
-  // rolls the signup back — surface it as a real failure, never a blank error.
-  if (
-    matches("unexpected_failure") ||
-    matches("error sending confirmation email") ||
-    status === 500
-  ) {
+  // GoTrue signals a broken SMTP pipeline with this exact message and rolls
+  // the signup back — surface it as a real failure, never a blank error.
+  if (matches("error sending confirmation email")) {
     return "We could not send the confirmation email. Please try again in a few minutes or contact support.";
+  }
+
+  // Any other unexpected_failure / HTTP 500 is a generic server-side error
+  // (this mapper is shared by sign-in, MFA, password change and recovery), so
+  // stay operation-neutral instead of guessing which flow broke.
+  if (matches("unexpected_failure") || status === 500) {
+    return "Something went wrong on our end. Please try again in a few minutes.";
   }
 
   if (matches("network") || matches("fetch")) {

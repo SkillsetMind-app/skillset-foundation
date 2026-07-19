@@ -49,7 +49,7 @@ export function LoginForm() {
   const callbackError = useMemo(
     () =>
       searchParams.get("error")
-        ? "That sign-in or password reset link is invalid or has expired. Request a new one and try again."
+        ? "That link is invalid or has expired. Request a new one and try again."
         : "",
     [searchParams],
   );

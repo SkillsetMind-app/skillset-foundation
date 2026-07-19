@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { PASSWORD_RECOVERY_COOKIE } from "@/lib/auth/recovery-cookie";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // OAuth (Google) + recovery-link landing. Supabase redirects here with a
@@ -22,5 +23,22 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=auth_callback`);
   }
 
-  return NextResponse.redirect(`${origin}${safeNext}`);
+  const response = NextResponse.redirect(`${origin}${safeNext}`);
+
+  // Only a session minted by exchanging a recovery code lands here with
+  // next=/reset-password — a plain authenticated session never gets this
+  // cookie, which is what proves recovery provenance to the reset page.
+  if (safeNext === "/reset-password") {
+    response.cookies.set(PASSWORD_RECOVERY_COOKIE, "1", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/reset-password",
+      // ponytail: cookie simply expires instead of being cleared post-reset;
+      // 10 minutes bounds the window without an extra clearing endpoint.
+      maxAge: 600,
+    });
+  }
+
+  return response;
 }
