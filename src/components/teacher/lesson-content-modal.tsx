@@ -6,7 +6,6 @@ import {
   FileText,
   Film,
   Image as ImageIcon,
-  Link2,
   Settings,
   UploadCloud,
   X,
@@ -387,16 +386,27 @@ export function LessonContentModal({
 
               <LessonVideoSourcePicker
                 value={resolvedSource}
-                disabled={!isEditable}
+                disabled={!isEditable || isUploading}
+                accept={courseAssetAcceptTypes[uploadKind]}
+                externalUrl={lesson.externalUrl ?? ""}
+                embedStatus={
+                  trustedEmbed
+                    ? `${trustedEmbed.provider === "youtube" ? "YouTube" : "Vimeo"} embed detected.`
+                    : lesson.externalUrl
+                      ? "Link saved, but it will not play in the classroom. Use a standard YouTube or Vimeo video URL."
+                      : "Paste a link when the video already lives outside SkillsetMind."
+                }
                 onChange={(videoSource) => onUpdateLesson({ videoSource })}
+                onSelectFile={(file) => {
+                  setSelectedFile(file);
+                  setUploadProgress(null);
+                  setSuccess("");
+                  setError("");
+                }}
+                onExternalUrlChange={(nextUrl) =>
+                  onUpdateLesson({ externalUrl: nextUrl || null })
+                }
               />
-
-              {resolvedSource === null ? (
-                <div className="lesson-modal-inline-status">
-                  <Film aria-hidden="true" size={15} />
-                  Choose how this lesson delivers video.
-                </div>
-              ) : null}
 
               {resolvedSource === "upload" ? (
                 <>
@@ -453,30 +463,6 @@ export function LessonContentModal({
                 </>
               ) : null}
 
-              {resolvedSource === "youtube" ? (
-                <>
-                  <label className="lesson-modal-field">
-                    <span>
-                      YouTube or Vimeo URL
-                      <small>Use this when the video already lives outside SkillsetMind.</small>
-                    </span>
-                    <input
-                      value={lesson.externalUrl ?? ""}
-                      onChange={(event) => onUpdateLesson({ externalUrl: event.target.value || null })}
-                      disabled={!isEditable}
-                      placeholder="https://www.youtube.com/watch?v=..."
-                    />
-                  </label>
-                  <div className="lesson-modal-inline-status">
-                    <Link2 aria-hidden="true" size={15} />
-                    {trustedEmbed
-                      ? `${trustedEmbed.provider === "youtube" ? "YouTube" : "Vimeo"} embed detected.`
-                      : lesson.externalUrl
-                        ? "Link saved, but it will not play in the classroom. Use a standard YouTube or Vimeo video URL."
-                        : "No external embed URL yet."}
-                  </div>
-                </>
-              ) : null}
             </div>
           ) : null}
 
