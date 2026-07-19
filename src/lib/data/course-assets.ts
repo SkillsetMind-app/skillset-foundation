@@ -322,6 +322,24 @@ export async function getProtectedCourseAssetObjectUrl(asset: CourseAsset) {
   return data.signedUrl;
 }
 
+// One-shot load for callers that must not open a second realtime channel on
+// the `course_assets:{courseId}` topic (one join per topic per socket).
+export async function fetchCourseAssets(courseId: string): Promise<CourseAsset[]> {
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from(courseAssetsTable)
+    .select("*")
+    .eq("course_id", courseId);
+
+  if (error) {
+    throw error instanceof Error ? error : new Error(String(error));
+  }
+
+  return (data ?? [])
+    .map(rowToCourseAsset)
+    .sort((left, right) => left.fileName.localeCompare(right.fileName));
+}
+
 export function subscribeToCourseAssets(
   courseId: string,
   callback: (assets: CourseAsset[]) => void,
@@ -330,21 +348,11 @@ export function subscribeToCourseAssets(
   const supabase = getSupabaseBrowserClient();
 
   const load = async () => {
-    const { data, error } = await supabase
-      .from(courseAssetsTable)
-      .select("*")
-      .eq("course_id", courseId);
-
-    if (error) {
+    try {
+      callback(await fetchCourseAssets(courseId));
+    } catch (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
-      return;
     }
-
-    callback(
-      (data ?? [])
-        .map(rowToCourseAsset)
-        .sort((left, right) => left.fileName.localeCompare(right.fileName)),
-    );
   };
 
   void load();

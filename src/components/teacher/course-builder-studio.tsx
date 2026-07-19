@@ -9,6 +9,7 @@ import {
   CloudOff,
   CreditCard,
   ExternalLink,
+  Film,
   Gift,
   Image as ImageIcon,
   Loader2,
@@ -73,11 +74,13 @@ import {
   isAllowedCourseAssetFile,
 } from "@/domain/course-asset";
 import {
+  fetchCourseAssets,
   subscribeToCourseAssets,
   uploadCourseAsset,
   type UploadCourseAssetProgress,
 } from "@/lib/data/course-assets";
 import type { CourseAsset } from "@/domain/course-asset";
+import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import { isPublicFeatureEnabled } from "@/lib/feature-flags";
 import {
   defaultSkillsetCurrency,
@@ -476,6 +479,7 @@ export function CourseBuilderStudio() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeLessonStudio, setActiveLessonStudio] =
     useState<ActiveLessonStudio>(null);
+  const [courseAssets, setCourseAssets] = useState<CourseAsset[]>([]);
   const [autosaveState, setAutosaveState] =
     useState<"idle" | "saving" | "saved" | "error">("idle");
   // Signature of the last state we know Firestore has. Lives in state (not a
@@ -485,6 +489,12 @@ export function CourseBuilderStudio() {
   // effect body.
   const [savedSignature, setSavedSignature] = useState<string | null>(null);
   const isAutosavingRef = useRef(false);
+  // Lesson just added through the form, waiting for autosave to persist it so
+  // the lesson studio (Video tab) can open automatically. A ref (not state):
+  // it is read/cleared only inside async callbacks (course hydration, autosave
+  // failure) and never drives a render by itself — the "Saving lesson…"
+  // spinner derives from savedLessonIds/autosaveState.
+  const pendingLessonStudioRef = useRef<ActiveLessonStudio>(null);
   // Stepper "jump to section" target. A ref (not state) so setting it never
   // triggers a render, and it is read/cleared only inside an event handler or
   // an effect — never during render — to stay clear of react-hooks/refs.
@@ -544,6 +554,25 @@ export function CourseBuilderStudio() {
         // fresh hydration (or our own write echoing back) is never seen as a
         // user edit. Async callback -> setState is allowed here.
         setSavedSignature(builderDraftSignatureFromCourse(nextCourse));
+
+        // Video-first flow: a lesson added through the form auto-opens its
+        // studio (Video tab) as soon as hydration confirms autosave persisted
+        // it — uploads need the saved lesson id.
+        const pendingStudio = pendingLessonStudioRef.current;
+        if (
+          pendingStudio &&
+          nextCourse.modules?.some(
+            (module) =>
+              module.id === pendingStudio.moduleId &&
+              module.lessons.some(
+                (lesson) => lesson.id === pendingStudio.lessonId,
+              ),
+          )
+        ) {
+          pendingLessonStudioRef.current = null;
+          setActiveLessonStudio(pendingStudio);
+          setSuccess("");
+        }
       },
       () => {
         setIsLoading(false);
@@ -551,6 +580,44 @@ export function CourseBuilderStudio() {
       },
     );
   }, [courseId]);
+
+  // One-shot (re)load instead of a realtime channel: the lesson studio modal
+  // already owns the `course_assets:{id}` realtime topic while it is open, and
+  // Phoenix allows one join per topic per socket — so the builder refreshes on
+  // mount and whenever the studio closes (the only place lesson videos change).
+  useEffect(() => {
+    if (!courseId || activeLessonStudio) {
+      return;
+    }
+
+    let cancelled = false;
+    fetchCourseAssets(courseId)
+      .then((nextAssets) => {
+        if (!cancelled) {
+          setCourseAssets(nextAssets);
+        }
+      })
+      .catch(() => {
+        // Non-critical: only the "Add video"/"Edit content" hint degrades.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, activeLessonStudio]);
+
+  const lessonIdsWithVideo = useMemo(() => {
+    const ids = new Set<string>();
+    for (const asset of courseAssets) {
+      if (
+        (asset.kind === "lesson_video" || asset.kind === "live_recording") &&
+        asset.lessonId
+      ) {
+        ids.add(asset.lessonId);
+      }
+    }
+    return ids;
+  }, [courseAssets]);
 
   const isOwner = course && user?.uid === course.ownerId;
   const isEditable = Boolean(isOwner && course && teacherCanEditCourse(course.status));
@@ -920,7 +987,13 @@ export function CourseBuilderStudio() {
     setLessonExternalUrl("");
     setLessonIsFreePreview(false);
     setError("");
-    setSuccess("Lesson added. It autosaves in a moment — then open the lesson studio to upload video and materials.");
+    // Video-first flow: the lesson studio (Video tab) opens automatically as
+    // soon as autosave persists the lesson — no hunting for the studio button.
+    pendingLessonStudioRef.current = {
+      moduleId: lessonModuleId,
+      lessonId: nextLessonId,
+    };
+    setSuccess("Lesson added — opening the lesson studio once it autosaves…");
   }
 
   function updateModuleTitle(moduleId: string, nextTitle: string) {
@@ -1132,6 +1205,7 @@ export function CourseBuilderStudio() {
       // save error and the teacher can't tell why the save failed.
       const message =
         caughtError instanceof Error ? caughtError.message.toLowerCase() : "";
+      pendingLessonStudioRef.current = null;
       setAutosaveState("error");
       setError(
         message.includes("already")
@@ -1224,6 +1298,9 @@ export function CourseBuilderStudio() {
         setSavedSignature(signature);
         setAutosaveState("saved");
       } catch {
+        // A failed autosave also cancels any pending auto-open of the lesson
+        // studio — the lesson row falls back to "Save draft to upload".
+        pendingLessonStudioRef.current = null;
         setAutosaveState("error");
       } finally {
         isAutosavingRef.current = false;
@@ -2281,30 +2358,53 @@ export function CourseBuilderStudio() {
 
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div className="flex flex-wrap gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setActiveLessonStudio({
-                                      moduleId: module.id,
-                                      lessonId: lesson.id,
-                                    })
-                                  }
-                                  disabled={!savedLessonIds.has(lesson.id)}
-                                  className="button-solid px-3 py-2 text-xs disabled:opacity-60"
-                                  title={
-                                    savedLessonIds.has(lesson.id)
-                                      ? "Open lesson studio"
-                                      : autosaveState === "error"
-                                        ? "Autosave failed — use Save draft to enable uploads"
-                                        : "Saving lesson… uploads open once the draft is saved"
-                                  }
-                                >
-                                  {savedLessonIds.has(lesson.id)
-                                    ? "Open lesson studio"
-                                    : autosaveState === "error"
-                                      ? "Save draft to upload"
-                                      : "Saving lesson…"}
-                                </button>
+                                {savedLessonIds.has(lesson.id) ? (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setActiveLessonStudio({
+                                        moduleId: module.id,
+                                        lessonId: lesson.id,
+                                      })
+                                    }
+                                    className="button-solid inline-flex items-center gap-1.5 px-3 py-2 text-xs"
+                                    title={
+                                      lessonIdsWithVideo.has(lesson.id) ||
+                                      getTrustedLessonEmbed(lesson.externalUrl)
+                                        ? "Edit the lesson video, materials, and settings"
+                                        : "Add the lesson video"
+                                    }
+                                  >
+                                    {lessonIdsWithVideo.has(lesson.id) ||
+                                    getTrustedLessonEmbed(lesson.externalUrl) ? (
+                                      "Edit content"
+                                    ) : (
+                                      <>
+                                        <Film aria-hidden="true" size={13} strokeWidth={1.9} />
+                                        Add video
+                                      </>
+                                    )}
+                                  </button>
+                                ) : autosaveState === "error" ? (
+                                  <button
+                                    type="button"
+                                    disabled
+                                    className="button-solid px-3 py-2 text-xs disabled:opacity-60"
+                                    title="Autosave failed — use Save draft to enable uploads"
+                                  >
+                                    Save draft to upload
+                                  </button>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink-soft)]">
+                                    <Loader2
+                                      aria-hidden="true"
+                                      size={13}
+                                      strokeWidth={2.2}
+                                      className="animate-spin"
+                                    />
+                                    Saving lesson…
+                                  </span>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() =>
