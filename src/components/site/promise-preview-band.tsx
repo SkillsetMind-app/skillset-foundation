@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BrandName } from "@/components/shared/brand-name";
 import { RevealSection } from "@/components/shared/reveal-section";
 
 type Promise = {
@@ -133,7 +134,7 @@ export function PromisePreviewBand() {
                       {t("home.promise.ratified")}
                     </p>
                     <p className="display-title mt-1 text-xl italic leading-none text-[var(--color-primary)]">
-                      Skillset
+                      <BrandName />
                     </p>
                   </div>
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">

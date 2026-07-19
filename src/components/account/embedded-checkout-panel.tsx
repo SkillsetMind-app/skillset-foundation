@@ -8,6 +8,7 @@ import {
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
+import { BrandName } from "@/components/shared/brand-name";
 import { plans, type PlanBillingCycle, type PlanId } from "@/data/plans";
 import { formatUsdWhole } from "@/data/platform";
 import { createBillingCheckoutClientSecret } from "@/lib/payments/billing";
@@ -198,7 +199,7 @@ export function EmbeddedCheckoutPanel({
           You&apos;re subscribing to
         </p>
         <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
-          SkillsetMind {plan.name}
+          <BrandName /> {plan.name}
         </h2>
         <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
           {plan.tagline}

@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { PrivacyChoicesButton } from "@/components/site/privacy-choices-button";
-import { brand } from "@/data/brand";
+import { BrandName } from "@/components/shared/brand-name";
 import { getServerTranslation } from "@/lib/i18n/server";
 
 // Slim 3-column footer. /courses and /how-it-works were removed —
@@ -73,7 +73,9 @@ export async function SiteFooter() {
           </div>
         </div>
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] pt-5 text-xs leading-6 text-[var(--color-ink-soft)]">
-          <span>&copy; {new Date().getFullYear()} {brand.name}.</span>
+          <span>
+            &copy; {new Date().getFullYear()} <BrandName />.
+          </span>
           <div className="flex flex-wrap items-center gap-4">
             <PrivacyChoicesButton />
           </div>
