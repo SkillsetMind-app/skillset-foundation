@@ -51,7 +51,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       {
         id: "course-pricing",
         q: "How do I set pricing for my course?",
-        a: "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (8% on Free, 4% on Starter, 1% on Pro, 0% on Plus) plus the Stripe processing fee are shown clearly in the wallet ledger for every sale.",
+        a: "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (10% on Free, 5% on Starter, 3% on Pro, 2% on Plus) plus the Stripe processing fee are shown clearly in the wallet ledger for every sale.",
       },
       {
         id: "drip-release",
@@ -71,7 +71,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
     items: [
       {
         q: "Which plan should I start on?",
-        a: "Start on Free if you're validating an idea — there's no subscription and you keep 92% of every $100 sale before Stripe fees. Move to Starter ($19/mo, 4% commission) once you cross about $475/mo in sales. Pro and Plus pay back as you scale further. The pricing page lays out the break-even point for each plan.",
+        a: "Start on Free if you're validating an idea — there's no subscription and you keep 90% of every $100 sale before Stripe fees. Move to Starter ($19/mo, 5% commission) once you cross about $380/mo in sales. Pro and Plus pay back as you scale further. The pricing page lays out the break-even point for each plan.",
       },
       {
         q: "What happens when I upgrade or downgrade?",
@@ -79,7 +79,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       },
       {
         q: "What if I cancel my plan?",
-        a: "Cancellation downgrades you to Free at the end of your paid period. Your courses, students, content, and history are preserved — SkillsetMind never deletes a creator's data. Commission goes back to 8% (the Free rate) on new sales from the moment of downgrade.",
+        a: "Cancellation downgrades you to Free at the end of your paid period. Your courses, students, content, and history are preserved — SkillsetMind never deletes a creator's data. Commission goes back to 10% (the Free rate) on new sales from the moment of downgrade.",
       },
     ],
   },
@@ -90,11 +90,11 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       {
         id: "payouts",
         q: "When do I receive my first payout?",
-        a: "Creator earnings move from pending to available 30 days after each sale — well past the 7-day refund window, so cleared payouts never need to be clawed back. From there, transfers settle to your connected Stripe account on Stripe's standard payout schedule. The wallet panel in Studio shows the exact clearance date for every line item.",
+        a: "Creator earnings are released 7 days after each sale — the moment the 7-day refund window closes, so a released payout can never predate a still-refundable charge. From there, transfers settle to your connected Stripe account on Stripe's standard payout schedule. The wallet panel in Studio shows the exact release date for every line item.",
       },
       {
         q: "How are creator payouts handled?",
-        a: "Earnings are tracked in a payout ledger inside Studio. After the hold period, the balance is released to your connected bank account through Stripe Connect. You can review every sale, fee deduction, and payout line in the ledger.",
+        a: "Earnings are tracked in a payout ledger inside Studio. As soon as the refund window closes, the balance is transferred to your connected bank account through Stripe Connect. You can review every sale, fee deduction, and payout line in the ledger.",
       },
     ],
   },

@@ -43,6 +43,7 @@ import { CourseAssetUploader } from "@/components/teacher/course-asset-uploader"
 import { CourseCategorySelect } from "@/components/teacher/course-category-select";
 import { LessonContentModal } from "@/components/teacher/lesson-content-modal";
 import type { DripStrategy } from "@/domain/drip-policy";
+import { DEFAULT_PLATFORM_FEE_BPS } from "@/domain/payment-split";
 import type {
   LessonType,
   MembersTheme,
@@ -407,7 +408,7 @@ function builderDraftSignatureFromCourse(course: TeacherCourse): string {
       dripStrategy: course.dripStrategy ?? "instant",
       dripIntervalDays: String(course.dripIntervalDays ?? 1),
       freePreviewLessonId: course.freePreviewLessonId ?? "",
-      platformFeeBps: course.platformFeeBps ?? 800,
+      platformFeeBps: course.platformFeeBps ?? DEFAULT_PLATFORM_FEE_BPS,
       membersTheme: course.membersTheme ?? "light",
       membersCoverAssetId: course.membersCoverAssetId ?? null,
       membersTitle: course.membersTitle ?? "",
@@ -806,7 +807,7 @@ export function CourseBuilderStudio() {
         dripStrategy,
         dripIntervalDays,
         freePreviewLessonId,
-        platformFeeBps: course?.platformFeeBps ?? 800,
+        platformFeeBps: course?.platformFeeBps ?? DEFAULT_PLATFORM_FEE_BPS,
         membersTheme,
         membersCoverAssetId,
         membersTitle,

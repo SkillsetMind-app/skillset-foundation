@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import { payoutClearDays, plans } from "@/data/plans";
 import {
   affiliateCommissionRefundTargetMinor,
+  canonicalPlatformFeeBpsForPlan,
+  payoutReleaseDelayDays,
   isRefundableEnrollmentSource,
   nextLedgerStatusOnDispute,
   releasedRefundReversalAmountMinor,
@@ -10,6 +13,26 @@ import {
   shouldReactivateEnrollment,
   shouldReverseReleasedPayout,
 } from "@/lib/payments/rules";
+
+describe("commission ladder alignment", () => {
+  it("charges exactly the commission each plan displays (plans.ts vs rules.ts)", () => {
+    for (const plan of plans) {
+      expect(canonicalPlatformFeeBpsForPlan(plan.id)).toBe(
+        plan.commissionPercent * 100,
+      );
+    }
+  });
+
+  it("falls back to the Free rate for unknown plans", () => {
+    expect(canonicalPlatformFeeBpsForPlan("unknown")).toBe(1000);
+    expect(canonicalPlatformFeeBpsForPlan(null)).toBe(1000);
+    expect(canonicalPlatformFeeBpsForPlan(undefined)).toBe(1000);
+  });
+
+  it("releases payouts on the same day the displayed clearing window closes", () => {
+    expect(payoutReleaseDelayDays).toBe(payoutClearDays);
+  });
+});
 
 describe("affiliateCommissionRefundTargetMinor", () => {
   it("claws back the same proportion of commission as the cumulative sale refund", () => {

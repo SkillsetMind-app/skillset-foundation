@@ -20,7 +20,7 @@ const policies = [
   ],
   [
     "Payout clearance",
-    `Creator net moves from pending to available ${payoutClearDays} days after each sale, well past the ${refundWindowDays}-day refund window so cleared earnings never need to be clawed back.`,
+    `Creator net is released ${payoutClearDays} days after each sale — the moment the ${refundWindowDays}-day refund window closes — and transfers to the connected Stripe account. Never a 30-day hold.`,
   ],
   [
     "Payout account",

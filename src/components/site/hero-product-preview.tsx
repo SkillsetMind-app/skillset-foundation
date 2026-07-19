@@ -41,7 +41,7 @@ export function HeroProductPreview() {
           <div className="relative h-28 bg-[linear-gradient(120deg,#0f2744,#1a365d_55%,#2c5282)]">
             <div className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#1a365d]">
               <ShieldCheck size={12} strokeWidth={2.4} />
-              Reviewed by Skillset
+              Reviewed by SkillsetMind
             </div>
             <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-[#b22234] px-3 py-1.5 text-[11px] font-bold text-white">
               <PlayCircle size={13} strokeWidth={2.2} />

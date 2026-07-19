@@ -58,7 +58,7 @@ export default function ForCreatorsPage() {
           </div>
           <div className="sm:text-right">
             <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
-              Start free. Upgrade to drop commission to 4%, 1%, or 0%.
+              Start free. Upgrade to drop commission to 5%, 3%, or 2%.
             </p>
             <Link
               href="/pricing"

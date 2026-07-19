@@ -19,9 +19,9 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 //     -> stripe.transfers.create (idempotencyKey transfer_<ledgerId>)
 //     -> settle (releasing -> released, records transfer_id)
 //
-// The 30-day hold (payoutReleaseDelayDays, written as release_at by the webhook)
-// sits comfortably past the 7-day student refund window, so a cleared payout
-// never predates a still-refundable charge — the Hotmart/Kiwify model.
+// The hold (payoutReleaseDelayDays, written as release_at by the webhook)
+// matches the 7-day student refund window, so a cleared payout never predates
+// a still-refundable charge.
 //
 // Money safety:
 //  - The Stripe idempotency key transfer_<ledgerId> makes every retry of the

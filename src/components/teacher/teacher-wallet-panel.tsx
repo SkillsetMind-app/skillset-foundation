@@ -14,6 +14,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { InlineHelp } from "@/components/shared/inline-help";
+import { payoutClearDays } from "@/data/plans";
 import { StatusChip } from "@/components/shared/status-chip";
 import { TeacherConnectOnboarding } from "@/components/teacher/teacher-connect-onboarding";
 import {
@@ -201,9 +202,10 @@ export function TeacherWalletPanel() {
           <h2 className="display-title mt-3 flex items-center gap-2 text-4xl leading-tight text-[var(--color-primary)]">
             Your earnings, your payout setup.
             <InlineHelp topic="Payout schedule" href="/help#payouts">
-              Earnings move from pending to available 30 days after each sale,
-              beyond the standard refund window. Stripe Connect must have both
-              charges and payouts enabled before a paid product can go live.
+              Earnings are released {payoutClearDays} days after each sale —
+              the moment the refund window closes. Stripe Connect must have
+              both charges and payouts enabled before a paid product can go
+              live.
             </InlineHelp>
           </h2>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">

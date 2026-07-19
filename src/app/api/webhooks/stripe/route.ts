@@ -47,7 +47,8 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 // The release engine (/api/cron/release-payouts) moves cleared payouts;
 // charge.refunded and charge.dispute.* claw back an already-released transfer
 // proportionally (reverseReleasedPayout, below). The only remaining
-// simplification is the payout-delay platformConfig read — default 30-day window.
+// simplification is the payout-delay platformConfig read — default
+// payoutReleaseDelayDays window (see src/lib/payments/rules.ts).
 
 const HANDLED_STRIPE_EVENT_TYPES = new Set<string>([
   "checkout.session.completed",
@@ -379,7 +380,7 @@ async function handleCheckoutCompleted(
   }
 
   const grossAmountMinor = Number(order.amount_minor || 0);
-  // ?? not || so an explicit 0 (Plus plan, zero commission) survives.
+  // ?? not || so an explicitly snapshotted 0-bps fee survives.
   const platformFeeBps = Number(order.platform_fee_bps ?? DEFAULT_PLATFORM_FEE_BPS);
   const skillsetFeeMinor = Math.floor((grossAmountMinor * platformFeeBps) / 10000);
   const stripeFeeMinor = stripeProcessingFeeMinor(grossAmountMinor, order.currency);
@@ -562,9 +563,14 @@ async function handleCourseSubscriptionInvoicePaid(
     .eq("uid", teacherId)
     .maybeSingle();
 
+  // ?? / isFinite, not || — legacy metadata "0" (old 0-bps Plus subscriptions)
+  // is a valid snapshotted fee and must not coerce to the default.
+  const metaBps = Number(meta.platformFeeBps || NaN); // "" / undefined -> NaN, "0" -> 0
   const platformFeeBps = owner
     ? canonicalPlatformFeeBpsForPlan(owner.current_plan_id)
-    : Number(meta.platformFeeBps ?? DEFAULT_PLATFORM_FEE_BPS) || DEFAULT_PLATFORM_FEE_BPS;
+    : Number.isFinite(metaBps) && metaBps >= 0
+      ? metaBps
+      : DEFAULT_PLATFORM_FEE_BPS;
   const connectedAccountId =
     (typeof meta.connectedAccountId === "string" && meta.connectedAccountId) ||
     course.stripe_connected_account_id ||

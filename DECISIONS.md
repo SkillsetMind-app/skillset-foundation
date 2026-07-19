@@ -15,7 +15,8 @@ ledger; a taxa exata so fecha no saldo Stripe depois.
 
 **D18 - Comissao canonica vem do plano do professor no servidor.** O servidor
 ignora bps enviados pelo cliente e resolve a taxa pelo plano atual:
-Free 800 bps, Starter 400 bps, Pro 100 bps, Plus 0 bps. O pedido salva esse
+Free 1000 bps, Starter 500 bps, Pro 300 bps, Plus 200 bps (pivô 2026-07;
+ladder original era 800/400/100/0). O pedido salva esse
 snapshot para preservar historico de vendas.
 
 **D19 - Refund depois de payout liberado reverte o transfer.** Se o ledger ja
@@ -143,7 +144,7 @@ pago/sacar. Padrão Stripe recomendado (deferred onboarding).
 **Planos (Free/Starter/Pro/Plus):** são Stripe **Billing** (assinatura),
 SUBSYSTEM SEPARADO de Connect. Modelo recomendado: Checkout
 `mode:'subscription'` + Customer Portal p/ upgrade/downgrade; o tier
-define o `platformFeeBps` (já existe em `payment-split.ts`: 8/4/1/0%).
+define o `platformFeeBps` (canônico em `rules.ts`: 10/5/3/2%).
 Connect (receber) e Billing (pagar o plano) coexistem independentes.
 Implementação plena depende de Price IDs do painel Stripe + confirmação
 do mapeamento tier→fee (ver BLOCKERS B7).

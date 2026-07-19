@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
 import type { DripStrategy } from "@/domain/drip-policy";
+import { DEFAULT_PLATFORM_FEE_BPS } from "@/domain/payment-split";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { normalizeLearningOutcomes } from "@/domain/teacher-course";
 import { updateTeacherCourseBuilder } from "@/lib/data/teacher-courses";
@@ -49,7 +50,7 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
         currency: course.currency ?? "USD",
         installmentsEnabled: Boolean(course.installmentsEnabled),
         installmentsMax: course.installmentsMax ?? 1,
-        platformFeeBps: course.platformFeeBps ?? 800,
+        platformFeeBps: course.platformFeeBps ?? DEFAULT_PLATFORM_FEE_BPS,
         dripStrategy: (course.dripStrategy as DripStrategy | undefined) ?? DEFAULT_DRIP,
         dripIntervalDays: course.dripIntervalDays ?? 7,
         freePreviewLessonId: course.freePreviewLessonId ?? null,

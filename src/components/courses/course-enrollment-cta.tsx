@@ -74,7 +74,7 @@ export function CourseEnrollmentCta({ course }: CourseEnrollmentCtaProps) {
         Browse live courses to enroll
       </Link>
       <p className="mt-3 text-xs leading-6 text-[var(--color-ink-soft)]">
-        &ldquo;{course.title}&rdquo; is a sample program from the Skillset
+        &ldquo;{course.title}&rdquo; is a sample program from the SkillsetMind
         catalog. Open the live marketplace to enroll in courses published by
         independent experts.
       </p>

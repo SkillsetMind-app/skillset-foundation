@@ -1,6 +1,6 @@
 <!-- Supabase Auth email template: Magic Link.
      Paste into Dashboard > Authentication > Emails > "Magic link or OTP".
-     Subject line: Your Skillset Mind sign-in link
+     Subject line: Your SkillsetMind sign-in link
      Variable: {{ .ConfirmationURL }} = one-time sign-in link.
      If you use OTP codes instead of a link, swap the button for {{ .Token }}. -->
 <html>
@@ -21,7 +21,7 @@
                   Your sign-in link.
                 </h1>
                 <p style="margin:0 0 24px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.7;color:#4a4a48;">
-                  Click the button below to sign in to your Skillset Mind
+                  Click the button below to sign in to your SkillsetMind
                   account. This link expires soon and can only be used once.
                   If you didn't request it, ignore this email.
                 </p>
@@ -30,7 +30,7 @@
                     <td style="background-color:#111111;border-radius:10px;">
                       <a href="{{ .ConfirmationURL }}"
                          style="display:inline-block;padding:14px 36px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;">
-                        Sign in to Skillset Mind
+                        Sign in to SkillsetMind
                       </a>
                     </td>
                   </tr>
