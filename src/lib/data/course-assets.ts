@@ -1,7 +1,11 @@
 "use client";
 
 import type { CourseAsset, CourseAssetKind } from "@/domain/course-asset";
-import { isAllowedCourseAssetFile } from "@/domain/course-asset";
+import {
+  courseAssetUploadLimitMessage,
+  isAllowedCourseAssetFile,
+  supabaseUploadLimitBytes,
+} from "@/domain/course-asset";
 import { getSafeMediaUrl } from "@/domain/external-url";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
@@ -84,6 +88,14 @@ function sanitizeFileName(fileName: string) {
 export async function uploadCourseAsset(input: UploadCourseAssetInput) {
   if (!isAllowedCourseAssetFile(input.file, input.kind)) {
     throw new Error("Unsupported file type or file too large.");
+  }
+
+  // The plan-level Supabase cap (not the bucket's 500MB ceiling) is what
+  // actually rejects the upload, so fail fast with the actionable message
+  // instead of streaming bytes into a 413. Every Storage upload path (modal,
+  // covers, Bunny fallback) routes through here.
+  if (input.file.size > supabaseUploadLimitBytes) {
+    throw new Error(courseAssetUploadLimitMessage());
   }
 
   const supabase = getSupabaseBrowserClient();
@@ -196,6 +208,22 @@ export async function uploadLessonVideoToBunny(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ courseId: input.courseId, title: input.file.name }),
   });
+  if (createRes.status === 503) {
+    // Bunny keys are not configured server-side (the route's documented 503
+    // contract) — fall back to Supabase Storage so authoring never
+    // hard-blocks. The smaller Supabase upload cap applies on this path and is
+    // enforced by uploadCourseAsset before any bytes move.
+    return uploadCourseAsset({
+      courseId: input.courseId,
+      ownerId: input.ownerId,
+      kind: input.kind,
+      file: input.file,
+      isPreview: input.isPreview,
+      lessonId: input.lessonId,
+      onProgress: input.onProgress,
+    });
+  }
+
   if (!createRes.ok) {
     throw new Error(`bunny-create-failed:${createRes.status}`);
   }

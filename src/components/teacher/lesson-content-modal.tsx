@@ -19,10 +19,12 @@ import {
   bunnyVideoMaxBytes,
   courseAssetAcceptTypes,
   courseAssetKindLabels,
-  courseAssetMaxBytes,
+  courseAssetUploadLimitMessage,
   formatCourseAssetSize,
+  getCourseAssetUploadErrorMessage,
   isAllowedBunnyVideoFile,
   isAllowedCourseAssetFile,
+  supabaseUploadLimitBytes,
 } from "@/domain/course-asset";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import {
@@ -228,8 +230,14 @@ export function LessonContentModal({
       }
     } else if (!isAllowedCourseAssetFile(selectedFile, uploadKind)) {
       setError(
-        `Use a valid ${courseAssetKindLabels[uploadKind].toLowerCase()} file under ${formatCourseAssetSize(courseAssetMaxBytes)}.`,
+        `Use a valid ${courseAssetKindLabels[uploadKind].toLowerCase()} file under ${formatCourseAssetSize(supabaseUploadLimitBytes)}.`,
       );
+      return;
+    } else if (selectedFile.size > supabaseUploadLimitBytes) {
+      // Without Bunny the bytes go to Supabase Storage, whose plan-level cap
+      // (default 50MB) is far below the 500MB bucket ceiling — validate against
+      // the limit the API will actually enforce.
+      setError(courseAssetUploadLimitMessage());
       return;
     }
 
@@ -262,8 +270,15 @@ export function LessonContentModal({
       setUploadProgress(null);
       setIsPreviewAsset(false);
       setFileInputKey((current) => current + 1);
-    } catch {
-      setError("We could not upload this file. Check the file type and course permissions.");
+    } catch (caughtError) {
+      // Show the real blocker (413 size cap, 403 permission, ...) instead of a
+      // generic message that made failures look random.
+      setError(
+        getCourseAssetUploadErrorMessage(
+          caughtError,
+          useBunny ? bunnyVideoMaxBytes : supabaseUploadLimitBytes,
+        ),
+      );
     } finally {
       setIsUploading(false);
     }
