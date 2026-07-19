@@ -51,7 +51,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       {
         id: "course-pricing",
         q: "How do I set pricing for my course?",
-        a: "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (8% on Free, 4% on Starter, 1% on Pro, 0% on Plus) plus the Stripe processing fee are shown clearly in the wallet ledger for every sale.",
+        a: "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (10% on Free, 5% on Starter, 3% on Pro, 2% on Plus) plus the Stripe processing fee are shown clearly in the wallet ledger for every sale.",
       },
       {
         id: "drip-release",
@@ -71,7 +71,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
     items: [
       {
         q: "Which plan should I start on?",
-        a: "Start on Free if you're validating an idea — there's no subscription and you keep 92% of every $100 sale before Stripe fees. Move to Starter ($19/mo, 4% commission) once you cross about $475/mo in sales. Pro and Plus pay back as you scale further. The pricing page lays out the break-even point for each plan.",
+        a: "Start on Free if you're validating an idea — there's no subscription and you keep 90% of every $100 sale before Stripe fees. Move to Starter ($19/mo, 5% commission) once you cross about $380/mo in sales. Pro and Plus pay back as you scale further. The pricing page lays out the break-even point for each plan.",
       },
       {
         q: "What happens when I upgrade or downgrade?",
@@ -79,7 +79,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       },
       {
         q: "What if I cancel my plan?",
-        a: "Cancellation downgrades you to Free at the end of your paid period. Your courses, students, content, and history are preserved — SkillsetMind never deletes a creator's data. Commission goes back to 8% (the Free rate) on new sales from the moment of downgrade.",
+        a: "Cancellation downgrades you to Free at the end of your paid period. Your courses, students, content, and history are preserved — SkillsetMind never deletes a creator's data. Commission goes back to 10% (the Free rate) on new sales from the moment of downgrade.",
       },
     ],
   },

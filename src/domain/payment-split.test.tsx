@@ -9,13 +9,13 @@ describe("payment split — Stripe fee passed to teacher", () => {
   // Executable spec backing TEST_RESULTS.md. If these change, the documented
   // money split changed — that must be intentional.
   it.each([
-    // Default = Free plan = 8% commission.
-    // gross, currency, commission (8%), stripeFee, teacherNet
-    [1000, "USD", 80, 59, 861],
-    [5000, "USD", 400, 175, 4425],
-    [10000, "USD", 800, 320, 8880],
-    [20000, "USD", 1600, 610, 17790],
-    [10000, "BRL", 800, 570, 8630],
+    // Default = Free plan = 10% commission.
+    // gross, currency, commission (10%), stripeFee, teacherNet
+    [1000, "USD", 100, 59, 841],
+    [5000, "USD", 500, 175, 4325],
+    [10000, "USD", 1000, 320, 8680],
+    [20000, "USD", 2000, 610, 17390],
+    [10000, "BRL", 1000, 570, 8430],
   ])(
     "%i %s -> commission %i, stripeFee %i, net %i",
     (gross, currency, commission, stripeFee, net) => {
@@ -49,19 +49,19 @@ describe("payment split — Stripe fee passed to teacher", () => {
   });
 
   it("respects a custom platform fee in bps", () => {
-    const split = computePaymentSplit(10000, "USD", 800); // 8% tier (Free)
-    expect(split.platformCommissionMinor).toBe(800);
+    const split = computePaymentSplit(10000, "USD", 1000); // 10% tier (Free)
+    expect(split.platformCommissionMinor).toBe(1000);
     expect(split.stripeFeeMinor).toBe(320);
-    expect(split.teacherNetMinor).toBe(10000 - 800 - 320);
+    expect(split.teacherNetMinor).toBe(10000 - 1000 - 320);
   });
 
   it.each([
     // $100 USD card across each subscription tier.
     // bps, commission, stripeFee, teacherNet
-    [800, 800, 320, 8880], // Free   — 8%
-    [400, 400, 320, 9280], // Starter — 4%
-    [100, 100, 320, 9580], // Pro    — 1%
-    [0, 0, 320, 9680], //     Plus   — 0%
+    [1000, 1000, 320, 8680], // Free   — 10%
+    [500, 500, 320, 9180], //   Starter — 5%
+    [300, 300, 320, 9380], //   Pro    — 3%
+    [200, 200, 320, 9480], //   Plus   — 2%
   ])(
     "tier %i bps -> commission %i, stripeFee %i, net %i",
     (bps, commission, stripeFee, net) => {

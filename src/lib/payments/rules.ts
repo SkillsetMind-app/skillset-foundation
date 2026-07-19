@@ -27,12 +27,12 @@ export function resolvePayoutReleaseDelayDays(
 export const automaticRefundWindowDays = 7;
 export const automaticRefundProgressCap = 50;
 
-export const DEFAULT_PLATFORM_FEE_BPS = 800;
+export const DEFAULT_PLATFORM_FEE_BPS = 1000;
 const PLAN_PLATFORM_FEE_BPS: Record<SkillsetPlanId, number> = {
-  free: 800,
-  starter: 400,
-  pro: 100,
-  plus: 0,
+  free: 1000,
+  starter: 500,
+  pro: 300,
+  plus: 200,
 };
 
 const USD_PERCENT_BPS = 290;

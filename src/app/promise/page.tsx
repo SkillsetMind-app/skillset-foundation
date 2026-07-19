@@ -9,7 +9,7 @@ const promises = [
     title: "Fee-lock for 24 months",
     body: "The commission rate of the plan you sign up on is the rate you keep for the next 24 months — even if SkillsetMind raises plan pricing later. If SkillsetMind ever needs to change it, you get 90 days notice and the right to export everything and leave with no friction.",
     practice:
-      "If a creator joins on Free at 8%, that creator does not wake up to a surprise commission increase after building a business here.",
+      "If a creator joins on Free at 10%, that creator does not wake up to a surprise commission increase after building a business here.",
   },
   {
     number: "02",

@@ -10,7 +10,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 export const metadata = buildPageMetadata({
   title: "Pricing",
   description:
-    "Four plans. Free starts at 8% commission with no subscription. Starter drops it to 4%, Pro to 1%, Plus to 0%. Stripe's processing fee is shown separately so the math is never hidden.",
+    "Four plans. Free starts at 10% commission with no subscription. Starter drops it to 5%, Pro to 3%, Plus to 2%. Stripe's processing fee is shown separately so the math is never hidden.",
   path: "/pricing",
 });
 
@@ -34,20 +34,20 @@ export default function PricingPage() {
         </p>
         <div className="mt-3 grid gap-3 text-sm text-[var(--color-ink-soft)] sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <strong className="block text-[var(--color-ink)]">$0 – $475/mo</strong>
-            Stay on Free. No subscription, 8% per sale.
+            <strong className="block text-[var(--color-ink)]">$0 – $380/mo</strong>
+            Stay on Free. No subscription, 10% per sale.
           </div>
           <div>
-            <strong className="block text-[var(--color-ink)]">$475 – $2,333/mo</strong>
-            Starter pays for itself. 4% per sale; the $19 fee costs less than the commission you save.
+            <strong className="block text-[var(--color-ink)]">$380 – $3,500/mo</strong>
+            Starter pays for itself. 5% per sale; the $19 fee costs less than the commission you save.
           </div>
           <div>
-            <strong className="block text-[var(--color-ink)]">$2,333 – $11,000/mo</strong>
-            Pro becomes cheaper than Starter. 1% per sale.
+            <strong className="block text-[var(--color-ink)]">$3,500 – $11,000/mo</strong>
+            Pro becomes cheaper than Starter. 3% per sale.
           </div>
           <div>
             <strong className="block text-[var(--color-ink)]">$11,000/mo+</strong>
-            Plus zeroes out commission. Worth it past this volume.
+            Plus drops commission to 2%. Worth it past this volume.
           </div>
         </div>
       </aside>
@@ -352,7 +352,7 @@ export default function PricingPage() {
             },
             {
               q: "How do the fees work on a subscription sale?",
-              a: `Two fees come out of each sale, shown separately so the math is never hidden. SkillsetMind takes its plan commission (8% on Free down to 0% on Plus), and Stripe's standard processing fee (2.9% + $0.30 for USD cards, an estimated 5.4% + $0.30 for non-USD) is passed through to you. Everything left over is yours.`,
+              a: `Two fees come out of each sale, shown separately so the math is never hidden. SkillsetMind takes its plan commission (10% on Free down to 2% on Plus), and Stripe's standard processing fee (2.9% + $0.30 for USD cards, an estimated 5.4% + $0.30 for non-USD) is passed through to you. Everything left over is yours.`,
             },
             {
               q: "When can a sale be refunded, and does it affect my payout?",

@@ -40,7 +40,7 @@ export type Plan = {
   monthlyUsd: number;
   /** Subscription price billed yearly, in USD. Reflects the annual discount. */
   yearlyUsd: number;
-  /** Commission rate per paid sale, as a percent (e.g. 8 = 8%). */
+  /** Commission rate per paid sale, as a percent (e.g. 10 = 10%). */
   commissionPercent: number;
   /** Stripe Price IDs for monthly and yearly cycles. Null on Free. */
   stripePriceIds: StripePriceIds | null;
@@ -52,9 +52,9 @@ export type Plan = {
    * Approximate monthly GMV (in USD) where moving UP to this plan becomes
    * cheaper than staying on the cheaper plan. Computed from:
    *   (delta_subscription) / (delta_commission_rate)
-   * Free → Starter: $19 / (0.08 - 0.04) = $475 GMV
-   * Starter → Pro:  ($89 - $19) / (0.04 - 0.01) = $2,333 GMV
-   * Pro → Plus:     ($199 - $89) / (0.01 - 0.00) = $11,000 GMV
+   * Free → Starter: $19 / (0.10 - 0.05) = $380 GMV
+   * Starter → Pro:  ($89 - $19) / (0.05 - 0.03) = $3,500 GMV
+   * Pro → Plus:     ($199 - $89) / (0.03 - 0.02) = $11,000 GMV
    * Null on Free (no plan beneath it to compare against).
    */
   breakEvenGmvUsd: number | null;
@@ -72,7 +72,7 @@ export const plans: ReadonlyArray<Plan> = [
     name: "Free",
     monthlyUsd: 0,
     yearlyUsd: 0,
-    commissionPercent: 8,
+    commissionPercent: 10,
     stripePriceIds: null,
     tagline: "Start selling without a subscription.",
     audience: "New creators validating an idea.",
@@ -90,17 +90,17 @@ export const plans: ReadonlyArray<Plan> = [
     name: "Starter",
     monthlyUsd: 19,
     yearlyUsd: 190,
-    commissionPercent: 4,
+    commissionPercent: 5,
     stripePriceIds: {
       monthlyId: "price_1TZFTmPvg1vJW0IjLAYWqZok",
       yearlyId: "price_1TZFTnPvg1vJW0IjjaQXBpDW",
     },
     tagline: "Half the commission, small monthly cost.",
-    audience: "Creators earning around $500–$2,000 a month.",
-    breakEvenGmvUsd: 475,
+    audience: "Creators earning around $400–$3,500 a month.",
+    breakEvenGmvUsd: 380,
     highlights: [
       "Everything in Free",
-      "Commission drops from 8% to 4%",
+      "Commission drops from 10% to 5%",
       "Annual billing saves ~17%",
     ],
   },
@@ -109,17 +109,17 @@ export const plans: ReadonlyArray<Plan> = [
     name: "Pro",
     monthlyUsd: 89,
     yearlyUsd: 890,
-    commissionPercent: 1,
+    commissionPercent: 3,
     stripePriceIds: {
       monthlyId: "price_1TZFTnPvg1vJW0IjHYe4yW9V",
       yearlyId: "price_1TZFToPvg1vJW0IjDHGPIzH0",
     },
-    tagline: "Almost zero commission for established catalogs.",
-    audience: "Creators earning around $2,000–$11,000 a month.",
-    breakEvenGmvUsd: 2333,
+    tagline: "A lower commission for established catalogs.",
+    audience: "Creators earning around $3,500–$11,000 a month.",
+    breakEvenGmvUsd: 3500,
     highlights: [
       "Everything in Starter",
-      "Commission drops to 1%",
+      "Commission drops to 3%",
       "Priority human support",
     ],
   },
@@ -128,17 +128,17 @@ export const plans: ReadonlyArray<Plan> = [
     name: "Plus",
     monthlyUsd: 199,
     yearlyUsd: 1990,
-    commissionPercent: 0,
+    commissionPercent: 2,
     stripePriceIds: {
       monthlyId: "price_1TZFToPvg1vJW0Ijf35SQQzt",
       yearlyId: "price_1TZFTpPvg1vJW0IjgE9PQ5To",
     },
-    tagline: "Zero commission for high-volume creators.",
+    tagline: "The lowest commission for high-volume creators.",
     audience: "Creators earning $11,000 a month and up.",
     breakEvenGmvUsd: 11000,
     highlights: [
       "Everything in Pro",
-      "Zero platform commission",
+      "Lowest commission — 2% per sale",
       "Dedicated launch reviews",
     ],
   },

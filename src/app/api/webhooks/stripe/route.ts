@@ -379,7 +379,7 @@ async function handleCheckoutCompleted(
   }
 
   const grossAmountMinor = Number(order.amount_minor || 0);
-  // ?? not || so an explicit 0 (Plus plan, zero commission) survives.
+  // ?? not || so an explicitly snapshotted 0-bps fee survives.
   const platformFeeBps = Number(order.platform_fee_bps ?? DEFAULT_PLATFORM_FEE_BPS);
   const skillsetFeeMinor = Math.floor((grossAmountMinor * platformFeeBps) / 10000);
   const stripeFeeMinor = stripeProcessingFeeMinor(grossAmountMinor, order.currency);
