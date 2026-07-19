@@ -39,7 +39,7 @@ export default function AccountPlansPage() {
             />
             <PolicyCard
               title="Payout clearance"
-              detail={`Your earnings move from pending to available ${payoutClearDays} days after each sale — well past the ${refundWindowDays}-day refund window.`}
+              detail={`Your earnings are released ${payoutClearDays} days after each sale — the moment the ${refundWindowDays}-day refund window closes.`}
             />
           </div>
         </section>

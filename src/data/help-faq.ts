@@ -90,11 +90,11 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       {
         id: "payouts",
         q: "When do I receive my first payout?",
-        a: "Creator earnings move from pending to available 30 days after each sale — well past the 7-day refund window, so cleared payouts never need to be clawed back. From there, transfers settle to your connected Stripe account on Stripe's standard payout schedule. The wallet panel in Studio shows the exact clearance date for every line item.",
+        a: "Creator earnings are released 7 days after each sale — the moment the 7-day refund window closes, so a released payout can never predate a still-refundable charge. From there, transfers settle to your connected Stripe account on Stripe's standard payout schedule. The wallet panel in Studio shows the exact release date for every line item.",
       },
       {
         q: "How are creator payouts handled?",
-        a: "Earnings are tracked in a payout ledger inside Studio. After the hold period, the balance is released to your connected bank account through Stripe Connect. You can review every sale, fee deduction, and payout line in the ledger.",
+        a: "Earnings are tracked in a payout ledger inside Studio. As soon as the refund window closes, the balance is transferred to your connected bank account through Stripe Connect. You can review every sale, fee deduction, and payout line in the ledger.",
       },
     ],
   },

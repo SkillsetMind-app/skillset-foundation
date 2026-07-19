@@ -4,12 +4,14 @@ export const payoutReleaseDelayDayOptions = [7, 10, 15, 30] as const;
 export type PayoutReleaseDelayDays = (typeof payoutReleaseDelayDayOptions)[number];
 
 /**
- * Default payout clearance window in days. Founder-selected at 30: the teacher
- * payout is held 30 days, comfortably past the 7-day student refund window
- * below, so cleared payouts never predate a still-refundable charge. Selectable
- * among `payoutReleaseDelayDayOptions`; every option is >= the refund window.
+ * Default payout clearance window in days. Set to 7: the teacher payout is
+ * released the moment the 7-day student refund window below closes, so a
+ * released payout never predates a still-refundable charge — and earnings are
+ * never parked in a long platform hold (direction: direct Stripe payouts).
+ * Selectable among `payoutReleaseDelayDayOptions`; every option is >= the
+ * refund window.
  */
-export const payoutReleaseDelayDays: PayoutReleaseDelayDays = 30;
+export const payoutReleaseDelayDays: PayoutReleaseDelayDays = 7;
 
 /** Coerce an arbitrary stored config value to a supported payout delay. */
 export function resolvePayoutReleaseDelayDays(

@@ -47,7 +47,8 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 // The release engine (/api/cron/release-payouts) moves cleared payouts;
 // charge.refunded and charge.dispute.* claw back an already-released transfer
 // proportionally (reverseReleasedPayout, below). The only remaining
-// simplification is the payout-delay platformConfig read — default 30-day window.
+// simplification is the payout-delay platformConfig read — default
+// payoutReleaseDelayDays window (see src/lib/payments/rules.ts).
 
 const HANDLED_STRIPE_EVENT_TYPES = new Set<string>([
   "checkout.session.completed",

@@ -188,9 +188,10 @@ export function planById(id: PlanId): Plan {
 export const refundWindowDays = 7;
 
 /**
- * Days the creator's earnings stay in "pending" before clearing to
- * "available" in the wallet. Deliberately well past the 7-day refund window
- * (`refundWindowDays`) so a cleared payout can never predate a still-
- * refundable charge, with extra buffer for delayed webhook delivery.
+ * Days the creator's earnings stay in "pending" before being released to the
+ * connected Stripe account. Matches the 7-day refund window
+ * (`refundWindowDays`): earnings are released the moment a sale can no longer
+ * self-refund, so a released payout never predates a still-refundable charge
+ * and money is never parked in a long platform hold.
  */
-export const payoutClearDays = 30;
+export const payoutClearDays = 7;

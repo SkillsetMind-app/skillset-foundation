@@ -312,9 +312,9 @@ export default function PricingPage() {
             Payout clearance
           </p>
           <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-            Your earnings clear from pending to available {payoutClearDays}{" "}
-            days after each sale — well past the {refundWindowDays}-day refund
-            window, so payouts never need to be clawed back.
+            Your earnings are released to your Stripe account {payoutClearDays}{" "}
+            days after each sale — the moment the {refundWindowDays}-day refund
+            window closes. No 30-day holds.
           </p>
         </article>
         <article className="rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-5">
@@ -356,7 +356,7 @@ export default function PricingPage() {
             },
             {
               q: "When can a sale be refunded, and does it affect my payout?",
-              a: `Learners can self-refund within ${refundWindowDays} days of purchase if they've completed less than half the course, which reverses the sale automatically — SkillsetMind's commission included. Your earnings clear from pending to available ${payoutClearDays} days after each sale, well past the ${refundWindowDays}-day refund window, so a cleared payout never needs to be clawed back.`,
+              a: `Learners can self-refund within ${refundWindowDays} days of purchase if they've completed less than half the course, which reverses the sale automatically — SkillsetMind's commission included. Your earnings are released to your Stripe account ${payoutClearDays} days after each sale, the moment the ${refundWindowDays}-day refund window closes — never a 30-day hold.`,
             },
           ].map((item) => (
             <details
