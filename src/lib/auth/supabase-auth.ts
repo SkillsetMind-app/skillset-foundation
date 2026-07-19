@@ -214,10 +214,39 @@ export async function resetPassword(
 ): Promise<void> {
   const supabase = getSupabaseBrowserClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: authCallbackUrl("/auth/callback?next=/account"),
+    // Lands on the dedicated reset page — /account's change-password form
+    // demands the current password, which is exactly what the user forgot.
+    redirectTo: authCallbackUrl("/auth/callback?next=/reset-password"),
     // No-op unless Supabase CAPTCHA is enabled + the Turnstile widget is on.
     captchaToken: captchaToken || undefined,
   });
+
+  if (error) {
+    throw error;
+  }
+}
+
+/**
+ * Sets a new password for the recovery session established by the reset link
+ * (via /auth/callback). No current password required — that's the point.
+ */
+export async function completePasswordRecovery(
+  newPassword: string,
+): Promise<void> {
+  const supabase = getSupabaseBrowserClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error(
+      "This reset link is invalid or has expired. Request a new one.",
+    );
+  }
+
+  await assertPasswordNotBreached(newPassword);
+
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
 
   if (error) {
     throw error;
@@ -327,14 +356,16 @@ export async function signOutOfSkillsetMind(): Promise<void> {
 }
 
 export function getAuthErrorMessage(error: unknown): string {
-  const code =
-    typeof error === "object" && error !== null && "code" in error
-      ? String((error as { code?: unknown }).code)
-      : "";
+  const details =
+    typeof error === "object" && error !== null
+      ? (error as { code?: unknown; message?: unknown; status?: unknown })
+      : {};
+  // Only trust string fields — String(undefined) would leak "undefined" into
+  // the UI, which is exactly the invisible/garbage-error class this fixes.
+  const code = typeof details.code === "string" ? details.code.toLowerCase() : "";
   const rawMessage =
-    typeof error === "object" && error !== null && "message" in error
-      ? String((error as { message?: unknown }).message)
-      : "";
+    typeof details.message === "string" ? details.message.trim() : "";
+  const status = typeof details.status === "number" ? details.status : undefined;
   const message = rawMessage.toLowerCase();
 
   const matches = (needle: string) =>
@@ -349,7 +380,7 @@ export function getAuthErrorMessage(error: unknown): string {
     matches("invalid login credentials") ||
     matches("invalid-credential")
   ) {
-    return "The email or password is incorrect.";
+    return "Incorrect email or password.";
   }
 
   if (matches("email_not_confirmed") || matches("email not confirmed")) {
@@ -368,7 +399,9 @@ export function getAuthErrorMessage(error: unknown): string {
     return "Use a stronger password with at least 8 characters.";
   }
 
-  if (matches("over_email_send_rate_limit") || matches("rate limit")) {
+  // Covers over_email_send_rate_limit, over_request_rate_limit and the
+  // human-readable "rate limit" variants GoTrue puts in messages.
+  if (matches("rate_limit") || matches("rate limit")) {
     return "Too many attempts. Wait a moment and try again.";
   }
 
@@ -392,10 +425,32 @@ export function getAuthErrorMessage(error: unknown): string {
     return "Enter a valid email address.";
   }
 
+  if (matches("same_password") || matches("different from the old")) {
+    return "Your new password must be different from your old password.";
+  }
+
+  if (matches("error sending recovery email")) {
+    return "We could not send the password reset email. Please try again in a few minutes or contact support.";
+  }
+
+  // GoTrue signals a broken SMTP pipeline with this exact message and rolls
+  // the signup back — surface it as a real failure, never a blank error.
+  if (matches("error sending confirmation email")) {
+    return "We could not send the confirmation email. Please try again in a few minutes or contact support.";
+  }
+
+  // Any other unexpected_failure / HTTP 500 is a generic server-side error
+  // (this mapper is shared by sign-in, MFA, password change and recovery), so
+  // stay operation-neutral instead of guessing which flow broke.
+  if (matches("unexpected_failure") || status === 500) {
+    return "Something went wrong on our end. Please try again in a few minutes.";
+  }
+
   if (matches("network") || matches("fetch")) {
     return "Network request failed. Check your connection and try again.";
   }
 
+  // rawMessage is a trimmed string, so every path returns non-empty copy.
   return rawMessage || "Something went wrong. Please try again.";
 }
 

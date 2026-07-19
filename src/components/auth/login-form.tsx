@@ -44,10 +44,19 @@ export function LoginForm() {
   const signupHref = pathIntent
     ? `/auth?mode=signup&path=${pathIntent}`
     : "/auth?mode=signup";
+  // Auth callback failures (expired/invalid recovery or OAuth links) arrive as
+  // ?error= — without seeding it here they failed with no visible message.
+  const callbackError = useMemo(
+    () =>
+      searchParams.get("error")
+        ? "That link is invalid or has expired. Request a new one and try again."
+        : "",
+    [searchParams],
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(callbackError);
   const [isLoading, setIsLoading] = useState(false);
   // Set when a sign-in succeeds at the password step but the account also
   // requires a TOTP second factor. Holds the original error the resolver needs.

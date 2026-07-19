@@ -13,6 +13,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const nextParams = new URLSearchParams({ mode: "signin" });
   const path = firstParam(params.path);
   const role = firstParam(params.role);
+  // /auth/callback lands here with ?error= when a link/code exchange fails —
+  // dropping it made expired recovery links fail with no visible message.
+  const error = firstParam(params.error);
 
   if (path) {
     nextParams.set("path", path);
@@ -20,6 +23,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   if (role) {
     nextParams.set("role", role);
+  }
+
+  if (error) {
+    nextParams.set("error", error);
   }
 
   redirect(`/auth?${nextParams.toString()}`);
