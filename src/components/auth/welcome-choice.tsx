@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { BrandName } from "@/components/shared/brand-name";
 import { completeUserOnboarding } from "@/lib/data/user-profiles";
 import { ArrowRight, GraduationCap, Presentation } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -50,7 +51,7 @@ export function WelcomeChoice() {
       <section className="grid min-h-screen place-items-center px-5 py-12">
         <div className="w-full max-w-[580px] text-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[var(--color-ink-muted)]">
-            Welcome to Skillset
+            Welcome to <BrandName />
           </p>
           <h1 className="display-title mt-4 text-[38px] font-semibold leading-[1.1] text-[var(--color-primary)]">
             How will you use SkillsetMind?
