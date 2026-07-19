@@ -327,14 +327,16 @@ export async function signOutOfSkillsetMind(): Promise<void> {
 }
 
 export function getAuthErrorMessage(error: unknown): string {
-  const code =
-    typeof error === "object" && error !== null && "code" in error
-      ? String((error as { code?: unknown }).code)
-      : "";
+  const details =
+    typeof error === "object" && error !== null
+      ? (error as { code?: unknown; message?: unknown; status?: unknown })
+      : {};
+  // Only trust string fields — String(undefined) would leak "undefined" into
+  // the UI, which is exactly the invisible/garbage-error class this fixes.
+  const code = typeof details.code === "string" ? details.code.toLowerCase() : "";
   const rawMessage =
-    typeof error === "object" && error !== null && "message" in error
-      ? String((error as { message?: unknown }).message)
-      : "";
+    typeof details.message === "string" ? details.message.trim() : "";
+  const status = typeof details.status === "number" ? details.status : undefined;
   const message = rawMessage.toLowerCase();
 
   const matches = (needle: string) =>
@@ -349,7 +351,7 @@ export function getAuthErrorMessage(error: unknown): string {
     matches("invalid login credentials") ||
     matches("invalid-credential")
   ) {
-    return "The email or password is incorrect.";
+    return "Incorrect email or password. If you signed up recently, your account may not have been created — please sign up again.";
   }
 
   if (matches("email_not_confirmed") || matches("email not confirmed")) {
@@ -368,7 +370,9 @@ export function getAuthErrorMessage(error: unknown): string {
     return "Use a stronger password with at least 8 characters.";
   }
 
-  if (matches("over_email_send_rate_limit") || matches("rate limit")) {
+  // Covers over_email_send_rate_limit, over_request_rate_limit and the
+  // human-readable "rate limit" variants GoTrue puts in messages.
+  if (matches("rate_limit") || matches("rate limit")) {
     return "Too many attempts. Wait a moment and try again.";
   }
 
@@ -392,10 +396,29 @@ export function getAuthErrorMessage(error: unknown): string {
     return "Enter a valid email address.";
   }
 
+  if (matches("same_password") || matches("different from the old")) {
+    return "Your new password must be different from your old password.";
+  }
+
+  if (matches("error sending recovery email")) {
+    return "We could not send the password reset email. Please try again in a few minutes or contact support.";
+  }
+
+  // GoTrue signals a broken SMTP pipeline as unexpected_failure / HTTP 500 and
+  // rolls the signup back — surface it as a real failure, never a blank error.
+  if (
+    matches("unexpected_failure") ||
+    matches("error sending confirmation email") ||
+    status === 500
+  ) {
+    return "We could not send the confirmation email. Please try again in a few minutes or contact support.";
+  }
+
   if (matches("network") || matches("fetch")) {
     return "Network request failed. Check your connection and try again.";
   }
 
+  // rawMessage is a trimmed string, so every path returns non-empty copy.
   return rawMessage || "Something went wrong. Please try again.";
 }
 
