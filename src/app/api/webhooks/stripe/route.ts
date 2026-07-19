@@ -563,9 +563,14 @@ async function handleCourseSubscriptionInvoicePaid(
     .eq("uid", teacherId)
     .maybeSingle();
 
+  // ?? / isFinite, not || — legacy metadata "0" (old 0-bps Plus subscriptions)
+  // is a valid snapshotted fee and must not coerce to the default.
+  const metaBps = Number(meta.platformFeeBps || NaN); // "" / undefined -> NaN, "0" -> 0
   const platformFeeBps = owner
     ? canonicalPlatformFeeBpsForPlan(owner.current_plan_id)
-    : Number(meta.platformFeeBps ?? DEFAULT_PLATFORM_FEE_BPS) || DEFAULT_PLATFORM_FEE_BPS;
+    : Number.isFinite(metaBps) && metaBps >= 0
+      ? metaBps
+      : DEFAULT_PLATFORM_FEE_BPS;
   const connectedAccountId =
     (typeof meta.connectedAccountId === "string" && meta.connectedAccountId) ||
     course.stripe_connected_account_id ||

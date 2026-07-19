@@ -84,7 +84,7 @@ Request:
   "paymentType": "one_time",
   "installmentsEnabled": false,
   "installmentsMax": null,
-  "platformFeeBps": 800,
+  "platformFeeBps": 1000,
   "dripStrategy": "instant",
   "dripIntervalDays": null,
   "freePreviewLessonId": null

@@ -6,6 +6,12 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 const promises = [
   {
     number: "01",
+    // NOTE(fee-lock): the engine has no per-creator rate snapshot yet —
+    // canonicalPlatformFeeBpsForPlan always returns the CURRENT ladder. The
+    // 2026-07 pivot to 10/5/3/2 was applied with zero active creators, so no
+    // published rate was raised on anyone. From launch on, this promise is
+    // binding: any future ladder change requires either a signup-rate snapshot
+    // in the engine or the 90-day notice below. Tracked in PR #18.
     title: "Fee-lock for 24 months",
     body: "The commission rate of the plan you sign up on is the rate you keep for the next 24 months — even if SkillsetMind raises plan pricing later. If SkillsetMind ever needs to change it, you get 90 days notice and the right to export everything and leave with no friction.",
     practice:

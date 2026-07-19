@@ -1,6 +1,7 @@
 "use client";
 
 import type { DripStrategy } from "@/domain/drip-policy";
+import { DEFAULT_PLATFORM_FEE_BPS } from "@/domain/payment-split";
 import type { TeacherCourse, TeacherCourseModule, TeacherCourseStatus, TeacherCoursePaymentType, MembersTheme } from "@/domain/teacher-course";
 import {
   normalizeLearningOutcomes,
@@ -299,7 +300,7 @@ export function teacherCourseToLearningCourse(course: TeacherCourse): Course {
     priceLabel,
     priceAmountMinor: course.priceAmountMinor ?? null,
     currency: course.currency ?? "USD",
-    platformFeeBps: course.platformFeeBps ?? 800,
+    platformFeeBps: course.platformFeeBps ?? DEFAULT_PLATFORM_FEE_BPS,
     dripStrategy: course.dripStrategy ?? "instant",
     dripIntervalDays: course.dripIntervalDays ?? 1,
     freePreviewLabel: hasFreePreview
