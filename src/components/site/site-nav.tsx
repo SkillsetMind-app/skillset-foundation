@@ -183,7 +183,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
             <>
               <Link
                 href={getPrimaryWorkspaceHref(user)}
-                className="btn-cta-hero hidden items-center gap-2 min-[941px]:inline-flex"
+                className="btn-cta-hero hidden items-center gap-2 sm:inline-flex"
               >
                 <LayoutDashboard aria-hidden="true" size={16} strokeWidth={1.9} />
                 {t("nav.dashboard")}
@@ -191,7 +191,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
               <AccountMenu user={user} onSignOut={signOut} />
             </>
           ) : (
-            <div className="hidden items-center gap-2 min-[941px]:flex">
+            <div className="hidden items-center gap-2 sm:flex">
               <SignInDropdown />
               <Link href="/auth?mode=signup" className="btn-cta-hero">
                 {t("nav.getStarted")}

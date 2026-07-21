@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { CreatorCourseWorkspace } from "@/components/learn/creator-course-workspace";
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
+import { MemberAreaShell } from "@/components/learn/member-area-shell";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import { getCourseBySlug, getCourseSlugs } from "@/lib/data/catalog";
 import { CourseViewedTracker } from "@/lib/posthog/page-trackers";
@@ -54,14 +55,9 @@ export default async function LearnCoursePage({
         slug={course.slug}
         source="direct"
       />
-      <PlatformShell
-        eyebrow="Member area"
-        title="Course member area"
-        description="Lessons, materials, progress, and community activity for this enrolled course."
-        hideHeader
-      >
+      <MemberAreaShell>
         <EnrolledCourseWorkspace course={course} />
-      </PlatformShell>
+      </MemberAreaShell>
     </ProtectedSurface>
   );
 }
