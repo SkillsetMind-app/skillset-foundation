@@ -4,7 +4,6 @@ import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { CreatorCourseWorkspace } from "@/components/learn/creator-course-workspace";
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
 import { MemberAreaShell } from "@/components/learn/member-area-shell";
-import { PlatformShell } from "@/components/platform/platform-shell";
 import { getCourseBySlug, getCourseSlugs } from "@/lib/data/catalog";
 import { CourseViewedTracker } from "@/lib/posthog/page-trackers";
 
@@ -23,11 +22,12 @@ export default async function LearnCoursePage({
   if (!course) {
     return (
       <ProtectedSurface permissions={["courses.viewLearning"]}>
-        <PlatformShell
-          eyebrow="Private creator course"
-          title="Teacher-published course workspace."
-          description="Your enrolled course opens here once your access is confirmed."
-        >
+        {/* Same member area as the catalog branch below. getCourseBySlug only
+            matches the static demo catalog, so every teacher-published course
+            lands here — this is the live path (Stripe success_url, "Continue"
+            on the dashboard), not a fallback. It has to open in the member
+            shell too, or the dashboard rail comes back for real students. */}
+        <MemberAreaShell>
           <Suspense
             fallback={
               <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
@@ -39,7 +39,7 @@ export default async function LearnCoursePage({
           >
             <CreatorCourseWorkspace initialCourseId={slug} />
           </Suspense>
-        </PlatformShell>
+        </MemberAreaShell>
       </ProtectedSurface>
     );
   }

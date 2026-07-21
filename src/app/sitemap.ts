@@ -18,6 +18,13 @@ const publicRoutes: Array<{
   { path: "/for-creators", changeFrequency: "weekly", priority: 0.9 },
   { path: "/pricing", changeFrequency: "monthly", priority: 0.8 },
   { path: "/promise", changeFrequency: "monthly", priority: 0.8 },
+  // Linked from the footer on every page (trust, fees-and-payouts) and from
+  // /promise (changelog), public and not disallowed in robots.ts — they just
+  // never made it into this array, so sitemap consumers had to discover them
+  // by crawl. /fees-and-payouts carries the commission + refund policy.
+  { path: "/fees-and-payouts", changeFrequency: "monthly", priority: 0.8 },
+  { path: "/trust", changeFrequency: "monthly", priority: 0.7 },
+  { path: "/promise/changelog", changeFrequency: "monthly", priority: 0.4 },
   { path: "/instructors", changeFrequency: "weekly", priority: 0.7 },
   { path: "/about", changeFrequency: "monthly", priority: 0.6 },
   { path: "/help", changeFrequency: "monthly", priority: 0.6 },

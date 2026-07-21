@@ -10,6 +10,7 @@ import { canOpenEnrollment, type Enrollment } from "@/domain/enrollment";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import { teacherCourseToLearningCourse } from "@/lib/data/published-courses";
+import { CourseViewedTracker } from "@/lib/posthog/page-trackers";
 import { subscribeToTeacherCourse } from "@/lib/data/teacher-courses";
 import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
@@ -198,10 +199,19 @@ export function CreatorCourseWorkspace({
   }
 
   return (
-    <EnrolledCourseWorkspace
-      course={teacherCourseToLearningCourse(course)}
-      enableFirestoreAssets
-    />
+    <>
+      {/* COURSE_VIEWED for teacher-published courses. It fires here rather
+          than in the route because the URL segment is ambiguous — sometimes a
+          DB id, sometimes an enrollment slug — and mixing both into course_id
+          would break every aggregation. `course.id` is the only reliable key.
+          slug is omitted: TeacherCourse has no slug field (the converter just
+          aliases slug: course.id), and CourseViewedProps makes it optional. */}
+      <CourseViewedTracker course_id={course.id} source="direct" />
+      <EnrolledCourseWorkspace
+        course={teacherCourseToLearningCourse(course)}
+        enableFirestoreAssets
+      />
+    </>
   );
 }
 
