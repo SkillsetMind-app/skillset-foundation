@@ -5,10 +5,15 @@
 -- canonicalPlatformFeeBpsForPlan in src/lib/payments/rules.ts (the charging
 -- source of truth) or the two "canonical" ladders silently diverge.
 
+-- search_path is pinned (restores the intent of
+-- 20260701062439_pin_platform_fee_bps_for_plan_search_path, which later
+-- create-or-replace calls dropped). The body references no objects, so ''
+-- is safe and it clears the mutable-search_path linter warning.
 create or replace function public.platform_fee_bps_for_plan(p_plan text)
 returns integer
 language sql
 immutable
+set search_path = ''
 as $function$
   select case p_plan
     when 'free' then 1000
@@ -22,6 +27,14 @@ $function$;
 -- Backfill: re-derive every course's fee snapshot from its owner's current
 -- plan so no row keeps a pre-pivot 800/400/100/0 value. Safe pre-launch (no
 -- fee-locked creators); orders already snapshot their own fee at checkout.
+--
+-- courses_freeze_privileged_columns() rejects any write to platform_fee_bps
+-- that is not service_role/admin/ops, so the backfill has to announce itself
+-- through the same escape hatch the trusted-write RPCs use. Without this the
+-- statement below aborts the whole migration with "courses: ... are
+-- privileged (admin/ops/service only)".
+select set_config('skillset.trusted_write', 'on', true);
+
 update public.courses c
 set platform_fee_bps = public.platform_fee_bps_for_plan(u.current_plan_id)
 from public.users u

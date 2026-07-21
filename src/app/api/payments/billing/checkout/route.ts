@@ -13,7 +13,18 @@ import {
   getUserRow,
   resolvePriceId,
 } from "@/lib/payments/server/stripe-helpers";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { PlanBillingCycle, PlanId } from "@/data/plans";
+
+// Mirrors COURSE_SUBSCRIPTION_CHECKOUT_BLOCKING_STATUSES minus "incomplete" and
+// "paused": an abandoned checkout leaves an `incomplete` row behind, and
+// blocking on it would lock the user out of ever subscribing.
+const PLAN_CHECKOUT_BLOCKING_STATUSES = [
+  "active",
+  "trialing",
+  "past_due",
+  "unpaid",
+];
 
 // Ports createBillingCheckoutSession: embedded Stripe Checkout for a plan
 // subscription. Firebase-free; getStripeClient()/resolvePriceId() surface a
@@ -44,6 +55,30 @@ export async function POST(request: Request) {
     const planId = rawPlanId as Exclude<PlanId, "free">;
     const cycle = rawCycle as PlanBillingCycle;
     const priceId = resolvePriceId(planId, cycle);
+
+    // Stripe Checkout never replaces an existing subscription, so a second
+    // session bills the user for two plans at once. Plan changes belong in the
+    // billing portal (proration + swap); this endpoint is for the first paid
+    // plan only. `subscriptions` holds plan subscriptions exclusively — course
+    // subscriptions live in `course_subscriptions`.
+    // ponytail: trusts the webhook-maintained table, so a checkout completed in
+    // the last few seconds can still slip through; add a
+    // stripe.subscriptions.list fallback if that race ever bites.
+    const { data: existingPlanSubscription, error: existingPlanError } =
+      await getSupabaseAdminClient()
+        .from("subscriptions")
+        .select("id")
+        .eq("user_id", uid)
+        .in("status", PLAN_CHECKOUT_BLOCKING_STATUSES)
+        .limit(1)
+        .maybeSingle();
+    if (existingPlanError) throw new Error(existingPlanError.message);
+    if (existingPlanSubscription) {
+      throw new PaymentError(
+        "You already have a plan subscription. Change or cancel it from billing instead.",
+        409,
+      );
+    }
 
     const stripe = getStripeClient();
     const profile = await getUserRow(uid);

@@ -1,29 +1,23 @@
-import { Suspense } from "react";
+import { redirect } from "next/navigation";
 
-import { ProtectedSurface } from "@/components/auth/protected-surface";
-import { CreatorCourseWorkspace } from "@/components/learn/creator-course-workspace";
-import { PlatformShell } from "@/components/platform/platform-shell";
+/**
+ * Compatibility redirect, mirroring `/courses/creator` (src/app/courses/creator/page.tsx).
+ * The canonical member area is `/learn/courses/[slug]`, which already resolves
+ * teacher-published courses by id through its CreatorCourseWorkspace branch.
+ * This route used to render that same workspace inside PlatformShell, so it was
+ * a second copy of the member area wearing the dashboard rail — the exact
+ * "two layouts mixed" problem PR #21 removed from the canonical route. Nothing
+ * in src/ links here anymore, so we collapse it instead of keeping two shells
+ * in sync: forward to the canonical member area when a courseId is present,
+ * otherwise back to the learning dashboard.
+ */
+export default async function LearnCreatorCoursePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ courseId?: string | string[] }>;
+}) {
+  const { courseId: raw } = await searchParams;
+  const courseId = (Array.isArray(raw) ? raw[0] : raw)?.trim();
 
-export default function LearnCreatorCoursePage() {
-  return (
-    <ProtectedSurface permissions={["courses.viewLearning"]}>
-      <PlatformShell
-        eyebrow="Private creator course"
-        title="Teacher-published course workspace."
-        description="Your enrolled course opens here once your access is confirmed."
-      >
-        <Suspense
-          fallback={
-            <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-              <p className="text-sm text-[var(--color-ink-soft)]">
-                Loading creator course...
-              </p>
-            </section>
-          }
-        >
-          <CreatorCourseWorkspace />
-        </Suspense>
-      </PlatformShell>
-    </ProtectedSurface>
-  );
+  redirect(courseId ? `/learn/courses/${encodeURIComponent(courseId)}` : "/learn");
 }

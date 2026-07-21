@@ -265,6 +265,18 @@ export function PlansPanel() {
                 >
                   Your plan
                 </button>
+              ) : isPaidPlan && currentPlanId !== "free" ? (
+                // Checkout only opens the FIRST paid plan — a second session
+                // would bill both, so the API answers 409. Plan switches go
+                // through the portal, which prorates and swaps in place.
+                <button
+                  type="button"
+                  onClick={handleManage}
+                  disabled={busyAction === "portal"}
+                  className="button-outline mt-5 w-full justify-center px-3 py-2 text-xs disabled:opacity-60"
+                >
+                  {busyAction === "portal" ? "Opening..." : "Change plan"}
+                </button>
               ) : isPaidPlan ? (
                 <button
                   type="button"

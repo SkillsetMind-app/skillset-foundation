@@ -1371,11 +1371,34 @@ async function syncSubscriptionFromStripe(
     "Persist plan subscription",
   );
 
-  const entitled = subscription.status === "active" || subscription.status === "trialing";
+  // Entitlement must reflect ALL of this user's live subscriptions, not just the
+  // one in this event. Stripe checkout never replaces an existing subscription,
+  // so an upgraded creator holds two rows: cancelling the old cheap one fires
+  // subscription.deleted for it, and writing `entitled ? planId : "free"` from
+  // that single event would drop a paying Pro customer to free (and an
+  // `updated` event on the cheaper sub would overwrite the higher plan). The
+  // upsert above already made this row current, so resolve from the table and
+  // keep the best live tier. Lower platform fee = higher tier; unknown plan ids
+  // tie with free and lose the strict comparison.
+  const { data: liveSubscriptions, error: liveSubscriptionsError } = await admin
+    .from("subscriptions")
+    .select("plan_id")
+    .eq("user_id", uid)
+    .in("status", ["active", "trialing"]);
+  if (liveSubscriptionsError) throw new Error(liveSubscriptionsError.message);
+
+  const effectivePlanId = (liveSubscriptions ?? []).reduce<string>((best, row) => {
+    const candidate = row.plan_id as string | null;
+    if (!candidate) return best;
+    return canonicalPlatformFeeBpsForPlan(candidate) < canonicalPlatformFeeBpsForPlan(best)
+      ? candidate
+      : best;
+  }, "free");
+
   await requireSupabaseWrite(
     admin
       .from("users")
-      .update({ current_plan_id: entitled ? planId : "free", updated_at: ts })
+      .update({ current_plan_id: effectivePlanId, updated_at: ts })
       .eq("uid", uid),
     "Update subscriber plan",
   );
