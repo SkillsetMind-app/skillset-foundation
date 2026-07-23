@@ -3,12 +3,13 @@
 import { Send, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { toPlainProse } from "@/domain/plain-prose";
 import { isAssistantEnabled } from "@/lib/assistant/config";
 
 type Message = { role: "user" | "assistant"; content: string };
 
 const GREETING =
-  "Hi — I'm the SkillsetMind assistant. Ask me anything about courses, plans, refunds, payouts, or getting started. I answer from the platform's own documentation.";
+  "Hi, I'm the SkillsetMind assistant. Ask me anything about courses, plans, refunds, payouts, or getting started. I answer from the platform's own documentation.";
 
 const SUGGESTIONS = [
   "How do refunds work?",
@@ -58,7 +59,10 @@ export function AssistantPanel() {
         error?: string;
       };
       if (res.ok && typeof data.reply === "string") {
-        setMessages((prev) => [...prev, { role: "assistant", content: data.reply as string }]);
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: toPlainProse(data.reply as string) },
+        ]);
       } else if (res.status === 503) {
         setNotice(data.reply ?? "The assistant is being set up and will be available shortly.");
       } else if (res.status === 429) {
