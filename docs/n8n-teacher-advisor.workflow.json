@@ -1,0 +1,123 @@
+{
+  "name": "Skillset — Teacher Studio Advisor",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "teacher-advisor",
+        "responseMode": "responseNode",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "webhook-teacher-advisor",
+      "name": "Webhook (teacher-advisor)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "teacher-advisor",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_HEADER_AUTH_CREDENTIAL_ID",
+          "name": "Skillset Advisor Secret (header x-advisor-secret)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepend the Studio Advisor system prompt and shape the DeepSeek chat request.\n// The app already authenticated the teacher, rate-limited, capped and cleaned\n// `messages`; the Webhook node already checked the x-advisor-secret header.\nconst body = $json.body || {};\nconst incoming = Array.isArray(body.messages) ? body.messages : [];\nconst system = {\n  role: \"system\",\n  content: `You are the Studio Advisor for Skillset, a marketplace where psychologists, therapists, and coaches sell online courses. You advise the course creator (the \"teacher\") inside their studio panel.\n\nBe concise, warm, and practical. Prefer specific, actionable steps over theory. You may advise on: course structure and outlining, whether to embed video from YouTube or upload a file, pricing, launch and first-sale strategy, and how the storefront/checkout works. When a question is outside course creation (legal, tax, clinical advice), say so briefly and point them to a professional.\n\nVideo hosting on Skillset is hybrid: teachers can (a) publish a video on YouTube and embed it, or (b) upload a file. Recommend YouTube embed for the fastest, free start; recommend upload when they want the video off public YouTube.\n\nNever invent Skillset features or policies you're unsure about. If you don't know, say so and suggest they check the docs or contact support. Answer in the teacher's language.`,\n};\n// Swap \"deepseek-chat\" for \"deepseek-reasoner\" if you want the reasoning model\n// (slower/pricier; the app's upstream timeout is 60s, sized for it).\nreturn [{ json: { model: \"deepseek-chat\", messages: [system].concat(incoming) } }];\n"
+      },
+      "id": "build-deepseek-request",
+      "name": "Build DeepSeek request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.deepseek.com/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "call-deepseek",
+      "name": "Call DeepSeek",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_DEEPSEEK_CREDENTIAL_ID",
+          "name": "DeepSeek API (Authorization: Bearer <key>)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"reply\": $json.choices[0].message.content } }}",
+        "options": {}
+      },
+      "id": "respond-reply",
+      "name": "Respond { reply }",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (teacher-advisor)": {
+      "main": [
+        [
+          {
+            "node": "Build DeepSeek request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build DeepSeek request": {
+      "main": [
+        [
+          {
+            "node": "Call DeepSeek",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call DeepSeek": {
+      "main": [
+        [
+          {
+            "node": "Respond { reply }",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
