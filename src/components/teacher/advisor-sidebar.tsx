@@ -4,6 +4,7 @@ import { Send, Sparkles, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { toPlainProse } from "@/domain/plain-prose";
 import { isAdvisorEnabled } from "@/lib/advisor/config";
 import { hasAnyPermission } from "@/lib/permissions";
 import {
@@ -14,7 +15,7 @@ import {
 type Message = { role: "user" | "assistant"; content: string };
 
 const GREETING =
-  "Hi — I'm your studio advisor. Ask me about structuring a course, whether to embed from YouTube or upload your video, pricing, or how to get your first sales.";
+  "Hi, I'm your studio advisor. Ask me about structuring a course, whether to embed from YouTube or upload your video, pricing, or how to get your first sales.";
 
 const SUGGESTIONS = [
   "Should I embed from YouTube or upload my videos?",
@@ -103,7 +104,10 @@ export function AdvisorSidebar() {
         error?: string;
       };
       if (res.ok && typeof data.reply === "string") {
-        setMessages((prev) => [...prev, { role: "assistant", content: data.reply as string }]);
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: toPlainProse(data.reply as string) },
+        ]);
       } else if (res.status === 503) {
         setNotice(data.reply ?? "The advisor is being set up and will be available shortly.");
       } else if (res.status === 429) {
