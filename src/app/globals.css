@@ -1,6 +1,11 @@
 @import "tailwindcss";
 
 :root {
+  /* Native UI (scrollbar, gutter, form controls) follows the theme. Without
+     this, Chrome on Windows paints the reserved scrollbar-gutter in the LIGHT
+     scheme even in dark mode — the pale strip down the right edge the founder
+     flagged. [data-theme="dark"] flips it to `dark` below. */
+  color-scheme: light;
   --color-base: #ffffff;
   --color-surface: #ffffff;
   --color-surface-soft: #eef4fc;
@@ -128,6 +133,7 @@
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
   --color-base: #0a0f1a;
   --color-surface: #0f1626;
   --color-surface-soft: #141d33;
@@ -233,6 +239,11 @@ html {
      visibly jumping right — the "empty lateral gap" the founder flagged).
      Pairs with the slim themed scrollbar defined below. */
   scrollbar-gutter: stable;
+  /* Paint the reserved gutter with the theme base so the strip never renders
+     lighter than the page (the pale band down the right edge). Background lives
+     on <body> for content, but the gutter is on <html>'s box — so html needs
+     its own base fill too. */
+  background: var(--color-base);
 }
 
 .logo-wordmark__themed {
