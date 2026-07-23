@@ -2455,6 +2455,14 @@ select:focus-visible {
   padding: 0.375rem 0 0.875rem;
 }
 
+/* In the 64px rail, the edge-mounted expand control would overlap the
+   centered 32px brand mark. Drop it into the clear gap below the brand. */
+.platform-grid--collapsed
+  .platform-sidebar
+  > button[aria-label="Expand sidebar"] {
+  top: 4.6rem;
+}
+
 .platform-main-column {
   display: flex;
   min-width: 0;
