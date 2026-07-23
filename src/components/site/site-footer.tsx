@@ -34,6 +34,7 @@ const footerColumns = [
       ["footer.contactSupport", "/contact"],
       ["footer.termsOfService", "/legal/terms"],
       ["footer.privacyPolicy", "/legal/privacy"],
+      ["footer.refundPolicy", "/refund-policy"],
     ],
   },
 ] as const;
