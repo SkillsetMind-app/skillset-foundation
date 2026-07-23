@@ -17,6 +17,7 @@ import type { TeacherCourse } from "@/domain/teacher-course";
 import {
   allowedAvatarTypes,
   isAllowedAvatarFile,
+  removeUserStorefrontImage,
   storefrontImageRequirementLabel,
   uploadUserStorefrontImage,
   type StorefrontImageKind,
@@ -168,6 +169,9 @@ export function StorefrontSettingsPanel() {
   const [uploadProgress, setUploadProgress] = useState<
     Partial<Record<StorefrontImageKind, UploadAvatarProgress>>
   >({});
+  const [pendingImageRemovals, setPendingImageRemovals] = useState<
+    ReadonlySet<StorefrontImageKind>
+  >(() => new Set());
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -301,6 +305,11 @@ export function StorefrontSettingsPanel() {
       } else {
         setHeroImageUrl(uploadedUrl);
       }
+      setPendingImageRemovals((current) => {
+        const next = new Set(current);
+        next.delete(kind);
+        return next;
+      });
       setSuccess(`${kind === "logo" ? "Logo" : "Hero image"} uploaded. Save the storefront to publish it.`);
     } catch (uploadError) {
       console.error("Storefront image upload failed", { uid: user.uid, kind }, uploadError);
@@ -321,6 +330,17 @@ export function StorefrontSettingsPanel() {
         return next;
       });
     }
+  }
+
+  function handleStorefrontImageRemove(kind: StorefrontImageKind) {
+    if (kind === "logo") {
+      setLogoUrl("");
+    } else {
+      setHeroImageUrl("");
+    }
+    setPendingImageRemovals((current) => new Set(current).add(kind));
+    setError("");
+    setSuccess("Save the storefront to publish this removal.");
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -373,7 +393,31 @@ export function StorefrontSettingsPanel() {
 
     try {
       await updateUserStorefront(user.uid, storefront);
+      const removals = [...pendingImageRemovals];
+      const results = await Promise.allSettled(
+        removals.map((kind) => removeUserStorefrontImage(user.uid, kind)),
+      );
+      const removedKinds = removals.filter(
+        (_, index) => results[index]?.status === "fulfilled",
+      );
+      const cleanupFailed = results.some(
+        (result) => result.status === "rejected",
+      );
+
+      if (removedKinds.length > 0) {
+        setPendingImageRemovals((current) => {
+          const next = new Set(current);
+          removedKinds.forEach((kind) => next.delete(kind));
+          return next;
+        });
+      }
+
       setSuccess("Storefront saved.");
+      if (cleanupFailed) {
+        setError(
+          "The storefront was saved, but an old image could not be removed. Save again to retry cleanup.",
+        );
+      }
     } catch {
       setError(
         "We could not save your storefront. Try again, and contact support if it keeps failing.",
@@ -481,7 +525,7 @@ export function StorefrontSettingsPanel() {
             isUploading={uploadingImages.has("logo")}
             progress={uploadProgress.logo ?? null}
             onChange={(file) => void handleStorefrontImageChange("logo", file)}
-            onRemove={() => setLogoUrl("")}
+            onRemove={() => handleStorefrontImageRemove("logo")}
           />
 
           <StorefrontImageUpload
@@ -492,7 +536,7 @@ export function StorefrontSettingsPanel() {
             isUploading={uploadingImages.has("hero")}
             progress={uploadProgress.hero ?? null}
             onChange={(file) => void handleStorefrontImageChange("hero", file)}
-            onRemove={() => setHeroImageUrl("")}
+            onRemove={() => handleStorefrontImageRemove("hero")}
           />
 
           <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">

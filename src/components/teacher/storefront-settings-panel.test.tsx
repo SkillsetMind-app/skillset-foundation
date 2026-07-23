@@ -5,6 +5,7 @@ import { StorefrontSettingsPanel } from "@/components/teacher/storefront-setting
 
 const mocks = vi.hoisted(() => ({
   getUserProfile: vi.fn(),
+  removeUserStorefrontImage: vi.fn(),
   subscribeToTeacherCourses: vi.fn(),
   updateUserStorefront: vi.fn(),
   uploadUserStorefrontImage: vi.fn(),
@@ -30,6 +31,7 @@ vi.mock("@/lib/data/profile-media", () => ({
     ["image/jpeg", "image/png", "image/webp"].includes(file.type) &&
     file.size <= 5 * 1024 * 1024,
   storefrontImageRequirementLabel: "JPG, PNG, or WebP under 5 MB",
+  removeUserStorefrontImage: mocks.removeUserStorefrontImage,
   uploadUserStorefrontImage: mocks.uploadUserStorefrontImage,
 }));
 
@@ -56,6 +58,8 @@ describe("StorefrontSettingsPanel", () => {
     );
     mocks.updateUserStorefront.mockReset();
     mocks.updateUserStorefront.mockResolvedValue(undefined);
+    mocks.removeUserStorefrontImage.mockReset();
+    mocks.removeUserStorefrontImage.mockResolvedValue(undefined);
     mocks.uploadUserStorefrontImage.mockReset();
   });
 
@@ -162,5 +166,71 @@ describe("StorefrontSettingsPanel", () => {
       await heroUpload;
     });
     await waitFor(() => expect(saveButton).toBeEnabled());
+  });
+
+  it("removes an uploaded object only after its saved URL is cleared", async () => {
+    mocks.getUserProfile.mockResolvedValueOnce({
+      displayName: "Dr. Ana Silva",
+      storefront: {
+        branding: {
+          logoUrl: "https://media.example/storefront-logo.png?v=1",
+          themePreset: "default",
+        },
+        showcase: { orderedCourseIds: [] },
+      },
+    });
+
+    render(<StorefrontSettingsPanel />);
+
+    fireEvent.click(await screen.findByRole("button", {
+      name: "Remove storefront logo",
+    }));
+    expect(mocks.removeUserStorefrontImage).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save storefront" }));
+
+    await waitFor(() => {
+      expect(mocks.updateUserStorefront).toHaveBeenCalledWith(
+        "teacher-1",
+        expect.objectContaining({
+          branding: expect.objectContaining({ logoUrl: null }),
+        }),
+      );
+      expect(mocks.removeUserStorefrontImage).toHaveBeenCalledWith(
+        "teacher-1",
+        "logo",
+      );
+    });
+    expect(
+      mocks.updateUserStorefront.mock.invocationCallOrder[0],
+    ).toBeLessThan(mocks.removeUserStorefrontImage.mock.invocationCallOrder[0]);
+  });
+
+  it("keeps the saved configuration and reports a retryable cleanup failure", async () => {
+    mocks.getUserProfile.mockResolvedValueOnce({
+      displayName: "Dr. Ana Silva",
+      storefront: {
+        branding: {
+          heroImageUrl: "https://media.example/storefront-hero.png?v=1",
+          themePreset: "default",
+        },
+        showcase: { orderedCourseIds: [] },
+      },
+    });
+    mocks.removeUserStorefrontImage.mockRejectedValueOnce(
+      new Error("remove failed"),
+    );
+
+    render(<StorefrontSettingsPanel />);
+
+    fireEvent.click(await screen.findByRole("button", {
+      name: "Remove storefront hero image",
+    }));
+    fireEvent.click(screen.getByRole("button", { name: "Save storefront" }));
+
+    expect(await screen.findByText("Storefront saved.")).toBeInTheDocument();
+    expect(
+      screen.getByText(/old image could not be removed/i),
+    ).toBeInTheDocument();
   });
 });

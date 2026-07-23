@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { uploadUserStorefrontImage } from "@/lib/data/profile-media";
+import {
+  removeUserStorefrontImage,
+  uploadUserStorefrontImage,
+} from "@/lib/data/profile-media";
 
 const mocks = vi.hoisted(() => ({
   getPublicUrl: vi.fn(),
+  remove: vi.fn(),
   storageFrom: vi.fn(),
   upload: vi.fn(),
 }));
@@ -23,10 +27,13 @@ describe("profile media storefront uploads", () => {
     mocks.getPublicUrl.mockReturnValue({
       data: { publicUrl: "https://project.supabase.co/storage/v1/object/public/public-media/file" },
     });
+    mocks.remove.mockReset();
+    mocks.remove.mockResolvedValue({ error: null });
     mocks.storageFrom.mockReset();
     mocks.storageFrom.mockReturnValue({
       upload: mocks.upload,
       getPublicUrl: mocks.getPublicUrl,
+      remove: mocks.remove,
     });
     vi.spyOn(Date, "now").mockReturnValue(1234);
   });
@@ -55,5 +62,23 @@ describe("profile media storefront uploads", () => {
       "JPG, PNG, or WebP under 5 MB",
     );
     expect(mocks.storageFrom).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["logo", "users/teacher-1/storefront/logo/logo"],
+    ["hero", "users/teacher-1/storefront/hero/hero"],
+  ] as const)("removes the saved %s object from its deterministic path", async (kind, path) => {
+    await expect(removeUserStorefrontImage("teacher-1", kind)).resolves.toBeUndefined();
+
+    expect(mocks.storageFrom).toHaveBeenCalledWith("public-media");
+    expect(mocks.remove).toHaveBeenCalledWith([path]);
+  });
+
+  it("surfaces Storage removal failures", async () => {
+    mocks.remove.mockResolvedValueOnce({ error: new Error("remove failed") });
+
+    await expect(
+      removeUserStorefrontImage("teacher-1", "logo"),
+    ).rejects.toThrow("remove failed");
   });
 });

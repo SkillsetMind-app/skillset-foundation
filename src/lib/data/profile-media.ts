@@ -161,3 +161,18 @@ export async function uploadUserStorefrontImage(
     onProgress,
   );
 }
+
+export async function removeUserStorefrontImage(
+  uid: string,
+  kind: StorefrontImageKind,
+) {
+  const supabase = getSupabaseBrowserClient();
+  const storagePath = `users/${uid}/storefront/${kind}/${kind}`;
+  const { error } = await supabase.storage
+    .from(publicMediaBucket)
+    .remove([storagePath]);
+
+  if (error) {
+    throw error;
+  }
+}
