@@ -23,6 +23,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { TeacherOverviewMetrics } from "@/components/teacher/teacher-overview-metrics";
 import { TeacherStudioInsights } from "@/components/teacher/teacher-studio-insights";
+import { TeacherWelcomeTour } from "@/components/teacher/teacher-welcome-tour";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 import { logSubscriptionError } from "@/lib/data/subscription-error";
@@ -76,6 +77,7 @@ export function TeacherStudioDashboard() {
 
   return (
     <div className="grid gap-8">
+      {user ? <TeacherWelcomeTour userId={user.uid} firstName={firstName} /> : null}
       <header className="flex flex-wrap items-end justify-between gap-5 border-b border-[var(--color-line)] pb-5">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
