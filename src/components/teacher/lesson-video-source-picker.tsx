@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, type DragEvent } from "react";
-import { Link2, UploadCloud } from "lucide-react";
+import { HelpCircle, Link2, UploadCloud } from "lucide-react";
+
+import { Tooltip } from "@/components/shared/tooltip";
 
 type LessonVideoSource = "youtube" | "upload";
 
@@ -96,6 +98,15 @@ export function LessonVideoSourcePicker(props: {
           <span className="lesson-video-source-picker__url-label">
             <Link2 aria-hidden="true" size={15} />
             <strong>YouTube or Vimeo URL</strong>
+            <Tooltip content="Paste the video's page link — e.g. https://www.youtube.com/watch?v=… or a Vimeo URL. We turn it into a privacy-friendly embed that plays inside the classroom. Prefer not to use an external account? Drag your file into the drop zone to upload it straight to SkillsetMind.">
+              <button
+                type="button"
+                aria-label="How the YouTube or Vimeo URL field works"
+                className="inline-flex items-center text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
+              >
+                <HelpCircle aria-hidden="true" size={13} />
+              </button>
+            </Tooltip>
           </span>
           <input
             type="url"
