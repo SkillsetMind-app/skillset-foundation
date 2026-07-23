@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { StorefrontSettingsPanel } from "@/components/teacher/storefront-settings-panel";
@@ -119,5 +119,48 @@ describe("StorefrontSettingsPanel", () => {
         }),
       );
     });
+  });
+
+  it("keeps Save disabled until every concurrent image upload finishes", async () => {
+    let resolveLogo: (value: string) => void = () => undefined;
+    let resolveHero: (value: string) => void = () => undefined;
+    const logoUpload = new Promise<string>((resolve) => {
+      resolveLogo = resolve;
+    });
+    const heroUpload = new Promise<string>((resolve) => {
+      resolveHero = resolve;
+    });
+
+    mocks.uploadUserStorefrontImage.mockImplementation(
+      (_uid: string, kind: "logo" | "hero") =>
+        kind === "logo" ? logoUpload : heroUpload,
+    );
+
+    render(<StorefrontSettingsPanel />);
+
+    const logoInput = await screen.findByLabelText("Upload storefront logo");
+    const heroInput = screen.getByLabelText("Upload storefront hero image");
+    const saveButton = screen.getByRole("button", { name: "Save storefront" });
+
+    fireEvent.change(logoInput, {
+      target: { files: [new File(["logo"], "logo.png", { type: "image/png" })] },
+    });
+    fireEvent.change(heroInput, {
+      target: { files: [new File(["hero"], "hero.webp", { type: "image/webp" })] },
+    });
+
+    expect(saveButton).toBeDisabled();
+
+    await act(async () => {
+      resolveLogo("https://media.example/storefront-logo.png?v=1");
+      await logoUpload;
+    });
+    expect(saveButton).toBeDisabled();
+
+    await act(async () => {
+      resolveHero("https://media.example/storefront-hero.png?v=1");
+      await heroUpload;
+    });
+    await waitFor(() => expect(saveButton).toBeEnabled());
   });
 });

@@ -162,11 +162,12 @@ export function StorefrontSettingsPanel() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState<StorefrontImageKind | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<{
-    kind: StorefrontImageKind;
-    progress: UploadAvatarProgress;
-  } | null>(null);
+  const [uploadingImages, setUploadingImages] = useState<
+    ReadonlySet<StorefrontImageKind>
+  >(() => new Set());
+  const [uploadProgress, setUploadProgress] = useState<
+    Partial<Record<StorefrontImageKind, UploadAvatarProgress>>
+  >({});
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -279,15 +280,20 @@ export function StorefrontSettingsPanel() {
 
     setError("");
     setSuccess("");
-    setUploadProgress(null);
-    setUploadingImage(kind);
+    setUploadProgress((current) => {
+      const next = { ...current };
+      delete next[kind];
+      return next;
+    });
+    setUploadingImages((current) => new Set(current).add(kind));
 
     try {
       const uploadedUrl = await uploadUserStorefrontImage(
         user.uid,
         kind,
         file,
-        (progress) => setUploadProgress({ kind, progress }),
+        (progress) =>
+          setUploadProgress((current) => ({ ...current, [kind]: progress })),
       );
 
       if (kind === "logo") {
@@ -304,8 +310,16 @@ export function StorefrontSettingsPanel() {
           : "We could not upload this image. Please try again.",
       );
     } finally {
-      setUploadingImage(null);
-      setUploadProgress(null);
+      setUploadingImages((current) => {
+        const next = new Set(current);
+        next.delete(kind);
+        return next;
+      });
+      setUploadProgress((current) => {
+        const next = { ...current };
+        delete next[kind];
+        return next;
+      });
     }
   }
 
@@ -464,8 +478,8 @@ export function StorefrontSettingsPanel() {
             label="Storefront logo"
             description="Use a square image with a transparent or simple background."
             imageUrl={logoUrl}
-            isUploading={uploadingImage === "logo"}
-            progress={uploadProgress?.kind === "logo" ? uploadProgress.progress : null}
+            isUploading={uploadingImages.has("logo")}
+            progress={uploadProgress.logo ?? null}
             onChange={(file) => void handleStorefrontImageChange("logo", file)}
             onRemove={() => setLogoUrl("")}
           />
@@ -475,8 +489,8 @@ export function StorefrontSettingsPanel() {
             label="Storefront cover"
             description="Use a wide image that keeps its subject clear on desktop and mobile."
             imageUrl={heroImageUrl}
-            isUploading={uploadingImage === "hero"}
-            progress={uploadProgress?.kind === "hero" ? uploadProgress.progress : null}
+            isUploading={uploadingImages.has("hero")}
+            progress={uploadProgress.hero ?? null}
             onChange={(file) => void handleStorefrontImageChange("hero", file)}
             onRemove={() => setHeroImageUrl("")}
           />
@@ -595,7 +609,7 @@ export function StorefrontSettingsPanel() {
 
         <button
           type="submit"
-          disabled={isSaving || uploadingImage !== null}
+          disabled={isSaving || uploadingImages.size > 0}
           className="button-solid justify-self-start px-4 py-2.5 text-sm disabled:opacity-60"
         >
           {isSaving ? "Saving..." : "Save storefront"}

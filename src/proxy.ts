@@ -7,8 +7,8 @@ import { getSupabaseClientConfig } from "@/lib/supabase/config";
 // Refreshes the Supabase auth session on every request (the token cookie is
 // short-lived and would otherwise expire between renders), so Server Components
 // and Route Handlers always read a valid session and auth.uid() drives RLS.
-// This is the documented @supabase/ssr middleware pattern.
-export async function middleware(request: NextRequest) {
+// This is the documented @supabase/ssr proxy pattern.
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const config = getSupabaseClientConfig();

@@ -10,6 +10,7 @@ import { AccountMenu } from "@/components/site/account-menu";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { platformNav } from "@/data/site";
+import { getWorkspaceHomeHref } from "@/lib/auth/routing";
 
 export function PlatformHeader({
   onOpenMobileNav,
@@ -25,7 +26,11 @@ export function PlatformHeader({
   return (
     <header className="platform-topbar">
       <div className="platform-topbar__inner">
-        <LogoWordmark nav href="/" className="platform-topbar__logo" />
+        <LogoWordmark
+          nav
+          href={getWorkspaceHomeHref(pathname, user)}
+          className="platform-topbar__logo"
+        />
         <nav
           aria-label={t("platform.breadcrumbLabel")}
           className="platform-crumbs"

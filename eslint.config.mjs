@@ -15,6 +15,7 @@ const eslintConfig = defineConfig([
     // Stray git worktrees (e.g. agent isolation checkouts) duplicate the whole
     // repo under here; without this, `eslint .` lints those copies too.
     ".claude/**",
+    ".codex/**",
     "next-env.d.ts",
   ]),
 ]);

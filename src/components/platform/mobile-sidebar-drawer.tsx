@@ -19,6 +19,7 @@ import { PlatformNav } from "@/components/platform/platform-nav";
 import { SessionCard } from "@/components/platform/session-card";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
+import { getWorkspaceHomeHref } from "@/lib/auth/routing";
 
 type MobileSidebarDrawerProps = {
   open: boolean;
@@ -38,6 +39,7 @@ export function MobileSidebarDrawer({
   const drawerRef = useRef<HTMLElement>(null);
 
   useModalFocus(drawerRef, open);
+  const homeHref = getWorkspaceHomeHref(pathname, user);
   const workspaceItem = useMemo(() => {
     const isTeacher = user?.roles.includes("teacher");
 
@@ -46,11 +48,14 @@ export function MobileSidebarDrawer({
       : { href: "/learn", label: t("platform.mobile.learn"), icon: GraduationCap };
   }, [user?.roles, t]);
   const primaryItems = [
-    { href: "/platform", label: t("platform.mobile.home"), icon: Home },
+    { href: homeHref, label: t("platform.mobile.home"), icon: Home },
     { href: "/courses", label: t("platform.mobile.market"), icon: ShoppingBag },
     workspaceItem,
     { href: "/account", label: t("platform.mobile.profile"), icon: User },
-  ];
+  ].filter(
+    (item, index, items) =>
+      items.findIndex((candidate) => candidate.href === item.href) === index,
+  );
 
   useEffect(() => {
     if (!open) {
@@ -133,7 +138,7 @@ export function MobileSidebarDrawer({
           >
             <div className="flex items-center justify-between border-b border-[var(--color-line)] p-5">
               <div className="min-w-0">
-                <LogoWordmark nav href="/" />
+                <LogoWordmark nav href={homeHref} />
                 <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-accent-fg)]">
                   {t("platform.mobile.beta")}
                 </p>

@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
+import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { MobileSidebarDrawer } from "@/components/platform/mobile-sidebar-drawer";
 import { PlatformHeader } from "@/components/platform/platform-header";
@@ -11,6 +12,7 @@ import { PlatformNav } from "@/components/platform/platform-nav";
 import { SidebarToggle } from "@/components/platform/sidebar-toggle";
 import { StatusBanner } from "@/components/platform/status-banner";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
+import { getWorkspaceHomeHref } from "@/lib/auth/routing";
 import { ThemeProvider } from "@/lib/theme/theme-provider";
 import { useSidebarState } from "@/lib/ui/sidebar-state";
 
@@ -39,6 +41,7 @@ export function PlatformShell({
   hideHeader = false,
   children,
 }: PlatformShellProps) {
+  const { user } = useAuth();
   const { isCollapsed, persistentState, toggle } = useSidebarState();
   const pathname = usePathname() ?? "";
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -61,7 +64,7 @@ export function PlatformShell({
               >
                 <SidebarBrand
                   collapsed={isCollapsed}
-                  href={workspaceHomeHref(pathname)}
+                  href={getWorkspaceHomeHref(pathname, user)}
                 />
                 <SidebarToggle
                   state={persistentState}
@@ -156,22 +159,6 @@ function SidebarBrand({ collapsed, href }: { collapsed: boolean; href: string })
       />
     </div>
   );
-}
-
-function workspaceHomeHref(pathname: string) {
-  if (pathname.startsWith("/teach") || pathname.startsWith("/account/payments")) {
-    return "/teach";
-  }
-
-  if (pathname.startsWith("/ops")) {
-    return "/ops";
-  }
-
-  if (pathname.startsWith("/learn")) {
-    return "/learn";
-  }
-
-  return "/platform";
 }
 
 function PlatformSidebarSearch({ pathname }: { pathname: string }) {

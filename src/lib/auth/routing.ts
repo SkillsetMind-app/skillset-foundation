@@ -23,6 +23,30 @@ export function getPrimaryWorkspaceHref(
   return "/learn";
 }
 
+/**
+ * Keeps application chrome inside the workspace the user is currently using.
+ * Explicit workspace routes win; shared surfaces fall back to the user's
+ * primary role instead of sending them to the public site or a generic hub.
+ */
+export function getWorkspaceHomeHref(
+  pathname: string,
+  user: Pick<SkillsetUser, "roles"> | null | undefined,
+): string {
+  if (pathname.startsWith("/teach") || pathname.startsWith("/account/payments")) {
+    return "/teach";
+  }
+
+  if (pathname.startsWith("/ops")) {
+    return "/ops";
+  }
+
+  if (pathname.startsWith("/learn")) {
+    return "/learn";
+  }
+
+  return user ? getPrimaryWorkspaceHref(user) : "/platform";
+}
+
 export function parseAuthPathIntent(value: string | null | undefined): AuthPathIntent | null {
   if (value === "student" || value === "teacher") {
     return value;
