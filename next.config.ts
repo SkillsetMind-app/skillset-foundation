@@ -17,7 +17,12 @@ export const CSP_REPORT_ONLY = [
   "style-src 'self' 'unsafe-inline' 'sha256-0hAheEzaMe6uXIKV4EehS9pu1am1lj/KnnzrOYqckXk='",
   "img-src 'self' data: blob: https: https://*.stripe.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://ijtikldtjvsbtwszokvs.supabase.co wss://ijtikldtjvsbtwszokvs.supabase.co https://api.stripe.com https://api.pwnedpasswords.com https://us.i.posthog.com https://us-assets.i.posthog.com https://va.vercel-scripts.com https://vitals.vercel-insights.com",
+  // video.bunnycdn.com is the Bunny Stream TUS endpoint the browser uploads
+  // lesson videos to (src/lib/bunny/server.ts BUNNY_TUS_ENDPOINT). Without it,
+  // every Bunny upload trips a report-only CSP violation now, and would be
+  // BLOCKED once this CSP is promoted to enforcing. The player embed
+  // (iframe.mediadelivery.net) is already covered by frame-src/media-src.
+  "connect-src 'self' https://ijtikldtjvsbtwszokvs.supabase.co wss://ijtikldtjvsbtwszokvs.supabase.co https://api.stripe.com https://api.pwnedpasswords.com https://us.i.posthog.com https://us-assets.i.posthog.com https://va.vercel-scripts.com https://vitals.vercel-insights.com https://video.bunnycdn.com",
   "frame-src https://connect-js.stripe.com https://js.stripe.com https://hooks.stripe.com https://iframe.mediadelivery.net https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://accounts.google.com https://challenges.cloudflare.com",
   "media-src 'self' blob: https://ijtikldtjvsbtwszokvs.supabase.co https://iframe.mediadelivery.net",
   "report-uri /api/csp-report",
