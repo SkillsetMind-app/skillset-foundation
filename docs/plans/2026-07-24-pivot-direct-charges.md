@@ -7,6 +7,34 @@
 > **Consequência estrutural:** sem dinheiro nosso em trânsito, não existe base para
 > afiliados nem coprodutores.
 
+## STATUS DE EXECUÇÃO (2026-07-24)
+
+| Fase | Status | Commit |
+|---|---|---|
+| 1 — Núcleo financeiro (backend) | ✅ feito | `3f23fcd` |
+| 2 — Banco | ⚠️ **migração escrita, NÃO aplicada** | `eb0ec66` |
+| 3 — Frontend | ✅ feito | `b83165a` |
+| 4 — Copy pública e legal | ✅ feito | `eb0ec66` + `056b849` |
+| 5 — Verificação | ✅ typecheck + lint limpos, 61 suítes / 298 testes verdes | — |
+
+**Fase 2 é a única pendência, e é deliberada.** A migração
+`supabase/migrations/20260724000100_drop_affiliate_coproducer.sql` está escrita mas **não
+foi rodada em produção** — ela é destrutiva (dropa `course_coproducers` e três colunas) e
+a regra vigente é READ-ONLY no Supabase LIVE sem o "ok" explícito do fundador.
+
+Enquanto ela não roda, a aplicação continua funcionando contra o schema atual: o data layer
+fixa `p_affiliate_enabled=false / p_affiliate_commission_pct=0 / p_affiliate_approval='manual'`
+na RPC de 7 argumentos (`src/lib/data/course-commerce.ts`). Ninguém consegue ligar afiliado
+pela interface — a superfície foi removida.
+
+**Antes de aplicar, o fundador precisa:**
+1. `select count(*) from public.course_coproducers;`
+2. `select count(*) from public.course_commerce_settings where affiliate_enabled;`
+3. Se algum for > 0, exportar as linhas e **acertar essas pessoas por fora** — depois do
+   pivô não existe saldo de plataforma de onde pagá-las.
+4. Rodar a migração; depois remover os três parâmetros fixados no data layer e regenerar
+   `database.types.ts` (item 8 do plano, que depende da migração ter rodado).
+
 ---
 
 ## 1. AUDITORIA — o que existe hoje
