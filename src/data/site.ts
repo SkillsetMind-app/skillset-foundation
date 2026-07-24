@@ -227,37 +227,23 @@ export const platformNav: PlatformNavItem[] = [
     section: "Reports",
     permission: "teacherStudio.access",
   },
-  // Partnerships
-  {
-    href: "/teach/affiliates",
-    labelKey: "platform.nav.affiliatePrograms",
-    icon: "Handshake",
-    contexts: ["teacher"],
-    section: "Partnerships",
-    permission: "teacherStudio.access",
-  },
+  // Growth
+  // (Affiliates and co-productions were removed with the pivot to direct
+  // charges: the platform never holds the money, so it cannot split it.)
   {
     href: "/teach/coupons",
     labelKey: "platform.nav.coupons",
     icon: "Tag",
     contexts: ["teacher"],
-    section: "Partnerships",
+    section: "Growth",
     permission: "teacherStudio.manageCourses",
-  },
-  {
-    href: "/teach/co-productions",
-    labelKey: "platform.nav.coProductions",
-    icon: "Users",
-    contexts: ["teacher"],
-    section: "Partnerships",
-    permission: "teacherStudio.access",
   },
   {
     href: "/teach/team",
     labelKey: "platform.nav.team",
     icon: "UserCheck",
     contexts: ["teacher"],
-    section: "Partnerships",
+    section: "Growth",
     permission: "teacherStudio.access",
   },
   // Tools

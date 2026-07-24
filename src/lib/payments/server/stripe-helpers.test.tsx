@@ -17,8 +17,26 @@ describe("ensureCourseSubscriptionCanceled", () => {
       "sub_123",
     );
 
-    expect(retrieve).toHaveBeenCalledWith("sub_123");
-    expect(cancel).toHaveBeenCalledWith("sub_123");
+    expect(retrieve).toHaveBeenCalledWith("sub_123", {}, undefined);
+    expect(cancel).toHaveBeenCalledWith("sub_123", {}, undefined);
+  });
+
+  it("targets the teacher's connected account when one is given", async () => {
+    // Direct charges: the subscription lives on the teacher's account, so a
+    // platform-scoped cancel would 404 and the refunded learner would keep
+    // being billed.
+    const retrieve = vi.fn().mockResolvedValue({ status: "active" });
+    const cancel = vi.fn().mockResolvedValue({ status: "canceled" });
+
+    await ensureCourseSubscriptionCanceled(
+      { subscriptions: { retrieve, cancel } },
+      "sub_123",
+      "acct_teacher",
+    );
+
+    const options = { stripeAccount: "acct_teacher" };
+    expect(retrieve).toHaveBeenCalledWith("sub_123", {}, options);
+    expect(cancel).toHaveBeenCalledWith("sub_123", {}, options);
   });
 
   it("does not cancel twice when a refund request is retried", async () => {
