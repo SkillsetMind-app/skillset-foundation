@@ -1,5 +1,5 @@
 import { helpFaqCategories } from "@/data/help-faq";
-import { payoutClearDays, plans, refundWindowDays } from "@/data/plans";
+import { plans, refundWindowDays } from "@/data/plans";
 
 // Grounding context for the platform assistant. Built from the SAME sources
 // the site renders (help FAQ + plans.ts), so every fact the bot can state is
@@ -34,7 +34,7 @@ function plansSection(): string {
     "Plans (every feature is available on every tier; plans only change the commission rate; the Stripe processing fee is passed through to the creator on every sale):",
     ...rows,
     `- Refund window: ${refundWindowDays} days from purchase (learner must have completed less than half the course and not received a certificate).`,
-    `- Payout clearing: creator earnings stay pending for ${payoutClearDays} days after each sale before becoming available.`,
+    "- Payouts: buyers pay the creator's own Stripe account directly (the creator is the merchant of record). SkillsetMind never holds or remits creator money, so there is no platform clearing period — Stripe pays out on the creator's own account schedule. Refunds and lost disputes are debited from the creator's Stripe balance.",
   ].join("\n");
 }
 

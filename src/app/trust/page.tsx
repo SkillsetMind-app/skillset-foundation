@@ -52,7 +52,7 @@ const trustLayers: ReadonlyArray<TrustLayer> = [
   },
   {
     title: "Audit-ready payments",
-    detail: "Orders, payments, refunds, payout ledger, and Stripe transfers are tracked as distinct records.",
+    detail: "Orders, payments, refunds, and creator earnings are tracked as distinct records — and the charge itself is made directly on the creator's own Stripe account.",
     Icon: Receipt,
   },
 ];

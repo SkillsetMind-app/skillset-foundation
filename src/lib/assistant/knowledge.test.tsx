@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { helpFaqCategories } from "@/data/help-faq";
-import { payoutClearDays, plans, refundWindowDays } from "@/data/plans";
+import { plans, refundWindowDays } from "@/data/plans";
 import { buildAssistantKnowledge } from "@/lib/assistant/knowledge";
 
 describe("buildAssistantKnowledge", () => {
@@ -17,9 +17,11 @@ describe("buildAssistantKnowledge", () => {
     }
   });
 
-  it("states the refund window and payout clearing from plans.ts", () => {
+  it("states the refund window from plans.ts and the direct-charge payout model", () => {
     expect(knowledge).toContain(`${refundWindowDays} days from purchase`);
-    expect(knowledge).toContain(`${payoutClearDays} days after each sale`);
+    // The assistant must never tell a creator we hold their money.
+    expect(knowledge).toContain("never holds or remits creator money");
+    expect(knowledge).not.toContain("stay pending for");
   });
 
   it("carries the full help FAQ verbatim", () => {

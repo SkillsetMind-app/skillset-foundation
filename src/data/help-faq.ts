@@ -90,11 +90,11 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       {
         id: "payouts",
         q: "When do I receive my first payout?",
-        a: "Creator earnings are released 7 days after each sale — the moment the 7-day refund window closes, so a released payout can never predate a still-refundable charge. From there, transfers settle to your connected Stripe account on Stripe's standard payout schedule. The wallet panel in Studio shows the exact release date for every line item.",
+        a: "Your buyers pay your own Stripe account directly — you are the merchant of record, and SkillsetMind never holds or remits your money. There is no platform clearing period: Stripe pays out from your balance to your bank on your account's own payout schedule, which you set in Stripe. Complete Stripe's identity verification and your first payout follows that schedule.",
       },
       {
         q: "How are creator payouts handled?",
-        a: "Earnings are tracked in a payout ledger inside Studio. As soon as the refund window closes, the balance is transferred to your connected bank account through Stripe Connect. You can review every sale, fee deduction, and payout line in the ledger.",
+        a: "Stripe pays you from your own connected account; SkillsetMind is never in the middle. Every sale, our platform fee, and every refund is recorded in the earnings ledger inside Studio so you can reconcile it against your Stripe dashboard. Refunds and lost disputes are debited from your Stripe balance — and when a sale is refunded, our platform fee comes back to you with it.",
       },
     ],
   },

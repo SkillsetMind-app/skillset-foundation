@@ -61,7 +61,7 @@ export async function upsertCourseCommerceSettings(
     // Affiliates died with the pivot to direct charges (the platform never
     // holds the money, so it cannot split it). These params are pinned OFF
     // because the live RPC still declares them as required; the cleanup
-    // migration that drops them is 20260724_drop_affiliate_coproducer.sql,
+    // migration that drops them is 20260724000100_drop_affiliate_coproducer.sql,
     // which is intentionally NOT auto-applied to production.
     p_affiliate_enabled: false,
     p_affiliate_commission_pct: 0,

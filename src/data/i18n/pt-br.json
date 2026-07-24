@@ -270,7 +270,7 @@
       "step2Title": "Crie e publique",
       "step2Desc": "Monte seus módulos e aulas no Course Builder. Defina o preço, conclua as verificações de lançamento e publique quando estiver pronto.",
       "step3Title": "Alcance gente em qualquer lugar",
-      "step3Desc": "Quando sua verificação profissional e as checagens de lançamento estiverem concluídas, o curso entra no ar ao ser publicado. O monitoramento de conformidade continua sem atrasar matrículas. Receba em mais de 30 moedas, com o valor liberado {days} dias após cada venda."
+      "step3Desc": "Quando sua verificação profissional e as checagens de lançamento estiverem concluídas, o curso entra no ar ao ser publicado. O monitoramento de conformidade continua sem atrasar matrículas. Receba em mais de 30 moedas, direto na sua conta Stripe, sem retenção da plataforma."
     },
     "marketplace": {
       "kicker": "O marketplace",
@@ -291,8 +291,8 @@
       "c3Desc": "Todo curso pago ganha um espaço privado com posts, respostas e curtidas. A turma continua conversando depois da aula.",
       "c4Title": "Checkout multimoeda",
       "c4Desc": "Venda em mais de 30 moedas. O aluno paga na moeda dele no checkout.",
-      "c5Title": "Carteira do criador, liberação em {days} dias",
-      "c5Desc": "O valor sai de pendente pra disponível {days} dias após cada venda. Extrato completo, trilha de auditoria completa.",
+      "c5Title": "Seu comprador paga direto pra você",
+      "c5Desc": "A cobrança cai na sua própria conta Stripe. A gente nunca segura o seu dinheiro — a Stripe repassa no seu calendário. Extrato completo, trilha de auditoria completa.",
       "c6Title": "Certificados verificáveis",
       "c6Desc": "Um link público que qualquer um confere em segundos. Prova de que seus alunos fizeram o trabalho."
     },
@@ -325,7 +325,7 @@
       "ctaStart": "Comece a ensinar",
       "ctaPromise": "Leia a Promessa ao Criador",
       "bullet1": "Fique com {keep}% no plano Free. Suba pro Plus e sua comissão pode cair a 2%.",
-      "bullet2": "Repasses liberados {days} dias após cada venda. Não precisa de assinatura pra começar.",
+      "bullet2": "O comprador paga direto na sua conta Stripe. Sem retenção da plataforma e sem assinatura pra começar.",
       "bullet3": "Liberação gradual e janela de reembolso te protegem de abuso.",
       "bullet4": "Comunidade do curso, sessões ao vivo e certificados verificáveis em todos os planos."
     },
@@ -363,12 +363,10 @@
       "marketingOverview": "Visão de marketing",
       "storefrontPages": "Vitrine e páginas",
       "mediaLibrary": "Biblioteca de mídia",
-      "affiliatePrograms": "Programas de afiliados",
       "messages": "Mensagens",
       "sales": "Vendas",
       "subscriptions": "Assinaturas",
       "coupons": "Cupons",
-      "coProductions": "Coproduções",
       "reviewsRefunds": "Reembolsos",
       "team": "Colaboradores",
       "integrations": "Integrações",

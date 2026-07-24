@@ -1,7 +1,7 @@
 import { PlansPanel } from "@/components/account/plans-panel";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
-import { payoutClearDays, refundWindowDays } from "@/data/plans";
+import { refundWindowDays } from "@/data/plans";
 
 export default function AccountPlansPage() {
   return (
@@ -38,8 +38,8 @@ export default function AccountPlansPage() {
               detail={`Learners can refund a purchase within ${refundWindowDays} days if they've completed less than half the course.`}
             />
             <PolicyCard
-              title="Payout clearance"
-              detail={`Your earnings are released ${payoutClearDays} days after each sale — the moment the ${refundWindowDays}-day refund window closes.`}
+              title="Payouts"
+              detail="Buyers pay your Stripe account directly. There is no platform hold — Stripe pays out to your bank on your own account schedule."
             />
           </div>
         </section>

@@ -270,7 +270,7 @@
       "step2Title": "Build and publish",
       "step2Desc": "Build your modules and lessons in Course Builder. Set your price, complete the launch checks, and publish when ready.",
       "step3Title": "Reach people anywhere",
-      "step3Desc": "Once your professional verification and launch checks are complete, your course goes live when you publish. Compliance monitoring continues without holding up enrollment. Get paid in 30+ currencies, with earnings clearing {days} days after each sale."
+      "step3Desc": "Once your professional verification and launch checks are complete, your course goes live when you publish. Compliance monitoring continues without holding up enrollment. Get paid in 30+ currencies, straight to your own Stripe account — no platform hold."
     },
     "marketplace": {
       "kicker": "The marketplace",
@@ -291,8 +291,8 @@
       "c3Desc": "Every paid course gets a private space for posts, replies, and likes. Members keep talking there after the lesson ends.",
       "c4Title": "Multi-currency checkout",
       "c4Desc": "Sell in 30+ currencies. Learners pay in their own currency at checkout.",
-      "c5Title": "Creator wallet, {days}-day clearance",
-      "c5Desc": "Earnings move from pending to available {days} days after each sale. Full ledger, full audit trail.",
+      "c5Title": "Buyers pay you directly",
+      "c5Desc": "The charge lands in your own Stripe account. We never hold your money — Stripe pays out on your schedule. Full ledger, full audit trail.",
       "c6Title": "Verifiable certificates",
       "c6Desc": "A public link anyone can check in seconds. Proof your members did the work."
     },
@@ -325,7 +325,7 @@
       "ctaStart": "Start teaching",
       "ctaPromise": "Read the Creator Promise",
       "bullet1": "Keep {keep}% on Free. Scale to Plus and your commission can drop to 2%.",
-      "bullet2": "Payouts clear {days} days after each sale. No subscription needed to start.",
+      "bullet2": "Buyers pay your Stripe account directly. No platform hold, no subscription needed to start.",
       "bullet3": "Drip release and a refund window protect you from abuse.",
       "bullet4": "Course community, live sessions, and verifiable certificates on every plan."
     },
@@ -363,12 +363,10 @@
       "marketingOverview": "Marketing overview",
       "storefrontPages": "Storefront & pages",
       "mediaLibrary": "Media library",
-      "affiliatePrograms": "Affiliate programs",
       "messages": "Messages",
       "sales": "Sales",
       "subscriptions": "Subscriptions",
       "coupons": "Coupons",
-      "coProductions": "Co-productions",
       "reviewsRefunds": "Refunds",
       "team": "Collaborators",
       "integrations": "Integrations",

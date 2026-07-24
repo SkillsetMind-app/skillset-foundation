@@ -368,14 +368,6 @@ async function postEvent(event: Record<string, unknown>) {
   );
 }
 
-function deferred() {
-  let resolve!: () => void;
-  const promise = new Promise<void>((resolvePromise) => {
-    resolve = resolvePromise;
-  });
-  return { promise, resolve };
-}
-
 describe("Stripe webhook financial integrity", () => {
   beforeEach(() => {
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";

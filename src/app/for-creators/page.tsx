@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { PublicPage } from "@/components/site/public-page";
-import { planById, payoutClearDays } from "@/data/plans";
+import { planById } from "@/data/plans";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 const creatorTools = [
@@ -17,7 +17,7 @@ const freePlan = planById("free");
 
 export const metadata = buildPageMetadata({
   title: "Teach on SkillsetMind",
-  description: `Publish professional courses to a global audience. Start free at ${freePlan.commissionPercent}% commission, payouts ${payoutClearDays} days after each sale, course community and certificates included on every plan.`,
+  description: `Publish professional courses to a global audience. Start free at ${freePlan.commissionPercent}% commission, buyers pay your Stripe account directly, course community and certificates included on every plan.`,
   path: "/for-creators",
 });
 
@@ -49,10 +49,10 @@ export default function ForCreatorsPage() {
             </div>
             <div>
               <p className="display-title text-3xl text-[var(--color-primary)]">
-                {payoutClearDays} days
+                Direct
               </p>
               <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-                Until payout
+                Buyer pays you
               </p>
             </div>
           </div>

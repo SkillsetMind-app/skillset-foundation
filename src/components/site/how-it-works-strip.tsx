@@ -4,7 +4,6 @@ import { PenLine, Send, Sparkles, type LucideIcon } from "lucide-react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { RevealSection } from "@/components/shared/reveal-section";
-import { payoutClearDays } from "@/data/plans";
 
 type Step = {
   number: string;
@@ -32,10 +31,7 @@ export function HowItWorksStrip() {
     {
       number: "03",
       title: t("home.how.step3Title"),
-      description: t("home.how.step3Desc").replace(
-        "{days}",
-        String(payoutClearDays),
-      ),
+      description: t("home.how.step3Desc"),
       Icon: Send,
     },
   ];

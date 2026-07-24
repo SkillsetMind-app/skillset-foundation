@@ -40,8 +40,8 @@ const promises = [
   },
   {
     number: "05",
-    title: "Funds protection by contract",
-    body: "Chargebacks below 1.5% rolling 90 days will never auto-suspend your account. Holds above that threshold trigger human review with a 72h SLA, not a black box. Disputes go to documented arbitration. SkillsetMind will not freeze your money to protect itself first.",
+    title: "We never hold your money",
+    body: "Your buyers pay your Stripe account directly — SkillsetMind is never a middleman for your money and has no balance of yours to freeze. Chargebacks below 1.5% rolling 90 days will never auto-suspend your account; above that threshold, review is human with a 72h SLA, not a black box. Disputes go to documented arbitration.",
     practice:
       "Creators need abuse protection. Students need refund protection. The policy must protect both sides without a black box.",
   },

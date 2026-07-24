@@ -4,7 +4,7 @@ import { Check, ChevronDown, HelpCircle } from "lucide-react";
 import { PublicPage } from "@/components/site/public-page";
 import { Tooltip } from "@/components/shared/tooltip";
 import { formatUsd } from "@/data/platform";
-import { plans, payoutClearDays, refundWindowDays } from "@/data/plans";
+import { plans, refundWindowDays } from "@/data/plans";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 export const metadata = buildPageMetadata({
@@ -295,7 +295,7 @@ export default function PricingPage() {
         </p>
       </section>
 
-      {/* Operational rules — refund window, payout clearance, plan changes. */}
+      {/* Operational rules — refund window, direct payouts, plan changes. */}
       <section className="mt-8 grid gap-4 md:grid-cols-3">
         <article className="rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-5">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
@@ -309,12 +309,12 @@ export default function PricingPage() {
         </article>
         <article className="rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-5">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            Payout clearance
+            Payouts
           </p>
           <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-            Your earnings are released to your Stripe account {payoutClearDays}{" "}
-            days after each sale — the moment the {refundWindowDays}-day refund
-            window closes. No 30-day holds.
+            Buyers pay your Stripe account directly. We never hold your money, so
+            there is nothing for us to release: Stripe pays out to your bank on
+            your own account schedule.
           </p>
         </article>
         <article className="rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-5">
@@ -356,7 +356,7 @@ export default function PricingPage() {
             },
             {
               q: "When can a sale be refunded, and does it affect my payout?",
-              a: `Learners can self-refund within ${refundWindowDays} days of purchase if they've completed less than half the course, which reverses the sale automatically — SkillsetMind's commission included. Your earnings are released to your Stripe account ${payoutClearDays} days after each sale, the moment the ${refundWindowDays}-day refund window closes — never a 30-day hold.`,
+              a: `Learners can self-refund within ${refundWindowDays} days of purchase if they've completed less than half the course. Because the buyer paid your Stripe account directly, the refund is debited from your own balance — and SkillsetMind's commission on that sale is returned to you with it, so you never pay a fee on a sale that was undone.`,
             },
           ].map((item) => (
             <details

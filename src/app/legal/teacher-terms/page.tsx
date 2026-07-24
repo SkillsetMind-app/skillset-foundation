@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { LegalArticle, LegalSection } from "@/components/site/legal-article";
-import { payoutClearDays, refundWindowDays } from "@/data/plans";
+import { refundWindowDays } from "@/data/plans";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 export const metadata = buildPageMetadata({
@@ -157,37 +157,49 @@ export default function TeacherTermsPage() {
       <LegalSection heading="7. Pricing, commission, and payouts">
         <ul className="list-disc space-y-2 pl-6">
           <li>
+            <strong className="text-[var(--color-ink)]">
+              You are the merchant of record
+            </strong>{" "}
+            — the buyer&apos;s payment is charged directly to your Stripe
+            account. SkillsetMind never receives, holds, or remits your sale
+            proceeds, and is not a party to the payment between you and your
+            buyer. As merchant of record you are responsible for delivering what
+            you sold, for your own refund and chargeback exposure, and for the
+            consumer-protection and tax obligations that apply to your sales.
+          </li>
+          <li>
             <strong className="text-[var(--color-ink)]">Checkout</strong> — all
             sales of your courses on SkillsetMind go through the platform&apos;s
-            Stripe checkout. Directing platform buyers to an off-platform
-            checkout for the same course is prohibited.
+            Stripe checkout, created against your connected account. Directing
+            platform buyers to an off-platform checkout for the same course is
+            prohibited.
           </li>
           <li>
             <strong className="text-[var(--color-ink)]">Commission</strong> —
-            SkillsetMind keeps a commission on each sale according to your
+            SkillsetMind charges a platform fee on each sale according to your
             subscription plan, as shown on the{" "}
             <Link className="font-semibold text-[var(--color-accent-fg)]" href="/pricing">
               pricing page
             </Link>{" "}
-            at the time of sale.
+            at the time of sale. Stripe deducts it from the charge automatically;
+            we do not invoice you for it separately.
           </li>
           <li>
-            <strong className="text-[var(--color-ink)]">Payouts</strong> —
-            paid via Stripe Connect to the account you connect, with support
-            for 30+ currencies. Sale proceeds clear{" "}
-            <strong className="text-[var(--color-ink)]">
-              {payoutClearDays} days
-            </strong>{" "}
-            after the sale, so a payout can never precede a still-refundable
-            charge. You must complete Stripe&apos;s identity verification to
+            <strong className="text-[var(--color-ink)]">Payouts</strong> — paid
+            by Stripe from your own account balance to your bank, on your
+            account&apos;s payout schedule, with support for 30+ currencies.
+            There is no platform clearance period, because SkillsetMind holds
+            nothing. You must complete Stripe&apos;s identity verification to
             receive payouts.
           </li>
           <li>
             <strong className="text-[var(--color-ink)]">Refunds and chargebacks</strong>{" "}
-            — student refunds within the {refundWindowDays}-day window, and
-            any chargebacks, are deducted from the corresponding sale proceeds
-            (commission included). Repeated abnormal chargeback rates may lead
-            to review of your account.
+            — student refunds within the {refundWindowDays}-day window, and any
+            chargebacks, are debited from your Stripe balance by Stripe. Our
+            platform fee on a refunded sale is returned to you with the refund.
+            Because you are the merchant of record, dispute liability is yours
+            and SkillsetMind cannot reverse a dispute on your behalf. Repeated
+            abnormal chargeback rates may lead to review of your account.
           </li>
         </ul>
       </LegalSection>
@@ -221,9 +233,9 @@ export default function TeacherTermsPage() {
         <p>
           If a course is removed or you close your account, students who
           already bought it keep access to what they purchased (or receive a
-          refund handled per the refund policy), pending payouts for
-          legitimate cleared sales are still paid out, and you may export your
-          content and student data beforehand.
+          refund handled per the refund policy), your Stripe balance is
+          unaffected by anything we do here (we never held it), and you may
+          export your content and student data beforehand.
         </p>
       </LegalSection>
 

@@ -12,7 +12,6 @@ import {
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { RevealSection } from "@/components/shared/reveal-section";
-import { payoutClearDays } from "@/data/plans";
 
 type Capability = {
   title: string;
@@ -22,16 +21,14 @@ type Capability = {
 
 export function CapabilitiesGrid() {
   const { t } = useTranslation();
-  const days = String(payoutClearDays);
-
   const capabilities: ReadonlyArray<Capability> = [
     { title: t("home.capabilities.c1Title"), description: t("home.capabilities.c1Desc"), Icon: LayoutGrid },
     { title: t("home.capabilities.c2Title"), description: t("home.capabilities.c2Desc"), Icon: Calendar },
     { title: t("home.capabilities.c3Title"), description: t("home.capabilities.c3Desc"), Icon: MessagesSquare },
     { title: t("home.capabilities.c4Title"), description: t("home.capabilities.c4Desc"), Icon: Globe },
     {
-      title: t("home.capabilities.c5Title").replace("{days}", days),
-      description: t("home.capabilities.c5Desc").replace("{days}", days),
+      title: t("home.capabilities.c5Title"),
+      description: t("home.capabilities.c5Desc"),
       Icon: Wallet,
     },
     { title: t("home.capabilities.c6Title"), description: t("home.capabilities.c6Desc"), Icon: Award },
