@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     const { data: order } = await admin
       .from("orders")
       .select(
-        "status, payment_intent_id, amount_minor, refunded_amount_minor, course_id, user_id",
+        "status, payment_intent_id, amount_minor, refunded_amount_minor, course_id, user_id, teacher_stripe_connected_account_id",
       )
       .eq("id", orderId)
       .maybeSingle();
@@ -84,10 +84,26 @@ export async function POST(request: Request) {
       );
     }
 
+    // DIRECT CHARGES: the PaymentIntent belongs to the teacher's connected
+    // account, so the refund is created there (a platform-scoped call 404s) and
+    // is debited from the TEACHER's balance. `refund_application_fee` returns
+    // our commission proportionally so the teacher never eats our fee on an
+    // undone sale. The account id is the frozen snapshot from checkout time.
+    const connectedAccountId = String(
+      order.teacher_stripe_connected_account_id || "",
+    );
+    if (!connectedAccountId) {
+      throw new PaymentError(
+        "This order has no connected account on record; refund it from the Stripe dashboard.",
+        409,
+      );
+    }
+
     const stripe = getStripeClient();
     const refund = await stripe.refunds.create(
       {
         payment_intent: paymentIntentId,
+        refund_application_fee: true,
         ...(amountMinor !== null ? { amount: amountMinor } : {}),
         metadata: {
           orderId,
@@ -102,6 +118,7 @@ export async function POST(request: Request) {
           amountMinor !== null
             ? `admin_refund_${orderId}_${amountMinor}`
             : `admin_refund_${orderId}_full`,
+        stripeAccount: connectedAccountId,
       },
     );
 
