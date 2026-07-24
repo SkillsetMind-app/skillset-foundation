@@ -683,10 +683,6 @@ async function handleCourseSubscriptionLifecycle(
   return true;
 }
 
-/**
- * Mark affiliate commission ledger refunded + reverse transfer if already paid.
- * saleRootId = order id (one-time) or invoice id (subscription).
- */
 // --- charge.refunded ---------------------------------------------------------
 // Under direct charges a refund debits the TEACHER's own Stripe balance, and
 // Stripe returns the proportional application fee to them automatically when

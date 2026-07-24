@@ -138,6 +138,17 @@ export default function TermsPage() {
           you confirm a purchase. You are responsible for any taxes, duties,
           or bank fees that apply to your purchase under your local law.
         </p>
+        <p>
+          When you buy a course, the educator who published it is the seller and
+          merchant of record: your payment is charged directly to that
+          educator&apos;s own Stripe account, and your card statement may show
+          their business name rather than SkillsetMind. SkillsetMind provides
+          the platform and checkout and charges the educator a platform fee — it
+          does not receive or hold the purchase price, and is not the seller of
+          the course. The educator is responsible for delivering the course you
+          bought; the refund rights below apply to that purchase and are
+          processed through the same Stripe account.
+        </p>
       </LegalSection>
 
       <LegalSection heading="7. Refunds">
