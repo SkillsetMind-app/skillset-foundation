@@ -111,7 +111,26 @@ describe("creator-ops rollup", () => {
     });
   });
 
-  it("splits every wallet total by both status and currency", () => {
+  it("counts a settled row — the only status direct charges write — in net and sales", () => {
+    const ledgers = [
+      {
+        id: "settled-1",
+        status: "settled",
+        grossAmountMinor: 12_000,
+        skillsetFeeMinor: 1_000,
+        stripeFeeMinor: 1_000,
+        netAmountMinor: 10_000,
+        currency: "USD",
+      },
+    ] as PayoutLedgerEntry[];
+    const summary = summarizeCreatorWallet(ledgers);
+    expect(summary.salesCount).toBe(1);
+    expect(summary.teacherNetByCurrency).toEqual([
+      { currency: "USD", amountMinor: 10_000 },
+    ]);
+  });
+
+  it("splits every earnings total by currency", () => {
     const ledgers = [
       {
         id: "a",
@@ -159,11 +178,6 @@ describe("creator-ops rollup", () => {
         { currency: "BRL", amountMinor: 100 },
         { currency: "USD", amountMinor: 750 },
       ],
-      walletInReleaseByCurrency: [
-        { currency: "BRL", amountMinor: 100 },
-        { currency: "USD", amountMinor: 250 },
-      ],
-      walletReleasedByCurrency: [{ currency: "USD", amountMinor: 500 }],
       refundedByCurrency: [],
     });
   });
@@ -195,7 +209,7 @@ describe("creator-ops rollup", () => {
     expect(snap.mrrByCurrency).toEqual([
       { currency: "USD", amountMinor: 9900 },
     ]);
-    expect(snap.walletReleasedByCurrency).toEqual([
+    expect(snap.teacherNetByCurrency).toEqual([
       { currency: "USD", amountMinor: 1800 },
     ]);
     expect(snap.salesGrossByCurrency).toEqual([
