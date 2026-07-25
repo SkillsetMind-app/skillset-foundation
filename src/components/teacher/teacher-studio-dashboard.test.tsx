@@ -24,7 +24,6 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
       ({
         "teach.dashboard.welcomeBackNamed": "Welcome back, {name}",
         "teach.dashboard.welcomeBack": "Welcome back",
-        "teach.dashboard.payoutFirstOrder": "After your first order",
       })[key] ?? key,
   }),
 }));

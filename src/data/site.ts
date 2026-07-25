@@ -201,13 +201,16 @@ export const platformNav: PlatformNavItem[] = [
     section: "Sales",
     permission: "teacherStudio.access",
   },
-  // Wallet (receivables)
+  // Earnings — a record of what Stripe already paid into the creator's own
+  // connected account. Called "Wallet" until the pivot to direct charges, which
+  // is a word for a balance the platform holds. We hold nothing, so the nav no
+  // longer says we do.
   {
     href: "/account/payments",
-    labelKey: "platform.nav.wallet",
-    icon: "Wallet",
+    labelKey: "platform.nav.earnings",
+    icon: "TrendingUp",
     contexts: ["teacher"],
-    section: "Wallet",
+    section: "Earnings",
     permission: "teacherStudio.access",
   },
   // Reports

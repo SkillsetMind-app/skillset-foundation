@@ -22,7 +22,7 @@ export default function PromiseChangelogPage() {
 
         <div className="mt-8 rounded-[14px] border border-[var(--color-line)] bg-white p-5">
           <p className="text-sm font-bold text-[var(--color-ink)]">
-            2026-07-05 — Promise 05 replaced: &ldquo;Funds protection by
+            2026-07-24 — Promise 05 replaced: &ldquo;Funds protection by
             contract&rdquo; became &ldquo;We never hold your money&rdquo;
           </p>
           <div className="mt-4 grid gap-2 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -30,7 +30,7 @@ export default function PromiseChangelogPage() {
               What changed: course payments moved to Stripe direct charges. The
               buyer is now charged on the educator&apos;s own Stripe account, the
               educator is the merchant of record, and SkillsetMind takes its
-              platform fee at the moment of the charge. The previous 7-day
+              platform fee at the moment of the charge. The previous 30-day
               platform clearing period was removed, because SkillsetMind no
               longer receives or holds sale proceeds at all. Affiliate and
               co-producer revenue splits were removed with it: a platform that
@@ -41,9 +41,9 @@ export default function PromiseChangelogPage() {
               not holding them. Removing custody removes the failure mode the
               old promise was written to cover.
             </p>
-            <p>Effective from: July 5, 2026 for new creators.</p>
+            <p>Effective from: July 24, 2026 for new creators.</p>
             <p>
-              Effective for existing creators: July 5, 2026. The 90-day notice
+              Effective for existing creators: July 24, 2026. The 90-day notice
               period did not apply, because the change took effect while no
               creator was selling under the previous promise, and because it
               removed a platform hold rather than adding one.

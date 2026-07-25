@@ -840,8 +840,9 @@ async function handleChargeRefunded(
 }
 
 // --- card disputes (chargebacks) --------------------------------------------
-// A dispute debits the platform immediately. Without this the release cron would
-// still pay the teacher for money the platform no longer holds — a fraud vector.
+// Under direct charges a dispute debits the TEACHER's own Stripe balance —
+// the platform never held the funds. These handlers only record the contested
+// state on the earnings ledger so creator reports stay truthful.
 async function resolveLedgerForDispute(
   admin: Admin,
   dispute: Stripe.Dispute,
