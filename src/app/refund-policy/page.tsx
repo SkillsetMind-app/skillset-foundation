@@ -33,8 +33,10 @@ export default function RefundPolicyPage() {
       intro={
         <>
           <p>
-            SkillsetMind sells access to online courses created by independent
-            educators. Because courses are digital products delivered instantly,
+            SkillsetMind is the marketplace and checkout for online courses
+            sold by independent educators; the educator who published a course
+            is its seller and merchant of record. Because courses are digital
+            products delivered instantly,
             this policy explains when and how you can get your money back. It is
             part of our{" "}
             <Link
@@ -103,15 +105,26 @@ export default function RefundPolicyPage() {
             account billing page
           </Link>{" "}
           or by emailing <SupportLink /> with the course name and the email on
-          your account. We aim to review requests within a few business days.
+          your account. A request made from your billing page inside the{" "}
+          {refundWindowDays}-day window is submitted to Stripe without manual
+          review, as long as the purchase still meets the conditions in Section 1
+          and you have not already been refunded for the same course. Requests
+          sent by email, requests made after the window, and repeat requests for
+          a course that was already refunded are reviewed within a few business
+          days. How long a refunded amount then takes to reach your statement is
+          set by your bank and card issuer — see Section 5.
         </p>
       </LegalSection>
 
       <LegalSection heading="5. How refunds are paid">
         <p>
-          Approved refunds are returned through Stripe to the original payment
-          method used at checkout. Depending on your bank or card issuer, it can
-          take several business days for the amount to appear on your statement.
+          Approved refunds are created on the educator&apos;s Stripe account —
+          the account that took your payment — and returned through Stripe to
+          the original payment method used at checkout. The refunded amount is
+          debited from the educator, and the platform fee SkillsetMind charged
+          on that sale is returned to the educator with it. Depending on your
+          bank or card issuer, it can take several business days for the amount
+          to appear on your statement.
         </p>
       </LegalSection>
 

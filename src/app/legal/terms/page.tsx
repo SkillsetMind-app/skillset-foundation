@@ -163,9 +163,11 @@ export default function TermsPage() {
           <Link className="font-semibold text-[var(--color-accent-fg)]" href="/account">
             account billing page
           </Link>{" "}
-          or by contacting <SupportLink />. Refunds are returned through the
-          original payment method via Stripe. After the refund window, refunds
-          are granted at our discretion or where required by applicable
+          or by contacting <SupportLink />. A refund is created against the
+          educator&apos;s Stripe account and returned through your original
+          payment method; the refunded amount is debited from the educator, not
+          from SkillsetMind. After the refund window, a refund is granted at the
+          educator&apos;s discretion or ours, or where required by applicable
           consumer law, which may give you additional non-waivable rights
           depending on your country of residence.
         </p>

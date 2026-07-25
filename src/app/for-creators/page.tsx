@@ -8,7 +8,7 @@ const creatorTools = [
   "Course builder with modules, lessons, previews, pricing, and drip release.",
   "Protected student workspace with progress, files, and certificates.",
   "Course-linked community, events, and future notifications.",
-  "Stripe Connect onboarding, refund controls, and payout ledger.",
+  "Stripe Connect onboarding, refund controls, and a full earnings ledger — the record lives here, the money lives in your Stripe account.",
   "SkillsetMind review of every course, without blocking your launch.",
   "Shareable course links for simple launch campaigns.",
 ];
@@ -58,7 +58,9 @@ export default function ForCreatorsPage() {
           </div>
           <div className="sm:text-right">
             <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
-              Start free. Upgrade to drop commission to 5%, 3%, or 2%.
+              Buyers are charged on your own Stripe account — no platform hold
+              on your money. Start free; upgrade to drop commission to 5%, 3%,
+              or 2%.
             </p>
             <Link
               href="/pricing"

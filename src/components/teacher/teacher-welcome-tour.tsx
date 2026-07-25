@@ -46,7 +46,7 @@ function buildSteps(firstName: string): TourStep[] {
     {
       icon: Wallet,
       title: "Get paid — and get help",
-      body: "Connect payouts under Wallet to receive your earnings. And your studio advisor, down in the bottom-right corner, is here whenever you want a second opinion.",
+      body: "Connect Stripe once, and from then on every buyer pays your Stripe account directly: the money is in your own Stripe balance from the moment of the sale, and SkillsetMind never holds it. Stripe pays it out to your bank on your account's payout schedule (new accounts are verified before the first payout). And your studio advisor, down in the bottom-right corner, is here whenever you want a second opinion.",
     },
   ];
 }

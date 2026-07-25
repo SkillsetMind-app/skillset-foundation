@@ -3,9 +3,16 @@
  *
  * Four tiers. Every feature is available on every tier; the plan only
  * changes the commission rate SkillsetMind takes per paid sale and adds an
- * optional monthly subscription. Stripe processing fee is passed through
- * to the creator on every sale, regardless of plan (see DECISIONS.md D2
- * and src/domain/payment-split.ts).
+ * optional monthly subscription. Charges are Stripe DIRECT charges on the
+ * creator's own connected account: the creator is the merchant of record,
+ * Stripe bills them the processing fee, and SkillsetMind takes its commission
+ * as `application_fee_amount` at charge time. The platform never holds a
+ * balance for the creator, so there is no PLATFORM clearing period; Stripe
+ * still applies its own settlement and payout timing on the creator's
+ * connected account, which the platform does not control and cannot waive.
+ * (DECISIONS.md D2 and src/domain/payment-split.ts still describe the old
+ * separate-charges-and-transfers model and must be corrected — do not follow
+ * them.)
  *
  * If the user upgrades or downgrades, sales BEFORE the change keep the
  * commission rate from `plan_at_time_of_sale` (snapshot in the transactions
@@ -81,6 +88,7 @@ export const plans: ReadonlyArray<Plan> = [
       "Every SkillsetMind feature — no tier locks",
       "Publish and sell immediately",
       "Stripe checkout in 30+ currencies",
+      "Buyers pay your own Stripe account — no platform hold on your money",
       "SkillsetMind Verified certificates",
       "Course communities and live sessions",
     ],

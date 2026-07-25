@@ -95,12 +95,18 @@ function getTimeline(order: Order) {
       detail: "Course access is open for this learner.",
       time: formatDate(order.updatedAt ?? order.createdAt),
     });
+    items.push({
+      label: "Funds in your Stripe balance",
+      detail:
+        "The buyer paid your Stripe account directly, so there was no SkillsetMind hold. Stripe pays it out to your bank on your account's payout schedule.",
+      time: formatDate(order.updatedAt ?? order.createdAt),
+    });
   }
 
   if (order.status === "refunded" || order.status === "partially_refunded") {
     items.push({
       label: "Refund recorded",
-      detail: "A full or partial refund was issued; refunded amounts are not paid out to you.",
+      detail: "A full or partial refund was issued. It was debited from your own Stripe balance, and the SkillsetMind fee on that sale was returned to you.",
       time: formatDate(order.updatedAt ?? order.createdAt),
     });
   }

@@ -22,7 +22,7 @@
     "mobileNavLabel": "Navegação no celular"
   },
   "footer": {
-    "tagline": "A plataforma de cursos para psicólogos, terapeutas e coaches de desenvolvimento pessoal. Especialistas verificados, repasses transparentes, certificados verificáveis.",
+    "tagline": "A plataforma de cursos para psicólogos, terapeutas e coaches de desenvolvimento pessoal. Especialistas verificados, sem retenção da plataforma sobre o seu dinheiro, certificados verificáveis.",
     "platform": "Plataforma",
     "creator": "Criador",
     "helpLegal": "Ajuda e jurídico",
@@ -38,7 +38,7 @@
     "termsOfService": "Termos de serviço",
     "privacyPolicy": "Política de privacidade",
     "refundPolicy": "Política de reembolsos",
-    "rightsLine": "Aprendizado focado em cursos, com repasses transparentes."
+    "rightsLine": "Aprendizado focado em cursos. Seu comprador paga direto na sua conta Stripe."
   },
   "auth": {
     "learnerAccess": "acesso do aluno",
@@ -77,11 +77,11 @@
         "teacher": {
           "eyebrow": "SkillsetMind para especialistas",
           "title": "Ensine ao mundo o que você sabe.",
-          "description": "Verifique seu perfil profissional, publique seu programa, venda em mais de 30 moedas e receba direto na sua conta. Sem precisar montar site.",
+          "description": "Verifique seu perfil profissional, publique seu programa, venda em mais de 30 moedas e receba direto na sua própria conta Stripe. Sem precisar montar site.",
           "point1Title": "Profissionais verificados",
           "point1Desc": "A elegibilidade profissional é verificada antes que um criador possa publicar.",
           "point2Title": "Receba em mais de 30 moedas",
-          "point2Desc": "Checkout global via Stripe, repasse direto pra sua conta.",
+          "point2Desc": "Checkout global via Stripe. A cobrança cai na sua própria conta Stripe.",
           "point3Title": "Certificados verificáveis",
           "point3Desc": "Cada conclusão gera um link público de verificação."
         },
@@ -250,7 +250,7 @@
       "eyebrow": "Para especialistas em psicologia e bem-estar",
       "title1": "Seu conhecimento muda vidas.",
       "title2": "Agora faça ele chegar a milhares.",
-      "sub": "Feito para psicólogos, terapeutas e coaches de desenvolvimento pessoal. Sem site pra montar, sem ferramenta pra configurar. A gente cuida do checkout, da sala de aula e dos seus repasses. Você ensina.",
+      "sub": "Feito para psicólogos, terapeutas e coaches de desenvolvimento pessoal. Sem site pra montar, sem ferramenta pra configurar. A gente cuida do checkout e da sala de aula — o comprador paga direto na sua conta Stripe, então a gente nunca segura um centavo seu. Você ensina.",
       "trust1Title": "Verificado",
       "trust1Desc": "Os profissionais são verificados antes de publicar, e os programas ativos são monitorados para conformidade.",
       "trust2Title": "Global",
@@ -292,7 +292,7 @@
       "c4Title": "Checkout multimoeda",
       "c4Desc": "Venda em mais de 30 moedas. O aluno paga na moeda dele no checkout.",
       "c5Title": "Seu comprador paga direto pra você",
-      "c5Desc": "A cobrança cai na sua própria conta Stripe. A gente nunca segura o seu dinheiro — a Stripe repassa no seu calendário. Extrato completo, trilha de auditoria completa.",
+      "c5Desc": "A cobrança cai na sua própria conta Stripe, não na nossa. Sem retenção da plataforma, sem período de compensação da plataforma — a Stripe paga no calendário da sua própria conta, não no nosso. Extrato completo, trilha de auditoria completa.",
       "c6Title": "Certificados verificáveis",
       "c6Desc": "Um link público que qualquer um confere em segundos. Prova de que seus alunos fizeram o trabalho."
     },
@@ -307,7 +307,7 @@
       "clause2": "Mesmos recursos em todos os planos",
       "clause3": "Portabilidade de dados em um clique",
       "clause4": "Cancelamento em um clique",
-      "clause5": "Proteção de fundos por contrato",
+      "clause5": "A gente nunca segura o seu dinheiro",
       "clause6": "SLA de suporte humano",
       "ratified": "Ratificado · público e por escrito",
       "sealed": "Selado",
@@ -407,8 +407,8 @@
       "resendVerification": "Reenviar verificação",
       "acceptTerms": "Aceite os Termos do Professor para publicar cursos.",
       "acceptTermsCta": "Aceitar termos",
-      "connectPayouts": "Conecte os repasses antes de vender cursos pagos. Cursos gratuitos e rascunhos ainda não precisam disso.",
-      "connectPayoutsCta": "Conectar repasses"
+      "connectPayouts": "Conecte sua conta Stripe antes de vender cursos pagos — a cobrança cai direto nela. Cursos gratuitos e rascunhos ainda não precisam disso.",
+      "connectPayoutsCta": "Conectar Stripe"
     },
     "help": {
       "needHelp": "Precisa de ajuda?",
@@ -549,7 +549,7 @@
       "startLearning": "Começar a estudar"
     },
     "refund": {
-      "confirm": "Solicitar reembolso deste curso? Reembolsos estão disponíveis em até 7 dias após a compra se menos da metade do curso foi concluída. Se aprovado, seu acesso ao curso termina assim que o reembolso for processado.",
+      "confirm": "Solicitar reembolso deste curso? Reembolsos estão disponíveis em até 7 dias após a compra se menos da metade do curso foi concluída. O reembolso sai da conta Stripe do educador — a mesma conta que fez a cobrança — e volta para a sua forma de pagamento original. Se aprovado, seu acesso ao curso termina assim que o reembolso for processado.",
       "error": "Não foi possível enviar esta solicitação de reembolso. Ela pode estar fora da janela de 7 dias — fale com o suporte se achar que isso é um engano.",
       "requesting": "Solicitando reembolso...",
       "requested": "Reembolso solicitado",
@@ -564,24 +564,7 @@
     },
     "dashboard": {
       "welcomeBackNamed": "Que bom te ver de novo, {name}.",
-      "welcomeBack": "Que bom te ver de novo.",
-      "summaryPrefix": "Você tem",
-      "summaryJoin": "e",
-      "summaryPayoutLead": ". Seu próximo repasse:",
-      "publishedSingular": "{count} curso publicado",
-      "publishedPlural": "{count} cursos publicados",
-      "draftSingular": "{count} rascunho",
-      "draftPlural": "{count} rascunhos",
-      "payoutFirstOrder": "programado para depois da sua primeira venda paga",
-      "nextPayout": "Próximo repasse",
-      "payoutLoadingAria": "Próximo repasse carregando — abrir configurações de repasse",
-      "payoutAria": "Próximo repasse {amount} — abrir configurações de repasse",
-      "connectStripeAria": "Conecte o Stripe para habilitar repasses",
-      "netAfterFees": "Líquido após taxas",
-      "connectStripe": "Conecte o Stripe para habilitar",
-      "publicProfile": "Perfil público",
-      "storefront": "Vitrine",
-      "newCourse": "Novo curso"
+      "welcomeBack": "Que bom te ver de novo."
     },
     "metrics": {
       "revenue30d": "Receita, 30 dias",
@@ -609,7 +592,7 @@
       "rangeGroupLabel": "Período da receita",
       "chartAria": "Gráfico de receita do professor",
       "noRevenue": "Nenhuma receita ainda",
-      "noRevenueDetail": "Crie, envie o conteúdo, faça o preview, conecte os repasses e publique.",
+      "noRevenueDetail": "Crie, envie o conteúdo, faça o preview, conecte o Stripe e publique.",
       "topCourses": "Cursos em destaque",
       "allCourses": "Todos os cursos",
       "courseMeta": "{lessons} aulas - {orders} pedidos",
@@ -618,8 +601,8 @@
       "activityEyebrow": "Atividade",
       "activityTitle": "O que precisa da sua atenção hoje.",
       "open": "Abrir",
-      "actPayoutTitle": "Concluir configuração de repasses",
-      "actPayoutDetail": "Conecte o Stripe para vender cursos pagos e liberar os repasses de criador.",
+      "actPayoutTitle": "Concluir a configuração do Stripe",
+      "actPayoutDetail": "Conecte o Stripe para vender cursos pagos — a cobrança cai direto na sua própria conta Stripe.",
       "actChangesTitle": "Revisar ajustes solicitados",
       "actChangesDetail": "{title} precisa de ajustes antes de poder ser publicado.",
       "actEmptyDraftTitle": "Adicione aulas ao seu rascunho",

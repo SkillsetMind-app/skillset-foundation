@@ -10,7 +10,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 export const metadata = buildPageMetadata({
   title: "Pricing",
   description:
-    "Four plans. Free starts at 10% commission with no subscription. Starter drops it to 5%, Pro to 3%, Plus to 2%. Stripe's processing fee is shown separately so the math is never hidden.",
+    "Four plans. Free starts at 10% commission with no subscription. Starter drops it to 5%, Pro to 3%, Plus to 2%. Stripe's processing fee is shown separately so the math is never hidden, and buyers pay your own Stripe account directly — no platform hold, no platform clearing period.",
   path: "/pricing",
 });
 
@@ -23,7 +23,7 @@ export default function PricingPage() {
     <PublicPage
       eyebrow="Pricing"
       title="Pricing that lowers as you grow."
-      description="Every feature is included on every plan. The plan you pick only changes the commission SkillsetMind takes per paid sale. Stripe's processing fee is passed through to you transparently — never hidden inside the platform percentage."
+      description="Every feature is included on every plan. The plan you pick only changes the commission SkillsetMind takes per paid sale. Stripe's processing fee is passed through to you transparently — never hidden inside the platform percentage. And on every plan the buyer is charged on your own Stripe account: the sale lands in your balance, not ours, with no platform hold and nothing for us to release."
     >
       {/* Quick decision hint above the cards — answers the question every
           creator actually asks: 'which plan fits me?'. Break-even numbers
@@ -292,6 +292,8 @@ export default function PricingPage() {
         <p className="mt-4 text-xs text-[var(--color-ink-muted)]">
           International cards (non-USD) use Stripe&apos;s international rate of
           5.4% + $0.30 estimated instead of 2.9% + $0.30. Everything else is identical.
+          Both figures are Stripe&apos;s US pricing — your own rates are the ones
+          Stripe sets in the country your account is registered in.
         </p>
       </section>
 
@@ -313,8 +315,8 @@ export default function PricingPage() {
           </p>
           <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
             Buyers pay your Stripe account directly. We never hold your money, so
-            there is nothing for us to release: Stripe pays out to your bank on
-            your own account schedule.
+            there is nothing for us to release — Stripe pays out to your bank
+            from your own Stripe balance, on that account&apos;s payout schedule.
           </p>
         </article>
         <article className="rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-5">

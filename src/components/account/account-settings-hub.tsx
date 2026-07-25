@@ -250,7 +250,7 @@ function NotificationPreferencesPanel() {
         />
         <ToggleRow
           label="Billing and payout alerts"
-          description="Receipts, invoices, payout release, refund, and failed payment notices."
+          description="Receipts, invoices, earnings, refund, and failed payment notices."
           checked={prefs.billingAlerts}
           disabled={!loaded}
           onChange={() => toggle("billingAlerts")}

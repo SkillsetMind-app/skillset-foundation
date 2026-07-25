@@ -186,10 +186,16 @@ export default function TeacherTermsPage() {
           </li>
           <li>
             <strong className="text-[var(--color-ink)]">Payouts</strong> — paid
-            by Stripe from your own account balance to your bank, on your
-            account&apos;s payout schedule, with support for 30+ currencies.
-            There is no platform clearance period, because SkillsetMind holds
-            nothing. You must complete Stripe&apos;s identity verification to
+            by Stripe from your own account balance to your bank, with support
+            for 30+ currencies. The payout schedule is the one on your connected
+            Stripe account and is controlled by Stripe; SkillsetMind adds no
+            clearance period on top of it, because SkillsetMind holds nothing.
+            Stripe applies its own settlement and payout timing, which depends on
+            your country and payment method, and imposes a waiting period on a
+            new connected account&apos;s first payout — typically 7 to 14 days,
+            and up to 30 days in Brazil — that SkillsetMind cannot waive. The
+            absence of a SkillsetMind hold does not shorten Stripe&apos;s own
+            timeline. You must complete Stripe&apos;s identity verification to
             receive payouts.
           </li>
           <li>
@@ -233,9 +239,12 @@ export default function TeacherTermsPage() {
         <p>
           If a course is removed or you close your account, students who
           already bought it keep access to what they purchased (or receive a
-          refund handled per the refund policy), your Stripe balance is
-          unaffected by anything we do here (we never held it), and you may
-          export your content and student data beforehand.
+          refund handled per the refund policy), and you may export your content
+          and student data beforehand. SkillsetMind never receives or holds your
+          sale proceeds — they are paid into your own Stripe account — so there
+          is no SkillsetMind balance of yours to release. A refund we process on
+          your behalf under the refund policy is still debited from your Stripe
+          balance, as described in Section 7.
         </p>
       </LegalSection>
 

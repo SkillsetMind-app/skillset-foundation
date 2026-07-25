@@ -33,6 +33,17 @@ o valor que ja foi transferido ao professor.
 **Por quê:** simples, determinístico no checkout, erra a favor da plataforma em borda.
 
 ## D2 — Sem application_fee_amount
+> ⚠️ **SUPERSEDED pelo pivô de cobrança direta (2026-07-24)** — ver `docs/plans/2026-07-24-pivot-direct-charges.md` e D22 no fim deste arquivo.
+> O modelo hoje é **direct charges**: a cobrança acontece na conta conectada do professor,
+> ele é o **merchant of record**, e a comissão da plataforma é cobrada via
+> `application_fee_amount` no momento da cobrança. Não existe mais
+> `separate_charges_and_transfers`, não existe transfer da plataforma para o professor,
+> e não existe retenção da plataforma (`payoutClearDays` foi removido) — o prazo de
+> liquidação e de payout continua sendo o da Stripe, que não muda por nossa causa.
+> Reembolso e chargeback perdido saem do saldo Stripe do professor, com
+> `refund_application_fee: true` devolvendo a nossa taxa a ele. D19 (reversal de transfer
+> no refund) e D21 (hold de 30 dias) caem junto. Mantido abaixo por rastreabilidade.
+
 **Decisão:** manter `separate_charges_and_transfers`; taxa refletida reduzindo o transfer (`netAmountMinor`).
 **Alternativa descartada:** migrar para destination charges com `application_fee_amount`.
 **Por quê:** mudança de arquitetura de cobrança sem sua supervisão é arriscada. Funcionalmente equivalente para o resultado financeiro. Anotado para sua revisão.
@@ -199,3 +210,33 @@ nunca antecede uma cobrança ainda reembolsável, com folga para atraso de webho
 como SUPERSEDED ou corrigidos para 30 (DECISIONS D3/D16, roadmap, demo-readiness,
 HANDOFF, TEST_RESULTS, benchmark Cakto, comentário em `index.ts`). A UI já estava
 correta — a auditoria que alegava "UI diz 7 dias" estava desatualizada.
+
+# D22 - Pivô para direct charges: a plataforma sai do caminho do dinheiro (2026-07-24)
+**Decisão:** o Checkout Session é criado **na conta conectada do professor**
+(`{ stripeAccount: connectedAccountId }`) e a comissão da plataforma é cobrada com
+`application_fee_amount` no instante da cobrança. O professor é o **merchant of record**.
+A SkillsetMind nunca custodia, nunca repassa e nunca libera dinheiro de criador.
+**Alternativa descartada:** manter destination charges / `separate_charges_and_transfers`
+com transfer da plataforma para o professor (D2, D19, D21).
+**Por quê:** a custódia era o risco estrutural do produto — obrigava retenção
+(`payoutClearDays = 30`), transfer reversal no reembolso, e colocava a plataforma como
+parte financeira em toda disputa. Com direct charges o dinheiro nunca é nosso, então não
+há o que reter: `payoutClearDays` foi removido do código.
+**Consequências:**
+- Supersede D2, D19 e D21. D3 e D16 já eram históricos.
+- Reembolso é criado na conta conectada, com `refund_application_fee: true` — sai do saldo
+  Stripe do professor e devolve a nossa taxa a ele. Chargeback perdido idem.
+- O descritor que chega na fatura do comprador é o **do professor**, não o nosso (não
+  setamos `statement_descriptor`). Por isso as telas de compra, confirmação, recibos e
+  reembolso passaram a dizer explicitamente quem é o vendedor — sem isso o comprador não
+  reconhece a linha no extrato e abre disputa contra o professor.
+- Afiliados e coprodutores foram **removidos**, não adiados: uma plataforma que nunca toca
+  no dinheiro não tem como rateá-lo.
+**O que NÃO mudou (e a copy não pode alegar que mudou):** o prazo da Stripe. A liquidação
+(`available_on`) e o payout continuam sendo da Stripe — 2 dias úteis nos EUA, **30 dias
+corridos no Brasil para cartão doméstico** — mais o período de espera do primeiro payout.
+Nós zeramos a retenção **da plataforma**, e só isso. Nenhuma copy pode dizer "na hora",
+"imediato", "D+0", "sem período de compensação" (sem qualificar) nem alegar ser mais
+rápida que ninguém. Como criamos contas **Express**, também não podemos dizer que o
+professor "controla" o cronograma de payout — só que ele é **dele**, no dashboard dele.
+**Plano completo:** `docs/plans/2026-07-24-pivot-direct-charges.md`.

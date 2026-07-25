@@ -104,8 +104,8 @@ export default function PrivacyPage() {
           <li>
             <strong className="text-[var(--color-ink)]">Performing our contract with you</strong>{" "}
             — creating and securing your account, delivering courses you enroll
-            in, issuing certificates, processing purchases and refunds, paying
-            educators.
+            in, issuing certificates, routing purchases and refunds to the
+            educator&apos;s Stripe account, and recording educator earnings.
           </li>
           <li>
             <strong className="text-[var(--color-ink)]">Legitimate interests</strong>{" "}
@@ -137,8 +137,14 @@ export default function PrivacyPage() {
           <Link className="font-semibold text-[var(--color-accent-fg)]" href="/legal/teacher-terms">
             Teacher Terms
           </Link>
-          . Educators do not see your payment details or your activity in other
-          educators&apos; courses.
+          . When you buy a course, the educator is the merchant of record and the
+          payment is charged on their own Stripe account, so the transaction —
+          your name, email, the amount, currency, country, and the card brand
+          and last four digits — appears in that educator&apos;s Stripe
+          dashboard, where the educator is the controller of that record and
+          Stripe&apos;s terms and the educator&apos;s own privacy notice apply.
+          SkillsetMind never discloses your full card number to an educator, and
+          educators do not see your activity in other educators&apos; courses.
         </p>
       </LegalSection>
 
@@ -167,7 +173,11 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong className="text-[var(--color-ink)]">Stripe</strong> —
-            payment processing, refunds, and educator payouts (Stripe Connect).
+            payment processing and refunds (Stripe Connect). For educator
+            subscriptions Stripe processes on our behalf; for a course purchase
+            the charge is created on the educator&apos;s own connected account,
+            where the educator is the merchant of record and Stripe acts for
+            them. SkillsetMind does not receive or hold the purchase price.
           </li>
           <li>
             <strong className="text-[var(--color-ink)]">Vercel</strong> —

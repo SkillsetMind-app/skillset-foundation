@@ -304,7 +304,9 @@ function OverviewTab({
         )}
         <p className="mt-4 text-xs leading-6 text-[var(--color-ink-soft)]">
           All payments are processed by <strong>Stripe</strong>. Card details
-          are never stored on SkillsetMind.
+          are never stored on SkillsetMind. Course purchases are charged by the
+          educator&rsquo;s own Stripe account — your SkillsetMind subscription
+          is the only thing charged by us.
         </p>
       </div>
     </div>
@@ -446,6 +448,17 @@ function PurchasesTab({
       <p className="text-sm text-[var(--color-ink-soft)]">
         {orders.length} {orders.length === 1 ? "purchase" : "purchases"}
       </p>
+      {/* Direct charges: each course order was charged on the educator's own
+          connected account and we set no statement_descriptor override, so the
+          bank shows THEIR descriptor. Said here, where a learner reconciles a
+          statement line, it turns an unrecognised charge into a recognised one
+          instead of a chargeback against the educator's balance. */}
+      <p className="rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
+        Each course is sold by the educator who publishes it — SkillsetMind is
+        not the seller. Their Stripe account takes the payment, so the name on
+        your card statement is usually theirs. Where a receipt is available,
+        open it to see exactly who charged you.
+      </p>
       <ul className="grid gap-3">
         {orders.map((order) => (
           <li
@@ -560,9 +573,9 @@ function RefundModal({
             </h2>
             <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
               Your request for <strong>{order.courseTitle}</strong> was
-              submitted. Eligible refunds are processed back to your original
-              payment method, and the status here updates as soon as Stripe
-              confirms it.
+              submitted. Eligible refunds are returned from the
+              educator&rsquo;s Stripe account to your original payment method,
+              and the status here updates as soon as Stripe confirms it.
             </p>
             <div className="mt-6 flex justify-end">
               <button
@@ -585,7 +598,10 @@ function RefundModal({
             <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
               Course purchases are refundable within the refund window if you
               have completed less than half the course and have not been issued
-              a certificate. Eligible requests are processed automatically.
+              a certificate. Eligible requests are processed automatically: the
+              refund is issued from the educator&rsquo;s Stripe account — the
+              same account that charged you — straight back to your original
+              payment method.
             </p>
 
             <dl className="mt-4 grid gap-px overflow-hidden rounded-[10px] border fine-rule bg-[var(--color-line)]">

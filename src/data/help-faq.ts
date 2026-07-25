@@ -90,7 +90,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       {
         id: "payouts",
         q: "When do I receive my first payout?",
-        a: "Your buyers pay your own Stripe account directly — you are the merchant of record, and SkillsetMind never holds or remits your money. There is no platform clearing period: Stripe pays out from your balance to your bank on your account's own payout schedule, which you set in Stripe. Complete Stripe's identity verification and your first payout follows that schedule.",
+        a: "Your buyers pay your own Stripe account directly — you are the merchant of record, and SkillsetMind never holds or remits your money. There is no SkillsetMind clearing period, because we hold nothing. The timing is Stripe's: it pays out from your balance to your bank on the payout schedule of your connected account, and it applies its own settlement timing for your country and payment method. Stripe also holds a new connected account's first payout for a waiting period — typically 7 to 14 days, and up to 30 days in Brazil — that we cannot waive. Complete Stripe's identity verification and your first payout follows that schedule.",
       },
       {
         q: "How are creator payouts handled?",
@@ -104,7 +104,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
     items: [
       {
         q: "How are refunds handled?",
-        a: "Learners can request a refund within 7 days of purchase if they have completed less than half the course and have not received a certificate. The request is made directly from the order and processes automatically. Refunds appear in the creator wallet within minutes of being processed.",
+        a: "Learners can request a refund within 7 days of purchase if they have completed less than half the course and have not received a certificate. The request is made directly from the order and processes automatically. Because the creator is the merchant of record, the refund is created on the creator's own Stripe account and debited from their Stripe balance — and SkillsetMind's platform fee on that sale is returned to the creator with it. The reversal is recorded in the creator's earnings ledger within minutes so it can be reconciled against their Stripe dashboard; the money movement itself is Stripe's, on the creator's own account.",
       },
     ],
   },
@@ -125,7 +125,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       {
         id: "integrations",
         q: "What integrations does SkillsetMind support today?",
-        a: "SkillsetMind connects natively with Stripe for checkout, multi-currency payments, and creator payouts. Sign-in, media hosting, and file storage are built into the platform — nothing to set up. Need an integration you don't see yet? Contact support and we'll tell you where it sits on the roadmap.",
+        a: "SkillsetMind connects natively with Stripe Connect: checkout and multi-currency payments run on the creator's own connected Stripe account, and Stripe pays the creator out from that account. Sign-in, media hosting, and file storage are built into the platform — nothing to set up. Need an integration you don't see yet? Contact support and we'll tell you where it sits on the roadmap.",
       },
     ],
   },

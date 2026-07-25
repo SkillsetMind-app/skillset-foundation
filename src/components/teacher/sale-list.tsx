@@ -83,7 +83,8 @@ export function SaleList() {
         </h2>
         <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
           When a learner completes checkout for one of your courses, the order
-          appears here with its payment trail and payout status.
+          appears here with its full payment trail — and the money lands in your
+          own Stripe balance the moment it is paid.
         </p>
         <Link
           href="/teach/builder"
@@ -111,7 +112,7 @@ export function SaleList() {
           href="/account/payments"
           className="text-sm font-semibold text-[var(--color-primary)] hover:underline"
         >
-          Payout wallet &rarr;
+          Earnings &amp; Stripe setup &rarr;
         </Link>
       </div>
       <ul className="grid gap-3">

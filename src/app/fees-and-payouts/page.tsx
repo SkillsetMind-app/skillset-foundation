@@ -16,7 +16,7 @@ const policies = [
   ],
   [
     "Stripe processing fee",
-    "Charged by Stripe to your account on every sale: 2.9% + $0.30 for USD card payments, 5.4% + $0.30 estimated for non-USD. Never hidden inside the platform percentage.",
+    "Charged by Stripe to your account on every sale. US Stripe pricing is 2.9% + $0.30 for USD card payments and an estimated 5.4% + $0.30 for non-USD; your own rates are the ones Stripe sets in the country your account is registered in. Never hidden inside the platform percentage.",
   ],
   [
     "Refund window",
@@ -24,7 +24,7 @@ const policies = [
   ],
   [
     "Payout schedule",
-    "There is no platform clearance period, because there is nothing for us to clear. Stripe pays out to your bank on your account's own payout schedule, which you control in your Stripe dashboard.",
+    "There is no platform clearance period, because there is nothing for us to clear. The sale lands in your own Stripe balance, and Stripe pays it to your bank on your connected account's payout schedule — the one on your account, not one we impose. Stripe applies its usual verification delay before a brand-new account's first payout, and settlement timing depends on your country and payment method. Marketplaces that collect your sales into their own account have to clear that money before they release it; we never collect it, so there is nothing to release.",
   ],
   [
     "Payout account",
@@ -36,7 +36,7 @@ const policies = [
   ],
   [
     "Taxes",
-    "Stripe Tax can be enabled per market when international volume justifies activation. Creators see the breakdown per sale in the wallet ledger.",
+    "Stripe Tax can be enabled per market when international volume justifies activation. Creators see the breakdown per sale in their earnings ledger — a record of what Stripe charged and what you kept, not a balance we hold.",
   ],
   [
     "Disputes and chargebacks",
@@ -49,7 +49,7 @@ export default function FeesAndPayoutsPage() {
     <PublicPage
       eyebrow="Fees and payouts"
       title="Your buyers pay you. Directly."
-      description="SkillsetMind is not a middleman for your money. Learners charge your Stripe account, Stripe deducts our commission at the moment of the sale, and the rest is already yours — no platform balance, no holding period, no waiting for us to remit."
+      description="SkillsetMind is not a middleman for your money. Learners charge your Stripe account, Stripe deducts our commission at the moment of the sale, and the rest is already yours — no platform balance, no platform holding period, no waiting for us to remit."
     >
       <section className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {policies.map(([title, detail]) => (

@@ -25,11 +25,14 @@ export default function AboutPage() {
           </div>
           <p className="mt-6 text-sm leading-8 text-[var(--color-ink-soft)]">
             SkillsetMind is where professional educators publish courses and learners
-            earn SkillsetMind Verified certificates employers can check.
+            earn SkillsetMind Verified certificates employers can check. We built it so
+            the platform never sits on an educator&apos;s money: buyers are charged directly
+            on the educator&apos;s own Stripe account, which means there is no balance here
+            to hold and nothing for us to release.
           </p>
         </section>
         <section className="mt-10 grid gap-4 sm:grid-cols-3">
-          {["Professional programs", "Visible educators", "International learning network"].map((item) => (
+          {["Professional programs", "Visible educators", "Educators are paid directly"].map((item) => (
             <div key={item} className="rounded-[14px] border border-[var(--color-line)] bg-white p-5">
               <p className="text-sm font-semibold text-[var(--color-primary)]">{item}</p>
             </div>

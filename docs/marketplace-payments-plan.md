@@ -2,6 +2,18 @@
 
 Last updated: 2026-04-26
 
+> ⚠️ **SUPERSEDED (2026-07-24) by the direct-charges pivot — see `docs/plans/2026-07-24-pivot-direct-charges.md`.**
+> This document prescribes **destination charges**, where the payment is created on the
+> SkillsetMind platform account and funds are transferred out to the teacher. That is no
+> longer the model. The platform now uses **direct charges**: the buyer is charged on the
+> **teacher's** connected account, the teacher is the **merchant of record**, and SkillsetMind
+> takes its cut via `application_fee_amount` at charge time. The platform never holds a
+> balance for the teacher and adds no clearing period of its own — Stripe's own settlement
+> and payout timelines still apply and are unchanged by us. Refunds and lost disputes are
+> debited from the teacher's Stripe balance (with `refund_application_fee: true`).
+> The fee ladder below (8/4/1/0%) is also stale — the live ladder is Free 10% / Starter 5% /
+> Pro 3% / Plus 2% (`src/data/plans.ts`). Kept for history only; do not implement from it.
+
 ## Product Flow
 
 Public visitors browse the marketplace, filter courses, open a course detail page, and watch free preview lessons when the teacher chooses to expose them.

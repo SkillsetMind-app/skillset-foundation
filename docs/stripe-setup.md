@@ -63,7 +63,7 @@ Stay in test/sandbox mode first. Do not switch to production until the full webh
 7. Connect for teachers
    - Enable Connect when ready to onboard teachers for payouts.
    - Use connected accounts for teachers.
-   - Skillset should collect the platform fee and transfer the teacher share through Checkout destination charges.
+   - Skillset uses **direct charges**: create the Checkout Session on the teacher's connected account (`{ stripeAccount }`) and collect the platform fee with `application_fee_amount`. The teacher is the merchant of record; Skillset never transfers the teacher's share out of a platform balance and never holds it.
    - The teacher needs a connected account before paid course publication should be enabled.
 
 ## What Requires Firebase Next
@@ -132,5 +132,5 @@ NEXT_PUBLIC_PAYMENTS_CHECKOUT_ENABLED=true
 - Stripe Checkout Sessions: https://docs.stripe.com/api/checkout/sessions
 - Stripe dashboard-managed payment methods: https://docs.stripe.com/payments/dashboard-payment-methods
 - Stripe webhook configuration: https://docs.stripe.com/webhooks/configure
-- Stripe Connect destination charges: https://docs.stripe.com/connect/destination-charges
+- Stripe Connect direct charges: https://docs.stripe.com/connect/direct-charges
 - Stripe go-live checklist: https://docs.stripe.com/get-started/checklist/go-live

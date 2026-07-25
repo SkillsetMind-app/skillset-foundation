@@ -24,7 +24,7 @@ const steps: ReadonlyArray<Step> = [
   {
     title: "Enroll",
     detail:
-      "Multi-currency checkout. Access activates only after the payment confirms.",
+      "Multi-currency checkout, charged straight to the creator's own Stripe account — SkillsetMind is never in the middle of the money. Access activates only after the payment confirms.",
     Icon: Wallet,
   },
   {

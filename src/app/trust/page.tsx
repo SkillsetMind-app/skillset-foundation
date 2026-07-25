@@ -14,7 +14,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 export const metadata = buildPageMetadata({
   title: "Trust and safety",
   description:
-    "SkillsetMind is built around controlled course publication, protected student access, transparent payments, moderation, and verifiable learning outcomes.",
+    "SkillsetMind is built around controlled course publication, protected student access, course payments that go straight to the creator's own Stripe account, moderation, and verifiable learning outcomes.",
   path: "/trust",
 });
 
@@ -51,8 +51,8 @@ const trustLayers: ReadonlyArray<TrustLayer> = [
     Icon: Award,
   },
   {
-    title: "Audit-ready payments",
-    detail: "Orders, payments, refunds, and creator earnings are tracked as distinct records — and the charge itself is made directly on the creator's own Stripe account.",
+    title: "No platform hold on creator money",
+    detail: "Buyers are charged on the creator's own Stripe account, so SkillsetMind never holds or remits creator money and there is no platform clearing period — Stripe pays out from that balance on the connected account's payout schedule. Orders, payments, refunds, and earnings stay tracked as distinct records.",
     Icon: Receipt,
   },
 ];
@@ -62,7 +62,7 @@ export default function TrustPage() {
     <PublicPage
       eyebrow="Trust and safety"
       title="A marketplace needs rules before scale."
-      description="SkillsetMind is built around controlled course publication, protected student access, transparent payments, moderation, and verifiable learning outcomes."
+      description="SkillsetMind is built around controlled course publication, protected student access, course payments that go straight to the creator's own Stripe account, moderation, and verifiable learning outcomes."
     >
       <section className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {trustLayers.map((layer) => {
