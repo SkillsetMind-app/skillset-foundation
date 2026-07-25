@@ -58,14 +58,6 @@ export async function upsertCourseCommerceSettings(
   const supabase = getSupabaseBrowserClient();
   const { error } = await supabase.rpc("upsert_course_commerce_settings", {
     p_course_id: input.courseId,
-    // Affiliates died with the pivot to direct charges (the platform never
-    // holds the money, so it cannot split it). These params are pinned OFF
-    // because the live RPC still declares them as required; the cleanup
-    // migration that drops them is 20260724000100_drop_affiliate_coproducer.sql,
-    // which is intentionally NOT auto-applied to production.
-    p_affiliate_enabled: false,
-    p_affiliate_commission_pct: 0,
-    p_affiliate_approval: "manual",
     p_tax_collection: input.taxCollection,
     p_tax_regions: input.taxRegions,
     p_tax_registration_id: input.taxRegistrationId?.trim() || undefined,

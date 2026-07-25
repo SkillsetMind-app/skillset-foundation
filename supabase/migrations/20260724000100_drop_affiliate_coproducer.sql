@@ -7,20 +7,25 @@
 -- not "disabled features" — they are structurally impossible and the schema
 -- that promised them is a lie in the database.
 --
--- NOT APPLIED AUTOMATICALLY. This migration is DESTRUCTIVE (drops a table and
--- three columns). Before running it against production:
---   1. select count(*) from public.course_coproducers;
---   2. select count(*) from public.course_commerce_settings where affiliate_enabled;
--- If either is non-zero, export those rows first — every affiliate and
--- co-producer relationship must be settled outside the platform, because after
--- the pivot there is no platform balance from which to pay them.
+-- APPLIED to project ijtikldtjvsbtwszokvs on 2026-07-24, after verifying it was
+-- a no-op there: course_coproducers did not exist, course_commerce_settings had
+-- no affiliate columns, upsert_course_commerce_settings was already the 4-arg
+-- tax-only signature (byte-identical body), and orders / payout_ledger were both
+-- empty. Net effect on that project was the payout_ledger comment at the bottom.
 --
--- The application code already works against BOTH schemas: it pins
--- p_affiliate_enabled=false / p_affiliate_commission_pct=0 /
--- p_affiliate_approval='manual' when calling the current 7-argument RPC
--- (see src/lib/data/course-commerce.ts). After this migration runs, remove
--- those three pinned params from that call site — the 4-argument signature
--- below will reject them.
+-- Kept idempotent because a fresh environment built from the local migration
+-- history (20260710_course_commerce_operations.sql) DOES create the affiliate
+-- columns, the co-producer table, and the 7-arg RPC. This migration is what
+-- converges such an environment onto the post-pivot schema, so every DROP below
+-- is guarded and safe to re-run.
+--
+-- If you ever apply this to an environment with data, check first:
+--   select count(*) from public.course_coproducers;
+--   select count(*) from public.course_commerce_settings where affiliate_enabled;
+-- Non-zero means people were promised a revenue split the platform can no longer
+-- honour — after the pivot there is no platform balance to pay them from, so
+-- those relationships must be settled outside the platform before the schema
+-- that records them disappears.
 
 -- 1) RPCs that only exist to split money.
 drop function if exists public.invite_course_coproducer(text, text, integer);

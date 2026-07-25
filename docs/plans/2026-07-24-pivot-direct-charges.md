@@ -12,28 +12,46 @@
 | Fase | Status | Commit |
 |---|---|---|
 | 1 — Núcleo financeiro (backend) | ✅ feito | `3f23fcd` |
-| 2 — Banco | ⚠️ **migração escrita, NÃO aplicada** | `eb0ec66` |
+| 2 — Banco | ✅ **aplicada** em `ijtikldtjvsbtwszokvs` | `eb0ec66` |
 | 3 — Frontend | ✅ feito | `b83165a` |
 | 4 — Copy pública e legal | ✅ feito | `eb0ec66` + `056b849` |
-| 5 — Verificação | ✅ typecheck + lint limpos, 61 suítes / 298 testes verdes | — |
+| 5 — Verificação | ✅ typecheck + lint limpos, 61 suítes / 300 testes verdes | — |
 
-**Fase 2 é a única pendência, e é deliberada.** A migração
-`supabase/migrations/20260724000100_drop_affiliate_coproducer.sql` está escrita mas **não
-foi rodada em produção** — ela é destrutiva (dropa `course_coproducers` e três colunas) e
-a regra vigente é READ-ONLY no Supabase LIVE sem o "ok" explícito do fundador.
+### Fase 2 — o que o banco real revelou
 
-Enquanto ela não roda, a aplicação continua funcionando contra o schema atual: o data layer
-fixa `p_affiliate_enabled=false / p_affiliate_commission_pct=0 / p_affiliate_approval='manual'`
-na RPC de 7 argumentos (`src/lib/data/course-commerce.ts`). Ninguém consegue ligar afiliado
-pela interface — a superfície foi removida.
+O pré-voo mostrou que **produção já estava na forma pós-pivô**, e que o repositório é que
+estava fora de sincronia com ela:
 
-**Antes de aplicar, o fundador precisa:**
-1. `select count(*) from public.course_coproducers;`
-2. `select count(*) from public.course_commerce_settings where affiliate_enabled;`
-3. Se algum for > 0, exportar as linhas e **acertar essas pessoas por fora** — depois do
-   pivô não existe saldo de plataforma de onde pagá-las.
-4. Rodar a migração; depois remover os três parâmetros fixados no data layer e regenerar
-   `database.types.ts` (item 8 do plano, que depende da migração ter rodado).
+| Checagem | Esperado pelo plano | Encontrado em produção |
+|---|---|---|
+| `course_coproducers` | tabela com linhas a migrar | **não existe** |
+| colunas `affiliate_*` em `course_commerce_settings` | 3 colunas | **nenhuma** — a tabela já era só imposto |
+| `upsert_course_commerce_settings` | 7 argumentos | **4 argumentos**, corpo byte-a-byte igual ao da migração |
+| `payout_ledger` | linhas retidas a acertar | **0 linhas** |
+| `orders` | vendas a reconciliar | **0 pedidos** — a plataforma nunca vendeu |
+
+Efeito líquido da migração em produção: **o comentário na `payout_ledger`**. Ela foi mantida
+no repositório porque um ambiente novo, construído a partir de
+`20260710_course_commerce_operations.sql`, **cria** o schema de afiliado — é esta migração que
+converge esse ambiente para cá. Todo `drop` é guardado e re-executável.
+
+### Bug de produção encontrado no caminho
+
+O data layer chamava a RPC com **7 parâmetros nomeados** contra uma função que em produção
+só aceita **4**. PostgREST resolve RPC por nome de argumento: os três `p_affiliate_*`
+inexistentes faziam a chamada falhar com `PGRST202` (função não encontrada no schema cache).
+
+**Salvar configuração de imposto num curso estava quebrado em produção.** Corrigido em
+`src/lib/data/course-commerce.ts` (parâmetros fixados removidos) e `database.types.ts`
+alinhado à mão com o schema real — os tipos gerados ainda declaravam `course_coproducers`,
+as colunas de afiliado e a assinatura de 7 argumentos.
+
+### Sobra no banco, ainda não tratado
+
+`claim_payout_transfer_reversal` e `complete_payout_transfer_reversal` continuam em produção.
+São funções do modelo antigo — sob cobrança direta não existe transfer para reverter. Estão
+mortas, não quebram nada, e sair dropando função de dinheiro sem necessidade é risco à toa.
+Ficam para uma limpeza deliberada.
 
 ---
 
