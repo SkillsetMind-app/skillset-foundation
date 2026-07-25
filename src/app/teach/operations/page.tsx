@@ -8,7 +8,7 @@ export default function TeacherOperationsPage() {
       <PlatformShell
         eyebrow="Teacher Studio"
         title="Operations."
-        description="Sales, recurring revenue, wallet release, and growth tools in one place."
+        description="Sales, recurring revenue, earnings, and growth tools in one place."
       >
         <CreatorOpsHub />
       </PlatformShell>

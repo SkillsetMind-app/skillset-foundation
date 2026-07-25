@@ -12,7 +12,7 @@ export default function TeacherReportsPage() {
       <PlatformShell
         eyebrow="Teacher Studio"
         title="Reports."
-        description="Sales, recurring revenue, and recorded earnings at a glance. The money itself is already in your own Stripe balance — SkillsetMind never holds it."
+        description="Sales, recurring revenue, and recorded earnings at a glance. Every charge was created on your own Stripe account — SkillsetMind never holds it. Stripe's own settlement and payout timing then applies."
       >
         <CreatorOpsHub />
       </PlatformShell>

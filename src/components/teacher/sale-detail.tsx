@@ -96,9 +96,9 @@ function getTimeline(order: Order) {
       time: formatDate(order.updatedAt ?? order.createdAt),
     });
     items.push({
-      label: "Funds in your Stripe balance",
+      label: "Charge created on your Stripe account",
       detail:
-        "The buyer paid your Stripe account directly, so there was no SkillsetMind hold. Stripe pays it out to your bank on your account's payout schedule.",
+        "The buyer paid your Stripe account directly, so there was no SkillsetMind hold. Stripe settles the charge into your available balance on its own timeline — that depends on your country and the payment method used — then pays it out to your bank on your connected account's payout schedule. A brand-new account also waits on Stripe's verification before its first payout.",
       time: formatDate(order.updatedAt ?? order.createdAt),
     });
   }

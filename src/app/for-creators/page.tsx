@@ -9,7 +9,7 @@ const creatorTools = [
   "Protected student workspace with progress, files, and certificates.",
   "Course-linked community, events, and future notifications.",
   "Stripe Connect onboarding, refund controls, and a full earnings ledger — the record lives here, the money lives in your Stripe account.",
-  "SkillsetMind review of every course, without blocking your launch.",
+  "Professional verification up front, then automated compliance checks that never block your launch.",
   "Shareable course links for simple launch campaigns.",
 ];
 

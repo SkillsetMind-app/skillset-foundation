@@ -305,8 +305,9 @@ export default function PricingPage() {
           </p>
           <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
             Learners can self-refund within {refundWindowDays} days of purchase
-            if they&apos;ve completed less than half the course. A refund reverses
-            the sale automatically, SkillsetMind&apos;s commission included.
+            if they&apos;ve completed less than half the course and no certificate
+            has been issued — once per course. A refund reverses the sale
+            automatically, SkillsetMind&apos;s commission included.
           </p>
         </article>
         <article className="rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-5">
@@ -315,8 +316,10 @@ export default function PricingPage() {
           </p>
           <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
             Buyers pay your Stripe account directly. We never hold your money, so
-            there is nothing for us to release — Stripe pays out to your bank
-            from your own Stripe balance, on that account&apos;s payout schedule.
+            there is nothing for us to release — Stripe settles and pays out to
+            your bank from your own Stripe balance on its own timing, which
+            depends on your country and the payment method. A brand-new account
+            waits on Stripe&apos;s verification before its first payout.
           </p>
         </article>
         <article className="rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-5">

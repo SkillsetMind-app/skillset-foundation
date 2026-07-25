@@ -35,11 +35,11 @@ export default function AccountPlansPage() {
             />
             <PolicyCard
               title="Refund window"
-              detail={`Learners can refund a purchase within ${refundWindowDays} days if they've completed less than half the course.`}
+              detail={`Learners can refund a purchase within ${refundWindowDays} days if they've completed less than half the course and no certificate has been issued — once per course.`}
             />
             <PolicyCard
               title="Payouts"
-              detail="Buyers pay your Stripe account directly. There is no platform hold — Stripe pays out to your bank on your own account schedule."
+              detail="Buyers pay your Stripe account directly. There is no platform hold — Stripe then settles and pays out to your bank on its own timing, which depends on your country and the payment method."
             />
           </div>
         </section>

@@ -77,10 +77,10 @@
         "teacher": {
           "eyebrow": "SkillsetMind para expertos",
           "title": "Enséñale al mundo lo que sabes.",
-          "description": "Verifica tu perfil profesional, publica tu programa, vende en más de 30 monedas y recibe los pagos directo en tu propia cuenta de Stripe. Sin montar un sitio web.",
+          "description": "Verifica tu perfil profesional, publica tu programa, vende en 30 monedas y haz que el comprador pague directo en tu propia cuenta de Stripe. Sin montar un sitio web.",
           "point1Title": "Profesionales verificados",
           "point1Desc": "La elegibilidad profesional se verifica antes de que un creador pueda publicar.",
-          "point2Title": "Cobra en más de 30 monedas",
+          "point2Title": "Vende en 30 monedas",
           "point2Desc": "Checkout global vía Stripe. El cobro entra en tu propia cuenta de Stripe.",
           "point3Title": "Certificados verificables",
           "point3Desc": "Cada curso completado genera un enlace público de verificación."
@@ -92,7 +92,7 @@
           "point1Title": "Expertos verificados",
           "point1Desc": "La elegibilidad profesional se comprueba antes de que un creador pueda publicar.",
           "point2Title": "Paga en tu moneda",
-          "point2Desc": "Checkout vía Stripe en más de 30 monedas.",
+          "point2Desc": "Checkout vía Stripe en 30 monedas.",
           "point3Title": "Certificados verificables",
           "point3Desc": "Termina un curso y obtén un enlace público de verificación."
         }
@@ -254,7 +254,7 @@
       "trust1Title": "Verificado",
       "trust1Desc": "Los profesionales se verifican antes de publicar y los programas activos se supervisan para garantizar el cumplimiento.",
       "trust2Title": "Global",
-      "trust2Desc": "Checkout en más de 30 monedas vía Stripe.",
+      "trust2Desc": "Checkout en 30 monedas vía Stripe.",
       "trust3Title": "Verificable",
       "trust3Desc": "Cada certificado tiene un enlace público de verificación.",
       "ctaDashboard": "Ir a tu panel",
@@ -270,7 +270,7 @@
       "step2Title": "Crea y publica",
       "step2Desc": "Arma tus módulos y lecciones en Course Builder. Define el precio, completa las verificaciones de lanzamiento y publica cuando esté listo.",
       "step3Title": "Llega a gente en cualquier lugar",
-      "step3Desc": "Cuando tu verificación profesional y las comprobaciones de lanzamiento estén completas, el curso sale al aire al publicarlo. El monitoreo de cumplimiento continúa sin frenar las inscripciones. Cobra en más de 30 monedas, directo en tu cuenta de Stripe, sin retención de la plataforma."
+      "step3Desc": "Cuando tu verificación profesional y las comprobaciones de lanzamiento estén completas, el curso sale al aire al publicarlo. El monitoreo de cumplimiento continúa sin frenar las inscripciones. Vende en 30 monedas, con cada comprador cobrado en tu propia cuenta de Stripe, sin retención de la plataforma."
     },
     "marketplace": {
       "kicker": "El marketplace",
@@ -290,9 +290,9 @@
       "c3Title": "Comunidad privada del programa",
       "c3Desc": "Cada curso de pago tiene un espacio privado con posts, respuestas y likes. La comunidad sigue conversando después de la lección.",
       "c4Title": "Checkout multimoneda",
-      "c4Desc": "Vende en más de 30 monedas. El alumno paga en su propia moneda.",
+      "c4Desc": "Vende en 30 monedas. El alumno paga en su propia moneda.",
       "c5Title": "Tus compradores te pagan directo",
-      "c5Desc": "El cobro entra en tu propia cuenta de Stripe, no en la nuestra. Sin retención de la plataforma, sin período de compensación de la plataforma: Stripe paga según el calendario de tu propia cuenta, no del nuestro. Libro mayor completo, auditoría completa.",
+      "c5Desc": "El cobro entra en tu propia cuenta de Stripe, no en la nuestra. Sin retención de la plataforma, sin período de compensación de la plataforma: de ahí en adelante Stripe liquida y paga según sus propios tiempos, que dependen de tu país y del método de pago. Libro mayor completo, auditoría completa.",
       "c6Title": "Certificados verificables",
       "c6Desc": "Un enlace público que cualquiera verifica en segundos. Prueba de que tus alumnos hicieron el trabajo."
     },
@@ -568,7 +568,7 @@
     },
     "metrics": {
       "revenue30d": "Ingresos, 30 días",
-      "revenueHintPaid": "Volumen de pagos completados",
+      "revenueHintPaid": "Volumen de checkouts pagados",
       "revenueHintEmpty": "Disponible tras la primera venta",
       "newStudents": "Nuevos estudiantes",
       "newStudentsHintPaid": "Inscripciones pagadas",

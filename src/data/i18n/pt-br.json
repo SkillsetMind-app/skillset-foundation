@@ -77,10 +77,10 @@
         "teacher": {
           "eyebrow": "SkillsetMind para especialistas",
           "title": "Ensine ao mundo o que você sabe.",
-          "description": "Verifique seu perfil profissional, publique seu programa, venda em mais de 30 moedas e receba direto na sua própria conta Stripe. Sem precisar montar site.",
+          "description": "Verifique seu perfil profissional, publique seu programa, venda em 30 moedas e tenha o comprador cobrado direto na sua própria conta Stripe. Sem precisar montar site.",
           "point1Title": "Profissionais verificados",
           "point1Desc": "A elegibilidade profissional é verificada antes que um criador possa publicar.",
-          "point2Title": "Receba em mais de 30 moedas",
+          "point2Title": "Venda em 30 moedas",
           "point2Desc": "Checkout global via Stripe. A cobrança cai na sua própria conta Stripe.",
           "point3Title": "Certificados verificáveis",
           "point3Desc": "Cada conclusão gera um link público de verificação."
@@ -92,7 +92,7 @@
           "point1Title": "Especialistas verificados",
           "point1Desc": "A elegibilidade profissional é conferida antes que um criador possa publicar.",
           "point2Title": "Pague na sua moeda",
-          "point2Desc": "Checkout via Stripe em mais de 30 moedas.",
+          "point2Desc": "Checkout via Stripe em 30 moedas.",
           "point3Title": "Certificados verificáveis",
           "point3Desc": "Concluiu o curso, ganhou um link público de verificação."
         }
@@ -254,7 +254,7 @@
       "trust1Title": "Verificado",
       "trust1Desc": "Os profissionais são verificados antes de publicar, e os programas ativos são monitorados para conformidade.",
       "trust2Title": "Global",
-      "trust2Desc": "Checkout em mais de 30 moedas via Stripe.",
+      "trust2Desc": "Checkout em 30 moedas via Stripe.",
       "trust3Title": "Verificável",
       "trust3Desc": "Todo certificado tem um link público de verificação.",
       "ctaDashboard": "Ir para o seu painel",
@@ -270,7 +270,7 @@
       "step2Title": "Crie e publique",
       "step2Desc": "Monte seus módulos e aulas no Course Builder. Defina o preço, conclua as verificações de lançamento e publique quando estiver pronto.",
       "step3Title": "Alcance gente em qualquer lugar",
-      "step3Desc": "Quando sua verificação profissional e as checagens de lançamento estiverem concluídas, o curso entra no ar ao ser publicado. O monitoramento de conformidade continua sem atrasar matrículas. Receba em mais de 30 moedas, direto na sua conta Stripe, sem retenção da plataforma."
+      "step3Desc": "Quando sua verificação profissional e as checagens de lançamento estiverem concluídas, o curso entra no ar ao ser publicado. O monitoramento de conformidade continua sem atrasar matrículas. Venda em 30 moedas, com cada comprador cobrado na sua própria conta Stripe, sem retenção da plataforma."
     },
     "marketplace": {
       "kicker": "O marketplace",
@@ -290,9 +290,9 @@
       "c3Title": "Comunidade privada do programa",
       "c3Desc": "Todo curso pago ganha um espaço privado com posts, respostas e curtidas. A turma continua conversando depois da aula.",
       "c4Title": "Checkout multimoeda",
-      "c4Desc": "Venda em mais de 30 moedas. O aluno paga na moeda dele no checkout.",
+      "c4Desc": "Venda em 30 moedas. O aluno paga na moeda dele no checkout.",
       "c5Title": "Seu comprador paga direto pra você",
-      "c5Desc": "A cobrança cai na sua própria conta Stripe, não na nossa. Sem retenção da plataforma, sem período de compensação da plataforma — a Stripe paga no calendário da sua própria conta, não no nosso. Extrato completo, trilha de auditoria completa.",
+      "c5Desc": "A cobrança cai na sua própria conta Stripe, não na nossa. Sem retenção da plataforma, sem período de compensação da plataforma — dali em diante a Stripe compensa e paga no ritmo dela, que depende do seu país e do meio de pagamento. Extrato completo, trilha de auditoria completa.",
       "c6Title": "Certificados verificáveis",
       "c6Desc": "Um link público que qualquer um confere em segundos. Prova de que seus alunos fizeram o trabalho."
     },

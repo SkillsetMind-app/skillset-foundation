@@ -24,7 +24,7 @@ const policies = [
   ],
   [
     "Payout schedule",
-    "There is no platform clearance period, because there is nothing for us to clear. The sale lands in your own Stripe balance, and Stripe pays it to your bank on your connected account's payout schedule — the one on your account, not one we impose. Stripe applies its usual verification delay before a brand-new account's first payout, and settlement timing depends on your country and payment method. Marketplaces that collect your sales into their own account have to clear that money before they release it; we never collect it, so there is nothing to release.",
+    "There is no platform clearance period, because there is nothing for us to clear. The sale lands in your own Stripe balance, and Stripe pays it to your bank on your connected account's payout schedule. The account is yours — but because it is a Stripe Express account opened through SkillsetMind, the payout interval is a platform setting rather than one you pick, and in some countries (Brazil included) the interval cannot be changed at all. Stripe applies its usual verification delay before a brand-new account's first payout, and settlement timing depends on your country and payment method. Marketplaces that collect your sales into their own account have to clear that money before they release it; we never collect it, so there is nothing to release.",
   ],
   [
     "Payout account",
@@ -36,7 +36,7 @@ const policies = [
   ],
   [
     "Taxes",
-    "Stripe Tax can be enabled per market when international volume justifies activation. Creators see the breakdown per sale in their earnings ledger — a record of what Stripe charged and what you kept, not a balance we hold.",
+    "Stripe Tax can be enabled per market when international volume justifies activation. Creators see the breakdown per sale in their earnings ledger — our record of the charge, our commission, and the Stripe fee as we compute it, not a balance we hold. Your Stripe dashboard remains the authority on the exact fee and on settlement.",
   ],
   [
     "Disputes and chargebacks",

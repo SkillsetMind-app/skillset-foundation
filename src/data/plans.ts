@@ -87,7 +87,7 @@ export const plans: ReadonlyArray<Plan> = [
     highlights: [
       "Every SkillsetMind feature — no tier locks",
       "Publish and sell immediately",
-      "Stripe checkout in 30+ currencies",
+      "Stripe checkout in 30 currencies",
       "Buyers pay your own Stripe account — no platform hold on your money",
       "SkillsetMind Verified certificates",
       "Course communities and live sessions",

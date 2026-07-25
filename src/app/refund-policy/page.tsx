@@ -65,9 +65,10 @@ export default function RefundPolicyPage() {
         </p>
         <p>
           The window closes early if a certificate of completion has been issued
-          for the course, or if the course has been substantially completed,
-          whichever happens first. This keeps the guarantee fair for the
-          educators who create the content.
+          for the course, or once you have completed 50% or more of it,
+          whichever happens first. The self-serve refund is available once per
+          course; after that, contact support. This keeps the guarantee fair for
+          the educators who create the content.
         </p>
       </LegalSection>
 

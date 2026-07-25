@@ -186,8 +186,11 @@ export default function TeacherTermsPage() {
           </li>
           <li>
             <strong className="text-[var(--color-ink)]">Payouts</strong> — paid
-            by Stripe from your own account balance to your bank, with support
-            for 30+ currencies. The payout schedule is the one on your connected
+            by Stripe from your own account balance to your bank. Checkout can be
+            presented in 30 currencies; the currency your balance settles and
+            pays out in is set by Stripe on your connected account, and a
+            conversion may apply when the two differ. The payout schedule is the
+            one on your connected
             Stripe account and is controlled by Stripe; SkillsetMind adds no
             clearance period on top of it, because SkillsetMind holds nothing.
             Stripe applies its own settlement and payout timing, which depends on

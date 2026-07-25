@@ -158,7 +158,7 @@ export function CreatorOpsHub() {
         ? moneyBreakdown(snap.teacherNetByCurrency)
         : unavailableValue(ledgersState),
       detail: ledgersState === "ready"
-        ? "Already in your own Stripe balance"
+        ? "Recorded on your own Stripe account, not ours"
         : ledgersState === "error"
           ? "Earnings record could not be loaded"
           : "Loading earnings record",

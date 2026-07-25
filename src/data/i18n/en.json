@@ -77,10 +77,10 @@
         "teacher": {
           "eyebrow": "SkillsetMind for experts",
           "title": "Teach the world what you know.",
-          "description": "Verify your professional profile, publish your program, sell in 30+ currencies, and have buyers pay your own Stripe account directly. No website to build.",
+          "description": "Verify your professional profile, publish your program, sell in 30 currencies, and have buyers pay your own Stripe account directly. No website to build.",
           "point1Title": "Verified professionals",
           "point1Desc": "Professional eligibility is verified before a creator can publish.",
-          "point2Title": "Paid in 30+ currencies",
+          "point2Title": "Sell in 30 currencies",
           "point2Desc": "Global checkout via Stripe. The charge lands in your own Stripe account.",
           "point3Title": "Verifiable certificates",
           "point3Desc": "Each completion gets a public verification URL."
@@ -92,7 +92,7 @@
           "point1Title": "Verified experts",
           "point1Desc": "Professional eligibility is checked before a creator can publish.",
           "point2Title": "Pay in your currency",
-          "point2Desc": "Checkout via Stripe in 30+ currencies.",
+          "point2Desc": "Checkout via Stripe in 30 currencies.",
           "point3Title": "Verifiable certificates",
           "point3Desc": "Finish a course and get a public verification URL."
         }
@@ -254,7 +254,7 @@
       "trust1Title": "Verified",
       "trust1Desc": "Professionals are verified before they can publish, and live programs are monitored for compliance.",
       "trust2Title": "Global",
-      "trust2Desc": "Multi-currency checkout in 30+ currencies via Stripe.",
+      "trust2Desc": "Multi-currency checkout in 30 currencies via Stripe.",
       "trust3Title": "Verifiable",
       "trust3Desc": "Every certificate has a public verification URL.",
       "ctaDashboard": "Go to your dashboard",
@@ -270,7 +270,7 @@
       "step2Title": "Build and publish",
       "step2Desc": "Build your modules and lessons in Course Builder. Set your price, complete the launch checks, and publish when ready.",
       "step3Title": "Reach people anywhere",
-      "step3Desc": "Once your professional verification and launch checks are complete, your course goes live when you publish. Compliance monitoring continues without holding up enrollment. Get paid in 30+ currencies, straight to your own Stripe account — no platform hold."
+      "step3Desc": "Once your professional verification and launch checks are complete, your course goes live when you publish. Compliance monitoring continues without holding up enrollment. Sell in 30 currencies, with every buyer charged on your own Stripe account — no platform hold."
     },
     "marketplace": {
       "kicker": "The marketplace",
@@ -290,9 +290,9 @@
       "c3Title": "Private program community",
       "c3Desc": "Every paid course gets a private space for posts, replies, and likes. Members keep talking there after the lesson ends.",
       "c4Title": "Multi-currency checkout",
-      "c4Desc": "Sell in 30+ currencies. Learners pay in their own currency at checkout.",
+      "c4Desc": "Sell in 30 currencies. Learners pay in their own currency at checkout.",
       "c5Title": "Buyers pay you directly",
-      "c5Desc": "The charge lands in your own Stripe account, not in ours. No platform hold, no platform clearing period — payouts run on your own Stripe account's schedule, not on ours. Full ledger, full audit trail.",
+      "c5Desc": "The charge lands in your own Stripe account, not in ours. No platform hold, no platform clearing period — from there Stripe settles and pays out on its own timing, which depends on your country and the payment method. Full ledger, full audit trail.",
       "c6Title": "Verifiable certificates",
       "c6Desc": "A public link anyone can check in seconds. Proof your members did the work."
     },

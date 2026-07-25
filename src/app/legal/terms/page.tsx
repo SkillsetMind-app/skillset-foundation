@@ -265,8 +265,10 @@ export default function TermsPage() {
           for indirect, incidental, special, consequential, or punitive
           damages, or for lost profits, data, or goodwill. Our total aggregate
           liability for any claim relating to the platform is limited to the
-          greater of (a) the amounts you paid to SkillsetMind in the twelve months
-          before the claim arose, or (b) USD 100. Nothing in these Terms limits
+          greater of (a) the amounts you paid <em>to SkillsetMind</em> in the
+          twelve months before the claim arose — subscription fees and platform
+          commission, not the course price you paid a creator, which never
+          reaches us — or (b) USD 100. Nothing in these Terms limits
           liability that cannot be limited by law, including under mandatory
           consumer-protection rules of your country of residence.
         </p>

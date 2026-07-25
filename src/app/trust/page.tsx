@@ -52,7 +52,7 @@ const trustLayers: ReadonlyArray<TrustLayer> = [
   },
   {
     title: "No platform hold on creator money",
-    detail: "Buyers are charged on the creator's own Stripe account, so SkillsetMind never holds or remits creator money and there is no platform clearing period — Stripe pays out from that balance on the connected account's payout schedule. Orders, payments, refunds, and earnings stay tracked as distinct records.",
+    detail: "Buyers are charged on the creator's own Stripe account, so SkillsetMind never holds or remits creator money and there is no platform clearing period. Stripe's own settlement and payout timing still applies — it depends on the creator's country and the payment method, and a new account waits on verification before its first payout. Orders, payments, refunds, and earnings stay tracked as distinct records.",
     Icon: Receipt,
   },
 ];

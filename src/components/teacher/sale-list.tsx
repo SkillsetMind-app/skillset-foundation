@@ -83,8 +83,10 @@ export function SaleList() {
         </h2>
         <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
           When a learner completes checkout for one of your courses, the order
-          appears here with its full payment trail — and the money lands in your
-          own Stripe balance the moment it is paid.
+          appears here with its full payment trail — and the charge is created on
+          your own Stripe account, not ours. Stripe&apos;s own settlement and
+          payout timing then applies, and it depends on your country and the
+          buyer&apos;s payment method.
         </p>
         <Link
           href="/teach/builder"

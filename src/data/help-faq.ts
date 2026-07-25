@@ -51,7 +51,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       {
         id: "course-pricing",
         q: "How do I set pricing for my course?",
-        a: "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (10% on Free, 5% on Starter, 3% on Pro, 2% on Plus) plus the Stripe processing fee are shown clearly in the wallet ledger for every sale.",
+        a: "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (10% on Free, 5% on Starter, 3% on Pro, 2% on Plus) plus the Stripe processing fee are shown clearly in the earnings ledger for every sale.",
       },
       {
         id: "drip-release",
@@ -104,7 +104,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
     items: [
       {
         q: "How are refunds handled?",
-        a: "Learners can request a refund within 7 days of purchase if they have completed less than half the course and have not received a certificate. The request is made directly from the order and processes automatically. Because the creator is the merchant of record, the refund is created on the creator's own Stripe account and debited from their Stripe balance — and SkillsetMind's platform fee on that sale is returned to the creator with it. The reversal is recorded in the creator's earnings ledger within minutes so it can be reconciled against their Stripe dashboard; the money movement itself is Stripe's, on the creator's own account.",
+        a: "Learners can request a refund within 7 days of purchase if they have completed less than half the course and have not received a certificate. The self-serve refund is available once per course; after that the request goes to support. The request is made directly from the order and processes automatically. Because the creator is the merchant of record, the refund is created on the creator's own Stripe account and debited from their Stripe balance — and SkillsetMind's platform fee on that sale is returned to the creator with it. The reversal is recorded in the creator's earnings ledger within minutes so it can be reconciled against their Stripe dashboard; the money movement itself is Stripe's, on the creator's own account.",
       },
     ],
   },

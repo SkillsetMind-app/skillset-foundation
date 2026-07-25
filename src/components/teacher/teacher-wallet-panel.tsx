@@ -34,9 +34,10 @@ import {
 // enabled Stripe Connect yet — a SkillsetMind-side configuration state, not a
 // failure and not something the teacher can fix.
 const PAYOUTS_UNAVAILABLE_MESSAGE =
-  "Payouts aren't live on SkillsetMind yet — Stripe Connect is still being " +
-  "configured on our side. No payout account is connected; onboarding will " +
-  "open on this page automatically once it's ready.";
+  "Paid selling isn't open on SkillsetMind yet — Stripe Connect is still being " +
+  "configured on our side. No Stripe account is connected yet, so buyers have " +
+  "nowhere to pay you; onboarding will open on this page automatically once " +
+  "it's ready.";
 
 type LedgerReadState = "loading" | "ready" | "error";
 
@@ -161,8 +162,10 @@ export function TeacherWalletPanel() {
 
   // Money figures derive from the payout LEDGER — the authoritative record for
   // BOTH one-time orders AND subscription invoices. The ledger carries the
-  // server-computed gross/commission/Stripe-fee/net per entry, so these remain
-  // exact payout figures rather than order-level estimates.
+  // server-computed gross/commission/Stripe-fee/net per entry, so these are
+  // exact as a record of what was CHARGED, not a payout figure: the Stripe fee
+  // is our own computation, and settlement/payout happen on Stripe's side where
+  // we never see the number. Reconcile against Stripe, never the reverse.
   const financialsReady = ledgerState === "ready";
   const financials = useMemo(
     () => summarizeCreatorWallet(ledgerEntries),
@@ -202,7 +205,9 @@ export function TeacherWalletPanel() {
             Your earnings, your payout setup.
             <InlineHelp topic="Payout schedule" href="/help#payouts">
               Buyers pay your Stripe account directly, so there is no platform
-              hold: Stripe pays out to your bank on your own account schedule.
+              hold. Stripe then settles and pays out to your bank on its own
+              timing, which depends on your country and the payment method, and
+              a new account waits on verification before its first payout.
               Stripe Connect must have both charges and payouts enabled before
               a paid product can go live.
             </InlineHelp>
@@ -240,8 +245,9 @@ export function TeacherWalletPanel() {
           </p>
           <p className="mt-2 text-sm text-[rgba(255,255,255,0.72)]">
             Net across one-time and subscription sales, after SkillsetMind commission
-            and Stripe fees. Every sale lands directly in your Stripe balance —
-            SkillsetMind never holds it.
+            and Stripe fees. Every charge was created on your own Stripe account —
+            SkillsetMind never holds it. Stripe&apos;s own settlement timing then
+            decides when it is available to pay out.
           </p>
 
           <div className="mt-6 grid gap-3">
