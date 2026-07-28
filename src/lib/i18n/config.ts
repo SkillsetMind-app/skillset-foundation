@@ -6,7 +6,10 @@
 // cookie so every existing route keeps working; the server reads it to set
 // `<html lang>` + the initial dictionary, and the client switcher writes it.
 
-export const LOCALES = ["en", "pt-BR", "es"] as const;
+// pt-BR was removed for the US-first launch. The dictionary is preserved at
+// docs/i18n-archive/pt-br.json — restore it here, in dictionaries.ts, and in
+// pickLocaleFromAcceptLanguage() when the Brazil release happens.
+export const LOCALES = ["en", "es"] as const;
 export type Locale = (typeof LOCALES)[number];
 
 export const DEFAULT_LOCALE: Locale = "en";
@@ -18,21 +21,18 @@ export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
 /** Full names for the switcher. */
 export const LOCALE_LABELS: Record<Locale, string> = {
   en: "English",
-  "pt-BR": "Português (Brasil)",
   es: "Español",
 };
 
 /** Compact labels for tight switchers (e.g. the footer chip). */
 export const LOCALE_SHORT_LABELS: Record<Locale, string> = {
   en: "EN",
-  "pt-BR": "PT",
   es: "ES",
 };
 
 /** BCP-47 value for the <html lang> attribute. */
 export const LOCALE_HTML_LANG: Record<Locale, string> = {
   en: "en",
-  "pt-BR": "pt-BR",
   es: "es",
 };
 
@@ -46,8 +46,9 @@ export function normalizeLocale(value: string | null | undefined): Locale {
 
 /**
  * Best supported locale from an Accept-Language header. Used only when no
- * explicit cookie choice exists yet, so a first-time pt/es visitor still lands
- * in their language. Matches by primary subtag (pt-* → pt-BR, es-* → es).
+ * explicit cookie choice exists yet, so a first-time es visitor still lands in
+ * their language. Matches by primary subtag (es-* → es). A pt-* visitor falls
+ * through to the next supported tag in their header, then to English.
  */
 export function pickLocaleFromAcceptLanguage(
   header: string | null | undefined,
@@ -62,9 +63,6 @@ export function pickLocaleFromAcceptLanguage(
     .filter(Boolean) as string[];
 
   for (const tag of tags) {
-    if (tag === "pt-br" || tag.startsWith("pt")) {
-      return "pt-BR";
-    }
     if (tag.startsWith("es")) {
       return "es";
     }
