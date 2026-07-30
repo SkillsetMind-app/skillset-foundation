@@ -192,7 +192,7 @@ export const activationFeeUsd = 25;
 /**
  * Stripe Price ID for the activation fee — a LIVE one-time $25 USD price on
  * product `prod_UyzTYPDBp4hnlk`, created by `scripts/create-activation-price.mjs`
- * (idempotent via lookup_key `skillset_activation_fee_v1`; re-run it to recreate
+ * (idempotent via lookup_key `skillset_storefront_activation_one_time`; re-run it to recreate
  * the price in another Stripe account rather than clicking through the Dashboard).
  *
  * If this ever reverts to a placeholder, `isActivationFeeConfigured()` goes false
