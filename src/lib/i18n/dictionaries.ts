@@ -4,7 +4,6 @@
 
 import enDict from "@/data/i18n/en.json";
 import esDict from "@/data/i18n/es.json";
-import ptBrDict from "@/data/i18n/pt-br.json";
 
 import { DEFAULT_LOCALE, type Locale } from "./config";
 
@@ -12,9 +11,8 @@ export type Dictionary = typeof enDict;
 
 const dictionaries: Record<Locale, Dictionary> = {
   en: enDict,
-  // pt-BR/es mirror en's shape; the cast tolerates any key still untranslated,
-  // and translate() falls back to English at runtime for those.
-  "pt-BR": ptBrDict as Dictionary,
+  // es mirrors en's shape; the cast tolerates any key still untranslated, and
+  // translate() falls back to English at runtime for those.
   es: esDict as Dictionary,
 };
 
