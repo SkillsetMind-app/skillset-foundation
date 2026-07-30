@@ -190,15 +190,17 @@ export function planByStripePriceId(priceId: string): Plan | undefined {
 export const activationFeeUsd = 25;
 
 /**
- * Stripe Price ID for the activation fee. Create it in the Stripe Dashboard as a
- * ONE-TIME price (Product catalog → SkillsetMind Storefront Activation → one-time,
- * USD) and replace this placeholder. Until then `isActivationFeeConfigured()` is
- * false and the checkout route answers 503 instead of a confusing Stripe error.
+ * Stripe Price ID for the activation fee — a LIVE one-time $25 USD price on
+ * product `prod_UyzTYPDBp4hnlk`, created by `scripts/create-activation-price.mjs`
+ * (idempotent via lookup_key `skillset_activation_fee_v1`; re-run it to recreate
+ * the price in another Stripe account rather than clicking through the Dashboard).
  *
- * Do NOT flip `require_activation_fee` to true in platform_settings while this is
- * a placeholder: the gate would block every publish with no way to pay.
+ * If this ever reverts to a placeholder, `isActivationFeeConfigured()` goes false
+ * and the checkout route answers 503 instead of a confusing Stripe error — and
+ * `require_activation_fee` must stay false in platform_settings, or the gate would
+ * block every publish with no way to pay.
  */
-export const ACTIVATION_FEE_STRIPE_PRICE_ID = `${STRIPE_PRICE_PLACEHOLDER_PREFIX}ACTIVATION_FEE`;
+export const ACTIVATION_FEE_STRIPE_PRICE_ID = "price_1Tz1UvPvg1vJW0IjxFX7Nppi";
 
 export function isActivationFeeConfigured(): boolean {
   return !isPlaceholderStripePriceId(ACTIVATION_FEE_STRIPE_PRICE_ID);
