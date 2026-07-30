@@ -5,7 +5,7 @@ import { ArrowRight, Check } from "lucide-react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { RevealSection } from "@/components/shared/reveal-section";
-import { planById, payoutClearDays } from "@/data/plans";
+import { planById } from "@/data/plans";
 
 const freePlan = planById("free");
 
@@ -17,7 +17,7 @@ export function ForCreatorsBand() {
       "{keep}",
       String(100 - freePlan.commissionPercent),
     ),
-    t("home.creators.bullet2").replace("{days}", String(payoutClearDays)),
+    t("home.creators.bullet2"),
     t("home.creators.bullet3"),
     t("home.creators.bullet4"),
   ];

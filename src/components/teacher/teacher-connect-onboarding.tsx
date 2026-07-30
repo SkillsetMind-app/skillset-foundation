@@ -263,7 +263,12 @@ export function TeacherConnectOnboarding({
         <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
           Connect a payout account to start selling paid courses. Stripe
           verifies your identity and bank details on a secure page and returns
-          you to SkillsetMind the moment you finish.
+          you to SkillsetMind the moment you finish. From then on buyers pay your
+          Stripe account directly — SkillsetMind never holds your money. Stripe
+          settles each charge into your balance on its own timing (that depends
+          on your country and the buyer&apos;s payment method) and pays it out to
+          your bank on your connected account&apos;s payout schedule. Your first
+          payout waits on Stripe&apos;s verification of the new account.
         </p>
         {error ? (
           <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
@@ -335,8 +340,11 @@ export function TeacherConnectOnboarding({
             }}
           />
         </div>
-        <p className="border-t fine-rule px-4 py-2 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
-          Powered by Stripe
+        <p className="border-t fine-rule px-4 py-2 text-[11px] leading-5 text-[var(--color-ink-muted)]">
+          Powered by Stripe. When this is done, buyers pay your Stripe account
+          directly — SkillsetMind never holds your money. Stripe settles and pays
+          out on its own timing, which depends on your country and the payment
+          method; a new account waits on verification before its first payout.
         </p>
       </ConnectComponentsProvider>
     </div>

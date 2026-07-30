@@ -9,8 +9,6 @@ import type { ReactNode } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { StatusChip } from "@/components/shared/status-chip";
 import {
-  AffiliatesPanel,
-  CoproducersPanel,
   CouponsPanel,
   PanelCard,
   TaxPanel,
@@ -37,8 +35,6 @@ const manageSections = [
   { id: "members", label: "Members area" },
   { id: "page", label: "Product page" },
   { id: "content", label: "Content" },
-  { id: "affiliates", label: "Affiliates" },
-  { id: "coproducers", label: "Co-productions" },
   { id: "coupons", label: "Coupons" },
   { id: "tax", label: "Tax collection" },
   { id: "tools", label: "Tools" },
@@ -765,12 +761,6 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
           {section === "coupons" ? (
             <CouponsPanel courseId={course.id} activationBlocked={activationBlocked} />
           ) : null}
-
-          {section === "affiliates" ? (
-            <AffiliatesPanel courseId={course.id} activationBlocked={activationBlocked} />
-          ) : null}
-
-          {section === "coproducers" ? <CoproducersPanel courseId={course.id} /> : null}
 
           {section === "tax" ? <TaxPanel courseId={course.id} /> : null}
 

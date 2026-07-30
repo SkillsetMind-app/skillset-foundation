@@ -30,6 +30,13 @@ type CourseSubscriptionPriceCache = {
   amountMinor?: number;
   currency?: string;
   interval?: "month" | "year";
+  /**
+   * Connected account the price was minted on. Prices are account-scoped under
+   * direct charges, so a cache entry from another account must not be reused.
+   * Absent on rows cached before the direct-charge pivot — those miss the cache
+   * and are re-created on the connected account, which is the desired repair.
+   */
+  accountId?: string;
 };
 
 /** Reads a course row by id via the service-role client (or null if absent). */
@@ -73,21 +80,47 @@ export function courseSubscriptionInterval(
   return null;
 }
 
+type StripeAccountOptions = { stripeAccount: string } | undefined;
+
 type SubscriptionCancellationClient = {
   subscriptions: {
-    retrieve(subscriptionId: string): Promise<{ status: string }>;
-    cancel(subscriptionId: string): Promise<unknown>;
+    retrieve(
+      subscriptionId: string,
+      params?: Record<string, never>,
+      options?: StripeAccountOptions,
+    ): Promise<{ status: string }>;
+    cancel(
+      subscriptionId: string,
+      params?: Record<string, never>,
+      options?: StripeAccountOptions,
+    ): Promise<unknown>;
   };
 };
 
-/** Cancels recurring billing once while remaining safe on request retries. */
+/**
+ * Cancels recurring billing once while remaining safe on request retries.
+ *
+ * Course subscriptions are created as DIRECT CHARGES, so the Subscription
+ * object is owned by the teacher's connected account: without the account
+ * header both calls 404 and a refunded learner would keep getting billed.
+ * `connectedAccountId` is nullable only for legacy platform-owned subscriptions
+ * predating the direct-charge pivot.
+ */
 export async function ensureCourseSubscriptionCanceled(
   stripe: SubscriptionCancellationClient,
   subscriptionId: string,
+  connectedAccountId?: string | null,
 ): Promise<void> {
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const options: StripeAccountOptions = connectedAccountId
+    ? { stripeAccount: connectedAccountId }
+    : undefined;
+  const subscription = await stripe.subscriptions.retrieve(
+    subscriptionId,
+    {},
+    options,
+  );
   if (subscription.status === "canceled") return;
-  await stripe.subscriptions.cancel(subscriptionId);
+  await stripe.subscriptions.cancel(subscriptionId, {}, options);
 }
 
 /**
@@ -261,6 +294,17 @@ export async function createFreshConnectedAccount(params: {
  * Customer and the teacher payout is a held Transfer released by the cron —
  * identical economics to the one-time rail.
  */
+/**
+ * Get (or create) the recurring Price backing a subscription course.
+ *
+ * Under DIRECT CHARGES the Price must live on the TEACHER's connected account —
+ * a Checkout Session created with `{ stripeAccount }` can only reference objects
+ * owned by that account, so a platform-owned price id fails with
+ * "No such price". The cache is therefore keyed by account id as well: if a
+ * teacher ever reconnects under a different Stripe account, the stale price is
+ * ignored and a fresh one is minted on the new account instead of 500-ing every
+ * subscription checkout.
+ */
 export async function getOrCreateCourseSubscriptionPrice(
   stripe: Stripe,
   course: CourseRow,
@@ -268,6 +312,7 @@ export async function getOrCreateCourseSubscriptionPrice(
   amountMinor: number,
   currency: string,
   interval: "month" | "year",
+  connectedAccountId: string,
 ): Promise<string> {
   const cached = (course.stripe_subscription_price ??
     null) as CourseSubscriptionPriceCache | null;
@@ -277,24 +322,28 @@ export async function getOrCreateCourseSubscriptionPrice(
     && cached.amountMinor === amountMinor
     && cached.currency === currency
     && cached.interval === interval
+    && cached.accountId === connectedAccountId
   ) {
     return cached.priceId;
   }
 
-  const price = await stripe.prices.create({
-    currency,
-    unit_amount: amountMinor,
-    recurring: { interval },
-    product_data: {
-      name: course.title,
-      metadata: { courseId, ownerId: course.owner_id },
+  const price = await stripe.prices.create(
+    {
+      currency,
+      unit_amount: amountMinor,
+      recurring: { interval },
+      product_data: {
+        name: course.title,
+        metadata: { courseId, ownerId: course.owner_id },
+      },
+      metadata: {
+        courseId,
+        ownerId: course.owner_id,
+        kind: "course_subscription",
+      },
     },
-    metadata: {
-      courseId,
-      ownerId: course.owner_id,
-      kind: "course_subscription",
-    },
-  });
+    { stripeAccount: connectedAccountId },
+  );
 
   const supabase = getSupabaseAdminClient();
   const { error } = await supabase
@@ -305,6 +354,7 @@ export async function getOrCreateCourseSubscriptionPrice(
         amountMinor,
         currency,
         interval,
+        accountId: connectedAccountId,
       },
       updated_at: new Date().toISOString(),
     })

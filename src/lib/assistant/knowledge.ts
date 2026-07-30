@@ -1,5 +1,5 @@
 import { helpFaqCategories } from "@/data/help-faq";
-import { payoutClearDays, plans, refundWindowDays } from "@/data/plans";
+import { plans, refundWindowDays } from "@/data/plans";
 
 // Grounding context for the platform assistant. Built from the SAME sources
 // the site renders (help FAQ + plans.ts), so every fact the bot can state is
@@ -12,7 +12,7 @@ import { payoutClearDays, plans, refundWindowDays } from "@/data/plans";
 // surface — this block is the only hand-written part of the corpus, so it is
 // the only part a fact-check needs to re-verify against the codebase.
 const PLATFORM_OVERVIEW = `SkillsetMind is an online course marketplace where experts (psychologists, therapists, coaches, and other professionals) create and sell courses, and learners study them in a members area. One account can both learn and teach.
-- Checkout and subscriptions run on Stripe; creators receive payouts through Stripe Connect after connecting their account in the Studio.
+- Checkout and subscriptions run on Stripe Connect: once a creator connects their account in the Studio, buyers are charged DIRECTLY on that connected account. The creator is the merchant of record; SkillsetMind takes its commission as a Stripe application fee at the moment of the charge and never holds or remits creator money. Payout details are under "Plans, fees, refunds, payouts" below.
 - Course video is hybrid: teachers can upload video files or embed from YouTube/Vimeo.
 - Each course can enable an opt-in community space inside the members area.
 - Teachers can schedule live sessions (external links such as Zoom/Meet); enrolled students see them in the course agenda and get an in-app notification.
@@ -34,7 +34,7 @@ function plansSection(): string {
     "Plans (every feature is available on every tier; plans only change the commission rate; the Stripe processing fee is passed through to the creator on every sale):",
     ...rows,
     `- Refund window: ${refundWindowDays} days from purchase (learner must have completed less than half the course and not received a certificate).`,
-    `- Payout clearing: creator earnings stay pending for ${payoutClearDays} days after each sale before becoming available.`,
+    "- Payouts: buyers pay the creator's own Stripe account directly (the creator is the merchant of record). SkillsetMind never holds or remits creator money, so there is no platform clearing period and we add zero days to a payout — Stripe pays out from the creator's own Stripe balance on that account's payout schedule. The timeline is entirely Stripe's and depends on the creator's country and the payment method; Stripe also applies a waiting period before the first payout on a new account, and the settlement of a charge is not the same event as a payout. Refunds and lost disputes are debited from the creator's Stripe balance, and SkillsetMind's application fee is returned to the creator with a refund.",
   ].join("\n");
 }
 

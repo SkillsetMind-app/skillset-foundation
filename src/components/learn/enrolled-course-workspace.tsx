@@ -318,8 +318,8 @@ export function EnrolledCourseWorkspace({
           </h3>
           <p role="status" className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
             {checkoutGraceExpired
-              ? "Your payment went through and is safe. Keep this page open: it opens automatically the moment your enrollment is confirmed. If nothing happens in a few minutes, contact support with your payment receipt."
-              : "Your payment is confirmed. We are setting up your course access right now; this page opens automatically in a few seconds."}
+              ? "Your payment went through and is safe in your instructor's Stripe account — they sold you this course directly, so their name may be what appears on your card statement. Keep this page open: it opens automatically the moment your enrollment is confirmed. If nothing happens in a few minutes, contact support with your payment receipt."
+              : "Your payment is confirmed. Your instructor sold you this course directly, so their name — not \"SkillsetMind\" — may be what appears on your card statement. We are setting up your course access right now; this page opens automatically in a few seconds."}
           </p>
         </section>
       );

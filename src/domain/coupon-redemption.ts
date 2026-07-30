@@ -1,6 +1,10 @@
 /**
- * Pure coupon validation for checkout (Hotmart-parity: redeem at purchase).
- * Settlement/affiliate engines stay separate.
+ * Pure coupon validation for checkout: redeem at purchase.
+ *
+ * The discount is applied to the Stripe Checkout line item on the teacher's own
+ * connected account, so it reduces what the buyer is charged and what lands in
+ * the teacher's balance. There is no settlement engine downstream of this —
+ * the platform never receives the money, so there is nothing to split.
  */
 import type { CourseCoupon } from "@/domain/course-commerce";
 import { isCouponExpired, normalizeCouponCode } from "@/domain/course-commerce";

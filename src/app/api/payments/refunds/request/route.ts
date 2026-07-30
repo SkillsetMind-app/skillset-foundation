@@ -115,7 +115,9 @@ export async function POST(request: Request) {
     // course_id, status=paid), limit 1 — reproduced as chained eq filters.
     let orderQuery = admin
       .from("orders")
-      .select("id, payment_intent_id, paid_at, created_at");
+      .select(
+        "id, payment_intent_id, paid_at, created_at, teacher_stripe_connected_account_id",
+      );
     for (const [field, , value] of querySpec.filters) {
       const column =
         field === "userId"
@@ -152,10 +154,27 @@ export async function POST(request: Request) {
       throw new PaymentError("Payment intent not found.", 400);
     }
 
+    // DIRECT CHARGES: the PaymentIntent lives on the teacher's connected
+    // account, so the refund must be created there too — a platform-scoped
+    // refund would 404. `refund_application_fee` gives our commission back with
+    // the sale: the teacher must never eat our fee on a sale that was undone.
+    // The account id is the FROZEN snapshot taken at checkout, so a teacher who
+    // later reconnects a different Stripe account can still be refunded.
+    const connectedAccountId = String(
+      order.teacher_stripe_connected_account_id || "",
+    );
+    if (!connectedAccountId) {
+      throw new PaymentError(
+        "This order has no connected account on record. Contact support.",
+        409,
+      );
+    }
+
     const stripe = getStripeClient();
     const refund = await stripe.refunds.create(
       {
         payment_intent: paymentIntentId,
+        refund_application_fee: true,
         metadata: {
           orderId: order.id,
           enrollmentId,
@@ -166,6 +185,7 @@ export async function POST(request: Request) {
       },
       {
         idempotencyKey: `refund_${order.id}`,
+        stripeAccount: connectedAccountId,
       },
     );
 

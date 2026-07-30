@@ -138,6 +138,17 @@ export default function TermsPage() {
           you confirm a purchase. You are responsible for any taxes, duties,
           or bank fees that apply to your purchase under your local law.
         </p>
+        <p>
+          When you buy a course, the educator who published it is the seller and
+          merchant of record: your payment is charged directly to that
+          educator&apos;s own Stripe account, and your card statement may show
+          their business name rather than SkillsetMind. SkillsetMind provides
+          the platform and checkout and charges the educator a platform fee — it
+          does not receive or hold the purchase price, and is not the seller of
+          the course. The educator is responsible for delivering the course you
+          bought; the refund rights below apply to that purchase and are
+          processed through the same Stripe account.
+        </p>
       </LegalSection>
 
       <LegalSection heading="7. Refunds">
@@ -152,9 +163,11 @@ export default function TermsPage() {
           <Link className="font-semibold text-[var(--color-accent-fg)]" href="/account">
             account billing page
           </Link>{" "}
-          or by contacting <SupportLink />. Refunds are returned through the
-          original payment method via Stripe. After the refund window, refunds
-          are granted at our discretion or where required by applicable
+          or by contacting <SupportLink />. A refund is created against the
+          educator&apos;s Stripe account and returned through your original
+          payment method; the refunded amount is debited from the educator, not
+          from SkillsetMind. After the refund window, a refund is granted at the
+          educator&apos;s discretion or ours, or where required by applicable
           consumer law, which may give you additional non-waivable rights
           depending on your country of residence.
         </p>
@@ -252,8 +265,10 @@ export default function TermsPage() {
           for indirect, incidental, special, consequential, or punitive
           damages, or for lost profits, data, or goodwill. Our total aggregate
           liability for any claim relating to the platform is limited to the
-          greater of (a) the amounts you paid to SkillsetMind in the twelve months
-          before the claim arose, or (b) USD 100. Nothing in these Terms limits
+          greater of (a) the amounts you paid <em>to SkillsetMind</em> in the
+          twelve months before the claim arose — subscription fees and platform
+          commission, not the course price you paid a creator, which never
+          reaches us — or (b) USD 100. Nothing in these Terms limits
           liability that cannot be limited by law, including under mandatory
           consumer-protection rules of your country of residence.
         </p>

@@ -1,15 +1,15 @@
 import Link from "next/link";
 
 import { PublicPage } from "@/components/site/public-page";
-import { planById, payoutClearDays } from "@/data/plans";
+import { planById } from "@/data/plans";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 const creatorTools = [
   "Course builder with modules, lessons, previews, pricing, and drip release.",
   "Protected student workspace with progress, files, and certificates.",
   "Course-linked community, events, and future notifications.",
-  "Stripe Connect onboarding, refund controls, and payout ledger.",
-  "SkillsetMind review of every course, without blocking your launch.",
+  "Stripe Connect onboarding, refund controls, and a full earnings ledger — the record lives here, the money lives in your Stripe account.",
+  "Professional verification up front, then automated compliance checks that never block your launch.",
   "Shareable course links for simple launch campaigns.",
 ];
 
@@ -17,7 +17,7 @@ const freePlan = planById("free");
 
 export const metadata = buildPageMetadata({
   title: "Teach on SkillsetMind",
-  description: `Publish professional courses to a global audience. Start free at ${freePlan.commissionPercent}% commission, payouts ${payoutClearDays} days after each sale, course community and certificates included on every plan.`,
+  description: `Publish professional courses to a global audience. Start free at ${freePlan.commissionPercent}% commission, buyers pay your Stripe account directly, course community and certificates included on every plan.`,
   path: "/for-creators",
 });
 
@@ -49,16 +49,18 @@ export default function ForCreatorsPage() {
             </div>
             <div>
               <p className="display-title text-3xl text-[var(--color-primary)]">
-                {payoutClearDays} days
+                Direct
               </p>
               <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-                Until payout
+                Buyer pays you
               </p>
             </div>
           </div>
           <div className="sm:text-right">
             <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
-              Start free. Upgrade to drop commission to 5%, 3%, or 2%.
+              Buyers are charged on your own Stripe account — no platform hold
+              on your money. Start free; upgrade to drop commission to 5%, 3%,
+              or 2%.
             </p>
             <Link
               href="/pricing"

@@ -29,9 +29,9 @@ import {
   ShoppingBag,
   Store,
   Tag,
+  TrendingUp,
   UserCheck,
   Users,
-  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -64,9 +64,9 @@ const iconMap: Record<string, LucideIcon> = {
   ShoppingBag,
   Store,
   Tag,
+  TrendingUp,
   UserCheck,
   Users,
-  Wallet,
 };
 
 const sectionOrder = [
@@ -74,9 +74,9 @@ const sectionOrder = [
   "Products",
   "Marketing",
   "Sales",
-  "Wallet",
+  "Earnings",
   "Reports",
-  "Partnerships",
+  "Growth",
   "Tools",
   "My Learning",
   "Discover",
@@ -85,7 +85,7 @@ const sectionOrder = [
   "Account",
 ];
 
-const directSections = new Set(["Home", "Wallet", "My Learning", "Discover"]);
+const directSections = new Set(["Home", "Earnings", "My Learning", "Discover"]);
 
 const sectionIconMap: Record<string, LucideIcon> = {
   Discover: ShoppingBag,
@@ -95,9 +95,9 @@ const sectionIconMap: Record<string, LucideIcon> = {
   Products: PackageOpen,
   Marketing: Megaphone,
   Sales: Receipt,
-  Wallet,
+  Earnings: TrendingUp,
   Reports: BarChart3,
-  Partnerships: Users,
+  Growth: Users,
   Tools: Settings,
   Operations: UserCheck,
   Account: Settings,

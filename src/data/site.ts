@@ -201,13 +201,16 @@ export const platformNav: PlatformNavItem[] = [
     section: "Sales",
     permission: "teacherStudio.access",
   },
-  // Wallet (receivables)
+  // Earnings — a record of what Stripe already paid into the creator's own
+  // connected account. Called "Wallet" until the pivot to direct charges, which
+  // is a word for a balance the platform holds. We hold nothing, so the nav no
+  // longer says we do.
   {
     href: "/account/payments",
-    labelKey: "platform.nav.wallet",
-    icon: "Wallet",
+    labelKey: "platform.nav.earnings",
+    icon: "TrendingUp",
     contexts: ["teacher"],
-    section: "Wallet",
+    section: "Earnings",
     permission: "teacherStudio.access",
   },
   // Reports
@@ -227,37 +230,23 @@ export const platformNav: PlatformNavItem[] = [
     section: "Reports",
     permission: "teacherStudio.access",
   },
-  // Partnerships
-  {
-    href: "/teach/affiliates",
-    labelKey: "platform.nav.affiliatePrograms",
-    icon: "Handshake",
-    contexts: ["teacher"],
-    section: "Partnerships",
-    permission: "teacherStudio.access",
-  },
+  // Growth
+  // (Affiliates and co-productions were removed with the pivot to direct
+  // charges: the platform never holds the money, so it cannot split it.)
   {
     href: "/teach/coupons",
     labelKey: "platform.nav.coupons",
     icon: "Tag",
     contexts: ["teacher"],
-    section: "Partnerships",
+    section: "Growth",
     permission: "teacherStudio.manageCourses",
-  },
-  {
-    href: "/teach/co-productions",
-    labelKey: "platform.nav.coProductions",
-    icon: "Users",
-    contexts: ["teacher"],
-    section: "Partnerships",
-    permission: "teacherStudio.access",
   },
   {
     href: "/teach/team",
     labelKey: "platform.nav.team",
     icon: "UserCheck",
     contexts: ["teacher"],
-    section: "Partnerships",
+    section: "Growth",
     permission: "teacherStudio.access",
   },
   // Tools

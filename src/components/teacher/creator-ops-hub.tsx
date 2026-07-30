@@ -153,15 +153,15 @@ export function CreatorOpsHub() {
     },
     {
       href: "/account/payments",
-      label: "Wallet",
+      label: "Earnings recorded",
       value: ledgersState === "ready"
-        ? moneyBreakdown(snap.walletReleasedByCurrency)
+        ? moneyBreakdown(snap.teacherNetByCurrency)
         : unavailableValue(ledgersState),
       detail: ledgersState === "ready"
-        ? `${moneyBreakdown(snap.walletInReleaseByCurrency)} in release`
+        ? "Recorded on your own Stripe account, not ours"
         : ledgersState === "error"
-          ? "Wallet data could not be loaded"
-          : "Loading wallet",
+          ? "Earnings record could not be loaded"
+          : "Loading earnings record",
       icon: Wallet,
     },
   ];
@@ -203,8 +203,7 @@ export function CreatorOpsHub() {
           {[
             { href: "/teach/sales", label: "All sales" },
             { href: "/teach/subscriptions", label: "Subscriptions" },
-            { href: "/account/payments", label: "Wallet & Connect" },
-            { href: "/teach/refunds", label: "Refunds" },
+            { href: "/account/payments", label: "Earnings & Connect" },
             { href: "/teach/coupons", label: "Coupons" },
             { href: "/teach/builder", label: "Course builder" },
           ].map((link) => (

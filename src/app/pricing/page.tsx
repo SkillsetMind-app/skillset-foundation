@@ -4,13 +4,13 @@ import { Check, ChevronDown, HelpCircle } from "lucide-react";
 import { PublicPage } from "@/components/site/public-page";
 import { Tooltip } from "@/components/shared/tooltip";
 import { formatUsd } from "@/data/platform";
-import { plans, payoutClearDays, refundWindowDays } from "@/data/plans";
+import { plans, refundWindowDays } from "@/data/plans";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 export const metadata = buildPageMetadata({
   title: "Pricing",
   description:
-    "Four plans. Free starts at 10% commission with no subscription. Starter drops it to 5%, Pro to 3%, Plus to 2%. Stripe's processing fee is shown separately so the math is never hidden.",
+    "Four plans. Free starts at 10% commission with no subscription. Starter drops it to 5%, Pro to 3%, Plus to 2%. Stripe's processing fee is shown separately so the math is never hidden, and buyers pay your own Stripe account directly — no platform hold, no platform clearing period.",
   path: "/pricing",
 });
 
@@ -23,7 +23,7 @@ export default function PricingPage() {
     <PublicPage
       eyebrow="Pricing"
       title="Pricing that lowers as you grow."
-      description="Every feature is included on every plan. The plan you pick only changes the commission SkillsetMind takes per paid sale. Stripe's processing fee is passed through to you transparently — never hidden inside the platform percentage."
+      description="Every feature is included on every plan. The plan you pick only changes the commission SkillsetMind takes per paid sale. Stripe's processing fee is passed through to you transparently — never hidden inside the platform percentage. And on every plan the buyer is charged on your own Stripe account: the sale lands in your balance, not ours, with no platform hold and nothing for us to release."
     >
       {/* Quick decision hint above the cards — answers the question every
           creator actually asks: 'which plan fits me?'. Break-even numbers
@@ -292,10 +292,12 @@ export default function PricingPage() {
         <p className="mt-4 text-xs text-[var(--color-ink-muted)]">
           International cards (non-USD) use Stripe&apos;s international rate of
           5.4% + $0.30 estimated instead of 2.9% + $0.30. Everything else is identical.
+          Both figures are Stripe&apos;s US pricing — your own rates are the ones
+          Stripe sets in the country your account is registered in.
         </p>
       </section>
 
-      {/* Operational rules — refund window, payout clearance, plan changes. */}
+      {/* Operational rules — refund window, direct payouts, plan changes. */}
       <section className="mt-8 grid gap-4 md:grid-cols-3">
         <article className="rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-5">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
@@ -303,18 +305,21 @@ export default function PricingPage() {
           </p>
           <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
             Learners can self-refund within {refundWindowDays} days of purchase
-            if they&apos;ve completed less than half the course. A refund reverses
-            the sale automatically, SkillsetMind&apos;s commission included.
+            if they&apos;ve completed less than half the course and no certificate
+            has been issued — once per course. A refund reverses the sale
+            automatically, SkillsetMind&apos;s commission included.
           </p>
         </article>
         <article className="rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-5">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            Payout clearance
+            Payouts
           </p>
           <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-            Your earnings are released to your Stripe account {payoutClearDays}{" "}
-            days after each sale — the moment the {refundWindowDays}-day refund
-            window closes. No 30-day holds.
+            Buyers pay your Stripe account directly. We never hold your money, so
+            there is nothing for us to release — Stripe settles and pays out to
+            your bank from your own Stripe balance on its own timing, which
+            depends on your country and the payment method. A brand-new account
+            waits on Stripe&apos;s verification before its first payout.
           </p>
         </article>
         <article className="rounded-[16px] border fine-rule bg-[var(--color-surface-soft)] p-5">
@@ -356,7 +361,7 @@ export default function PricingPage() {
             },
             {
               q: "When can a sale be refunded, and does it affect my payout?",
-              a: `Learners can self-refund within ${refundWindowDays} days of purchase if they've completed less than half the course, which reverses the sale automatically — SkillsetMind's commission included. Your earnings are released to your Stripe account ${payoutClearDays} days after each sale, the moment the ${refundWindowDays}-day refund window closes — never a 30-day hold.`,
+              a: `Learners can self-refund within ${refundWindowDays} days of purchase if they've completed less than half the course. Because the buyer paid your Stripe account directly, the refund is debited from your own balance — and SkillsetMind's commission on that sale is returned to you with it, so you never pay a fee on a sale that was undone.`,
             },
           ].map((item) => (
             <details

@@ -708,6 +708,24 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
           </p>
         ) : null}
 
+        {/* Direct charges: the buyer's counterparty is the EDUCATOR, not
+            SkillsetMind. The charge is created on the educator's own connected
+            account (see /api/payments/checkout, `stripeAccount`) and we set no
+            statement_descriptor override, so THEIR descriptor reaches the card
+            statement. A buyer who does not expect that name disputes it, and
+            the chargeback lands on the educator's balance. */}
+        {!courseIsFree ? (
+          <p className="mt-3 rounded-[10px] border border-[rgba(26,54,93,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
+            <strong className="text-[var(--color-ink)]">
+              Sold by your instructor, not by SkillsetMind.
+            </strong>{" "}
+            This course is sold directly by the independent educator who
+            publishes it. Your payment goes to their own Stripe account, so
+            their name or business name — not &ldquo;SkillsetMind&rdquo; — is
+            what may appear on your card statement.
+          </p>
+        ) : null}
+
         {/* Instructor identity: buyers were asked to pay without ever seeing
             WHO teaches the course. Renders only when the teacher has a
             published public profile (function-projected, never fabricated). */}

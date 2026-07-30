@@ -1,12 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  allocatedCoproducerShare,
-  COPRODUCER_TOTAL_SHARE_CAP,
   isCouponExpired,
   isValidCouponCode,
   normalizeCouponCode,
-  remainingCoproducerShare,
 } from "@/domain/course-commerce";
 
 describe("normalizeCouponCode", () => {
@@ -56,31 +53,3 @@ describe("isCouponExpired", () => {
   });
 });
 
-describe("co-producer share math", () => {
-  const roster = [
-    { revenueSharePct: 30, status: "invited" as const },
-    { revenueSharePct: 20, status: "accepted" as const },
-    { revenueSharePct: 40, status: "revoked" as const },
-  ];
-
-  it("ignores revoked invitations when summing allocation", () => {
-    expect(allocatedCoproducerShare(roster)).toBe(50);
-  });
-
-  it("reports the remaining share against the 90% cap", () => {
-    expect(remainingCoproducerShare(roster)).toBe(COPRODUCER_TOTAL_SHARE_CAP - 50);
-  });
-
-  it("never goes below zero", () => {
-    expect(
-      remainingCoproducerShare([
-        { revenueSharePct: 90, status: "invited" },
-        { revenueSharePct: 30, status: "accepted" },
-      ]),
-    ).toBe(0);
-  });
-
-  it("returns the full cap for an empty roster", () => {
-    expect(remainingCoproducerShare([])).toBe(COPRODUCER_TOTAL_SHARE_CAP);
-  });
-});

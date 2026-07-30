@@ -39,7 +39,7 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
         "platform.nav.marketingOverview": "Marketing overview",
         "platform.nav.storefrontPages": "Storefront & pages",
         "platform.nav.mediaLibrary": "Media library",
-        "platform.nav.affiliatePrograms": "Affiliate programs",
+        "platform.nav.coupons": "Coupons",
         "platform.help.needHelp": "Need help?",
         "platform.help.browseHelpCenter": "Browse Help Center",
         "platform.help.openTicket": "Open a support ticket",
@@ -98,7 +98,7 @@ describe("creator shell regressions", () => {
     expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("href", "/teach");
     expect(screen.getByRole("button", { name: "Products" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Marketing" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Partnerships" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Growth" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tools" })).toBeInTheDocument();
   });
 

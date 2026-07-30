@@ -14,7 +14,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { InlineHelp } from "@/components/shared/inline-help";
-import { payoutClearDays } from "@/data/plans";
 import { StatusChip } from "@/components/shared/status-chip";
 import { TeacherConnectOnboarding } from "@/components/teacher/teacher-connect-onboarding";
 import {
@@ -35,9 +34,10 @@ import {
 // enabled Stripe Connect yet — a SkillsetMind-side configuration state, not a
 // failure and not something the teacher can fix.
 const PAYOUTS_UNAVAILABLE_MESSAGE =
-  "Payouts aren't live on SkillsetMind yet — Stripe Connect is still being " +
-  "configured on our side. No payout account is connected; onboarding will " +
-  "open on this page automatically once it's ready.";
+  "Paid selling isn't open on SkillsetMind yet — Stripe Connect is still being " +
+  "configured on our side. No Stripe account is connected yet, so buyers have " +
+  "nowhere to pay you; onboarding will open on this page automatically once " +
+  "it's ready.";
 
 type LedgerReadState = "loading" | "ready" | "error";
 
@@ -88,7 +88,7 @@ export function TeacherWalletPanel() {
       },
       () => {
         setLedgerState("error");
-        setError("We could not load payout release reporting.");
+        setError("We could not load your earnings record.");
       },
     );
   }, [user]);
@@ -162,8 +162,10 @@ export function TeacherWalletPanel() {
 
   // Money figures derive from the payout LEDGER — the authoritative record for
   // BOTH one-time orders AND subscription invoices. The ledger carries the
-  // server-computed gross/commission/Stripe-fee/net per entry, so these remain
-  // exact payout figures rather than order-level estimates.
+  // server-computed gross/commission/Stripe-fee/net per entry, so these are
+  // exact as a record of what was CHARGED, not a payout figure: the Stripe fee
+  // is our own computation, and settlement/payout happen on Stripe's side where
+  // we never see the number. Reconcile against Stripe, never the reverse.
   const financialsReady = ledgerState === "ready";
   const financials = useMemo(
     () => summarizeCreatorWallet(ledgerEntries),
@@ -202,22 +204,24 @@ export function TeacherWalletPanel() {
           <h2 className="display-title mt-3 flex items-center gap-2 text-4xl leading-tight text-[var(--color-primary)]">
             Your earnings, your payout setup.
             <InlineHelp topic="Payout schedule" href="/help#payouts">
-              Earnings are released {payoutClearDays} days after each sale —
-              the moment the refund window closes. Stripe Connect must have
-              both charges and payouts enabled before a paid product can go
-              live.
+              Buyers pay your Stripe account directly, so there is no platform
+              hold. Stripe then settles and pays out to your bank on its own
+              timing, which depends on your country and the payment method, and
+              a new account waits on verification before its first payout.
+              Stripe Connect must have both charges and payouts enabled before
+              a paid product can go live.
             </InlineHelp>
           </h2>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            Track paid orders, payout release status, Stripe Connect readiness,
-            and tax reporting from one money center. Profile and security stay
+            This is your earnings record: paid orders, what SkillsetMind
+            charged, and your Stripe Connect status. Profile and security stay
             in Settings.
           </p>
         </div>
-        <button type="button" disabled className="button-outline px-4 py-2.5 text-sm opacity-60">
+        <p className="flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
           <Download aria-hidden="true" size={14} strokeWidth={2} />
-          Tax forms after first payouts
-        </button>
+          Stripe issues your tax forms
+        </p>
       </header>
 
       {message ? (
@@ -241,12 +245,12 @@ export function TeacherWalletPanel() {
           </p>
           <p className="mt-2 text-sm text-[rgba(255,255,255,0.72)]">
             Net across one-time and subscription sales, after SkillsetMind commission
-            and Stripe fees. Release state is tracked below.
+            and Stripe fees. Every charge was created on your own Stripe account —
+            SkillsetMind never holds it. Stripe&apos;s own settlement timing then
+            decides when it is available to pay out.
           </p>
 
           <div className="mt-6 grid gap-3">
-            <BalanceRow label="Pending release" value={money(financials.walletInReleaseByCurrency)} />
-            <BalanceRow label="Released" value={money(financials.walletReleasedByCurrency)} />
             <BalanceRow label="Refunded" value={money(financials.refundedByCurrency)} />
           </div>
 
@@ -378,7 +382,11 @@ export function TeacherWalletPanel() {
                 You stay on SkillsetMind the whole time. Stripe collects the
                 legally required identity, tax, and bank details in this
                 embedded step so your payout account meets payment
-                regulations.
+                regulations. After that, buyers pay your Stripe account directly:
+                SkillsetMind never holds your money and there is no platform
+                waiting period. Stripe pays out to your bank on your account&apos;s
+                payout schedule — note that Stripe verifies new accounts before
+                the very first payout.
               </p>
             </div>
           </div>
@@ -398,8 +406,13 @@ export function TeacherWalletPanel() {
               Statements
             </p>
             <h3 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
-              Recent payout ledger.
+              Recent earnings record.
             </h3>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+              One line per paid order — a record, not a wallet. The payouts
+              themselves are made by Stripe out of your own balance, on your
+              account&apos;s payout schedule.
+            </p>
           </div>
           <button type="button" disabled className="button-outline px-4 py-2.5 text-sm opacity-60">
             Export after first payout
@@ -409,16 +422,17 @@ export function TeacherWalletPanel() {
         <div className="mt-5 overflow-hidden rounded-[14px] border border-[var(--color-line)]">
           {ledgerState === "loading" ? (
             <div className="bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink-soft)]">
-              Loading payout ledger…
+              Loading your earnings record…
             </div>
           ) : ledgerState === "error" ? (
             <div className="bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink-soft)]">
-              Payout ledger is unavailable.
+              Your earnings record is unavailable.
             </div>
           ) : ledgerEntries.length === 0 ? (
             <div className="bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink-soft)]">
-              No payout ledger entries yet. Paid orders will create release
-              records automatically after checkout succeeds.
+              No entries yet. Each paid order adds a line here after checkout
+              succeeds — and the money for it goes straight to your own Stripe
+              balance, not to a SkillsetMind account.
             </div>
           ) : (
             <div className="divide-y divide-[var(--color-line)]">
@@ -548,20 +562,30 @@ function formatDate(value: unknown) {
   }).format(date);
 }
 
+// Every non-refunded, non-disputed row is money the buyer already paid into the
+// teacher's own Stripe balance, so none of them is "pending" on anything of
+// ours. The four release-model values only ever appear on historical rows.
+const LEDGER_STATUS_LABELS: Record<PayoutLedgerEntry["status"], string> = {
+  settled: "Recorded",
+  in_release: "Recorded",
+  releasing: "Recorded",
+  released: "Recorded",
+  released_advance: "Recorded",
+  disputed: "Disputed",
+  refunded: "Refunded",
+  partially_refunded: "Partially refunded",
+};
+
 function formatLedgerStatus(status: PayoutLedgerEntry["status"]) {
-  return status.replace(/_/g, " ");
+  return LEDGER_STATUS_LABELS[status] ?? "Recorded";
 }
 
 function mapLedgerStatus(status: PayoutLedgerEntry["status"]) {
-  if (status === "released" || status === "released_advance") {
-    return "paid";
-  }
-
   if (status === "refunded" || status === "partially_refunded" || status === "disputed") {
     return "refunded";
   }
 
-  return "pending";
+  return "paid";
 }
 
 function maskStripeId(value: string) {

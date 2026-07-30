@@ -22,7 +22,7 @@
     "mobileNavLabel": "Navegación móvil"
   },
   "footer": {
-    "tagline": "La plataforma de cursos para psicólogos, terapeutas y coaches de desarrollo personal. Expertos verificados, pagos transparentes, certificados verificables.",
+    "tagline": "La plataforma de cursos para psicólogos, terapeutas y coaches de desarrollo personal. Expertos verificados, sin retención de la plataforma sobre tu dinero, certificados verificables.",
     "platform": "Plataforma",
     "creator": "Creador",
     "helpLegal": "Ayuda y legal",
@@ -38,7 +38,7 @@
     "termsOfService": "Términos del servicio",
     "privacyPolicy": "Política de privacidad",
     "refundPolicy": "Política de reembolsos",
-    "rightsLine": "Aprendizaje centrado en cursos, con pagos transparentes."
+    "rightsLine": "Aprendizaje centrado en cursos. Tus compradores pagan directo a tu cuenta de Stripe."
   },
   "auth": {
     "learnerAccess": "acceso de estudiante",
@@ -77,11 +77,11 @@
         "teacher": {
           "eyebrow": "SkillsetMind para expertos",
           "title": "Enséñale al mundo lo que sabes.",
-          "description": "Verifica tu perfil profesional, publica tu programa, vende en más de 30 monedas y recibe el pago directo en tu cuenta. Sin montar un sitio web.",
+          "description": "Verifica tu perfil profesional, publica tu programa, vende en 30 monedas y haz que el comprador pague directo en tu propia cuenta de Stripe. Sin montar un sitio web.",
           "point1Title": "Profesionales verificados",
           "point1Desc": "La elegibilidad profesional se verifica antes de que un creador pueda publicar.",
-          "point2Title": "Cobra en más de 30 monedas",
-          "point2Desc": "Checkout global vía Stripe, pagos directos a tu cuenta.",
+          "point2Title": "Vende en 30 monedas",
+          "point2Desc": "Checkout global vía Stripe. El cobro entra en tu propia cuenta de Stripe.",
           "point3Title": "Certificados verificables",
           "point3Desc": "Cada curso completado genera un enlace público de verificación."
         },
@@ -92,7 +92,7 @@
           "point1Title": "Expertos verificados",
           "point1Desc": "La elegibilidad profesional se comprueba antes de que un creador pueda publicar.",
           "point2Title": "Paga en tu moneda",
-          "point2Desc": "Checkout vía Stripe en más de 30 monedas.",
+          "point2Desc": "Checkout vía Stripe en 30 monedas.",
           "point3Title": "Certificados verificables",
           "point3Desc": "Termina un curso y obtén un enlace público de verificación."
         }
@@ -250,11 +250,11 @@
       "eyebrow": "Para expertos en psicología y bienestar",
       "title1": "Tu conocimiento cambia vidas.",
       "title2": "Ahora haz que llegue a miles.",
-      "sub": "Hecho para psicólogos, terapeutas y coaches de desarrollo personal. Sin web que montar, sin herramientas que configurar. Nosotros manejamos el checkout, el aula y tus pagos. Tú enseñas.",
+      "sub": "Hecho para psicólogos, terapeutas y coaches de desarrollo personal. Sin web que montar, sin herramientas que configurar. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe, así que nunca retenemos tu dinero. Tú enseñas.",
       "trust1Title": "Verificado",
       "trust1Desc": "Los profesionales se verifican antes de publicar y los programas activos se supervisan para garantizar el cumplimiento.",
       "trust2Title": "Global",
-      "trust2Desc": "Checkout en más de 30 monedas vía Stripe.",
+      "trust2Desc": "Checkout en 30 monedas vía Stripe.",
       "trust3Title": "Verificable",
       "trust3Desc": "Cada certificado tiene un enlace público de verificación.",
       "ctaDashboard": "Ir a tu panel",
@@ -270,7 +270,7 @@
       "step2Title": "Crea y publica",
       "step2Desc": "Arma tus módulos y lecciones en Course Builder. Define el precio, completa las verificaciones de lanzamiento y publica cuando esté listo.",
       "step3Title": "Llega a gente en cualquier lugar",
-      "step3Desc": "Cuando tu verificación profesional y las comprobaciones de lanzamiento estén completas, el curso sale al aire al publicarlo. El monitoreo de cumplimiento continúa sin frenar las inscripciones. Cobra en más de 30 monedas, con fondos liberados {days} días después de cada venta."
+      "step3Desc": "Cuando tu verificación profesional y las comprobaciones de lanzamiento estén completas, el curso sale al aire al publicarlo. El monitoreo de cumplimiento continúa sin frenar las inscripciones. Vende en 30 monedas, con cada comprador cobrado en tu propia cuenta de Stripe, sin retención de la plataforma."
     },
     "marketplace": {
       "kicker": "El marketplace",
@@ -290,9 +290,9 @@
       "c3Title": "Comunidad privada del programa",
       "c3Desc": "Cada curso de pago tiene un espacio privado con posts, respuestas y likes. La comunidad sigue conversando después de la lección.",
       "c4Title": "Checkout multimoneda",
-      "c4Desc": "Vende en más de 30 monedas. El alumno paga en su propia moneda.",
-      "c5Title": "Billetera del creador, liberación en {days} días",
-      "c5Desc": "Los fondos pasan de pendientes a disponibles {days} días después de cada venta. Libro mayor completo, auditoría completa.",
+      "c4Desc": "Vende en 30 monedas. El alumno paga en su propia moneda.",
+      "c5Title": "Tus compradores te pagan directo",
+      "c5Desc": "El cobro entra en tu propia cuenta de Stripe, no en la nuestra. Sin retención de la plataforma, sin período de compensación de la plataforma: de ahí en adelante Stripe liquida y paga según sus propios tiempos, que dependen de tu país y del método de pago. Libro mayor completo, auditoría completa.",
       "c6Title": "Certificados verificables",
       "c6Desc": "Un enlace público que cualquiera verifica en segundos. Prueba de que tus alumnos hicieron el trabajo."
     },
@@ -307,7 +307,7 @@
       "clause2": "Mismas funciones en todos los planes",
       "clause3": "Portabilidad de datos en un clic",
       "clause4": "Cancelación en un clic",
-      "clause5": "Protección de fondos por contrato",
+      "clause5": "Nunca retenemos tu dinero",
       "clause6": "SLA de soporte humano",
       "ratified": "Ratificado · público y por escrito",
       "sealed": "Sellado",
@@ -325,7 +325,7 @@
       "ctaStart": "Empieza a enseñar",
       "ctaPromise": "Lee la Promesa al Creador",
       "bullet1": "Quédate con {keep}% en Free. Sube a Plus y tu comisión puede bajar a 2%.",
-      "bullet2": "Pagos liberados {days} días después de cada venta. No necesitas suscripción para empezar.",
+      "bullet2": "Tus compradores pagan directo a tu cuenta de Stripe. Sin retención de la plataforma y sin suscripción para empezar.",
       "bullet3": "Liberación gradual y ventana de reembolso te protegen del abuso.",
       "bullet4": "Comunidad del curso, sesiones en vivo y certificados verificables en cada plan."
     },
@@ -363,12 +363,10 @@
       "marketingOverview": "Visión de marketing",
       "storefrontPages": "Tienda y páginas",
       "mediaLibrary": "Biblioteca multimedia",
-      "affiliatePrograms": "Programas de afiliados",
       "messages": "Mensajes",
       "sales": "Ventas",
       "subscriptions": "Suscripciones",
       "coupons": "Cupones",
-      "coProductions": "Coproducciones",
       "reviewsRefunds": "Reembolsos",
       "team": "Colaboradores",
       "integrations": "Integraciones",
@@ -380,7 +378,7 @@
       "billing": "Facturación",
       "creatorOps": "Visión del negocio",
       "reports": "Informes",
-      "wallet": "Billetera",
+      "earnings": "Ingresos",
       "verification": "Verificación"
     },
     "crumbs": {
@@ -409,8 +407,8 @@
       "resendVerification": "Reenviar verificación",
       "acceptTerms": "Acepta los Términos del Profesor para publicar cursos.",
       "acceptTermsCta": "Aceptar términos",
-      "connectPayouts": "Conecta los pagos antes de vender cursos de pago. Los cursos gratuitos y en borrador aún no lo necesitan.",
-      "connectPayoutsCta": "Conectar pagos"
+      "connectPayouts": "Conecta tu cuenta de Stripe antes de vender cursos de pago: el cobro entra directo en ella. Los cursos gratuitos y en borrador aún no lo necesitan.",
+      "connectPayoutsCta": "Conectar Stripe"
     },
     "help": {
       "needHelp": "¿Necesitas ayuda?",
@@ -551,7 +549,7 @@
       "startLearning": "Empezar a aprender"
     },
     "refund": {
-      "confirm": "¿Solicitar un reembolso de este curso? Los reembolsos están disponibles dentro de los 7 días posteriores a la compra si has completado menos de la mitad del curso. Si se aprueba, tu acceso al curso termina cuando se procese el reembolso.",
+      "confirm": "¿Solicitar un reembolso de este curso? Los reembolsos están disponibles dentro de los 7 días posteriores a la compra si has completado menos de la mitad del curso. El reembolso se emite desde la cuenta de Stripe de tu educador — la misma cuenta que te cobró — y vuelve a tu método de pago original. Si se aprueba, tu acceso al curso termina cuando se procese el reembolso.",
       "error": "No pudimos enviar esta solicitud de reembolso. Puede estar fuera de la ventana de 7 días — contacta con soporte si crees que es un error.",
       "requesting": "Solicitando reembolso...",
       "requested": "Reembolso solicitado",
@@ -566,28 +564,11 @@
     },
     "dashboard": {
       "welcomeBackNamed": "Hola de nuevo, {name}.",
-      "welcomeBack": "Hola de nuevo.",
-      "summaryPrefix": "Tienes",
-      "summaryJoin": "y",
-      "summaryPayoutLead": ". Tu próximo pago:",
-      "publishedSingular": "{count} curso publicado",
-      "publishedPlural": "{count} cursos publicados",
-      "draftSingular": "{count} borrador",
-      "draftPlural": "{count} borradores",
-      "payoutFirstOrder": "programado después de tu primera venta pagada",
-      "nextPayout": "Próximo pago",
-      "payoutLoadingAria": "Cargando próximo pago — abrir configuración de pagos",
-      "payoutAria": "Próximo pago {amount} — abrir configuración de pagos",
-      "connectStripeAria": "Conecta Stripe para habilitar los pagos",
-      "netAfterFees": "Neto después de comisiones",
-      "connectStripe": "Conecta Stripe para habilitar",
-      "publicProfile": "Perfil público",
-      "storefront": "Tienda",
-      "newCourse": "Nuevo curso"
+      "welcomeBack": "Hola de nuevo."
     },
     "metrics": {
       "revenue30d": "Ingresos, 30 días",
-      "revenueHintPaid": "Volumen de pagos completados",
+      "revenueHintPaid": "Volumen de checkouts pagados",
       "revenueHintEmpty": "Disponible tras la primera venta",
       "newStudents": "Nuevos estudiantes",
       "newStudentsHintPaid": "Inscripciones pagadas",
@@ -611,7 +592,7 @@
       "rangeGroupLabel": "Rango de ingresos",
       "chartAria": "Gráfico de ingresos del profesor",
       "noRevenue": "Aún no hay ingresos",
-      "noRevenueDetail": "Crea, sube contenido, previsualiza, conecta los pagos y publica.",
+      "noRevenueDetail": "Crea, sube contenido, previsualiza, conecta Stripe y publica.",
       "topCourses": "Cursos destacados",
       "allCourses": "Todos los cursos",
       "courseMeta": "{lessons} lecciones - {orders} pedidos",
@@ -620,8 +601,8 @@
       "activityEyebrow": "Actividad",
       "activityTitle": "Lo que necesita tu atención hoy.",
       "open": "Abrir",
-      "actPayoutTitle": "Termina la configuración de pagos",
-      "actPayoutDetail": "Conecta Stripe para que los cursos de pago puedan venderse y liberar los pagos al creador.",
+      "actPayoutTitle": "Termina la configuración de Stripe",
+      "actPayoutDetail": "Conecta Stripe para poder vender cursos de pago: el cobro entra directo en tu propia cuenta de Stripe.",
       "actChangesTitle": "Revisa los cambios solicitados",
       "actChangesDetail": "{title} necesita ajustes antes de poder publicarse.",
       "actEmptyDraftTitle": "Añade lecciones a tu borrador",

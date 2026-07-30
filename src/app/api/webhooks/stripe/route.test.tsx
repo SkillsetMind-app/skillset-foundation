@@ -368,14 +368,6 @@ async function postEvent(event: Record<string, unknown>) {
   );
 }
 
-function deferred() {
-  let resolve!: () => void;
-  const promise = new Promise<void>((resolvePromise) => {
-    resolve = resolvePromise;
-  });
-  return { promise, resolve };
-}
-
 describe("Stripe webhook financial integrity", () => {
   beforeEach(() => {
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
@@ -463,43 +455,25 @@ describe("Stripe webhook financial integrity", () => {
     );
   });
 
-  it("serializes distinct cumulative partial refunds before calling Stripe", async () => {
+  it("records refunds without moving any money (direct-charge invariant)", async () => {
+    // Under direct charges the platform holds nothing: Stripe debits the refund
+    // straight from the teacher's balance. The webhook must therefore NEVER
+    // call transfers.createReversal — if it ever does again, we are back to
+    // being a custodian of other people's money.
     const admin = createAdmin("refund");
     mocks.getAdmin.mockReturnValue(admin);
 
-    const firstReversalStarted = deferred();
-    const secondReversalStarted = deferred();
-    const releaseFirstReversal = deferred();
-    mocks.reversalCreate.mockImplementation(async () => {
-      const callNumber = mocks.reversalCreate.mock.calls.length;
-      if (callNumber === 1) {
-        firstReversalStarted.resolve();
-        await releaseFirstReversal.promise;
-      } else {
-        secondReversalStarted.resolve();
-      }
-      return { id: `trr_${callNumber}` };
-    });
+    const responses = await Promise.all([
+      postEvent(refundEvent("evt_refund_30", 3000)),
+      postEvent(refundEvent("evt_refund_60", 6000)),
+    ]);
 
-    const first = postEvent(refundEvent("evt_refund_30", 3000));
-    await firstReversalStarted.promise;
-    const second = postEvent(refundEvent("evt_refund_60", 6000));
-    await secondReversalStarted.promise;
-    releaseFirstReversal.resolve();
-
-    const responses = await Promise.all([first, second]);
     expect(responses.map((response) => response.status)).toEqual([200, 200]);
-    expect(
-      mocks.reversalCreate.mock.calls.reduce(
-        (total, call) => total + Number(call[1].amount),
-        0,
-      ),
-    ).toBe(4800);
-    expect(admin.state.ledger.transfer_reversed_amount_minor).toBe(4800);
+    expect(mocks.reversalCreate).not.toHaveBeenCalled();
     expect(
       admin.state.rpcCalls.filter(
         (call) => call.name === "claim_payout_transfer_reversal",
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(0);
   });
 });

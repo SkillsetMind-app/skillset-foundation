@@ -8,7 +8,7 @@ export default function TeacherSalesPage() {
       <PlatformShell
         eyebrow="Teacher Studio"
         title="Your sales."
-        description="Every paid order for your courses, with payment status and a link to each transaction's payout trail."
+        description="Every paid order for your courses. Buyers pay your Stripe account directly — SkillsetMind never holds the money, so this is your record of what sold."
       >
         <SaleList />
       </PlatformShell>

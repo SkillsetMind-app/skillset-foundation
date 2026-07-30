@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
-import {
-  normalizeAffiliateRef,
-  resolveAffiliateAttribution,
-} from "@/domain/affiliate-attribution";
 import type { CourseCoupon } from "@/domain/course-commerce";
 import { normalizeCouponCode } from "@/domain/course-commerce";
 import { redeemCourseCoupon } from "@/domain/coupon-redemption";
@@ -25,7 +21,6 @@ import {
   courseSubscriptionInterval,
   getCourseRow,
   getUserRow,
-  getOrCreateBillingStripeCustomer,
   getOrCreateCourseSubscriptionPrice,
   loadCourseProductOffers,
   normalizeCoursePrice,
@@ -42,12 +37,18 @@ const COURSE_SUBSCRIPTION_CHECKOUT_BLOCKING_STATUSES = [
 ];
 
 // POST /api/payments/checkout — opens a Stripe Checkout Session for a paid
-// course. Faithful port of the createCheckoutSession Firebase callable
-// (functions/src/index.ts). Two flows: a recurring `subscription` checkout for
-// subscription courses, and the one-time `payment` flow guarded by the B3
-// checkout lock (claim_checkout_lock RPC) so a double-click never opens two
-// charges. Free enrollment is a separate rpc (create_free_course_enrollment),
-// called directly by the client — not this route.
+// course. Two flows: a recurring `subscription` checkout for subscription
+// courses, and the one-time `payment` flow guarded by the B3 checkout lock
+// (claim_checkout_lock RPC) so a double-click never opens two charges. Free
+// enrollment is a separate rpc (create_free_course_enrollment), called directly
+// by the client — not this route.
+//
+// CHARGE MODEL: DIRECT CHARGES. Every session is created with
+// `{ stripeAccount: <teacher's connected account> }`, so the charge is created
+// ON the teacher's account: the teacher is the merchant of record, the money
+// never lands in a platform balance, and Stripe deducts our cut automatically
+// via `application_fee_amount`. The platform therefore holds no third-party
+// funds and runs no payout release — see docs/plans/2026-07-24-pivot-direct-charges.md.
 export async function POST(request: Request) {
   let releasableCouponReservation: {
     admin: ReturnType<typeof getSupabaseAdminClient>;
@@ -60,7 +61,6 @@ export async function POST(request: Request) {
     const body = (await request.json().catch(() => ({}))) as {
       courseId?: unknown;
       couponCode?: unknown;
-      affiliateRef?: unknown;
       offerId?: unknown;
       offerCode?: unknown;
       priceId?: unknown;
@@ -70,9 +70,6 @@ export async function POST(request: Request) {
     const offerId = String(body.offerId ?? "").trim();
     const offerCode = String(body.offerCode ?? "").trim().toUpperCase();
     const priceId = String(body.priceId ?? "").trim();
-    const affiliateRefRaw = normalizeAffiliateRef(
-      String(body.affiliateRef ?? "").trim(),
-    );
 
     if (!courseId || courseId.length > 160) {
       throw new PaymentError("A valid courseId is required.");
@@ -176,39 +173,6 @@ export async function POST(request: Request) {
       appliedCouponId = coupon?.id ?? null;
       appliedCouponCode = redemption.code;
       discountMinor = redemption.discountMinor;
-    }
-
-    // Hotmart-parity: capture affiliate ref on the money path (metadata).
-    // Soft-fail when disabled/invalid so checkout still completes.
-    let affiliateUserId: string | null = null;
-    let affiliateCommissionMinor = 0;
-    let affiliateCommissionPct = 0;
-    if (affiliateRefRaw) {
-      const { data: commerceSettings } = await admin
-        .from("course_commerce_settings")
-        .select("affiliate_enabled,affiliate_commission_pct")
-        .eq("course_id", courseId)
-        .maybeSingle();
-      const attribution = resolveAffiliateAttribution({
-        affiliateRef: affiliateRefRaw,
-        buyerUserId: userId,
-        teacherUserId: course.owner_id,
-        affiliateEnabled: Boolean(commerceSettings?.affiliate_enabled),
-        commissionPct: Number(commerceSettings?.affiliate_commission_pct ?? 0),
-        amountMinor,
-      });
-      if (attribution.ok) {
-        const { data: affiliateUser } = await admin
-          .from("users")
-          .select("uid")
-          .eq("uid", attribution.affiliateUserId)
-          .maybeSingle();
-        if (affiliateUser?.uid) {
-          affiliateUserId = attribution.affiliateUserId;
-          affiliateCommissionMinor = attribution.commissionMinor;
-          affiliateCommissionPct = attribution.commissionPct;
-        }
-      }
     }
 
     const enrollmentId = `${userId}__${courseId}`;
@@ -316,32 +280,36 @@ export async function POST(request: Request) {
       let stripeCreateStarted = false;
       let subscriptionSession: Stripe.Checkout.Session | null = null;
       try {
-        const customerId = await getOrCreateBillingStripeCustomer(
+        // Direct charges: the recurring Price must be owned by the teacher's
+        // account. A `priced.stripePriceId` configured against the platform is
+        // not addressable here, so the account-scoped helper is authoritative.
+        const subscriptionPriceId = await getOrCreateCourseSubscriptionPrice(
           stripe,
-          userId,
-          userEmail ?? null,
+          course,
+          courseId,
+          amountMinor,
+          currency,
+          subscriptionInterval,
+          connectedAccountId,
         );
-        const subscriptionPriceId =
-          priced.stripePriceId
-          || (await getOrCreateCourseSubscriptionPrice(
-            stripe,
-            course,
-            courseId,
-            amountMinor,
-            currency,
-            subscriptionInterval,
-          ));
 
         stripeCreateStarted = true;
         subscriptionSession = await stripe.checkout.sessions.create(
           {
             mode: "subscription",
-            customer: customerId,
+            // No platform Customer: under direct charges the Customer belongs to
+            // the connected account, so Stripe creates/reuses it there from the
+            // buyer's email. Passing our platform customer id would 404.
+            customer_email: userEmail,
+            client_reference_id: userId,
             line_items: [{ price: subscriptionPriceId, quantity: 1 }],
             // Carry the full fulfilment context on the SUBSCRIPTION so every
             // future invoice.paid / lifecycle event resolves course, buyer,
             // teacher, connected account and fee without a DB lookup.
             subscription_data: {
+              // Our cut of every recurring invoice, taken automatically by
+              // Stripe. bps -> percent (1000 bps = 10%).
+              application_fee_percent: platformFeeBps / 100,
               metadata: {
                 purpose: "course_subscription",
                 courseId,
@@ -353,13 +321,6 @@ export async function POST(request: Request) {
                 currency: currency.toUpperCase(),
                 ...(priced.offerId ? { offerId: priced.offerId } : {}),
                 ...(priced.priceId ? { priceId: priced.priceId } : {}),
-                ...(affiliateUserId
-                  ? {
-                      affiliateUserId,
-                      affiliateCommissionPct: String(affiliateCommissionPct),
-                      affiliateCommissionMinor: String(affiliateCommissionMinor),
-                    }
-                  : {}),
               },
             },
             metadata: {
@@ -368,15 +329,19 @@ export async function POST(request: Request) {
               courseSlug: courseId,
               userId,
               teacherId: course.owner_id,
+              connectedAccountId,
+              platformFeeBps: String(platformFeeBps),
               ...(priced.offerId ? { offerId: priced.offerId } : {}),
               ...(priced.priceId ? { priceId: priced.priceId } : {}),
-              ...(affiliateUserId ? { affiliateUserId } : {}),
             },
             expires_at: Math.floor(Date.now() / 1000) + checkoutSessionExpiresInSec,
             success_url: `${appUrl}/learn/courses/${encodeURIComponent(courseId)}?checkout=success`,
             cancel_url: `${appUrl}/courses/${encodeURIComponent(courseId)}?checkout=cancelled`,
           },
-          { idempotencyKey: `course_sub_checkout_${checkoutAttemptId}` },
+          {
+            idempotencyKey: `course_sub_checkout_${checkoutAttemptId}`,
+            stripeAccount: connectedAccountId,
+          },
         );
 
         if (!subscriptionSession.url) {
@@ -405,7 +370,13 @@ export async function POST(request: Request) {
         let lockCanBeReleased = !stripeCreateStarted;
         if (subscriptionSession?.id) {
           try {
-            await stripe.checkout.sessions.expire(subscriptionSession.id);
+            // Session lives on the connected account — expiring it without the
+            // account header 404s and would strand the lock.
+            await stripe.checkout.sessions.expire(
+              subscriptionSession.id,
+              {},
+              { stripeAccount: connectedAccountId },
+            );
             lockCanBeReleased = true;
           } catch (expireError) {
             lockCanBeReleased = false;
@@ -532,7 +503,7 @@ export async function POST(request: Request) {
       price_id: priced.priceId ?? null,
       coupon_code: appliedCouponCode,
       discount_minor: discountMinor,
-      payout_model: "separate_charges_and_transfers",
+      payout_model: "direct_charge",
       status: "pending",
       provider: "stripe",
       checkout_session_id: null,
@@ -559,6 +530,14 @@ export async function POST(request: Request) {
     // issuer and amount eligibility remain Stripe's responsibility at Checkout.
     const enableStripeCardInstallments =
       installmentPlan.enabled && installmentPlan.stripeCardInstallmentsEligible;
+
+    // Platform cut on this charge. Floored so rounding never favours us over the
+    // teacher, and capped below the charge so Stripe can never reject the
+    // session for a fee that exceeds the amount being collected.
+    const applicationFeeMinor = Math.min(
+      Math.max(0, Math.floor((amountMinor * platformFeeBps) / 10000)),
+      Math.max(0, amountMinor - 1),
+    );
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
@@ -598,24 +577,26 @@ export async function POST(request: Request) {
               discountMinor: String(discountMinor),
             }
           : {}),
-        ...(affiliateUserId
-          ? {
-              affiliateUserId,
-              affiliateCommissionPct: String(affiliateCommissionPct),
-              affiliateCommissionMinor: String(affiliateCommissionMinor),
-            }
-          : {}),
+        teacherId: course.owner_id,
+        connectedAccountId,
+        platformFeeBps: String(platformFeeBps),
       },
       payment_intent_data: {
+        // Our cut, deducted by Stripe from a charge that settles directly in the
+        // teacher's balance. Computed on the amount actually charged (post
+        // coupon), so a discount reduces our fee proportionally rather than
+        // eating the teacher's share.
+        application_fee_amount: applicationFeeMinor,
         metadata: {
           orderId,
           courseId,
           courseSlug: courseId,
           userId,
+          teacherId: course.owner_id,
+          platformFeeBps: String(platformFeeBps),
           ...(priced.offerId ? { offerId: priced.offerId } : {}),
           ...(priced.priceId ? { priceId: priced.priceId } : {}),
           ...(appliedCouponCode ? { couponCode: appliedCouponCode } : {}),
-          ...(affiliateUserId ? { affiliateUserId } : {}),
           ...(installmentPlan.enabled
             ? { installmentsMax: String(installmentPlan.maxCount) }
             : {}),
@@ -637,6 +618,7 @@ export async function POST(request: Request) {
 
     const session = await stripe.checkout.sessions.create(sessionParams, {
       idempotencyKey: `checkout_${orderId}`,
+      stripeAccount: connectedAccountId,
     });
     releasableCouponReservation = null;
 

@@ -444,9 +444,6 @@ export type Database = {
       }
       course_commerce_settings: {
         Row: {
-          affiliate_approval: string
-          affiliate_commission_pct: number
-          affiliate_enabled: boolean
           course_id: string
           created_at: string
           owner_id: string
@@ -456,9 +453,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          affiliate_approval?: string
-          affiliate_commission_pct?: number
-          affiliate_enabled?: boolean
           course_id: string
           created_at?: string
           owner_id: string
@@ -468,9 +462,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          affiliate_approval?: string
-          affiliate_commission_pct?: number
-          affiliate_enabled?: boolean
           course_id?: string
           created_at?: string
           owner_id?: string
@@ -489,54 +480,6 @@ export type Database = {
           },
           {
             foreignKeyName: "course_commerce_settings_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["uid"]
-          },
-        ]
-      }
-      course_coproducers: {
-        Row: {
-          course_id: string
-          created_at: string
-          id: string
-          invitee_email: string
-          owner_id: string
-          revenue_share_pct: number
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          course_id: string
-          created_at?: string
-          id?: string
-          invitee_email: string
-          owner_id: string
-          revenue_share_pct: number
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          course_id?: string
-          created_at?: string
-          id?: string
-          invitee_email?: string
-          owner_id?: string
-          revenue_share_pct?: number
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "course_coproducers_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "course_coproducers_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -2190,10 +2133,6 @@ export type Database = {
         Args: { p_slug: string }
         Returns: boolean
       }
-      invite_course_coproducer: {
-        Args: { p_course_id: string; p_email: string; p_share_pct: number }
-        Returns: Json
-      }
       is_admin: { Args: never; Returns: boolean }
       is_moderator: { Args: never; Returns: boolean }
       is_ops: { Args: never; Returns: boolean }
@@ -2251,10 +2190,6 @@ export type Database = {
         Args: { p_case_id: string; p_review_note?: string; p_status: string }
         Returns: Json
       }
-      revoke_course_coproducer: {
-        Args: { p_coproducer_id: string }
-        Returns: Json
-      }
       send_course_message: {
         Args: { p_body: string; p_course_id: string; p_student_id: string }
         Returns: Json
@@ -2292,9 +2227,6 @@ export type Database = {
       }
       upsert_course_commerce_settings: {
         Args: {
-          p_affiliate_approval: string
-          p_affiliate_commission_pct: number
-          p_affiliate_enabled: boolean
           p_course_id: string
           p_tax_collection: boolean
           p_tax_regions: Json

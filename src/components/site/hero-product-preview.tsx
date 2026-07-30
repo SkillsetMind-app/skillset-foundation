@@ -68,7 +68,7 @@ export function HeroProductPreview() {
               <span className="display-title text-xl text-[#1a365d]">$149</span>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e4f3eb] px-2.5 py-1 text-[11px] font-semibold text-[#157049]">
                 <Globe size={12} strokeWidth={2.2} />
-                30+ currencies
+                30 currencies
               </span>
             </div>
           </div>

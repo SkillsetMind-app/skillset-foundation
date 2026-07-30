@@ -22,7 +22,7 @@
     "mobileNavLabel": "Mobile navigation"
   },
   "footer": {
-    "tagline": "The course platform for psychologists, therapists, and personal-development coaches. Verified experts, transparent payouts, verifiable certificates.",
+    "tagline": "The course platform for psychologists, therapists, and personal-development coaches. Verified experts, no platform hold on your money, verifiable certificates.",
     "platform": "Platform",
     "creator": "Creator",
     "helpLegal": "Help & legal",
@@ -38,7 +38,7 @@
     "termsOfService": "Terms of service",
     "privacyPolicy": "Privacy policy",
     "refundPolicy": "Refund policy",
-    "rightsLine": "Course-first learning with transparent payouts."
+    "rightsLine": "Course-first learning. Your buyers pay your Stripe account directly."
   },
   "auth": {
     "learnerAccess": "learner access",
@@ -77,11 +77,11 @@
         "teacher": {
           "eyebrow": "SkillsetMind for experts",
           "title": "Teach the world what you know.",
-          "description": "Verify your professional profile, publish your program, sell in 30+ currencies, and get paid straight to your bank. No website to build.",
+          "description": "Verify your professional profile, publish your program, sell in 30 currencies, and have buyers pay your own Stripe account directly. No website to build.",
           "point1Title": "Verified professionals",
           "point1Desc": "Professional eligibility is verified before a creator can publish.",
-          "point2Title": "Paid in 30+ currencies",
-          "point2Desc": "Global checkout via Stripe, payouts straight to your bank.",
+          "point2Title": "Sell in 30 currencies",
+          "point2Desc": "Global checkout via Stripe. The charge lands in your own Stripe account.",
           "point3Title": "Verifiable certificates",
           "point3Desc": "Each completion gets a public verification URL."
         },
@@ -92,7 +92,7 @@
           "point1Title": "Verified experts",
           "point1Desc": "Professional eligibility is checked before a creator can publish.",
           "point2Title": "Pay in your currency",
-          "point2Desc": "Checkout via Stripe in 30+ currencies.",
+          "point2Desc": "Checkout via Stripe in 30 currencies.",
           "point3Title": "Verifiable certificates",
           "point3Desc": "Finish a course and get a public verification URL."
         }
@@ -250,11 +250,11 @@
       "eyebrow": "For psychology & wellbeing experts",
       "title1": "Your knowledge changes lives.",
       "title2": "Now let it reach thousands.",
-      "sub": "Built for psychologists, therapists, and personal-development coaches. No site to build, no tools to wire up. We run the checkout, the classroom, and your payouts. You teach.",
+      "sub": "Built for psychologists, therapists, and personal-development coaches. No site to build, no tools to wire up. We run the checkout and the classroom — your buyers pay your own Stripe account, so we never hold a cent of your money. You teach.",
       "trust1Title": "Verified",
       "trust1Desc": "Professionals are verified before they can publish, and live programs are monitored for compliance.",
       "trust2Title": "Global",
-      "trust2Desc": "Multi-currency checkout in 30+ currencies via Stripe.",
+      "trust2Desc": "Multi-currency checkout in 30 currencies via Stripe.",
       "trust3Title": "Verifiable",
       "trust3Desc": "Every certificate has a public verification URL.",
       "ctaDashboard": "Go to your dashboard",
@@ -270,7 +270,7 @@
       "step2Title": "Build and publish",
       "step2Desc": "Build your modules and lessons in Course Builder. Set your price, complete the launch checks, and publish when ready.",
       "step3Title": "Reach people anywhere",
-      "step3Desc": "Once your professional verification and launch checks are complete, your course goes live when you publish. Compliance monitoring continues without holding up enrollment. Get paid in 30+ currencies, with earnings clearing {days} days after each sale."
+      "step3Desc": "Once your professional verification and launch checks are complete, your course goes live when you publish. Compliance monitoring continues without holding up enrollment. Sell in 30 currencies, with every buyer charged on your own Stripe account — no platform hold."
     },
     "marketplace": {
       "kicker": "The marketplace",
@@ -290,9 +290,9 @@
       "c3Title": "Private program community",
       "c3Desc": "Every paid course gets a private space for posts, replies, and likes. Members keep talking there after the lesson ends.",
       "c4Title": "Multi-currency checkout",
-      "c4Desc": "Sell in 30+ currencies. Learners pay in their own currency at checkout.",
-      "c5Title": "Creator wallet, {days}-day clearance",
-      "c5Desc": "Earnings move from pending to available {days} days after each sale. Full ledger, full audit trail.",
+      "c4Desc": "Sell in 30 currencies. Learners pay in their own currency at checkout.",
+      "c5Title": "Buyers pay you directly",
+      "c5Desc": "The charge lands in your own Stripe account, not in ours. No platform hold, no platform clearing period — from there Stripe settles and pays out on its own timing, which depends on your country and the payment method. Full ledger, full audit trail.",
       "c6Title": "Verifiable certificates",
       "c6Desc": "A public link anyone can check in seconds. Proof your members did the work."
     },
@@ -307,7 +307,7 @@
       "clause2": "Feature parity across all plans",
       "clause3": "Data portability, one click",
       "clause4": "Cancellation in one click",
-      "clause5": "Funds protection by contract",
+      "clause5": "We never hold your money",
       "clause6": "Human support SLA",
       "ratified": "Ratified · public & in writing",
       "sealed": "Sealed",
@@ -325,7 +325,7 @@
       "ctaStart": "Start teaching",
       "ctaPromise": "Read the Creator Promise",
       "bullet1": "Keep {keep}% on Free. Scale to Plus and your commission can drop to 2%.",
-      "bullet2": "Payouts clear {days} days after each sale. No subscription needed to start.",
+      "bullet2": "Buyers pay your Stripe account directly. No platform hold, no subscription needed to start.",
       "bullet3": "Drip release and a refund window protect you from abuse.",
       "bullet4": "Course community, live sessions, and verifiable certificates on every plan."
     },
@@ -363,12 +363,10 @@
       "marketingOverview": "Marketing overview",
       "storefrontPages": "Storefront & pages",
       "mediaLibrary": "Media library",
-      "affiliatePrograms": "Affiliate programs",
       "messages": "Messages",
       "sales": "Sales",
       "subscriptions": "Subscriptions",
       "coupons": "Coupons",
-      "coProductions": "Co-productions",
       "reviewsRefunds": "Refunds",
       "team": "Collaborators",
       "integrations": "Integrations",
@@ -380,7 +378,7 @@
       "billing": "Billing",
       "creatorOps": "Business overview",
       "reports": "Reports",
-      "wallet": "Wallet",
+      "earnings": "Earnings",
       "verification": "Verification"
     },
     "crumbs": {
@@ -409,8 +407,8 @@
       "resendVerification": "Resend verification",
       "acceptTerms": "Accept the Teacher Terms to publish courses.",
       "acceptTermsCta": "Accept terms",
-      "connectPayouts": "Connect payouts before selling paid courses. Free and draft courses do not need this yet.",
-      "connectPayoutsCta": "Connect payouts"
+      "connectPayouts": "Connect your Stripe account before selling paid courses — buyers are charged on it directly. Free and draft courses do not need this yet.",
+      "connectPayoutsCta": "Connect Stripe"
     },
     "help": {
       "needHelp": "Need help?",
@@ -551,7 +549,7 @@
       "startLearning": "Start learning"
     },
     "refund": {
-      "confirm": "Request a refund for this course? Refunds are available within 7 days of purchase if less than half the course is completed. If approved, your course access ends once the refund is processed.",
+      "confirm": "Request a refund for this course? Refunds are available within 7 days of purchase if less than half the course is completed. The refund is issued from your educator's Stripe account — the same account that charged you — back to your original payment method. If approved, your course access ends once the refund is processed.",
       "error": "We could not submit this refund request. It may be outside the 7-day refund window — contact support if you think this is wrong.",
       "requesting": "Requesting refund...",
       "requested": "Refund requested",
@@ -566,25 +564,7 @@
     },
     "dashboard": {
       "welcomeBackNamed": "Welcome back, {name}.",
-      "welcomeBack": "Welcome back.",
-      "summaryPrefix": "You have",
-      "summaryJoin": "and",
-      "summaryPayoutLead": ". Your next payout:",
-      "publishedSingular": "{count} published course",
-      "publishedPlural": "{count} published courses",
-      "draftSingular": "{count} draft",
-      "draftPlural": "{count} drafts",
-      "payoutFirstOrder": "scheduled after your first paid order",
-      "nextPayout": "Next payout",
-      "payoutLoadingAria": "Next payout loading — open payout settings",
-      "payoutAria": "Next payout {amount} — open payout settings",
-      "connectStripeAria": "Connect Stripe to enable payouts",
-      "netAfterFees": "Net after fees",
-      "connectStripe": "Connect Stripe to enable",
-      "publicProfile": "Public profile",
-      "storefront": "Storefront",
-      "newCourse": "New course",
-      "verification": "Verification"
+      "welcomeBack": "Welcome back."
     },
     "metrics": {
       "revenue30d": "Revenue, 30d",
@@ -612,7 +592,7 @@
       "rangeGroupLabel": "Revenue range",
       "chartAria": "Teacher revenue chart",
       "noRevenue": "No revenue yet",
-      "noRevenueDetail": "Create, upload, preview, connect payouts, then publish.",
+      "noRevenueDetail": "Create, upload, preview, connect Stripe, then publish.",
       "topCourses": "Top courses",
       "allCourses": "All courses",
       "courseMeta": "{lessons} lessons - {orders} orders",
@@ -621,8 +601,8 @@
       "activityEyebrow": "Activity",
       "activityTitle": "What needs your attention today.",
       "open": "Open",
-      "actPayoutTitle": "Finish payout setup",
-      "actPayoutDetail": "Connect Stripe so paid courses can sell and release creator payouts.",
+      "actPayoutTitle": "Finish your Stripe setup",
+      "actPayoutDetail": "Connect Stripe so paid courses can sell — buyers are charged on your own Stripe account.",
       "actChangesTitle": "Review requested changes",
       "actChangesDetail": "{title} needs edits before it can be published.",
       "actEmptyDraftTitle": "Add lessons to your draft",

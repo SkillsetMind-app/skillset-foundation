@@ -51,7 +51,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       {
         id: "course-pricing",
         q: "How do I set pricing for my course?",
-        a: "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (10% on Free, 5% on Starter, 3% on Pro, 2% on Plus) plus the Stripe processing fee are shown clearly in the wallet ledger for every sale.",
+        a: "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (10% on Free, 5% on Starter, 3% on Pro, 2% on Plus) plus the Stripe processing fee are shown clearly in the earnings ledger for every sale.",
       },
       {
         id: "drip-release",
@@ -90,11 +90,11 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       {
         id: "payouts",
         q: "When do I receive my first payout?",
-        a: "Creator earnings are released 7 days after each sale — the moment the 7-day refund window closes, so a released payout can never predate a still-refundable charge. From there, transfers settle to your connected Stripe account on Stripe's standard payout schedule. The wallet panel in Studio shows the exact release date for every line item.",
+        a: "Your buyers pay your own Stripe account directly — you are the merchant of record, and SkillsetMind never holds or remits your money. There is no SkillsetMind clearing period, because we hold nothing. The timing is Stripe's: it pays out from your balance to your bank on the payout schedule of your connected account, and it applies its own settlement timing for your country and payment method. Stripe also holds a new connected account's first payout for a waiting period — typically 7 to 14 days, and up to 30 days in Brazil — that we cannot waive. Complete Stripe's identity verification and your first payout follows that schedule.",
       },
       {
         q: "How are creator payouts handled?",
-        a: "Earnings are tracked in a payout ledger inside Studio. As soon as the refund window closes, the balance is transferred to your connected bank account through Stripe Connect. You can review every sale, fee deduction, and payout line in the ledger.",
+        a: "Stripe pays you from your own connected account; SkillsetMind is never in the middle. Every sale, our platform fee, and every refund is recorded in the earnings ledger inside Studio so you can reconcile it against your Stripe dashboard. Refunds and lost disputes are debited from your Stripe balance — and when a sale is refunded, our platform fee comes back to you with it.",
       },
     ],
   },
@@ -104,7 +104,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
     items: [
       {
         q: "How are refunds handled?",
-        a: "Learners can request a refund within 7 days of purchase if they have completed less than half the course and have not received a certificate. The request is made directly from the order and processes automatically. Refunds appear in the creator wallet within minutes of being processed.",
+        a: "Learners can request a refund within 7 days of purchase if they have completed less than half the course and have not received a certificate. The self-serve refund is available once per course; after that the request goes to support. The request is made directly from the order and processes automatically. Because the creator is the merchant of record, the refund is created on the creator's own Stripe account and debited from their Stripe balance — and SkillsetMind's platform fee on that sale is returned to the creator with it. The reversal is recorded in the creator's earnings ledger within minutes so it can be reconciled against their Stripe dashboard; the money movement itself is Stripe's, on the creator's own account.",
       },
     ],
   },
@@ -125,7 +125,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       {
         id: "integrations",
         q: "What integrations does SkillsetMind support today?",
-        a: "SkillsetMind connects natively with Stripe for checkout, multi-currency payments, and creator payouts. Sign-in, media hosting, and file storage are built into the platform — nothing to set up. Need an integration you don't see yet? Contact support and we'll tell you where it sits on the roadmap.",
+        a: "SkillsetMind connects natively with Stripe Connect: checkout and multi-currency payments run on the creator's own connected Stripe account, and Stripe pays the creator out from that account. Sign-in, media hosting, and file storage are built into the platform — nothing to set up. Need an integration you don't see yet? Contact support and we'll tell you where it sits on the roadmap.",
       },
     ],
   },

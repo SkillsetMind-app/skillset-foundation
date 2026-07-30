@@ -182,9 +182,9 @@ export function TeacherCourseStudio({
             icon: Megaphone,
           },
           {
-            title: "Affiliate programs",
-            detail: "Configure product-level partner terms",
-            href: "/teach/affiliates",
+            title: "Coupons",
+            detail: "Create discount codes for your products",
+            href: "/teach/coupons",
             icon: Handshake,
           },
         ].map((item) => {

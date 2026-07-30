@@ -95,12 +95,18 @@ function getTimeline(order: Order) {
       detail: "Course access is open for this learner.",
       time: formatDate(order.updatedAt ?? order.createdAt),
     });
+    items.push({
+      label: "Charge created on your Stripe account",
+      detail:
+        "The buyer paid your Stripe account directly, so there was no SkillsetMind hold. Stripe settles the charge into your available balance on its own timeline — that depends on your country and the payment method used — then pays it out to your bank on your connected account's payout schedule. A brand-new account also waits on Stripe's verification before its first payout.",
+      time: formatDate(order.updatedAt ?? order.createdAt),
+    });
   }
 
   if (order.status === "refunded" || order.status === "partially_refunded") {
     items.push({
       label: "Refund recorded",
-      detail: "A full or partial refund was issued; refunded amounts are not paid out to you.",
+      detail: "A full or partial refund was issued. It was debited from your own Stripe balance, and the SkillsetMind fee on that sale was returned to you.",
       time: formatDate(order.updatedAt ?? order.createdAt),
     });
   }
