@@ -14,6 +14,12 @@
  * separate-charges-and-transfers model and must be corrected — do not follow
  * them.)
  *
+ * Separately from the tiers, a creator pays a ONE-TIME activation fee before
+ * publishing their first course. It does not recur and it is not a subscription:
+ * the Free plan still costs nothing per month and still takes 10% per sale. The
+ * gate is enforced in SQL (public.publish_teacher_course) and switched by the
+ * `require_activation_fee` row in platform_settings, not by this file.
+ *
  * If the user upgrades or downgrades, sales BEFORE the change keep the
  * commission rate from `plan_at_time_of_sale` (snapshot in the transactions
  * table). New sales after the change use the new rate.
@@ -176,6 +182,37 @@ export function planByStripePriceId(priceId: string): Plan | undefined {
       plan.stripePriceIds?.yearlyId === priceId,
   );
 }
+
+/**
+ * One-time storefront activation fee, in USD. Charged once per creator, before
+ * their first publish. Not a subscription, not per-course, never charged again.
+ */
+export const activationFeeUsd = 25;
+
+/**
+ * Stripe Price ID for the activation fee. Create it in the Stripe Dashboard as a
+ * ONE-TIME price (Product catalog → SkillsetMind Storefront Activation → one-time,
+ * USD) and replace this placeholder. Until then `isActivationFeeConfigured()` is
+ * false and the checkout route answers 503 instead of a confusing Stripe error.
+ *
+ * Do NOT flip `require_activation_fee` to true in platform_settings while this is
+ * a placeholder: the gate would block every publish with no way to pay.
+ */
+export const ACTIVATION_FEE_STRIPE_PRICE_ID = `${STRIPE_PRICE_PLACEHOLDER_PREFIX}ACTIVATION_FEE`;
+
+export function isActivationFeeConfigured(): boolean {
+  return !isPlaceholderStripePriceId(ACTIVATION_FEE_STRIPE_PRICE_ID);
+}
+
+/**
+ * Checkout metadata discriminator for the activation fee. The Stripe webhook
+ * routes `checkout.session.completed` on this value, so the checkout route and
+ * the webhook MUST read it from here — a literal typed twice would silently send
+ * activation payments into the course-fulfilment path. It lives in this module
+ * rather than in the route file because Next.js App Router rejects non-handler
+ * exports from `route.ts`.
+ */
+export const ACTIVATION_FEE_CHECKOUT_PURPOSE = "skillset_activation_fee";
 
 /** Default plan for any account without an active subscription. */
 export const defaultPlanId: PlanId = "free";

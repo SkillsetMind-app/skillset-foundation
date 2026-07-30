@@ -18,6 +18,7 @@ vi.mock("@/lib/payments/server/stripe", () => ({
 }));
 
 import { POST } from "@/app/api/webhooks/stripe/route";
+import { ACTIVATION_FEE_CHECKOUT_PURPOSE } from "@/data/plans";
 
 type FailurePoint =
   | "payments.upsert"
@@ -108,6 +109,13 @@ function createAdmin(mode: AdminState["mode"], failAt?: FailurePoint) {
     }
 
     eq(column: string, value: unknown) {
+      this.filters.push({ column, value });
+      return this;
+    }
+
+    // Same filter semantics as eq for this fake; the activation-fee stamp uses
+    // .is(column, null) to stay idempotent.
+    is(column: string, value: unknown) {
       this.filters.push({ column, value });
       return this;
     }
@@ -358,6 +366,29 @@ function failedInvoiceEvent() {
   };
 }
 
+// A one-time activation fee session. It deliberately carries NO orderId /
+// courseId / userId: those belong to course sales, and their absence is exactly
+// what used to wedge this webhook when mode was "payment" rather than
+// "subscription".
+function activationFeeEvent() {
+  return {
+    id: "evt_activation",
+    type: "checkout.session.completed",
+    data: {
+      object: {
+        id: "cs_activation_1",
+        mode: "payment",
+        payment_status: "paid",
+        payment_intent: "pi_activation_1",
+        metadata: {
+          uid: "teacher_1",
+          purpose: ACTIVATION_FEE_CHECKOUT_PURPOSE,
+        },
+      },
+    },
+  };
+}
+
 async function postEvent(event: Record<string, unknown>) {
   return POST(
     new Request("http://localhost/api/webhooks/stripe", {
@@ -414,6 +445,22 @@ describe("Stripe webhook financial integrity", () => {
 
     expect(response.status).toBe(500);
     expect(admin.state.doneEvents).not.toContain("evt_checkout");
+  });
+
+  it("stamps the activation fee instead of routing it through course fulfilment", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const response = await postEvent(activationFeeEvent());
+
+    // A 500 here means the session fell into handleCheckoutCompleted, which
+    // throws on the missing order metadata and leaves Stripe retrying forever.
+    expect(response.status).toBe(200);
+    expect(admin.state.doneEvents).toContain("evt_activation");
+    expect(admin.state.userUpdates).toHaveLength(1);
+    expect(admin.state.userUpdates[0].activation_fee_paid_at).toEqual(
+      expect.any(String),
+    );
   });
 
   it("does not swallow a failed course subscription status write", async () => {

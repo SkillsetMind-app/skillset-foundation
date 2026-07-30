@@ -1269,6 +1269,8 @@ export function CourseBuilderStudio() {
           ? "Teacher setup must be complete before publishing courses."
           : message.toLowerCase().includes("verification")
           ? "Professional verification must be approved before publishing."
+          : message.toLowerCase().includes("activation fee")
+          ? "Activate your storefront to unlock publishing — it is a one-time fee, charged once. Open /teach/activate."
           : message.toLowerCase().includes("payout")
           || message.toLowerCase().includes("onboarding")
           ? "Finish Stripe payout onboarding before publishing a paid course — open the Payouts panel in your studio."

@@ -1896,6 +1896,7 @@ export type Database = {
       }
       users: {
         Row: {
+          activation_fee_paid_at: string | null
           bio: string | null
           created_at: string
           creator_verification_status: string
@@ -1934,6 +1935,7 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          activation_fee_paid_at?: string | null
           bio?: string | null
           created_at?: string
           creator_verification_status?: string
@@ -1972,6 +1974,7 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          activation_fee_paid_at?: string | null
           bio?: string | null
           created_at?: string
           creator_verification_status?: string
