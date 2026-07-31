@@ -7,16 +7,16 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { HeroCtas } from "@/components/site/hero-ctas";
 
 const HERO_PORTRAITS = [
-  "/brand/hero/01_blonde_expert_green_macbook.png",
-  "/brand/hero/02_white_male_tobacco_knit.png",
-  "/brand/hero/03_black_female_terracotta_seated.png",
-  "/brand/hero/04_black_male_burgundy_polo.png",
-  "/brand/hero/05_indian_female_aubergine_notebook.png",
-  "/brand/hero/06_middle_eastern_male_petrol_notebook.png",
-  "/brand/hero/07_east_asian_female_offwhite_tablet.png",
-  "/brand/hero/08_east_asian_male_camel_blazer.png",
-  "/brand/hero/09_brazilian_latina_emerald_blouse.png",
-  "/brand/hero/10_brazilian_latino_burgundy_knit.png",
+  "/brand/hero/01_blonde_expert_green_macbook.webp",
+  "/brand/hero/02_white_male_tobacco_knit.webp",
+  "/brand/hero/03_black_female_terracotta_seated.webp",
+  "/brand/hero/04_black_male_burgundy_polo.webp",
+  "/brand/hero/05_indian_female_aubergine_notebook.webp",
+  "/brand/hero/06_middle_eastern_male_petrol_notebook.webp",
+  "/brand/hero/07_east_asian_female_offwhite_tablet.webp",
+  "/brand/hero/08_east_asian_male_camel_blazer.webp",
+  "/brand/hero/09_brazilian_latina_emerald_blouse.webp",
+  "/brand/hero/10_brazilian_latino_burgundy_knit.webp",
 ] as const;
 
 const HERO_PORTRAIT_INTERVAL_MS = 3_000;
