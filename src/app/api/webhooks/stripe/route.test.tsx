@@ -355,9 +355,29 @@ function failedInvoiceEvent() {
   return {
     id: "evt_invoice_failed",
     type: "invoice.payment_failed",
+    account: "acct_teacher",
     data: {
       object: {
         id: "in_1",
+        parent: {
+          subscription_details: { subscription: "sub_1" },
+        },
+      },
+    },
+  };
+}
+
+function paidInvoiceEvent() {
+  return {
+    id: "evt_invoice_paid",
+    type: "invoice.paid",
+    account: "acct_teacher",
+    data: {
+      object: {
+        id: "in_paid_1",
+        amount_paid: 10_000,
+        currency: "usd",
+        payment_intent: "pi_paid_1",
         parent: {
           subscription_details: { subscription: "sub_1" },
         },
@@ -478,7 +498,39 @@ describe("Stripe webhook financial integrity", () => {
     const response = await postEvent(failedInvoiceEvent());
 
     expect(response.status).toBe(500);
+    expect(mocks.subscriptionRetrieve).toHaveBeenCalledWith(
+      "sub_1",
+      undefined,
+      { stripeAccount: "acct_teacher" },
+    );
     expect(admin.state.doneEvents).not.toContain("evt_invoice_failed");
+  });
+
+  it("fulfils a paid course renewal on the connected account", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.subscriptionRetrieve.mockResolvedValueOnce({
+      metadata: {
+        purpose: "course_subscription",
+        courseId: "course_1",
+        userId: "user_1",
+        teacherId: "teacher_1",
+      },
+      items: { data: [{ current_period_end: 1_800_000_000 }] },
+      customer: "cus_1",
+      status: "active",
+      cancel_at_period_end: false,
+    });
+
+    const response = await postEvent(paidInvoiceEvent());
+
+    expect(response.status).toBe(200);
+    expect(mocks.subscriptionRetrieve).toHaveBeenCalledWith(
+      "sub_1",
+      undefined,
+      { stripeAccount: "acct_teacher" },
+    );
+    expect(admin.state.doneEvents).toContain("evt_invoice_paid");
   });
 
   it("syncs connected-account readiness from a Connect webhook", async () => {
