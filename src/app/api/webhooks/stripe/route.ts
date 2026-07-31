@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
-import { planByStripePriceId } from "@/data/plans";
+import { ACTIVATION_FEE_CHECKOUT_PURPOSE, planByStripePriceId } from "@/data/plans";
 import { buildCourseSubscriptionSaleRecords } from "@/lib/payments/course-subscription-sale";
 import {
   DEFAULT_PLATFORM_FEE_BPS,
@@ -154,6 +154,57 @@ async function releaseCourseCouponReservation(
     { p_order_id: orderId },
   );
   if (error) throw new Error(error.message);
+}
+
+/**
+ * One-time storefront activation fee. A PLATFORM charge, so there is no
+ * connected account and nothing to fulfil beyond stamping the column the SQL
+ * publish gate reads (public.publish_teacher_course).
+ *
+ * Idempotent by the `is(..., null)` filter: a redelivered or replayed event
+ * cannot move the recorded payment date, and Supabase reports zero matched rows
+ * as success rather than an error.
+ */
+async function handleActivationFeePaid(
+  admin: Admin,
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  if (session.payment_status !== "paid") return;
+
+  const uid = session.metadata?.uid;
+  if (!uid) {
+    throw new Error("Activation fee checkout session is missing uid metadata.");
+  }
+
+  const ts = nowIso();
+  await requireSupabaseWrite(
+    admin
+      .from("users")
+      .update({ activation_fee_paid_at: ts, updated_at: ts })
+      .eq("uid", uid)
+      .is("activation_fee_paid_at", null),
+    "Stamp storefront activation fee",
+  );
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id ?? null;
+  const { error: auditError } = await admin.rpc("log_audit_event", {
+    p_action: "STOREFRONT_ACTIVATION_FEE_PAID",
+    p_actor_id: uid,
+    p_actor_email: "",
+    p_target_type: "user",
+    p_target_id: uid,
+    p_summary: `Storefront activation fee paid by ${uid}`,
+    p_metadata: {
+      checkoutSessionId: session.id,
+      paymentIntentId,
+      amountTotal: session.amount_total,
+      currency: session.currency,
+    },
+  });
+  if (auditError) throw new Error(auditError.message);
 }
 
 async function handleCheckoutCompleted(
@@ -1195,7 +1246,13 @@ export async function POST(request: Request) {
       case "checkout.session.completed":
       case "checkout.session.async_payment_succeeded": {
         const session = event.data.object;
-        if (session.mode !== "subscription") {
+        if (session.metadata?.purpose === ACTIVATION_FEE_CHECKOUT_PURPOSE) {
+          // Platform fee, not a course sale. Must be discriminated BEFORE
+          // handleCheckoutCompleted: that handler requires orderId/courseId/
+          // userId metadata and throws without them, which would 500 the webhook
+          // and leave Stripe retrying the event forever.
+          await handleActivationFeePaid(admin, session);
+        } else if (session.mode !== "subscription") {
           await handleCheckoutCompleted(admin, session, eventAccountId);
         }
         // subscription-mode sessions are owned by customer.subscription.* / invoice.paid

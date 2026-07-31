@@ -1269,6 +1269,8 @@ export function CourseBuilderStudio() {
           ? "Teacher setup must be complete before publishing courses."
           : message.toLowerCase().includes("verification")
           ? "Professional verification must be approved before publishing."
+          : message.toLowerCase().includes("activation fee")
+          ? "Activate your storefront to unlock publishing — it is a one-time fee, charged once."
           : message.toLowerCase().includes("payout")
           || message.toLowerCase().includes("onboarding")
           ? "Finish Stripe payout onboarding before publishing a paid course — open the Payouts panel in your studio."
@@ -2609,9 +2611,20 @@ export function CourseBuilderStudio() {
             <p>{pricingModelIsReady ? "Enrollment model is ready." : "Set price or mark the course as Free."}</p>
           </div>
           {error ? (
-            <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
-              {error}
-            </p>
+            <div
+              role="alert"
+              className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]"
+            >
+              <p>{error}</p>
+              {error.startsWith("Activate your storefront") ? (
+                <Link
+                  href="/teach/activate"
+                  className="button-solid mt-3 px-4 py-2 text-xs"
+                >
+                  Activate storefront
+                </Link>
+              ) : null}
+            </div>
           ) : null}
           {success ? (
             <p className="mt-4 info-notice">

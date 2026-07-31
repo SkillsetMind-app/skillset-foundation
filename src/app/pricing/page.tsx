@@ -4,7 +4,12 @@ import { Check, ChevronDown, HelpCircle } from "lucide-react";
 import { PublicPage } from "@/components/site/public-page";
 import { Tooltip } from "@/components/shared/tooltip";
 import { formatUsd } from "@/data/platform";
-import { plans, refundWindowDays } from "@/data/plans";
+import {
+  activationFeeUsd,
+  isActivationFeeConfigured,
+  plans,
+  refundWindowDays,
+} from "@/data/plans";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 export const metadata = buildPageMetadata({
@@ -172,6 +177,17 @@ export default function PricingPage() {
                     </p>
                   ) : null}
                 </div>
+                {/* Tied to isActivationFeeConfigured(), not to a hardcoded flag:
+                    the fee ships dormant (placeholder Stripe Price), so this line
+                    must not claim a charge that cannot happen yet. It appears on
+                    the deploy that carries the real price_... id. */}
+                {plan.id === "free" && isActivationFeeConfigured() ? (
+                  <p className="mt-3 text-xs leading-5 text-[var(--color-ink-soft)]">
+                    Plus a one-time {formatUsd(activationFeeUsd)} fee to activate
+                    your storefront, paid once before your first course goes
+                    live. Free still has no monthly cost.
+                  </p>
+                ) : null}
                 <ul className="mt-5 grid gap-2 text-sm text-[var(--color-ink-soft)]">
                   {plan.highlights.map((highlight) => (
                     <li key={highlight} className="flex items-start gap-2">

@@ -1122,7 +1122,9 @@ Real instructor names, bios, credentials, photos, and permissions.
 Logo/favicons final assets.
 Brand approval.
 Certificate rules and signature authority.
-Whether Skillset USA remains the legal/brand name or "Skillset" becomes the global brand.
+Brand invariant: `SkillsetMind` is the visible consumer brand; `Skillset USA`
+is the legal entity name and appears only in legal, tax, contract, and billing
+fields that explicitly require it.
 Which countries/currencies launch first.
 ```
 

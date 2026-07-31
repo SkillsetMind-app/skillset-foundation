@@ -18,6 +18,7 @@ vi.mock("@/lib/payments/server/stripe", () => ({
 }));
 
 import { POST } from "@/app/api/webhooks/stripe/route";
+import { ACTIVATION_FEE_CHECKOUT_PURPOSE } from "@/data/plans";
 
 type FailurePoint =
   | "payments.upsert"
@@ -108,6 +109,13 @@ function createAdmin(mode: AdminState["mode"], failAt?: FailurePoint) {
     }
 
     eq(column: string, value: unknown) {
+      this.filters.push({ column, value });
+      return this;
+    }
+
+    // Same filter semantics as eq for this fake; the activation-fee stamp uses
+    // .is(column, null) to stay idempotent.
+    is(column: string, value: unknown) {
       this.filters.push({ column, value });
       return this;
     }
@@ -347,11 +355,54 @@ function failedInvoiceEvent() {
   return {
     id: "evt_invoice_failed",
     type: "invoice.payment_failed",
+    account: "acct_teacher",
     data: {
       object: {
         id: "in_1",
         parent: {
           subscription_details: { subscription: "sub_1" },
+        },
+      },
+    },
+  };
+}
+
+function paidInvoiceEvent() {
+  return {
+    id: "evt_invoice_paid",
+    type: "invoice.paid",
+    account: "acct_teacher",
+    data: {
+      object: {
+        id: "in_paid_1",
+        amount_paid: 10_000,
+        currency: "usd",
+        payment_intent: "pi_paid_1",
+        parent: {
+          subscription_details: { subscription: "sub_1" },
+        },
+      },
+    },
+  };
+}
+
+// A one-time activation fee session. It deliberately carries NO orderId /
+// courseId / userId: those belong to course sales, and their absence is exactly
+// what used to wedge this webhook when mode was "payment" rather than
+// "subscription".
+function activationFeeEvent() {
+  return {
+    id: "evt_activation",
+    type: "checkout.session.completed",
+    data: {
+      object: {
+        id: "cs_activation_1",
+        mode: "payment",
+        payment_status: "paid",
+        payment_intent: "pi_activation_1",
+        metadata: {
+          uid: "teacher_1",
+          purpose: ACTIVATION_FEE_CHECKOUT_PURPOSE,
         },
       },
     },
@@ -416,6 +467,30 @@ describe("Stripe webhook financial integrity", () => {
     expect(admin.state.doneEvents).not.toContain("evt_checkout");
   });
 
+  it("stamps the activation fee instead of routing it through course fulfilment", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const response = await postEvent(activationFeeEvent());
+
+    // A 500 here means the session fell into handleCheckoutCompleted, which
+    // throws on the missing order metadata and leaves Stripe retrying forever.
+    expect(response.status).toBe(200);
+    expect(admin.state.doneEvents).toContain("evt_activation");
+    expect(admin.state.userUpdates).toHaveLength(1);
+    expect(admin.state.userUpdates[0].activation_fee_paid_at).toEqual(
+      expect.any(String),
+    );
+    expect(admin.state.rpcCalls).toContainEqual({
+      name: "log_audit_event",
+      args: expect.objectContaining({
+        p_action: "STOREFRONT_ACTIVATION_FEE_PAID",
+        p_target_id: "teacher_1",
+        p_metadata: expect.objectContaining({ checkoutSessionId: "cs_activation_1" }),
+      }),
+    });
+  });
+
   it("does not swallow a failed course subscription status write", async () => {
     const admin = createAdmin("checkout", "course_subscriptions.update");
     mocks.getAdmin.mockReturnValue(admin);
@@ -423,7 +498,39 @@ describe("Stripe webhook financial integrity", () => {
     const response = await postEvent(failedInvoiceEvent());
 
     expect(response.status).toBe(500);
+    expect(mocks.subscriptionRetrieve).toHaveBeenCalledWith(
+      "sub_1",
+      undefined,
+      { stripeAccount: "acct_teacher" },
+    );
     expect(admin.state.doneEvents).not.toContain("evt_invoice_failed");
+  });
+
+  it("fulfils a paid course renewal on the connected account", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.subscriptionRetrieve.mockResolvedValueOnce({
+      metadata: {
+        purpose: "course_subscription",
+        courseId: "course_1",
+        userId: "user_1",
+        teacherId: "teacher_1",
+      },
+      items: { data: [{ current_period_end: 1_800_000_000 }] },
+      customer: "cus_1",
+      status: "active",
+      cancel_at_period_end: false,
+    });
+
+    const response = await postEvent(paidInvoiceEvent());
+
+    expect(response.status).toBe(200);
+    expect(mocks.subscriptionRetrieve).toHaveBeenCalledWith(
+      "sub_1",
+      undefined,
+      { stripeAccount: "acct_teacher" },
+    );
+    expect(admin.state.doneEvents).toContain("evt_invoice_paid");
   });
 
   it("syncs connected-account readiness from a Connect webhook", async () => {
