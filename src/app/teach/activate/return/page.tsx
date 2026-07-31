@@ -11,7 +11,7 @@ import { PlatformShell } from "@/components/platform/platform-shell";
  */
 export default function TeachActivateReturnPage() {
   return (
-    <ProtectedSurface permissions={["auth.signOut"]}>
+    <ProtectedSurface permissions={["teacherStudio.access"]}>
       <PlatformShell title="Storefront activation" compact>
         <div className="rounded-[14px] border fine-rule bg-white p-8 shadow-[var(--shadow-soft)]">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
@@ -26,8 +26,8 @@ export default function TeachActivateReturnPage() {
             asks for the fee, wait a moment and try once more.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
-            <Link href="/teach" className="button-solid px-4 py-2.5 text-sm">
-              Back to studio
+            <Link href="/teach/builder" className="button-solid px-4 py-2.5 text-sm">
+              Back to course studio
             </Link>
             <Link href="/support" className="button-outline px-4 py-2.5 text-sm">
               Contact support

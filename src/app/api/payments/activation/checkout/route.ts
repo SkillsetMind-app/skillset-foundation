@@ -33,6 +33,50 @@ export async function POST() {
 
     await enforceRateLimit(`activation_checkout_${uid}`, 10, 60 * 60 * 1000);
 
+    const admin = getSupabaseAdminClient();
+    const profile = await getUserRow(uid);
+    if (!profile) {
+      throw new PaymentError("Your profile could not be found.", 404);
+    }
+    if (!Array.isArray(profile.roles) || !profile.roles.includes("teacher")) {
+      throw new PaymentError(
+        "A creator account is required to activate a storefront.",
+        403,
+        "permission_denied",
+      );
+    }
+
+    const { data: settings, error: settingsError } = await admin
+      .from("platform_settings")
+      .select("key, value")
+      .in("key", ["require_activation_fee", "require_creator_verification"]);
+    if (settingsError) throw new Error(settingsError.message);
+
+    const activationRequired = settings?.some(
+      (setting) => setting.key === "require_activation_fee" && setting.value === true,
+    );
+    const verificationRequired = settings?.some(
+      (setting) => setting.key === "require_creator_verification" && setting.value === true,
+    );
+
+    if (!activationRequired) {
+      throw new PaymentError(
+        "Storefront activation is not required right now.",
+        409,
+        "activation_not_required",
+      );
+    }
+    if (
+      verificationRequired
+      && profile.creator_verification_status !== "approved"
+    ) {
+      throw new PaymentError(
+        "Professional verification must be approved before activation.",
+        403,
+        "creator_verification_required",
+      );
+    }
+
     if (!isActivationFeeConfigured()) {
       throw new PaymentError(
         "The activation fee is not configured in Stripe yet.",
@@ -41,30 +85,54 @@ export async function POST() {
       );
     }
 
-    // Charged once, ever. Re-charging a creator who already paid would break the
-    // one-time promise outright, so this is a hard 409 rather than a no-op.
-    // ponytail: trusts the webhook-maintained column, so a payment completed in
-    // the last few seconds can still slip through and create a second session;
-    // Stripe refunds that case by hand. Add a sessions.list fallback if it bites.
-    const { data: existing, error: existingError } = await getSupabaseAdminClient()
-      .from("users")
-      .select("activation_fee_paid_at")
-      .eq("uid", uid)
-      .maybeSingle();
-    if (existingError) throw new Error(existingError.message);
-    if (existing?.activation_fee_paid_at) {
+    if (profile.activation_fee_paid_at) {
       throw new PaymentError("Your storefront is already activated.", 409);
     }
 
     const stripe = getStripeClient();
-    const profile = await getUserRow(uid);
     const customerId = await getOrCreateBillingStripeCustomer(
       stripe,
       uid,
-      profile?.email ?? null,
+      profile.email ?? null,
     );
 
+    // Stripe is the source of truth during the short webhook-lag window. Reuse
+    // an open session and repair a paid-but-unstamped profile before considering
+    // a new charge.
+    const sessions = await stripe.checkout.sessions.list({
+      customer: customerId,
+      limit: 100,
+    });
+    const activationSessions = sessions.data.filter(
+      (session) => session.metadata?.uid === uid
+        && session.metadata?.purpose === ACTIVATION_FEE_CHECKOUT_PURPOSE,
+    );
+    const paidSession = activationSessions.find(
+      (session) => session.status === "complete" && session.payment_status === "paid",
+    );
+    if (paidSession) {
+      const timestamp = new Date().toISOString();
+      const { error } = await admin
+        .from("users")
+        .update({ activation_fee_paid_at: timestamp, updated_at: timestamp })
+        .eq("uid", uid)
+        .is("activation_fee_paid_at", null);
+      if (error) throw new Error(error.message);
+      throw new PaymentError("Your storefront is already activated.", 409);
+    }
+
+    const openSession = activationSessions.find(
+      (session) => session.status === "open" && session.client_secret,
+    );
+    if (openSession?.client_secret) {
+      return NextResponse.json({
+        clientSecret: openSession.client_secret,
+        sessionId: openSession.id,
+      });
+    }
+
     const appUrl = getAppUrl();
+    const latestActivationSessionId = activationSessions[0]?.id ?? "initial";
 
     const session = await stripe.checkout.sessions.create(
       {
@@ -84,11 +152,7 @@ export async function POST() {
         return_url: `${appUrl}/teach/activate/return?session_id={CHECKOUT_SESSION_ID}`,
       },
       {
-        // Idempotency per uid per minute so a double-click doesn't open two
-        // parallel sessions for a fee that must be charged once.
-        idempotencyKey: `activation_checkout_${uid}_${Math.floor(
-          Date.now() / 60000,
-        )}`,
+        idempotencyKey: `activation_checkout_${uid}_${ACTIVATION_FEE_STRIPE_PRICE_ID}_${latestActivationSessionId}`,
       },
     );
 

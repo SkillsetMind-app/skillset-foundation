@@ -25,9 +25,11 @@ Stay in test/sandbox mode first. Do not switch to production until the full webh
 1. Account identity
    - Open Stripe Dashboard.
    - Complete business profile as much as possible.
-   - Set public business name close to `Skillset` or `Skillset USA`.
+   - Set the public business name exactly to `SkillsetMind`.
+   - Use `Skillset USA` only as the legal entity name in tax, contract, and
+     billing fields that explicitly request it.
    - Add support email.
-   - Add statement descriptor that users can recognize.
+   - Add a statement descriptor that buyers can recognize as `SkillsetMind`.
 
 2. Payment methods
    - Go to Payments settings.

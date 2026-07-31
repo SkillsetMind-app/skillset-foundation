@@ -6,7 +6,7 @@ import { ActivationCheckoutPanel } from "@/components/teacher/activation-checkou
 
 export default function TeachActivatePage() {
   return (
-    <ProtectedSurface permissions={["auth.signOut"]}>
+    <ProtectedSurface permissions={["teacherStudio.access"]}>
       <PlatformShell title="Activate your storefront" compact>
         <Suspense
           fallback={

@@ -73,17 +73,6 @@ begin
     raise exception 'Professional verification must be approved before publishing a course.';
   end if;
 
-  -- Account-level gate, deliberately not limited to paid courses: the fee
-  -- activates the storefront itself, so a free first course pays it too.
-  if coalesce((
-       select (ps.value #>> '{}')::boolean
-       from public.platform_settings ps
-       where ps.key = 'require_activation_fee'
-     ), false)
-     and v_activation_paid is null then
-    raise exception 'Pay the one-time activation fee before publishing your first course.';
-  end if;
-
   select * into c
   from public.courses
   where id = p_course_id
@@ -100,6 +89,19 @@ begin
   end if;
   if c.status not in ('draft', 'in_review', 'needs_changes', 'inactive') then
     raise exception 'This course cannot be published right now.';
+  end if;
+
+  -- Account-level gate, deliberately not limited to paid courses: the fee
+  -- activates the storefront itself, so a free first course pays it too. It
+  -- follows ownership and the already-published return so this remains an
+  -- idempotent publish RPC after the gate is enabled.
+  if coalesce((
+       select (ps.value #>> '{}')::boolean
+       from public.platform_settings ps
+       where ps.key = 'require_activation_fee'
+     ), false)
+     and v_activation_paid is null then
+    raise exception 'Pay the one-time activation fee before publishing your first course.';
   end if;
 
   if char_length(btrim(coalesce(c.title, ''))) < 3 or char_length(c.title) > 120 then

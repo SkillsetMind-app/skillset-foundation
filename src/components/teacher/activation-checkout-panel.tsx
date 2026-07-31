@@ -98,7 +98,7 @@ export function ActivationCheckoutPanel() {
           and we&apos;ll switch it on for your account.
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
-          <Link href="/teach" className="button-solid px-4 py-2 text-sm">
+          <Link href="/teach/builder" className="button-solid px-4 py-2 text-sm">
             Back to studio
           </Link>
           <Link href="/support" className="button-outline px-4 py-2 text-sm">
@@ -117,7 +117,7 @@ export function ActivationCheckoutPanel() {
             <p className="font-semibold">Checkout could not start.</p>
             <p className="mt-2 text-[var(--color-ink-soft)]">{error}</p>
             <Link
-              href="/teach"
+              href="/teach/builder"
               className="button-outline mt-4 px-4 py-2 text-sm text-[var(--color-ink)]"
             >
               Back to studio

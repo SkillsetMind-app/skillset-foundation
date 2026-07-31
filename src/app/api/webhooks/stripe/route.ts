@@ -185,6 +185,26 @@ async function handleActivationFeePaid(
       .is("activation_fee_paid_at", null),
     "Stamp storefront activation fee",
   );
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id ?? null;
+  const { error: auditError } = await admin.rpc("log_audit_event", {
+    p_action: "STOREFRONT_ACTIVATION_FEE_PAID",
+    p_actor_id: uid,
+    p_actor_email: "",
+    p_target_type: "user",
+    p_target_id: uid,
+    p_summary: `Storefront activation fee paid by ${uid}`,
+    p_metadata: {
+      checkoutSessionId: session.id,
+      paymentIntentId,
+      amountTotal: session.amount_total,
+      currency: session.currency,
+    },
+  });
+  if (auditError) throw new Error(auditError.message);
 }
 
 async function handleCheckoutCompleted(

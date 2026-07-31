@@ -461,6 +461,14 @@ describe("Stripe webhook financial integrity", () => {
     expect(admin.state.userUpdates[0].activation_fee_paid_at).toEqual(
       expect.any(String),
     );
+    expect(admin.state.rpcCalls).toContainEqual({
+      name: "log_audit_event",
+      args: expect.objectContaining({
+        p_action: "STOREFRONT_ACTIVATION_FEE_PAID",
+        p_target_id: "teacher_1",
+        p_metadata: expect.objectContaining({ checkoutSessionId: "cs_activation_1" }),
+      }),
+    });
   });
 
   it("does not swallow a failed course subscription status write", async () => {
