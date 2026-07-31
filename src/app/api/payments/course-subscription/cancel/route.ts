@@ -54,9 +54,24 @@ export async function POST(request: Request) {
     }
 
     const stripe = getStripeClient();
+    // Direct charges: the subscription lives on the teacher's connected
+    // account, so a platform-scoped call 404s with resource_missing. Both the
+    // read and the write have to be scoped to that account.
+    const { data: course } = await admin
+      .from("courses")
+      .select("stripe_connected_account_id")
+      .eq("id", courseId)
+      .maybeSingle();
+    const stripeAccount = course?.stripe_connected_account_id || null;
+    const accountOptions = stripeAccount ? { stripeAccount } : undefined;
+
     // Defensive ownership check: the subscription must be a course subscription
     // owned by this user, regardless of what the enrollment row claims.
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const subscription = await stripe.subscriptions.retrieve(
+      subscriptionId,
+      undefined,
+      accountOptions,
+    );
     if (
       subscription.metadata?.purpose !== "course_subscription" ||
       subscription.metadata?.userId !== uid
@@ -68,9 +83,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const updated = await stripe.subscriptions.update(subscriptionId, {
-      cancel_at_period_end: !resume,
-    });
+    const updated = await stripe.subscriptions.update(
+      subscriptionId,
+      { cancel_at_period_end: !resume },
+      accountOptions,
+    );
 
     // Reflect immediately; customer.subscription.updated re-syncs the mirror.
     // The mirror row is keyed by id === the Stripe subscription id (Firestore
