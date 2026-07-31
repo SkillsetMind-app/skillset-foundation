@@ -418,12 +418,21 @@ async function handleCheckoutCompleted(
 async function handleCourseSubscriptionInvoicePaid(
   admin: Admin,
   invoice: Stripe.Invoice,
+  eventAccountId: string | null,
 ): Promise<void> {
   const subscriptionId = resolveInvoiceSubscriptionId(invoice);
   if (!subscriptionId) return;
 
   const stripe = getStripeClient();
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  // Direct charges: the subscription lives on the teacher's connected account
+  // and is invisible to a platform-scoped retrieve. event.account is the only
+  // source of that id here — meta.connectedAccountId sits inside the object we
+  // cannot read yet.
+  const subscription = await stripe.subscriptions.retrieve(
+    subscriptionId,
+    undefined,
+    eventAccountId ? { stripeAccount: eventAccountId } : undefined,
+  );
   const meta = subscription.metadata ?? {};
   if (meta.purpose !== "course_subscription") return;
 
@@ -454,7 +463,10 @@ async function handleCourseSubscriptionInvoicePaid(
     : Number.isFinite(metaBps) && metaBps >= 0
       ? metaBps
       : DEFAULT_PLATFORM_FEE_BPS;
+  // event.account first: it is where the money actually moved, so it outranks
+  // any snapshotted id that may be stale.
   const connectedAccountId =
+    eventAccountId ||
     (typeof meta.connectedAccountId === "string" && meta.connectedAccountId) ||
     course.stripe_connected_account_id ||
     owner?.stripe_connected_account_id ||
@@ -1110,6 +1122,7 @@ async function syncSubscriptionFromStripe(
 async function handleInvoicePaymentFailed(
   admin: Admin,
   invoice: Stripe.Invoice,
+  eventAccountId: string | null,
 ): Promise<void> {
   const subscriptionId = resolveInvoiceSubscriptionId(invoice);
   if (!subscriptionId) return;
@@ -1117,7 +1130,13 @@ async function handleInvoicePaymentFailed(
 
   let subscription: Stripe.Subscription | null = null;
   try {
-    subscription = await getStripeClient().subscriptions.retrieve(subscriptionId);
+    // Course subscriptions live on the connected account (direct charges);
+    // plan subscriptions live on the platform, where event.account is null.
+    subscription = await getStripeClient().subscriptions.retrieve(
+      subscriptionId,
+      undefined,
+      eventAccountId ? { stripeAccount: eventAccountId } : undefined,
+    );
   } catch {
     // fall through to plan-subscription handling
   }
@@ -1271,10 +1290,18 @@ export async function POST(request: Request) {
         break;
       }
       case "invoice.payment_failed":
-        await handleInvoicePaymentFailed(admin, event.data.object);
+        await handleInvoicePaymentFailed(
+          admin,
+          event.data.object,
+          eventAccountId,
+        );
         break;
       case "invoice.paid":
-        await handleCourseSubscriptionInvoicePaid(admin, event.data.object);
+        await handleCourseSubscriptionInvoicePaid(
+          admin,
+          event.data.object,
+          eventAccountId,
+        );
         break;
       case "account.updated":
         await handleConnectedAccountUpdated(admin, event.data.object);
