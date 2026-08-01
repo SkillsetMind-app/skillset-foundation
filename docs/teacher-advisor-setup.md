@@ -73,11 +73,16 @@ teacher can retry. Respond within **60s** (the app aborts after that).
 
 ## n8n workflow
 
-**Fast path — import the ready flow.** [`docs/n8n-teacher-advisor.workflow.json`](./n8n-teacher-advisor.workflow.json)
-is an importable workflow (Webhook → Build request → Call DeepSeek → Respond). In
-n8n: *Workflows → Import from File*. It ships with **no secrets**; wire two
-credentials after import, copy the Webhook **Production** URL into
+**Fast path — import the ready flow.** [`docs/n8n/teacher-advisor.flow.json`](./n8n/teacher-advisor.flow.json)
+is an importable workflow (Webhook → Build request → Call DeepSeek → Map reply →
+Respond). In n8n: *Workflows → Import from File*. It ships with **no secrets**;
+wire two credentials after import, copy the Webhook **Production** URL into
 `N8N_ADVISOR_WEBHOOK_URL`, and set the workflow **Active**.
+
+> Step-by-step in Portuguese, written for a non-engineer, lives in
+> [`docs/n8n/README.md`](./n8n/README.md). It supersedes the earlier four-node
+> draft, adding a guarded reply mapping, an error path that still returns valid
+> JSON, and prompt-injection hardening.
 
 - **Webhook → Header Auth** credential: header `x-advisor-secret`, value = the same
   string as Vercel's `N8N_ADVISOR_WEBHOOK_SECRET`. n8n rejects any call without it.
