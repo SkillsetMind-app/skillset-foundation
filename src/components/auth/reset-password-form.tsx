@@ -6,7 +6,22 @@ import {
   TurnstileWidget,
   isCaptchaEnabled,
 } from "@/components/auth/turnstile-widget";
-import { getAuthErrorMessage, resetPassword } from "@/lib/auth/supabase-auth";
+import { isGoogleAuthEnabled } from "@/lib/auth/providers";
+import {
+  getAuthErrorMessage,
+  isEmailRateLimitError,
+  resetPassword,
+} from "@/lib/auth/supabase-auth";
+
+const SENT_COPY =
+  "If an account exists for this email, we've sent a reset link. It can take a minute to arrive — check your inbox and your spam or promotions folder.";
+
+// Only mention Google when the provider is actually wired up. The button this
+// sentence points at is gated on the same flag (login-form, signup-form), so
+// without it we were telling people to click something that never renders.
+const GOOGLE_HINT = isGoogleAuthEnabled
+  ? " If you signed up with Google, use 'Continue with Google' to sign in instead."
+  : "";
 
 export function ResetPasswordForm() {
   const [email, setEmail] = useState("");
@@ -39,11 +54,19 @@ export function ResetPasswordForm() {
 
     try {
       await resetPassword(email, captchaToken || undefined);
-      setSuccess(
-        "If an account exists for this email, we've sent a reset link. It can take a minute to arrive — check your inbox and your spam or promotions folder. If you signed up with Google, use 'Continue with Google' to sign in instead.",
-      );
+      setSuccess(SENT_COPY + GOOGLE_HINT);
     } catch (caughtError) {
-      setError(getAuthErrorMessage(caughtError));
+      // The send limit only trips because an earlier link already went out, so
+      // reporting it as a failure sends people looking for a problem that
+      // isn't there — the same "did anything happen?" confusion this form was
+      // reported for. Say the link is already on its way.
+      if (isEmailRateLimitError(caughtError)) {
+        setSuccess(
+          "We already sent a reset link to this email a moment ago — check your inbox and your spam or promotions folder before requesting another. You can try again in a few minutes.",
+        );
+      } else {
+        setError(getAuthErrorMessage(caughtError));
+      }
     } finally {
       // Single-use token: refresh for the next attempt either way.
       if (isCaptchaEnabled) setCaptchaResetSignal((n) => n + 1);

@@ -355,7 +355,9 @@ export async function signOutOfSkillsetMind(): Promise<void> {
   }
 }
 
-export function getAuthErrorMessage(error: unknown): string {
+// Shared by getAuthErrorMessage and the flow-specific predicates below, so a
+// new GoTrue error shape only has to be taught to one place.
+function authErrorMatcher(error: unknown) {
   const details =
     typeof error === "object" && error !== null
       ? (error as { code?: unknown; message?: unknown; status?: unknown })
@@ -368,8 +370,25 @@ export function getAuthErrorMessage(error: unknown): string {
   const status = typeof details.status === "number" ? details.status : undefined;
   const message = rawMessage.toLowerCase();
 
-  const matches = (needle: string) =>
-    code.includes(needle) || message.includes(needle);
+  return {
+    rawMessage,
+    status,
+    matches: (needle: string) =>
+      code.includes(needle) || message.includes(needle),
+  };
+}
+
+// The generic copy for this case is "Too many attempts", which reads as "your
+// request did not go through". For anything that sends an email, the opposite
+// is true: the limit only trips because an earlier send succeeded. Callers that
+// know which email they asked for use this to say so.
+export function isEmailRateLimitError(error: unknown): boolean {
+  const { matches } = authErrorMatcher(error);
+  return matches("rate_limit") || matches("rate limit");
+}
+
+export function getAuthErrorMessage(error: unknown): string {
+  const { rawMessage, status, matches } = authErrorMatcher(error);
 
   if (matches("multi-factor") || matches("aal2")) {
     return "Enter the code from your authenticator app to finish signing in.";

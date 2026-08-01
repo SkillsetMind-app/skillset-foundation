@@ -11,6 +11,7 @@ import {
 import {
   changeSkillsetPassword,
   getAuthErrorMessage,
+  isEmailRateLimitError,
   isMultiFactorRequiredError,
   requestSkillsetEmailChange,
   refreshCurrentUserEmailVerification,
@@ -147,7 +148,16 @@ export function SecuritySettingsPanel() {
         `Reset link sent to ${user.email}. Open it to set a new password — you won't need your current one.`,
       );
     } catch (caughtError) {
-      setError(getAuthErrorMessage(caughtError));
+      // Same call, same limit, same confusion as the reset page: hitting the
+      // send cap means an earlier link already went out, so "Too many
+      // attempts" points people at a failure that never happened.
+      if (isEmailRateLimitError(caughtError)) {
+        setMessage(
+          `We already sent a reset link to ${user.email} a moment ago — check your inbox and your spam or promotions folder. You can request another in a few minutes.`,
+        );
+      } else {
+        setError(getAuthErrorMessage(caughtError));
+      }
     } finally {
       setIsBusy(false);
     }
