@@ -180,8 +180,26 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ reply });
-  } catch {
-    // AbortSignal.timeout fires an AbortError here too.
+  } catch (caughtError) {
+    // Two very different failures land here. A timer expiring is a slow answer;
+    // an unreachable host (DNS gone, connection refused, webhook VPS down)
+    // rejects before any timer fires and means the answer is never coming.
+    // Telling a teacher to "try again" in that second case sends them into a
+    // retry loop against nothing — from where they sit it is indistinguishable
+    // from a backend that was never wired, so it gets the same calm copy as the
+    // missing-env branch above. Match on name, not instanceof: AbortSignal
+    // .timeout rejects with a DOMException, which is not an Error subclass in
+    // every runtime this ships to.
+    const failure = (caughtError as { name?: string } | null)?.name;
+    if (failure !== "TimeoutError" && failure !== "AbortError") {
+      return NextResponse.json(
+        {
+          error: "advisor_not_configured",
+          reply: "The studio advisor is being set up and will be available shortly.",
+        },
+        { status: 503 },
+      );
+    }
     return NextResponse.json(
       { error: "The advisor is taking too long to respond. Please try again." },
       { status: 504 },
