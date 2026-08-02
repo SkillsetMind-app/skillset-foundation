@@ -22,11 +22,12 @@ export function CreatorCourseWorkspace({
   const searchParams = useSearchParams();
   const courseId = initialCourseId ?? searchParams.get("courseId") ?? "";
   // Stripe's success_url lands here with ?checkout=success BEFORE the webhook
-  // has created the enrollment doc. During that gap the buyer must see a
-  // "finalizing" state — not "Enrollment required" — and the realtime
-  // enrollment listener opens the workspace the moment the webhook commits.
+  // has created the enrollment row. During that gap the buyer must see a
+  // "finalizing" state — not "Enrollment required" — and the workspace opens
+  // as soon as a re-check finds the row the webhook committed.
   const cameFromCheckout = searchParams.get("checkout") === "success";
   const [checkoutGraceExpired, setCheckoutGraceExpired] = useState(false);
+  const [enrollmentRecheck, setEnrollmentRecheck] = useState(0);
   const hasBackendConfig = Boolean(getSupabaseClientConfig());
   const { user } = useAuth();
   const [enrollmentState, setEnrollmentState] = useState<{
@@ -75,6 +76,29 @@ export function CreatorCourseWorkspace({
     return () => window.clearTimeout(timer);
   }, [cameFromCheckout]);
 
+  // Belt and braces for the checkout gap. public.enrollments IS in the
+  // supabase_realtime publication, so subscribeToEnrollment normally delivers
+  // the webhook's row over postgres_changes — but that path is a WebSocket,
+  // and a dropped socket, a blocking proxy or a backgrounded mobile tab all
+  // fail silently: the channel stays subscribed and simply never fires. The
+  // buyer has already paid, so "silently stuck until the 90s grace expires" is
+  // the one outcome worth paying a poll to avoid. Bumping this counter re-runs
+  // the subscription effect below, which re-issues its one-shot read. The deps
+  // double as the stop conditions: React clears the interval the moment the
+  // enrollment arrives, the grace window closes, or the component unmounts.
+  useEffect(() => {
+    if (!cameFromCheckout || checkoutGraceExpired || enrollment) {
+      return;
+    }
+
+    const interval = window.setInterval(
+      () => setEnrollmentRecheck((tick) => tick + 1),
+      5_000,
+    );
+
+    return () => window.clearInterval(interval);
+  }, [cameFromCheckout, checkoutGraceExpired, enrollment]);
+
   useEffect(() => {
     if (!user || !courseId || !hasBackendConfig) {
       return;
@@ -99,7 +123,7 @@ export function CreatorCourseWorkspace({
         });
       },
     );
-  }, [courseId, hasBackendConfig, user]);
+  }, [courseId, enrollmentRecheck, hasBackendConfig, user]);
 
   useEffect(() => {
     if (!enrollment || !canOpenEnrollment(enrollment.status) || !courseId) {

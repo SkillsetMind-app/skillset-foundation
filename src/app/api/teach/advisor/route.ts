@@ -24,6 +24,8 @@ function hasControlChar(s: string): boolean {
   for (let i = 0; i < s.length; i++) {
     const c = s.charCodeAt(i);
     if ((c < 0x20 && c !== 0x09 && c !== 0x0a && c !== 0x0d) || c === 0x7f) return true;
+    if (c >= 0x80 && c <= 0x9f) return true; // C1 — the comment above promised these
+
   }
   return false;
 }
@@ -44,6 +46,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
   }
   const uid = data.user.id;
+
+  // The widget is teacher-gated in advisor-sidebar.tsx, but that is the shop
+  // window, not the lock — this endpoint is reachable directly with any
+  // signed-in session, and every accepted call spends paid reasoning-model
+  // inference. The sibling /api/teach routes gate on course ownership; a chat
+  // owns no course, so nothing here stood in for that. Mirrors how
+  // requireAdminUserId leans on the SECURITY DEFINER role RPC (is_teacher()
+  // accepts teacher OR admin). Authorize before throttling: someone who may
+  // not use this at all shouldn't consume a rate-limit slot to find out.
+  const { data: isTeacher, error: roleError } = await supabase.rpc("is_teacher");
+  if (roleError || !isTeacher) {
+    return NextResponse.json(
+      { error: "Teacher access is required." },
+      { status: 403 },
+    );
+  }
 
   // Two-window throttle on a reasoning-model-backed endpoint: an hourly burst
   // cap (30/h) blunts scripted abuse, and a daily cap (120/day) bounds sustained
@@ -162,8 +180,26 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ reply });
-  } catch {
-    // AbortSignal.timeout fires an AbortError here too.
+  } catch (caughtError) {
+    // Two very different failures land here. A timer expiring is a slow answer;
+    // an unreachable host (DNS gone, connection refused, webhook VPS down)
+    // rejects before any timer fires and means the answer is never coming.
+    // Telling a teacher to "try again" in that second case sends them into a
+    // retry loop against nothing — from where they sit it is indistinguishable
+    // from a backend that was never wired, so it gets the same calm copy as the
+    // missing-env branch above. Match on name, not instanceof: AbortSignal
+    // .timeout rejects with a DOMException, which is not an Error subclass in
+    // every runtime this ships to.
+    const failure = (caughtError as { name?: string } | null)?.name;
+    if (failure !== "TimeoutError" && failure !== "AbortError") {
+      return NextResponse.json(
+        {
+          error: "advisor_not_configured",
+          reply: "The studio advisor is being set up and will be available shortly.",
+        },
+        { status: 503 },
+      );
+    }
     return NextResponse.json(
       { error: "The advisor is taking too long to respond. Please try again." },
       { status: 504 },

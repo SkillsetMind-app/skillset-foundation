@@ -11,6 +11,7 @@ import {
 import {
   changeSkillsetPassword,
   getAuthErrorMessage,
+  isEmailRateLimitError,
   isMultiFactorRequiredError,
   requestSkillsetEmailChange,
   refreshCurrentUserEmailVerification,
@@ -27,6 +28,17 @@ export function SecuritySettingsPanel() {
   const [isBusy, setIsBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  // Every handler here writes into the shared message/error pair, but both are
+  // rendered after the card grid AND after the two-factor card — which below
+  // `lg` is a full-width block sitting between the button you pressed and the
+  // answer. "Email me a reset link" is the worst case: the link fires, the mail
+  // arrives, and nothing visibly happens. Each handler clears the pair before
+  // its await and writes after, so the paragraph genuinely unmounts and
+  // remounts on every attempt and this callback ref fires each time.
+  const revealFeedback = (node: HTMLParagraphElement | null) => {
+    node?.scrollIntoView({ block: "center", behavior: "smooth" });
+  };
   const passwordReady = isStrongPassword(nextPassword);
 
   async function handleSendVerification() {
@@ -136,7 +148,16 @@ export function SecuritySettingsPanel() {
         `Reset link sent to ${user.email}. Open it to set a new password — you won't need your current one.`,
       );
     } catch (caughtError) {
-      setError(getAuthErrorMessage(caughtError));
+      // Same call, same limit, same confusion as the reset page: hitting the
+      // send cap means an earlier link already went out, so "Too many
+      // attempts" points people at a failure that never happened.
+      if (isEmailRateLimitError(caughtError)) {
+        setMessage(
+          `We already sent a reset link to ${user.email} a moment ago — check your inbox and your spam or promotions folder. You can request another in a few minutes.`,
+        );
+      } else {
+        setError(getAuthErrorMessage(caughtError));
+      }
     } finally {
       setIsBusy(false);
     }
@@ -285,13 +306,18 @@ export function SecuritySettingsPanel() {
       </div>
 
       {message ? (
-        <p className="mt-4 info-notice">
+        <p ref={revealFeedback} role="status" aria-live="polite" className="mt-4 info-notice">
           {message}
         </p>
       ) : null}
 
       {error ? (
-        <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+        <p
+          ref={revealFeedback}
+          role="alert"
+          aria-live="assertive"
+          className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]"
+        >
           {error}
         </p>
       ) : null}

@@ -45,11 +45,16 @@ export function AdvisorSidebar() {
     }
   }, [open]);
 
+  // `open` belongs in the deps: only the <section> is conditionally rendered, so
+  // messages survive a close, but the scroll container is a fresh node on reopen
+  // and starts at the top. Without it, a teacher who closes the advisor to edit
+  // the course and reopens it to re-read the advice lands on the greeting and
+  // has to scroll the whole thread back down.
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isSending, notice]);
+  }, [open, messages, isSending, notice]);
 
   useEffect(() => {
     if (!open) {

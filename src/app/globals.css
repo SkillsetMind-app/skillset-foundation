@@ -2508,8 +2508,15 @@ select:focus-visible {
   height: min(560px, calc(100dvh - 7rem));
 }
 
-body:has(.cookie-consent) .floating-action--advisor,
-body:has([aria-label="Course categories"]) .floating-action--advisor {
+/* Get the floating trigger out of the way when the cookie banner or the course
+   category menu is up — but never while a conversation is open. The category
+   menu lives in the course builder (course-category-select.tsx:114), which is
+   exactly where a teacher asks the advisor how to structure the course: without
+   the :not(:has()) guard, opening that menu display:none'd the whole widget and
+   the open chat vanished mid-sentence. .advisor-panel only exists while open. */
+body:has(.cookie-consent) .floating-action--advisor:not(:has(.advisor-panel)),
+body:has([aria-label="Course categories"])
+  .floating-action--advisor:not(:has(.advisor-panel)) {
   display: none;
 }
 

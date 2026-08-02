@@ -152,8 +152,20 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ reply });
-  } catch {
-    // AbortSignal.timeout fires an AbortError here too.
+  } catch (caughtError) {
+    // Same split as /api/teach/advisor: a timer expiring is a slow answer, an
+    // unreachable host is no answer at all, and only the first one is worth
+    // retrying. See that route for the full reasoning.
+    const failure = (caughtError as { name?: string } | null)?.name;
+    if (failure !== "TimeoutError" && failure !== "AbortError") {
+      return NextResponse.json(
+        {
+          error: "assistant_not_configured",
+          reply: "The assistant is being set up and will be available shortly.",
+        },
+        { status: 503 },
+      );
+    }
     return NextResponse.json(
       { error: "The assistant is taking too long to respond. Please try again." },
       { status: 504 },
