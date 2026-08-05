@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { buildTeacherContext } from "@/lib/assistant/teacher-context";
 import { runRateLimit } from "@/lib/supabase/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -146,6 +147,15 @@ export async function POST(request: Request) {
     );
   }
 
+  // The teacher's own catalogue + payment readiness, so the reply can name
+  // their actual courses instead of giving generic course-selling advice.
+  // Built on the request-scoped client, so RLS confines it to this teacher.
+  // Deliberately outside the try below: that catch treats a throw as "upstream
+  // host unreachable" and answers "being set up", which would be a lie if the
+  // real failure were a context query. Swallow to "" instead — a blind advisor
+  // still beats no advisor.
+  const teacherContext = await buildTeacherContext(supabase, uid).catch(() => "");
+
   inFlight += 1;
   try {
     const upstream = await fetch(webhookUrl, {
@@ -154,7 +164,7 @@ export async function POST(request: Request) {
         "Content-Type": "application/json",
         "x-advisor-secret": secret,
       },
-      body: JSON.stringify({ teacherId: uid, messages: cleaned }),
+      body: JSON.stringify({ teacherId: uid, messages: cleaned, context: teacherContext }),
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
 
