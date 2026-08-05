@@ -14,6 +14,10 @@ import {
 
 type Message = { role: "user" | "assistant"; content: string };
 
+// "idle" until the panel is opened for the first time — a teacher who never
+// opens the advisor never pays for the round-trip.
+type HistoryStatus = "idle" | "loading" | "ready";
+
 const GREETING =
   "Hi, I'm your studio advisor. Ask me about structuring a course, whether to embed from YouTube or upload your video, pricing, or how to get your first sales.";
 
@@ -27,12 +31,20 @@ export function AdvisorSidebar() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [historyStatus, setHistoryStatus] = useState<HistoryStatus>("idle");
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [notice, setNotice] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  // Holds the uid whose thread is in state, not a boolean. A ref, not state:
+  // the guard has to stay out of the effect's dependency array — as state it
+  // would change the deps the moment the fetch starts, React would tear down
+  // the running effect, and the load would never settle.
+  const historyUidRef = useRef<string | null>(null);
+  const uid = user?.uid ?? null;
 
   function closeAdvisor() {
     setOpen(false);
@@ -44,6 +56,67 @@ export function AdvisorSidebar() {
       inputRef.current?.focus();
     }
   }, [open]);
+
+  // Restore the stored thread on the first open, and only the first per signed-in
+  // teacher: the panel is a toggle a teacher flicks open and shut while working,
+  // and re-reading the transcript on every flick would spend a round-trip to
+  // overwrite state that is already correct — and would race with whatever they
+  // sent in between.
+  //
+  // Deliberately no abort on close. Closing the panel does not discard the
+  // thread, so a load that outlives the close still has somewhere useful to
+  // land; cancelling it would leave the composer locked with nothing in flight.
+  useEffect(() => {
+    if (!open || !uid || historyUidRef.current === uid) {
+      return;
+    }
+    // Keyed by uid rather than a plain "already asked" flag. This panel is
+    // mounted by the layout and returns null instead of unmounting, so after a
+    // sign-out and a sign-in as somebody else its state is still the previous
+    // teacher's thread — a boolean guard would show that thread to the new
+    // teacher and then refuse to fetch their own. Same reasoning as
+    // LegalAcceptanceGate keying its verdict by uid.
+    historyUidRef.current = uid;
+    const requestedUid = uid;
+    setMessages([]);
+    setConversationId(null);
+    setHistoryStatus("loading");
+    void (async () => {
+      try {
+        const res = await fetch("/api/teach/advisor");
+        const data = (await res.json()) as {
+          conversationId?: string | null;
+          messages?: Message[];
+        };
+        // Ignore a load that the signed-in teacher changed out from under: it
+        // is the previous account's transcript and would land in this one.
+        const stillOurs = historyUidRef.current === requestedUid;
+        if (res.ok && Array.isArray(data.messages) && stillOurs) {
+          setConversationId(data.conversationId ?? null);
+          // Stored rows hold the model's raw output — persistTurn writes the
+          // reply before toPlainProse ever sees it — so a restored thread would
+          // show the "**bold**" and "## heading" markers that the same reply
+          // never showed when it was live. Assistant turns only: a teacher's own
+          // asterisks are their words, not markup to clean up.
+          setMessages(
+            data.messages.map((message) =>
+              message.role === "assistant"
+                ? { ...message, content: toPlainProse(message.content) }
+                : message,
+            ),
+          );
+        }
+      } catch {
+        // Swallowed on purpose, with no notice shown. A transcript we cannot
+        // read is a smaller loss than a panel that opens onto an error, and the
+        // teacher's next message simply starts a fresh thread server-side.
+      } finally {
+        if (historyUidRef.current === requestedUid) {
+          setHistoryStatus("ready");
+        }
+      }
+    })();
+  }, [open, uid]);
 
   // `open` belongs in the deps: only the <section> is conditionally rendered, so
   // messages survive a close, but the scroll container is a fresh node on reopen
@@ -90,7 +163,12 @@ export function AdvisorSidebar() {
 
   async function send(text: string) {
     const trimmed = text.trim();
-    if (!trimmed || isSending) {
+    // Blocking the send is the fix for the load race, not merely its disguise:
+    // the GET assigns `messages` wholesale, so a turn started mid-load would be
+    // erased by the history landing on top of it — and its reply would then
+    // append to a thread the teacher never saw it answer. The typed text stays
+    // in the composer, so the block costs a keypress, not a message.
+    if (!trimmed || isSending || historyStatus !== "ready") {
       return;
     }
     const next: Message[] = [...messages, { role: "user", content: trimmed }];
@@ -102,13 +180,20 @@ export function AdvisorSidebar() {
       const res = await fetch("/api/teach/advisor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({ messages: next, conversationId }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         reply?: string;
         error?: string;
+        conversationId?: string | null;
       };
       if (res.ok && typeof data.reply === "string") {
+        // Adopt whatever came back, null included. The route returns null when
+        // it stored nothing (a new thread it could not open, or an id that
+        // failed the ownership check), and holding on to a dead id would make
+        // every later turn ask the server to append to a thread that is not
+        // ours — silently dropping the transcript for the rest of the session.
+        setConversationId(data.conversationId ?? null);
         setMessages((prev) => [
           ...prev,
           { role: "assistant", content: toPlainProse(data.reply as string) },
@@ -174,7 +259,17 @@ export function AdvisorSidebar() {
               {GREETING}
             </p>
 
-            {messages.length === 0 ? (
+            {historyStatus === "loading" ? (
+              <p className="text-xs font-medium text-[var(--color-ink-muted)]">
+                Loading your conversation…
+              </p>
+            ) : null}
+
+            {/* Held back until the load settles: rendering them first would show
+                a teacher with a saved thread three starter prompts that vanish a
+                beat later, and inviting a click on one is exactly the send the
+                composer is busy refusing. */}
+            {historyStatus === "ready" && messages.length === 0 ? (
               <div className="flex flex-col gap-2 pt-1">
                 {SUGGESTIONS.map((suggestion) => (
                   <button
@@ -244,7 +339,7 @@ export function AdvisorSidebar() {
             />
             <button
               type="submit"
-              disabled={isSending || input.trim().length === 0}
+              disabled={isSending || historyStatus !== "ready" || input.trim().length === 0}
               aria-label="Send message"
               className="button-solid flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] p-0 disabled:opacity-50"
             >
