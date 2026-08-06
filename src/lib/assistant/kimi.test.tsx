@@ -59,7 +59,7 @@ describe("askKimi", () => {
     expect(out).toBe("Price it at USD 49.");
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://api.moonshot.ai/v1/chat/completions");
-    expect(JSON.parse(String(init.body)).model).toBe("kimi-k3");
+    expect(JSON.parse(String(init.body)).model).toBe("kimi-k2.6");
     // A mis-named or missing auth header is a 401 on every call in production
     // and nothing here would have noticed.
     expect((init.headers as Record<string, string>).Authorization).toBe(`Bearer ${FAKE_KEY}`);
@@ -72,7 +72,7 @@ describe("askKimi", () => {
   // argues about the request body, so the only defence is asserting on the body
   // we send rather than on the reply we get back. Adding temperature back here —
   // however sensible it looks — breaks the feature outright.
-  it("sends no temperature, which kimi-k3 rejects outright", async () => {
+  it("sends no temperature, which both Kimi models reject outright", async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(reply("ok")));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -80,6 +80,24 @@ describe("askKimi", () => {
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(String(init.body))).not.toHaveProperty("temperature");
+  });
+
+  // "Make it think harder" is the obvious next edit, and every version of it is
+  // wrong here. Measured against the live endpoint: kimi-k2.6 already reasons
+  // unprompted (3330 tokens on a hard question), enable_thinking:true produced
+  // FEWER (2484), and thinking:{type:"enabled"} spent 4095 of a 4096 budget and
+  // came back finish_reason "length" — a blank answer. There is no switch to
+  // flip, and the one that looks most like a switch starves the reply.
+  it("sends no thinking flag — k2.6 reasons by default and the flags backfire", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(reply("ok")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await askKimi({ messages: [{ role: "user", content: "hi" }] });
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1].body));
+    expect(body).not.toHaveProperty("thinking");
+    expect(body).not.toHaveProperty("enable_thinking");
+    expect(body).not.toHaveProperty("reasoning_effort");
   });
 
   // The trap this client exists to survive: a reasoning model that spends its

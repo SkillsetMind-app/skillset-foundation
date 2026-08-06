@@ -7,7 +7,7 @@ import { buildTeacherContext } from "@/lib/assistant/teacher-context";
 import { runRateLimit } from "@/lib/supabase/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-// POST /api/teach/advisor — answers a teacher's question with kimi-k3.
+// POST /api/teach/advisor — answers a teacher's question with kimi-k2.6.
 // GET  /api/teach/advisor — returns the teacher's most recent thread.
 //
 // This used to proxy an n8n webhook fronting DeepSeek. That put the prompt, the
@@ -23,19 +23,28 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // answer beats no answer — and the system prompt below is written so that an
 // empty layer produces "I don't know" instead of an invention.
 
-// Reasoning models think before they speak: the live measurement on this account
-// was 1257 reasoning tokens before the first character of a 1543-token answer.
-// Vercel's default function ceiling is well under the wall-clock that takes, and
-// it would kill the request mid-thought with no error the model ever sees.
-export const maxDuration = 60;
+// Reasoning models think before they speak, and the wall-clock is the part that
+// bites. Measured against the live endpoint on questions that need real work:
+// 49-68 SECONDS, with 2500-4000 tokens spent reasoning before the first character
+// of the answer. An earlier version of this file capped the whole request at 60s
+// on the belief that was Vercel's ceiling; it is not — the platform allows 300 —
+// and 60 would have killed the hardest questions, which are the only ones worth
+// asking an advisor. Set the platform ceiling high and let our own budget below
+// be the thing that actually decides, so a stall surfaces as our 504 with usable
+// copy instead of the platform severing the function mid-thought.
+export const maxDuration = 300;
 
 type AdvisorMessage = { role: "user" | "assistant"; content: string };
 
 const MAX_MESSAGES = 20; // only the tail of the thread is forwarded
 const MAX_CHARS = 4000; // per-message cap — bounds payload + model cost
-// Budget the model call just inside maxDuration, so an upstream stall surfaces
-// as our own 504 with usable copy rather than the platform killing the function.
-const UPSTREAM_TIMEOUT_MS = 55_000;
+// Roughly 2x the slowest measured reasoning call (68s), which leaves headroom for
+// a long question with a full context block without waiting on a genuinely hung
+// upstream forever. Sits well inside maxDuration so WE time out, not the platform.
+// ponytail: a teacher stares at a spinner for up to this long. The real fix is
+// streaming the reply so thinking is visible; do that when the sidebar can render
+// partial text, and this number drops back to a courtesy ceiling.
+const UPSTREAM_TIMEOUT_MS = 150_000;
 const MAX_TITLE_CHARS = 120;
 
 // Reject NUL + C0/C1 control chars (tab/newline/CR allowed): they have no place

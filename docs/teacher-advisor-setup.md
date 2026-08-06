@@ -26,7 +26,7 @@ POST /api/teach/advisor
       1. src/lib/assistant/knowledge.ts  — corpus compiled into the build
       2. advisor_documents              — passages retrieved from the owner's Doc
       3. buildTeacherContext()          — this teacher's courses + payment status
-  • calls Moonshot kimi-k3 directly, then stores the turn
+  • calls Moonshot kimi-k2.6 directly, then stores the turn
         │
         ▼
 Reply shows in the chat, and survives a page reload
@@ -145,10 +145,20 @@ upsert, so the advisor keeps answering from the last good copy.
   20-message / 4000-char input caps (`src/app/api/teach/advisor/route.ts`).
   Embedding spend is bounded by one reindex a day plus one question-sized
   embedding per message.
-- **kimi-k3 rejects `temperature`** with HTTP 400 ("only 1 is allowed for this
-  model"), so the client never sends it. Determinism comes from the prompt.
-  It is a reasoning model: a measured reply spent 1257 tokens thinking before the
-  first character, which is why the route allows 60s.
+- **The Kimi reasoning models reject `temperature`** with HTTP 400 ("only 1 is
+  allowed for this model") — verified on both k3 and k2.6 — so the client never
+  sends it. Determinism comes from the prompt, not from a sampling knob.
+- **There is no thinking flag to turn on.** kimi-k2.6 reasons unprompted: 3330
+  reasoning tokens on a hard pricing question with no extra parameter. Measured
+  alternatives are worse, not better — `enable_thinking: true` produced fewer
+  reasoning tokens (2484), `thinking: {type: "enabled"}` spent 4095 of a 4096
+  budget and returned a blank answer (`finish_reason: "length"`), and the model
+  id `kimi-k2.6-thinking` does not exist (HTTP 404). Do not add any of them.
+- **It is slow: 49-68 seconds measured** on questions that need real reasoning.
+  The route allows the platform ceiling (`maxDuration = 300`) and budgets the
+  upstream call at 150s, so a hard question finishes instead of being severed
+  mid-thought. The real UX fix is streaming; until the sidebar can render partial
+  text, the teacher waits on a spinner.
 - **Memory.** The thread is stored in `advisor_conversations` /
   `advisor_messages` under RLS, so a teacher only ever reads their own.
   `GET /api/teach/advisor` returns the most recent thread on page load.

@@ -15,24 +15,33 @@
 // the UI can actually show partial text.
 
 const KIMI_ENDPOINT = "https://api.moonshot.ai/v1/chat/completions";
-const KIMI_MODEL = "kimi-k3";
+const KIMI_MODEL = "kimi-k2.6";
 
-// kimi-k3 is a reasoning model: it spends tokens THINKING before it writes, and
-// max_tokens caps thinking plus answer together. Measured on this account:
-// max_tokens=12 came back with content "" and usage.reasoning_tokens=9 — the
-// budget was eaten reasoning, nothing was left to answer with, and the API
-// reported HTTP 200. A tight ceiling here does not fail loudly, it fails blank.
-// 8192 leaves room for several thousand reasoning tokens and still a full,
-// multi-paragraph piece of advice on top of them.
-const MAX_TOKENS = 8192;
+// NO thinking flag is sent, and that is deliberate: kimi-k2.6 reasons by default.
+// Measured against the live endpoint on one hard pricing question:
+//   no extra parameter      -> 3330 reasoning tokens, finish_reason "stop"
+//   enable_thinking: true   -> 2484 reasoning tokens (fewer, not more)
+//   reasoning_effort: high  -> 2990 reasoning tokens
+//   thinking: {type:"enabled"} -> 4095 of a 4096 budget, finish_reason "LENGTH"
+//   model "kimi-k2.6-thinking" -> HTTP 404, no such model
+// So there is nothing to switch on, one of the knobs actively starves the answer,
+// and the model that names itself "thinking" does not exist. Adding any of them
+// back makes this worse, not better.
+const MAX_TOKENS = 12288;
 
-// NO temperature is sent, and that is not an oversight — kimi-k3 rejects the
-// parameter outright. Measured against the live endpoint:
+// max_tokens caps THINKING PLUS ANSWER together, and a tight ceiling does not
+// fail loudly — it fails blank. Measured: max_tokens=12 returned content "" with
+// reasoning_tokens=9 at HTTP 200. k2.6 reasons harder than k3 did on the same
+// question (3330 vs 2192 tokens), so the ceiling is above what k3 needed. Unused
+// budget is free; only generated tokens are billed.
+
+// NO temperature is sent either. Both Kimi models reject the parameter outright:
 //   temperature: 0.2  ->  HTTP 400
 //   {"error":{"message":"invalid temperature: only 1 is allowed for this model"}}
-// Every advisor call would have failed. Mocked tests cannot catch this, because
-// a fake fetch never argues about the body — which is why sendsNoTemperature
-// below asserts on the request instead of on the reply.
+// Verified on kimi-k3 AND on kimi-k2.6 — this is not a per-model quirk to re-test
+// on the next swap, it is how the reasoning family behaves. Every advisor call
+// would fail. Mocked tests cannot catch it, because a fake fetch never argues
+// about the body, which is why the test suite asserts on the request we send.
 // Determinism has to come from the prompt, not from a sampling knob: the system
 // prompt tells the model to answer only from supplied context.
 
@@ -107,7 +116,12 @@ function reasoningTokensOf(payload: KimiResponse | null): number {
 }
 
 /**
- * Sends a conversation to kimi-k3 and returns the reply text.
+ * Sends a conversation to kimi-k2.6 and returns the reply text.
+ *
+ * SLOW BY DESIGN: measured 49-68 seconds on questions that require real
+ * reasoning. The caller's deadline has to be generous enough for that, or every
+ * hard question — exactly the ones worth asking an advisor — times out while the
+ * model is still thinking. See UPSTREAM_TIMEOUT_MS in the advisor route.
  *
  * Throws KimiConfigError when the key is missing, and KimiError when the model
  * answers with nothing usable — never an empty string, because a caller that
