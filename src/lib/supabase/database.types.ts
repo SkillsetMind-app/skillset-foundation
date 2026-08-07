@@ -2047,6 +2047,14 @@ export type Database = {
     }
     Functions: {
       assert_course_owner: { Args: { p_course_id: string }; Returns: string }
+      get_my_subscriber_profiles: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          uid: string
+          display_name: string
+          photo_url: string
+        }[]
+      }
       claim_checkout_lock: {
         Args: {
           p_claim_grace_ms: number

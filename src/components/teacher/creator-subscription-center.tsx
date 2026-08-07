@@ -14,12 +14,14 @@ import {
 import type { Order } from "@/domain/order";
 import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import type { TeacherCourse } from "@/domain/teacher-course";
-import type { PublicProfile } from "@/domain/user-profile";
 import { subscribeToTeacherCourseSubscriptions } from "@/lib/data/course-subscriptions";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { subscribeToTeacherPayoutLedger } from "@/lib/data/payout-ledger";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
-import { getPublicProfilesByIds } from "@/lib/data/user-profiles";
+import {
+  getMySubscriberProfiles,
+  type SubscriberProfile,
+} from "@/lib/data/user-profiles";
 import { toDate } from "@/lib/format-date";
 
 type SubscriberFilter = "all" | "active" | "attention" | "canceling" | "ended";
@@ -31,7 +33,7 @@ export function CreatorSubscriptionCenter() {
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ledgers, setLedgers] = useState<PayoutLedgerEntry[]>([]);
-  const [profiles, setProfiles] = useState<PublicProfile[]>([]);
+  const [profiles, setProfiles] = useState<SubscriberProfile[]>([]);
   const [loaded, setLoaded] = useState({ subscriptions: false, courses: false });
   const [failed, setFailed] = useState({ subscriptions: false, courses: false });
   const [ordersState, setOrdersState] = useState<ReadState>("loading");
@@ -103,8 +105,11 @@ export function CreatorSubscriptionCenter() {
   }, [user]);
 
   useEffect(() => {
+    if (!user) return;
     let current = true;
-    void getPublicProfilesByIds(subscriptions.map((item) => item.userId))
+    // Refetched whenever the subscription list changes so a new subscriber
+    // shows up by name, not as a masked id.
+    void getMySubscriberProfiles()
       .then((next) => {
         if (current) setProfiles(next);
       })
@@ -114,7 +119,7 @@ export function CreatorSubscriptionCenter() {
     return () => {
       current = false;
     };
-  }, [subscriptions]);
+  }, [user, subscriptions]);
 
   if (!loaded.subscriptions || !loaded.courses) {
     return <SubscriptionCenterLoading />;
@@ -166,7 +171,7 @@ export function CreatorSubscriptionCenterView({
   courses: TeacherCourse[];
   orders: Order[];
   ledgers: PayoutLedgerEntry[];
-  profiles: PublicProfile[];
+  profiles: SubscriberProfile[];
   financialState?: ReadState;
 }) {
   const [tab, setTab] = useState<"subscribers" | "renewals">("subscribers");
@@ -202,7 +207,6 @@ export function CreatorSubscriptionCenterView({
       const course = coursesById.get(subscription.courseId);
       return [
         profile?.displayName,
-        profile?.username,
         subscription.userId,
         course?.title,
       ].some((value) => value?.toLowerCase().includes(normalizedQuery));
@@ -320,7 +324,7 @@ export function CreatorSubscriptionCenterView({
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-bold text-[var(--color-primary)]">
-                              {profile?.displayName || profile?.username || maskLearner(subscription.userId)}
+                              {profile?.displayName || maskLearner(subscription.userId)}
                             </p>
                             <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
                               {maskLearner(subscription.userId)}
@@ -377,7 +381,7 @@ export function CreatorSubscriptionCenterView({
                         <tr key={subscription.id} className="border-b border-[var(--color-line)] last:border-0">
                           <td className="px-3 py-4">
                             <p className="text-sm font-bold text-[var(--color-primary)]">
-                              {profile?.displayName || profile?.username || maskLearner(subscription.userId)}
+                              {profile?.displayName || maskLearner(subscription.userId)}
                             </p>
                             <p className="mt-1 text-xs text-[var(--color-ink-muted)]">{maskLearner(subscription.userId)}</p>
                           </td>
