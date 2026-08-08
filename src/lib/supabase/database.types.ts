@@ -2230,6 +2230,7 @@ export type Database = {
         Args: { p_key: string; p_limit: number; p_window_ms: number }
         Returns: undefined
       }
+      featured_slots_for_plan: { Args: { p_plan_id: string }; Returns: number }
       finalize_course_coupon_reservation: {
         Args: { p_order_id: string }
         Returns: undefined
@@ -2314,6 +2315,10 @@ export type Database = {
       set_default_product_offer: {
         Args: { p_course_id: string; p_offer_id: string }
         Returns: undefined
+      }
+      set_own_course_featured: {
+        Args: { p_course_id: string; p_featured: boolean }
+        Returns: Json
       }
       submit_course_review: {
         Args: { p_body: string; p_course_id: string; p_rating: number }
