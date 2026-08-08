@@ -22,6 +22,17 @@ describe("plan entitlements", () => {
     expect(planEntitlements.plus.quotas.featuredSlots).toBe(5);
   });
 
+  it("keeps the certificate-logo gate in step with the SQL enforcement copy", () => {
+    // issue_skillset_certificate() in
+    // supabase/migrations/20260808130000_certificate_teacher_brand_logo.sql
+    // stamps the teacher's brand mark whenever current_plan_id <> 'free'.
+    // Flipping any paid tier off here without touching the SQL would show a
+    // locked feature in the UI while the server keeps printing the logo.
+    for (const planId of ["free", "starter", "pro", "plus"] as const) {
+      expect(hasFeature(planId, "certificateOwnLogo")).toBe(planId !== "free");
+    }
+  });
+
   it("raises a limit with an approved grant but never lowers one", () => {
     expect(effectiveLimit("starter", "featuredSlots", 4)).toBe(4);
     expect(effectiveLimit("pro", "featuredSlots", 1)).toBe(3);

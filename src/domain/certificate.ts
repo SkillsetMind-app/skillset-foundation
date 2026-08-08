@@ -19,7 +19,12 @@ export type Certificate = {
   teacherName?: string | null;
   /** Snapshot of the teacher's uploaded signature image at issuance, if any. */
   teacherSignatureUrl?: string | null;
-  /** Optional partner/sponsor mark; null until a co-brand asset is provided. */
+  /**
+   * The course owner's brand mark, snapshotted at issuance from their storefront
+   * branding logo. Null on plans without `certificateOwnLogo`, and null when the
+   * teacher never uploaded one. Column is still named `sponsor_logo_url` — it
+   * predates the feature and is the same co-brand slot.
+   */
   sponsorLogoUrl?: string | null;
   issuedAt?: unknown;
   createdAt?: unknown;

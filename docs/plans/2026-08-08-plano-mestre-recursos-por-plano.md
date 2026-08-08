@@ -142,3 +142,30 @@ Consequência: **um update direto do navegador nunca vai funcionar.** Precisa de
 ### Onde a cota mora no SQL
 
 Duplicar o mapa inteiro em SQL seria convite a divergência. Só a cota de destaque desce pro banco, num `CASE` de quatro linhas, com comentário apontando pro TypeScript. O resto continua só na UI.
+
+---
+
+## Sub-plano 2 — Certificado com a marca do professor
+
+**Meta:** o certificado que o aluno baixa carrega a marca do professor, não só a da SkillsetMind.
+
+### A checagem de conflito de novo
+
+Praticamente tudo já existia:
+
+| Peça | Onde | Estado |
+|---|---|---|
+| Upload do logo pelo professor | `storefront-settings-panel.tsx` → `users.storefront.branding.logoUrl` | **já existia** |
+| Coluna no certificado | `certificates.sponsor_logo_url` | **já existia** |
+| Desenho do logo no documento | `certificate-document.tsx:48` | **já existia** |
+| Gravação do logo na emissão | `issue_skillset_certificate` | **gravava `null` fixo** |
+
+Ou seja: o recurso inteiro estava pronto menos um `null` numa linha de SQL. Nada de coluna nova, nada de upload novo.
+
+### O que mudou
+
+1. Migração `20260808130000_certificate_teacher_brand_logo.sql` — a RPC de emissão passa a ler o logo do dono do curso e gravar, com trava de plano (`current_plan_id <> 'free'`) e validação `https://`.
+2. O rótulo impresso virou **"Course by"** (era "In partnership with", que só fazia sentido para patrocinador de terceiro).
+3. O campo de upload da vitrine agora avisa que aquele mesmo logo vai pro certificado — recurso que ninguém descobre não foi entregue.
+
+**Snapshot, não referência:** o logo é congelado na PRIMEIRA emissão. Professor que troca de logo depois não reescreve certificado que já está na mão do aluno; professor que cai de plano não perde a marca do que já emitiu.

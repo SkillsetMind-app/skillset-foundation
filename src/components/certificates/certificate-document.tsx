@@ -48,12 +48,12 @@ export function CertificateDocument({
           {certificate.sponsorLogoUrl ? (
             <div className="mt-5 flex items-center gap-3">
               <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--color-ink-soft)]">
-                In partnership with
+                Course by
               </span>
               <span className="relative block h-7 w-28">
                 <Image
                   src={certificate.sponsorLogoUrl}
-                  alt="Partner"
+                  alt={teacherName}
                   fill
                   sizes="120px"
                   className="object-contain object-left"

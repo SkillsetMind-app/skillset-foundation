@@ -520,7 +520,7 @@ export function StorefrontSettingsPanel() {
           <StorefrontImageUpload
             kind="logo"
             label="Storefront logo"
-            description="Use a square image with a transparent or simple background."
+            description="Use a square image with a transparent or simple background. On paid plans it is also printed on the certificates you issue."
             imageUrl={logoUrl}
             isUploading={uploadingImages.has("logo")}
             progress={uploadProgress.logo ?? null}
