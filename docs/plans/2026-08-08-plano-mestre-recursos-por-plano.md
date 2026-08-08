@@ -55,7 +55,7 @@ Preço fixo por mês compra uma **cota**. O professor vê o número antes de ass
 | **Sala ao vivo hospedada** | *adiado — ver §2.1* | | | |
 | Armazenamento de vídeo (min) | 60 | 600 | 3.000 | 10.000 |
 | Destaques no marketplace | — | 1 | 3 | 5 |
-| Cupons ativos | 3 | 20 | 100 | ilimitado |
+| **Cupons** | **ilimitado** | **ilimitado** | **ilimitado** | **ilimitado** |
 | Domínio próprio | — | — | 1 | 3 |
 | Assentos de equipe | 1 | 2 | 5 | 15 |
 | Disparos de e-mail/mês | — | 2.000 | 10.000 | 50.000 |
@@ -322,6 +322,20 @@ Uma linha: o checkout do plano agora aceita **promotion code** da Stripe. Cupom 
 | Compra avulsa continua descontando o valor de verdade | testado |
 
 Commit `ce6740f`.
+
+### 5.1 Quantos cupons cada plano pode criar — DECIDIDO: ilimitado (2026-08-08)
+
+Patrick: *"n vejo pq limitar quantidade de cupom pode deixar ilimitado para a pessoa escolher quantos"* + *"independente do plano/assinatura"*.
+
+A checagem de conflito achou que o limite **nunca existiu de verdade**. `activeCoupons` estava declarado em `src/domain/entitlements.ts` com 3 / 20 / 100 / ilimitado, mas sem **nenhum** consumidor: nenhuma tela lia, nenhuma rota lia, nenhum SQL barrava, nenhum teste citava. Era uma promessa morta — o professor no plano free já podia criar 300 cupons hoje e nada o impediria.
+
+Então o pedido não virou funcionalidade, virou **deleção**: tirei a chave para ninguém construir depois um teto que ele não quer. Deletei em vez de zerar (`null` nos quatro planos) porque uma chave ilimitada em todo plano não diferencia plano nenhum — é ruído num mapa cujo único trabalho é responder "o que o plano X libera".
+
+Razão gravada no código, acima de `QuotaKey`: **um cupom não custa nada para guardar e só dispara quando gera uma venda da qual tiramos comissão.** Limitar cupom é cobrar pedágio do professor por tentar vender.
+
+Commit `be4ecd5`. Portões: tsc limpo, eslint limpo, 415/415.
+
+**Ponta solta (não é o que ele pediu, fica registrada):** o limite de *usos por cupom* (`max_redemptions`) continua obrigatório na tela — mínimo 1, campo não aceita vazio. Isso é escolha do professor, não do plano, mas hoje ele não consegue criar um cupom de usos ilimitados. Uma linha para resolver, se ele quiser.
 
 ---
 
