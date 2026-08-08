@@ -110,6 +110,7 @@ Critério: **(valor × velocidade) ÷ risco**. Nada que mexe no caminho do dinhe
 | **7** | Domínio próprio | Depende de verificar preço por domínio na Vercel — ainda não confirmei. | 2 dias |
 | **8** | Upsell / downsell / order bump | Greenfield e mexe no caminho do dinheiro. Último de propósito. | 3-4 dias |
 | **9** | Sala ao vivo hospedada | **Adiado por decisão do Patrick (2026-08-08).** O link próprio já cobre a necessidade a custo zero; a sala nossa é o único item que pode dar prejuízo. Ver §2.1. | depois do 8 |
+| **10** | Área de membros (catálogo, cadeado, proteção de vídeo) | Escopo novo de 2026-08-08. Posição **provisória**: 4 das 7 peças já existem, mas o tamanho real só fecha quando o Patrick mandar os prints do design. | a definir |
 
 ---
 
@@ -268,9 +269,67 @@ A projeção emite `hidePlatformBrand: true` **ou nada** — nunca `false`. `pub
 
 ---
 
-## Sub-plano 7 — Área de membros: catálogo, cadeado e proteção de vídeo
+## Sub-plano 5 — Cupom em todos os planos
 
-> Escopo pedido em 2026-08-08. **Registrado, não executado** — entra depois do 5 (cupom) e do 6 (métodos de pagamento). O Patrick vai mandar prints do design antes da execução.
+**Meta:** o cupom que já funcionava na compra avulsa passar a funcionar também na assinatura, e o professor poder receber desconto de lançamento no plano dele.
+
+### A checagem de conflito: quase tudo já existia
+
+| Peça | Estado antes | Onde |
+|---|---|---|
+| Validação do cupom (código, validade, limite, "não pode zerar") | **já existia** | `src/domain/coupon-redemption.ts` |
+| Tela do professor para criar cupom | **já existia** | `/teach/coupons` |
+| Tabelas no banco | **já existiam** | `course_coupons` + `course_coupon_reservations` |
+| Reserva / baixa / devolução | **já existiam** | 3 RPCs, chamadas pelo webhook |
+| Cupom na compra **avulsa** | **já funcionava** | `payments/checkout` |
+| Cupom na **assinatura** | **bloqueado de propósito** | o código dizia literalmente *"não suportado ainda, use produto avulso"* |
+
+Ou seja: o sub-plano 5 foi **tapar um buraco**, não construir um sistema.
+
+### As quatro armadilhas
+
+Assinatura não é compra avulsa, e ligar o cupom sem pensar quebra em quatro lugares diferentes:
+
+**1. Desconto dobrado.** Na assinatura, o preço recorrente é criado na Stripe a partir do valor do curso. Se eu descontasse o valor *antes* de criar esse preço, o desconto ficaria colado no preço **para sempre** — e ainda levaria o cupom por cima na primeira fatura. O professor perderia metade da mensalidade de cada aluno, para sempre, sem conseguir desfazer. Solução: o preço nasce **cheio**; o desconto viaja separado, como cupom da Stripe.
+
+**2. Cupom na conta errada.** O dinheiro vai direto do aluno para o professor (a plataforma nunca toma posse). Isso significa que o cupom, igual ao preço, tem que existir na conta **do professor** — um cupom criado na nossa conta simplesmente não é enxergado pelo checkout dele.
+
+**3. Queimar o cupom todo mês.** A renovação carrega a mesma etiqueta da assinatura original. Sem trava, um único aluno consumiria uma vaga do cupom por mês, para sempre. Solução: a baixa só acontece na **primeira** fatura.
+
+**4. Perder ou soltar a reserva na hora errada.** Se a Stripe falhar, a reserva é devolvida. **Exceto** quando não deu para cancelar a sessão — aí ela pode ainda ser paga, então a reserva **fica de pé**.
+
+### A decisão que precisa aparecer na tela
+
+`course_coupons` **não tem campo de duração**. O professor escreve "25%" e não tem como dizer "só no primeiro mês". Um percentual que se repete para sempre é a armadilha nº 1 de novo, agora por escolha do professor.
+
+Decisão: **o cupom vale na primeira cobrança**. É o padrão da Hotmart e da Eduzz, e é o lado reversível — dá para soltar depois; não dá para tirar de assinante que já entrou.
+
+> ⏳ **Dívida assumida:** falta escrever isso na tela `/teach/coupons`. Hoje o professor não é avisado. Entra na próxima leva.
+
+### Desconto no plano do professor (o outro lado do balcão)
+
+Uma linha: o checkout do plano agora aceita **promotion code** da Stripe. Cupom de fundador / lançamento é criado direto no painel da Stripe — sem banco, sem tela, sem código nosso.
+
+### Prova
+
+| Verificação | Resultado |
+|---|---|
+| `npx tsc --noEmit` | limpo |
+| `eslint .` | limpo |
+| `vitest run` | 415/415 |
+| Preço recorrente sai cheio mesmo com cupom de 25% | testado |
+| Cupom vai na conta do professor, não na nossa | testado |
+| Compra avulsa continua descontando o valor de verdade | testado |
+
+Commit `ce6740f`.
+
+---
+
+## Sub-plano 10 — Área de membros: catálogo, cadeado e proteção de vídeo
+
+> Escopo pedido em 2026-08-08. **Registrado, não executado** — entra depois do 6 (métodos de pagamento). O Patrick vai mandar prints do design antes da execução.
+>
+> *Renumerado de 7 para 10: o 7 já era "Domínio próprio" na tabela do §3 e dois sub-planos com o mesmo número viravam confusão na hora de dizer "faz o 7".*
 
 ### A checagem de conflito: 4 das 7 peças já existem
 
