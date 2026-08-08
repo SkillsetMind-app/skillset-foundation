@@ -1,7 +1,7 @@
 # Plano Mestre — Recursos por Plano
 
 **Data:** 2026-08-08
-**Status:** em execução (sub-planos 0, 1, 2 e 3 entregues — próximo: 4)
+**Status:** em execução (sub-planos 0, 1, 2, 3 e 4 entregues — próximo: 5)
 
 ---
 
@@ -211,3 +211,57 @@ Seguindo a regra do sub-plano 0 (*"o número no TypeScript serve pra UI; quem fa
 O tema vai pro HTML como `data-storefront-theme`, não como classe: React escapa valor de atributo, então um tema desconhecido simplesmente não casa com nenhuma regra CSS e cai no padrão.
 
 **`logoUrl` já é projetado mas quase não é usado** — uma marca de 28px ao lado do kicker. O sub-plano 4 (tirar a marca) vai precisar dele na página pública; projetar agora evita uma segunda migração.
+
+---
+
+## Sub-plano 4 — Tirar a marca SkillsetMind (whitelabel)
+
+**Meta:** no plano pro e acima, o aluno vê a marca do professor onde antes via a nossa.
+
+### A checagem de conflito de novo
+
+Desta vez o resultado foi o oposto dos anteriores: **não existia nada.** `removePlatformBranding` era um booleano em `entitlements.ts` que ninguém lia. A feature estava vendida na tabela de planos e não tinha nenhuma implementação — nem no certificado, nem na área de membros, nem na vitrine.
+
+| Peça | Estado antes |
+|---|---|
+| `features.removePlatformBranding` (pro/plus) | existia, **não era lido por ninguém** |
+| Cabeçalho do certificado | logo SkillsetMind fixo |
+| Cabeçalho da área de membros | `LogoWordmark` fixo |
+| Coluna/flag no banco | não existia |
+
+### Duas superfícies, dois mecanismos
+
+A escolha do mecanismo veio do **tempo de vida** de cada peça:
+
+| Superfície | Mecanismo | Por quê |
+|---|---|---|
+| Certificado | **snapshot** na emissão (`certificates.hide_platform_brand`) | O PDF fica na mão do aluno para sempre. Se o professor cair de plano em 2027, não podemos reimprimir a nossa marca num diploma já emitido. |
+| Área de membros | **ao vivo**, via projeção (`branding.hidePlatformBrand`) | É uma página renderizada a cada visita. Caiu de plano, a nossa marca volta na próxima escrita do gatilho — sem job de limpeza. |
+
+**Por que não derivar do `sponsorLogoUrl`:** o logo do professor no certificado é `starter+` (sub-plano 4 é `pro+`). São duas travas diferentes de propósito — starter **co-assina**, pro **substitui**. Derivar uma da outra daria whitelabel de graça no starter.
+
+### O que mudou
+
+1. Migração `20260808150000_whitelabel_platform_brand.sql`:
+   - coluna `certificates.hide_platform_brand`;
+   - `issue_skillset_certificate()` grava a trava do dono no momento da emissão;
+   - `public_storefront_projection()` passa a emitir `branding.hidePlatformBrand`;
+   - backfill dos perfis já publicados + dois `assert` (nenhum plano barato com a flag, nenhum pro/plus sem ela).
+2. `certificate-document.tsx`: sob whitelabel, o logo do professor toma o cabeçalho, o `authorityLabel` some e o corpo deixa de dizer "the SkillsetMind program".
+3. `member-area-shell.tsx`: novo prop `brand`, resolvido no servidor pelo `learn/courses/[slug]/page.tsx` — precisa estar na primeira pintura, senão o aluno vê a nossa marca piscar e sumir.
+4. Quarto teste de deriva em `entitlements.test.tsx`, travando `removePlatformBranding` junto com o SQL.
+
+### O que a marca NUNCA some
+
+O **código de verificação** e o `Verify at skillsetmind.com/verify` continuam impressos em todos os planos. É o que torna o diploma checável — sem isso o certificado não vale nada, e a "marca" que ele carrega é o que dá credibilidade ao documento do professor, não o contrário.
+
+### Duas exclusões deliberadas
+
+| Superfície | Decisão | Por quê |
+|---|---|---|
+| Marca d'água no vídeo | **fora** | `watermarked-video-player.tsx` só é chamado pelo `enrolled-course-workspace.tsx`, que é o ramo do catálogo de demonstração. Nenhum aluno de professor real passa por ali — whitelabelizar não muda nada hoje. |
+| Nav/rodapé da vitrine pública | **adiado para o sub-plano de domínio** | Tirar a nossa marca de `skillsetmind.com/instructors/slug` enquanto a URL ainda diz skillsetmind.com é teatro. A Hotmart vende whitelabel como domínio próprio + área de membros no mesmo pacote. |
+
+### Uma flag verdadeira, nunca falsa
+
+A projeção emite `hidePlatformBrand: true` **ou nada** — nunca `false`. `public_profiles` é lida por `anon`: publicar `false` diria a qualquer visitante quais professores estão no plano barato. O `jsonb_strip_nulls` remove o campo quando a trava não se aplica, e o cliente lê ausência como "não incluído".

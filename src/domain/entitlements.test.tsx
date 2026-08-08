@@ -101,9 +101,17 @@ describe("plan entitlements", () => {
   });
 
   it("gates whitelabel to the paid tiers that were sold on it", () => {
+    // Both halves of
+    // supabase/migrations/20260808150000_whitelabel_platform_brand.sql read
+    // `current_plan_id in ('pro','plus')`: issue_skillset_certificate() stamps
+    // certificates.hide_platform_brand, and public_storefront_projection()
+    // publishes branding.hidePlatformBrand for the member area. Flipping a tier
+    // here without touching the SQL would sell the removal on a plan whose
+    // certificates and classroom still print our mark.
     expect(hasFeature("free", "removePlatformBranding")).toBe(false);
     expect(hasFeature("starter", "removePlatformBranding")).toBe(false);
     expect(hasFeature("pro", "removePlatformBranding")).toBe(true);
+    expect(hasFeature("plus", "removePlatformBranding")).toBe(true);
   });
 
   it("labels limits the way the teacher reads them", () => {

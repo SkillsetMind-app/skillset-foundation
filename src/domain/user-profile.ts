@@ -89,6 +89,14 @@ export type StorefrontBranding = {
   logoUrl?: string | null;
   heroImageUrl?: string | null;
   themePreset?: StorefrontThemePreset | null;
+  /**
+   * Read-only, computed by the DB. `public_storefront_projection()` emits it
+   * (true, or absent) for plans with `removePlatformBranding`; the storefront
+   * editor never writes it and `updateUserStorefront` never persists it. It
+   * rides inside the storefront jsonb so the public projection can answer
+   * "may this teacher replace our mark?" without publishing what they pay.
+   */
+  hidePlatformBrand?: boolean | null;
 };
 
 export type StorefrontShowcase = {

@@ -189,6 +189,7 @@ export type Database = {
           course_title: string
           created_at: string
           enrollment_id: string
+          hide_platform_brand: boolean
           id: string
           issued_at: string | null
           sponsor_logo_url: string | null
@@ -208,6 +209,7 @@ export type Database = {
           course_title: string
           created_at?: string
           enrollment_id: string
+          hide_platform_brand?: boolean
           id: string
           issued_at?: string | null
           sponsor_logo_url?: string | null
@@ -227,6 +229,7 @@ export type Database = {
           course_title?: string
           created_at?: string
           enrollment_id?: string
+          hide_platform_brand?: boolean
           id?: string
           issued_at?: string | null
           sponsor_logo_url?: string | null
