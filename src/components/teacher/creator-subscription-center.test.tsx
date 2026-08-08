@@ -5,7 +5,7 @@ import { CreatorSubscriptionCenterView } from "@/components/teacher/creator-subs
 import type { CourseSubscription } from "@/domain/course-subscription";
 import type { Order } from "@/domain/order";
 import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
-import type { PublicProfile } from "@/domain/user-profile";
+import type { SubscriberProfile } from "@/lib/data/user-profiles";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
 const course = {
@@ -71,11 +71,8 @@ const ledger = {
 const profile = {
   uid: "learner-1",
   displayName: "Maria Silva",
-  username: "maria",
-  photoURL: null,
-  bio: null,
-  credentials: [],
-} as PublicProfile;
+  photoUrl: "",
+} as SubscriberProfile;
 
 describe("CreatorSubscriptionCenterView", () => {
   it("shows operational metrics and filters subscribers by name", () => {

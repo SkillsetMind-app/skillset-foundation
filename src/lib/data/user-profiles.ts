@@ -135,6 +135,32 @@ export async function getPublicProfilesByIds(
   return (data ?? []).map(rowToPublicProfile);
 }
 
+export type SubscriberProfile = {
+  uid: string;
+  displayName: string;
+  photoUrl: string;
+};
+
+/**
+ * Names of the learners subscribed to (or who bought from) the calling teacher.
+ *
+ * Learners are deliberately absent from `public_profiles` -- that projection is
+ * world-readable by `anon` and only carries approved teachers. This RPC is
+ * `SECURITY DEFINER` and takes no arguments: the caller cannot ask about an
+ * arbitrary id, only "who bought from me", so there is no enumeration surface.
+ */
+export async function getMySubscriberProfiles(): Promise<SubscriberProfile[]> {
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase.rpc("get_my_subscriber_profiles");
+
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    uid: row.uid ?? "",
+    displayName: row.display_name ?? "",
+    photoUrl: row.photo_url ?? "",
+  }));
+}
+
 export function subscribeToPublicProfile(
   uid: string,
   callback: (profile: PublicProfile | null) => void,
