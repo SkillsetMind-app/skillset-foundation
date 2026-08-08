@@ -51,7 +51,8 @@ Preço fixo por mês compra uma **cota**. O professor vê o número antes de ass
 |---|---|---|---|---|
 | Produtos publicados | 1 | 5 | 25 | ilimitado |
 | Alunos ativos (assentos) | 50 | 300 | 2.000 | ilimitado |
-| **Minutos de aula ao vivo/mês** | — | 5.000 | 30.000 | 100.000 |
+| **Aula ao vivo por link próprio** | **sim** | **sim** | **sim** | **sim** |
+| **Sala ao vivo hospedada** | *adiado — ver §2.1* | | | |
 | Armazenamento de vídeo (min) | 60 | 600 | 3.000 | 10.000 |
 | Destaques no marketplace | — | 1 | 3 | 5 |
 | Cupons ativos | 3 | 20 | 100 | ilimitado |
@@ -62,16 +63,30 @@ Preço fixo por mês compra uma **cota**. O professor vê o número antes de ass
 | Certificado com logo próprio | não | **sim** | **sim** | **sim** |
 | Template de site | não | **sim** | **sim** | **sim** |
 
-### A armadilha dos minutos ao vivo
+## 2.1 Aula ao vivo — modelo híbrido (DECIDIDO 2026-08-08)
 
-Minuto ao vivo tem que ser contado em **minuto-espectador**, não minuto de aula. Uma aula de 60 min com 25 alunos gasta 1.500.
+A checagem de conflito achou que **aula ao vivo já existe na plataforma**: `CourseEvent.externalUrl` (`src/domain/course-event.ts`) guarda o link que o próprio professor cola, com RSVP, agenda e páginas em `/teach/events` e `/learn/events`. A sala é dele. **Custo nosso: $0.**
 
-Se contássemos minuto de aula, o Pro com 1.200 min e 100 espectadores viraria 120.000 min entregues = **$120 de custo contra uma assinatura de $89**. O plano daria prejuízo com um único professor popular.
+Isso derruba a premissa da tabela de minutos que estava aqui. Decisão fechada, mesmo desenho já adotado para vídeo gravado (YouTube embed grátis + upload Bunny pago):
 
-Tradução que o professor lê na tela:
-- Starter: "cerca de 5 horas de aula ao vivo com 15 alunos"
-- Pro: "cerca de 20 horas de aula ao vivo com 25 alunos"
-- Plus: "cerca de 40 horas de aula ao vivo com 40 alunos"
+| | Link próprio (Zoom/Meet do professor) | Sala hospedada por nós |
+|---|---|---|
+| Existe hoje | **sim** | não |
+| Quem paga a transmissão | o professor | **nós** |
+| Disponibilidade | ilimitado, **todos os planos, inclusive Free** | limitado, planos pagos |
+| Status | no ar | **adiado** — construir depois dos sub-planos 2 a 8 |
+
+**Fórmula de custo, para quando a sala hospedada entrar:** Cloudflare Stream cobra $1 a cada 1.000 minutos entregues, e "entregue" conta por pessoa.
+
+> **custo USD = duração(min) × pessoas ÷ 1.000**
+
+Uma aula de 2h com 200 alunos = $24. Quatro delas = $96, contra os ~$194/mês que um Pro rende (assinatura + comissão). Por isso a sala hospedada nasce apertada, e não como cota generosa.
+
+**Como será medida (quando existir):** três números legíveis — **quantas aulas por mês · duração máxima · pessoas na sala** — e não o balde de "minuto-espectador" que este documento carregava antes. Três botões multiplicados explodem o custo (Plus a 40 × 240 × 500 = $4.800), então os limites saem calculados de trás pra frente: pior caso possível ≤ ~20% da receita do plano.
+
+**Por que ninguém fica sem aula:** estourou a cota da sala hospedada, o professor cola um link do Zoom. Nunca há corte no meio da aula.
+
+`src/domain/entitlements.ts` não carrega cota de aula ao vivo — por isso.
 
 ### Pedido de expansão
 
@@ -94,7 +109,7 @@ Critério: **(valor × velocidade) ÷ risco**. Nada que mexe no caminho do dinhe
 | **6** | Métodos de pagamento por país | Código já está certo (não fixa `payment_method_types`). É configuração de conta Stripe + documentação pro professor. | 1 dia |
 | **7** | Domínio próprio | Depende de verificar preço por domínio na Vercel — ainda não confirmei. | 2 dias |
 | **8** | Upsell / downsell / order bump | Greenfield e mexe no caminho do dinheiro. Último de propósito. | 3-4 dias |
-| **9** | Aula ao vivo | Depende da decisão transmissão vs videoconferência. | a definir |
+| **9** | Sala ao vivo hospedada | **Adiado por decisão do Patrick (2026-08-08).** O link próprio já cobre a necessidade a custo zero; a sala nossa é o único item que pode dar prejuízo. Ver §2.1. | depois do 8 |
 
 ---
 

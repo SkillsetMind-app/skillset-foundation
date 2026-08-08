@@ -19,12 +19,13 @@
  *    "3 of 5 used" before the click, and a useful error after it. If the two
  *    ever drift, SQL wins and the teacher sees the server's message.
  *
- * Live-session minutes are counted in ATTENDEE-minutes, not class minutes.
- * A 60-minute class with 25 students spends 1,500. This matters: broadcast
- * delivery is billed per delivered minute (Cloudflare Stream, $1 per 1,000),
- * so a quota denominated in class-minutes would let one teacher with 500
- * viewers cost more than the whole tier collects. `liveSessionExample` carries
- * the plain-language translation the teacher actually reads.
+ * No live-session quota here on purpose. Live classes already ship as a link
+ * the teacher owns (`CourseEvent.externalUrl` — they paste their own Zoom or
+ * Meet room), which costs us nothing and stays unlimited on every tier. A
+ * platform-hosted room is the paid, metered half of that split and is not
+ * built yet; when it is, it gets three readable knobs — classes per month, max
+ * duration, max room size — not the attendee-minute bucket this file used to
+ * carry. See docs/plans/2026-08-08-plano-mestre-recursos-por-plano.md.
  */
 
 import type { PlanId } from "@/data/plans";
@@ -32,7 +33,6 @@ import type { PlanId } from "@/data/plans";
 export type QuotaKey =
   | "publishedProducts"
   | "activeStudents"
-  | "liveAttendeeMinutesPerMonth"
   | "videoStorageMinutes"
   | "featuredSlots"
   | "activeCoupons"
@@ -51,8 +51,6 @@ export type QuotaLimit = number | null;
 export type PlanEntitlements = {
   quotas: Record<QuotaKey, QuotaLimit>;
   features: Record<FeatureKey, boolean>;
-  /** Plain-language translation of the live quota, shown next to the number. */
-  liveSessionExample: string;
 };
 
 export const planEntitlements: Record<PlanId, PlanEntitlements> = {
@@ -60,7 +58,6 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
     quotas: {
       publishedProducts: 1,
       activeStudents: 50,
-      liveAttendeeMinutesPerMonth: 0,
       videoStorageMinutes: 60,
       featuredSlots: 0,
       activeCoupons: 3,
@@ -73,13 +70,11 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       certificateOwnLogo: false,
       storefrontTemplates: false,
     },
-    liveSessionExample: "Live sessions are not included on Free.",
   },
   starter: {
     quotas: {
       publishedProducts: 5,
       activeStudents: 300,
-      liveAttendeeMinutesPerMonth: 5_000,
       videoStorageMinutes: 600,
       featuredSlots: 1,
       activeCoupons: 20,
@@ -92,13 +87,11 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       certificateOwnLogo: true,
       storefrontTemplates: true,
     },
-    liveSessionExample: "About 5 hours of live class with 15 students.",
   },
   pro: {
     quotas: {
       publishedProducts: 25,
       activeStudents: 2_000,
-      liveAttendeeMinutesPerMonth: 30_000,
       videoStorageMinutes: 3_000,
       featuredSlots: 3,
       activeCoupons: 100,
@@ -111,13 +104,11 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       certificateOwnLogo: true,
       storefrontTemplates: true,
     },
-    liveSessionExample: "About 20 hours of live class with 25 students.",
   },
   plus: {
     quotas: {
       publishedProducts: null,
       activeStudents: null,
-      liveAttendeeMinutesPerMonth: 100_000,
       videoStorageMinutes: 10_000,
       featuredSlots: 5,
       activeCoupons: null,
@@ -130,7 +121,6 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       certificateOwnLogo: true,
       storefrontTemplates: true,
     },
-    liveSessionExample: "About 40 hours of live class with 40 students.",
   },
 };
 
@@ -220,7 +210,6 @@ export function lowestPlanWithQuota(
 export const quotaLabels: Record<QuotaKey, string> = {
   publishedProducts: "Published products",
   activeStudents: "Active students",
-  liveAttendeeMinutesPerMonth: "Live minutes per month",
   videoStorageMinutes: "Video storage",
   featuredSlots: "Marketplace highlights",
   activeCoupons: "Active coupons",
