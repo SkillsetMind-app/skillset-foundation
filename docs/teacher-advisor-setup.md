@@ -79,16 +79,29 @@ The long-form help corpus lives in a Google Doc you edit by hand, so correcting 
 wrong answer costs an edit instead of a commit and a deploy.
 
 1. Open the Doc. The owner's is
-   `1InJlC6vxOYnsVpZ4zpcpktDdlaEpm7UkP2QgfLmlix4`.
+   `1dtqZkhIXohjhXASjuFCU2DUbiLG47mEYYc5phL6PFDs`, on the `skillsetmind.com`
+   Workspace account. (An earlier draft of this file named a Doc on the owner's
+   personal account; that one was never shared and is not the corpus.)
 2. **Share → General access → Anyone with the link → Viewer.** The sync reads the
    public export url; a Doc that is not shared answers with Google's sign-in page
    and the job reports `doc_not_public`.
+
+   **Viewer, never Editor.** "Anyone with the link" plus write access means anyone
+   who ever sees the link can rewrite what the advisor tells teachers — and the
+   advisor presents this corpus to the model as ground truth, so an edit here is an
+   instruction the model will follow. The sync only ever reads; write access buys
+   nothing and costs the integrity of every answer. This was live once, on
+   2026-08-06, at `{"role":"writer","type":"anyone"}`.
 3. Set `ADVISOR_KNOWLEDGE_DOC_URL` to the **export** url — the `/edit` url returns
    HTML, not text:
 
    ```
-   https://docs.google.com/document/d/1InJlC6vxOYnsVpZ4zpcpktDdlaEpm7UkP2QgfLmlix4/export?format=txt
+   https://docs.google.com/document/d/1dtqZkhIXohjhXASjuFCU2DUbiLG47mEYYc5phL6PFDs/export?format=txt
    ```
+
+   Do not use **File → Share → Publish to web** instead. That url serves HTML and
+   ignores `?format=txt`, so the job fails with `doc_not_public` against a Doc that
+   is, confusingly, public.
 
 4. Set `OPENAI_API_KEY`. It is used **only** for embeddings
    (`text-embedding-3-small`) — the sync embeds the Doc, and retrieval embeds the
