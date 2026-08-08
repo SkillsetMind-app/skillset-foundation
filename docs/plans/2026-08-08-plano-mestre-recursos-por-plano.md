@@ -265,3 +265,82 @@ O **código de verificação** e o `Verify at skillsetmind.com/verify` continuam
 ### Uma flag verdadeira, nunca falsa
 
 A projeção emite `hidePlatformBrand: true` **ou nada** — nunca `false`. `public_profiles` é lida por `anon`: publicar `false` diria a qualquer visitante quais professores estão no plano barato. O `jsonb_strip_nulls` remove o campo quando a trava não se aplica, e o cliente lê ausência como "não incluído".
+
+---
+
+## Sub-plano 7 — Área de membros: catálogo, cadeado e proteção de vídeo
+
+> Escopo pedido em 2026-08-08. **Registrado, não executado** — entra depois do 5 (cupom) e do 6 (métodos de pagamento). O Patrick vai mandar prints do design antes da execução.
+
+### A checagem de conflito: 4 das 7 peças já existem
+
+| Peça pedida | Estado | Onde |
+|---|---|---|
+| Embed de YouTube | **já existe** | `domain/lesson-embed.ts` — e já usa `youtube-nocookie.com` |
+| Liberação gradual (drip) | **já existe, completo** | `domain/drip-policy.ts` — 5 estratégias |
+| Aula de degustação grátis | **já existe** | `freePreviewLessonId` no builder |
+| Botão Preview do professor | **existe, mas errado** | `/teach/builder/[id]/preview` abre dentro do painel, não da área de membros |
+| Grade estilo Netflix do catálogo do professor | **não existe** | — |
+| Cadeado + modal de detalhes + comprar | **meio existe** | `domain/course-access.ts` decide os 4 modos; não há UI |
+| Checkout por curso | **já existe** | modo `paid_checkout_required` |
+
+**As 5 estratégias de drip que já estão prontas** (o professor escolhe na aba Pricing):
+
+| Estratégia | O que faz |
+|---|---|
+| `instant` | Libera tudo na hora da compra |
+| `sequential_progress` | Só libera a próxima aula quando a anterior é concluída |
+| `time_drip_lesson` | Uma aula a cada N dias |
+| `time_drip_module` | Um módulo a cada N dias |
+| `time_drip_custom` | Prazo por aula — é assim que se libera "3 aulas de uma vez" (mesmo prazo nas três) |
+
+Ou seja: o pedido "liberar de 7 em 7 dias, ou um módulo de uma vez, ou tudo junto" **já está construído**. O que falta é o professor conseguir enxergar isso e o aluno ver o cadeado.
+
+### A verdade sobre proteger vídeo do YouTube
+
+**Não dá para impedir. Isso não é limitação do nosso código — é como o YouTube funciona.**
+
+O vídeo é servido pelos servidores do YouTube. Para o navegador do aluno tocar o vídeo, o endereço dele precisa estar escrito no HTML da página. Qualquer pessoa aperta F12 e lê em 5 segundos. Bloquear botão direito, esconder o logo, tapar o canto "Assistir no YouTube" — tudo isso segura o curioso, **nenhum deles segura quem quer piratear**.
+
+O YouTube também **não** oferece trava de domínio para canais comuns (só o Vimeo e os players pagos oferecem). Então não existe um botão mágico do nosso lado.
+
+**O que realmente protege é o Bunny Stream** — link assinado que expira, lista de domínios autorizados e DRM opcional. Isso é cadeado de verdade.
+
+**Decisão de produto:** vídeo protegido vira **recurso de plano**, não promessa vazia.
+
+| Fonte de vídeo | Proteção real | Custo pro professor | Plano |
+|---|---|---|---|
+| YouTube embed | Nenhuma. Só freio de mão. | R$0 | qualquer um, inclusive free |
+| Bunny Stream | Link assinado + domínio travado | pago (nosso custo) | planos pagos |
+
+Isso transforma a limitação técnica em motivo de upgrade — e, mais importante, **para de mentir pro professor**.
+
+O que entra do lado do YouTube (rotulado como o que é — freio de mão, não cadeado):
+1. Camada por cima do iframe que engole o botão direito e o clique no canto "Assistir no YouTube";
+2. `modestbranding` + `rel=0` + teclado desabilitado nos parâmetros do embed;
+3. **Aviso honesto no editor**, ao lado do campo do link: *"YouTube não pode ser protegido. Marque o vídeo como Não listado no YouTube e considere o Bunny se o conteúdo for pago."*
+
+O item 3 é o de maior valor real e é **do lado do professor**: vídeo Não listado não aparece em busca. Continua acessível a quem tem o link, mas some do YouTube público.
+
+### A pergunta estrutural que ainda está aberta
+
+O Patrick perguntou: *"é curso com módulos, ou curso composto de subcursos?"*
+
+**Hoje a plataforma é `Curso → Módulos → Aulas`** — é o que o `drip-policy.ts` percorre. O que ele chamou de "trilhas com vários cursos dentro" seria um **quarto nível que não existe**.
+
+| Caminho | Custo | Consequência |
+|---|---|---|
+| **A. Manter 3 níveis** | R$0 | A "trilha" vira um curso com módulos grandes. É o que Hotmart e Kajabi fazem. |
+| **B. Adicionar trilhas** | Alto — mexe em matrícula, drip, certificado e checkout | Necessário só se ele vender pacote de vários cursos como um produto único |
+
+**Recomendação: A**, até existir um professor pedindo B. O agrupamento visual ("trilhas") pode ser feito com os rótulos de seção da vitrine, que **já existem** (`storefront.showcase.sectionLabels`).
+
+### O que entra no sub-plano 7
+
+1. **Grade do catálogo dentro da área de membros** — todos os cursos daquele professor, comprados e não comprados, capa + cadeado, placeholder quando não há capa.
+2. **Modal de detalhes** no clique do cadeado (janela por cima, não página nova) → botão que leva ao checkout do curso. O cérebro (`getCourseAccessDecision`) já existe.
+3. **Preview do professor virar visitante de verdade** — trocar `PlatformShell` por `MemberAreaShell` na rota que já existe, e mostrar a grade, não só um curso.
+4. **Proteção de vídeo em dois níveis** conforme a tabela acima.
+5. **Deixar o drip visível** — ele está construído e escondido.
+
+**Bloqueado até:** prints do design atual (o Patrick vai mandar) + decisão A/B da estrutura.
