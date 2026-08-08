@@ -19,7 +19,6 @@ export type PermissionArea =
   | "community"
   | "teacherStudio"
   | "certificates"
-  | "firebaseIntegration"
   | "users"
   | "platform";
 
@@ -183,20 +182,6 @@ export const permissionDefinitions = {
       description: "Can revoke issued certificates.",
     },
   },
-  firebaseIntegration: {
-    read: {
-      key: "firebaseIntegration.read",
-      area: "firebaseIntegration",
-      label: "Read Firebase integration",
-      description: "Can inspect Firebase-backed records.",
-    },
-    write: {
-      key: "firebaseIntegration.write",
-      area: "firebaseIntegration",
-      label: "Write Firebase integration",
-      description: "Can update Firebase-backed records.",
-    },
-  },
   users: {
     support: {
       key: "users.support",
@@ -282,7 +267,6 @@ const supportPermissions = [
   "payments.manageSubscriptions",
   "payments.refund",
   "certificates.view",
-  "firebaseIntegration.read",
   "users.support",
   "platform.viewOps",
 ] as const satisfies readonly Permission[];
@@ -303,7 +287,6 @@ const opsPermissions = [
   "courses.manageAll",
   "community.moderate",
   "users.support",
-  "firebaseIntegration.read",
 ] as const satisfies readonly Permission[];
 
 export const rolePermissionMatrix: Record<Role, readonly Permission[]> = {

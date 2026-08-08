@@ -32,12 +32,13 @@ type QuestionDefinition = {
   required: boolean;
 };
 
-// SkillsetMind's launch audience is mental-health and personal-development
-// professionals, so the teacher branch leads with practice identity.
+// SkillsetMind's launch audience is coaches and personal-development
+// professionals, so the teacher branch leads with practice identity. Regulated
+// clinical titles are deliberately absent — see src/domain/teacher-course.ts.
 const professionOptions = [
-  "Psychologist",
-  "Therapist",
   "Coach",
+  "Facilitator",
+  "Trainer or educator",
   "Mentor or consultant",
   "Other",
 ];

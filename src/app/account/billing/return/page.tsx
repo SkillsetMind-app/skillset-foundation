@@ -17,7 +17,7 @@ function firstParam(value: SearchParamValue): string | undefined {
 /**
  * Stripe's embedded Checkout redirects to this URL after a completed
  * session, appending ?session_id=… The customer.subscription.created
- * webhook updates currentPlanId in Firestore asynchronously, so by the
+ * webhook updates the profile's currentPlanId asynchronously, so by the
  * time the user lands here the plan change is usually — but not always —
  * already applied. We confirm that checkout finished (the session_id is
  * proof of that) without asserting the plan is live this instant, and we

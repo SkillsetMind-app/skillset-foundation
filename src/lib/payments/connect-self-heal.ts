@@ -12,7 +12,7 @@ import Stripe from "stripe";
  *
  * Extracted as pure, dependency-injected functions (mirroring payment-rules.ts)
  * so the predicate AND the at-most-once retry control-flow are unit-testable
- * without the Firebase admin SDK or a Stripe client.
+ * without a Supabase client or a Stripe client.
  */
 
 const ORPHAN_ACCOUNT_CODES = new Set(["account_invalid", "resource_missing"]);

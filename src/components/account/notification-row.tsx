@@ -40,7 +40,7 @@ const unreadChipByType: Record<NotificationType, string> = {
   course_message: "bg-[rgba(44,82,130,0.1)] text-[var(--color-primary)]",
 };
 
-// Relative time from a Firestore server timestamp ({ seconds }). Coarse on
+// Relative time from a notification's server-written creation time. Coarse on
 // purpose — the inbox is glanceable, not an audit log.
 export function formatNotificationTime(createdAt: unknown): string {
   // Supabase rows carry created_at as an ISO string; legacy Firestore-shaped

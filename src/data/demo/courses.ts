@@ -47,15 +47,16 @@ const coreModules = {
 
 export const demoCourses: Course[] = [
   {
-    id: "course-clinical-psychology",
-    slug: "clinical-psychology",
-    title: "Clinical Psychology",
-    category: "Psychology",
+    id: "course-applied-behavior",
+    slug: "applied-behavior-coaching",
+    title: "Applied Behavior Coaching",
+    category: "Applied Psychology & Behavior",
     durationLabel: "1.5-3 years",
     status: "opening_soon",
     statusLabel: "Opening soon",
     summary:
-      "A flagship psychology pathway for learners who want a serious, career-focused study experience.",
+      "A flagship behavior-change pathway for learners who want a serious, career-focused study experience.",
+    // ponytail: asset filename left alone — renaming the file is a separate chore.
     image: "/courses/clinical-psychology.jpg",
     detail: "Built for structured learning, guided support, and clear progression.",
     level: "Advanced",
@@ -65,9 +66,9 @@ export const demoCourses: Course[] = [
     platformFeeBps: 800,
     freePreviewLabel: "Intro preview planned",
     outcomes: [
-      "Understand core clinical psychology foundations",
+      "Understand core applied-behavior foundations",
       "Follow a guided long-form learning path",
-      "Prepare for supervised practice and further study",
+      "Prepare for mentored practice and further study",
     ],
     modules: [coreModules.orientation, coreModules.practice],
     communityEnabled: true,
@@ -125,15 +126,16 @@ export const demoCourses: Course[] = [
     communityEnabled: true,
   },
   {
-    id: "course-mental-health-foundations",
-    slug: "mental-health-foundations",
-    title: "Mental Health Foundations",
-    category: "Health",
+    id: "course-emotional-resilience",
+    slug: "emotional-resilience-foundations",
+    title: "Emotional Resilience Foundations",
+    category: "Emotional Resilience & Wellbeing",
     durationLabel: "2-6 weeks",
     status: "published",
     statusLabel: "New",
     summary:
-      "A shorter introduction to mental health topics for learners who want an accessible starting point.",
+      "A shorter introduction to resilience and wellbeing for learners who want an accessible starting point.",
+    // ponytail: asset filename left alone — renaming the file is a separate chore.
     image: "/courses/mental-health-foundations.jpg",
     detail: "Short-form learning with clear outcomes and practical takeaways.",
     level: "Foundation",
@@ -141,9 +143,9 @@ export const demoCourses: Course[] = [
     priceAmountMinor: 4900,
     currency: "USD",
     platformFeeBps: 800,
-    freePreviewLabel: "Free mental health preview",
+    freePreviewLabel: "Free resilience preview",
     outcomes: [
-      "Learn core mental health concepts",
+      "Learn core emotional-resilience concepts",
       "Recognize common support contexts",
       "Apply practical reflection exercises",
     ],

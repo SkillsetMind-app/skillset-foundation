@@ -11,7 +11,7 @@ import { plans, refundWindowDays } from "@/data/plans";
 // Real, shipped platform capabilities. Keep each line traceable to a live
 // surface — this block is the only hand-written part of the corpus, so it is
 // the only part a fact-check needs to re-verify against the codebase.
-const PLATFORM_OVERVIEW = `SkillsetMind is an online course marketplace where experts (psychologists, therapists, coaches, and other professionals) create and sell courses, and learners study them in a members area. One account can both learn and teach.
+const PLATFORM_OVERVIEW = `SkillsetMind is an online course marketplace where experts (coaches, facilitators, mentors, and other personal-development professionals) create and sell courses, and learners study them in a members area. One account can both learn and teach. SkillsetMind is not a venue for licensed clinical practice: never describe it as a place to deliver therapy, counseling, diagnosis, or treatment, and never call a seller a therapist or psychologist.
 - Checkout and subscriptions run on Stripe Connect: once a creator connects their account in the Studio, buyers are charged DIRECTLY on that connected account. The creator is the merchant of record; SkillsetMind takes its commission as a Stripe application fee at the moment of the charge and never holds or remits creator money. Payout details are under "Plans, fees, refunds, payouts" below.
 - Course video is hybrid: teachers can upload video files or embed from YouTube/Vimeo.
 - Each course can enable an opt-in community space inside the members area.

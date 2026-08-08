@@ -23,7 +23,7 @@ type SetupState = {
 /**
  * Real TOTP two-factor enrollment, gated behind the `auth.mfa` feature flag.
  * When the flag is off (default) it shows an honest "not enabled" state rather
- * than a fake QR — enabling it requires Firebase Identity Platform (MFA) on the
+ * than a fake QR — enabling it requires Supabase Auth MFA (TOTP) on the
  * project. The matching sign-in challenge lives in the login form, so turning
  * this on never locks anyone out.
  */

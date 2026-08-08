@@ -8,13 +8,13 @@
  * Levels are derived from cumulative all-time points using Skool's published
  * 9-level thresholds.
  *
- * Points are SERVER-AUTHORITATIVE: the `memberStats/{uid}` aggregate is written
- * exclusively by Cloud Functions (the like trigger). Clients can never write
- * points/level — see firestore.rules (`memberStats` write: if false).
+ * Points are SERVER-AUTHORITATIVE: the per-member `member_stats` aggregate is
+ * written exclusively server-side by the like-award job. Clients can never
+ * write points/level — RLS grants them no write on `member_stats`.
  *
- * ⚠️ SOURCE OF TRUTH: `LEVEL_THRESHOLDS` and `levelForPoints` are mirrored in
- * functions/src/index.ts (the award trigger runs server-side and cannot import
- * from this package). Keep both copies in sync — this module is canonical.
+ * ⚠️ SOURCE OF TRUTH: this module is canonical for `LEVEL_THRESHOLDS` and
+ * `levelForPoints`. The award job runs outside this repo and cannot import
+ * from here, so it carries its own copy — keep the two in sync.
  */
 
 // Cumulative points required to REACH each level (index 0 = Level 1).
@@ -77,9 +77,10 @@ export function levelProgress(points: number): LevelProgress {
 }
 
 /**
- * Per-member aggregate. Lives in `memberStats/{uid}`. Server-only write; reads
- * are single-doc `get` only (the collection forbids `list` so the member roster
- * can't be enumerated — see firestore.rules and fetchMemberStatsForUids).
+ * Per-member aggregate. Lives in `member_stats`, keyed by uid. Server-only
+ * write; reads are single-row lookups by known uid only (RLS forbids listing
+ * the table so the member roster can't be enumerated — see
+ * fetchMemberStatsForUids).
  * Drives post/comment level badges + the leaderboard.
  */
 export type MemberStats = {

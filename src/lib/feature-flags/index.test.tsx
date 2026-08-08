@@ -17,8 +17,8 @@ describe("feature flags", () => {
       "auth.passwordReset",
       "auth.mfa",
     ]);
-    expect(getFeatureFlagsByArea("firebaseIntegration")[0]).toMatchObject({
-      area: "firebaseIntegration",
+    expect(getFeatureFlagsByArea("community")[0]).toMatchObject({
+      area: "community",
       defaultEnabled: true,
     });
   });

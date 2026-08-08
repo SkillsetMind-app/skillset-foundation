@@ -102,11 +102,11 @@ describe("enrollment helpers", () => {
       {
         id: "enrollment-demo",
         userId: "user-1",
-        courseId: "course-clinical-psychology",
-        courseSlug: "clinical-psychology",
-        courseTitle: "Clinical Psychology",
-        courseCategory: "Psychology",
-        courseImage: "https://example.com/clinical.jpg",
+        courseId: "course-applied-behavior",
+        courseSlug: "applied-behavior-coaching",
+        courseTitle: "Applied Behavior Coaching",
+        courseCategory: "Applied Psychology & Behavior",
+        courseImage: "https://example.com/applied.jpg",
         status: "active",
         source: "manual_demo",
         progressPercent: 10,
@@ -128,11 +128,11 @@ describe("enrollment helpers", () => {
       {
         id: "community-enrollment-demo",
         categories: "course community",
-        courseTitle: "Clinical Psychology",
+        courseTitle: "Applied Behavior Coaching",
         description:
           "A course-linked space for teacher announcements, learner questions, discussion, and shared resources.",
-        href: "/learn/community/clinical-psychology",
-        name: "Clinical Psychology community",
+        href: "/learn/community/applied-behavior-coaching",
+        name: "Applied Behavior Coaching community",
         visibility: "enrolled only",
       },
     ]);

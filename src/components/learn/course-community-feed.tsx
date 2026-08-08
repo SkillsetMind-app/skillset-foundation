@@ -69,9 +69,9 @@ const EMPTY_MEMBER_STATS: Map<string, MemberStats> = new Map();
  * Level-badge stats for an explicit set of members (the viewer + the authors of
  * posts/comments already on screen). Re-fetches only when the set actually
  * changes — `key` is a stable sorted string, so identical sets across renders
- * don't refetch. memberStats can't be listed (roster enumeration is blocked in
- * firestore.rules), so this per-uid fetch is the only read path; a stats read
- * failure just omits badges, it never breaks the feed.
+ * don't refetch. `member_stats` can't be listed (roster enumeration is blocked
+ * by RLS), so this per-uid fetch is the only read path; a stats read failure
+ * just omits badges, it never breaks the feed.
  */
 function useMemberStats(uids: string[]): Map<string, MemberStats> {
   const key = [...new Set(uids.filter((uid) => uid))].sort().join(",");

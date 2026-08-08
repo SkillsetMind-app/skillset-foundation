@@ -483,7 +483,7 @@ export function CourseBuilderStudio() {
   const [courseAssets, setCourseAssets] = useState<CourseAsset[]>([]);
   const [autosaveState, setAutosaveState] =
     useState<"idle" | "saving" | "saved" | "error">("idle");
-  // Signature of the last state we know Firestore has. Lives in state (not a
+  // Signature of the last state we know the server has. Lives in state (not a
   // ref) so the "Unsaved changes" indicator can be derived purely in render
   // without reading a ref. Updated only in async callbacks (save success and
   // the snapshot hydration), so it never causes a synchronous setState in an

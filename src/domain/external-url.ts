@@ -3,8 +3,8 @@
  * http(s) URL; otherwise null.
  *
  * Use this to gate ANY `href` built from user/teacher-controlled input (course
- * event links, lesson external links). Firestore rules only check length, so a
- * stored value like `javascript:alert(1)` or `data:...` would otherwise reach
+ * event links, lesson external links). Nothing at the storage layer validates
+ * the scheme, so a stored `javascript:alert(1)` or `data:...` would reach
  * the DOM as a clickable link — a stored-XSS / open-redirect vector. Rendering
  * the link only when this returns non-null closes that hole and also avoids
  * broken links from empty/garbage values.

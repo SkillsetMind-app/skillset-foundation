@@ -50,10 +50,10 @@ export const productSurfaces: Surface[] = getProductSurfaces().map(
 );
 
 export const marketplaceHighlights = [
-  "Professional programs across leadership, psychology, health, and management",
-  "Experienced instructors with practical and academic credibility",
+  "Professional programs across coaching, leadership, wellbeing, and management",
+  "Experienced instructors with practical, verifiable credibility",
   "A learning experience shaped for clarity, support, and momentum",
-  "Designed for international learners and educators",
+  "Designed for international learners and instructors",
 ];
 
 export const platformNav: PlatformNavItem[] = [

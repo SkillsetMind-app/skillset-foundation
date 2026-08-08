@@ -69,8 +69,8 @@ export default function TeacherTermsPage() {
           You must be at least 18 years old. Any credentials, licenses,
           degrees, or professional experience you present on your profile or
           in your course pages must be truthful and current. Misrepresenting
-          qualifications — especially clinical ones — is grounds for immediate
-          removal.
+          qualifications — especially regulated or clinical ones — is grounds
+          for immediate removal.
         </p>
       </LegalSection>
 
@@ -109,26 +109,28 @@ export default function TeacherTermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection heading="5. Education, not treatment">
+      <LegalSection heading="5. Training, not treatment">
         <p>
-          SkillsetMind serves psychologists, therapists, and personal-development
-          professionals, so this boundary is strict:
+          SkillsetMind serves coaches, facilitators, and personal-development
+          professionals. It is not a venue for licensed clinical practice, so
+          this boundary is strict:
         </p>
         <ul className="list-disc space-y-2 pl-6">
           <li>
-            Courses must be educational. A course may teach methods,
+            Courses must be instructional. A course may teach methods,
             frameworks, and skills; it may not deliver individualized clinical
             care, diagnosis, or treatment disguised as a course.
           </li>
           <li>
             You may not use courses, communities, or live sessions to create a
-            therapist-client relationship with students, nor present course
-            participation as a substitute for therapy or medical treatment.
+            therapist-client, counselor-client, or practitioner-patient
+            relationship with students, nor present course participation as a
+            substitute for therapy or medical treatment.
           </li>
           <li>
-            Courses on clinical or mental-health topics must include a clear
-            disclaimer that the content is educational and does not replace
-            professional care.
+            Courses touching wellbeing or mental-health topics must include a
+            clear disclaimer that the content is instructional and does not
+            replace professional care.
           </li>
           <li>
             If your professional regulations (licensing board, professional

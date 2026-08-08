@@ -20,7 +20,7 @@ function selectPrimaryCategory() {
   fireEvent.click(screen.getByRole("button", { name: /Select up to 5 categories/i }));
   fireEvent.click(
     screen.getByRole("checkbox", {
-      name: "Clinical Psychology & Approaches",
+      name: "Applied Psychology & Behavior",
     })
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Builds an `onError` handler for a Firestore subscription that logs the
+ * Builds an `onError` handler for a realtime subscription that logs the
  * failure with a stable scope label instead of swallowing it silently.
  *
  * Use this for non-blocking widgets (dashboard KPIs, side panels) that should

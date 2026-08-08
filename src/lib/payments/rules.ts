@@ -350,9 +350,9 @@ export function shouldApplyOrderStatusTransition(
  *
  *  createCheckoutSession reads enrollment outside a transaction and then opens
  *  a fresh order + Stripe session. Two concurrent submits (double-click / two
- *  tabs) both pass and both charge. A lock doc keyed by `${userId}__${courseId}`
- *  is claimed atomically (Firestore .create); this decides what a request that
- *  loses the claim should do with the existing lock.
+ *  tabs) both pass and both charge. A lock row keyed by `${userId}__${courseId}`
+ *  is claimed atomically (the claim_checkout_lock RPC); this decides what a
+ *  request that loses the claim should do with the existing lock.
  * ---------------------------------------------------------------------- */
 
 export type CheckoutLockSnapshot = {
