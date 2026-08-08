@@ -30,12 +30,18 @@
 
 import type { PlanId } from "@/data/plans";
 
+/**
+ * Coupons are deliberately NOT a quota (decision, Patrick, 2026-08-08:
+ * "independente do plano/assinatura"). A coupon costs us nothing to store and
+ * only fires when it produces a sale we take a fee on — capping it taxes the
+ * teacher for trying to sell. Every plan, including free, creates as many as
+ * it wants. Don't reintroduce `activeCoupons`.
+ */
 export type QuotaKey =
   | "publishedProducts"
   | "activeStudents"
   | "videoStorageMinutes"
   | "featuredSlots"
-  | "activeCoupons"
   | "customDomains"
   | "teamSeats"
   | "emailSendsPerMonth";
@@ -60,7 +66,6 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       activeStudents: 50,
       videoStorageMinutes: 60,
       featuredSlots: 0,
-      activeCoupons: 3,
       customDomains: 0,
       teamSeats: 1,
       emailSendsPerMonth: 0,
@@ -77,7 +82,6 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       activeStudents: 300,
       videoStorageMinutes: 600,
       featuredSlots: 1,
-      activeCoupons: 20,
       customDomains: 0,
       teamSeats: 2,
       emailSendsPerMonth: 2_000,
@@ -94,7 +98,6 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       activeStudents: 2_000,
       videoStorageMinutes: 3_000,
       featuredSlots: 3,
-      activeCoupons: 100,
       customDomains: 1,
       teamSeats: 5,
       emailSendsPerMonth: 10_000,
@@ -111,7 +114,6 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       activeStudents: null,
       videoStorageMinutes: 10_000,
       featuredSlots: 5,
-      activeCoupons: null,
       customDomains: 3,
       teamSeats: 15,
       emailSendsPerMonth: 50_000,
@@ -212,7 +214,6 @@ export const quotaLabels: Record<QuotaKey, string> = {
   activeStudents: "Active students",
   videoStorageMinutes: "Video storage",
   featuredSlots: "Marketplace highlights",
-  activeCoupons: "Active coupons",
   customDomains: "Custom domains",
   teamSeats: "Team seats",
   emailSendsPerMonth: "Email sends per month",
