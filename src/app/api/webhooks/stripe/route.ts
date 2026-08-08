@@ -654,6 +654,18 @@ async function handleCourseSubscriptionInvoicePaid(
     ),
     "Persist paid course subscription",
   );
+
+  // Burn the coupon on the FIRST paid invoice only. The Stripe coupon is
+  // duration:"once", so renewals carry the same metadata but no discount —
+  // finalizing on every invoice would count one buyer against the redemption
+  // cap forever. The RPC is idempotent, the billing_reason gate is the intent.
+  if (
+    invoice.billing_reason === "subscription_create"
+    && typeof meta.couponReservationId === "string"
+    && meta.couponReservationId
+  ) {
+    await finalizeCourseCouponReservation(admin, meta.couponReservationId);
+  }
 }
 
 // --- course-subscription lifecycle ------------------------------------------

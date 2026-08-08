@@ -21,6 +21,7 @@ import {
   courseSubscriptionInterval,
   getCourseRow,
   getUserRow,
+  getOrCreateAccountPercentOffCoupon,
   getOrCreateCourseSubscriptionPrice,
   loadCourseProductOffers,
   normalizeCoursePrice,
@@ -127,8 +128,13 @@ export async function POST(request: Request) {
     let appliedCouponId: string | null = null;
     let appliedCouponCode: string | null = null;
     let discountMinor = 0;
+    let appliedCouponPercentOff = 0;
 
-    // Hotmart-parity: redeem active course coupon at checkout (one-time only).
+    const subscriptionInterval = courseSubscriptionInterval(
+      priced.paymentType ?? course.payment_type,
+    );
+
+    // Hotmart-parity: redeem an active course coupon at checkout.
     if (couponCodeRaw) {
       const code = normalizeCouponCode(couponCodeRaw);
       const { data: couponRow, error: couponError } = await admin
@@ -162,17 +168,18 @@ export async function POST(request: Request) {
       if (!redemption.ok) {
         throw new PaymentError(redemption.reason);
       }
-      // Subscriptions: percent-off coupons need Stripe coupons; keep simple —
-      // only one-time checkouts accept percent coupons here.
-      if (courseSubscriptionInterval(priced.paymentType ?? course.payment_type)) {
-        throw new PaymentError(
-          "Coupons on subscription checkouts are not supported yet. Use a one-time product.",
-        );
+      // One-time: the discount IS the charge amount.
+      // Subscription: the recurring Price is minted from the LIST amount and
+      // the discount rides on the session as a Stripe coupon. Discounting
+      // amountMinor here too would bake the cut into the Price *and* stack the
+      // coupon on the first invoice — a double discount, forever.
+      if (!subscriptionInterval) {
+        amountMinor = redemption.amountMinorAfter;
       }
-      amountMinor = redemption.amountMinorAfter;
       appliedCouponId = coupon?.id ?? null;
       appliedCouponCode = redemption.code;
       discountMinor = redemption.discountMinor;
+      appliedCouponPercentOff = coupon?.percentOff ?? 0;
     }
 
     const enrollmentId = `${userId}__${courseId}`;
@@ -194,9 +201,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const subscriptionInterval = courseSubscriptionInterval(
-      priced.paymentType ?? course.payment_type,
-    );
     if (subscriptionInterval) {
       const { data: existingSubscription, error: subscriptionError } = await admin
         .from("course_subscriptions")
@@ -277,6 +281,53 @@ export async function POST(request: Request) {
         throw new Error("Checkout lock returned an invalid action.");
       }
 
+      // Hold the redemption before Stripe sees it. Same reservation table the
+      // one-time path uses; there is no order row for a subscription, so the
+      // attempt id is the order key. The webhook finalizes it on the first
+      // paid invoice, and the catch below releases it if Stripe never gets there.
+      if (appliedCouponId) {
+        const { error: reservationError } = await admin.rpc(
+          "reserve_course_coupon",
+          {
+            p_coupon_id: appliedCouponId,
+            p_order_id: checkoutAttemptId,
+            p_user_id: userId,
+            p_expires_at: new Date(
+              Date.now() + 7 * 24 * 60 * 60 * 1000,
+            ).toISOString(),
+          },
+        );
+        if (reservationError) {
+          const message = String(reservationError.message ?? "");
+          if (message.includes("COUPON_LIMIT_REACHED")) {
+            throw new PaymentError("This coupon has reached its redemption limit.");
+          }
+          if (message.includes("COUPON_EXPIRED")) {
+            throw new PaymentError("This coupon has expired.");
+          }
+          throw new PaymentError("This coupon is no longer available.");
+        }
+        releasableCouponReservation = { admin, orderId: checkoutAttemptId };
+      }
+
+      const subscriptionDiscountCouponId =
+        appliedCouponId && appliedCouponPercentOff > 0
+          ? await getOrCreateAccountPercentOffCoupon(
+              stripe,
+              appliedCouponPercentOff,
+              connectedAccountId,
+            )
+          : null;
+
+      const couponMetadata: Record<string, string> = appliedCouponId
+        ? {
+            couponId: appliedCouponId,
+            couponCode: appliedCouponCode ?? "",
+            couponReservationId: checkoutAttemptId,
+            discountMinor: String(discountMinor),
+          }
+        : {};
+
       let stripeCreateStarted = false;
       let subscriptionSession: Stripe.Checkout.Session | null = null;
       try {
@@ -303,6 +354,10 @@ export async function POST(request: Request) {
             customer_email: userEmail,
             client_reference_id: userId,
             line_items: [{ price: subscriptionPriceId, quantity: 1 }],
+            // duration: "once" — first invoice only. See the helper.
+            ...(subscriptionDiscountCouponId
+              ? { discounts: [{ coupon: subscriptionDiscountCouponId }] }
+              : {}),
             // Carry the full fulfilment context on the SUBSCRIPTION so every
             // future invoice.paid / lifecycle event resolves course, buyer,
             // teacher, connected account and fee without a DB lookup.
@@ -321,6 +376,9 @@ export async function POST(request: Request) {
                 currency: currency.toUpperCase(),
                 ...(priced.offerId ? { offerId: priced.offerId } : {}),
                 ...(priced.priceId ? { priceId: priced.priceId } : {}),
+                // The webhook only ever sees the subscription, so the
+                // reservation id has to live here to be finalizable.
+                ...couponMetadata,
               },
             },
             metadata: {
@@ -333,6 +391,7 @@ export async function POST(request: Request) {
               platformFeeBps: String(platformFeeBps),
               ...(priced.offerId ? { offerId: priced.offerId } : {}),
               ...(priced.priceId ? { priceId: priced.priceId } : {}),
+              ...couponMetadata,
             },
             expires_at: Math.floor(Date.now() / 1000) + checkoutSessionExpiresInSec,
             success_url: `${appUrl}/learn/courses/${encodeURIComponent(courseId)}?checkout=success`,
@@ -392,6 +451,10 @@ export async function POST(request: Request) {
           if (releaseLockError) {
             console.error("[checkout/subscription-lock-release]", releaseLockError.message);
           }
+        } else {
+          // Same reason the lock stays: the session may still be payable, so
+          // the redemption stays held. Null here means "skip the release".
+          releasableCouponReservation = null;
         }
         throw error;
       }

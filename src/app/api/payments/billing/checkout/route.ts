@@ -99,6 +99,10 @@ export async function POST(request: Request) {
         ui_mode: "embedded_page",
         customer: customerId,
         line_items: [{ price: priceId, quantity: 1 }],
+        // Founding-creator / launch discounts run as Stripe promotion codes on
+        // the platform account — no DB, no UI, created in the Dashboard. Safe
+        // to combine with nothing else: we never pass `discounts` here.
+        allow_promotion_codes: true,
         subscription_data: {
           metadata: { uid, planId, cycle },
         },
