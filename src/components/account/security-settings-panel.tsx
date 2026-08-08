@@ -128,7 +128,7 @@ export function SecuritySettingsPanel() {
 
   // Recovery path for a signed-in user who forgot their CURRENT password and
   // therefore can't use the change-password form (which re-authenticates).
-  // Firebase emails a secure reset link — the password is never exposed and
+  // Supabase emails a secure reset link — the password is never exposed and
   // no current password is required.
   async function handleSendPasswordReset() {
     if (!user?.email) {

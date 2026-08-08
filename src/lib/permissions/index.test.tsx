@@ -68,8 +68,8 @@ describe("permissions", () => {
   it("guards runtime role and permission strings", () => {
     expect(isRole("teacher")).toBe(true);
     expect(isRole("owner")).toBe(false);
-    expect(isPermission("firebaseIntegration.read")).toBe(true);
-    expect(isPermission("firebase.read")).toBe(false);
+    expect(isPermission("platform.viewOps")).toBe(true);
+    expect(isPermission("platform.viewSecrets")).toBe(false);
     expect(getPermissionDefinition("community.post")?.area).toBe("community");
   });
 });

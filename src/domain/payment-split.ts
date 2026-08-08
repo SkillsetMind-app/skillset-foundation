@@ -9,9 +9,9 @@
  *
  * All amounts are integer minor units (cents). Money is never a float.
  *
- * This module is the SOURCE OF TRUTH. `functions/src/index.ts` mirrors
- * `stripeProcessingFeeMinor` and the ledger split for the webhook runtime
- * (separate Firebase Functions package) and must be kept in sync with this.
+ * ⚠️ `stripeProcessingFeeMinor` is DUPLICATED in src/lib/payments/rules.ts,
+ * and it is that copy — not this one — that the Stripe webhook route imports.
+ * Keep the two in sync, or collapse them.
  */
 
 /**

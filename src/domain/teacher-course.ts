@@ -120,8 +120,8 @@ export type TeacherCourse = {
   ratingAverage?: number;
   ratingCount?: number;
   reviewCount?: number;
-  // Editorial marketplace curation, set by the operations team only (gated by
-  // firestore.rules opsCanUpdateCourseFeatured — teachers cannot self-feature).
+  // Editorial marketplace curation, set by the operations team only (gated
+  // server-side — teachers cannot self-feature).
   // `featured` pins the course to the top of the catalog; `featuredRank` orders
   // featured courses among themselves (lower = higher placement).
   featured?: boolean;

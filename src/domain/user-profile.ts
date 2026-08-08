@@ -16,7 +16,7 @@ export type OnboardingPath = "student" | "teacher" | "both";
 
 export type OnboardingAnswers = {
   path?: OnboardingPath;
-  /** Teacher-only: what they practice (psychologist, therapist, coach, ...). */
+  /** Teacher-only: what they practice (coach, facilitator, mentor, ...). */
   profession?: string;
   sourceOfDiscovery?: string;
   alreadySold?: "yes" | "no";
@@ -162,14 +162,14 @@ export type UserProfile = {
   stripeCustomerId?: string | null;
   /**
    * Notification + learning preferences set from the Settings page. Client-
-   * writable on the user's own doc (covered by the relaxed update policy in
-   * firestore.rules — it is not a privilege-bearing field).
+   * writable on the user's own row (covered by the relaxed self-update policy
+   * in RLS — it is not a privilege-bearing field).
    */
   preferences?: UserPreferences;
   /**
    * Instructor storefront branding + showcase ordering, set from the
-   * /teach/storefront editor. Client-writable on the user's own doc, validated
-   * by the storefront guard in firestore.rules (https URLs, hex accent). A safe
+   * /teach/storefront editor. Client-writable on the user's own row, validated
+   * by the storefront guard in RLS (https URLs, hex accent). A safe
    * subset is projected into the public profile by syncPublicTeacherProfile.
    */
   storefront?: StorefrontConfig;

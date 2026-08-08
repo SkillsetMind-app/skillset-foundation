@@ -80,7 +80,7 @@ export function createEnrollmentCommunityCards(
       courseTitle: enrollment.courseTitle,
       description:
         "A course-linked space for teacher announcements, learner questions, discussion, and shared resources.",
-      // Demo/catalog courses (manual_demo) have no Firestore teacher doc, so
+      // Demo/catalog courses (manual_demo) have no teacher course row, so
       // they must use the slug-based community route; teacher-published courses
       // (payment / free_course / admin) resolve via the creator route by id.
       href:

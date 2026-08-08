@@ -32,9 +32,9 @@ export async function generateMetadata({
     });
   }
 
-  // Creator (Firestore) courses resolve client-side, so their title is not
-  // available at build/SSR without the Admin SDK. Give a clean course-scoped
-  // fallback instead of inheriting the generic site-wide title.
+  // Creator courses resolve client-side, so their title is not available at
+  // build/SSR. Give a clean course-scoped fallback instead of inheriting the
+  // generic site-wide title.
   return buildPageMetadata({
     title: "Course",
     description:
@@ -78,8 +78,8 @@ export default async function CourseDetailPage({
       .map((lesson) => ({ ...lesson, moduleTitle: module.title })),
   );
 
-  // Static catalog courses are marketing SAMPLES, not Firestore-backed records,
-  // so they can't be bought from this page — the CTA funnels to the live
+  // Static catalog courses are marketing SAMPLES with no row in the `courses`
+  // table, so they can't be bought from this page — the CTA funnels to the live
   // marketplace (see <CourseEnrollmentCta>). Emit no purchasable Offer here, so
   // the JSON-LD can never claim InStock for a course this page cannot actually
   // sell (Article IV / Google structured-data parity).

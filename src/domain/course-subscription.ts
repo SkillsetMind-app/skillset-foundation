@@ -1,7 +1,7 @@
-// Learner-facing mirror of a Stripe course subscription. Written exclusively by
-// the Cloud Functions (Stripe webhook + cancelCourseSubscription callable) and
-// read by the buyer via firestore.rules (own-read). Mirrors the fields the
-// learner's subscription card needs — status, renewal date, cancellation state.
+// Learner-facing mirror of a Stripe course subscription. Written exclusively
+// server-side (the Stripe webhook + the course-subscription cancel route) and
+// read by the buyer under RLS (own-read). Mirrors the fields the learner's
+// subscription card needs — status, renewal date, cancellation state.
 
 export type CourseSubscriptionStatus =
   | "active"

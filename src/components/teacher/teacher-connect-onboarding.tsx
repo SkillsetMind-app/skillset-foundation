@@ -187,8 +187,8 @@ export function TeacherConnectOnboarding({
         return;
       }
       // Surface the underlying reason instead of a mute "try again". The
-      // callable throws a FirebaseError whose message carries the server-side
-      // HttpsError detail — e.g. "Stripe secret key is not configured." when
+      // request throws an Error whose message carries the route's server-side
+      // detail — e.g. "Stripe secret key is not configured." when
       // the STRIPE_SECRET_KEY secret is unset, or a permission error when the
       // account lacks the teacher role. A silent catch made payout-setup
       // failures undiagnosable (they looked like a dead button).

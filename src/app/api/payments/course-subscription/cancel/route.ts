@@ -90,9 +90,9 @@ export async function POST(request: Request) {
     );
 
     // Reflect immediately; customer.subscription.updated re-syncs the mirror.
-    // The mirror row is keyed by id === the Stripe subscription id (Firestore
-    // .doc(subscriptionId) convention; matches the reader in
-    // @/lib/data/course-subscriptions, which does .eq("id", subscriptionId)).
+    // The mirror row is keyed by id === the Stripe subscription id (matches
+    // the reader in @/lib/data/course-subscriptions, which does
+    // .eq("id", subscriptionId)).
     await admin
       .from("course_subscriptions")
       .update({

@@ -63,10 +63,10 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
     courseId: string | null;
     offers: ProductOffer[];
   }>({ courseId: null, offers: [] });
-  // B1: the free-preview lesson body/link now live in the gated subcollection.
-  // The firestore.rules freePreviewLessonId branch lets an unauthenticated
-  // visitor read exactly this one doc, so fetch it and fall back to the inline
-  // course-doc field for un-migrated courses.
+  // B1: the free-preview lesson body/link now live in gated lesson content.
+  // RLS exposes exactly the course's freePreviewLessonId row to an
+  // unauthenticated visitor, so fetch it and fall back to the inline course
+  // field for un-migrated courses.
   const [previewContent, setPreviewContent] = useState<{
     key: string | null;
     content: LessonContent | null;
@@ -781,8 +781,8 @@ function CourseDetailState({
 
 /**
  * Owner/admin-aware messaging for a course that exists but is not published.
- * Strangers never reach this — Firestore rules reject their read of an
- * unpublished course, which surfaces as the error state instead. So the only
+ * Strangers never reach this — RLS rejects their read of an unpublished
+ * course, which surfaces as the error state instead. So the only
  * viewers here are the course owner, an admin, or (rarely) an enrolled learner.
  */
 function getUnpublishedCourseState(
@@ -871,8 +871,8 @@ function getUnpublishedCourseState(
     };
   }
 
-  // Fallback — unreachable for an unpublished course: Firestore rules reject the
-  // read for non-owner/non-admin viewers, which surfaces as the error state.
+  // Fallback — unreachable for an unpublished course: RLS rejects the read for
+  // non-owner/non-admin viewers, which surfaces as the error state.
   return {
     title: "Course is not public.",
     detail: "This course may still be in review, inactive, or unavailable.",

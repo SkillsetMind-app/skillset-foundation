@@ -60,7 +60,7 @@ export function TeacherOverviewMetrics() {
         () => setIsLoading(false),
       );
     } catch (error) {
-      // Data layer unavailable (e.g. Firebase not initialized): degrade to an
+      // Data layer unavailable (e.g. Supabase client not configured): degrade to an
       // empty state instead of crashing the teacher studio. Deliberate
       // one-shot recovery reset.
       console.warn(

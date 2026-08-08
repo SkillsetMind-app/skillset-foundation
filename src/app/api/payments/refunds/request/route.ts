@@ -198,8 +198,8 @@ export async function POST(request: Request) {
       })
       .eq("id", order.id);
 
-    // ponytail: dropped captureServerEvent + recordAuditEvent (analytics/
-    // Firestore side-channel; no gate or return-shape depends on them).
+    // ponytail: dropped captureServerEvent + recordAuditEvent (analytics
+    // side-channel; no gate or return-shape depends on them).
 
     return NextResponse.json({ refundId: refund.id, status: refund.status });
   } catch (error) {

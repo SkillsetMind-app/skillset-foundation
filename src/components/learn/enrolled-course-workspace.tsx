@@ -229,10 +229,10 @@ export function EnrolledCourseWorkspace({
     );
   }, [course.id, enableFirestoreAssets, workspaceEnrollment]);
 
-  // B1: subscribe to the gated lesson-content subcollection for the active
-  // course. Only meaningful for an enrolled (or preview) viewer, who passes the
-  // enrollment gate in firestore.rules; a permission error degrades gracefully
-  // to inline fallback rather than blocking the workspace.
+  // B1: subscribe to the gated lesson content for the active course. Only
+  // meaningful for an enrolled (or preview) viewer, who passes the enrollment
+  // gate in RLS; a permission error degrades gracefully to inline fallback
+  // rather than blocking the workspace.
   useEffect(() => {
     if (!workspaceEnrollment) {
       return;
@@ -436,7 +436,7 @@ export function EnrolledCourseWorkspace({
   );
   // Members-area hero cover: the teacher's chosen members_cover CourseAsset
   // (resolved to a protected object URL inside the hero band). Only available
-  // once Firestore assets are streamed (enableFirestoreAssets); otherwise the
+  // once the course assets are streamed (enableFirestoreAssets); otherwise the
   // hero falls back to the course image.
   const membersCoverAsset =
     course.membersCoverAssetId && assetsState.key === course.id
@@ -482,10 +482,11 @@ export function EnrolledCourseWorkspace({
     setActiveLessonId(lessonId);
 
     try {
-      // Progress is computed server-side: recordLessonProgress validates the
-      // lesson, writes the marker via the Admin SDK, and returns the
-      // authoritative progressPercent. The completedLessons subscription
-      // refreshes the UI checkmarks from the resulting Firestore write.
+      // Progress is computed server-side: recordLessonProgress calls the
+      // record_lesson_progress RPC, which validates the lesson, writes the
+      // marker, and returns the authoritative progressPercent. The
+      // completedLessons subscription refreshes the UI checkmarks from the
+      // resulting write.
       const result = await recordLessonProgress(
         workspaceEnrollment.id,
         lessonId,

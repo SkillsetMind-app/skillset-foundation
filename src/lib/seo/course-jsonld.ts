@@ -20,8 +20,8 @@ import { SITE_URL } from "@/lib/seo/page-metadata";
  *    the page shows "Checkout opening soon", so we emit NO Offer rather than a
  *    false `InStock` (Google requires structured data to match visible content).
  *
- * Creator (Firestore) courses resolve client-side without the Admin SDK, so they
- * are out of scope here; only the build-time static catalog gets server JSON-LD.
+ * Creator courses resolve client-side, so they are out of scope here; only the
+ * build-time static catalog gets server JSON-LD.
  */
 export function buildCourseJsonLd(
   course: Course,

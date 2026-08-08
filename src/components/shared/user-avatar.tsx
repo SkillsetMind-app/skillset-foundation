@@ -27,9 +27,10 @@ export function UserAvatar({
       className={`avatar-fallback relative grid shrink-0 place-items-center overflow-hidden rounded-full text-[var(--color-primary)] ${sizeClasses[size]} ${className}`}
     >
       {photoURL ? (
-        // unoptimized: the Next image optimizer 400s on Firebase Storage URLs
-        // (SSR fetch times out / rejects). Avatars are 40-80px so bypassing the
-        // optimizer is free — the browser scales the source down anyway.
+        // unoptimized: photoURL is an arbitrary external avatar host (OAuth
+        // provider or uploaded asset) and the Next image optimizer 400s on
+        // some of them (fetch times out / rejects). Avatars are 40-80px so
+        // bypassing the optimizer is free — the browser scales it down anyway.
         <Image
           src={photoURL}
           alt={label}

@@ -5,8 +5,7 @@ export type FeatureFlagArea =
   | "payments"
   | "community"
   | "teacherStudio"
-  | "certificates"
-  | "firebaseIntegration";
+  | "certificates";
 
 export type FeatureFlagDefinition<
   Area extends FeatureFlagArea = FeatureFlagArea,
@@ -39,7 +38,7 @@ export const featureFlagDefinitions = {
       area: "auth",
       label: "Two-factor authentication",
       description:
-        "Enables TOTP two-factor enrollment and the sign-in challenge. Requires Firebase Identity Platform (MFA) to be enabled on the project.",
+        "Enables TOTP two-factor enrollment and the sign-in challenge. Requires Supabase Auth MFA (TOTP) to be enabled on the project.",
       defaultEnabled: false,
     },
   },
@@ -111,22 +110,6 @@ export const featureFlagDefinitions = {
       area: "certificates",
       label: "Certificate sharing",
       description: "Enables public certificate sharing links.",
-      defaultEnabled: false,
-    },
-  },
-  firebaseIntegration: {
-    enabled: {
-      key: "firebaseIntegration.enabled",
-      area: "firebaseIntegration",
-      label: "Firebase integration",
-      description: "Enables Firebase-backed platform integration points.",
-      defaultEnabled: true,
-    },
-    cloudStorage: {
-      key: "firebaseIntegration.cloudStorage",
-      area: "firebaseIntegration",
-      label: "Firebase cloud storage",
-      description: "Enables Firebase Cloud Storage for uploaded assets.",
       defaultEnabled: false,
     },
   },
