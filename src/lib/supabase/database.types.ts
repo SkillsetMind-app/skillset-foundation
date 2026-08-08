@@ -1836,6 +1836,7 @@ export type Database = {
           credentials: Json | null
           display_name: string | null
           photo_url: string | null
+          storefront: Json | null
           uid: string
           updated_at: string | null
           username: string | null
@@ -1845,6 +1846,7 @@ export type Database = {
           credentials?: Json | null
           display_name?: string | null
           photo_url?: string | null
+          storefront?: Json | null
           uid: string
           updated_at?: string | null
           username?: string | null
@@ -1854,6 +1856,7 @@ export type Database = {
           credentials?: Json | null
           display_name?: string | null
           photo_url?: string | null
+          storefront?: Json | null
           uid?: string
           updated_at?: string | null
           username?: string | null

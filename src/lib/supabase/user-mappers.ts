@@ -74,6 +74,7 @@ export function rowToPublicProfile(row: PublicProfileRow): PublicProfile {
     photoURL: row.photo_url,
     bio: row.bio,
     credentials: (row.credentials as unknown as string[] | null) ?? [],
+    storefront: (row.storefront as unknown as StorefrontConfig | null) ?? null,
     updatedAt: row.updated_at ?? undefined,
   };
 }

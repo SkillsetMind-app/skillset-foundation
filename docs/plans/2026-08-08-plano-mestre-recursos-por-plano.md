@@ -1,7 +1,7 @@
 # Plano Mestre — Recursos por Plano
 
 **Data:** 2026-08-08
-**Status:** em execução (sub-plano 1)
+**Status:** em execução (sub-planos 0, 1, 2 e 3 entregues — próximo: 4)
 
 ---
 
@@ -169,3 +169,45 @@ Ou seja: o recurso inteiro estava pronto menos um `null` numa linha de SQL. Nada
 3. O campo de upload da vitrine agora avisa que aquele mesmo logo vai pro certificado — recurso que ninguém descobre não foi entregue.
 
 **Snapshot, não referência:** o logo é congelado na PRIMEIRA emissão. Professor que troca de logo depois não reescreve certificado que já está na mão do aluno; professor que cai de plano não perde a marca do que já emitiu.
+
+---
+
+## Sub-plano 3 — Template de site (vitrine pública)
+
+**Meta:** o que o professor escolhe no editor de vitrine aparece de verdade na página pública dele.
+
+### A checagem de conflito de novo
+
+| Peça | Onde | Estado |
+|---|---|---|
+| Editor de vitrine (cor, logo, capa, tema, ordem dos cursos) | `/teach/storefront` → `users.storefront` | **já existia** |
+| Página pública do professor | `/instructors/[slug]` | **já existia** |
+| Tabela pública lida por anônimo | `public_profiles` | **já existia** |
+| Gatilho que projeta o perfil | `sync_public_profile()` | **copiava 6 colunas e ignorava `storefront`** |
+
+**O diagnóstico:** não faltava página, faltava fio. O editor gravava num beco sem saída — nada do que o professor escolhia chegava à página pública. Sub-plano 3 nunca foi "criar a vitrine", foi "fazer o editor chegar nela".
+
+### O que mudou
+
+1. Migração `20260808140000_storefront_public_projection.sql`:
+   - coluna `public_profiles.storefront`;
+   - função `public_storefront_projection(storefront, plan_id)` com as duas travas;
+   - o gatilho passa a projetar a vitrine, e `storefront, current_plan_id` entram na **lista de colunas do `after update of`** — sem isso a projeção congelaria no valor antigo;
+   - backfill dos perfis existentes + `assert` que falha se algum `free` ficar com vitrine publicada.
+2. `rowToPublicProfile` passa o campo adiante; `PublicProfile.storefront` no domínio.
+3. `instructor-profile-view.tsx` renderiza: faixa de acento, capa, logo, tagline e a **ordem escolhida** dos cursos (destacado primeiro, depois a ordem do editor, o resto no fim — mesma convenção `?? MAX_SAFE_INTEGER` do marketplace).
+4. `globals.css`: presets `warm` / `cool` / `mono` viram gradiente de verdade, com override para o modo escuro.
+5. Teste de deriva em `entitlements.test.tsx` — o terceiro do repositório — trava `storefrontTemplates` junto com o SQL.
+
+### As duas travas moram no SQL
+
+Seguindo a regra do sub-plano 0 (*"o número no TypeScript serve pra UI; quem faz valer é o banco"*):
+
+| Trava | Por quê |
+|---|---|
+| Plano (`free` projeta `null`) | Espelha `features.storefrontTemplates`. Quem cai de plano perde a vitrine na próxima escrita, sem job de limpeza. |
+| Sanitização (só `https://`, só hex de 6 dígitos, só tema da lista) | `public_profiles` é lida por `anon` e a cor de acento vira **CSS custom property**. É a fronteira de confiança — nunca confiar no que o cliente gravou.
+
+O tema vai pro HTML como `data-storefront-theme`, não como classe: React escapa valor de atributo, então um tema desconhecido simplesmente não casa com nenhuma regra CSS e cai no padrão.
+
+**`logoUrl` já é projetado mas quase não é usado** — uma marca de 28px ao lado do kicker. O sub-plano 4 (tirar a marca) vai precisar dele na página pública; projetar agora evita uma segunda migração.

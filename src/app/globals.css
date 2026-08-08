@@ -6845,6 +6845,60 @@ button:hover > .dash-card,
   box-shadow: inset 0 0 0 1px var(--color-line);
 }
 
+/* --- Teacher storefront branding -----------------------------------------
+   `--storefront-accent` is set inline from the teacher's sanitized accent
+   color; every rule below falls back to the platform palette so a profile
+   without branding (or on a free plan, where the projection is null) renders
+   exactly as it did before. Theme presets are whitelisted at projection time,
+   so an unknown value simply matches no rule and keeps the default band. */
+
+.instructor-storefront-hero {
+  border-top: 3px solid var(--storefront-accent, var(--color-line));
+}
+
+.instructor-storefront-hero__cover {
+  position: relative;
+  height: clamp(9rem, 20vw, 14rem);
+  background: var(--color-surface-strong);
+}
+
+.instructor-storefront-tagline {
+  border-left: 3px solid var(--storefront-accent, var(--color-primary));
+  padding-left: 0.9rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.6;
+  color: var(--color-primary);
+}
+
+.instructor-storefront-hero[data-storefront-theme="warm"]
+  .instructor-storefront-hero__band {
+  background: linear-gradient(135deg, #fffaf3 0%, #fdf1e0 62%, #f8e4cb 100%);
+}
+
+.instructor-storefront-hero[data-storefront-theme="cool"]
+  .instructor-storefront-hero__band {
+  background: linear-gradient(135deg, #f6fbff 0%, #e8f3fb 62%, #d9e9f6 100%);
+}
+
+.instructor-storefront-hero[data-storefront-theme="mono"]
+  .instructor-storefront-hero__band {
+  background: linear-gradient(135deg, #ffffff 0%, #f4f5f7 62%, #e8eaee 100%);
+}
+
+[data-theme="dark"] .instructor-storefront-hero[data-storefront-theme="warm"]
+  .instructor-storefront-hero__band,
+[data-theme="dark"] .instructor-storefront-hero[data-storefront-theme="cool"]
+  .instructor-storefront-hero__band,
+[data-theme="dark"] .instructor-storefront-hero[data-storefront-theme="mono"]
+  .instructor-storefront-hero__band {
+  background: linear-gradient(
+    135deg,
+    var(--color-surface) 0%,
+    var(--color-surface-soft) 100%
+  );
+}
+
 [data-theme="dark"] .marketplace-page-header,
 [data-theme="dark"] .marketplace-filter-panel,
 [data-theme="dark"] .marketplace-continue-card,

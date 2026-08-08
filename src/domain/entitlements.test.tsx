@@ -33,6 +33,17 @@ describe("plan entitlements", () => {
     }
   });
 
+  it("keeps the storefront-template gate in step with the SQL enforcement copy", () => {
+    // public_storefront_projection() in
+    // supabase/migrations/20260808140000_storefront_public_projection.sql
+    // returns null for `free` and the sanitized config for every other plan.
+    // Turning a paid tier off here without touching the SQL would show a
+    // locked feature while the public vitrine keeps rendering the theme.
+    for (const planId of ["free", "starter", "pro", "plus"] as const) {
+      expect(hasFeature(planId, "storefrontTemplates")).toBe(planId !== "free");
+    }
+  });
+
   it("raises a limit with an approved grant but never lowers one", () => {
     expect(effectiveLimit("starter", "featuredSlots", 4)).toBe(4);
     expect(effectiveLimit("pro", "featuredSlots", 1)).toBe(3);
