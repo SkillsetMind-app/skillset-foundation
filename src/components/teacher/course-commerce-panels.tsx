@@ -220,10 +220,14 @@ export function CouponsPanel({
     }
   };
 
+  // Redemption is live for both one-time and subscription checkouts. On a
+  // recurring course the discount applies to the FIRST payment only:
+  // `course_coupons` has no duration column, so a percent that repeated
+  // forever would be unremovable for subscribers already on it.
   return (
     <PanelCard
       title="Coupons"
-      description="Create discount codes for this course. New coupons start paused; checkout redemption switches on with the discount engine, so activating today prepares the code without exposing it."
+      description="Create discount codes for this course. New coupons start paused until you activate them. On a subscription course the discount applies to the first payment only."
     >
       {activationBlocked ? <GateNotice action="a coupon can be activated" /> : null}
       <form onSubmit={handleCreate} className="mt-4 grid gap-3 sm:grid-cols-2">
