@@ -1,8 +1,16 @@
 # Teacher Studio AI Advisor — Setup
 
-The teacher panel has a floating **Studio advisor** chat. It's built and deployed
-but **dormant** until you wire the backend and flip one env flag. This is the
-whole wiring guide.
+The teacher panel has a floating **Studio advisor** chat. It is built and deployed
+but **dormant** until you set the env vars below. This is the whole wiring guide.
+
+> **What changed (Aug 2026).** The advisor used to POST to an n8n webhook that
+> fronted DeepSeek. That is gone: the model call, the system prompt and the
+> failure behaviour now live in this repo, in version control, with tests.
+> `N8N_ADVISOR_WEBHOOK_URL` / `N8N_ADVISOR_WEBHOOK_SECRET` are no longer read by
+> any code, and [`docs/n8n/teacher-advisor.flow.json`](./n8n/teacher-advisor.flow.json)
+> plus the advisor half of [`docs/n8n/README.md`](./n8n/README.md) describe a
+> pipeline that no longer runs. The n8n vars that still matter belong to the
+> **public help assistant** (`/api/assistant`), which is a different feature.
 
 ## How it works
 
@@ -10,131 +18,164 @@ whole wiring guide.
 Teacher types in the floating chat
         │
         ▼
-POST /api/teach/advisor          ← lives in this app (Vercel)
-  • authenticates the teacher (Supabase session)
-  • rate-limits: 30 messages/hour + 120/day per teacher (enforce_rate_limit RPC)
+POST /api/teach/advisor
+  • authenticates the teacher (Supabase session) and checks is_teacher()
+  • rate-limits: 30 messages/hour + 120/day per teacher
   • caps input: last 20 messages, 4000 chars each
-  • forwards { teacherId, messages } to your n8n webhook
+  • builds the context from three layers:
+      1. src/lib/assistant/knowledge.ts  — corpus compiled into the build
+      2. advisor_documents              — passages retrieved from the owner's Doc
+      3. buildTeacherContext()          — this teacher's courses + payment status
+  • calls Moonshot kimi-k2.6 directly, then stores the turn
         │
         ▼
-n8n webhook (your VPS)           ← you build this
-  • verify x-advisor-secret header (required — the app always sends it)
-  • build a DeepSeek chat request (inject system prompt)
-  • call DeepSeek
-  • return { "reply": "<model text>" }
-        │
-        ▼
-Reply shows in the chat
+Reply shows in the chat, and survives a page reload
 ```
 
-The app owns the **trust boundary** (auth, rate-limit, input caps). n8n owns the
-**prompt + model**, so you can change the advisor's behavior without a redeploy.
+Each context layer degrades to empty instead of throwing, and the system prompt
+tells the model to answer **only** from the supplied context. An empty layer
+therefore produces "I don't know", never an invention.
 
-## Env vars (Vercel → Project → Settings → Environment Variables)
+```
+Owner edits the knowledge Google Doc
+        │
+        ▼
+GET /api/cron/advisor-knowledge      ← daily, 07:00 UTC (vercel.json)
+  • chunks the Doc, embeds each chunk (OpenAI text-embedding-3-small)
+  • upserts into advisor_documents, then prunes chunks the Doc no longer has
+        │
+        ▼
+retrieveKnowledge() can search it on the next question
+```
+
+## 1. Apply the migration
+
+`supabase/migrations/20260805120000_advisor_memory_and_rag.sql` creates
+`advisor_conversations`, `advisor_messages`, `advisor_documents` and the
+`match_advisor_documents` search function. **Nothing below works until it is
+applied.** Without it the chat still answers, but every reply is amnesiac and
+ungrounded.
+
+## 2. Env vars (Vercel → Project → Settings → Environment Variables)
 
 | Var | Required | Value |
 |-----|----------|-------|
 | `NEXT_PUBLIC_TEACHER_ADVISOR_ENABLED` | yes | `true` (turns the sidebar on) |
-| `N8N_ADVISOR_WEBHOOK_URL` | yes | full n8n Production webhook URL, e.g. `https://n8n.seudominio.com/webhook/teacher-advisor` |
-| `N8N_ADVISOR_WEBHOOK_SECRET` | **yes** | a long random string (e.g. `openssl rand -hex 32`). The app sends it as header `x-advisor-secret`; **without it the API stays at 503 and never calls n8n**. Put the SAME value on the n8n Webhook's Header Auth credential. |
+| `KIMI_API_KEY` | yes | Moonshot API key from https://platform.moonshot.ai. Without it the chat shows the calm "being set up" message (HTTP 503). |
+| `SUPABASE_SERVICE_ROLE_KEY` | yes | already set for payments; the knowledge sync needs it too |
+| `ADVISOR_KNOWLEDGE_DOC_URL` | no | plain-text export url of the knowledge Doc (step 3) |
+| `OPENAI_API_KEY` | no | embeddings only (see step 3) |
+| `CRON_SECRET` | only with the Doc | shared secret for the reindex job (step 4) |
 
-After setting them, **redeploy** (env changes don't apply to the running build).
-`NEXT_PUBLIC_*` must exist at build time — a redeploy is mandatory for that one.
+After setting them, **redeploy** — env changes do not apply to a running build,
+and `NEXT_PUBLIC_*` must exist at build time.
 
-Until **both** `N8N_ADVISOR_WEBHOOK_URL` and `N8N_ADVISOR_WEBHOOK_SECRET` are set, the API returns a calm 503 and the chat
-shows "The studio advisor is being set up and will be available shortly." So you
-can flip `NEXT_PUBLIC_TEACHER_ADVISOR_ENABLED=true` first to preview the UI, then
-wire n8n — nothing breaks in between.
+The last three are a package: with any of them missing the advisor still answers
+from the built-in corpus and the teacher's own data, only without the Doc.
 
-## The contract (what n8n receives and must return)
+## 3. The knowledge Doc
 
-**Receives** (POST body, JSON):
-```json
-{
-  "teacherId": "uuid-of-the-teacher",
-  "messages": [
-    { "role": "user", "content": "How should I price my first course?" },
-    { "role": "assistant", "content": "..." },
-    { "role": "user", "content": "..." }
-  ]
-}
+The long-form help corpus lives in a Google Doc you edit by hand, so correcting a
+wrong answer costs an edit instead of a commit and a deploy.
+
+1. Open the Doc. The owner's is
+   `1dtqZkhIXohjhXASjuFCU2DUbiLG47mEYYc5phL6PFDs`, on the `skillsetmind.com`
+   Workspace account. (An earlier draft of this file named a Doc on the owner's
+   personal account; that one was never shared and is not the corpus.)
+2. **Share → General access → Anyone with the link → Viewer.** The sync reads the
+   public export url; a Doc that is not shared answers with Google's sign-in page
+   and the job reports `doc_not_public`.
+
+   **Viewer, never Editor.** "Anyone with the link" plus write access means anyone
+   who ever sees the link can rewrite what the advisor tells teachers — and the
+   advisor presents this corpus to the model as ground truth, so an edit here is an
+   instruction the model will follow. The sync only ever reads; write access buys
+   nothing and costs the integrity of every answer. This was live once, on
+   2026-08-06, at `{"role":"writer","type":"anyone"}`.
+3. Set `ADVISOR_KNOWLEDGE_DOC_URL` to the **export** url — the `/edit` url returns
+   HTML, not text:
+
+   ```
+   https://docs.google.com/document/d/1dtqZkhIXohjhXASjuFCU2DUbiLG47mEYYc5phL6PFDs/export?format=txt
+   ```
+
+   Do not use **File → Share → Publish to web** instead. That url serves HTML and
+   ignores `?format=txt`, so the job fails with `doc_not_public` against a Doc that
+   is, confusingly, public.
+
+4. Set `OPENAI_API_KEY`. It is used **only** for embeddings
+   (`text-embedding-3-small`) — the sync embeds the Doc, and retrieval embeds the
+   teacher's question with the same model so the vectors are comparable. No answer
+   is ever generated by OpenAI.
+
+Only publish help content there. Anyone holding the link can read the Doc, so it
+must never contain student, teacher or financial data.
+
+Write it as ordinary paragraphs separated by blank lines. It is split into ~1500
+character chunks on paragraph boundaries, and a chunk is the unit the advisor
+quotes — one self-contained answer per paragraph retrieves far better than a wall
+of text.
+
+## 4. The reindex job
+
+`vercel.json` schedules `GET /api/cron/advisor-knowledge` **daily at 07:00 UTC**
+(04:00 in Brazil): off-peak for the site, and late-night edits are live before the
+working day starts. Once a day is deliberate — the Doc changes rarely and every
+run pays for embeddings.
+
+Set **`CRON_SECRET`** (e.g. `openssl rand -hex 32`) in Vercel. Vercel Cron sends
+it as `Authorization: Bearer <value>` automatically. **Until it is set the route
+answers 401 to everything, including the cron**, which is the point: without a
+lock, anyone on the internet could trigger reindexing in a loop and burn embedding
+credit.
+
+To reindex immediately after editing the Doc, call the same url with the same
+secret:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  https://skillsetmind.com/api/cron/advisor-knowledge
 ```
-`messages` is already cleaned and trimmed (roles are only `user`/`assistant`, last
-entry is always a `user` turn). Header `x-advisor-secret` is **always** present —
-the app requires the secret and refuses to call n8n without it.
 
-**Must return** (200, JSON) — any ONE of these keys with the reply text:
-```json
-{ "reply": "..." }
-```
-The app also accepts `output`, `text`, or `message` as the key (whichever your
-n8n node wiring produces). Non-200 or empty reply → the app shows an error and the
-teacher can retry. Respond within **60s** (the app aborts after that).
+The response is the sync result, and the **status code is the alert** —
+Vercel marks a cron run failed on 4xx/5xx:
 
-## n8n workflow
+| Response | Status | Meaning |
+|----------|--------|---------|
+| `{"ok":true,"chunks":37,"skipped":false}` | 200 | indexed 37 chunks |
+| `{"ok":false,"skipped":true,"reason":"not_configured"}` | 200 | `ADVISOR_KNOWLEDGE_DOC_URL` unset — feature simply off, not a failure |
+| `{"ok":false,"skipped":true,"reason":"openai_key_missing"}` | 200 | `OPENAI_API_KEY` unset |
+| `{"ok":false,"skipped":false,"reason":"doc_not_public: ..."}` | 500 | the Doc is not shared with the link |
+| `{"ok":false,"skipped":false,"reason":"embedding_failed_401: ..."}` | 500 | bad or exhausted OpenAI key |
+| `{"error":"Unauthorized."}` | 401 | wrong or unset `CRON_SECRET` |
 
-**Fast path — import the ready flow.** [`docs/n8n/teacher-advisor.flow.json`](./n8n/teacher-advisor.flow.json)
-is an importable workflow (Webhook → Build request → Call DeepSeek → Map reply →
-Respond). In n8n: *Workflows → Import from File*. It ships with **no secrets**;
-wire two credentials after import, copy the Webhook **Production** URL into
-`N8N_ADVISOR_WEBHOOK_URL`, and set the workflow **Active**.
-
-> Step-by-step in Portuguese, written for a non-engineer, lives in
-> [`docs/n8n/README.md`](./n8n/README.md). It supersedes the earlier four-node
-> draft, adding a guarded reply mapping, an error path that still returns valid
-> JSON, and prompt-injection hardening.
-
-- **Webhook → Header Auth** credential: header `x-advisor-secret`, value = the same
-  string as Vercel's `N8N_ADVISOR_WEBHOOK_SECRET`. n8n rejects any call without it.
-- **Call DeepSeek → Header Auth** credential: header `Authorization`, value
-  `Bearer <your DeepSeek key>`.
-
-Or build the same nodes by hand:
-
-1. **Webhook** (trigger)
-   - Method: `POST`, Path: `teacher-advisor`, Respond: *Using Respond to Webhook node*.
-   - Authentication: **Header Auth** verifying `x-advisor-secret` (required — the app
-     always sends it and refuses to run without it).
-2. **Set / Function** — build the DeepSeek request body:
-   - `model`: `deepseek-chat`
-   - `messages`: the SYSTEM prompt (below) prepended to `{{$json.body.messages}}`.
-3. **HTTP Request** — call DeepSeek:
-   - Method `POST`, URL `https://api.deepseek.com/chat/completions`
-   - Header `Authorization: Bearer <DEEPSEEK_API_KEY>` (store as an n8n credential, **never** inline)
-   - Body: the object from node 3.
-4. **Respond to Webhook**
-   - Body: `{ "reply": {{ $json.choices[0].message.content }} }` (path depends on
-     DeepSeek's response shape — map to the actual field).
-
-Publish the workflow as **Active** so the Production webhook URL works (the
-test URL only fires while the editor is open).
-
-## System prompt (paste into node 3)
-
-```
-You are the Studio Advisor for Skillset, a marketplace where psychologists,
-therapists, and coaches sell online courses. You advise the course creator
-(the "teacher") inside their studio panel.
-
-Be concise, warm, and practical. Prefer specific, actionable steps over theory.
-You may advise on: course structure and outlining, whether to embed video from
-YouTube or upload a file, pricing, launch and first-sale strategy, and how the
-storefront/checkout works. When a question is outside course creation (legal,
-tax, clinical advice), say so briefly and point them to a professional.
-
-Video hosting on Skillset is hybrid: teachers can (a) publish a video on YouTube
-and embed it, or (b) upload a file. Recommend YouTube embed for the fastest,
-free start; recommend upload when they want the video off public YouTube.
-
-Never invent Skillset features or policies you're unsure about. If you don't
-know, say so and suggest they check the docs or contact support. Answer in the
-teacher's language.
-```
+A failed run never empties the index: chunks are pruned only after a successful
+upsert, so the advisor keeps answering from the last good copy.
 
 ## Notes
 
-- Cost is bounded by the 30/hr + 120/day rate limits + the 20-message / 4000-char
-  caps, per teacher. Adjust the limits in `src/app/api/teach/advisor/route.ts` if needed.
-- The advisor is stateless server-side: the client sends the running thread each
-  turn; n8n keeps no history. Fine for advice; add a store later only if needed.
-- To swap DeepSeek for another model, change only nodes 3–4 in n8n. No app change.
+- **Cost.** Model spend is bounded by 30/hr + 120/day per teacher and the
+  20-message / 4000-char input caps (`src/app/api/teach/advisor/route.ts`).
+  Embedding spend is bounded by one reindex a day plus one question-sized
+  embedding per message.
+- **The Kimi reasoning models reject `temperature`** with HTTP 400 ("only 1 is
+  allowed for this model") — verified on both k3 and k2.6 — so the client never
+  sends it. Determinism comes from the prompt, not from a sampling knob.
+- **There is no thinking flag to turn on.** kimi-k2.6 reasons unprompted: 3330
+  reasoning tokens on a hard pricing question with no extra parameter. Measured
+  alternatives are worse, not better — `enable_thinking: true` produced fewer
+  reasoning tokens (2484), `thinking: {type: "enabled"}` spent 4095 of a 4096
+  budget and returned a blank answer (`finish_reason: "length"`), and the model
+  id `kimi-k2.6-thinking` does not exist (HTTP 404). Do not add any of them.
+- **It is slow: 49-68 seconds measured** on questions that need real reasoning.
+  The route allows the platform ceiling (`maxDuration = 300`) and budgets the
+  upstream call at 150s, so a hard question finishes instead of being severed
+  mid-thought. The real UX fix is streaming; until the sidebar can render partial
+  text, the teacher waits on a spinner.
+- **Memory.** The thread is stored in `advisor_conversations` /
+  `advisor_messages` under RLS, so a teacher only ever reads their own.
+  `GET /api/teach/advisor` returns the most recent thread on page load.
+- **Changing the model** means editing `src/lib/assistant/kimi.ts`; changing the
+  advisor's behaviour means editing `SYSTEM_PROMPT` in the route. Both are code
+  changes on purpose — they are the two things that were silently drifting when
+  they lived in n8n.

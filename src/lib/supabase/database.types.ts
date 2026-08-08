@@ -50,6 +50,100 @@ export type Database = {
         }
         Relationships: []
       }
+      // Hand-written to match supabase/migrations/20260805120000_advisor_memory_and_rag.sql,
+      // which is not applied to the remote project yet — so regenerating this
+      // file today would DROP these three tables and break the build again.
+      // Not invented schema: transcribed column by column from that migration,
+      // and the next real generation after it is applied should be a no-op here.
+      // `embedding` is typed string because that is what the generator emits for
+      // a pgvector column; the sync job writes number[] through an untyped
+      // client, which is why nothing type-checks against it.
+      advisor_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          teacher_id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          teacher_id: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          teacher_id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      advisor_documents: {
+        Row: {
+          chunk_index: number
+          content: string
+          embedding: string
+          id: number
+          source_id: string
+          token_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          chunk_index: number
+          content: string
+          embedding: string
+          id?: number
+          source_id: string
+          token_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          embedding?: string
+          id?: number
+          source_id?: string
+          token_count?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      advisor_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: number
+          role: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: number
+          role: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: number
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advisor_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "advisor_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -2154,6 +2248,14 @@ export type Database = {
         Returns: boolean
       }
       is_teacher: { Args: never; Returns: boolean }
+      match_advisor_documents: {
+        Args: {
+          match_count: number
+          match_threshold: number
+          query_embedding: string
+        }
+        Returns: { content: string; similarity: number }[]
+      }
       issue_skillset_certificate: {
         Args: { p_enrollment_id: string; p_full_name: string }
         Returns: string
