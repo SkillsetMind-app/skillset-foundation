@@ -41,8 +41,8 @@ export default function TermsPage() {
             browse, enroll in a course, or publish content on SkillsetMind.
           </p>
           <p className="mt-3">
-            SkillsetMind is an online course marketplace for psychologists,
-            therapists, and personal-development professionals. Two additional
+            SkillsetMind is an online course marketplace for coaches,
+            facilitators, and personal-development professionals. Two additional
             documents form part of this agreement: the{" "}
             <Link className="font-semibold text-[var(--color-accent-fg)]" href="/legal/privacy">
               Privacy Policy
@@ -116,7 +116,7 @@ export default function TermsPage() {
 
       <LegalSection heading="5. Not therapy or medical advice">
         <p>
-          Courses on SkillsetMind are educational products. They are{" "}
+          Courses on SkillsetMind are instructional products. They are{" "}
           <strong className="text-[var(--color-ink)]">
             not psychotherapy, counseling, medical care, or a substitute for
             treatment

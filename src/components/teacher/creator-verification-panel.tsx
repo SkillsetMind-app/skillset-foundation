@@ -300,7 +300,7 @@ export function CreatorVerificationPanel() {
               <input
                 value={profession}
                 onChange={(event) => setProfession(event.target.value)}
-                placeholder="e.g. Clinical psychologist"
+                placeholder="e.g. Performance coach"
                 required
                 minLength={2}
                 maxLength={120}

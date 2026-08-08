@@ -309,7 +309,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                   onChange={(event) => setTitle(event.target.value)}
                   minLength={3}
                   maxLength={120}
-                  placeholder="e.g. Clinical Performance Foundations"
+                  placeholder="e.g. Peak Performance Foundations"
                   className="min-h-11 rounded-[8px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
                 />
               </label>

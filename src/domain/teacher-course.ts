@@ -1,14 +1,22 @@
 import type { DripStrategy } from "@/domain/drip-policy";
 
+// Deliberately free of US-regulated vocabulary. "Therapist", "psychologist",
+// "counselor" and "clinical" are protected titles or scope-of-practice terms in
+// all 50 states, and "school"/"academy" trigger state education-agency
+// licensure — so none of them may name a category a seller picks to describe
+// what they sell. Psychology survives as a SUBJECT ("Applied Psychology"),
+// never as an identity. The category column is free text (max 80 chars, see
+// 20260716000100_live_teacher_course_rpcs.sql), so renaming here needs no
+// migration; it only changes the picker.
 export const skillsetCourseCategories = [
-  "Clinical Psychology & Approaches",
-  "Hypnotherapy",
-  "Integrative & Holistic Therapies",
+  "Applied Psychology & Behavior",
+  "Hypnosis & Guided Change",
+  "Integrative & Holistic Practices",
   "Family Constellations & Systemic Work",
-  "Mental Health Foundations",
+  "Emotional Resilience & Wellbeing",
   "Personal Development",
-  "The Therapist's Business",
-  "Supervision & Continuing Education",
+  "Coaching as a Business",
+  "Mentorship & Professional Growth",
 ] as const;
 
 export type TeacherCourseStatus =

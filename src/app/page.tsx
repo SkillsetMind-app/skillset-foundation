@@ -9,9 +9,9 @@ import { SiteNav } from "@/components/site/site-nav";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 export const metadata = buildPageMetadata({
-  title: "Course platform for psychology & personal-development experts",
+  title: "Course platform for coaches & personal-development experts",
   description:
-    "SkillsetMind is where verified psychologists, therapists, and personal-development professionals publish courses with private communities, live sessions, and verifiable certificates. We run checkout and classroom — buyers pay your own Stripe account directly, so we never hold your money. You teach.",
+    "SkillsetMind is where verified coaches, facilitators, and personal-development professionals publish courses with private communities, live sessions, and verifiable certificates. We run checkout and classroom — buyers pay your own Stripe account directly, so we never hold your money. You teach.",
   path: "/",
 });
 

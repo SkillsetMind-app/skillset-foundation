@@ -102,14 +102,14 @@ describe("teacher course domain", () => {
   it("deduplicates selected course categories", () => {
     expect(
       normalizeCourseCategories([
-        "Mental Health Foundations",
-        " mental health foundations ",
-        "Supervision & Continuing Education",
+        "Emotional Resilience & Wellbeing",
+        " emotional resilience & wellbeing ",
+        "Mentorship & Professional Growth",
         "",
       ]),
     ).toEqual([
-      "Mental Health Foundations",
-      "Supervision & Continuing Education",
+      "Emotional Resilience & Wellbeing",
+      "Mentorship & Professional Growth",
     ]);
   });
 

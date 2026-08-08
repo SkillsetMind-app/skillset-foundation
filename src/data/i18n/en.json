@@ -22,7 +22,7 @@
     "mobileNavLabel": "Mobile navigation"
   },
   "footer": {
-    "tagline": "The course platform for psychologists, therapists, and personal-development coaches. Verified experts, no platform hold on your money, verifiable certificates.",
+    "tagline": "The course platform for coaches, facilitators, and personal-development experts. Verified experts, no platform hold on your money, verifiable certificates.",
     "platform": "Platform",
     "creator": "Creator",
     "helpLegal": "Help & legal",
@@ -209,7 +209,7 @@
     "goalMentorshipLabel": "Live mentorship",
     "goalMentorshipDesc": "Run sessions, office hours, and cohort-style support.",
     "goalTrainingLabel": "Team training",
-    "goalTrainingDesc": "Prepare for future group, academy, or organization use.",
+    "goalTrainingDesc": "Prepare for future group, team, or organization use.",
     "back": "Back",
     "continue": "Continue",
     "finishSetup": "Finish setup",
@@ -247,10 +247,10 @@
   },
   "home": {
     "hero": {
-      "eyebrow": "For psychology & wellbeing experts",
+      "eyebrow": "For coaches & personal-development experts",
       "title1": "Your knowledge changes lives.",
       "title2": "Now let it reach thousands.",
-      "sub": "Built for psychologists, therapists, and personal-development coaches. No site to build, no tools to wire up. We run the checkout and the classroom — your buyers pay your own Stripe account, so we never hold a cent of your money. You teach.",
+      "sub": "Built for coaches, facilitators, and personal-development experts. No site to build, no tools to wire up. We run the checkout and the classroom — your buyers pay your own Stripe account, so we never hold a cent of your money. You teach.",
       "trust1Title": "Verified",
       "trust1Desc": "Professionals are verified before they can publish, and live programs are monitored for compliance.",
       "trust2Title": "Global",
@@ -320,7 +320,7 @@
       "readFull": "Read the full Promise"
     },
     "creators": {
-      "eyebrow": "For psychology & wellbeing experts",
+      "eyebrow": "For coaches & personal-development experts",
       "title": "Reach more people than your practice ever could.",
       "ctaStart": "Start teaching",
       "ctaPromise": "Read the Creator Promise",
