@@ -417,3 +417,89 @@ O Patrick perguntou: *"é curso com módulos, ou curso composto de subcursos?"*
 5. **Deixar o drip visível** — ele está construído e escondido.
 
 **Bloqueado até:** prints do design atual (o Patrick vai mandar) + decisão A/B da estrutura.
+
+---
+
+## 11. Auditoria completa — resultado consolidado (2026-08-09)
+
+Quatro ondas de agentes + o `performance advisor` do Supabase. Isto é o
+resultado final, segmentado por **prioridade** e por **quem faz**.
+
+### 11.1 Placar de honestidade da própria auditoria
+
+Um agente que só confirma o que já achava não está auditando. O placar:
+
+| O que aconteceu | Quantas vezes |
+|-----------------|---------------|
+| Achado dos meus próprios agentes que eu **derrubei** ao verificar | 4 |
+| Armadilha que a verificação **pegou** (parecia morto, estava vivo) | 2 |
+
+Os 4 derrubados: as duas "falhas de RLS" em `learning_path_items_admin_update` e
+`learning_paths_admin_update` (um `WITH CHECK` nulo herda o `USING`, não é
+buraco); os itens de menu com `contexts: []` chamados de "código morto"; e o
+"vazamento" no POST de `/api/teach/offers`.
+
+O caso dos `contexts: []` merece registro porque quase virou bug: a onda 3 disse
+que eram entradas mortas e mandou deletar. Rastreando quem lê `platformNav`,
+`platform-header.tsx:98` varre a lista **inteira** para traduzir o título da
+página. Apagar teria degradado cinco cabeçalhos para o pedaço da URL, em
+português e espanhol. E investigando isso apareceu um bug real que o achado
+original **não tinha visto**: `/account/notifications` já estava sem tradução.
+Corrigido em `64524d8`.
+
+### 11.2 Advisor de performance: 243 avisos, 5 acionáveis
+
+| Tipo | Qtd | Decisão |
+|------|-----|---------|
+| `unindexed_foreign_keys` | 5 | **Corrigido** — `3240a60` |
+| `unused_index` | 71 | **Ignorar** — banco sem tráfego; todo índice parece inútil antes do lançamento |
+| `multiple_permissive_policies` | 166 | **Não mexer** — decisão ㉕ abaixo |
+| `auth_db_connections_absolute` | 1 | Informativo |
+
+Os 166 se concentram em `course_events` (24), `community_comments` (18) e
+`courses` (18). O custo em tabela quase vazia é irrelevante; consolidar política
+de RLS é refatoração de segurança, e eu não faço isso com o dono dormindo.
+
+### 11.3 Estado das migrations (dois itens fechados)
+
+Provei o estado real sondando **objetos do schema**, não o nome no ledger — o
+ledger está dessincronizado desde a virada para direct charges.
+
+| Objeto | Existe? | Fecha |
+|--------|---------|-------|
+| `featured_slots_for_plan`, `set_own_course_featured` | sim | sub-plano 1 |
+| `certificates.sponsor_logo_url` | sim | sub-plano 2 |
+| `public_profiles`, `public_storefront_projection` | sim | sub-plano 3 |
+| `certificates.hide_platform_brand` | sim | **sub-plano 4 — bloqueio ⑰ resolvido** |
+
+⑰ ("rodar `20260808150000_whitelabel_platform_brand.sql`") **sai da lista de
+bloqueios**: a coluna que só essa migration cria está no banco.
+
+### 11.4 O que ainda dá para eu fazer sozinho
+
+| # | Item | Prioridade | Tamanho |
+|---|------|-----------|---------|
+| A1 | `enforce_rate_limit` — erro de um a mais na contagem da janela | P2 | 15 min |
+| A2 | Checkout de assinatura — plano duplicado depende de um fallback do Stripe em vez de barrar antes | P2 | 30 min |
+| A3 | 31 símbolos mortos, já provados sem nenhum chamador | P3 | 30 min |
+| A4 | Minha própria passada de design + o diff "onde eu e o Codex concordamos/divergimos" | P1 (Bloco C) | 2 h |
+
+### 11.5 CSP — por que ainda está em Report-Only
+
+A política de segurança de conteúdo (a regra que diz ao navegador de onde ele
+pode carregar script) está em modo "só avisa", com `unsafe-inline` e
+`unsafe-eval` liberados. Ligar de verdade sem nonce por requisição derruba o
+Next inteiro em produção. É trabalho de meio dia com risco de tela branca no
+site que já está no ar — **não é coisa de fazer sem alguém acordado para dar
+rollback**. Fica como P2 agendado, não como pendência esquecida.
+
+### 11.6 Decisões que só o Patrick fecha
+
+| # | Decisão | Custo de não decidir |
+|---|---------|---------------------|
+| ㉒ | Cupom pode ter uso ilimitado? | Nenhum hoje — o padrão atual é limite obrigatório |
+| ㉓ | Aprovar 3 limpezas destrutivas de banco (`drop table platform_config`; 2 colunas de `payout_ledger`; 1 de `checkout_locks`) | Nenhum — só lixo ocupando o schema |
+| ㉔ | `/how-it-works`: apagar ou linkar no rodapé? | Nenhum — hoje não está indexada nem linkada |
+| ㉕ | Consolidar as 166 políticas permissivas duplicadas | Nenhum agora; vira custo real quando as tabelas encherem |
+
+Nenhuma dessas quatro sangra. Todas podem esperar ele acordar.
