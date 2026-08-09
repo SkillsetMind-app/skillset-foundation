@@ -658,7 +658,6 @@ export function EnrolledCourseWorkspace({
         {selectedLesson && resolvedSelectedLesson ? (
           <LessonContentPanel
             assets={selectedLessonAssets}
-            completed={completedLessonIds.includes(selectedLesson.id)}
             courseId={course.id}
             enableFirestoreAssets={enableFirestoreAssets}
             isLoadingAssets={Boolean(
@@ -666,29 +665,27 @@ export function EnrolledCourseWorkspace({
                 && (!assetsState.ready || assetsState.key !== course.id),
             )}
             isLoadingContent={isLessonContentLoading}
-            isSaving={activeLessonId === selectedLesson.id}
             lesson={resolvedSelectedLesson}
             unlockState={selectedLessonUnlockState}
             previewMode={previewMode}
-            onToggleComplete={() =>
-              toggleLessonCompletion(
-                selectedLesson.id,
-                completedLessonIds.includes(selectedLesson.id),
-              )
-            }
           />
         ) : null}
         {selectedLesson ? (
+          // Sticky so the four actions stay reachable however long the lesson
+          // body and its discussion run — the bar every member area the student
+          // already uses keeps pinned to the bottom.
+          // bg-inherit picks up the player surface, which the members theme
+          // repaints, so the bar follows the course theme with no fork.
           <nav
             aria-label="Lesson navigation"
-            className="mt-5 flex flex-wrap items-center justify-between gap-3"
+            className="sticky bottom-0 z-20 mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] bg-inherit py-3"
           >
             {previousInOrder ? (
               <button
                 type="button"
                 onClick={() => setSelectedLessonId(previousInOrder.id)}
                 aria-label={`Previous lesson: ${previousInOrder.title}`}
-                className="button-outline max-w-full px-4 py-2.5 text-sm sm:max-w-[38%]"
+                className="button-outline max-w-full px-4 py-2.5 text-sm sm:max-w-[26%]"
               >
                 <span className="block truncate">
                   &larr; {previousInOrder.title}
@@ -697,13 +694,44 @@ export function EnrolledCourseWorkspace({
             ) : (
               <span aria-hidden />
             )}
-            <button
-              type="button"
-              onClick={() => setLessonListOpen(true)}
-              className="button-outline order-last w-full px-4 py-2.5 text-sm sm:order-none sm:w-auto"
-            >
-              All lessons ({totalLessonCount})
-            </button>
+            <div className="order-last flex w-full items-center gap-2 sm:order-none sm:w-auto">
+              <button
+                type="button"
+                onClick={() => setLessonListOpen(true)}
+                className="button-outline flex-1 px-4 py-2.5 text-sm sm:flex-none"
+              >
+                All lessons ({totalLessonCount})
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  toggleLessonCompletion(
+                    selectedLesson.id,
+                    completedLessonIds.includes(selectedLesson.id),
+                  )
+                }
+                disabled={
+                  previewMode
+                  || Boolean(
+                    selectedLessonUnlockState
+                      && !selectedLessonUnlockState.unlocked,
+                  )
+                  || activeLessonId === selectedLesson.id
+                }
+                className="button-solid flex-1 px-4 py-2.5 text-sm disabled:opacity-60 sm:flex-none"
+              >
+                {previewMode
+                  ? "Preview only"
+                  : selectedLessonUnlockState
+                      && !selectedLessonUnlockState.unlocked
+                    ? "Lesson locked"
+                    : activeLessonId === selectedLesson.id
+                      ? "Saving..."
+                      : completedLessonIds.includes(selectedLesson.id)
+                        ? "Mark as incomplete"
+                        : "Mark complete"}
+              </button>
+            </div>
             {nextInOrder ? (
               <button
                 type="button"
@@ -1310,30 +1338,27 @@ function CourseAssetResourceList({
   );
 }
 
+// "Mark complete" used to live at the end of this panel. It now sits in the
+// sticky lesson action bar with Previous / All lessons / Next, so the student
+// never has to scroll past the discussion to find it.
 function LessonContentPanel({
   assets,
-  completed,
   courseId,
   enableFirestoreAssets,
   isLoadingAssets,
   isLoadingContent,
-  isSaving,
   lesson,
   previewMode,
   unlockState,
-  onToggleComplete,
 }: {
   assets: CourseAsset[];
-  completed: boolean;
   courseId: string;
   enableFirestoreAssets: boolean;
   isLoadingAssets: boolean;
   isLoadingContent: boolean;
-  isSaving: boolean;
   lesson: Lesson;
   previewMode: boolean;
   unlockState: LessonUnlockState | null;
-  onToggleComplete: () => void;
 }) {
   const locked = Boolean(unlockState && !unlockState.unlocked);
   // The lesson body + resource link live in the gated subcollection post-strip;
@@ -1465,23 +1490,6 @@ function LessonContentPanel({
           />
         ) : null}
       </div>
-
-      <button
-        type="button"
-        onClick={onToggleComplete}
-        disabled={previewMode || locked || isSaving}
-        className="button-solid mt-5 px-4 py-2.5 text-sm disabled:opacity-60"
-      >
-        {previewMode
-          ? "Preview only"
-          : locked
-          ? "Lesson locked"
-          : isSaving
-            ? "Saving..."
-            : completed
-              ? "Mark as incomplete"
-              : "Mark complete"}
-      </button>
     </div>
   );
 }
