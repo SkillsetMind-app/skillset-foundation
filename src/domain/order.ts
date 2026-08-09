@@ -25,7 +25,18 @@ export type Order = {
   refundedAmountMinor?: number;
   currency: string;
   platformFeeBps: number;
-  payoutModel?: "separate_charges_and_transfers" | "destination_charge";
+  /**
+   * How the money moved. "direct_charge" is the ONLY model SkillsetMind uses:
+   * the buyer is charged on the teacher's own connected account and the
+   * platform takes an application fee. The other two are legacy values that
+   * only exist because old rows carry them — writing either one on a new order
+   * would claim SkillsetMind took possession of the teacher's money, which is
+   * exactly the legal position the direct-charge model exists to avoid.
+   */
+  payoutModel?:
+    | "direct_charge"
+    | "separate_charges_and_transfers"
+    | "destination_charge";
   status: OrderStatus;
   provider: PaymentProvider;
   checkoutSessionId: string | null;

@@ -394,8 +394,24 @@ export async function getOrCreateAccountPercentOffCoupon(
     const existing = await stripe.coupons.retrieve(couponId, undefined, {
       stripeAccount: connectedAccountId,
     });
+    // The coupon id is deterministic and the account belongs to the TEACHER, so
+    // a teacher can pre-create `skillset_pct_50_once` in their own dashboard
+    // with different terms. Reusing it blindly would charge the student
+    // something other than the discount the platform recorded and emailed.
+    // Trust the id only when the terms match exactly; otherwise fail closed.
+    if (existing.percent_off !== pct || existing.duration !== "once") {
+      throw new Error(
+        `Stripe coupon ${couponId} on account ${connectedAccountId} does not match the platform terms (${pct}% off, once).`,
+      );
+    }
     return existing.id;
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.startsWith(`Stripe coupon ${couponId}`)
+    ) {
+      throw error;
+    }
     // Not on this account yet — create it below.
   }
 

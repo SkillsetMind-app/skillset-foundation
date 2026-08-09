@@ -157,6 +157,26 @@ async function releaseCourseCouponReservation(
 }
 
 /**
+ * Subscription-mode sessions carry no orderId — the order row only exists once
+ * the first invoice pays — so markOrderStatus returns immediately and the
+ * reservation this checkout took would stay 'reserved' forever. Since
+ * reserve_course_coupon counts reserved rows against max_redemptions, ten
+ * abandoned subscription checkouts would kill a 10-use coupon that nobody ever
+ * redeemed. The reservation id travels on the session metadata for exactly this
+ * reason; the RPC is a no-op unless the row is still 'reserved', so a
+ * redelivered event cannot undo a redemption.
+ */
+async function releaseAbandonedSubscriptionCoupon(
+  admin: Admin,
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  if (session.mode !== "subscription") return;
+  const reservationId = session.metadata?.couponReservationId;
+  if (typeof reservationId !== "string" || !reservationId) return;
+  await releaseCourseCouponReservation(admin, reservationId);
+}
+
+/**
  * One-time storefront activation fee. A PLATFORM charge, so there is no
  * connected account and nothing to fulfil beyond stamping the column the SQL
  * publish gate reads (public.publish_teacher_course).
@@ -458,7 +478,8 @@ async function handleCourseSubscriptionInvoicePaid(
   // ?? / isFinite, not || — legacy metadata "0" (old 0-bps Plus subscriptions)
   // is a valid snapshotted fee and must not coerce to the default.
   const metaBps = Number(meta.platformFeeBps || NaN); // "" / undefined -> NaN, "0" -> 0
-  const platformFeeBps = owner
+  // Fallback chain, used only when the invoice does not state the fee itself.
+  const derivedFeeBps = owner
     ? canonicalPlatformFeeBpsForPlan(owner.current_plan_id)
     : Number.isFinite(metaBps) && metaBps >= 0
       ? metaBps
@@ -474,6 +495,18 @@ async function handleCourseSubscriptionInvoicePaid(
 
   const grossAmountMinor = Number(invoice.amount_paid || 0);
   const currencyUpper = String(invoice.currency || "USD").toUpperCase();
+  // Stripe freezes application_fee_percent when the subscription is created and
+  // keeps charging that percent on every renewal. Recomputing the fee from the
+  // teacher's CURRENT plan would book a number Stripe never took: a teacher who
+  // upgrades Free (10%) -> Pro (3%) is still charged 10% by Stripe until the
+  // subscription is re-created, and the ledger would claim 3% while 10% left the
+  // charge. The subscription states the percent actually in force, so trust it;
+  // the plan/metadata chain only covers subscriptions with no percent set.
+  const frozenPercent = subscription.application_fee_percent;
+  const platformFeeBps =
+    typeof frozenPercent === "number" && frozenPercent >= 0
+      ? Math.round(frozenPercent * 100)
+      : derivedFeeBps;
   const skillsetFeeMinor = Math.floor((grossAmountMinor * platformFeeBps) / 10000);
   const stripeFeeMinor =
     grossAmountMinor > 0 ? stripeProcessingFeeMinor(grossAmountMinor, currencyUpper) : 0;
@@ -1272,9 +1305,11 @@ export async function POST(request: Request) {
       }
       case "checkout.session.async_payment_failed":
         await markOrderStatus(admin, event.data.object.metadata?.orderId, "failed");
+        await releaseAbandonedSubscriptionCoupon(admin, event.data.object);
         break;
       case "checkout.session.expired":
         await markOrderStatus(admin, event.data.object.metadata?.orderId, "cancelled");
+        await releaseAbandonedSubscriptionCoupon(admin, event.data.object);
         break;
       case "payment_intent.payment_failed":
         await markOrderStatus(admin, event.data.object.metadata?.orderId, "failed");

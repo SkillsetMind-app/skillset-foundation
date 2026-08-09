@@ -7,6 +7,7 @@ import {
   requireUserId,
 } from "@/lib/payments/server/auth";
 import { getStripeClient } from "@/lib/payments/server/stripe";
+import { getUserRow } from "@/lib/payments/server/stripe-helpers";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 // Learner-facing course-subscription management. Cancels at period end (the
@@ -59,10 +60,19 @@ export async function POST(request: Request) {
     // read and the write have to be scoped to that account.
     const { data: course } = await admin
       .from("courses")
-      .select("stripe_connected_account_id")
+      .select("stripe_connected_account_id, owner_id")
       .eq("id", courseId)
       .maybeSingle();
-    const stripeAccount = course?.stripe_connected_account_id || null;
+    // Mirror the checkout resolution exactly (payments/checkout/route.ts):
+    // a course row with a null account is still sellable through the owner's
+    // account, so resolving from the course alone would leave those students
+    // unable to cancel — the subscription lookup would run platform-scoped and
+    // 404 — while Stripe keeps billing them every month.
+    let stripeAccount = course?.stripe_connected_account_id || null;
+    if (!stripeAccount && course?.owner_id) {
+      const owner = await getUserRow(course.owner_id);
+      stripeAccount = owner?.stripe_connected_account_id || null;
+    }
     const accountOptions = stripeAccount ? { stripeAccount } : undefined;
 
     // Defensive ownership check: the subscription must be a course subscription

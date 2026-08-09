@@ -45,7 +45,11 @@ export function buildCourseSubscriptionSaleRecords(
       status: "paid",
       provider: "stripe",
       platform_fee_bps: input.platformFeeBps,
-      payout_model: "separate_charges_and_transfers",
+      // Direct charge, same as the one-time path. The renewal is charged on the
+      // teacher's connected account with an application fee; SkillsetMind never
+      // receives the money and owes no transfer. Writing the legacy
+      // separate-charges value here would put a false claim in the books.
+      payout_model: "direct_charge",
       teacher_stripe_connected_account_id: input.connectedAccountId,
       payment_intent_id: input.paymentIntentId,
       receipt_url: receiptUrl,

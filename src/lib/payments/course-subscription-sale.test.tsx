@@ -37,7 +37,10 @@ describe("buildCourseSubscriptionSaleRecords", () => {
         status: "paid",
         provider: "stripe",
         platform_fee_bps: 800,
-        payout_model: "separate_charges_and_transfers",
+        // Direct charge, not separate charges + transfers: SkillsetMind never
+        // takes possession of the renewal, so the books must not claim a
+        // transfer we never owe. Flipping this back is a policy regression.
+        payout_model: "direct_charge",
         teacher_stripe_connected_account_id: "acct_123",
         payment_intent_id: "pi_renewal_123",
         receipt_url: "https://pay.stripe.com/receipts/renewal-123",

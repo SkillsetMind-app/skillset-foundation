@@ -9,6 +9,7 @@ const TEACHER_PAGE_SIZE = 500;
 
 export function mapOrderRow(row: OrderRow): Order {
   const payoutModel =
+    row.payout_model === "direct_charge" ||
     row.payout_model === "separate_charges_and_transfers" ||
     row.payout_model === "destination_charge"
       ? row.payout_model
