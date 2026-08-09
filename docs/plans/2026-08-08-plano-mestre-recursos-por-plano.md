@@ -679,3 +679,20 @@ eu vi, e **7 caracterizações erradas**. As quatro de resíduo de pagamento,
 `LearningPathsRows` "engolindo erros", "anéis de foco fracos" (já corrigido em
 `globals.css:1891`) e agora este. O segundo par de olhos continua valendo o custo
 justamente porque obriga a verificar antes de mexer.
+
+### 12.7 Anterior / Próxima aula — fechado (`125e3e9`)
+
+Era o buraco mais gritante da área de membros contra o padrão Hotmart/Eduzz: a
+única forma de trocar de aula era a tira lateral, e **essa tira só lista o módulo
+ativo**. Terminar a última aula do módulo 1 deixava o aluno sem caminho para
+frente — tinha que caçar o seletor de módulo. Todo player de curso que o aluno já
+conhece põe um "próxima" no fim da aula.
+
+Reusei a ordem já achatada (`allLessons`) e a posição 1-based que o painel já
+calcula, então não existe uma segunda fonte de verdade para "o que vem depois".
+Aula bloqueada continua alcançável — igual a clicar nela na tira: quem mostra o
+cadeado é o painel, não a navegação.
+
+**Ainda em aberto no player (precisa de decisão ou das telas dele):** avanço
+automático ao concluir, retomar no minuto onde parou, e a grade curricular
+completa na barra lateral.
