@@ -161,6 +161,25 @@ None. Every current token is present (some renamed only in value). The current d
 - **Sidebar** (`.sidebar`): **inverted navy**, sticky under appbar (`top:58px`, `height:calc(100vh - 58px)`), gradient `linear-gradient(180deg,#07172a,#0f2744 55%,#14304e)` + red radial glow + subtle grid texture + bottom vignette. Floating round collapse FAB (`.sb-collapse`, `right:-16px`). Nav rows (`.sb-item`): icon in a rounded chip, left red active rail (`::before`), active row = white-tint gradient + red gradient icon chip. Count badges red. Collapsed rows show flyout tooltips.
   - **Nav items — LEARNER role:** Marketplace(search) · Classroom(video) · Learning paths(layers) · Agenda(calendar) · Communities(users) · Credentials(award)
   - **Nav items — CREATOR role:** Studio(grid) · Course Builder(pencil) · Agenda(calendar) · Communities(users) · Reviews & refunds(star) · Affiliate program(globe) · Marketplace(search)
+
+> **⚠ Superseded by the direct-charge pivot — do not build these three.** This
+> document transcribes the v2 capture, so the lines above still read as the
+> designer drew them. Since the capture, SkillsetMind moved to Stripe Connect
+> **direct charges**: the buyer pays the creator's connected account and the
+> platform never takes possession of the money. Three artifacts died with that
+> change and must not be ported:
+> - **Affiliate program(globe)** in the creator nav, and `screens/Affiliate.jsx`
+>   (mapped below to `/teach/co-productions`) — paying an affiliate or a
+>   co-producer means splitting the buyer's payment with a third party, which
+>   requires the platform to receive it first.
+> - **`screens/Pricing.jsx:57` "Affiliate program · 30% revshare"** — same
+>   reason, and the number was never our commission model either. Live plan
+>   economics are in `src/data/plans.ts`.
+> - **Reviews & refunds(star)** — `/teach/refunds` is only a redirect to
+>   `/account/payments`; the nav entry was removed rather than point at a screen
+>   that does not exist. A real refund surface is still wanted (under direct
+>   charges a refund debits the creator's own Stripe balance), so this one is
+>   deferred, not revoked.
   - Account items (Subscription/Billing/Settings/Wishlist/Plans/Payouts) live in the **avatar menu**, not the sidebar. Learner/Creator role toggle sits at top of sidebar when `hasCreatorProfile`.
 - **Topbar** (`.topbar`, inside appbar right cell): breadcrumbs (`section › page` from a route→title map), spacer, learner **streak pill** (🔥 + count + progress), optional ops status pill, Tweaks button, Messages icon (unread badge), Bell + notifications dropdown, user-trigger (pill avatar + name + role, dropdown menu with plan chip, settings, billing/payouts, wishlist/credentials, role-switch, replay tutorial, sign out).
 - **Main / content** (`.content`): `padding:32px 40px 48px`, inner `max-width:1240px` centered, ambient white→`#fcfdff` gradient. Body has radial navy/red ambient wash.

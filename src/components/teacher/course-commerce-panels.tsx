@@ -29,8 +29,8 @@ import { logSubscriptionError } from "@/lib/data/subscription-error";
 
 // Commerce panels for the per-course management central. Configuration is real
 // and persisted; activating a coupon is gated server-side on professional
-// verification while the admission flag is on. Redemption at checkout is a
-// separate engine — the panel says so instead of implying it already runs.
+// verification while the admission flag is on. Redemption at checkout is live
+// for one-time and subscription buys alike — see the note above buildCoupon.
 //
 // Affiliate and co-producer panels were removed with the pivot to Stripe direct
 // charges: the buyer pays the teacher's account directly, so the platform never

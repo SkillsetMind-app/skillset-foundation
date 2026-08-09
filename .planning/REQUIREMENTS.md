@@ -40,8 +40,9 @@
 ## Phase 5 - Growth engines
 
 - [ ] **GRW-01:** Coupons are validated and applied in checkout and settlement.
-- [ ] **GRW-02:** Affiliate attribution affects settlement and reporting.
-- [ ] **GRW-03:** Co-producer splits affect payout ledger entries.
+- [~] **GRW-02:** ~~Affiliate attribution affects settlement and reporting.~~ **Revoked** with the move to Stripe Connect direct charges. Paying an affiliate means paying a third party out of the buyer's payment, which requires the platform to receive the money first. It does not.
+- [~] **GRW-03:** ~~Co-producer splits affect payout ledger entries.~~ **Revoked**, same reason as GRW-02. A ledger entry can only record a split the platform actually performs.
+- [ ] **GRW-02b:** Upsell/downsell offers execute in the money path. (Took GRW-02's slot in Phase 5: it raises order value without the platform ever holding the money.)
 - [ ] **GRW-04:** Tax configuration affects checkout totals and records.
 - [ ] **GRW-05:** Commercial links, QR code, widget, sales pages, and automations use real offers.
 

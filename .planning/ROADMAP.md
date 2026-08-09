@@ -10,7 +10,7 @@ The launch program now follows the verified state of the code rather than the ol
 - [ ] **Phase 2: Commerce integrity** - reproducible schema/RPC baseline, trustworthy order mapping, recurring financial facts, refunds, and subscription creation.
 - [ ] **Phase 3: Products and offers** - product formats plus multiple independent offers/prices, trials, guarantees, currencies, and offer-driven checkout.
 - [ ] **Phase 4: Creator operations** - global sales and subscription management, receivables, wallet transparency, MRR/churn/LTV, and exports.
-- [ ] **Phase 5: Growth engines** - coupons, affiliates, co-producers, taxes, commercial links, pages, and automations executed in the money path.
+- [ ] **Phase 5: Growth engines** - coupons, upsell/downsell, taxes, commercial links, pages, and automations executed in the money path. (Affiliates and co-producers were dropped here: both pay a third party out of the sale, and under direct charges the sale never lands in a SkillsetMind balance to split.)
 - [ ] **Phase 6: Relaunch experience** - creator advisor, messages, onboarding, navigation, member-area refinements, storefront, and contextual AI.
 
 ## Phase Details
