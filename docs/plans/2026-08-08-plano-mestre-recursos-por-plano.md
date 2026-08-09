@@ -619,3 +619,63 @@ Duas saídas quando for a hora:
 - **(b) Portar a regra de gotejamento para RLS no banco** — significa escrever a
   mesma regra de 5 estratégias uma segunda vez, em outra linguagem. É exatamente
   a armadilha "certo em quatro lugares, diferente no quinto".
+
+### 12.6 O erro dourado — e o teto de 50 vendas
+
+Duas correções fechadas nesta madrugada, ambas com portão verde (72 arquivos de
+teste / 415 testes, `tsc` e `eslint` limpos) e já no origin.
+
+#### `8b4daa6` — erro tinha cor de destaque, não de erro (52 arquivos)
+
+**A causa raiz.** `--color-accent-fg` **era** o vermelho `#b22234` — o mesmo
+valor de `--color-danger`. Por isso todo aviso de falha foi escrito como
+`text-[var(--color-accent-fg)]` e ficava certo. Quando o rebrand latão moveu o
+accent para dourado, **76 superfícies de falha** passaram a renderizar texto
+dourado dentro de caixa avermelhada. Dourado sobre vermelho lê como destaque, não
+como "deu errado". O próprio código já sabia disso: o comentário em
+`globals.css:159-166` documenta o vermelho `#e36b78` que *deveria* estar ali.
+
+**O conserto.** Promovi o token `--color-danger-fg` que o comentário já
+antecipava, seguindo a convenção `-fg` que a folha de estilo já usa e documenta:
+no claro o `-fg` **é igual** ao token base (zero mudança visual), no escuro ele
+clareia para passar em contraste. Contraste calculado à mão nos dois temas —
+rejeitei o `#e06472` que já existia (dá **4,08:1** sobre a tinta de 18%, reprova)
+e usei `#e8808c` (**5,17:1** no pior caso, 6,88:1 no fundo escuro liso). 14px
+negrito **não** conta como "texto grande" pela WCAG, então o piso é 4,5:1.
+
+**O que a checagem de conflito salvou.** Uma varredura cega por "qualquer vermelho
+translúcido" teria recolorido quatro superfícies que usam o mesmo vermelho como
+**marca, não como falha**: o selo de evento ao vivo, o destaque do plano
+selecionado, o crachá de aula bloqueada e o ícone de atividade urgente. Amostrei
+os arquivos antes de varrer e estreitei o critério para o alfa `0,06` — que é
+exatamente `--color-danger-soft`, a assinatura da pílula de erro copiada e colada.
+Resultado: 74 linhas em 49 arquivos trocadas, 2 `<p>` aninhados corrigidos à mão,
+5 regras CSS ajustadas, e o override escuro enxugado de cinco seletores para dois
+(agora existe **um** vermelho escuro, não dois).
+
+#### `1963eff` — vendedor não alcançava a venda 51 (1 arquivo)
+
+A lista de vendas cortava em 50 e não havia como ver as mais antigas. **Antes de
+"consertar a paginação", subi o rastro:** `subscribeToTeacherOrders`
+(`orders.ts:179`) já roda `for (let from = 0; ; from += TEACHER_PAGE_SIZE)` e
+percorre **todas** as páginas — o cliente já tinha tudo na mão. O limite era
+decisão de renderização, não de consulta. Então o conserto certo é uma janela no
+cliente (`visibleCount` + botão "Show N more"), não uma consulta paginada nova
+que custaria uma ida ao servidor à toa. O botão anuncia o resto verdadeiro, então
+nunca promete "mais 50" quando faltam 3.
+
+#### Codex, erro nº 7
+
+Ele apontou um "desvio de compra em curso demo". **Falso.** Li o componente
+inteiro: `course-enrollment-cta.tsx` renderiza **só `<Link>`s** — nenhuma chamada
+de checkout, nenhuma escrita de matrícula. E há defesa em profundidade: um id de
+curso demo enviado a `/api/payments/checkout` não acha o curso e volta
+`PaymentError("Course not found.", 404)`. É comportamento deliberado e
+documentado num bloco de 19 linhas no topo do arquivo.
+
+**Placar do Codex até aqui:** 7 achados em comum comigo, 5 que só ele viu (o
+melhor: `LearningPathsRows` já É o componente de trilha estilo Netflix), 7 que só
+eu vi, e **7 caracterizações erradas**. As quatro de resíduo de pagamento,
+`LearningPathsRows` "engolindo erros", "anéis de foco fracos" (já corrigido em
+`globals.css:1891`) e agora este. O segundo par de olhos continua valendo o custo
+justamente porque obriga a verificar antes de mexer.
