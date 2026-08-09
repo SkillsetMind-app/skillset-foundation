@@ -10,9 +10,6 @@
  * balance for the creator, so there is no PLATFORM clearing period; Stripe
  * still applies its own settlement and payout timing on the creator's
  * connected account, which the platform does not control and cannot waive.
- * (DECISIONS.md D2 and src/domain/payment-split.ts still describe the old
- * separate-charges-and-transfers model and must be corrected — do not follow
- * them.)
  *
  * Separately from the tiers, a creator pays a ONE-TIME activation fee before
  * publishing their first course. It does not recur and it is not a subscription:
