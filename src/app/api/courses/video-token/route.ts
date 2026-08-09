@@ -14,6 +14,7 @@ type VideoAsset = {
   course_id: string;
   owner_id: string;
   is_preview: boolean;
+  lesson_id: string | null;
 };
 
 export async function POST(request: Request) {
@@ -66,7 +67,7 @@ export async function POST(request: Request) {
 
     const { data: previewAsset, error: assetError } = await admin
       .from("course_assets")
-      .select("bunny_video_id, course_id, owner_id, is_preview")
+      .select("bunny_video_id, course_id, owner_id, is_preview, lesson_id")
       .eq("course_id", courseId)
       .eq("lesson_id", lessonId)
       .eq("kind", "lesson_video")
@@ -86,7 +87,7 @@ export async function POST(request: Request) {
 
     const { data: protectedAsset, error: assetError } = await admin
       .from("course_assets")
-      .select("bunny_video_id, course_id, owner_id, is_preview")
+      .select("bunny_video_id, course_id, owner_id, is_preview, lesson_id")
       .eq("id", assetId)
       .maybeSingle();
 
@@ -101,8 +102,27 @@ export async function POST(request: Request) {
   }
 
   if (!isPublicPreviewRequest) {
+    // The preview flag alone is not a grant. The anonymous path above gates
+    // preview playback on three facts — course published, lesson is the
+    // course's designated free preview, asset flagged preview — so the
+    // signed-in path must not be the weaker door. Trusting asset.is_preview by
+    // itself handed a signed embed URL for any draft-course lesson a teacher
+    // flagged while authoring to any signed-in user who knew the assetId.
+    // Owners skip the lookup: ownership already entitles them one line later.
+    let effectiveIsPreview = false;
+    if (asset.is_preview && asset.lesson_id && asset.owner_id !== callerId) {
+      const { data: publishedCourse } = await admin
+        .from("courses")
+        .select("id")
+        .eq("id", asset.course_id)
+        .eq("status", "published")
+        .eq("free_preview_lesson_id", asset.lesson_id)
+        .maybeSingle();
+      effectiveIsPreview = Boolean(publishedCourse);
+    }
+
     let entitled = canViewCourseAssetVideo({
-      isPreview: asset.is_preview,
+      isPreview: effectiveIsPreview,
       assetOwnerId: asset.owner_id,
       callerId: callerId!,
       enrollmentStatus: null,
@@ -116,7 +136,7 @@ export async function POST(request: Request) {
         .maybeSingle();
       const { data: isAdmin } = await supabase.rpc("is_admin");
       entitled = canViewCourseAssetVideo({
-        isPreview: asset.is_preview,
+        isPreview: effectiveIsPreview,
         assetOwnerId: asset.owner_id,
         callerId: callerId!,
         enrollmentStatus: enrollment?.status ?? null,

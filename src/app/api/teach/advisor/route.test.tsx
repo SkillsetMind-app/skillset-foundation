@@ -20,6 +20,12 @@ vi.mock("@/lib/supabase/rate-limit", () => ({
   runRateLimit: mocks.runRateLimit,
 }));
 
+// The real one throws without SUPABASE_SERVICE_ROLE_KEY, which no test sets.
+// retrieveKnowledge is mocked anyway, so the client it receives is never used.
+vi.mock("@/lib/supabase/admin", () => ({
+  getSupabaseAdminClient: () => ({}),
+}));
+
 // The error classes stay real: the route branches on `instanceof`, so a fully
 // synthetic module would make every failure path fall through to the same 503
 // and the tests below would agree with each other while proving nothing.

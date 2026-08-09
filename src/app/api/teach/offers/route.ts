@@ -136,7 +136,10 @@ export async function GET(request: Request) {
       .eq("course_id", courseId)
       .order("created_at", { ascending: false });
     if (error) {
-      return NextResponse.json({ offers: [], warning: error.message });
+      // Raw Postgres messages name columns, constraints and policies — schema
+      // recon for anyone who can reach this route. Log it, return a flag.
+      console.error("Offer list query failed", error);
+      return NextResponse.json({ offers: [], warning: "Offers are unavailable." });
     }
 
     const result = [];
@@ -173,12 +176,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ offers: result });
   } catch (error) {
-    if (error instanceof PaymentError) {
-      return paymentErrorResponse(error);
-    }
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Offer list failed." },
-      { status: 500 },
-    );
+    // paymentErrorResponse already surfaces PaymentError verbatim and turns
+    // everything else into a logged, opaque 500 — the hand-rolled branch below
+    // it was leaking raw driver messages instead.
+    return paymentErrorResponse(error);
   }
 }
