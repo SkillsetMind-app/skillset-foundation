@@ -768,3 +768,39 @@ Os dois esqueletos espelham a forma real (faixa de destaque, depois player + tir
 aulas), então nada se desloca quando os dados chegam. Na sala de aula usei só tokens
 neutros de superfície de propósito: a casca real é tematizada por curso
 (`data-members-theme`), e um esqueleto tematizado brigaria com o tema.
+
+### 12.10 Barra de ação fixa da aula (`ebc9e61`)
+
+Fecha o item 2 da fila do §12.8. Faltavam duas coisas para bater com a referência:
+o "Concluída" morava **fora** da barra, e a barra **não era fixa**.
+
+O botão de concluir ficava no rodapé do `LessonContentPanel` — ou seja, **depois da
+discussão da aula**. Para marcar a aula como concluída o aluno rolava o conteúdo
+inteiro e todos os comentários. Um commit antigo (`969d415`) tinha removido uma
+duplicata do botão da tira de ferramentas justamente com o argumento de que o fim da
+aula era "onde o aluno procura". A captura da referência mostra o contrário: o lugar
+é a barra fixa. O comentário novo no código registra a razão nova em vez de
+contradizer o antigo em silêncio.
+
+**A checagem de conflito rendeu duas economias:**
+
+- `.member-classroom-player` pinta o fundo com `--color-surface`, e o override de
+  tema de membros (`globals.css:4617`) repinta com `--ma-elev`. Um filho `sticky` com
+  `bg-inherit` resolve para o que estiver ativo — sem fork `[data-members-theme]`.
+- O override de tema mira classes **arbitrárias** do Tailwind
+  (`[class*="border-[var(--color-line)]"]`). Escrevendo a borda em Tailwind, ela ganha
+  o tema escuro de graça; escrita à mão no CSS, não ganharia.
+
+Resultado: barra fixa, tematizada nos dois modos, **zero linha nova em `globals.css`**.
+
+Também confirmei por grep quais props morriam com o botão movido: `completed`,
+`isSaving` e `onToggleComplete` eram usadas **só** por ele. `previewMode` fica (alimenta
+`LessonDiscussion`) e `locked` é derivado dentro do painel a partir de `unlockState`.
+
+No mobile a barra quebra em duas linhas: anterior/próxima em cima, "Todas as aulas" e
+"Concluída" dividindo a linha de baixo — as duas ações que o aluno mais usa ficam
+lado a lado, com alvo de toque cheio.
+
+**Sobra da fila do §12.8:** marca d'água sobre o vídeo (item 3) e comentários/feed
+(item 4 — já existem `CourseCommunityFeed` e `CourseMessagesPanel`, falta conferir
+paridade, não reconstruir).
