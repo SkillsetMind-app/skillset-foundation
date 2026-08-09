@@ -68,7 +68,7 @@ export function SaleList() {
   if (error) {
     return (
       <section className="rounded-[14px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] p-6">
-        <p className="text-sm font-semibold text-[var(--color-accent-fg)]">
+        <p className="text-sm font-semibold text-[var(--color-danger-fg)]">
           {error}
         </p>
       </section>

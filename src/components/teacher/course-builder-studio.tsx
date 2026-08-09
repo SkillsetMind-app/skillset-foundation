@@ -1395,7 +1395,7 @@ export function CourseBuilderStudio() {
   if (!courseId) {
     return (
       <section className="settings-section-card">
-        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           Choose a course from Teacher Studio before opening the builder.
         </p>
         <Link href="/teach" className="button-outline mt-5 px-4 py-2.5 text-sm">
@@ -1416,7 +1416,7 @@ export function CourseBuilderStudio() {
   if (error && !course) {
     return (
       <section className="settings-section-card">
-        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {error}
         </p>
         <Link href="/teach" className="button-outline mt-5 px-4 py-2.5 text-sm">
@@ -2627,7 +2627,7 @@ export function CourseBuilderStudio() {
           {error ? (
             <div
               role="alert"
-              className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]"
+              className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
             >
               <p>{error}</p>
               {error.startsWith("Activate your storefront") ? (
@@ -2745,7 +2745,7 @@ function BuilderSaveStatus({
 
   if (state === "error") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-accent-fg)]">
+      <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]">
         <CloudOff aria-hidden="true" size={12} strokeWidth={2} />
         Save failed — use Save draft
       </span>
@@ -2898,7 +2898,7 @@ function CourseCoverField({
           ) : null}
 
           {error ? (
-            <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-accent-fg)]">
+            <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">
               {error}
             </p>
           ) : null}
@@ -3273,7 +3273,7 @@ function MembersCoverField({
           ) : null}
 
           {error ? (
-            <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-accent-fg)]">
+            <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">
               {error}
             </p>
           ) : null}

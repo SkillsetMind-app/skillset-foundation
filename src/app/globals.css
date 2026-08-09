@@ -57,6 +57,12 @@
      ICON/BORDER clears WCAG AA on dark surfaces (the base tokens stay saturated
      for white-bearing solid fills, which never use these). See A1-cont record. */
   --color-accent-fg: #795615;
+  /* Error text used to be var(--color-accent-fg) everywhere, and that was
+     correct while the accent WAS this red. The brass rebrand moved accent-fg to
+     gold and left ~76 failure surfaces reading gold-on-red — a warning tint, not
+     a failure. This is the --color-danger-fg the account-menu comment below
+     anticipated. #b22234 = 6.11:1 on the 6%-tint pill, 6.64:1 on white. */
+  --color-danger-fg: #b22234;
   --color-success-fg: #1f8a5b;
   --shadow-soft: 0 1px 2px rgba(26, 54, 93, 0.08), 0 10px 24px rgba(26, 54, 93, 0.11);
   --shadow-strong: 0 18px 44px rgba(15, 39, 68, 0.14);
@@ -166,6 +172,9 @@
      Base --color-accent/--color-success untouched, so white-on-fill pairs hold. */
   --color-accent-fg: #e2bd72;
   --color-on-accent: #102a43;
+  /* #e8808c = 5.17:1 on the worst case (18% danger tint over surface-strong
+     #1c2841), 6.88:1 on plain surface. Base #b22234 is only 2.73:1 there. */
+  --color-danger-fg: #e8808c;
   --color-success-fg: #5fc99a;
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.2), 0 14px 34px rgba(0, 0, 0, 0.32);
   --shadow-strong: 0 22px 54px rgba(0, 0, 0, 0.42);
@@ -1420,7 +1429,7 @@ p {
 
 .account-menu-icon--danger {
   background: rgba(178, 34, 52, 0.08);
-  color: var(--color-accent-fg);
+  color: var(--color-danger-fg);
 }
 
 .account-menu-chip {
@@ -1442,13 +1451,13 @@ p {
 }
 
 .account-menu-item--danger {
-  color: var(--color-accent-fg);
+  color: var(--color-danger-fg);
 }
 
 .account-menu-item--danger:hover,
 .account-menu-item--danger:focus-visible {
   background: rgba(178, 34, 52, 0.06);
-  color: var(--color-accent-fg);
+  color: var(--color-danger-fg);
 }
 
 /* A4 — dark theming for the account/sign-in dropdown.
@@ -1458,12 +1467,9 @@ p {
    to clear AA (brand #b22234 = 2.73:1 on dark surface; #e06472 = 5.36:1). The
    trigger pill (translucent white) is inverted to a translucent light tint so
    its light-ink name/role stop sitting on near-white. Light mode untouched.
-   (#e06472 is a component-scoped dark danger red; A1-cont may promote it to a
-   --color-danger-fg token later.) */
-[data-theme="dark"] .account-menu-item--danger,
-[data-theme="dark"] .account-menu-item--danger:hover,
-[data-theme="dark"] .account-menu-item--danger:focus-visible,
-[data-theme="dark"] .account-menu-icon--danger,
+   (The --danger selectors that used to be listed here now read the promoted
+   --color-danger-fg token instead, so there is one dark red, not two. The chip
+   and role pill stay hardcoded: they are context labels, not failures.) */
 [data-theme="dark"] .account-menu-context-chip,
 [data-theme="dark"] .account-menu-trigger__role {
   color: #e06472;
@@ -1618,7 +1624,7 @@ p {
 .settings-pill--danger {
   border: 1px solid rgba(178, 34, 52, 0.22);
   background: rgba(178, 34, 52, 0.07);
-  color: var(--color-accent-fg);
+  color: var(--color-danger-fg);
 }
 
 .settings-pill--neutral {
@@ -3557,7 +3563,7 @@ body:has([aria-label="Course categories"])
 .lesson-modal-upload__error {
   border: 1px solid rgba(178, 34, 52, 0.2);
   background: rgba(178, 34, 52, 0.06);
-  color: var(--color-accent-fg);
+  color: var(--color-danger-fg);
 }
 
 .lesson-modal-upload__success {

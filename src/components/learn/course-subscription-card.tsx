@@ -111,7 +111,7 @@ export function CourseSubscriptionCard({
       ) : (
         <>
           {pastDue ? (
-            <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-accent-fg)]">
+            <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
               Last payment failed. Update your card to keep access — we are
               retrying the charge.
             </p>
@@ -128,7 +128,7 @@ export function CourseSubscriptionCard({
           )}
 
           {error ? (
-            <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-accent-fg)]">
+            <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
               {error}
             </p>
           ) : null}

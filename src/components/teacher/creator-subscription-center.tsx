@@ -127,7 +127,7 @@ export function CreatorSubscriptionCenter() {
 
   if (failed.subscriptions || failed.courses) {
     return (
-      <p className="rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+      <p className="rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
         {error || "Subscription reporting is temporarily unavailable."}
       </p>
     );
@@ -143,7 +143,7 @@ export function CreatorSubscriptionCenter() {
   return (
     <>
       {error ? (
-        <p className="mb-5 rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+        <p className="mb-5 rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {error}
         </p>
       ) : null}

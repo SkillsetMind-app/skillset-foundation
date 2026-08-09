@@ -100,7 +100,7 @@ export function LearnerWishlist() {
   if (error) {
     return (
       <div className="dash-card dash-card--strong p-5">
-        <p className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+        <p className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {error}
         </p>
       </div>

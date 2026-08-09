@@ -602,7 +602,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
         </dl>
 
         {checkoutStatus === "cancelled" ? (
-          <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+          <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             Checkout was cancelled. Your card was not charged.
           </p>
         ) : null}
@@ -614,13 +614,13 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
         ) : null}
 
         {checkoutError ? (
-          <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+          <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {checkoutError}
           </p>
         ) : null}
 
         {offerLoadError || (pricingReady && hasExplicitOffer && !resolvedPrice) ? (
-          <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+          <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {offerLoadError || "The selected offer is no longer available."}
           </p>
         ) : null}
