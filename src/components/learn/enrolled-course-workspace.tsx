@@ -276,9 +276,30 @@ export function EnrolledCourseWorkspace({
   }, [selectedLessonId, course.id, course.modules, previewMode]);
 
   if (isLoading) {
+    // Skeleton mirrors the classroom shape (hero band, then player + lesson
+    // strip) so nothing shifts when the enrollment resolves. Neutral surface
+    // tokens only, because the real shell is theme-driven per course.
     return (
-      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-sm text-[var(--color-ink-soft)]">Loading course workspace...</p>
+      <section
+        aria-busy="true"
+        aria-live="polite"
+        className="grid gap-4 rounded-[14px] border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] sm:p-6"
+      >
+        <p className="sr-only" role="status">
+          Loading course workspace...
+        </p>
+        <div className="h-32 animate-pulse rounded-[12px] bg-[var(--color-surface-strong)]" />
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="aspect-video animate-pulse rounded-[12px] bg-[var(--color-surface-strong)]" />
+          <div className="grid gap-3">
+            {[0, 1, 2, 3].map((item) => (
+              <div
+                key={item}
+                className="h-16 animate-pulse rounded-[10px] bg-[var(--color-surface-soft)]"
+              />
+            ))}
+          </div>
+        </div>
       </section>
     );
   }

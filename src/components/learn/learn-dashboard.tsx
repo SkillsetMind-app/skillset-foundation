@@ -58,10 +58,33 @@ export function LearnDashboard() {
   }, [user]);
 
   if (isLoading) {
+    // Skeleton mirrors the loaded shape (hero band + course row) so the layout
+    // does not jump when the enrollments arrive. Same animate-pulse blocks the
+    // rest of the app already uses; the sr-only status keeps the old copy.
     return (
-      <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.dashboard.loading")}</p>
+      <div aria-busy="true" aria-live="polite" className="grid gap-8">
+        <p className="sr-only" role="status">
+          {t("learn.dashboard.loading")}
+        </p>
+        <div className="dash-card dash-card--strong grid gap-6 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="grid gap-4">
+            <div className="h-3 w-32 animate-pulse rounded bg-[var(--color-surface-strong)]" />
+            <div className="h-10 w-3/4 animate-pulse rounded bg-[var(--color-surface-strong)]" />
+            <div className="h-3 w-full max-w-xl animate-pulse rounded bg-[var(--color-surface-soft)]" />
+            <div className="flex gap-3">
+              <div className="h-11 w-40 animate-pulse rounded-[10px] bg-[var(--color-surface-strong)]" />
+              <div className="h-11 w-40 animate-pulse rounded-[10px] bg-[var(--color-surface-soft)]" />
+            </div>
+          </div>
+          <div className="h-44 animate-pulse rounded-[14px] bg-[var(--color-surface-soft)]" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((item) => (
+            <div
+              key={item}
+              className="h-56 animate-pulse rounded-[14px] border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]"
+            />
+          ))}
         </div>
       </div>
     );
