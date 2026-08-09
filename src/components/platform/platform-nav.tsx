@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Award,
   BarChart3,
+  Bell,
   Bookmark,
   BookOpen,
   Calendar,
@@ -43,6 +44,7 @@ import { hasPermission, type PermissionSubject } from "@/lib/permissions";
 const iconMap: Record<string, LucideIcon> = {
   Award,
   BarChart3,
+  Bell,
   Bookmark,
   BookOpen,
   Calendar,

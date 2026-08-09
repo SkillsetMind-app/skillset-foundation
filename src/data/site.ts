@@ -75,6 +75,8 @@ export const platformNav: PlatformNavItem[] = [
     permission: "community.read",
   },
   {
+    // Title source only — see the note above the Account block. The wishlist
+    // link lives in the account dropdown, not the learner sidebar.
     href: "/learn/wishlist",
     labelKey: "platform.nav.wishlist",
     icon: "Bookmark",
@@ -285,6 +287,11 @@ export const platformNav: PlatformNavItem[] = [
     contexts: ["learner", "teacher", "ops"],
     section: "Discover",
   },
+  // `contexts: []` is not a disabled entry — it means "title source only".
+  // platform-nav filters by context, so these never render in a sidebar, but
+  // platform-header's getPageLabel scans the whole list to translate the page
+  // title. Their links live in the account dropdown instead. Removing them
+  // would degrade these headers to a slugified URL segment in every language.
   {
     href: "/account",
     labelKey: "platform.nav.settings",
@@ -311,6 +318,17 @@ export const platformNav: PlatformNavItem[] = [
     href: "/account/billing",
     labelKey: "platform.nav.billing",
     icon: "Receipt",
+    contexts: [],
+    section: "Account",
+  },
+  {
+    // The only /account subpage that renders its own PlatformShell instead of
+    // redirecting into a tab, so it was the only one whose header fell back to
+    // the slugified URL segment — untranslated in Spanish. Reuses the existing
+    // notifications-panel title rather than minting a duplicate key.
+    href: "/account/notifications",
+    labelKey: "platform.notifications.title",
+    icon: "Bell",
     contexts: [],
     section: "Account",
   },
