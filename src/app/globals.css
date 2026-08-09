@@ -4478,6 +4478,10 @@ body:has([aria-label="Course categories"])
 
 .member-lesson-card__complete {
   width: 100%;
+  /* 44px is the WCAG 2.5.8 / Apple HIG minimum for a finger. 7px padding on an
+     11px font rendered ~29px tall, which is a miss on a phone. Keep the compact
+     type, grow the box. */
+  min-height: 44px;
   padding: 7px 10px;
   font-size: 11px;
 }
@@ -6669,8 +6673,9 @@ button:hover > .dash-card,
   right: 0.85rem;
   z-index: 3;
   display: grid;
-  width: 2.4rem;
-  height: 2.4rem;
+  /* 2.4rem = 38.4px, under the 44px finger minimum. */
+  width: 2.75rem;
+  height: 2.75rem;
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 999px;

@@ -83,9 +83,11 @@ export function subscribeToLessonContent(
 
 /**
  * One-shot read of a single lesson's gated content. Used by the public
- * free-preview surface, where the RLS `free_preview_lesson_id` branch allows an
- * unauthenticated visitor to read exactly the preview lesson's row. Returns null
- * when the row is absent so the caller falls back to inline.
+ * free-preview surface. There is no anonymous branch in course_lesson_content's
+ * RLS policy — admin, owner, or an active/completed enrollment — so a signed-out
+ * visitor gets null here and the caller falls back to the inline field on the
+ * course doc. That fallback is what actually serves the free preview; this read
+ * only wins for someone who is already entitled.
  */
 export async function getLessonContentDoc(
   courseId: string,

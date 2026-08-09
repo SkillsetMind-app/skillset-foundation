@@ -503,3 +503,89 @@ rollback**. Fica como P2 agendado, não como pendência esquecida.
 | ㉕ | Consolidar as 166 políticas permissivas duplicadas | Nenhum agora; vira custo real quando as tabelas encherem |
 
 Nenhuma dessas quatro sangra. Todas podem esperar ele acordar.
+
+---
+
+## 12. A4 — Auditoria cruzada: eu × Codex (2026-08-09)
+
+Rodei a auditoria de design duas vezes, por dois motores independentes: eu, lendo
+o código de dentro para fora, e o Codex (`codex exec`), olhando layout e fluxo. O
+valor não está em nenhum dos dois relatórios sozinho — está em **onde os dois
+bateram** (aí a confiança sobe) e **onde só um viu** (aí um dos dois estava
+distraído).
+
+### 12.1 Os dois viram — confiança alta, entra no plano sem discussão
+
+| # | Achado | Onde |
+|---|--------|------|
+| 1 | `/learn` não tem catálogo de curso que o aluno **não** comprou, nem cadeado | `learn-dashboard.tsx` |
+| 2 | Não existe botão de aula anterior / próxima aula em lugar nenhum | `enrolled-course-workspace.tsx` |
+| 3 | Botão "marcar como concluída" duplicado na mesma tela | `:611`, `:895`, `:1407` |
+| 4 | Alvo de toque abaixo de 44px no celular | `globals.css:4478` — **os dois citaram a mesma linha** |
+| 5 | Dois editores de curso concorrentes na área do professor | `course-builder-studio` × `teacher-course-studio` |
+| 6 | "Revisar e publicar" é botão terciário, abaixo de "Salvar rascunho" | `teacher-course-studio.tsx:405` |
+| 7 | Design sem sistema: 5 famílias de botão, 14 tipos de card, 10 tamanhos de título | global |
+
+O item 4 é o mais forte do relatório inteiro: duas auditorias cegas uma à outra
+apontaram o mesmo número de linha. **Já corrigido nesta sessão.**
+
+### 12.2 Só o Codex viu — vale adotar
+
+| Achado | Por que importa |
+|--------|-----------------|
+| Curso de demonstração leva o aluno logado de volta para `/courses` em vez do checkout | É o item ⑨ dele, com a causa técnica encontrada |
+| A área do aluno usa **duas cascas diferentes**: `PlatformShell` em `/learn`, `MemberAreaShell` na aula, e `PlatformShell` de novo na comunidade | O aluno "troca de site" no meio da navegação |
+| `LearningPathsRows` devolve `null` e engole erro de carregamento | **O componente de fileira estilo Netflix já existe** — o sub-plano 10 tem base pronta, não parte do zero |
+| Estado de carregamento é texto puro, não esqueleto | Diferença visível entre "profissional" e "protótipo" |
+| Campos do construtor sem rótulo e com foco fraco | Acessibilidade |
+
+### 12.3 Só eu vi — o Codex passou batido
+
+| Achado | Por que ele não viu |
+|--------|--------------------|
+| **Não existe lista de alunos/compradores** para o professor | Ele listou `/teach/members` como "funcional" duas vezes, com descrições diferentes — não abriu o arquivo |
+| **Não existe nenhuma tela de reembolso** | Ele viu o redirecionamento e chamou de "sobra de código", não de buraco de produto |
+| Vendas travadas em 50 registros, sem paginação nem exportação | `sale-list.tsx:104` |
+| Sino de notificação some abaixo de 640px | `platform-header.tsx:52` |
+| 34 lugares pintam erro na cor dourada da marca em vez de `--color-danger` | Erro que não parece erro |
+| Não existe modal de detalhe do curso em lugar nenhum | É requisito direto do sub-plano 10 |
+| Progresso é um booleano por aula — não dá para retomar no minuto certo | |
+
+### 12.4 Onde o Codex errou — e por que valeu conferir
+
+A seção 10 do relatório dele ("sobras da remoção de afiliado/co-produção")
+**errou nos quatro itens**. Conferi um por um antes de mexer em qualquer coisa:
+
+| Alegação do Codex | Realidade |
+|-------------------|-----------|
+| `payment-split` ainda é importado em dois arquivos | **Falso.** `src/domain/payment-split.ts` não existe mais. As duas linhas citadas importam `DEFAULT_PLATFORM_FEE_BPS`, que é a **nossa** taxa de plataforma — coisa completamente diferente de rateio |
+| Comentário em `site.ts:233` é sobra | É documentação deliberada do *porquê* da remoção |
+| Comentário em `course-commerce-panels.tsx:35` é sobra | Idem |
+| `/teach/refunds` ainda aparece no menu | **Falso.** `site.ts:201` diz explicitamente que não há entrada no menu; a rota sobrevive só para link antigo salvo |
+
+Se eu tivesse agido pela primeira alegação, teria "consertado" código que está
+certo e mexido na regra de dinheiro — justamente a que não pode ser tocada. **A
+varredura de sobras da política de pagamento está limpa dos dois lados.** O único
+proveito real da seção 10 foi apontar para a falta de tela de reembolso, que eu
+já tinha achado sozinho.
+
+### 12.5 Achado 4.1 — sinalizado, não consertado (com motivo)
+
+`lesson-content.ts:42-46` puxa `select("*")` de todas as aulas do curso sem filtro
+de aula nem de liberação. Um aluno matriculado recebe no navegador o texto e o
+link externo de **todas** as aulas, inclusive as que o gotejamento ainda não
+abriu. O vídeo já está fechado no servidor (`65be718`); isto aqui é o texto.
+
+**Decisão: sinalizar, não refatorar agora.** O banco tem **1 curso em rascunho e
+zero publicados** — não existe aluno pagante, logo não existe exposição real
+hoje. Consertar significa mudar o contrato de uma inscrição em tempo real e
+mexer em `enrolled-course-workspace.tsx` — não é coisa de fazer às 7h da manhã
+com o dono dormindo.
+
+Duas saídas quando for a hora:
+
+- **(a) Rota de servidor por aula, reusando `getLessonUnlockState`** — recomendada.
+  Mesma função de regra que já protege o vídeo. Uma implementação, um lugar.
+- **(b) Portar a regra de gotejamento para RLS no banco** — significa escrever a
+  mesma regra de 5 estratégias uma segunda vez, em outra linguagem. É exatamente
+  a armadilha "certo em quatro lugares, diferente no quinto".
