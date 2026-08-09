@@ -14,8 +14,8 @@ import {
 } from "@/lib/payments/server/auth";
 import { getAppUrl } from "@/lib/payments/server/app-url";
 import {
+  getStripeAccountCountry,
   getStripeClient,
-  getStripePlatformAccountCountry,
 } from "@/lib/payments/server/stripe";
 import {
   courseSubscriptionInterval,
@@ -578,9 +578,11 @@ export async function POST(request: Request) {
       throw new Error(orderError.message);
     }
 
+    // The teacher's account, not ours: direct charges make THEM the merchant of
+    // record, so Stripe judges installment eligibility against their country.
     const stripeAccountCountry = course.installments_enabled
       && currency.toUpperCase() === "MXN"
-      ? await getStripePlatformAccountCountry(stripe)
+      ? await getStripeAccountCountry(stripe, connectedAccountId)
       : null;
     const installmentPlan = buildInstallmentPlan({
       amountMinor,
@@ -679,45 +681,84 @@ export async function POST(request: Request) {
       cancel_url: `${appUrl}/courses/${encodeURIComponent(courseId)}?checkout=cancelled`,
     };
 
-    const session = await stripe.checkout.sessions.create(sessionParams, {
-      idempotencyKey: `checkout_${orderId}`,
-      stripeAccount: connectedAccountId,
-    });
-    releasableCouponReservation = null;
+    // Same rollback contract as the subscription branch above: a failure after
+    // the lock is claimed must not strand it. Without this the buyer is locked
+    // out of their own retry until the claim grace expires.
+    let stripeCreateStarted = false;
+    let session: Stripe.Checkout.Session | null = null;
+    try {
+      stripeCreateStarted = true;
+      session = await stripe.checkout.sessions.create(sessionParams, {
+        idempotencyKey: `checkout_${orderId}`,
+        stripeAccount: connectedAccountId,
+      });
 
-    const { error: orderSessionError } = await admin
-      .from("orders")
-      .update({ checkout_session_id: session.id, updated_at: new Date().toISOString() })
-      .eq("id", orderId);
-    if (orderSessionError) {
-      throw new Error(orderSessionError.message);
-    }
+      const { error: orderSessionError } = await admin
+        .from("orders")
+        .update({ checkout_session_id: session.id, updated_at: new Date().toISOString() })
+        .eq("id", orderId);
+      if (orderSessionError) {
+        throw new Error(orderSessionError.message);
+      }
 
-    if (!session.url) {
-      throw new Error("Stripe did not return a Checkout URL.");
-    }
+      if (!session.url) {
+        throw new Error("Stripe did not return a Checkout URL.");
+      }
 
-    // Publish the live session on the lock so a concurrent sibling reuses THIS
-    // url instead of opening a second charge. [B3]
-    const { data: publishedLock, error: publishLockError } = await admin
-      .from("checkout_locks")
-      .update({
-        checkout_url: session.url,
-        order_id: orderId,
-        checkout_session_id: session.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("lock_key", lockKey)
-      .select("lock_key")
-      .maybeSingle();
-    if (publishLockError) {
-      throw new Error(publishLockError.message);
-    }
-    if (!publishedLock) {
-      throw new Error("Checkout lock disappeared before the session was published.");
-    }
+      // Publish the live session on the lock so a concurrent sibling reuses THIS
+      // url instead of opening a second charge. [B3]
+      const { data: publishedLock, error: publishLockError } = await admin
+        .from("checkout_locks")
+        .update({
+          checkout_url: session.url,
+          order_id: orderId,
+          checkout_session_id: session.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("lock_key", lockKey)
+        .select("lock_key")
+        .maybeSingle();
+      if (publishLockError) {
+        throw new Error(publishLockError.message);
+      }
+      if (!publishedLock) {
+        throw new Error("Checkout lock disappeared before the session was published.");
+      }
 
-    return NextResponse.json({ url: session.url });
+      return NextResponse.json({ url: session.url });
+    } catch (error) {
+      let lockCanBeReleased = !stripeCreateStarted;
+      if (session?.id) {
+        try {
+          // Session lives on the connected account — expiring it without the
+          // account header 404s and would strand the lock.
+          await stripe.checkout.sessions.expire(
+            session.id,
+            {},
+            { stripeAccount: connectedAccountId },
+          );
+          lockCanBeReleased = true;
+        } catch (expireError) {
+          lockCanBeReleased = false;
+          console.error("[checkout/one-time-expire]", expireError);
+        }
+      }
+      if (lockCanBeReleased) {
+        const { error: releaseLockError } = await admin
+          .from("checkout_locks")
+          .delete()
+          .eq("lock_key", lockKey)
+          .eq("order_id", orderId);
+        if (releaseLockError) {
+          console.error("[checkout/one-time-lock-release]", releaseLockError.message);
+        }
+      } else {
+        // The session may still be payable, so the coupon redemption stays
+        // held. Null here means "skip the release in the outer catch".
+        releasableCouponReservation = null;
+      }
+      throw error;
+    }
   } catch (error) {
     if (releasableCouponReservation) {
       const { error: releaseError } = await releasableCouponReservation.admin

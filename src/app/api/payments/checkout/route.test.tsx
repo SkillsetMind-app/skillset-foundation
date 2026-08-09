@@ -31,7 +31,7 @@ vi.mock("@/lib/payments/server/app-url", () => ({
 vi.mock("@/lib/payments/server/stripe", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/payments/server/stripe")>()),
   getStripeClient: mocks.getStripe,
-  getStripePlatformAccountCountry: vi.fn(async () => null),
+  getStripeAccountCountry: vi.fn(async () => null),
 }));
 
 vi.mock("@/lib/payments/server/stripe-helpers", () => ({
@@ -439,5 +439,32 @@ describe("course checkout subscription exclusivity", () => {
     expect(response.status).toBe(500);
     expect(mocks.expireSession).not.toHaveBeenCalled();
     expect(admin.lockDeletes).toEqual([]);
+  });
+
+  it("expires the session and frees the lock when the one-time path fails after create", async () => {
+    const admin = createAdmin({
+      lockReplies: [{ action: "claim", checkout_url: null }],
+    });
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.getCourseRow.mockResolvedValue(course("one_time"));
+    mocks.normalizePrice.mockReturnValue({
+      amountMinor: 12_000,
+      currency: "usd",
+      paymentType: "one_time",
+      source: "legacy",
+    });
+    // Session exists on the connected account but is unusable, so nobody can
+    // ever pay it — the lock must not outlive it.
+    mocks.createSession.mockResolvedValue({ id: "cs_no_url", url: null });
+
+    const response = await POST(request({ courseId: "course" }));
+
+    expect(response.status).toBe(500);
+    expect(mocks.expireSession).toHaveBeenCalledWith(
+      "cs_no_url",
+      {},
+      { stripeAccount: "acct_teacher" },
+    );
+    expect(admin.lockDeletes).toEqual(["checkout_locks"]);
   });
 });

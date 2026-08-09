@@ -63,8 +63,15 @@ CREATE TABLE IF NOT EXISTS public.product_prices (
 ## Non-goals this slice
 
 - Full Hotmart multi-offer matrix
-- Co-producer splits per offer
-- Tax/affiliate per price
+- Tax per price
+
+## Revoked, not deferred
+
+- ~~Co-producer splits per offer~~ and ~~affiliate per price~~. Both pay a third
+  party out of the buyer's payment, which requires the platform to receive the
+  money. Under Stripe Connect direct charges the buyer pays the creator's
+  connected account and SkillsetMind never takes possession, so there is no
+  balance to split. These do not return in a later slice.
 
 ## Done when
 

@@ -35,7 +35,9 @@ export class StripeConfigError extends Error {
 }
 
 let cached: { key: string; client: Stripe } | null = null;
-let cachedPlatformAccountCountry: string | null = null;
+// ponytail: unbounded Map is fine — one entry per connected account that ever
+// sells with installments on, and the process is short-lived on Vercel.
+const cachedAccountCountry = new Map<string, string>();
 
 /** Whether a usable Stripe secret is configured (drives dormant-state gates). */
 export function isStripeConfigured(): boolean {
@@ -59,7 +61,7 @@ export function getStripeClient(): Stripe {
   }
 
   if (cached?.key !== result.key) {
-    cachedPlatformAccountCountry = null;
+    cachedAccountCountry.clear();
     cached = {
       key: result.key,
       client: new Stripe(result.key),
@@ -69,17 +71,32 @@ export function getStripeClient(): Stripe {
   return cached.client;
 }
 
-export async function getStripePlatformAccountCountry(
+/**
+ * Two-letter country of the Stripe account a charge will be created on.
+ *
+ * Pass the TEACHER's connected account id. Under direct charges the charge is
+ * created on their account, so their country — not the platform's — is what
+ * Stripe checks for card-installment eligibility. Reading the platform account
+ * here would answer for the wrong merchant: a Mexican teacher would be denied
+ * installments because SkillsetMind is a US account, and a US teacher under a
+ * Mexican platform would be offered installments Stripe then rejects.
+ *
+ * Returns null when Stripe cannot be reached — callers treat that as "not
+ * eligible", which fails closed.
+ */
+export async function getStripeAccountCountry(
   stripe: Stripe,
+  accountId: string,
 ): Promise<string | null> {
-  if (cachedPlatformAccountCountry) {
-    return cachedPlatformAccountCountry;
+  const cachedCountry = cachedAccountCountry.get(accountId);
+  if (cachedCountry) {
+    return cachedCountry;
   }
 
   try {
-    const account = await stripe.accounts.retrieve(null);
+    const account = await stripe.accounts.retrieve(accountId);
     const country = account.country?.trim().toUpperCase() || null;
-    if (country) cachedPlatformAccountCountry = country;
+    if (country) cachedAccountCountry.set(accountId, country);
     return country;
   } catch {
     return null;
