@@ -840,3 +840,40 @@ sabendo.
 **Sobra da fila do §12.8:** item 4 — comentários por aula e feed de comunidade. Já
 existem `CourseCommunityFeed` e `CourseMessagesPanel` ligados na sala de aula; o
 trabalho é **conferir paridade**, não reconstruir.
+
+---
+
+### §12.12 — Catálogo com cadeado e popup de desbloqueio (`122d986`)
+
+**Checagem de conflito primeiro, e valeu de novo: metade já existia.** Antes de escrever
+uma linha de "catálogo estilo Netflix", li `src/components/learn/learning-paths-rows.tsx`.
+O comentário do próprio arquivo diz "Netflix-style curated rows in the members area". Ele
+já renderiza fileiras horizontais de cursos, com capa, número da etapa e barra de progresso
+da trilha inteira. Não era pra construir — era pra completar.
+
+**Os três buracos reais contra o que o senhor descreveu:**
+
+| O que o senhor pediu | O que o código fazia | O que passou a fazer |
+|---|---|---|
+| "ele vai ver ali como um cadeado fechado" | mesmo ícone de play em tudo | badge de cadeado + capa escurecida quando não há matrícula |
+| "abre um popup... mas não abre uma nova janela, né?" | `<Link>` para `/courses/[id]`, perdia o painel | popup por cima do painel; o painel continua atrás |
+| "se não tiver imagem de capa... tipo um PLACE HOLDER" | logo da marca esticada num quadro 16/10 | placeholder desenhado, gradiente + inicial do curso |
+
+**O popup não faz checkout, e isso é de propósito.** A compra de verdade (ofertas, cupom,
+parcelamento, Stripe) mora em `creator-course-detail.tsx`, com ~800 linhas de regra. Duplicar
+aquilo dentro de um popup seria criar uma segunda fonte da verdade sobre preço — o tipo de
+coisa que diverge em três meses e cobra errado de alguém. O popup mostra capa, categoria,
+título, resumo, o motivo do bloqueio e o preço; o botão entrega para `/courses/[id]`, que é
+quem sabe cobrar. Exatamente o fluxo que o senhor descreveu: clicou no cadeado → abre a
+janelinha → "quero comprar" → vai pro checkout.
+
+**Faxina junto:** `learn.paths.notEnrolled` e `learn.paths.viewCourse` ficaram órfãs e foram
+removidas (en + es), substituídas por `locked` / `unlock` / `unlockNote` / `close`.
+
+**Gate:** 75 arquivos de teste / 424 testes (era 74/420), `tsc` limpo, `eslint` limpo.
+
+**O que ficou de fora, e por quê.** Hoje, se o professor não curou nenhuma trilha, o
+componente inteiro não renderiza — o aluno não vê catálogo nenhum. Consertar isso não é
+ajuste de layout, é decisão de produto: **quais** cursos apareceriam ali? Todos os
+publicados da plataforma? Só os do mesmo professor? Isso muda o que o aluno enxerga e
+precisa da sua palavra — está na lista de bloqueios como item ㉗.
