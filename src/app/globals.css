@@ -6561,6 +6561,20 @@ button:hover > .dash-card,
   gap: 1.4rem;
 }
 
+/* Went straight from 1 column to 3 at 1024px, so every tablet and large phone
+   in landscape showed one card per row with half the screen empty. Two columns
+   from 640px closes that gap. The --list variant stays single-column at every
+   width — that is the whole point of the variant. */
+@media (min-width: 640px) {
+  .marketplace-course-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .marketplace-course-grid--list {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (min-width: 1024px) {
   .marketplace-course-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

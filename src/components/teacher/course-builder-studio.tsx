@@ -2059,6 +2059,7 @@ export function CourseBuilderStudio() {
                   value={lessonModuleId}
                   onChange={(event) => setLessonModuleId(event.target.value)}
                   disabled={!isEditable || modules.length === 0}
+                  aria-label="Module for this lesson"
                   className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 >
                   <option value="">Choose module</option>
@@ -2072,6 +2073,7 @@ export function CourseBuilderStudio() {
                   value={lessonType}
                   onChange={(event) => setLessonType(event.target.value as LessonType)}
                   disabled={!isEditable}
+                  aria-label="Lesson type"
                   className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 >
                   {lessonTypes.map((item) => (
