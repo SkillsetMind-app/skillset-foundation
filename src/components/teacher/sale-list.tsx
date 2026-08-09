@@ -31,11 +31,18 @@ function toMillis(value: unknown): number {
   return toDate(value)?.getTime() ?? 0;
 }
 
+const PAGE = 50;
+
 export function SaleList() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  // subscribeToTeacherOrders already pages through every order, so the client
+  // holds the full set and sale 51+ was unreachable purely because the render
+  // sliced at 50. Growing a window costs one number; a real paginated query
+  // would cost a round trip we do not need.
+  const [visibleCount, setVisibleCount] = useState(PAGE);
 
   useEffect(() => {
     if (!user) {
@@ -101,14 +108,17 @@ export function SaleList() {
   const sortedOrders = [...orders].sort(
     (a, b) => toMillis(b.createdAt) - toMillis(a.createdAt),
   );
-  const visibleOrders = sortedOrders.slice(0, 50);
+  const visibleOrders = sortedOrders.slice(0, visibleCount);
+  const hiddenCount = sortedOrders.length - visibleOrders.length;
 
   return (
     <section className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-[var(--color-ink-soft)]">
-          {orders.length} {orders.length === 1 ? "order" : "orders"} (most
-          recent 50)
+          {orders.length} {orders.length === 1 ? "order" : "orders"}
+          {hiddenCount > 0
+            ? ` (showing the most recent ${visibleOrders.length})`
+            : null}
         </p>
         <Link
           href="/account/payments"
@@ -142,6 +152,15 @@ export function SaleList() {
           </li>
         ))}
       </ul>
+      {hiddenCount > 0 ? (
+        <button
+          type="button"
+          onClick={() => setVisibleCount((count) => count + PAGE)}
+          className="button-outline justify-self-start px-4 py-2.5 text-sm"
+        >
+          Show {Math.min(hiddenCount, PAGE)} more
+        </button>
+      ) : null}
     </section>
   );
 }
