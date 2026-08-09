@@ -43,7 +43,7 @@ import { CourseAssetUploader } from "@/components/teacher/course-asset-uploader"
 import { CourseCategorySelect } from "@/components/teacher/course-category-select";
 import { LessonContentModal } from "@/components/teacher/lesson-content-modal";
 import type { DripStrategy } from "@/domain/drip-policy";
-import { DEFAULT_PLATFORM_FEE_BPS } from "@/domain/payment-split";
+import { DEFAULT_PLATFORM_FEE_BPS } from "@/lib/payments/rules";
 import type {
   LessonType,
   MembersTheme,
@@ -2015,6 +2015,7 @@ export function CourseBuilderStudio() {
                 value={moduleTitle}
                 onChange={(event) => setModuleTitle(event.target.value)}
                 disabled={!isEditable}
+                aria-label="Module title"
                 placeholder="Example: Foundations"
                 className="min-w-0 flex-1 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               />
@@ -2023,6 +2024,7 @@ export function CourseBuilderStudio() {
                 onChange={(event) => setModuleSummary(event.target.value)}
                 disabled={!isEditable}
                 rows={2}
+                aria-label="Module description"
                 placeholder="Optional module description. Example: Set up the concepts students need before the practical lessons."
                 className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               />
@@ -2083,6 +2085,7 @@ export function CourseBuilderStudio() {
                 value={lessonTitle}
                 onChange={(event) => setLessonTitle(event.target.value)}
                 disabled={!isEditable}
+                aria-label="Lesson title"
                 placeholder="Lesson title"
                 className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               />
@@ -2092,6 +2095,7 @@ export function CourseBuilderStudio() {
                   onChange={(event) => setLessonDurationMinutes(event.target.value)}
                   disabled={!isEditable}
                   inputMode="numeric"
+                  aria-label="Lesson duration in minutes"
                   placeholder="Minutes"
                   className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 />
@@ -2100,6 +2104,7 @@ export function CourseBuilderStudio() {
                   onChange={(event) => setLessonDripDelayDays(event.target.value)}
                   disabled={!isEditable}
                   inputMode="numeric"
+                  aria-label="Drip delay in days"
                   placeholder="Drip delay days"
                   className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 />
@@ -2107,6 +2112,7 @@ export function CourseBuilderStudio() {
                   value={lessonExternalUrl}
                   onChange={(event) => setLessonExternalUrl(event.target.value)}
                   disabled={!isEditable}
+                  aria-label="Lesson external link or replay URL"
                   placeholder="Optional external link or replay URL"
                   className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 />
@@ -2116,6 +2122,7 @@ export function CourseBuilderStudio() {
                 onChange={(event) => setLessonDescription(event.target.value)}
                 disabled={!isEditable}
                 rows={3}
+                aria-label="Lesson note or outcome"
                 placeholder="Optional lesson note or outcome"
                 className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               />
@@ -2124,6 +2131,7 @@ export function CourseBuilderStudio() {
                 onChange={(event) => setLessonContentText(event.target.value)}
                 disabled={!isEditable}
                 rows={4}
+                aria-label="Lesson text content"
                 placeholder="Optional text content, instructions, assignment prompt, or lesson outline."
                 className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               />
@@ -2192,6 +2200,7 @@ export function CourseBuilderStudio() {
                           }
                           disabled={!isEditable}
                           rows={2}
+                          aria-label={`Module ${moduleIndex + 1} description`}
                           placeholder="Optional module description"
                           className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                         />
@@ -2332,6 +2341,7 @@ export function CourseBuilderStudio() {
                               }
                               disabled={!isEditable}
                               rows={2}
+                              aria-label={`Lesson ${lessonIndex + 1} note or outcome`}
                               placeholder="Lesson note or learner outcome"
                               className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                             />
@@ -2344,6 +2354,7 @@ export function CourseBuilderStudio() {
                               }
                               disabled={!isEditable}
                               rows={3}
+                              aria-label={`Lesson ${lessonIndex + 1} text content`}
                               placeholder="Text content, assignment prompt, or lesson outline"
                               className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                             />
@@ -2355,6 +2366,7 @@ export function CourseBuilderStudio() {
                                 })
                               }
                               disabled={!isEditable}
+                              aria-label={`Lesson ${lessonIndex + 1} external link`}
                               placeholder="Optional external link, live replay, or embed URL"
                               className="rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                             />
