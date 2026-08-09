@@ -193,14 +193,13 @@ export const platformNav: PlatformNavItem[] = [
     section: "Sales",
     permission: "teacherStudio.access",
   },
-  {
-    href: "/teach/refunds",
-    labelKey: "platform.nav.reviewsRefunds",
-    icon: "RefreshCw",
-    contexts: ["teacher"],
-    section: "Sales",
-    permission: "teacherStudio.access",
-  },
+  // No "Reviews & refunds" entry: /teach/refunds is a bare redirect to
+  // /account/payments, so the menu item promised a screen that does not exist
+  // and dropped the creator on Earnings with no refund surface in sight. The
+  // route itself stays as a redirect for old bookmarks. Under direct charges a
+  // refund debits the creator's OWN Stripe balance, which is more reason to
+  // build them a real refund screen, not less — until then the nav says nothing
+  // rather than something false.
   // Earnings — a record of what Stripe already paid into the creator's own
   // connected account. Called "Wallet" until the pivot to direct charges, which
   // is a word for a balance the platform holds. We hold nothing, so the nav no

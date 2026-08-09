@@ -153,7 +153,8 @@ export function AdvisorSidebar() {
     [],
   );
 
-  // Hidden until the backend is wired (NEXT_PUBLIC_TEACHER_ADVISOR_ENABLED) and
+  // Hidden until the model keys are set in production
+  // (NEXT_PUBLIC_TEACHER_ADVISOR_ENABLED — see src/lib/advisor/config.ts) and
   // only for teachers. The layout renders outside each page's ProtectedSurface,
   // so we repeat the teacherStudio.access check here rather than assume the tree
   // gated it — a signed-in non-teacher landing on /teach shouldn't see it.

@@ -29,8 +29,6 @@ export function rowToPayoutLedgerEntry(row: PayoutLedgerRow): PayoutLedgerEntry 
     platformFeeBps: row.platform_fee_bps ?? undefined,
     status: row.status as PayoutLedgerStatus,
     releaseAt: row.release_at ?? undefined,
-    // No released_at column — the actual-release timestamp isn't tracked yet.
-    releasedAt: undefined,
     transferId: row.transfer_id,
     refundedAmountMinor: row.refunded_amount_minor,
     createdAt: row.created_at,

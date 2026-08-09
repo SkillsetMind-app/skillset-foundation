@@ -19,8 +19,9 @@ export default function TeacherCouponsPage() {
           </h3>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
             Open a course, choose Manage, and head to the Coupons section to
-            create discount codes for it. Checkout redemption switches on with
-            the discount engine, so codes you prepare today go live with it.
+            create discount codes for it. Codes are live at checkout: buyers
+            enter them on your course page and the discount applies before
+            payment.
           </p>
           <div className="mt-6">
             <Link href="/teach/builder" className="button-solid px-4 py-2.5 text-sm">
