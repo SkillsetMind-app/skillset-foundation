@@ -424,6 +424,14 @@ export function EnrolledCourseWorkspace({
   const selectedLessonNumber = selectedLesson
     ? allLessons.findIndex((lesson) => lesson.id === selectedLesson.id) + 1
     : 0;
+  // Sequential navigation. selectedLessonNumber is already the 1-based position
+  // in the flattened curriculum, so the neighbours are just its edges. Locked
+  // lessons stay reachable, exactly like clicking one in the sidebar strip: the
+  // panel is what shows the lock, not the navigation.
+  const previousInOrder =
+    selectedLessonNumber > 1 ? allLessons[selectedLessonNumber - 2] : null;
+  const nextInOrder =
+    selectedLessonNumber > 0 ? allLessons[selectedLessonNumber] ?? null : null;
   // Members-area hero cover: the teacher's chosen members_cover CourseAsset
   // (resolved to a protected object URL inside the hero band). Only available
   // once the course assets are streamed (enableFirestoreAssets); otherwise the
@@ -646,6 +654,39 @@ export function EnrolledCourseWorkspace({
               )
             }
           />
+        ) : null}
+        {selectedLesson && (previousInOrder || nextInOrder) ? (
+          <nav
+            aria-label="Lesson navigation"
+            className="mt-5 flex flex-wrap items-center justify-between gap-3"
+          >
+            {previousInOrder ? (
+              <button
+                type="button"
+                onClick={() => setSelectedLessonId(previousInOrder.id)}
+                aria-label={`Previous lesson: ${previousInOrder.title}`}
+                className="button-outline max-w-full px-4 py-2.5 text-sm sm:max-w-[46%]"
+              >
+                <span className="block truncate">
+                  &larr; {previousInOrder.title}
+                </span>
+              </button>
+            ) : (
+              <span aria-hidden />
+            )}
+            {nextInOrder ? (
+              <button
+                type="button"
+                onClick={() => setSelectedLessonId(nextInOrder.id)}
+                aria-label={`Next lesson: ${nextInOrder.title}`}
+                className="button-outline ml-auto max-w-full px-4 py-2.5 text-sm sm:max-w-[46%]"
+              >
+                <span className="block truncate">
+                  {nextInOrder.title} &rarr;
+                </span>
+              </button>
+            ) : null}
+          </nav>
         ) : null}
         </section>
 
