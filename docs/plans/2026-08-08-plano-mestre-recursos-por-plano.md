@@ -550,6 +550,36 @@ apontaram o mesmo número de linha. **Já corrigido nesta sessão.**
 | 34 lugares pintam erro na cor dourada da marca em vez de `--color-danger` | Erro que não parece erro |
 | Não existe modal de detalhe do curso em lugar nenhum | É requisito direto do sub-plano 10 |
 | Progresso é um booleano por aula — não dá para retomar no minuto certo | |
+| **Curso real não tem URL legível** — ver 12.3.1 | Nenhum dos dois auditores tinha olhado a cadeia slug→id |
+
+#### 12.3.1 Curso real não tem URL legível (achado novo, 2026-08-09)
+
+Saiu de uma investigação que começou errada: suspeitei que os links do
+marketplace estivessem quebrados, porque a vitrine linka por `slug` e o
+resolvedor de `/courses/[slug]` busca por `id`. Fui ler a cadeia inteira antes
+de "consertar" — e o bug não existe:
+
+- `published-courses.ts:244` e `:289` fazem `slug: course.id`.
+- `TeacherCourse` **não tem coluna slug**. O conversor apenas apelida.
+- Logo `/courses/{slug}` e `/courses/{id}` são a mesma coisa. Todo link resolve.
+
+Se eu tivesse "consertado", teria quebrado código que funciona. É a segunda vez
+nesta sessão que ler a cadeia toda evitou um estrago (a primeira foi o
+`payment-split`, em 12.4).
+
+**O achado real que apareceu no caminho:** como slug É o id, a página de um
+curso publicado mora em `/courses/a3f9b2c1-4e5d-...` (UUID). Na Hotmart o
+professor recebe um endereço bonito. Isso é exatamente a dor de "domínio" que o
+Patrick levantou — o professor não tem um link que dê para falar no telefone ou
+imprimir num flyer.
+
+| Opção | O que envolve | Custo |
+|-------|---------------|-------|
+| A — coluna `slug` em `courses`, única, gerada do título na publicação | migração + resolver aceitando slug OU id (retrocompatível) + campo editável no estúdio | Médio. Recomendada. |
+| B — deixar como está | zero | Cobra caro depois: link feio é o que o professor divulga |
+
+Depende de decisão dele (é mudança de banco), então **fica no plano, não
+executo agora**.
 
 ### 12.4 Onde o Codex errou — e por que valeu conferir
 
