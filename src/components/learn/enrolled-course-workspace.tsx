@@ -21,6 +21,7 @@ import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import { CourseCommunityFeed } from "@/components/learn/course-community-feed";
 import { CourseMessagesPanel } from "@/components/learn/course-messages-panel";
 import { CourseReviewPanel } from "@/components/learn/course-review-panel";
+import { LessonListOverlay } from "@/components/learn/lesson-list-overlay";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { CourseSubscriptionCard } from "@/components/learn/course-subscription-card";
 import { WatermarkedVideoPlayer } from "@/components/learn/watermarked-video-player";
@@ -106,6 +107,7 @@ export function EnrolledCourseWorkspace({
   });
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [lessonListOpen, setLessonListOpen] = useState(false);
   const [assetsState, setAssetsState] = useState<{
     assets: CourseAsset[];
     key: string | null;
@@ -676,7 +678,7 @@ export function EnrolledCourseWorkspace({
             }
           />
         ) : null}
-        {selectedLesson && (previousInOrder || nextInOrder) ? (
+        {selectedLesson ? (
           <nav
             aria-label="Lesson navigation"
             className="mt-5 flex flex-wrap items-center justify-between gap-3"
@@ -686,7 +688,7 @@ export function EnrolledCourseWorkspace({
                 type="button"
                 onClick={() => setSelectedLessonId(previousInOrder.id)}
                 aria-label={`Previous lesson: ${previousInOrder.title}`}
-                className="button-outline max-w-full px-4 py-2.5 text-sm sm:max-w-[46%]"
+                className="button-outline max-w-full px-4 py-2.5 text-sm sm:max-w-[38%]"
               >
                 <span className="block truncate">
                   &larr; {previousInOrder.title}
@@ -695,18 +697,27 @@ export function EnrolledCourseWorkspace({
             ) : (
               <span aria-hidden />
             )}
+            <button
+              type="button"
+              onClick={() => setLessonListOpen(true)}
+              className="button-outline order-last w-full px-4 py-2.5 text-sm sm:order-none sm:w-auto"
+            >
+              All lessons ({totalLessonCount})
+            </button>
             {nextInOrder ? (
               <button
                 type="button"
                 onClick={() => setSelectedLessonId(nextInOrder.id)}
                 aria-label={`Next lesson: ${nextInOrder.title}`}
-                className="button-outline ml-auto max-w-full px-4 py-2.5 text-sm sm:max-w-[46%]"
+                className="button-outline max-w-full px-4 py-2.5 text-sm sm:max-w-[38%]"
               >
                 <span className="block truncate">
                   {nextInOrder.title} &rarr;
                 </span>
               </button>
-            ) : null}
+            ) : (
+              <span aria-hidden />
+            )}
           </nav>
         ) : null}
         </section>
@@ -990,6 +1001,17 @@ export function EnrolledCourseWorkspace({
         progressPercent={progressPercent}
         previewMode={previewMode}
       />
+
+      {lessonListOpen ? (
+        <LessonListOverlay
+          modules={course.modules}
+          selectedLessonId={selectedLesson?.id ?? null}
+          completedLessonIds={completedLessonIds}
+          unlockStateById={lessonUnlockStateById}
+          onSelect={setSelectedLessonId}
+          onClose={() => setLessonListOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
