@@ -799,6 +799,7 @@ p {
 .button-outline,
 .button-accent {
   display: inline-flex;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
@@ -3933,7 +3934,7 @@ body:has([aria-label="Course categories"])
 
 .member-tool-button {
   display: inline-flex;
-  min-height: 36px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -4806,7 +4807,7 @@ body:has([aria-label="Course categories"])
   box-shadow: none;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 767.98px) {
   .member-classroom[data-members-theme] {
     border-radius: 14px;
   }
@@ -6184,7 +6185,8 @@ button:hover > .dash-card,
 }
 .members-hero__more {
   margin-top: 8px;
-  padding: 0;
+  margin-left: -4px;
+  padding: 12px 4px;
   background: none;
   border: none;
   color: #fff;
@@ -6254,7 +6256,7 @@ button:hover > .dash-card,
     max-width: none;
   }
 }
-@media (max-width: 760px) {
+@media (max-width: 767.98px) {
   .members-hero__inner {
     padding: 30px 22px;
   }
@@ -6345,7 +6347,7 @@ button:hover > .dash-card,
 
 .marketplace-filter-button {
   display: inline-flex;
-  min-height: 2.45rem;
+  min-height: 2.75rem;
   align-items: center;
   gap: 0.5rem;
   border: 1px solid var(--color-line);
@@ -6483,8 +6485,8 @@ button:hover > .dash-card,
 
 .marketplace-icon-button {
   display: grid;
-  width: 2.2rem;
-  height: 2.05rem;
+  width: 2.75rem;
+  height: 2.75rem;
   place-items: center;
   border: 0;
   border-radius: 7px;
