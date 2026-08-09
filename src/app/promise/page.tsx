@@ -19,10 +19,10 @@ const promises = [
   },
   {
     number: "02",
-    title: "Feature parity across all plans",
-    body: "No add-ons. No premium tier locking certificates, drip content, or community. Every SkillsetMind feature is on every plan. The plan you pick only changes the commission rate SkillsetMind takes per sale — never what you can build.",
+    title: "No plan ever blocks you from selling",
+    body: "The selling engine is on every plan, Free included: publish courses, take checkout, drip content, run a community and live sessions, issue certificates, create unlimited coupons. Paid plans lower your commission and raise scale limits — students, video storage, featured slots, custom domains, team seats — and add branding controls like removing the SkillsetMind mark or putting your own logo on certificates. What upgrading never buys is permission to sell.",
     practice:
-      "A creator on Free and a creator on Plus get the same product surface. SkillsetMind does not tax growth with feature paywalls.",
+      "A creator on Free runs a real business here. Upgrading buys a lower rate and more room, not the right to trade.",
   },
   {
     number: "03",

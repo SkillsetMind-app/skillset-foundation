@@ -152,7 +152,7 @@ begin
   ) values (
     p_enrollment_id, p_enrollment_id, v_enrollment.user_id, v_enrollment.course_id,
     v_enrollment.course_slug, v_enrollment.course_title, v_enrollment.course_category,
-    'Skillset Verified', 'issued', v_code,
+    'SkillsetMind Verified', 'issued', v_code,
     v_full_name, v_teacher_name, v_teacher_sig, v_teacher_logo,
     v_hide_brand, v_now, v_now, v_now
   );

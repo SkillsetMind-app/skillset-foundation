@@ -28,7 +28,7 @@ export default function PricingPage() {
     <PublicPage
       eyebrow="Pricing"
       title="Pricing that lowers as you grow."
-      description="Every feature is included on every plan. The plan you pick only changes the commission SkillsetMind takes per paid sale. Stripe's processing fee is passed through to you transparently — never hidden inside the platform percentage. And on every plan the buyer is charged on your own Stripe account: the sale lands in your balance, not ours, with no platform hold and nothing for us to release."
+      description="Selling is never gated: every plan can publish, take checkout, drip, run a community, and issue certificates. Your plan changes the commission SkillsetMind takes per paid sale, your scale limits, and your branding controls. Stripe's processing fee is passed through to you transparently — never hidden inside the platform percentage. And on every plan the buyer is charged on your own Stripe account: the sale lands in your balance, not ours, with no platform hold and nothing for us to release."
     >
       {/* Quick decision hint above the cards — answers the question every
           creator actually asks: 'which plan fits me?'. Break-even numbers
