@@ -696,3 +696,75 @@ cadeado é o painel, não a navegação.
 **Ainda em aberto no player (precisa de decisão ou das telas dele):** avanço
 automático ao concluir, retomar no minuto onde parou, e a grade curricular
 completa na barra lateral.
+
+---
+
+### 12.8 Área de membros da Hotmart — referência capturada (2026-08-09)
+
+Cheguei na área de membros do "Formação Hipnose Clínica" pelo navegador interno,
+versão consumidor, desktop e mobile. O botão "Acessar conteúdo" da Hotmart chama
+`window.open`, e o navegador embutido bloqueia popup — nada abria e nada aparecia
+na aba de rede. Sobrescrevi `window.open` para capturar o destino em vez de abrir,
+e o link saiu: `hotmart.com/pt-br/club/lucasnaves/products/504463/`.
+
+**O achado mais importante não é de layout, é de arquitetura:** essa URL redireciona
+para `navesflix.lucasnaves.com.br`. A área de membros roda no **domínio do próprio
+professor**, com a logo dele no cabeçalho e **zero marca Hotmart** na tela. Isso é
+prova de campo para dois itens que já estão no plano — o sub-plano 4 (tirar a marca)
+e o domínio sem fricção — e mostra que os dois são a mesma feature vista de dois
+ângulos, não duas.
+
+**Anatomia da página do curso (desktop):**
+capa full-bleed com fade para preto · título + descrição truncada com "Mostrar mais" ·
+contador `108/108 conteúdos — Completo` · botão branco "Assistir novamente" e botão
+verde "Emitir certificado" · abas "Conteúdos" / "Sobre" · cabeçalho com hambúrguer,
+logo, busca, sino com bolinha de não-lido e avatar · orbe flutuante de IA no canto.
+
+**Currículo:** "Todos os conteúdos" com um campo `Buscar conteúdo` que filtra aula,
+não curso. Sanfona de módulos numerados, cada módulo com seu próprio "Completo" e
+chevron. Cada aula é uma linha com miniatura 16:9, selo de duração e título.
+
+**Player:** nome do módulo acima do título da aula · **marca d'água com o ID do aluno
+queimada por cima do vídeo** · controles (play, −10, +10, volume, velocidade, legenda,
+anotações, ajustes, PiP, tela cheia) · avaliação por estrelas.
+
+**A barra fixa de ação — o padrão que a gente ainda não tem:**
+`Anterior · Lista · Concluída · Próximo`, idêntica no desktop e no mobile. O commit
+`125e3e9` já entregou Anterior/Próximo; falta a **Lista** e falta unificar o
+"Concluída" dentro dessa mesma barra em vez de solto na página.
+
+**Overlay "Lista de Conteúdos":** painel sobreposto com busca própria, a grade inteira
+do curso, ícone de play na aula atual e check verde nas concluídas. É assim que a
+Hotmart resolve o problema que eu diagnostiquei no nosso código — a tira lateral só
+mostra o módulo ativo. Overlay, não uma segunda página.
+
+**Só no mobile, abaixo do player:** comentários por aula em thread (curtidas,
+respostas, suporte respondendo) e um feed de comunidade — "Publicações em alta",
+"Comunidade NavesFlix" — com contagem de reações, comentários e visualizações, e
+selo "Em alta".
+
+**Limite deliberado:** clonar *padrão de uso* (grade, cadeado, modal, barra de ação)
+é prática normal do mercado. Copiar CSS, imagem ou marca deles, não. Fica no nível
+de padrão.
+
+**Vira fila de trabalho, por ordem:**
+1. Overlay "Lista" com busca e currículo inteiro — resolve de vez a lacuna da tira lateral.
+2. Barra fixa única `Anterior · Lista · Concluída · Próximo`.
+3. Marca d'água com ID do aluno sobre o vídeo — é o miolo do sub-plano 10 (antipirataria).
+4. Comentários por aula e feed de comunidade dentro da área de membros.
+
+### 12.9 Esqueletos de carregamento (`ac634a6`)
+
+`/learn` e a sala de aula mostravam **uma linha de texto** e depois saltavam para o
+layout inteiro. O salto é o que faz parecer amador; o texto sozinho não reserva espaço.
+
+Antes de escrever, rodei a checagem de conflito: não existe componente `<Skeleton>`
+compartilhado no projeto — a casa usa blocos `animate-pulse` inline em ~12 lugares.
+Então reusei o padrão em vez de criar um componente, e copiei o tratamento de
+acessibilidade mais completo que já existia (`instructors-directory.tsx`): `aria-busy`
++ `aria-live` + a cópia antiga preservada como texto `sr-only role="status"`.
+
+Os dois esqueletos espelham a forma real (faixa de destaque, depois player + tira de
+aulas), então nada se desloca quando os dados chegam. Na sala de aula usei só tokens
+neutros de superfície de propósito: a casca real é tematizada por curso
+(`data-members-theme`), e um esqueleto tematizado brigaria com o tema.
