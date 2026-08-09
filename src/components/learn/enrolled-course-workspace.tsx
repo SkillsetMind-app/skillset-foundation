@@ -424,16 +424,6 @@ export function EnrolledCourseWorkspace({
   const selectedLessonNumber = selectedLesson
     ? allLessons.findIndex((lesson) => lesson.id === selectedLesson.id) + 1
     : 0;
-  const selectedLessonCompleted = selectedLesson
-    ? completedLessonIds.includes(selectedLesson.id)
-    : false;
-  const selectedLessonCanComplete = Boolean(
-    selectedLesson
-      && selectedLessonUnlockState?.unlocked
-      && !previewMode
-      && !isProgressLoading
-      && activeLessonId !== selectedLesson.id,
-  );
   // Members-area hero cover: the teacher's chosen members_cover CourseAsset
   // (resolved to a protected object URL inside the hero band). Only available
   // once the course assets are streamed (enableFirestoreAssets); otherwise the
@@ -608,25 +598,13 @@ export function EnrolledCourseWorkspace({
             <MessageCircle size={14} aria-hidden />
             Discussion
           </button>
-          {selectedLesson ? (
-            <button
-              type="button"
-              onClick={() =>
-                toggleLessonCompletion(selectedLesson.id, selectedLessonCompleted)
-              }
-              disabled={!selectedLessonCanComplete}
-              className="button-solid member-tool-button disabled:opacity-60"
-            >
-              {activeLessonId === selectedLesson.id
-                ? "Saving..."
-                : selectedLessonCompleted
-                  ? "Mark incomplete"
-                  : selectedLessonUnlockState?.unlocked
-                    ? "Mark complete"
-                    : "Locked"}
-              <CheckCircle2 size={14} aria-hidden />
-            </button>
-          ) : null}
+          {/* A second "Mark complete" for the SAME lesson used to sit here.
+              LessonContentPanel already renders one at the end of the lesson
+              body — both on screen at once, both firing toggleLessonCompletion
+              on selectedLesson. Every other button in this strip only scrolls
+              somewhere, so the state-changing one was the odd one out, and the
+              end-of-lesson spot is where students look for it. Kept that one:
+              it also has the richer copy ("Preview only" / "Lesson locked"). */}
           {progressPercent === 100 ? (
             <Link
               href="/learn/credentials"
