@@ -88,7 +88,11 @@ export async function POST(request: Request) {
         p_currency: currency,
         p_payment_type: paymentType,
         p_is_default: isDefault,
-        p_public_code: publicCode || null,
+        // Omitted rather than null: the function declares
+        // `p_public_code text DEFAULT NULL`, so leaving it out applies that
+        // default. The generated type renders defaulted args as optional and
+        // non-nullable, so passing null would need a cast for no behavior gain.
+        p_public_code: publicCode || undefined,
       },
     );
     if (createError) throw new Error(createError.message);
@@ -128,9 +132,7 @@ export async function GET(request: Request) {
       throw new PaymentError("Only the course owner can list offers.", 403);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db = admin as any;
-    const { data: offers, error } = await db
+    const { data: offers, error } = await admin
       .from("product_offers")
       .select("id,course_id,name,is_default,active,public_code,created_at")
       .eq("course_id", courseId)
@@ -144,7 +146,7 @@ export async function GET(request: Request) {
 
     const result = [];
     for (const offer of offers ?? []) {
-      const { data: prices } = await db
+      const { data: prices } = await admin
         .from("product_prices")
         .select("id,amount_minor,currency,payment_type,stripe_price_id,active")
         .eq("offer_id", offer.id);

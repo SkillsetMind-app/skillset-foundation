@@ -50,14 +50,6 @@ export type Database = {
         }
         Relationships: []
       }
-      // Hand-written to match supabase/migrations/20260805120000_advisor_memory_and_rag.sql,
-      // which is not applied to the remote project yet — so regenerating this
-      // file today would DROP these three tables and break the build again.
-      // Not invented schema: transcribed column by column from that migration,
-      // and the next real generation after it is applied should be a no-op here.
-      // `embedding` is typed string because that is what the generator emits for
-      // a pgvector column; the sync job writes number[] through an untyped
-      // client, which is why nothing type-checks against it.
       advisor_conversations: {
         Row: {
           created_at: string
@@ -268,9 +260,9 @@ export type Database = {
       checkout_locks: {
         Row: {
           acquired_at: string
-          claimed_at: string | null
           checkout_session_id: string | null
           checkout_url: string | null
+          claimed_at: string
           course_id: string | null
           expires_at: string | null
           lock_key: string
@@ -280,9 +272,9 @@ export type Database = {
         }
         Insert: {
           acquired_at?: string
-          claimed_at?: string | null
           checkout_session_id?: string | null
           checkout_url?: string | null
+          claimed_at?: string
           course_id?: string | null
           expires_at?: string | null
           lock_key: string
@@ -292,9 +284,9 @@ export type Database = {
         }
         Update: {
           acquired_at?: string
-          claimed_at?: string | null
           checkout_session_id?: string | null
           checkout_url?: string | null
+          claimed_at?: string
           course_id?: string | null
           expires_at?: string | null
           lock_key?: string
@@ -584,6 +576,44 @@ export type Database = {
           },
         ]
       }
+      course_coupon_reservations: {
+        Row: {
+          coupon_id: string
+          created_at: string
+          expires_at: string
+          order_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coupon_id: string
+          created_at?: string
+          expires_at: string
+          order_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coupon_id?: string
+          created_at?: string
+          expires_at?: string
+          order_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_coupon_reservations_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "course_coupons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_coupons: {
         Row: {
           active: boolean
@@ -638,44 +668,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["uid"]
-          },
-        ]
-      }
-      course_coupon_reservations: {
-        Row: {
-          coupon_id: string
-          created_at: string
-          expires_at: string
-          order_id: string
-          status: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          coupon_id: string
-          created_at?: string
-          expires_at: string
-          order_id: string
-          status?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          coupon_id?: string
-          created_at?: string
-          expires_at?: string
-          order_id?: string
-          status?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "course_coupon_reservations_coupon_id_fkey"
-            columns: ["coupon_id"]
-            isOneToOne: false
-            referencedRelation: "course_coupons"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -1833,6 +1825,83 @@ export type Database = {
         }
         Relationships: []
       }
+      product_offers: {
+        Row: {
+          active: boolean
+          course_id: string
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          public_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          course_id: string
+          created_at?: string
+          id: string
+          is_default?: boolean
+          name: string
+          public_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          course_id?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          public_code?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      product_prices: {
+        Row: {
+          active: boolean
+          amount_minor: number
+          created_at: string
+          currency: string
+          id: string
+          offer_id: string
+          payment_type: string
+          stripe_price_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          amount_minor: number
+          created_at?: string
+          currency?: string
+          id: string
+          offer_id: string
+          payment_type?: string
+          stripe_price_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          amount_minor?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          offer_id?: string
+          payment_type?: string
+          stripe_price_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_prices_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "product_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       public_profiles: {
         Row: {
           bio: string | null
@@ -2147,14 +2216,6 @@ export type Database = {
     }
     Functions: {
       assert_course_owner: { Args: { p_course_id: string }; Returns: string }
-      get_my_subscriber_profiles: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          uid: string
-          display_name: string
-          photo_url: string
-        }[]
-      }
       claim_checkout_lock: {
         Args: {
           p_claim_grace_ms: number
@@ -2211,21 +2272,32 @@ export type Database = {
           p_owner_id: string
           p_payment_type: string
           p_price_id: string
-          p_public_code?: string | null
+          p_public_code?: string
         }
         Returns: Json
       }
-      create_teacher_course_draft: {
-        Args: {
-          p_categories: string[]
-          p_category: string
-          p_community_enabled: boolean
-          p_payment_type: string
-          p_summary: string
-          p_title: string
-        }
-        Returns: string
-      }
+      create_teacher_course_draft:
+        | {
+            Args: {
+              p_categories: string[]
+              p_category: string
+              p_payment_type: string
+              p_summary: string
+              p_title: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_categories: string[]
+              p_category: string
+              p_community_enabled: boolean
+              p_payment_type: string
+              p_summary: string
+              p_title: string
+            }
+            Returns: string
+          }
       delete_course_as_admin: { Args: { p_course_id: string }; Returns: Json }
       delete_course_coupon: { Args: { p_coupon_id: string }; Returns: Json }
       delete_teacher_course_draft: {
@@ -2241,6 +2313,14 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: undefined
       }
+      get_my_subscriber_profiles: {
+        Args: never
+        Returns: {
+          display_name: string
+          photo_url: string
+          uid: string
+        }[]
+      }
       has_enrollment_for_course_slug: {
         Args: { p_slug: string }
         Returns: boolean
@@ -2255,14 +2335,6 @@ export type Database = {
         Returns: boolean
       }
       is_teacher: { Args: never; Returns: boolean }
-      match_advisor_documents: {
-        Args: {
-          match_count: number
-          match_threshold: number
-          query_embedding: string
-        }
-        Returns: { content: string; similarity: number }[]
-      }
       issue_skillset_certificate: {
         Args: { p_enrollment_id: string; p_full_name: string }
         Returns: string
@@ -2279,11 +2351,24 @@ export type Database = {
         }
         Returns: undefined
       }
+      match_advisor_documents: {
+        Args: {
+          match_count: number
+          match_threshold: number
+          query_embedding: string
+        }
+        Returns: {
+          content: string
+          similarity: number
+        }[]
+      }
       platform_fee_bps_for_plan: { Args: { p_plan: string }; Returns: number }
-      publish_teacher_course: {
-        Args: { p_course_id: string }
+      public_storefront_projection: {
+        Args: { p_plan_id: string; p_storefront: Json }
         Returns: Json
       }
+      publish_teacher_course: { Args: { p_course_id: string }; Returns: Json }
+      recompute_course_trending_scores: { Args: never; Returns: undefined }
       record_lesson_progress: {
         Args: {
           p_completed: boolean
@@ -2296,6 +2381,7 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: undefined
       }
+      request_account_action: { Args: { p_type: string }; Returns: string }
       reserve_course_coupon: {
         Args: {
           p_coupon_id: string
@@ -2305,7 +2391,6 @@ export type Database = {
         }
         Returns: undefined
       }
-      request_account_action: { Args: { p_type: string }; Returns: string }
       review_creator_verification: {
         Args: { p_case_id: string; p_review_note?: string; p_status: string }
         Returns: Json

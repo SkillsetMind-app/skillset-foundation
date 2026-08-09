@@ -180,9 +180,7 @@ export function normalizeCoursePrice(
 export async function loadCourseProductOffers(
   courseId: string,
 ): Promise<ProductOffer[]> {
-  const supabase = getSupabaseAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any;
+  const db = getSupabaseAdminClient();
   const { data: offerRows, error: offerError } = await db
     .from("product_offers")
     .select("id,course_id,name,is_default,active,public_code")
