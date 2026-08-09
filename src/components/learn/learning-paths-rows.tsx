@@ -1,11 +1,14 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { CheckCircle2, PlayCircle } from "lucide-react";
+import { CheckCircle2, Lock, PlayCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import {
+  CourseCover,
+  CourseUnlockModal,
+} from "@/components/learn/course-unlock-modal";
 import type { Enrollment } from "@/domain/enrollment";
 import type { LearningPath } from "@/domain/learning-path";
 import { computePathProgress } from "@/domain/learning-path";
@@ -21,6 +24,9 @@ export function LearningPathsRows({ enrollments }: { enrollments: Enrollment[] }
   const { t } = useTranslation();
   const [paths, setPaths] = useState<LearningPath[]>([]);
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
+  // The course whose padlock was clicked — drives the unlock popup. Kept here
+  // (not per card) so only one dialog can ever be open.
+  const [lockedCourse, setLockedCourse] = useState<TeacherCourse | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,9 +121,10 @@ export function LearningPathsRows({ enrollments }: { enrollments: Enrollment[] }
                 const isCompleted =
                   enrollment?.status === "completed"
                   || (enrollment?.progressPercent ?? 0) >= 100;
-                const href = enrollment
-                  ? `/learn/courses/${enrollment.courseSlug || courseId}`
-                  : `/courses/${courseId}`;
+                // No enrollment row means the student never paid for this step,
+                // so the card is padlocked and clicking it opens the unlock
+                // popup instead of navigating away from the dashboard.
+                const isLocked = !enrollment;
 
                 return (
                   <li
@@ -125,16 +132,18 @@ export function LearningPathsRows({ enrollments }: { enrollments: Enrollment[] }
                     className="w-[240px] shrink-0 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-3"
                   >
                     <div className="relative aspect-[16/10] overflow-hidden rounded-[10px]">
-                      <Image
-                        src={course.coverImageUrl || "/brand/logo-mark.png"}
-                        alt={course.title}
-                        fill
-                        sizes="240px"
-                        className="object-cover"
-                      />
+                      <CourseCover course={course} sizes="240px" />
                       <span className="absolute left-2 top-2 grid size-7 place-items-center rounded-full bg-[var(--color-primary)] text-xs font-bold text-white">
                         {index + 1}
                       </span>
+                      {isLocked ? (
+                        <>
+                          <span className="absolute inset-0 bg-[rgba(15,39,68,0.45)]" />
+                          <span className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-[rgba(15,39,68,0.78)] text-white">
+                            <Lock aria-hidden="true" size={13} />
+                          </span>
+                        </>
+                      ) : null}
                     </div>
                     <h4 className="mt-3 line-clamp-2 text-sm font-semibold leading-5 text-[var(--color-primary)]">
                       {course.title}
@@ -149,23 +158,32 @@ export function LearningPathsRows({ enrollments }: { enrollments: Enrollment[] }
                                 Math.max(0, Math.min(100, enrollment.progressPercent)),
                               ),
                             )
-                          : t("learn.paths.notEnrolled")}
+                          : t("learn.paths.locked")}
                     </p>
-                    <Link
-                      href={href}
-                      className={`${enrollment ? "button-solid" : "button-outline"} mt-3 inline-flex w-full items-center justify-center gap-2 px-3 py-2 text-xs`}
-                    >
-                      {isCompleted ? (
-                        <CheckCircle2 size={14} aria-hidden="true" />
-                      ) : (
-                        <PlayCircle size={14} aria-hidden="true" />
-                      )}
-                      {isCompleted
-                        ? t("learn.paths.reviewCourse")
-                        : enrollment
-                          ? t("learn.paths.continue")
-                          : t("learn.paths.viewCourse")}
-                    </Link>
+                    {isLocked ? (
+                      <button
+                        type="button"
+                        onClick={() => setLockedCourse(course)}
+                        className="button-outline mt-3 inline-flex w-full items-center justify-center gap-2 px-3 py-2 text-xs"
+                      >
+                        <Lock size={14} aria-hidden="true" />
+                        {t("learn.paths.unlock")}
+                      </button>
+                    ) : (
+                      <Link
+                        href={`/learn/courses/${enrollment.courseSlug || courseId}`}
+                        className="button-solid mt-3 inline-flex w-full items-center justify-center gap-2 px-3 py-2 text-xs"
+                      >
+                        {isCompleted ? (
+                          <CheckCircle2 size={14} aria-hidden="true" />
+                        ) : (
+                          <PlayCircle size={14} aria-hidden="true" />
+                        )}
+                        {isCompleted
+                          ? t("learn.paths.reviewCourse")
+                          : t("learn.paths.continue")}
+                      </Link>
+                    )}
                   </li>
                 );
               })}
@@ -173,6 +191,10 @@ export function LearningPathsRows({ enrollments }: { enrollments: Enrollment[] }
           </section>
         );
       })}
+      <CourseUnlockModal
+        course={lockedCourse}
+        onClose={() => setLockedCourse(null)}
+      />
     </>
   );
 }

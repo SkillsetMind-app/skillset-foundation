@@ -531,10 +531,12 @@
       "progress": "{completed}/{total} completados · {percent}%",
       "completed": "Completado",
       "percentComplete": "{percent}% completado",
-      "notEnrolled": "Aún sin inscripción",
       "reviewCourse": "Repasar curso",
       "continue": "Continuar",
-      "viewCourse": "Ver curso"
+      "locked": "Bloqueado",
+      "unlock": "Desbloquear curso",
+      "unlockNote": "Todavia no tienes acceso a este curso. Desbloquealo para verlo aqui mismo en tu area de miembros.",
+      "close": "Cerrar"
     },
     "tour": {
       "welcomeNamed": "Te damos la bienvenida, {name}",

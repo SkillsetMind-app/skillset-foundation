@@ -531,10 +531,12 @@
       "progress": "{completed}/{total} completed · {percent}%",
       "completed": "Completed",
       "percentComplete": "{percent}% complete",
-      "notEnrolled": "Not enrolled yet",
       "reviewCourse": "Review course",
       "continue": "Continue",
-      "viewCourse": "View course"
+      "locked": "Locked",
+      "unlock": "Unlock course",
+      "unlockNote": "You do not have access to this course yet. Unlock it to start watching right here in your members area.",
+      "close": "Close"
     },
     "tour": {
       "welcomeNamed": "Welcome, {name}",
