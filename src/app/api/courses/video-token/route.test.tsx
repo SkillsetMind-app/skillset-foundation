@@ -98,6 +98,57 @@ describe("course video token", () => {
     expect(mocks.signEmbed).not.toHaveBeenCalled();
   });
 
+  // Drip: enrollment alone is not the grant — the lesson also has to have opened.
+  // Enrolled today on a 7-day-per-lesson course, asking for lesson 2.
+  function enrolledStudentAskingForLesson(lessonId: string) {
+    mocks.createServer.mockResolvedValue({
+      auth: {
+        getUser: vi.fn(async () => ({ data: { user: { id: "student-1" } }, error: null })),
+      },
+      rpc: vi.fn(async () => ({ data: false, error: null })),
+    });
+    return createAdmin(
+      {
+        data: {
+          bunny_video_id: "video-2",
+          course_id: "course-1",
+          owner_id: "teacher-1",
+          is_preview: false,
+          lesson_id: lessonId,
+        },
+        error: null,
+      },
+      { data: { status: "active", created_at: new Date().toISOString() }, error: null },
+      {
+        data: {
+          drip_strategy: "time_drip_lesson",
+          drip_interval_days: 7,
+          free_preview_lesson_id: null,
+          modules: [{ lessons: [{ id: "lesson-1" }, { id: "lesson-2" }] }],
+        },
+        error: null,
+      },
+    );
+  }
+
+  it("refuses to sign a lesson the drip schedule has not opened yet", async () => {
+    mocks.getAdmin.mockReturnValue(enrolledStudentAskingForLesson("lesson-2"));
+
+    const response = await POST(request({ assetId: "asset-2" }));
+
+    expect(response.status).toBe(404);
+    expect(mocks.signEmbed).not.toHaveBeenCalled();
+  });
+
+  it("signs a lesson that is already open on the drip schedule", async () => {
+    mocks.getAdmin.mockReturnValue(enrolledStudentAskingForLesson("lesson-1"));
+
+    const response = await POST(request({ assetId: "asset-1" }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.signEmbed).toHaveBeenCalledWith("video-2");
+  });
+
   it("rejects ambiguous selectors", async () => {
     mocks.getAdmin.mockReturnValue(createAdmin());
 
