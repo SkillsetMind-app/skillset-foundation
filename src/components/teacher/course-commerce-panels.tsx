@@ -155,6 +155,11 @@ export function CouponsPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  // Deleting a coupon is irreversible and its button sits next to the
+  // reversible "Pause" in identical styling. Same two-step confirm every
+  // other destructive control in the Studio uses.
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   useEffect(() => {
     return subscribeToCourseCoupons(
@@ -213,10 +218,14 @@ export function CouponsPanel({
   const handleRemove = async (coupon: CourseCoupon) => {
     setError("");
     setNotice("");
+    setRemovingId(coupon.id);
     try {
       await deleteCourseCoupon(coupon.id);
+      setConfirmingDeleteId(null);
     } catch (removeError) {
       setError(toMessage(removeError, "Could not remove the coupon."));
+    } finally {
+      setRemovingId(null);
     }
   };
 
@@ -317,13 +326,34 @@ export function CouponsPanel({
                       {coupon.active ? "Pause" : "Activate"}
                     </button>
                   ) : null}
-                  <button
-                    type="button"
-                    onClick={() => void handleRemove(coupon)}
-                    className="button-outline px-3 py-1.5 text-xs"
-                  >
-                    Remove
-                  </button>
+                  {confirmingDeleteId === coupon.id ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => void handleRemove(coupon)}
+                        disabled={removingId === coupon.id}
+                        className="button-accent px-3 py-1.5 text-xs disabled:opacity-60"
+                      >
+                        {removingId === coupon.id ? "Removing..." : "Confirm remove"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingDeleteId(null)}
+                        disabled={removingId === coupon.id}
+                        className="button-outline px-3 py-1.5 text-xs disabled:opacity-60"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingDeleteId(coupon.id)}
+                      className="button-outline px-3 py-1.5 text-xs"
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
               </li>
             );

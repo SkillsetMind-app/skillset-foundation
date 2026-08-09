@@ -613,7 +613,7 @@
       "actInReviewTitle": "Legacy review status",
       "actInReviewDetail": "Open {title}, complete the checks, and publish it directly.",
       "actQuestionsTitle": "Student questions",
-      "actQuestionsDetail": "Course discussions and lesson comments will surface here as students engage.",
+      "actQuestionsDetail": "Private threads from enrolled students arrive in your Studio inbox.",
       "actScheduleTitle": "Schedule the next live session",
       "actScheduleDetail": "Add a class, mentorship, masterclass, office hour, webinar, or deadline to the course agenda."
     }

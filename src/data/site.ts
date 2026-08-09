@@ -158,7 +158,10 @@ export const platformNav: PlatformNavItem[] = [
     icon: "Store",
     contexts: ["teacher"],
     section: "Marketing",
-    permission: "teacherStudio.manageCourses",
+    // Matches the page's own gate (manageStorefront). They agree today for
+    // every role, but a nav entry that gates on a different permission than
+    // its destination is a denial screen waiting for the first role split.
+    permission: "teacherStudio.manageStorefront",
   },
   {
     href: "/teach/media",

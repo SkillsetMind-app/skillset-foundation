@@ -46,9 +46,12 @@ const marketingTools: Array<{
   },
   {
     title: "Integrations",
-    description: "Connect the services used to deliver, measure, and support your work.",
+    // The destination is a roadmap page, so the card says so. Selling it in
+    // the present tense ("Connect the services…" / "Manage integrations")
+    // spent a click to deliver a disappointment.
+    description: "Email tools, webhooks, and analytics destinations are on the roadmap.",
     href: "/teach/integrations",
-    action: "Manage integrations",
+    action: "See what's planned",
     icon: Plug,
   },
 ];

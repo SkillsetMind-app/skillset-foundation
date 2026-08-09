@@ -613,7 +613,7 @@
       "actInReviewTitle": "Estado de revisión heredado",
       "actInReviewDetail": "Abre {title}, completa las verificaciones y publícalo directamente.",
       "actQuestionsTitle": "Preguntas de estudiantes",
-      "actQuestionsDetail": "Las discusiones del curso y los comentarios de las lecciones aparecerán aquí a medida que los estudiantes participen.",
+      "actQuestionsDetail": "Los mensajes privados de tus estudiantes inscritos llegan a la bandeja de entrada del Studio.",
       "actScheduleTitle": "Programa la próxima sesión en vivo",
       "actScheduleDetail": "Añade una clase, mentoría, masterclass, horario de consulta, webinar o fecha límite a la agenda del curso."
     }
