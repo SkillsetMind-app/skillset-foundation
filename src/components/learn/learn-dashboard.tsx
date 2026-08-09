@@ -256,10 +256,14 @@ export function LearnDashboard() {
               >
                 <div className="relative aspect-[16/10] overflow-hidden rounded-[14px]">
                   <Image
-                    src={enrollment.courseImage}
+                    // Same fallback the write path uses (lib/data/enrollments.ts).
+                    // Legacy rows predate it, and an empty src throws in next/image,
+                    // which would blank the whole dashboard over one bad row.
+                    src={enrollment.courseImage || "/brand/logo-mark.png"}
                     alt={enrollment.courseTitle}
                     fill
-                    sizes="220px"
+                    // Card is a single full-width column until md, 220px after.
+                    sizes="(min-width: 768px) 220px, 100vw"
                     className="object-cover"
                   />
                 </div>

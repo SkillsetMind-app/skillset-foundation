@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
+
 export interface MembersAreaHeroProps {
   theme: "light" | "dark";
   coverUrl?: string | null;
@@ -38,6 +40,7 @@ export function MembersAreaHero({
   progressPercent,
   backHref,
 }: MembersAreaHeroProps) {
+  const { t } = useTranslation();
   const [showFullDescription, setShowFullDescription] = useState(false);
 
   // No-cover fallback monogram: prefer an explicit studio, but always fall back
@@ -100,7 +103,9 @@ export function MembersAreaHero({
               className="members-hero__more"
               onClick={() => setShowFullDescription((open) => !open)}
             >
-              {showFullDescription ? "Mostrar menos" : "Mostrar mais"}
+              {showFullDescription
+                ? t("learn.membersHero.showLess")
+                : t("learn.membersHero.showMore")}
             </button>
           </>
         ) : null}
@@ -108,7 +113,7 @@ export function MembersAreaHero({
         {pct != null ? (
           <div className="members-hero__prog">
             <span className="members-hero__prog-label">
-              <strong>{pct}%</strong> concluído
+              <strong>{pct}%</strong> {t("learn.membersHero.complete")}
             </span>
             <span className="members-hero__bar">
               <span style={{ width: `${pct}%` }} />

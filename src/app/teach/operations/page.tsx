@@ -1,17 +1,7 @@
-import { ProtectedSurface } from "@/components/auth/protected-surface";
-import { PlatformShell } from "@/components/platform/platform-shell";
-import { CreatorOpsHub } from "@/components/teacher/creator-ops-hub";
+import { redirect } from "next/navigation";
 
+// Was a second copy of /teach/reports — same <CreatorOpsHub />, different title.
+// Kept as a redirect so old bookmarks and links still land somewhere real.
 export default function TeacherOperationsPage() {
-  return (
-    <ProtectedSurface permissions={["teacherStudio.access"]}>
-      <PlatformShell
-        eyebrow="Teacher Studio"
-        title="Operations."
-        description="Sales, recurring revenue, earnings, and growth tools in one place."
-      >
-        <CreatorOpsHub />
-      </PlatformShell>
-    </ProtectedSurface>
-  );
+  redirect("/teach/reports");
 }

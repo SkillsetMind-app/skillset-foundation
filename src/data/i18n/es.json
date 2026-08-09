@@ -514,6 +514,11 @@
       "openWorkspace": "Entrar al curso",
       "accessInactive": "Acceso inactivo"
     },
+    "membersHero": {
+      "showMore": "Ver más",
+      "showLess": "Ver menos",
+      "complete": "completado"
+    },
     "metrics": {
       "coursesInProgress": "Cursos en progreso",
       "coursesInProgressHint": "Espacios de aprendizaje activos",

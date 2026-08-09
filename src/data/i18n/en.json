@@ -514,6 +514,11 @@
       "openWorkspace": "Open workspace",
       "accessInactive": "Access inactive"
     },
+    "membersHero": {
+      "showMore": "Show more",
+      "showLess": "Show less",
+      "complete": "complete"
+    },
     "metrics": {
       "coursesInProgress": "Courses in progress",
       "coursesInProgressHint": "Active learning workspaces",

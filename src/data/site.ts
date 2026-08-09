@@ -226,14 +226,10 @@ export const platformNav: PlatformNavItem[] = [
     section: "Reports",
     permission: "teacherStudio.access",
   },
-  {
-    href: "/teach/operations",
-    labelKey: "platform.nav.creatorOps",
-    icon: "LayoutDashboard",
-    contexts: ["teacher"],
-    section: "Reports",
-    permission: "teacherStudio.access",
-  },
+  // No "Business overview" entry: /teach/operations rendered the exact same
+  // <CreatorOpsHub /> as /teach/reports above it — two adjacent menu items, one
+  // screen. Two names for one page reads as an unfinished product. The route
+  // stays as a redirect for old bookmarks, same as /teach/refunds.
   // Growth
   // (Affiliates and co-productions were removed with the pivot to direct
   // charges: the platform never holds the money, so it cannot split it.)
