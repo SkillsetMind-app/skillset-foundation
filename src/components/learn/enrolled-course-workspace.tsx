@@ -24,7 +24,10 @@ import { CourseReviewPanel } from "@/components/learn/course-review-panel";
 import { LessonListOverlay } from "@/components/learn/lesson-list-overlay";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { CourseSubscriptionCard } from "@/components/learn/course-subscription-card";
-import { WatermarkedVideoPlayer } from "@/components/learn/watermarked-video-player";
+import {
+  VideoWatermark,
+  WatermarkedVideoPlayer,
+} from "@/components/learn/watermarked-video-player";
 import type { CourseAsset } from "@/domain/course-asset";
 import { courseAssetKindLabels, formatCourseAssetSize } from "@/domain/course-asset";
 import type { CourseEvent } from "@/domain/course-event";
@@ -1410,17 +1413,21 @@ function LessonContentPanel({
             <p>{unlockState ? formatUnlockMessage(unlockState) : "Locked"}</p>
           </div>
         ) : resolvedVideoSource === "upload" && primaryHostedVideo?.bunnyVideoId ? (
-          <BunnyVideoPlayer assetId={primaryHostedVideo.id} title={lesson.title} />
+          <VideoWatermark>
+            <BunnyVideoPlayer assetId={primaryHostedVideo.id} title={lesson.title} />
+          </VideoWatermark>
         ) : resolvedVideoSource === "upload" && primaryHostedVideo ? (
           <ProtectedAssetPreview asset={primaryHostedVideo} />
         ) : resolvedVideoSource === "youtube" && trustedEmbed ? (
-          <iframe
-            src={trustedEmbed.embedUrl}
-            title={lesson.title}
-            className="aspect-video w-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-          />
+          <VideoWatermark>
+            <iframe
+              src={trustedEmbed.embedUrl}
+              title={lesson.title}
+              className="aspect-video w-full"
+              allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </VideoWatermark>
         ) : lessonContentPending ? (
           <div className="member-video-empty">
             <PlayCircle size={34} aria-hidden />
@@ -1714,13 +1721,8 @@ function LessonAssetList({
 }
 
 function ProtectedAssetPreview({ asset }: { asset: CourseAsset }) {
-  const { user } = useAuth();
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const viewerLabel =
-    user?.email
-    || user?.displayName
-    || "SkillsetMind learner";
 
   useEffect(() => {
     let isMounted = true;
@@ -1767,11 +1769,7 @@ function ProtectedAssetPreview({ asset }: { asset: CourseAsset }) {
 
   if (asset.contentType.startsWith("video/")) {
     return (
-      <WatermarkedVideoPlayer
-        fileName={asset.fileName}
-        src={objectUrl}
-        viewerLabel={viewerLabel}
-      />
+      <WatermarkedVideoPlayer fileName={asset.fileName} src={objectUrl} />
     );
   }
 
