@@ -804,3 +804,39 @@ lado a lado, com alvo de toque cheio.
 **Sobra da fila do §12.8:** marca d'água sobre o vídeo (item 3) e comentários/feed
 (item 4 — já existem `CourseCommunityFeed` e `CourseMessagesPanel`, falta conferir
 paridade, não reconstruir).
+
+### 12.11 Marca d'água de identidade sobre todos os players (`10d6f8c`)
+
+Fecha o item 3 da fila do §12.8 — o miolo antipirataria do sub-plano 10.
+
+**O que a checagem de conflito descobriu:** a marca d'água já existia
+(`WatermarkedVideoPlayer`), mas cobria só o `<video src>` cru — que é o caminho
+**mais raro**, usado apenas quando o Bunny não está configurado. Os dois caminhos que
+os alunos realmente usam — iframe do Bunny e embed do YouTube — rodavam **sem
+identificação nenhuma**. A proteção existia no lugar errado.
+
+Em vez de escrever uma segunda marca d'água, extraí o overlay que já estava lá para
+um wrapper `<VideoWatermark>` que envolve qualquer player. Ele lê o usuário do próprio
+contexto de auth, então não há prop para esquecer de passar. Aplicado nos três
+caminhos. Isso também matou o `viewerLabel` duplicado dentro de
+`ProtectedAssetPreview`.
+
+O wrapper não entrou dentro do `BunnyVideoPlayer` de propósito: esse componente também
+serve o preview do próprio professor no estúdio, e carimbar o curso dele com o e-mail
+dele não protege nada. O wrapper mora nos call sites da sala de aula.
+
+**O limite, dito com todas as letras.** O senhor pediu "alguma coisa que impossibilite".
+Impossibilitar não existe em vídeo dentro de navegador — nem no YouTube, nem no Bunny,
+nem na Hotmart. O que existe é dissuasão: o quadro carrega o e-mail de quem está
+assistindo e a hora, então uma regravação que vaze vem assinada pelo vazador.
+
+E o embed do YouTube tem um furo **estrutural** que nenhum código nosso fecha: o vídeo
+continua sendo um link público no YouTube. Quem chega naquele link assiste fora do
+curso, sem passar por nós. Por isso o aviso foi para o lugar onde a decisão acontece —
+o seletor de fonte de vídeo, com ícone e texto visível, não escondido num tooltip:
+embed = link público; **Upload = playback assinado por aluno**. O professor escolhe
+sabendo.
+
+**Sobra da fila do §12.8:** item 4 — comentários por aula e feed de comunidade. Já
+existem `CourseCommunityFeed` e `CourseMessagesPanel` ligados na sala de aula; o
+trabalho é **conferir paridade**, não reconstruir.
