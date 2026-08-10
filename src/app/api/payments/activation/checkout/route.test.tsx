@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   getStripe: vi.fn(),
   listSessions: vi.fn(),
   createSession: vi.fn(),
+  searchPaymentIntents: vi.fn(),
 }));
 
 vi.mock("@/lib/payments/server/auth", async (importOriginal) => ({
@@ -102,6 +103,7 @@ describe("storefront activation checkout", () => {
     mocks.getUserRow.mockResolvedValue(profile());
     mocks.getCustomer.mockResolvedValue("cus_teacher");
     mocks.listSessions.mockResolvedValue({ data: [] });
+    mocks.searchPaymentIntents.mockResolvedValue({ data: [] });
     mocks.createSession.mockResolvedValue({
       id: "cs_activation",
       client_secret: "secret_activation",
@@ -113,6 +115,7 @@ describe("storefront activation checkout", () => {
           create: mocks.createSession,
         },
       },
+      paymentIntents: { search: mocks.searchPaymentIntents },
     });
   });
 
@@ -184,6 +187,33 @@ describe("storefront activation checkout", () => {
         client_secret: null,
         metadata: { uid: "teacher-1", purpose: "skillset_activation_fee" },
       }],
+    });
+
+    const response = await POST();
+
+    expect(response.status).toBe(409);
+    expect(admin.userUpdates).toEqual([
+      expect.objectContaining({ activation_fee_paid_at: expect.any(String) }),
+    ]);
+    expect(mocks.createSession).not.toHaveBeenCalled();
+  });
+
+  it("never double-charges when the paid session fell off the 100-session page", async () => {
+    const admin = createAdmin();
+    mocks.getAdmin.mockReturnValue(admin);
+    // Newer, unrelated course checkouts crowded the activation session out of
+    // the listed page — only the PaymentIntent search still sees the payment.
+    mocks.listSessions.mockResolvedValue({
+      data: [{
+        id: "cs_course",
+        status: "complete",
+        payment_status: "paid",
+        client_secret: null,
+        metadata: { uid: "teacher-1", purpose: "skillset_course_purchase" },
+      }],
+    });
+    mocks.searchPaymentIntents.mockResolvedValue({
+      data: [{ id: "pi_activation", status: "succeeded" }],
     });
 
     const response = await POST();

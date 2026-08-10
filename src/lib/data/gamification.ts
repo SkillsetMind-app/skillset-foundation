@@ -149,12 +149,11 @@ function normalizeMemberStats(uid: string, data: Partial<MemberStats>): MemberSt
  * used to render level badges next to post/comment authors and the viewer's own
  * leaderboard row.
  *
- * Reads each doc individually by its known uid (a `get`, not a `list`) so it
- * only ever touches members the caller already legitimately knows — the current
- * user plus authors of posts/comments in a course the viewer is enrolled in.
- * The table deliberately forbids `list` (RLS member_stats) so the full member
- * roster can never be enumerated; this scoped fetch is the read path that
- * respects that. A per-uid failure (or missing row) simply omits that badge —
+ * Reads one row per known uid — the current user plus authors of posts/comments
+ * in a course the viewer is enrolled in. RLS on `member_stats` scopes reads to
+ * your own row plus members you share a course with, so the roster a caller can
+ * reach is already bounded server-side; this per-uid shape is just what the
+ * badge UI needs. A per-uid failure (or missing row) simply omits that badge —
  * it never rejects the whole map or breaks the feed.
  */
 export async function fetchMemberStatsForUids(

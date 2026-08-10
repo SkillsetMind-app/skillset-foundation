@@ -107,9 +107,21 @@ export async function POST() {
       (session) => session.metadata?.uid === uid
         && session.metadata?.purpose === ACTIVATION_FEE_CHECKOUT_PURPOSE,
     );
-    const paidSession = activationSessions.find(
-      (session) => session.status === "complete" && session.payment_status === "paid",
-    );
+
+    // The already-paid check cannot rely on that 100-session page: a creator with
+    // 100 newer course-checkout sessions would push their old activation session
+    // off it and get charged twice. Search the PaymentIntents instead — the
+    // create call below mirrors {uid, purpose} onto every activation intent, so
+    // this is authoritative and unpaginated. Search lags ~1min behind writes, so
+    // the session scan above still covers a payment made seconds ago.
+    const paidIntents = await stripe.paymentIntents.search({
+      query: `metadata['uid']:'${uid}' AND metadata['purpose']:'${ACTIVATION_FEE_CHECKOUT_PURPOSE}' AND status:'succeeded'`,
+      limit: 1,
+    });
+    const paidSession = paidIntents.data.length > 0
+      || activationSessions.some(
+        (session) => session.status === "complete" && session.payment_status === "paid",
+      );
     if (paidSession) {
       const timestamp = new Date().toISOString();
       const { error } = await admin
