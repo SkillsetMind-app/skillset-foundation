@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createBunnyVideo, signBunnyUpload } from "@/lib/bunny/server";
+import { enforceRateLimit, paymentErrorResponse } from "@/lib/payments/server/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // POST /api/teach/video/create — the course owner asks the server to create a
@@ -17,6 +18,16 @@ export async function POST(request: Request) {
   const { data: auth, error: authError } = await supabase.auth.getUser();
   if (authError || !auth.user) {
     return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+  }
+
+  // Every call creates a real Bunny video object on our account, so an
+  // unthrottled loop here is a billable-resource DoS: a signed-in user could
+  // mint thousands of empty videos against our library. 60/hour comfortably
+  // covers a teacher uploading a full course in one sitting.
+  try {
+    await enforceRateLimit(`teach_video_create_${auth.user.id}`, 60, 60 * 60 * 1000);
+  } catch (error) {
+    return paymentErrorResponse(error);
   }
 
   let body: { courseId?: unknown; title?: unknown };

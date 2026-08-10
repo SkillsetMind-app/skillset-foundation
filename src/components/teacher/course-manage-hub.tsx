@@ -15,10 +15,22 @@ import {
 } from "@/components/teacher/course-commerce-panels";
 import { CourseOffersPanel } from "@/components/teacher/course-offers-panel";
 import { SalesPageEditor } from "@/components/teacher/sales-page-editor";
+import type { PlanId } from "@/data/plans";
+import { planById } from "@/data/plans";
+import {
+  effectiveLimit,
+  formatLimit,
+  lowestPlanWithQuota,
+  quotaStatus,
+} from "@/domain/entitlements";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { teacherCanPublishCourse } from "@/domain/teacher-course";
 import { fetchRequireCreatorVerification } from "@/lib/data/creator-verification";
-import { subscribeToTeacherCourse, subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
+import {
+  setOwnCourseFeatured,
+  subscribeToTeacherCourse,
+  subscribeToTeacherCourses,
+} from "@/lib/data/teacher-courses";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 
 // Per-course management central (Hotmart-style "product hub"): one place with
@@ -100,6 +112,104 @@ const allSectionIds = new Set<string>([
   ...roadmapSections.map((s) => s.id),
 ]);
 
+/**
+ * Self-serve marketplace highlight, metered by the teacher's plan.
+ *
+ * `used` is counted from the courses the hub already streams instead of a
+ * second round-trip, and `featured` is read straight off the realtime course
+ * row — so after the RPC lands, the subscription repaints this card. The
+ * numbers here are the *display*; `set_own_course_featured` is what actually
+ * enforces the quota, and its message is surfaced verbatim when it refuses.
+ */
+function MarketplaceHighlightPanel({
+  course,
+  planId,
+  usedSlots,
+}: {
+  course: TeacherCourse;
+  planId: PlanId;
+  usedSlots: number;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const featured = course.featured === true;
+  const limit = effectiveLimit(planId, "featuredSlots");
+  const quota = quotaStatus(usedSlots, limit);
+  const published = course.status === "published";
+  const upgradeTo = lowestPlanWithQuota("featuredSlots", 1);
+
+  // Removing a highlight is always allowed, including over quota after a
+  // downgrade — same rule the RPC applies, so the button matches the server.
+  const canToggle = published && (featured || quota.canConsume);
+
+  const gateReason = !published
+    ? "Publish the course first — only live courses can be highlighted."
+    : quota.lockedOnPlan
+      ? `Marketplace highlights start on the ${upgradeTo ? planById(upgradeTo).name : "paid"} plan.`
+      : !quota.canConsume
+        ? `You're using all ${formatLimit(limit)} highlights on your plan. Remove one from another course first.`
+        : "";
+
+  const handleToggle = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      await setOwnCourseFeatured(course.id, !featured);
+    } catch (toggleError) {
+      setError(
+        toggleError instanceof Error && toggleError.message
+          ? toggleError.message
+          : "Could not update the marketplace highlight."
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <PanelCard
+      title="Marketplace highlight"
+      description="Highlighted courses are pinned above the rest of the catalog. Your plan includes a set number of highlights at a time."
+    >
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border fine-rule bg-white px-4 py-3">
+        <div>
+          <p className="text-sm font-semibold text-[var(--color-ink)]">
+            {featured ? "Highlighted in the marketplace" : "Not highlighted"}
+          </p>
+          <p className="mt-0.5 text-xs text-[var(--color-ink-muted)]">
+            {quota.used} of {formatLimit(limit)} highlights used on the {planById(planId).name} plan
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void handleToggle()}
+          disabled={saving || !canToggle}
+          className={`${featured ? "button-outline" : "button-solid"} px-4 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50`}
+        >
+          {saving ? "Saving..." : featured ? "Remove highlight" : "Highlight this course"}
+        </button>
+      </div>
+      {gateReason ? (
+        <p className="mt-3 text-xs leading-5 text-[var(--color-ink-muted)]">
+          {gateReason}
+          {quota.lockedOnPlan ? (
+            <>
+              {" "}
+              <Link href="/account/plans" className="font-semibold text-[var(--color-primary)] underline">
+                See plans
+              </Link>
+            </>
+          ) : null}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="mt-3 text-xs font-semibold text-[var(--color-accent-fg)]">{error}</p>
+      ) : null}
+    </PanelCard>
+  );
+}
+
 export function CourseManageHub({ courseId }: { courseId: string }) {
   const { user } = useAuth();
   const router = useRouter();
@@ -118,6 +228,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   const [payoutsReady, setPayoutsReady] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState("none");
   const [requireVerification, setRequireVerification] = useState(false);
+  const [planId, setPlanId] = useState<PlanId>("free");
   const section: SectionId = sectionFromUrl ?? "overview";
   const setSection = (next: SectionId) => {
     const params = new URLSearchParams(searchParams?.toString());
@@ -170,6 +281,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
           Boolean(profile?.stripeConnectChargesEnabled && profile?.stripeConnectPayoutsEnabled)
         );
         setVerificationStatus(profile?.creatorVerificationStatus ?? "none");
+        setPlanId(profile?.currentPlanId ?? "free");
       },
       () => setPayoutsReady(false)
     );
@@ -313,6 +425,11 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   }
 
   const switchableCourses = myCourses.filter((candidate) => candidate.id !== course.id);
+  // This course's own flag comes from the single-course subscription, the rest
+  // from the owner-wide one. Mixing them keeps the count from flickering while
+  // the two subscriptions land the same toggle a beat apart.
+  const featuredSlotsUsed =
+    switchableCourses.filter((candidate) => candidate.featured).length + (course.featured ? 1 : 0);
 
   return (
     <div className="grid gap-5">
@@ -485,6 +602,14 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 </Link>
               ) : null}
             </PanelCard>
+          ) : null}
+
+          {section === "overview" ? (
+            <MarketplaceHighlightPanel
+              course={course}
+              planId={planId}
+              usedSlots={featuredSlotsUsed}
+            />
           ) : null}
 
           {section === "links" ? (

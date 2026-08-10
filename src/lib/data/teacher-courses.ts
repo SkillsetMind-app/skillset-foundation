@@ -193,6 +193,32 @@ export async function setCourseFeatured(
   }
 }
 
+/**
+ * Self-serve highlight, teacher's own courses only, metered by their plan.
+ *
+ * Separate from `setCourseFeatured` above on purpose: that one is the ops
+ * curation path and can set an explicit rank. This one goes through the
+ * `set_own_course_featured` RPC because `featured` is a frozen column — a
+ * direct update from the browser always raises the freeze-trigger exception,
+ * whatever the RLS policy says. The RPC owns the quota check, so the count
+ * cannot be bypassed by calling this twice.
+ *
+ * Resolves with nothing: the caller reads the new state off its existing
+ * realtime course subscription, not off this return value. The RPC's *error*
+ * is what matters here — it carries the server's own quota wording.
+ */
+export async function setOwnCourseFeatured(courseId: string, featured: boolean): Promise<void> {
+  const supabase = getSupabaseBrowserClient();
+  const { error } = await supabase.rpc("set_own_course_featured", {
+    p_course_id: courseId,
+    p_featured: featured,
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
 export function subscribeToTeacherCourse(
   courseId: string,
   callback: (course: TeacherCourse | null) => void,

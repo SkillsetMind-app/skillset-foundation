@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
 import type { DripStrategy } from "@/domain/drip-policy";
-import { DEFAULT_PLATFORM_FEE_BPS } from "@/domain/payment-split";
+import { DEFAULT_PLATFORM_FEE_BPS } from "@/lib/payments/rules";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { normalizeLearningOutcomes } from "@/domain/teacher-course";
 import { updateTeacherCourseBuilder } from "@/lib/data/teacher-courses";

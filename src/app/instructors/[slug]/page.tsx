@@ -23,9 +23,10 @@ export async function generateMetadata({
 }
 
 // Public instructor profile. The route is dynamic (SSR): the public profile is
-// read client-side from `publicProfiles/{uid}` (anonymously readable), which is
-// projected from the teacher's private user doc by a Cloud Function. A uid with
-// no public profile renders an honest "unavailable" state instead of fabricated
+// read client-side from `public_profiles` (anonymously readable), which the
+// `sync_public_profile()` Postgres trigger projects from the teacher's private
+// `users` row — including the sanitized storefront branding. A uid with no
+// public profile renders an honest "unavailable" state instead of fabricated
 // data — so direct URLs never 404 to a dead end nor invent an instructor.
 export default async function InstructorDetailPage({
   params,

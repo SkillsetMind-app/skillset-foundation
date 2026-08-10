@@ -23,15 +23,3 @@ export function formatUsdWhole(amount: number): string {
     maximumFractionDigits: 0,
   }).format(amount);
 }
-
-import { defaultPlanId, planById } from "@/data/plans";
-
-export { defaultPlanId };
-
-/**
- * @deprecated Use `planById(planId).commissionPercent` from `src/data/plans.ts`.
- * Kept as a fallback for callers that haven't been migrated to plan-aware
- * pricing yet. Points to the Free-tier rate so legacy default reads
- * "no plan = Free plan" instead of the old flat 15%.
- */
-export const platformFeePercent = planById(defaultPlanId).commissionPercent;

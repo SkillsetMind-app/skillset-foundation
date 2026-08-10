@@ -520,7 +520,7 @@ export function StorefrontSettingsPanel() {
           <StorefrontImageUpload
             kind="logo"
             label="Storefront logo"
-            description="Use a square image with a transparent or simple background."
+            description="Use a square image with a transparent or simple background. On paid plans it is also printed on the certificates you issue."
             imageUrl={logoUrl}
             isUploading={uploadingImages.has("logo")}
             progress={uploadProgress.logo ?? null}
@@ -644,7 +644,7 @@ export function StorefrontSettingsPanel() {
         </div>
 
         {error ? (
-          <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+          <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {error}
           </p>
         ) : null}

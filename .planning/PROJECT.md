@@ -2,11 +2,15 @@
 
 ## What this is
 
-SkillsetMind is a marketplace and business operating system for psychologists, therapists, and personal-development or mental-performance professionals. Practitioners publish educational products; learners buy from independent experts. The platform is US-first with international support.
+SkillsetMind is a marketplace and business operating system for coaches, facilitators, mentors, and other personal-development and mental-performance professionals. Creators publish and sell courses; learners buy from independent experts. The platform is US-first with international support.
+
+Vocabulary is a product constraint, not a style preference. "Therapist", "psychologist", "therapy", and "counseling" name US-regulated activity and never describe a seller or what they sell; "educational" is out by founder decision. Psychology survives only as a subject ("Applied Psychology & Behavior"). The rule is enforced in `src/domain/teacher-course.ts` and in the assistant's grounding (`src/lib/assistant/knowledge.ts`); the legal pages keep the words on purpose, to disclaim them.
 
 ## Core value
 
-The practitioner owns the audience, data, and commercial relationship. Product and financial behavior must preserve the Skillset Promise: predictable fees, feature parity, one-click export and cancellation, fund protection, and human support when automation cannot resolve an exception.
+The creator owns the audience, data, and commercial relationship. Product and financial behavior must preserve the Skillset Promise as it is published on `/promise`: predictable fees, feature parity, one-click export and cancellation, **money that never passes through SkillsetMind**, and human support when automation cannot resolve an exception.
+
+That fifth item used to read "fund protection", which assumed the platform held the funds. Under Stripe Connect direct charges the buyer pays the creator's connected account and we never take possession, so the promise is stronger and simpler: we cannot lose or freeze what we never touch.
 
 ## Current milestone
 

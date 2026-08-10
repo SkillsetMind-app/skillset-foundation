@@ -304,7 +304,7 @@
       "cardTitle": "La Promesa SkillsetMind",
       "cardSub": "Seis compromisos con cada creador, por escrito.",
       "clause1": "Tarifa fija por 24 meses",
-      "clause2": "Mismas funciones en todos los planes",
+      "clause2": "Ningún plan te impide vender",
       "clause3": "Portabilidad de datos en un clic",
       "clause4": "Cancelación en un clic",
       "clause5": "Nunca retenemos tu dinero",
@@ -367,7 +367,6 @@
       "sales": "Ventas",
       "subscriptions": "Suscripciones",
       "coupons": "Cupones",
-      "reviewsRefunds": "Reembolsos",
       "team": "Colaboradores",
       "integrations": "Integraciones",
       "operations": "Operaciones",
@@ -376,7 +375,6 @@
       "plansFees": "Planes y tarifas",
       "payoutsTax": "Pagos e impuestos",
       "billing": "Facturación",
-      "creatorOps": "Visión del negocio",
       "reports": "Informes",
       "earnings": "Ingresos",
       "verification": "Verificación"
@@ -515,6 +513,11 @@
       "openWorkspace": "Entrar al curso",
       "accessInactive": "Acceso inactivo"
     },
+    "membersHero": {
+      "showMore": "Ver más",
+      "showLess": "Ver menos",
+      "complete": "completado"
+    },
     "metrics": {
       "coursesInProgress": "Cursos en progreso",
       "coursesInProgressHint": "Espacios de aprendizaje activos",
@@ -528,10 +531,12 @@
       "progress": "{completed}/{total} completados · {percent}%",
       "completed": "Completado",
       "percentComplete": "{percent}% completado",
-      "notEnrolled": "Aún sin inscripción",
       "reviewCourse": "Repasar curso",
       "continue": "Continuar",
-      "viewCourse": "Ver curso"
+      "locked": "Bloqueado",
+      "unlock": "Desbloquear curso",
+      "unlockNote": "Todavia no tienes acceso a este curso. Desbloquealo para verlo aqui mismo en tu area de miembros.",
+      "close": "Cerrar"
     },
     "tour": {
       "welcomeNamed": "Te damos la bienvenida, {name}",
@@ -614,7 +619,7 @@
       "actInReviewTitle": "Estado de revisión heredado",
       "actInReviewDetail": "Abre {title}, completa las verificaciones y publícalo directamente.",
       "actQuestionsTitle": "Preguntas de estudiantes",
-      "actQuestionsDetail": "Las discusiones del curso y los comentarios de las lecciones aparecerán aquí a medida que los estudiantes participen.",
+      "actQuestionsDetail": "Los mensajes privados de tus estudiantes inscritos llegan a la bandeja de entrada del Studio.",
       "actScheduleTitle": "Programa la próxima sesión en vivo",
       "actScheduleDetail": "Añade una clase, mentoría, masterclass, horario de consulta, webinar o fecha límite a la agenda del curso."
     }

@@ -61,9 +61,9 @@ export async function POST(request: Request) {
     // billing portal (proration + swap); this endpoint is for the first paid
     // plan only. `subscriptions` holds plan subscriptions exclusively — course
     // subscriptions live in `course_subscriptions`.
-    // ponytail: trusts the webhook-maintained table, so a checkout completed in
-    // the last few seconds can still slip through; add a
-    // stripe.subscriptions.list fallback if that race ever bites.
+    // This table is maintained by the webhook, which can lag the actual payment
+    // by seconds, so it is the cheap first pass — Stripe itself is asked below
+    // before any session is created.
     const { data: existingPlanSubscription, error: existingPlanError } =
       await getSupabaseAdminClient()
         .from("subscriptions")
@@ -88,6 +88,31 @@ export async function POST(request: Request) {
       profile?.email ?? null,
     );
 
+    // Second pass, against Stripe rather than our mirror of it. The window the
+    // table cannot cover is real money: a creator finishes checkout, the
+    // `checkout.session.completed` webhook is still in flight, they open a
+    // second tab and subscribe again. Stripe Checkout never replaces an
+    // existing subscription, so that leaves two live plans on one card and a
+    // refund conversation.
+    //
+    // This customer only ever exists on the platform account — course
+    // subscriptions are direct charges and live on the creator's own connected
+    // account — so nothing here can block a legitimate course purchase.
+    const stripeSubscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: "all",
+      limit: 100,
+    });
+    const liveStripeSubscription = stripeSubscriptions.data.find((subscription) =>
+      PLAN_CHECKOUT_BLOCKING_STATUSES.includes(subscription.status),
+    );
+    if (liveStripeSubscription) {
+      throw new PaymentError(
+        "You already have a plan subscription. Change or cancel it from billing instead.",
+        409,
+      );
+    }
+
     const appUrl = getAppUrl();
 
     const session = await stripe.checkout.sessions.create(
@@ -99,6 +124,10 @@ export async function POST(request: Request) {
         ui_mode: "embedded_page",
         customer: customerId,
         line_items: [{ price: priceId, quantity: 1 }],
+        // Founding-creator / launch discounts run as Stripe promotion codes on
+        // the platform account — no DB, no UI, created in the Dashboard. Safe
+        // to combine with nothing else: we never pass `discounts` here.
+        allow_promotion_codes: true,
         subscription_data: {
           metadata: { uid, planId, cycle },
         },

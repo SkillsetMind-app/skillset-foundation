@@ -228,7 +228,7 @@ function NotificationPreferencesPanel() {
       </p>
 
       {saveFailed ? (
-        <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+        <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           We could not save that change. Check your connection and try again.
         </p>
       ) : null}
@@ -322,7 +322,7 @@ function LearningPreferencesPanel() {
       </p>
 
       {saveFailed ? (
-        <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+        <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           We could not save that change. Check your connection and try again.
         </p>
       ) : null}

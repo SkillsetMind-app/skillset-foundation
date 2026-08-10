@@ -36,7 +36,7 @@ Tudo validado e no GitHub. **Nada foi deployado** (deploy/LIVE = sua decisão).
 | Taxa Stripe repassada ao professor | feito + testado | `01e8d5b` |
 | Hold de payout 30 → 7 dias _(histórico; valor final = **30**, ver DECISIONS D21)_ | feito | `01e8d5b` |
 | `stripeFeeMinor` persistido no ledger | feito | `01e8d5b` |
-| Módulo canônico `payment-split.ts` + 9 testes unitários | feito (obrigatório, padrão #8) | `978f63a` |
+| Módulo canônico `payment-split.ts` + 9 testes unitários _(histórico; o módulo foi **apagado** na virada para direct charges — a cobertura de taxa vive hoje em `src/lib/payments/rules.ts`)_ | feito | `978f63a` |
 | Bug foto: erros deixam de ser engolidos, causa observável + fallback robusto | feito | `0a48290` |
 | Retrofit: 8 catches de métricas agora logam com contexto (padrão #3) | feito | `5071f44` |
 | STRIPE_CHECKLIST.md / TEST_RESULTS.md / script sim / BLOCKERS / DECISIONS | feito | `0a07b33` |

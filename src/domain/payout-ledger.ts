@@ -30,7 +30,6 @@ export type PayoutLedgerEntry = {
   platformFeeBps?: number;
   status: PayoutLedgerStatus;
   releaseAt?: unknown;
-  releasedAt?: unknown;
   transferId?: string | null;
   refundedAmountMinor?: number;
   createdAt?: unknown;

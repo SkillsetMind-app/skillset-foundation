@@ -57,6 +57,12 @@
      ICON/BORDER clears WCAG AA on dark surfaces (the base tokens stay saturated
      for white-bearing solid fills, which never use these). See A1-cont record. */
   --color-accent-fg: #795615;
+  /* Error text used to be var(--color-accent-fg) everywhere, and that was
+     correct while the accent WAS this red. The brass rebrand moved accent-fg to
+     gold and left ~76 failure surfaces reading gold-on-red — a warning tint, not
+     a failure. This is the --color-danger-fg the account-menu comment below
+     anticipated. #b22234 = 6.11:1 on the 6%-tint pill, 6.64:1 on white. */
+  --color-danger-fg: #b22234;
   --color-success-fg: #1f8a5b;
   --shadow-soft: 0 1px 2px rgba(26, 54, 93, 0.08), 0 10px 24px rgba(26, 54, 93, 0.11);
   --shadow-strong: 0 18px 44px rgba(15, 39, 68, 0.14);
@@ -166,6 +172,9 @@
      Base --color-accent/--color-success untouched, so white-on-fill pairs hold. */
   --color-accent-fg: #e2bd72;
   --color-on-accent: #102a43;
+  /* #e8808c = 5.17:1 on the worst case (18% danger tint over surface-strong
+     #1c2841), 6.88:1 on plain surface. Base #b22234 is only 2.73:1 there. */
+  --color-danger-fg: #e8808c;
   --color-success-fg: #5fc99a;
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.2), 0 14px 34px rgba(0, 0, 0, 0.32);
   --shadow-strong: 0 22px 54px rgba(0, 0, 0, 0.42);
@@ -799,6 +808,7 @@ p {
 .button-outline,
 .button-accent {
   display: inline-flex;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
@@ -1419,7 +1429,7 @@ p {
 
 .account-menu-icon--danger {
   background: rgba(178, 34, 52, 0.08);
-  color: var(--color-accent-fg);
+  color: var(--color-danger-fg);
 }
 
 .account-menu-chip {
@@ -1441,13 +1451,13 @@ p {
 }
 
 .account-menu-item--danger {
-  color: var(--color-accent-fg);
+  color: var(--color-danger-fg);
 }
 
 .account-menu-item--danger:hover,
 .account-menu-item--danger:focus-visible {
   background: rgba(178, 34, 52, 0.06);
-  color: var(--color-accent-fg);
+  color: var(--color-danger-fg);
 }
 
 /* A4 — dark theming for the account/sign-in dropdown.
@@ -1457,12 +1467,9 @@ p {
    to clear AA (brand #b22234 = 2.73:1 on dark surface; #e06472 = 5.36:1). The
    trigger pill (translucent white) is inverted to a translucent light tint so
    its light-ink name/role stop sitting on near-white. Light mode untouched.
-   (#e06472 is a component-scoped dark danger red; A1-cont may promote it to a
-   --color-danger-fg token later.) */
-[data-theme="dark"] .account-menu-item--danger,
-[data-theme="dark"] .account-menu-item--danger:hover,
-[data-theme="dark"] .account-menu-item--danger:focus-visible,
-[data-theme="dark"] .account-menu-icon--danger,
+   (The --danger selectors that used to be listed here now read the promoted
+   --color-danger-fg token instead, so there is one dark red, not two. The chip
+   and role pill stay hardcoded: they are context labels, not failures.) */
 [data-theme="dark"] .account-menu-context-chip,
 [data-theme="dark"] .account-menu-trigger__role {
   color: #e06472;
@@ -1617,7 +1624,7 @@ p {
 .settings-pill--danger {
   border: 1px solid rgba(178, 34, 52, 0.22);
   background: rgba(178, 34, 52, 0.07);
-  color: var(--color-accent-fg);
+  color: var(--color-danger-fg);
 }
 
 .settings-pill--neutral {
@@ -3556,7 +3563,7 @@ body:has([aria-label="Course categories"])
 .lesson-modal-upload__error {
   border: 1px solid rgba(178, 34, 52, 0.2);
   background: rgba(178, 34, 52, 0.06);
-  color: var(--color-accent-fg);
+  color: var(--color-danger-fg);
 }
 
 .lesson-modal-upload__success {
@@ -3933,7 +3940,7 @@ body:has([aria-label="Course categories"])
 
 .member-tool-button {
   display: inline-flex;
-  min-height: 36px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -4477,6 +4484,10 @@ body:has([aria-label="Course categories"])
 
 .member-lesson-card__complete {
   width: 100%;
+  /* 44px is the WCAG 2.5.8 / Apple HIG minimum for a finger. 7px padding on an
+     11px font rendered ~29px tall, which is a miss on a phone. Keep the compact
+     type, grow the box. */
+  min-height: 44px;
   padding: 7px 10px;
   font-size: 11px;
 }
@@ -4806,7 +4817,7 @@ body:has([aria-label="Course categories"])
   box-shadow: none;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 767.98px) {
   .member-classroom[data-members-theme] {
     border-radius: 14px;
   }
@@ -6184,7 +6195,8 @@ button:hover > .dash-card,
 }
 .members-hero__more {
   margin-top: 8px;
-  padding: 0;
+  margin-left: -4px;
+  padding: 12px 4px;
   background: none;
   border: none;
   color: #fff;
@@ -6254,7 +6266,7 @@ button:hover > .dash-card,
     max-width: none;
   }
 }
-@media (max-width: 760px) {
+@media (max-width: 767.98px) {
   .members-hero__inner {
     padding: 30px 22px;
   }
@@ -6345,7 +6357,7 @@ button:hover > .dash-card,
 
 .marketplace-filter-button {
   display: inline-flex;
-  min-height: 2.45rem;
+  min-height: 2.75rem;
   align-items: center;
   gap: 0.5rem;
   border: 1px solid var(--color-line);
@@ -6483,8 +6495,8 @@ button:hover > .dash-card,
 
 .marketplace-icon-button {
   display: grid;
-  width: 2.2rem;
-  height: 2.05rem;
+  width: 2.75rem;
+  height: 2.75rem;
   place-items: center;
   border: 0;
   border-radius: 7px;
@@ -6553,6 +6565,20 @@ button:hover > .dash-card,
 .marketplace-course-grid {
   display: grid;
   gap: 1.4rem;
+}
+
+/* Went straight from 1 column to 3 at 1024px, so every tablet and large phone
+   in landscape showed one card per row with half the screen empty. Two columns
+   from 640px closes that gap. The --list variant stays single-column at every
+   width — that is the whole point of the variant. */
+@media (min-width: 640px) {
+  .marketplace-course-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .marketplace-course-grid--list {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (min-width: 1024px) {
@@ -6667,8 +6693,9 @@ button:hover > .dash-card,
   right: 0.85rem;
   z-index: 3;
   display: grid;
-  width: 2.4rem;
-  height: 2.4rem;
+  /* 2.4rem = 38.4px, under the 44px finger minimum. */
+  width: 2.75rem;
+  height: 2.75rem;
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 999px;
@@ -6843,6 +6870,60 @@ button:hover > .dash-card,
   background: #ffffff;
   color: var(--color-primary);
   box-shadow: inset 0 0 0 1px var(--color-line);
+}
+
+/* --- Teacher storefront branding -----------------------------------------
+   `--storefront-accent` is set inline from the teacher's sanitized accent
+   color; every rule below falls back to the platform palette so a profile
+   without branding (or on a free plan, where the projection is null) renders
+   exactly as it did before. Theme presets are whitelisted at projection time,
+   so an unknown value simply matches no rule and keeps the default band. */
+
+.instructor-storefront-hero {
+  border-top: 3px solid var(--storefront-accent, var(--color-line));
+}
+
+.instructor-storefront-hero__cover {
+  position: relative;
+  height: clamp(9rem, 20vw, 14rem);
+  background: var(--color-surface-strong);
+}
+
+.instructor-storefront-tagline {
+  border-left: 3px solid var(--storefront-accent, var(--color-primary));
+  padding-left: 0.9rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.6;
+  color: var(--color-primary);
+}
+
+.instructor-storefront-hero[data-storefront-theme="warm"]
+  .instructor-storefront-hero__band {
+  background: linear-gradient(135deg, #fffaf3 0%, #fdf1e0 62%, #f8e4cb 100%);
+}
+
+.instructor-storefront-hero[data-storefront-theme="cool"]
+  .instructor-storefront-hero__band {
+  background: linear-gradient(135deg, #f6fbff 0%, #e8f3fb 62%, #d9e9f6 100%);
+}
+
+.instructor-storefront-hero[data-storefront-theme="mono"]
+  .instructor-storefront-hero__band {
+  background: linear-gradient(135deg, #ffffff 0%, #f4f5f7 62%, #e8eaee 100%);
+}
+
+[data-theme="dark"] .instructor-storefront-hero[data-storefront-theme="warm"]
+  .instructor-storefront-hero__band,
+[data-theme="dark"] .instructor-storefront-hero[data-storefront-theme="cool"]
+  .instructor-storefront-hero__band,
+[data-theme="dark"] .instructor-storefront-hero[data-storefront-theme="mono"]
+  .instructor-storefront-hero__band {
+  background: linear-gradient(
+    135deg,
+    var(--color-surface) 0%,
+    var(--color-surface-soft) 100%
+  );
 }
 
 [data-theme="dark"] .marketplace-page-header,

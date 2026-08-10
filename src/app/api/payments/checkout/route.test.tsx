@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   getStripe: vi.fn(),
   createSession: vi.fn(),
   expireSession: vi.fn(),
+  getPercentOffCoupon: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -30,7 +31,7 @@ vi.mock("@/lib/payments/server/app-url", () => ({
 vi.mock("@/lib/payments/server/stripe", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/payments/server/stripe")>()),
   getStripeClient: mocks.getStripe,
-  getStripePlatformAccountCountry: vi.fn(async () => null),
+  getStripeAccountCountry: vi.fn(async () => null),
 }));
 
 vi.mock("@/lib/payments/server/stripe-helpers", () => ({
@@ -42,6 +43,7 @@ vi.mock("@/lib/payments/server/stripe-helpers", () => ({
   getCourseRow: mocks.getCourseRow,
   getUserRow: mocks.getUserRow,
   getOrCreateBillingStripeCustomer: mocks.getCustomer,
+  getOrCreateAccountPercentOffCoupon: mocks.getPercentOffCoupon,
   getOrCreateCourseSubscriptionPrice: mocks.getSubscriptionPrice,
   loadCourseProductOffers: mocks.loadOffers,
   normalizeCoursePrice: mocks.normalizePrice,
@@ -60,10 +62,28 @@ function request(body: Record<string, unknown>) {
   });
 }
 
+function coupon(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "coupon_row",
+    course_id: "course",
+    owner_id: "teacher",
+    code: "LAUNCH25",
+    percent_off: 25,
+    max_redemptions: 100,
+    redeemed_count: 0,
+    expires_at: null,
+    active: true,
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
 function createAdmin(input: {
   enrollment?: ExistingRow;
   subscription?: ExistingRow;
   lockReplies?: LockReply[];
+  coupon?: Record<string, unknown> | null;
 }) {
   const lockReplies = [...(input.lockReplies ?? [])];
   const lockUpdates: Array<Record<string, unknown>> = [];
@@ -130,6 +150,11 @@ function createAdmin(input: {
         };
       }
 
+      if (this.table === "course_coupons") {
+        const couponRow = input.coupon ?? null;
+        return { data: single ? couponRow : couponRow ? [couponRow] : [], error: null };
+      }
+
       const candidate = this.table === "enrollments"
         ? input.enrollment ?? null
         : this.table === "course_subscriptions"
@@ -148,6 +173,9 @@ function createAdmin(input: {
       if (!params) throw new Error(`Missing params for rpc: ${name}`);
       if (name === "enforce_rate_limit") {
         return { data: true, error: null };
+      }
+      if (name === "reserve_course_coupon" || name === "release_course_coupon_reservation") {
+        return { data: null, error: null };
       }
       if (name !== "claim_checkout_lock") {
         throw new Error(`Unexpected rpc: ${name}`);
@@ -332,6 +360,73 @@ describe("course checkout subscription exclusivity", () => {
     expect(admin.orderInserts).toHaveLength(1);
   });
 
+  it("mints the recurring price at list value and puts the coupon on the session", async () => {
+    const admin = createAdmin({
+      lockReplies: [{ action: "claim", checkout_url: null }],
+      coupon: coupon(),
+    });
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.getPercentOffCoupon.mockResolvedValue("skillset_pct_25_once");
+
+    const response = await POST(request({ courseId: "course", couponCode: "launch25" }));
+
+    expect(response.status).toBe(200);
+
+    // The double-discount guard: a 25% coupon must NOT shrink the recurring
+    // Price. Baking it in here plus the Stripe coupon on the first invoice
+    // would discount twice, and the Price cut would never expire.
+    expect(mocks.getSubscriptionPrice.mock.calls[0][3]).toBe(12_000);
+
+    expect(mocks.getPercentOffCoupon).toHaveBeenCalledWith(
+      expect.anything(),
+      25,
+      "acct_teacher",
+    );
+
+    const params = mocks.createSession.mock.calls[0][0];
+    expect(params.discounts).toEqual([{ coupon: "skillset_pct_25_once" }]);
+
+    // No order row exists for a subscription, so the reservation is keyed by
+    // the attempt id — and the webhook can only finalize what it can read off
+    // the subscription metadata.
+    const [, reserveParams] = admin.rpc.mock.calls.find(
+      ([name]) => name === "reserve_course_coupon",
+    )!;
+    expect(params.subscription_data.metadata.couponReservationId).toBe(
+      (reserveParams as { p_order_id: string }).p_order_id,
+    );
+    expect(params.subscription_data.metadata.couponCode).toBe("LAUNCH25");
+  });
+
+  it("still discounts the charge itself on the one-time path", async () => {
+    const admin = createAdmin({
+      lockReplies: [{ action: "claim", checkout_url: null }],
+      coupon: coupon(),
+    });
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.getCourseRow.mockResolvedValue(course("one_time"));
+    mocks.normalizePrice.mockReturnValue({
+      amountMinor: 12_000,
+      currency: "usd",
+      paymentType: "one_time",
+      source: "legacy",
+    });
+    mocks.createSession.mockResolvedValue({
+      id: "cs_payment",
+      url: "https://checkout.example/payment",
+    });
+
+    const response = await POST(request({ courseId: "course", couponCode: "LAUNCH25" }));
+
+    expect(response.status).toBe(200);
+    expect(admin.orderInserts[0]).toEqual(
+      expect.objectContaining({ amount_minor: 9_000, coupon_code: "LAUNCH25" }),
+    );
+    // One-time carries no Stripe coupon: the discount is already the charge.
+    expect(mocks.getPercentOffCoupon).not.toHaveBeenCalled();
+    expect(mocks.createSession.mock.calls[0][0].discounts).toBeUndefined();
+  });
+
   it("preserves the lock when Stripe may have created a session before losing the response", async () => {
     const admin = createAdmin({
       lockReplies: [{ action: "claim", checkout_url: null }],
@@ -344,5 +439,32 @@ describe("course checkout subscription exclusivity", () => {
     expect(response.status).toBe(500);
     expect(mocks.expireSession).not.toHaveBeenCalled();
     expect(admin.lockDeletes).toEqual([]);
+  });
+
+  it("expires the session and frees the lock when the one-time path fails after create", async () => {
+    const admin = createAdmin({
+      lockReplies: [{ action: "claim", checkout_url: null }],
+    });
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.getCourseRow.mockResolvedValue(course("one_time"));
+    mocks.normalizePrice.mockReturnValue({
+      amountMinor: 12_000,
+      currency: "usd",
+      paymentType: "one_time",
+      source: "legacy",
+    });
+    // Session exists on the connected account but is unusable, so nobody can
+    // ever pay it — the lock must not outlive it.
+    mocks.createSession.mockResolvedValue({ id: "cs_no_url", url: null });
+
+    const response = await POST(request({ courseId: "course" }));
+
+    expect(response.status).toBe(500);
+    expect(mocks.expireSession).toHaveBeenCalledWith(
+      "cs_no_url",
+      {},
+      { stripeAccount: "acct_teacher" },
+    );
+    expect(admin.lockDeletes).toEqual(["checkout_locks"]);
   });
 });

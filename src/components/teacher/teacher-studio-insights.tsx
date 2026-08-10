@@ -424,7 +424,12 @@ function buildActivity(
   items.push({
     title: t("teach.insights.actQuestionsTitle"),
     detail: t("teach.insights.actQuestionsDetail"),
-    href: "/learn/community/creator",
+    // Was /learn/community/creator, which needs a courseId and, without one,
+    // told the course OWNER to "open a creator course community from your
+    // enrolled community list". Worse, /learn swaps to the learner shell, so
+    // the Studio nav disappeared with no way back. The Studio inbox is the
+    // surface that actually answers student questions.
+    href: "/teach/messages",
     kind: "normal",
     icon: "message",
   });

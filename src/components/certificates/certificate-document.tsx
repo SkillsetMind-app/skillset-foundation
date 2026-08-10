@@ -6,15 +6,23 @@ import type { Certificate } from "@/domain/certificate";
  * Presentational, print-optimized certificate. Renders only from a `Certificate`
  * snapshot (no live lookups), so what prints is exactly the permanent record:
  * the locked learner name, the course, the teacher identity captured at
- * issuance, the SkillsetMind authority mark, and the public verification code.
+ * issuance, the authority mark, and the public verification code.
+ *
+ * When `hidePlatformBrand` was stamped at issuance (pro and up), the teacher's
+ * mark takes the header and our name disappears from the body — except the
+ * verification code and its URL, which are the credential's whole point and
+ * print on every certificate regardless of plan.
  */
 export function CertificateDocument({
   certificate,
 }: {
   certificate: Certificate;
 }) {
-  const studentName = certificate.studentFullName?.trim() || "SkillsetMind Learner";
-  const teacherName = certificate.teacherName?.trim() || "SkillsetMind Faculty";
+  const hideBrand = certificate.hidePlatformBrand === true;
+  const studentName =
+    certificate.studentFullName?.trim() || (hideBrand ? "Learner" : "SkillsetMind Learner");
+  const teacherName =
+    certificate.teacherName?.trim() || (hideBrand ? "Instructor" : "SkillsetMind Faculty");
   const issuedOn = formatIssuedAt(certificate.issuedAt);
 
   return (
@@ -26,34 +34,59 @@ export function CertificateDocument({
         />
         <div className="relative">
           <header className="flex flex-wrap items-center justify-between gap-4">
-            <span className="relative block h-9 w-36">
-              <Image
-                src="/brand/logo-full-dark.png"
-                alt="SkillsetMind"
-                fill
-                sizes="160px"
-                className="object-contain object-left"
-              />
-            </span>
+            {hideBrand ? (
+              // Whitelabel: the teacher's mark takes the masthead. No logo on
+              // file falls back to their name set as a wordmark, never to ours.
+              certificate.sponsorLogoUrl ? (
+                <span className="relative block h-9 w-36">
+                  <Image
+                    src={certificate.sponsorLogoUrl}
+                    alt={teacherName}
+                    fill
+                    sizes="160px"
+                    className="object-contain object-left"
+                    unoptimized
+                  />
+                </span>
+              ) : (
+                <span className="display-title text-xl text-[var(--color-primary)]">
+                  {teacherName}
+                </span>
+              )
+            ) : (
+              <span className="relative block h-9 w-36">
+                <Image
+                  src="/brand/logo-full-dark.png"
+                  alt="SkillsetMind"
+                  fill
+                  sizes="160px"
+                  className="object-contain object-left"
+                />
+              </span>
+            )}
             <div className="text-right">
-              <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-accent-fg)]">
-                {certificate.authorityLabel}
-              </p>
+              {hideBrand ? null : (
+                <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-accent-fg)]">
+                  {certificate.authorityLabel}
+                </p>
+              )}
               <p className="text-xs font-semibold text-[var(--color-ink-soft)]">
                 Certificate of Completion
               </p>
             </div>
           </header>
 
-          {certificate.sponsorLogoUrl ? (
+          {/* Co-brand band, for plans that add the teacher's mark next to ours.
+              Under whitelabel it is redundant: the mark is already the header. */}
+          {!hideBrand && certificate.sponsorLogoUrl ? (
             <div className="mt-5 flex items-center gap-3">
               <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--color-ink-soft)]">
-                In partnership with
+                Course by
               </span>
               <span className="relative block h-7 w-28">
                 <Image
                   src={certificate.sponsorLogoUrl}
-                  alt="Partner"
+                  alt={teacherName}
                   fill
                   sizes="120px"
                   className="object-contain object-left"
@@ -71,7 +104,9 @@ export function CertificateDocument({
               {studentName}
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
-              has successfully completed the SkillsetMind program
+              {hideBrand
+                ? "has successfully completed the program"
+                : "has successfully completed the SkillsetMind program"}
             </p>
             <h2 className="display-title mt-3 text-2xl text-[var(--color-ink)] sm:text-3xl">
               {certificate.courseTitle}

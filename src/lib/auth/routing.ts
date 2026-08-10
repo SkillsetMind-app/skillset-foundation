@@ -1,5 +1,6 @@
 import type { SkillsetUser } from "@/domain/auth";
 import type { UserProfile } from "@/domain/user-profile";
+import { hasPermission } from "@/lib/permissions";
 
 export type AuthPathIntent = "student" | "teacher";
 
@@ -8,11 +9,16 @@ export type AuthPathIntent = "student" | "teacher";
  * home hero, and the account menu so a signed-in visitor always has one clear
  * path back to their dashboard. Mirrors getPostAuthRoute's role branch minus
  * the onboarding/intent steps that only apply immediately after authentication.
+ *
+ * The /ops branch asks the permission, not a role list: /ops itself gates on
+ * platform.accessAdmin, and a hardcoded list drifted from it in both
+ * directions — "ops", the role named after the workspace, was never sent
+ * there, while "support" was sent there without the permission to open it.
  */
 export function getPrimaryWorkspaceHref(
   user: Pick<SkillsetUser, "roles">,
 ): string {
-  if (user.roles.includes("admin") || user.roles.includes("support")) {
+  if (hasPermission(user, "platform.accessAdmin")) {
     return "/ops";
   }
 
@@ -122,7 +128,7 @@ export function getPostAuthRoute(
     return "/onboarding?path=teacher";
   }
 
-  if (profile.roles.includes("admin") || profile.roles.includes("support")) {
+  if (hasPermission(profile, "platform.accessAdmin")) {
     return "/ops";
   }
 

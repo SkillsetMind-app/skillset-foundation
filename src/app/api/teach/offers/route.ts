@@ -88,7 +88,11 @@ export async function POST(request: Request) {
         p_currency: currency,
         p_payment_type: paymentType,
         p_is_default: isDefault,
-        p_public_code: publicCode || null,
+        // Omitted rather than null: the function declares
+        // `p_public_code text DEFAULT NULL`, so leaving it out applies that
+        // default. The generated type renders defaulted args as optional and
+        // non-nullable, so passing null would need a cast for no behavior gain.
+        p_public_code: publicCode || undefined,
       },
     );
     if (createError) throw new Error(createError.message);
@@ -128,20 +132,21 @@ export async function GET(request: Request) {
       throw new PaymentError("Only the course owner can list offers.", 403);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db = admin as any;
-    const { data: offers, error } = await db
+    const { data: offers, error } = await admin
       .from("product_offers")
       .select("id,course_id,name,is_default,active,public_code,created_at")
       .eq("course_id", courseId)
       .order("created_at", { ascending: false });
     if (error) {
-      return NextResponse.json({ offers: [], warning: error.message });
+      // Raw Postgres messages name columns, constraints and policies — schema
+      // recon for anyone who can reach this route. Log it, return a flag.
+      console.error("Offer list query failed", error);
+      return NextResponse.json({ offers: [], warning: "Offers are unavailable." });
     }
 
     const result = [];
     for (const offer of offers ?? []) {
-      const { data: prices } = await db
+      const { data: prices } = await admin
         .from("product_prices")
         .select("id,amount_minor,currency,payment_type,stripe_price_id,active")
         .eq("offer_id", offer.id);
@@ -173,12 +178,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ offers: result });
   } catch (error) {
-    if (error instanceof PaymentError) {
-      return paymentErrorResponse(error);
-    }
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Offer list failed." },
-      { status: 500 },
-    );
+    // paymentErrorResponse already surfaces PaymentError verbatim and turns
+    // everything else into a logged, opaque 500 — the hand-rolled branch below
+    // it was leaking raw driver messages instead.
+    return paymentErrorResponse(error);
   }
 }

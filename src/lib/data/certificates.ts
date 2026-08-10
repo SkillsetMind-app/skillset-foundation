@@ -26,6 +26,7 @@ function rowToCertificate(row: CertificateRow): Certificate {
     teacherName: row.teacher_name,
     teacherSignatureUrl: row.teacher_signature_url,
     sponsorLogoUrl: row.sponsor_logo_url,
+    hidePlatformBrand: row.hide_platform_brand,
     issuedAt: row.issued_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

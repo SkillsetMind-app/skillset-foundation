@@ -10,7 +10,15 @@ describe("workspace routing", () => {
   it("maps each role to its primary workspace", () => {
     expect(getPrimaryWorkspaceHref({ roles: ["student"] })).toBe("/learn");
     expect(getPrimaryWorkspaceHref({ roles: ["teacher"] })).toBe("/teach");
-    expect(getPrimaryWorkspaceHref({ roles: ["support"] })).toBe("/ops");
+    expect(getPrimaryWorkspaceHref({ roles: ["admin"] })).toBe("/ops");
+  });
+
+  it("sends a role to /ops only when it can actually open /ops", () => {
+    // /ops gates on platform.accessAdmin. "ops" holds it and used to be
+    // stranded on /learn; "support" does not and used to land on a denial
+    // screen. Routing asks the permission now, so both agree with the gate.
+    expect(getPrimaryWorkspaceHref({ roles: ["ops"] })).toBe("/ops");
+    expect(getPrimaryWorkspaceHref({ roles: ["support"] })).toBe("/learn");
   });
 
   it("keeps application chrome inside the active workspace", () => {

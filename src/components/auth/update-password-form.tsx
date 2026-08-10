@@ -70,7 +70,7 @@ export function UpdatePasswordForm({
       <div className="mt-6 grid gap-4">
         <p
           role="alert"
-          className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]"
+          className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
           This password reset link is invalid or has expired. Reset links can
           only be used once.
@@ -156,7 +156,7 @@ export function UpdatePasswordForm({
         <p
           role="alert"
           aria-live="assertive"
-          className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]"
+          className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
           {error}
         </p>

@@ -175,7 +175,7 @@ export function CreatorOpsHub() {
             <Link
               key={card.href}
               href={card.href}
-              className="group rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm transition hover:border-[var(--color-primary)]"
+              className="group rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-soft)] transition hover:border-[var(--color-primary)]"
             >
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
@@ -195,7 +195,7 @@ export function CreatorOpsHub() {
         })}
       </div>
 
-      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+      <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5">
         <h2 className="text-sm font-semibold text-[var(--color-ink)]">
           Operations shortcuts
         </h2>
@@ -210,7 +210,7 @@ export function CreatorOpsHub() {
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-full border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-ink)] hover:border-[var(--color-primary)]"
+              className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs font-medium text-[var(--color-ink)] hover:border-[var(--color-primary)]"
             >
               {link.label}
             </Link>

@@ -4,6 +4,7 @@ import { buildAssistantKnowledge } from "@/lib/assistant/knowledge";
 import { KimiConfigError, KimiError, askKimi, type KimiMessage } from "@/lib/assistant/kimi";
 import { formatKnowledge, retrieveKnowledge } from "@/lib/assistant/retrieve";
 import { buildTeacherContext } from "@/lib/assistant/teacher-context";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { runRateLimit } from "@/lib/supabase/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -274,9 +275,17 @@ export async function POST(request: Request) {
   // as "the model is unreachable" and would answer "being set up", which is a
   // lie when the real failure was a context query. Run them together: the
   // embedding round-trip and the catalogue queries have no reason to be serial.
+  // Retrieval runs on the admin client, the teacher snapshot on the caller's.
+  // Deliberate: advisor_documents is deny-all under RLS, so the search only
+  // worked because match_advisor_documents was SECURITY DEFINER *and* granted to
+  // `authenticated` — which also published an unthrottled pgvector scan on the
+  // public PostgREST surface, callable with any match_count. Reading it here
+  // with the service role lets that grant be revoked. buildTeacherContext keeps
+  // the caller's client on purpose: it reads this teacher's own rows and RLS is
+  // the thing that stops it reading someone else's.
   const [teacherContext, passages] = await Promise.all([
     buildTeacherContext(supabase, uid).catch(() => ""),
-    retrieveKnowledge(supabase, question),
+    retrieveKnowledge(getSupabaseAdminClient(), question),
   ]);
 
   const context = [buildAssistantKnowledge(), formatKnowledge(passages), teacherContext]

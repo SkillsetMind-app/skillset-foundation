@@ -56,14 +56,13 @@ export const defaultLearningPreferences: LearningPreferences = {
 };
 
 // --- Instructor storefront (members-area branding) -------------------------
-// A teacher-configurable brand layer embedded on the user doc (like
-// `preferences`). A safe subset is later projected by the
-// syncPublicTeacherProfile Cloud Function into the world-readable
-// publicProfiles doc to power the public instructor vitrine — so the URL fields
-// are validated (https + length) on the write rule AND re-sanitized on
-// projection, and accentColor is constrained to a hex string to block CSS
-// injection. AUGMENT, not replace: this is a VIEW over the teacher's existing
-// `ownerId`-keyed courses, never a new collection.
+// A teacher-configurable brand layer embedded on the user row (like
+// `preferences`). A safe subset is projected by the `sync_public_profile()`
+// trigger into the world-readable `public_profiles` table to power the public
+// instructor vitrine — so the URL fields are validated (https + length) on
+// write AND re-sanitized on projection, and accentColor is constrained to a hex
+// string to block CSS injection. AUGMENT, not replace: this is a VIEW over the
+// teacher's existing `owner_id`-keyed courses, never a new table.
 export const storefrontThemePresets = [
   "default",
   "warm",
@@ -90,6 +89,14 @@ export type StorefrontBranding = {
   logoUrl?: string | null;
   heroImageUrl?: string | null;
   themePreset?: StorefrontThemePreset | null;
+  /**
+   * Read-only, computed by the DB. `public_storefront_projection()` emits it
+   * (true, or absent) for plans with `removePlatformBranding`; the storefront
+   * editor never writes it and `updateUserStorefront` never persists it. It
+   * rides inside the storefront jsonb so the public projection can answer
+   * "may this teacher replace our mark?" without publishing what they pay.
+   */
+  hidePlatformBrand?: boolean | null;
 };
 
 export type StorefrontShowcase = {
@@ -169,8 +176,8 @@ export type UserProfile = {
   /**
    * Instructor storefront branding + showcase ordering, set from the
    * /teach/storefront editor. Client-writable on the user's own row, validated
-   * by the storefront guard in RLS (https URLs, hex accent). A safe
-   * subset is projected into the public profile by syncPublicTeacherProfile.
+   * by the storefront guard in RLS (https URLs, hex accent). A safe subset is
+   * projected into `public_profiles` by the `sync_public_profile()` trigger.
    */
   storefront?: StorefrontConfig;
   createdAt: string;
@@ -209,9 +216,9 @@ export const maxCredentialLength = 120;
 
 /**
  * Public, read-only projection of a teacher's profile. Written exclusively by
- * the `syncPublicTeacherProfile` Cloud Function (projected from `users/{uid}`),
- * so it is safe for anonymous reads on the public instructor page. Clients
- * never write this document.
+ * the `sync_public_profile()` Postgres trigger (projected from `public.users`),
+ * so it is safe for anonymous reads on the public instructor page. Clients have
+ * insert/update/delete revoked on this table.
  */
 export type PublicProfile = {
   uid: string;
@@ -220,5 +227,12 @@ export type PublicProfile = {
   photoURL: string | null;
   bio: string | null;
   credentials: string[];
+  /**
+   * Sanitized, plan-gated slice of the teacher's storefront config. Null when
+   * the plan does not include `storefrontTemplates` — the trigger applies that
+   * gate, so a downgrade takes the custom vitrine down on the next write.
+   * Already validated at projection time (https URLs, hex accent, known theme).
+   */
+  storefront?: StorefrontConfig | null;
   updatedAt?: unknown;
 };

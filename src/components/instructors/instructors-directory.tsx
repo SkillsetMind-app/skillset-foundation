@@ -64,7 +64,7 @@ export function InstructorsDirectory() {
   if (hasError) {
     return (
       <section className="mt-12 rounded-[16px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] p-6">
-        <p className="text-sm font-semibold text-[var(--color-accent-fg)]">
+        <p className="text-sm font-semibold text-[var(--color-danger-fg)]">
           Instructor profiles could not load right now.
         </p>
         <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">

@@ -145,7 +145,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
   if (error || !order) {
     return (
       <section className="settings-section-card">
-        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {error || "Sale not found."}
         </p>
         <Link href="/teach" className="button-outline mt-5 px-4 py-2.5 text-sm">
@@ -164,7 +164,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
   if (!canView) {
     return (
       <section className="settings-section-card">
-        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           You do not have access to this sale. Sign in with the account that owns it, or contact support.
         </p>
       </section>

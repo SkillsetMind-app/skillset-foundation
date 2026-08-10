@@ -21,9 +21,13 @@ import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import { CourseCommunityFeed } from "@/components/learn/course-community-feed";
 import { CourseMessagesPanel } from "@/components/learn/course-messages-panel";
 import { CourseReviewPanel } from "@/components/learn/course-review-panel";
+import { LessonListOverlay } from "@/components/learn/lesson-list-overlay";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { CourseSubscriptionCard } from "@/components/learn/course-subscription-card";
-import { WatermarkedVideoPlayer } from "@/components/learn/watermarked-video-player";
+import {
+  VideoWatermark,
+  WatermarkedVideoPlayer,
+} from "@/components/learn/watermarked-video-player";
 import type { CourseAsset } from "@/domain/course-asset";
 import { courseAssetKindLabels, formatCourseAssetSize } from "@/domain/course-asset";
 import type { CourseEvent } from "@/domain/course-event";
@@ -106,6 +110,7 @@ export function EnrolledCourseWorkspace({
   });
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [lessonListOpen, setLessonListOpen] = useState(false);
   const [assetsState, setAssetsState] = useState<{
     assets: CourseAsset[];
     key: string | null;
@@ -276,9 +281,30 @@ export function EnrolledCourseWorkspace({
   }, [selectedLessonId, course.id, course.modules, previewMode]);
 
   if (isLoading) {
+    // Skeleton mirrors the classroom shape (hero band, then player + lesson
+    // strip) so nothing shifts when the enrollment resolves. Neutral surface
+    // tokens only, because the real shell is theme-driven per course.
     return (
-      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-sm text-[var(--color-ink-soft)]">Loading course workspace...</p>
+      <section
+        aria-busy="true"
+        aria-live="polite"
+        className="grid gap-4 rounded-[14px] border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] sm:p-6"
+      >
+        <p className="sr-only" role="status">
+          Loading course workspace...
+        </p>
+        <div className="h-32 animate-pulse rounded-[12px] bg-[var(--color-surface-strong)]" />
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="aspect-video animate-pulse rounded-[12px] bg-[var(--color-surface-strong)]" />
+          <div className="grid gap-3">
+            {[0, 1, 2, 3].map((item) => (
+              <div
+                key={item}
+                className="h-16 animate-pulse rounded-[10px] bg-[var(--color-surface-soft)]"
+              />
+            ))}
+          </div>
+        </div>
       </section>
     );
   }
@@ -286,7 +312,7 @@ export function EnrolledCourseWorkspace({
   if (error) {
     return (
       <section className="rounded-[14px] border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+        <p className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {error}
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
@@ -424,16 +450,14 @@ export function EnrolledCourseWorkspace({
   const selectedLessonNumber = selectedLesson
     ? allLessons.findIndex((lesson) => lesson.id === selectedLesson.id) + 1
     : 0;
-  const selectedLessonCompleted = selectedLesson
-    ? completedLessonIds.includes(selectedLesson.id)
-    : false;
-  const selectedLessonCanComplete = Boolean(
-    selectedLesson
-      && selectedLessonUnlockState?.unlocked
-      && !previewMode
-      && !isProgressLoading
-      && activeLessonId !== selectedLesson.id,
-  );
+  // Sequential navigation. selectedLessonNumber is already the 1-based position
+  // in the flattened curriculum, so the neighbours are just its edges. Locked
+  // lessons stay reachable, exactly like clicking one in the sidebar strip: the
+  // panel is what shows the lock, not the navigation.
+  const previousInOrder =
+    selectedLessonNumber > 1 ? allLessons[selectedLessonNumber - 2] : null;
+  const nextInOrder =
+    selectedLessonNumber > 0 ? allLessons[selectedLessonNumber] ?? null : null;
   // Members-area hero cover: the teacher's chosen members_cover CourseAsset
   // (resolved to a protected object URL inside the hero band). Only available
   // once the course assets are streamed (enableFirestoreAssets); otherwise the
@@ -608,25 +632,13 @@ export function EnrolledCourseWorkspace({
             <MessageCircle size={14} aria-hidden />
             Discussion
           </button>
-          {selectedLesson ? (
-            <button
-              type="button"
-              onClick={() =>
-                toggleLessonCompletion(selectedLesson.id, selectedLessonCompleted)
-              }
-              disabled={!selectedLessonCanComplete}
-              className="button-solid member-tool-button disabled:opacity-60"
-            >
-              {activeLessonId === selectedLesson.id
-                ? "Saving..."
-                : selectedLessonCompleted
-                  ? "Mark incomplete"
-                  : selectedLessonUnlockState?.unlocked
-                    ? "Mark complete"
-                    : "Locked"}
-              <CheckCircle2 size={14} aria-hidden />
-            </button>
-          ) : null}
+          {/* A second "Mark complete" for the SAME lesson used to sit here.
+              LessonContentPanel already renders one at the end of the lesson
+              body — both on screen at once, both firing toggleLessonCompletion
+              on selectedLesson. Every other button in this strip only scrolls
+              somewhere, so the state-changing one was the odd one out, and the
+              end-of-lesson spot is where students look for it. Kept that one:
+              it also has the richer copy ("Preview only" / "Lesson locked"). */}
           {progressPercent === 100 ? (
             <Link
               href="/learn/credentials"
@@ -642,14 +654,13 @@ export function EnrolledCourseWorkspace({
       <div className="member-classroom-layout">
         <section id="member-lesson-player" className="member-classroom-player">
         {error ? (
-          <p className="mb-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+          <p className="mb-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {error}
           </p>
         ) : null}
         {selectedLesson && resolvedSelectedLesson ? (
           <LessonContentPanel
             assets={selectedLessonAssets}
-            completed={completedLessonIds.includes(selectedLesson.id)}
             courseId={course.id}
             enableFirestoreAssets={enableFirestoreAssets}
             isLoadingAssets={Boolean(
@@ -657,17 +668,88 @@ export function EnrolledCourseWorkspace({
                 && (!assetsState.ready || assetsState.key !== course.id),
             )}
             isLoadingContent={isLessonContentLoading}
-            isSaving={activeLessonId === selectedLesson.id}
             lesson={resolvedSelectedLesson}
             unlockState={selectedLessonUnlockState}
             previewMode={previewMode}
-            onToggleComplete={() =>
-              toggleLessonCompletion(
-                selectedLesson.id,
-                completedLessonIds.includes(selectedLesson.id),
-              )
-            }
           />
+        ) : null}
+        {selectedLesson ? (
+          // Sticky so the four actions stay reachable however long the lesson
+          // body and its discussion run — the bar every member area the student
+          // already uses keeps pinned to the bottom.
+          // bg-inherit picks up the player surface, which the members theme
+          // repaints, so the bar follows the course theme with no fork.
+          <nav
+            aria-label="Lesson navigation"
+            className="sticky bottom-0 z-20 mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] bg-inherit py-3"
+          >
+            {previousInOrder ? (
+              <button
+                type="button"
+                onClick={() => setSelectedLessonId(previousInOrder.id)}
+                aria-label={`Previous lesson: ${previousInOrder.title}`}
+                className="button-outline max-w-full px-4 py-2.5 text-sm sm:max-w-[26%]"
+              >
+                <span className="block truncate">
+                  &larr; {previousInOrder.title}
+                </span>
+              </button>
+            ) : (
+              <span aria-hidden />
+            )}
+            <div className="order-last flex w-full items-center gap-2 sm:order-none sm:w-auto">
+              <button
+                type="button"
+                onClick={() => setLessonListOpen(true)}
+                className="button-outline flex-1 px-4 py-2.5 text-sm sm:flex-none"
+              >
+                All lessons ({totalLessonCount})
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  toggleLessonCompletion(
+                    selectedLesson.id,
+                    completedLessonIds.includes(selectedLesson.id),
+                  )
+                }
+                disabled={
+                  previewMode
+                  || Boolean(
+                    selectedLessonUnlockState
+                      && !selectedLessonUnlockState.unlocked,
+                  )
+                  || activeLessonId === selectedLesson.id
+                }
+                className="button-solid flex-1 px-4 py-2.5 text-sm disabled:opacity-60 sm:flex-none"
+              >
+                {previewMode
+                  ? "Preview only"
+                  : selectedLessonUnlockState
+                      && !selectedLessonUnlockState.unlocked
+                    ? "Lesson locked"
+                    : activeLessonId === selectedLesson.id
+                      ? "Saving..."
+                      : completedLessonIds.includes(selectedLesson.id)
+                        ? "Mark as incomplete"
+                        : "Mark complete"}
+              </button>
+            </div>
+            {nextInOrder ? (
+              <button
+                type="button"
+                onClick={() => setSelectedLessonId(nextInOrder.id)}
+                aria-label={`Next lesson: ${nextInOrder.title}`}
+                className="button-outline max-w-full px-4 py-2.5 text-sm sm:max-w-[38%]"
+              >
+                <span className="block truncate">
+                  {nextInOrder.title} &rarr;
+                </span>
+              </button>
+            ) : (
+              <span aria-hidden />
+            )}
+          </nav>
         ) : null}
         </section>
 
@@ -950,6 +1032,17 @@ export function EnrolledCourseWorkspace({
         progressPercent={progressPercent}
         previewMode={previewMode}
       />
+
+      {lessonListOpen ? (
+        <LessonListOverlay
+          modules={course.modules}
+          selectedLessonId={selectedLesson?.id ?? null}
+          completedLessonIds={completedLessonIds}
+          unlockStateById={lessonUnlockStateById}
+          onSelect={setSelectedLessonId}
+          onClose={() => setLessonListOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -1248,30 +1341,27 @@ function CourseAssetResourceList({
   );
 }
 
+// "Mark complete" used to live at the end of this panel. It now sits in the
+// sticky lesson action bar with Previous / All lessons / Next, so the student
+// never has to scroll past the discussion to find it.
 function LessonContentPanel({
   assets,
-  completed,
   courseId,
   enableFirestoreAssets,
   isLoadingAssets,
   isLoadingContent,
-  isSaving,
   lesson,
   previewMode,
   unlockState,
-  onToggleComplete,
 }: {
   assets: CourseAsset[];
-  completed: boolean;
   courseId: string;
   enableFirestoreAssets: boolean;
   isLoadingAssets: boolean;
   isLoadingContent: boolean;
-  isSaving: boolean;
   lesson: Lesson;
   previewMode: boolean;
   unlockState: LessonUnlockState | null;
-  onToggleComplete: () => void;
 }) {
   const locked = Boolean(unlockState && !unlockState.unlocked);
   // The lesson body + resource link live in the gated subcollection post-strip;
@@ -1323,17 +1413,21 @@ function LessonContentPanel({
             <p>{unlockState ? formatUnlockMessage(unlockState) : "Locked"}</p>
           </div>
         ) : resolvedVideoSource === "upload" && primaryHostedVideo?.bunnyVideoId ? (
-          <BunnyVideoPlayer assetId={primaryHostedVideo.id} title={lesson.title} />
+          <VideoWatermark>
+            <BunnyVideoPlayer assetId={primaryHostedVideo.id} title={lesson.title} />
+          </VideoWatermark>
         ) : resolvedVideoSource === "upload" && primaryHostedVideo ? (
           <ProtectedAssetPreview asset={primaryHostedVideo} />
         ) : resolvedVideoSource === "youtube" && trustedEmbed ? (
-          <iframe
-            src={trustedEmbed.embedUrl}
-            title={lesson.title}
-            className="aspect-video w-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-          />
+          <VideoWatermark>
+            <iframe
+              src={trustedEmbed.embedUrl}
+              title={lesson.title}
+              className="aspect-video w-full"
+              allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </VideoWatermark>
         ) : lessonContentPending ? (
           <div className="member-video-empty">
             <PlayCircle size={34} aria-hidden />
@@ -1403,23 +1497,6 @@ function LessonContentPanel({
           />
         ) : null}
       </div>
-
-      <button
-        type="button"
-        onClick={onToggleComplete}
-        disabled={previewMode || locked || isSaving}
-        className="button-solid mt-5 px-4 py-2.5 text-sm disabled:opacity-60"
-      >
-        {previewMode
-          ? "Preview only"
-          : locked
-          ? "Lesson locked"
-          : isSaving
-            ? "Saving..."
-            : completed
-              ? "Mark as incomplete"
-              : "Mark complete"}
-      </button>
     </div>
   );
 }
@@ -1560,7 +1637,7 @@ function LessonDiscussion({
       </div>
 
       {error ? (
-        <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-accent-fg)]">
+        <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
           {error}
         </p>
       ) : null}
@@ -1644,13 +1721,8 @@ function LessonAssetList({
 }
 
 function ProtectedAssetPreview({ asset }: { asset: CourseAsset }) {
-  const { user } = useAuth();
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const viewerLabel =
-    user?.email
-    || user?.displayName
-    || "SkillsetMind learner";
 
   useEffect(() => {
     let isMounted = true;
@@ -1681,7 +1753,7 @@ function ProtectedAssetPreview({ asset }: { asset: CourseAsset }) {
 
   if (error) {
     return (
-      <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-accent-fg)]">
+      <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
         {error}
       </p>
     );
@@ -1697,11 +1769,7 @@ function ProtectedAssetPreview({ asset }: { asset: CourseAsset }) {
 
   if (asset.contentType.startsWith("video/")) {
     return (
-      <WatermarkedVideoPlayer
-        fileName={asset.fileName}
-        src={objectUrl}
-        viewerLabel={viewerLabel}
-      />
+      <WatermarkedVideoPlayer fileName={asset.fileName} src={objectUrl} />
     );
   }
 

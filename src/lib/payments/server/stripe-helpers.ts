@@ -180,9 +180,7 @@ export function normalizeCoursePrice(
 export async function loadCourseProductOffers(
   courseId: string,
 ): Promise<ProductOffer[]> {
-  const supabase = getSupabaseAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any;
+  const db = getSupabaseAdminClient();
   const { data: offerRows, error: offerError } = await db
     .from("product_offers")
     .select("id,course_id,name,is_default,active,public_code")
@@ -364,6 +362,76 @@ export async function getOrCreateCourseSubscriptionPrice(
   }
 
   return price.id;
+}
+
+/**
+ * A Stripe Coupon on the TEACHER's account for an N% discount.
+ *
+ * Under direct charges the coupon, like the price, has to exist on the
+ * connected account — a platform coupon is invisible to a session created with
+ * `{ stripeAccount }`. One coupon per (percent, account), keyed by a
+ * deterministic id so repeat checkouts reuse it instead of littering the
+ * teacher's dashboard.
+ *
+ * `duration: "once"` is a product decision, not a Stripe default. `course_coupons`
+ * has no duration column, so a teacher who types "50% off" has no way to say
+ * "first month only" — and a percent-off that repeats forever would halve their
+ * MRR for the life of every subscriber. First invoice only is what Hotmart and
+ * Eduzz do, and it is the reversible choice.
+ * ponytail: add a `duration` column when a teacher actually asks for recurring.
+ */
+export async function getOrCreateAccountPercentOffCoupon(
+  stripe: Stripe,
+  percentOff: number,
+  connectedAccountId: string,
+): Promise<string> {
+  const pct = Math.min(90, Math.max(1, Math.floor(percentOff)));
+  const couponId = `skillset_pct_${pct}_once`;
+
+  try {
+    const existing = await stripe.coupons.retrieve(couponId, undefined, {
+      stripeAccount: connectedAccountId,
+    });
+    // The coupon id is deterministic and the account belongs to the TEACHER, so
+    // a teacher can pre-create `skillset_pct_50_once` in their own dashboard
+    // with different terms. Reusing it blindly would charge the student
+    // something other than the discount the platform recorded and emailed.
+    // Trust the id only when the terms match exactly; otherwise fail closed.
+    if (existing.percent_off !== pct || existing.duration !== "once") {
+      throw new Error(
+        `Stripe coupon ${couponId} on account ${connectedAccountId} does not match the platform terms (${pct}% off, once).`,
+      );
+    }
+    return existing.id;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.startsWith(`Stripe coupon ${couponId}`)
+    ) {
+      throw error;
+    }
+    // Not on this account yet — create it below.
+  }
+
+  try {
+    const created = await stripe.coupons.create(
+      {
+        id: couponId,
+        percent_off: pct,
+        duration: "once",
+        name: `${pct}% off first payment`,
+        metadata: { kind: "skillset_course_coupon" },
+      },
+      { stripeAccount: connectedAccountId },
+    );
+    return created.id;
+  } catch (error) {
+    // Two checkouts racing on the same percent: the loser just uses the id.
+    if ((error as { code?: string }).code === "resource_already_exists") {
+      return couponId;
+    }
+    throw error;
+  }
 }
 
 /**

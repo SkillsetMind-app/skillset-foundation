@@ -9,6 +9,7 @@ import {
   shouldCancelCourseSubscriptionForRefund,
   shouldMarkEnrollmentRefundedAfterChargeRefund,
   shouldReactivateEnrollment,
+  stripeProcessingFeeMinor,
 } from "@/lib/payments/rules";
 
 describe("commission ladder alignment", () => {
@@ -119,5 +120,38 @@ describe("subscription refund policy", () => {
         subscriptionId: null,
       }),
     ).toBe(false);
+  });
+});
+
+// Ported from the deleted src/domain/payment-split.test.tsx. That module encoded
+// the revoked separate-charges model and its copy of this function had no
+// production callers; THIS copy is the one the Stripe webhook imports, and it
+// was untested. Same cases, now pointed at the live implementation.
+describe("stripeProcessingFeeMinor", () => {
+  it("charges the domestic rate on USD", () => {
+    // 2.90% + 30c
+    expect(stripeProcessingFeeMinor(10000, "USD")).toBe(320);
+  });
+
+  it("charges the international + conversion rate on everything else", () => {
+    // 5.40% + 30c
+    expect(stripeProcessingFeeMinor(10000, "EUR")).toBe(570);
+  });
+
+  it("is case-insensitive about the currency code", () => {
+    expect(stripeProcessingFeeMinor(10000, "usd")).toBe(
+      stripeProcessingFeeMinor(10000, "USD"),
+    );
+  });
+
+  it("treats a missing currency as international, never as domestic", () => {
+    // The order row can carry a null currency; guessing USD there would
+    // under-reserve the fee on a foreign charge.
+    expect(stripeProcessingFeeMinor(10000, null)).toBe(570);
+    expect(stripeProcessingFeeMinor(10000)).toBe(570);
+  });
+
+  it("still applies the fixed fee to a zero-amount charge", () => {
+    expect(stripeProcessingFeeMinor(0, "USD")).toBe(30);
   });
 });

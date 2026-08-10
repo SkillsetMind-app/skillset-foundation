@@ -304,7 +304,7 @@
       "cardTitle": "The SkillsetMind Promise",
       "cardSub": "Six commitments to every creator, in writing.",
       "clause1": "Fee-lock for 24 months",
-      "clause2": "Feature parity across all plans",
+      "clause2": "No plan ever blocks you from selling",
       "clause3": "Data portability, one click",
       "clause4": "Cancellation in one click",
       "clause5": "We never hold your money",
@@ -367,7 +367,6 @@
       "sales": "Sales",
       "subscriptions": "Subscriptions",
       "coupons": "Coupons",
-      "reviewsRefunds": "Refunds",
       "team": "Collaborators",
       "integrations": "Integrations",
       "operations": "Operations",
@@ -376,7 +375,6 @@
       "plansFees": "Plans & fees",
       "payoutsTax": "Payouts & tax",
       "billing": "Billing",
-      "creatorOps": "Business overview",
       "reports": "Reports",
       "earnings": "Earnings",
       "verification": "Verification"
@@ -515,6 +513,11 @@
       "openWorkspace": "Open workspace",
       "accessInactive": "Access inactive"
     },
+    "membersHero": {
+      "showMore": "Show more",
+      "showLess": "Show less",
+      "complete": "complete"
+    },
     "metrics": {
       "coursesInProgress": "Courses in progress",
       "coursesInProgressHint": "Active learning workspaces",
@@ -528,10 +531,12 @@
       "progress": "{completed}/{total} completed · {percent}%",
       "completed": "Completed",
       "percentComplete": "{percent}% complete",
-      "notEnrolled": "Not enrolled yet",
       "reviewCourse": "Review course",
       "continue": "Continue",
-      "viewCourse": "View course"
+      "locked": "Locked",
+      "unlock": "Unlock course",
+      "unlockNote": "You do not have access to this course yet. Unlock it to start watching right here in your members area.",
+      "close": "Close"
     },
     "tour": {
       "welcomeNamed": "Welcome, {name}",
@@ -614,7 +619,7 @@
       "actInReviewTitle": "Legacy review status",
       "actInReviewDetail": "Open {title}, complete the checks, and publish it directly.",
       "actQuestionsTitle": "Student questions",
-      "actQuestionsDetail": "Course discussions and lesson comments will surface here as students engage.",
+      "actQuestionsDetail": "Private threads from enrolled students arrive in your Studio inbox.",
       "actScheduleTitle": "Schedule the next live session",
       "actScheduleDetail": "Add a class, mentorship, masterclass, office hour, webinar, or deadline to the course agenda."
     }

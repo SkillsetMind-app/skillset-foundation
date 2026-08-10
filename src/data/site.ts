@@ -75,6 +75,8 @@ export const platformNav: PlatformNavItem[] = [
     permission: "community.read",
   },
   {
+    // Title source only — see the note above the Account block. The wishlist
+    // link lives in the account dropdown, not the learner sidebar.
     href: "/learn/wishlist",
     labelKey: "platform.nav.wishlist",
     icon: "Bookmark",
@@ -158,7 +160,10 @@ export const platformNav: PlatformNavItem[] = [
     icon: "Store",
     contexts: ["teacher"],
     section: "Marketing",
-    permission: "teacherStudio.manageCourses",
+    // Matches the page's own gate (manageStorefront). They agree today for
+    // every role, but a nav entry that gates on a different permission than
+    // its destination is a denial screen waiting for the first role split.
+    permission: "teacherStudio.manageStorefront",
   },
   {
     href: "/teach/media",
@@ -193,14 +198,13 @@ export const platformNav: PlatformNavItem[] = [
     section: "Sales",
     permission: "teacherStudio.access",
   },
-  {
-    href: "/teach/refunds",
-    labelKey: "platform.nav.reviewsRefunds",
-    icon: "RefreshCw",
-    contexts: ["teacher"],
-    section: "Sales",
-    permission: "teacherStudio.access",
-  },
+  // No "Reviews & refunds" entry: /teach/refunds is a bare redirect to
+  // /account/payments, so the menu item promised a screen that does not exist
+  // and dropped the creator on Earnings with no refund surface in sight. The
+  // route itself stays as a redirect for old bookmarks. Under direct charges a
+  // refund debits the creator's OWN Stripe balance, which is more reason to
+  // build them a real refund screen, not less — until then the nav says nothing
+  // rather than something false.
   // Earnings — a record of what Stripe already paid into the creator's own
   // connected account. Called "Wallet" until the pivot to direct charges, which
   // is a word for a balance the platform holds. We hold nothing, so the nav no
@@ -222,14 +226,10 @@ export const platformNav: PlatformNavItem[] = [
     section: "Reports",
     permission: "teacherStudio.access",
   },
-  {
-    href: "/teach/operations",
-    labelKey: "platform.nav.creatorOps",
-    icon: "LayoutDashboard",
-    contexts: ["teacher"],
-    section: "Reports",
-    permission: "teacherStudio.access",
-  },
+  // No "Business overview" entry: /teach/operations rendered the exact same
+  // <CreatorOpsHub /> as /teach/reports above it — two adjacent menu items, one
+  // screen. Two names for one page reads as an unfinished product. The route
+  // stays as a redirect for old bookmarks, same as /teach/refunds.
   // Growth
   // (Affiliates and co-productions were removed with the pivot to direct
   // charges: the platform never holds the money, so it cannot split it.)
@@ -283,6 +283,11 @@ export const platformNav: PlatformNavItem[] = [
     contexts: ["learner", "teacher", "ops"],
     section: "Discover",
   },
+  // `contexts: []` is not a disabled entry — it means "title source only".
+  // platform-nav filters by context, so these never render in a sidebar, but
+  // platform-header's getPageLabel scans the whole list to translate the page
+  // title. Their links live in the account dropdown instead. Removing them
+  // would degrade these headers to a slugified URL segment in every language.
   {
     href: "/account",
     labelKey: "platform.nav.settings",
@@ -309,6 +314,17 @@ export const platformNav: PlatformNavItem[] = [
     href: "/account/billing",
     labelKey: "platform.nav.billing",
     icon: "Receipt",
+    contexts: [],
+    section: "Account",
+  },
+  {
+    // The only /account subpage that renders its own PlatformShell instead of
+    // redirecting into a tab, so it was the only one whose header fell back to
+    // the slugified URL segment — untranslated in Spanish. Reuses the existing
+    // notifications-panel title rather than minting a duplicate key.
+    href: "/account/notifications",
+    labelKey: "platform.notifications.title",
+    icon: "Bell",
     contexts: [],
     section: "Account",
   },

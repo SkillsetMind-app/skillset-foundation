@@ -19,8 +19,21 @@ export type Certificate = {
   teacherName?: string | null;
   /** Snapshot of the teacher's uploaded signature image at issuance, if any. */
   teacherSignatureUrl?: string | null;
-  /** Optional partner/sponsor mark; null until a co-brand asset is provided. */
+  /**
+   * The course owner's brand mark, snapshotted at issuance from their storefront
+   * branding logo. Null on plans without `certificateOwnLogo`, and null when the
+   * teacher never uploaded one. Column is still named `sponsor_logo_url` — it
+   * predates the feature and is the same co-brand slot.
+   */
   sponsorLogoUrl?: string | null;
+  /**
+   * Snapshot of the owner's `removePlatformBranding` entitlement (pro and up).
+   * Hides the SkillsetMind mark from the certificate header — never the
+   * verification code, which is what makes the credential checkable at all.
+   * Snapshotted rather than derived so a later downgrade does not reprint our
+   * mark onto credentials already in learners' hands.
+   */
+  hidePlatformBrand?: boolean | null;
   issuedAt?: unknown;
   createdAt?: unknown;
   updatedAt?: unknown;

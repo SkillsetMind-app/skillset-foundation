@@ -3,12 +3,13 @@
 import { ArrowRight, BookOpen, GraduationCap, Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { brand } from "@/data/brand";
 import type { TeacherCourse } from "@/domain/teacher-course";
-import type { PublicProfile } from "@/domain/user-profile";
+import type { PublicProfile, StorefrontShowcase } from "@/domain/user-profile";
+import { isStorefrontHexColor } from "@/domain/user-profile";
 import {
   isInternalSmokeCourse,
   subscribeToPublishedTeacherCoursesByOwner,
@@ -65,6 +66,11 @@ export function InstructorProfileView({ uid }: { uid: string }) {
   }, [hasSupabaseConfig, uid]);
 
   const stats = useMemo(() => getInstructorStats(courses), [courses]);
+  const showcase = profile?.storefront?.showcase;
+  const orderedCourses = useMemo(
+    () => orderShowcaseCourses(courses, showcase),
+    [courses, showcase],
+  );
 
   if (isProfileLoading) {
     return <InstructorProfileSkeleton />;
@@ -93,15 +99,56 @@ export function InstructorProfileView({ uid }: { uid: string }) {
   }
 
   const name = profile.displayName || profile.username || `${brand.name} instructor`;
+  const branding = profile.storefront?.branding;
+  // The projection already sanitizes these, but the accent lands in a CSS
+  // custom property — cheapest possible second gate, reusing the domain rule.
+  const accentColor =
+    branding?.accentColor && isStorefrontHexColor(branding.accentColor)
+      ? branding.accentColor
+      : null;
+  const tagline = showcase?.tagline?.trim();
 
   return (
     <>
-      <section className="instructor-storefront-hero">
+      <section
+        className="instructor-storefront-hero"
+        data-storefront-theme={branding?.themePreset ?? "default"}
+        style={
+          accentColor
+            ? ({ "--storefront-accent": accentColor } as CSSProperties)
+            : undefined
+        }
+      >
+        {branding?.heroImageUrl ? (
+          <div className="instructor-storefront-hero__cover">
+            <Image
+              src={branding.heroImageUrl}
+              alt=""
+              fill
+              sizes="100vw"
+              className="object-cover"
+              // Teacher-supplied host; not in next.config remotePatterns.
+              unoptimized
+            />
+          </div>
+        ) : null}
         <div className="instructor-storefront-hero__band">
           <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              Instructor storefront
-            </p>
+            <div className="flex items-center gap-3">
+              {branding?.logoUrl ? (
+                <Image
+                  src={branding.logoUrl}
+                  alt={name}
+                  width={28}
+                  height={28}
+                  className="h-7 w-auto object-contain"
+                  unoptimized
+                />
+              ) : null}
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
+                Instructor storefront
+              </p>
+            </div>
             <div className="mt-5 flex flex-col gap-5 sm:flex-row sm:items-center">
               <UserAvatar name={name} photoURL={profile.photoURL} size="lg" />
               <div className="min-w-0">
@@ -115,6 +162,12 @@ export function InstructorProfileView({ uid }: { uid: string }) {
                 ) : null}
               </div>
             </div>
+
+            {tagline ? (
+              <p className="instructor-storefront-tagline mt-6 max-w-3xl">
+                {tagline}
+              </p>
+            ) : null}
 
             {profile.bio ? (
               <p className="mt-6 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -200,7 +253,7 @@ export function InstructorProfileView({ uid }: { uid: string }) {
         </div>
 
         {coursesError ? (
-          <p className="mt-6 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+          <p className="mt-6 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {coursesError}
           </p>
         ) : null}
@@ -226,7 +279,7 @@ export function InstructorProfileView({ uid }: { uid: string }) {
           </div>
         ) : (
           <div className="marketplace-course-grid mt-6">
-            {courses.map((course) => (
+            {orderedCourses.map((course) => (
               <InstructorCourseCard key={course.id} course={course} />
             ))}
           </div>
@@ -342,6 +395,35 @@ function InstructorCourseSkeleton() {
       ))}
     </div>
   );
+}
+
+/**
+ * Applies the teacher's showcase ordering: the featured course first, then the
+ * explicit order from the storefront editor. Unranked courses keep their
+ * incoming order at the end — same `?? MAX_SAFE_INTEGER` convention the
+ * marketplace uses for a null `featured_rank`.
+ */
+function orderShowcaseCourses(
+  courses: TeacherCourse[],
+  showcase: StorefrontShowcase | null | undefined,
+): TeacherCourse[] {
+  const featuredId = showcase?.featuredCourseId ?? null;
+  const orderedIds = showcase?.orderedCourseIds ?? [];
+
+  if (!featuredId && orderedIds.length === 0) {
+    return courses;
+  }
+
+  const rank = new Map(orderedIds.map((id, index) => [id, index]));
+
+  return [...courses].sort((a, b) => {
+    if (a.id === featuredId) return -1;
+    if (b.id === featuredId) return 1;
+    return (
+      (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+      (rank.get(b.id) ?? Number.MAX_SAFE_INTEGER)
+    );
+  });
 }
 
 function getInstructorStats(courses: TeacherCourse[]) {

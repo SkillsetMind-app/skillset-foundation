@@ -29,8 +29,8 @@ import { logSubscriptionError } from "@/lib/data/subscription-error";
 
 // Commerce panels for the per-course management central. Configuration is real
 // and persisted; activating a coupon is gated server-side on professional
-// verification while the admission flag is on. Redemption at checkout is a
-// separate engine — the panel says so instead of implying it already runs.
+// verification while the admission flag is on. Redemption at checkout is live
+// for one-time and subscription buys alike — see the note above buildCoupon.
 //
 // Affiliate and co-producer panels were removed with the pivot to Stripe direct
 // charges: the buyer pays the teacher's account directly, so the platform never
@@ -155,6 +155,11 @@ export function CouponsPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  // Deleting a coupon is irreversible and its button sits next to the
+  // reversible "Pause" in identical styling. Same two-step confirm every
+  // other destructive control in the Studio uses.
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   useEffect(() => {
     return subscribeToCourseCoupons(
@@ -213,17 +218,25 @@ export function CouponsPanel({
   const handleRemove = async (coupon: CourseCoupon) => {
     setError("");
     setNotice("");
+    setRemovingId(coupon.id);
     try {
       await deleteCourseCoupon(coupon.id);
+      setConfirmingDeleteId(null);
     } catch (removeError) {
       setError(toMessage(removeError, "Could not remove the coupon."));
+    } finally {
+      setRemovingId(null);
     }
   };
 
+  // Redemption is live for both one-time and subscription checkouts. On a
+  // recurring course the discount applies to the FIRST payment only:
+  // `course_coupons` has no duration column, so a percent that repeated
+  // forever would be unremovable for subscribers already on it.
   return (
     <PanelCard
       title="Coupons"
-      description="Create discount codes for this course. New coupons start paused; checkout redemption switches on with the discount engine, so activating today prepares the code without exposing it."
+      description="Create discount codes for this course. New coupons start paused until you activate them. On a subscription course the discount applies to the first payment only."
     >
       {activationBlocked ? <GateNotice action="a coupon can be activated" /> : null}
       <form onSubmit={handleCreate} className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -313,13 +326,34 @@ export function CouponsPanel({
                       {coupon.active ? "Pause" : "Activate"}
                     </button>
                   ) : null}
-                  <button
-                    type="button"
-                    onClick={() => void handleRemove(coupon)}
-                    className="button-outline px-3 py-1.5 text-xs"
-                  >
-                    Remove
-                  </button>
+                  {confirmingDeleteId === coupon.id ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => void handleRemove(coupon)}
+                        disabled={removingId === coupon.id}
+                        className="button-accent px-3 py-1.5 text-xs disabled:opacity-60"
+                      >
+                        {removingId === coupon.id ? "Removing..." : "Confirm remove"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingDeleteId(null)}
+                        disabled={removingId === coupon.id}
+                        className="button-outline px-3 py-1.5 text-xs disabled:opacity-60"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingDeleteId(coupon.id)}
+                      className="button-outline px-3 py-1.5 text-xs"
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
               </li>
             );

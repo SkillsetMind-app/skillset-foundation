@@ -49,9 +49,14 @@ export function PlatformHeader({
           <div className="hidden sm:block">
             <ThemeToggle />
           </div>
-          <div className="hidden sm:block">
-            <NotificationBell />
-          </div>
+          {/* The bell was `hidden sm:block`, and it is the only place
+              notifications exist — no mobile nav entry, no fallback. A teacher
+              on a phone had no way to learn they made a sale. The trigger is
+              size-10 like the hamburger and the panel is already
+              w-[min(380px,100vw-32px)], so it was built for small screens and
+              then hidden. ThemeToggle stays hidden: it is a preference, not a
+              signal, and it is wider. */}
+          <NotificationBell />
           {status === "authenticated" && user ? (
             <AccountMenu user={user} onSignOut={signOut} />
           ) : null}

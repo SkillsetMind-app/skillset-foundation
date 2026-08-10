@@ -58,10 +58,33 @@ export function LearnDashboard() {
   }, [user]);
 
   if (isLoading) {
+    // Skeleton mirrors the loaded shape (hero band + course row) so the layout
+    // does not jump when the enrollments arrive. Same animate-pulse blocks the
+    // rest of the app already uses; the sr-only status keeps the old copy.
     return (
-      <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.dashboard.loading")}</p>
+      <div aria-busy="true" aria-live="polite" className="grid gap-8">
+        <p className="sr-only" role="status">
+          {t("learn.dashboard.loading")}
+        </p>
+        <div className="dash-card dash-card--strong grid gap-6 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="grid gap-4">
+            <div className="h-3 w-32 animate-pulse rounded bg-[var(--color-surface-strong)]" />
+            <div className="h-10 w-3/4 animate-pulse rounded bg-[var(--color-surface-strong)]" />
+            <div className="h-3 w-full max-w-xl animate-pulse rounded bg-[var(--color-surface-soft)]" />
+            <div className="flex gap-3">
+              <div className="h-11 w-40 animate-pulse rounded-[10px] bg-[var(--color-surface-strong)]" />
+              <div className="h-11 w-40 animate-pulse rounded-[10px] bg-[var(--color-surface-soft)]" />
+            </div>
+          </div>
+          <div className="h-44 animate-pulse rounded-[14px] bg-[var(--color-surface-soft)]" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((item) => (
+            <div
+              key={item}
+              className="h-56 animate-pulse rounded-[14px] border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]"
+            />
+          ))}
         </div>
       </div>
     );
@@ -71,7 +94,7 @@ export function LearnDashboard() {
     return (
       <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="rounded-[14px] border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <p className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+          <p className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t("learn.dashboard.loadError")}
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
@@ -256,10 +279,14 @@ export function LearnDashboard() {
               >
                 <div className="relative aspect-[16/10] overflow-hidden rounded-[14px]">
                   <Image
-                    src={enrollment.courseImage}
+                    // Same fallback the write path uses (lib/data/enrollments.ts).
+                    // Legacy rows predate it, and an empty src throws in next/image,
+                    // which would blank the whole dashboard over one bad row.
+                    src={enrollment.courseImage || "/brand/logo-mark.png"}
                     alt={enrollment.courseTitle}
                     fill
-                    sizes="220px"
+                    // Card is a single full-width column until md, 220px after.
+                    sizes="(min-width: 768px) 220px, 100vw"
                     className="object-cover"
                   />
                 </div>
