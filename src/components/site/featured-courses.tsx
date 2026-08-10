@@ -3,19 +3,56 @@
 import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { RevealSection } from "@/components/shared/reveal-section";
-import { demoCourses } from "@/data/demo/courses";
+import type { CourseCard } from "@/lib/data/catalog";
+import { sortCourseCards } from "@/lib/data/course-sort";
+import {
+  isInternalSmokeCourse,
+  subscribeToPublishedTeacherCourses,
+  teacherCourseToCourseCard,
+} from "@/lib/data/published-courses";
+import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
-// A curated slice of the catalog, shown on the homepage so visitors see real,
-// expert-led programs (with cover art) instead of marketing copy alone. Uses the
-// static demo catalog so the band always renders for the landing page; the
-// full, live marketplace lives at /courses.
-const featuredCourses = demoCourses.slice(0, 6);
+// A curated slice of the LIVE catalog, shown on the homepage so visitors see the
+// real programs teachers have published. Same stream the /courses marketplace
+// uses; ops-featured picks lead, capped at 6. Renders nothing while the catalog
+// is empty — an honest homepage beats a fabricated one.
+const FEATURED_LIMIT = 6;
 
 export function FeaturedCourses() {
   const { t } = useTranslation();
+  const [featuredCourses, setFeaturedCourses] = useState<CourseCard[]>([]);
+
+  useEffect(() => {
+    if (!getSupabaseClientConfig()) {
+      return;
+    }
+    return subscribeToPublishedTeacherCourses(
+      (nextCourses) => {
+        setFeaturedCourses(
+          sortCourseCards(
+            nextCourses
+              .filter((course) => !isInternalSmokeCourse(course))
+              .map(teacherCourseToCourseCard),
+            "featured",
+          ).slice(0, FEATURED_LIMIT),
+        );
+      },
+      // ponytail: the homepage band stays silent on error — /courses owns the
+      // "couldn't load" message. A landing page must never show a red banner.
+      () => {
+        setFeaturedCourses([]);
+      },
+    );
+  }, []);
+
+  if (featuredCourses.length === 0) {
+    return null;
+  }
+
   return (
     <section className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
       <RevealSection>
@@ -47,9 +84,9 @@ export function FeaturedCourses() {
 
         <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {featuredCourses.map((course) => (
-            <li key={course.id}>
+            <li key={course.slug}>
               <Link
-                href={`/courses/${course.slug}`}
+                href={course.href ?? `/courses/${course.slug}`}
                 className="marketplace-card group focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(44,82,130,0.35)]"
               >
                 <div className="marketplace-card__media">
@@ -63,17 +100,17 @@ export function FeaturedCourses() {
                   <div className="marketplace-card__scrim" />
                   <div className="marketplace-card__badges">
                     <span className="marketplace-card__tag">
-                      {course.statusLabel}
+                      {course.status}
                     </span>
                   </div>
                   <div className="marketplace-card__media-caption">
-                    <span>{course.level}</span>
+                    <span>{course.duration}</span>
                     <span>{course.priceLabel}</span>
                   </div>
                 </div>
                 <div className="marketplace-card__body">
                   <p className="marketplace-card__kicker">
-                    {course.category} · {course.level}
+                    {course.category} · {course.duration}
                   </p>
                   <h3 className="marketplace-card__title">
                     {course.title}
