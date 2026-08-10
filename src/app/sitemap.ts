@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
 
-import { getCourseSlugs } from "@/lib/data/catalog";
 import { SITE_URL } from "@/lib/seo/page-metadata";
 
 export const dynamic = "force-static";
@@ -45,15 +44,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: route.priority,
   }));
 
-  // Static catalog course detail pages (`/courses/[slug]`) are public and
-  // indexable but were missing from the sitemap. Creator (Firestore) courses
-  // resolve client-side and can't be enumerated in this `force-static` sitemap.
-  const courseEntries: MetadataRoute.Sitemap = getCourseSlugs().map((slug) => ({
-    url: `${SITE_URL}/courses/${slug}`,
-    lastModified,
-    changeFrequency: "weekly",
-    priority: 0.7,
-  }));
-
-  return [...staticEntries, ...courseEntries];
+  // Per-course URLs are deliberately absent. The only enumerable slugs here come
+  // from the static demo catalog, i.e. courses nobody can actually buy — listing
+  // them had search engines indexing six phantom product pages. Real creator
+  // courses resolve client-side and cannot be enumerated in a `force-static`
+  // sitemap anyway; /courses is the crawlable entry point for them.
+  return staticEntries;
 }
