@@ -160,6 +160,12 @@ export type UserProfile = {
     | "approved"
     | "rejected";
   /**
+   * When the one-time creator activation fee cleared. Written only by the
+   * activation webhook; the client reads it to decide whether to show the
+   * "activate your account" call to action. Absent = not paid.
+   */
+  activationFeePaidAt?: string;
+  /**
    * Current effective plan, mirrored from the active subscription record.
    * Absent = treat as "free" (default). The subscription webhook is the
    * single writer; never set this from the client.

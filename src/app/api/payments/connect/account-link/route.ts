@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  assertCreatorActivated,
   enforceRateLimit,
   PaymentError,
   paymentErrorResponse,
@@ -36,6 +37,10 @@ export async function POST() {
         "permission_denied",
       );
     }
+
+    // Same gate as the courses trigger: an unpaid creator must not be able to
+    // mint a Stripe connected account.
+    await assertCreatorActivated();
 
     try {
       const stripe = getStripeClient();

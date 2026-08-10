@@ -14,7 +14,15 @@ import { useAuth } from "@/components/auth/auth-provider";
  * come from Upload (Bunny signed playback), which is why the teacher-side
  * picker says so.
  */
-export function VideoWatermark({ children }: { children: React.ReactNode }) {
+export function VideoWatermark({
+  children,
+  brandName = "SkillsetMind",
+}: {
+  children: React.ReactNode;
+  /** Whitelabel member areas stamp the teacher's name instead of ours. The
+   *  watermark itself always stays — it is anti-piracy, not chrome. */
+  brandName?: string;
+}) {
   const { user } = useAuth();
   const [timestamp, setTimestamp] = useState("");
 
@@ -37,7 +45,7 @@ export function VideoWatermark({ children }: { children: React.ReactNode }) {
   const viewerLabel =
     user?.email
     || user?.displayName
-    || "SkillsetMind learner";
+    || `${brandName} learner`;
   const watermarkText = `${viewerLabel} - ${timestamp || "Protected playback"}`;
 
   return (
@@ -50,7 +58,7 @@ export function VideoWatermark({ children }: { children: React.ReactNode }) {
           {watermarkText}
         </div>
         <div className="absolute bottom-3 left-3 rounded-[8px] bg-[rgba(15,39,68,0.62)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/80">
-          SkillsetMind protected playback
+          {brandName} protected playback
         </div>
       </div>
     </div>
@@ -58,20 +66,27 @@ export function VideoWatermark({ children }: { children: React.ReactNode }) {
 }
 
 export function WatermarkedVideoPlayer({
+  brandName,
   fileName,
+  onEnded,
   src,
 }: {
+  brandName?: string;
   fileName: string;
+  /** Fires when the clip plays to the end — the auto-advance signal for the
+   *  native player (the iframe backends have to hand-roll their own). */
+  onEnded?: () => void;
   src: string;
 }) {
   return (
     <div className="mt-3">
-      <VideoWatermark>
+      <VideoWatermark brandName={brandName}>
         <video
           aria-label={fileName}
           className="aspect-video w-full bg-[var(--color-primary)]"
           controls
           controlsList="nodownload"
+          onEnded={onEnded}
           src={src}
         />
       </VideoWatermark>

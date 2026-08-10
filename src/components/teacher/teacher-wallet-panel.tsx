@@ -22,6 +22,7 @@ import {
 } from "@/domain/creator-ops";
 import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import type { UserProfile } from "@/domain/user-profile";
+import { fetchRequireActivationFee } from "@/lib/data/creator-verification";
 import { subscribeToTeacherPayoutLedger } from "@/lib/data/payout-ledger";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 import { toDate } from "@/lib/format-date";
@@ -55,7 +56,26 @@ export function TeacherWalletPanel() {
   // verifiable or usable — so the panel must not present one as "Connected".
   const [platformPayoutsUnavailable, setPlatformPayoutsUnavailable] =
     useState(false);
+  const [activationRequired, setActivationRequired] = useState(false);
   const autoRefreshedRef = useRef(false);
+
+  // Flag read is best-effort: if platform_settings is unreachable we fall back
+  // to "not required", which shows the normal onboarding. The server-side gate
+  // is the one that actually enforces payment, so a failed read here can only
+  // cost a clearer message, never open the paywall.
+  useEffect(() => {
+    let active = true;
+    fetchRequireActivationFee()
+      .then((required) => {
+        if (active) {
+          setActivationRequired(required);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -178,6 +198,13 @@ export function TeacherWalletPanel() {
         ? "Unavailable"
         : "—";
   const connected = Boolean(profile?.stripeConnectedAccountId);
+  // The Connect routes now answer 402 activation_required for an unpaid
+  // creator, so mounting the embedded onboarding widget would just fail with
+  // no explanation. Swap it for the activation call to action instead —
+  // /account/payments is where a new creator lands first, so this doubles as
+  // the earliest discoverable entry point to /teach/activate.
+  const activationBlocked =
+    activationRequired && !profile?.activationFeePaidAt;
   // A panel must never claim "Ready" while the platform itself can't run
   // Connect — stale profile flags don't outrank the live platform signal.
   const ready =
@@ -368,7 +395,31 @@ export function TeacherWalletPanel() {
         <MetricCard label="Stripe fee est." value={money(financials.stripeFeeByCurrency)} />
       </div>
 
-      {ready ? null : (
+      {ready || !activationBlocked ? null : (
+        <section id="stripe-connect" className="scroll-mt-24 rounded-[18px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
+            Activate your creator account
+          </p>
+          <h3 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
+            Pay the one-time activation fee to start selling.
+          </h3>
+          <p className="mt-2 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
+            Activation is charged once and unlocks course creation, publishing
+            and payouts. After it clears you finish Stripe onboarding here, and
+            buyers pay your Stripe account directly — SkillsetMind never holds
+            your money.
+          </p>
+          <Link
+            href="/teach/activate"
+            className="button-solid mt-5 inline-flex px-4 py-2.5 text-sm"
+          >
+            Activate my account
+            <ArrowRight aria-hidden="true" size={14} strokeWidth={2} />
+          </Link>
+        </section>
+      )}
+
+      {ready || activationBlocked ? null : (
         <section id="stripe-connect" className="scroll-mt-24 rounded-[18px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>

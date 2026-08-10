@@ -8,12 +8,17 @@
  * whitelabel brand is only known after the queries resolve. Framing this in
  * the shell would show the SkillsetMind mark and then blink it away — the
  * exact flash the page's server-side brand lookup exists to prevent.
+ *
+ * Colours are hardcoded dark literals, not --ma-* tokens: nothing above this
+ * file carries data-members-theme yet, so the tokens would resolve to nothing
+ * and the skeleton would paint light before flipping dark a beat later. The
+ * literals are the same values as the dark palette in globals.css.
  */
 export default function LoadingCourse() {
   return (
-    <div className="flex min-h-screen items-start justify-center bg-[var(--color-surface-soft)] px-4 py-16">
-      <section className="w-full max-w-3xl rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-sm text-[var(--color-ink-soft)]">Loading course...</p>
+    <div className="flex min-h-screen items-start justify-center bg-[#0a0d12] px-4 py-16">
+      <section className="w-full max-w-3xl rounded-[14px] border border-[rgba(255,255,255,0.08)] bg-[#141923] p-6">
+        <p className="text-sm text-[#9aa6b6]">Loading course...</p>
       </section>
     </div>
   );

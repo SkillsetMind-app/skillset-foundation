@@ -237,7 +237,7 @@ export function CourseOffersPanel({
       </form>
 
       {error ? (
-        <p className="mt-3 text-sm text-[var(--color-danger)]">{error}</p>
+        <p className="mt-3 text-sm text-[var(--color-danger-fg)]">{error}</p>
       ) : null}
       {notice ? (
         <p className="mt-3 text-sm text-[var(--color-ink-soft)]">{notice}</p>

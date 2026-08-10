@@ -5,6 +5,8 @@ import { CreatorCourseWorkspace } from "@/components/learn/creator-course-worksp
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
 import type { MemberAreaBrand } from "@/components/learn/member-area-shell";
 import { MemberAreaShell } from "@/components/learn/member-area-shell";
+import type { MembersTheme } from "@/domain/teacher-course";
+import { normalizeMembersTheme } from "@/domain/teacher-course";
 import type { StorefrontConfig } from "@/domain/user-profile";
 import { getCourseBySlug, getCourseSlugs } from "@/lib/data/catalog";
 import { CourseViewedTracker } from "@/lib/posthog/page-trackers";
@@ -23,18 +25,26 @@ export function generateStaticParams() {
 // `courses` and `public_profiles` are both readable with the caller's own
 // session: published courses are public, and the projection table is
 // anon-readable by design. Nothing here needs service_role.
-async function getMemberAreaBrand(courseId: string): Promise<MemberAreaBrand | null> {
+//
+// The same round trip also carries members_theme, so the shell and the
+// classroom card can never disagree about light/dark.
+async function getMemberArea(courseId: string): Promise<{
+  brand: MemberAreaBrand | null;
+  theme: MembersTheme;
+}> {
   try {
     const supabase = await createSupabaseServerClient();
 
     const { data: course } = await supabase
       .from("courses")
-      .select("owner_id")
+      .select("owner_id, members_theme")
       .eq("id", courseId)
       .maybeSingle();
 
+    const theme = normalizeMembersTheme(course?.members_theme) ?? "light";
+
     if (!course?.owner_id) {
-      return null;
+      return { brand: null, theme };
     }
 
     const { data: profile } = await supabase
@@ -47,16 +57,20 @@ async function getMemberAreaBrand(courseId: string): Promise<MemberAreaBrand | n
 
     // The DB decides. Absent flag = plan does not include it = our mark stays.
     if (storefront?.branding?.hidePlatformBrand !== true) {
-      return null;
+      return { brand: null, theme };
     }
 
     return {
-      name: profile?.display_name?.trim() || "Instructor",
-      logoUrl: storefront.branding.logoUrl ?? null,
+      brand: {
+        name: profile?.display_name?.trim() || "Instructor",
+        logoUrl: storefront.branding.logoUrl ?? null,
+        accentColor: storefront.branding.accentColor ?? null,
+      },
+      theme,
     };
   } catch {
     // A branding lookup must never keep a paying student out of their class.
-    return null;
+    return { brand: null, theme: "light" };
   }
 }
 
@@ -69,7 +83,7 @@ export default async function LearnCoursePage({
   const course = getCourseBySlug(slug);
 
   if (!course) {
-    const brand = await getMemberAreaBrand(slug);
+    const { brand, theme } = await getMemberArea(slug);
 
     return (
       <ProtectedSurface permissions={["courses.viewLearning"]}>
@@ -78,17 +92,23 @@ export default async function LearnCoursePage({
             lands here — this is the live path (Stripe success_url, "Continue"
             on the dashboard), not a fallback. It has to open in the member
             shell too, or the dashboard rail comes back for real students. */}
-        <MemberAreaShell brand={brand}>
+        <MemberAreaShell brand={brand} theme={theme}>
           <Suspense
             fallback={
-              <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-                <p className="text-sm text-[var(--color-ink-soft)]">
+              // Members tokens, not platform ones: this fallback paints inside
+              // the themed shell, and a white card on the dark bg reads as a
+              // flash of the wrong product.
+              <section className="rounded-[14px] border border-[var(--ma-line)] bg-[var(--ma-surface)] p-6">
+                <p className="text-sm text-[var(--ma-ink-soft)]">
                   Loading creator course...
                 </p>
               </section>
             }
           >
-            <CreatorCourseWorkspace initialCourseId={slug} />
+            <CreatorCourseWorkspace
+              initialCourseId={slug}
+              whitelabel={Boolean(brand)}
+            />
           </Suspense>
         </MemberAreaShell>
       </ProtectedSurface>
@@ -106,7 +126,10 @@ export default async function LearnCoursePage({
         slug={course.slug}
         source="direct"
       />
-      <MemberAreaShell>
+      {/* Static demo catalog: the course record is already in hand, so the
+          theme comes straight off it — no round trip, and shell and classroom
+          card read the same value. */}
+      <MemberAreaShell theme={course.membersTheme ?? "light"}>
         <EnrolledCourseWorkspace course={course} />
       </MemberAreaShell>
     </ProtectedSurface>

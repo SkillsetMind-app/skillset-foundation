@@ -97,6 +97,26 @@ export async function fetchRequireCreatorVerification(): Promise<boolean> {
   return data?.value === true;
 }
 
+/**
+ * Reads the activation-fee flag. Same shape as the verification flag above —
+ * platform_settings is anon-readable, so this is a plain browser read.
+ * false (the default) means creators can build without paying yet.
+ */
+export async function fetchRequireActivationFee(): Promise<boolean> {
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("platform_settings")
+    .select("value")
+    .eq("key", "require_activation_fee")
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data?.value === true;
+}
+
 export function subscribeToMyVerificationCase(
   creatorId: string,
   callback: (verificationCase: CreatorVerificationCase | null) => void,

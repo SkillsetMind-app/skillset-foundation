@@ -5,7 +5,34 @@ import { useEffect } from "react";
 import { captureException } from "@/lib/posthog/client";
 
 // global-error.tsx replaces the root layout when an error escapes it, so global
-// CSS and design tokens are NOT available here — styles must be inline.
+// CSS and design tokens are NOT available here — styles must be inline. That
+// also means data-theme is never set, so the crash page can't read the user's
+// stored theme; it falls back to the OS preference via this self-contained
+// block. Values mirror the platform palette (:root / [data-theme="dark"] in
+// globals.css) so a crash still looks like the product.
+const CRASH_THEME_CSS = `
+:root {
+  color-scheme: light;
+  --ge-bg: #fafaf9;
+  --ge-ink: #1c1917;
+  --ge-muted: #57534e;
+  --ge-line: #d6d3d1;
+  --ge-danger: #b22234;
+  --ge-on-danger: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --ge-bg: #0a0f1a;
+    --ge-ink: #e8edf5;
+    --ge-muted: #a4b3c8;
+    --ge-line: rgba(255, 255, 255, 0.34);
+    --ge-danger: #e8808c;
+    --ge-on-danger: #0a0f1a;
+  }
+}
+`;
+
 export default function GlobalError({
   error,
   reset,
@@ -29,10 +56,11 @@ export default function GlobalError({
           padding: 24,
           fontFamily:
             'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-          background: "#fafaf9",
-          color: "#1c1917",
+          background: "var(--ge-bg)",
+          color: "var(--ge-ink)",
         }}
       >
+        <style>{CRASH_THEME_CSS}</style>
         <div style={{ maxWidth: 560, textAlign: "center" }}>
           <p
             style={{
@@ -40,7 +68,7 @@ export default function GlobalError({
               fontWeight: 600,
               letterSpacing: "0.28em",
               textTransform: "uppercase",
-              color: "#7c3aed",
+              color: "var(--ge-danger)",
               margin: 0,
             }}
           >
@@ -49,7 +77,7 @@ export default function GlobalError({
           <h1 style={{ marginTop: 16, fontSize: 32, fontWeight: 700, lineHeight: 1.2 }}>
             The app hit an unexpected error.
           </h1>
-          <p style={{ marginTop: 16, fontSize: 14, lineHeight: 1.7, color: "#57534e" }}>
+          <p style={{ marginTop: 16, fontSize: 14, lineHeight: 1.7, color: "var(--ge-muted)" }}>
             The issue has been logged. Try reloading, or head back to the homepage.
           </p>
           <div
@@ -70,8 +98,8 @@ export default function GlobalError({
                 fontWeight: 600,
                 borderRadius: 10,
                 border: "none",
-                background: "#7c3aed",
-                color: "#ffffff",
+                background: "var(--ge-danger)",
+                color: "var(--ge-on-danger)",
                 cursor: "pointer",
               }}
             >
@@ -85,8 +113,8 @@ export default function GlobalError({
                 fontSize: 14,
                 fontWeight: 600,
                 borderRadius: 10,
-                border: "1px solid #d6d3d1",
-                color: "#1c1917",
+                border: "1px solid var(--ge-line)",
+                color: "var(--ge-ink)",
                 textDecoration: "none",
               }}
             >

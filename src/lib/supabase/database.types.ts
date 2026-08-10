@@ -2298,6 +2298,10 @@ export type Database = {
             }
             Returns: string
           }
+      creator_activation_blocked: {
+        Args: { p_uid?: string } | never
+        Returns: boolean
+      }
       delete_course_as_admin: { Args: { p_course_id: string }; Returns: Json }
       delete_course_coupon: { Args: { p_coupon_id: string }; Returns: Json }
       delete_teacher_course_draft: {

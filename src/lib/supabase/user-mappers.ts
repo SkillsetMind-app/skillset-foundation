@@ -54,6 +54,7 @@ export function rowToUserProfile(row: UserRow): UserProfile {
     creatorVerificationStatus:
       (row.creator_verification_status as UserProfile["creatorVerificationStatus"]) ??
       undefined,
+    activationFeePaidAt: row.activation_fee_paid_at ?? undefined,
     stripeCustomerId: row.stripe_customer_id,
     currentPlanId: (row.current_plan_id as PlanId | null) ?? undefined,
     preferences:

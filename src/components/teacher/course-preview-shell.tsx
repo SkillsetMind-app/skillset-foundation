@@ -11,9 +11,15 @@ import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
 type CoursePreviewShellProps = {
   courseId: string;
+  /** Teacher's plan hides our brand: drop the platform links from the preview
+   *  too, so it matches what their students actually see. */
+  whitelabel?: boolean;
 };
 
-export function CoursePreviewShell({ courseId }: CoursePreviewShellProps) {
+export function CoursePreviewShell({
+  courseId,
+  whitelabel = false,
+}: CoursePreviewShellProps) {
   const hasBackendConfig = Boolean(getSupabaseClientConfig());
   const shouldLoadCourse = Boolean(courseId && hasBackendConfig);
   const [course, setCourse] = useState<TeacherCourse | null>(null);
@@ -60,7 +66,7 @@ export function CoursePreviewShell({ courseId }: CoursePreviewShellProps) {
     return (
       <PreviewState
         title="Loading preview..."
-        detail="SkillsetMind is preparing the student-facing members area."
+        detail="Preparing the student-facing members area."
       />
     );
   }
@@ -84,6 +90,7 @@ export function CoursePreviewShell({ courseId }: CoursePreviewShellProps) {
       enableFirestoreAssets
       previewExitHref={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=members`}
       previewMode
+      whitelabel={whitelabel}
     />
   );
 }
