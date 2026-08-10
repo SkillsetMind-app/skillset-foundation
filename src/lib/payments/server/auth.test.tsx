@@ -14,7 +14,10 @@ vi.mock("@/lib/supabase/server", () => ({
   createSupabaseServerClient: mocks.createServer,
 }));
 
-import { enforceRateLimit } from "@/lib/payments/server/auth";
+import {
+  assertCreatorActivated,
+  enforceRateLimit,
+} from "@/lib/payments/server/auth";
 
 describe("payment rate limiting", () => {
   beforeEach(() => {
@@ -45,5 +48,41 @@ describe("payment rate limiting", () => {
       message: "Too many attempts. Please wait before trying again.",
       status: 429,
     });
+  });
+});
+
+describe("creator activation gate", () => {
+  const serverRpc = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.createServer.mockResolvedValue({ rpc: serverRpc });
+  });
+
+  it("passes through when the shared predicate says the creator is clear", async () => {
+    serverRpc.mockResolvedValue({ data: false, error: null });
+
+    await expect(assertCreatorActivated()).resolves.toBeUndefined();
+    // Caller session, NOT service role: the predicate reads auth.uid().
+    expect(mocks.getAdmin).not.toHaveBeenCalled();
+    expect(serverRpc).toHaveBeenCalledWith("creator_activation_blocked");
+  });
+
+  it("throws 402 activation_required when the creator has not paid", async () => {
+    serverRpc.mockResolvedValue({ data: true, error: null });
+
+    await expect(assertCreatorActivated()).rejects.toMatchObject({
+      status: 402,
+      code: "activation_required",
+    });
+  });
+
+  it("fails closed when the predicate itself errors", async () => {
+    serverRpc.mockResolvedValue({ data: null, error: { message: "boom" } });
+
+    // Not a PaymentError: an unreadable gate is an internal fault, and
+    // paymentErrorResponse turns it into an opaque 500 rather than letting the
+    // action proceed as if the creator were activated.
+    await expect(assertCreatorActivated()).rejects.toThrow("boom");
   });
 });

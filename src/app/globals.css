@@ -46,6 +46,10 @@
   --color-success-solid: #157f50;
   --color-warning: #c07b0a;
   --color-warning-soft: #fcefd2;
+  /* Warning TEXT variant (same -fg pattern as accent/danger/success below).
+     --color-warning itself stays saturated for solid fills; #8a5d08 is the
+     value .status-chip--warning already hardcoded (5.16:1 on its tint). */
+  --color-warning-fg: #8a5d08;
   --color-info: #315a7d;
   --color-info-soft: #ebf3fb;
   --color-danger: #b22234;
@@ -158,10 +162,21 @@
      four dark surfaces (worst 4.73:1) while staying a step darker than dark
      --color-ink-soft #a4b3c8, preserving the muted<soft hierarchy. */
   --color-ink-muted: #8493ad;
-  --color-line: rgba(255, 255, 255, 0.2);
-  --color-line-strong: rgba(255, 255, 255, 0.32);
+  /* Borders must clear the 3:1 non-text floor. 0.20 gave 1.86:1 on base
+     #0a0f1a and 0.32 gave 2.72:1 on surface-strong #1c2841 — both invisible,
+     and --color-line is the ONLY boundary on every themed input. 0.34 is the
+     minimum alpha clearing 3:1 across all four dark surfaces (3.00:1 on the
+     worst, surface-strong); line-strong follows at 0.44. */
+  --color-line: rgba(255, 255, 255, 0.34);
+  --color-line-strong: rgba(255, 255, 255, 0.44);
   --color-success-soft: rgba(31, 138, 91, 0.18);
   --color-warning-soft: rgba(192, 123, 10, 0.18);
+  /* Dark mode never redefined this; #14182b is 1.03:1 on base — invisible. */
+  --color-ink-indigo: #dfe5f5;
+  /* --color-primary inverts to a light blue in dark, so white-on-primary drops
+     to 2.14:1. Flip the on-primary foreground to the dark base instead. */
+  --color-on-primary: var(--color-base);
+  --color-warning-fg: #e6b24f;
   --color-info: #8fb4e4;
   --color-info-soft: rgba(143, 180, 228, 0.14);
   --color-danger-soft: rgba(178, 34, 52, 0.18);
@@ -662,13 +677,6 @@ p {
   color: white;
 }
 
-.accent-chip {
-  background: rgba(255, 255, 255, 0.94);
-  color: var(--color-accent-fg);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  box-shadow: 0 10px 24px rgba(15, 39, 68, 0.14);
-}
-
 .status-chip {
   display: inline-flex;
   align-items: center;
@@ -699,9 +707,10 @@ p {
 
 .status-chip--warning {
   background: rgba(192, 123, 10, 0.1);
-  /* A5: --color-warning (#c07b0a) was 3.10:1 on this tint — below AA. Deeper
-     gold #8a5d08 = 5.16:1. Dark override below restores a light amber. */
-  color: #8a5d08;
+  /* A5: --color-warning (#c07b0a) was 3.10:1 on this tint — below AA. The
+     -fg token carries the deeper gold (#8a5d08, 5.16:1) and flips to a light
+     amber in dark, so no per-theme override is needed here. */
+  color: var(--color-warning-fg);
   border-color: rgba(192, 123, 10, 0.22);
 }
 
@@ -732,14 +741,10 @@ p {
   border-color: rgba(44, 82, 130, 0.22);
 }
 
-/* A5: dark-mode chip text. The deep gold/green chosen for light would be near
-   black on the dark warning/success tints, so invert to a light tint there.
-   warning #e6b24f = 8.05:1, success #5fc99a = 7.85:1 on their dark tints.
+/* A5: dark-mode chip text. The deep green chosen for light would be near black
+   on the dark success tint, so invert to a light tint there (#5fc99a = 7.85:1).
+   The warning chip needs no override — --color-warning-fg already flips.
    (Other chips' dark contrast — danger/draft/inactive — belong to A1-cont.) */
-[data-theme="dark"] .status-chip--warning {
-  color: #e6b24f;
-}
-
 [data-theme="dark"] .status-chip--success {
   color: #5fc99a;
 }
@@ -858,7 +863,7 @@ p {
 .button-solid:focus-visible,
 .button-outline:focus-visible,
 .button-accent:focus-visible {
-  outline: 2px solid rgba(44, 82, 130, 0.28);
+  outline: 2px solid var(--color-primary);
   outline-offset: 3px;
 }
 
@@ -1187,7 +1192,7 @@ p {
   padding: 9px 16px;
   border: 1.5px solid var(--color-accent-fg);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--color-surface);
   color: var(--color-accent-fg);
   cursor: pointer;
   font-size: 13px;
@@ -1208,7 +1213,7 @@ p {
 }
 
 .btn-signin:focus-visible {
-  outline: 2px solid rgba(44, 82, 130, 0.28);
+  outline: 2px solid var(--color-primary);
   outline-offset: 3px;
 }
 
@@ -1240,7 +1245,7 @@ p {
 }
 
 .btn-cta-hero:focus-visible {
-  outline: 2px solid rgba(44, 82, 130, 0.28);
+  outline: 2px solid var(--color-primary);
   outline-offset: 3px;
 }
 
@@ -1330,7 +1335,7 @@ p {
 }
 
 .account-menu-trigger:focus-visible {
-  outline: 2px solid rgba(44, 82, 130, 0.28);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
@@ -1659,7 +1664,9 @@ p {
   width: 18px;
   height: 18px;
   border-radius: 999px;
-  background: #ffffff;
+  /* Knob rides on --color-primary when on; on-primary keeps it legible in both
+     themes (same fix already applied to the lesson-modal toggle). */
+  background: var(--color-on-primary);
   box-shadow: 0 4px 10px rgba(26, 54, 93, 0.14);
   transition: transform 180ms ease;
 }
@@ -2365,7 +2372,7 @@ select:focus-visible {
   bottom: 0;
   z-index: 48;
   padding: 0.875rem 1rem calc(0.875rem + env(safe-area-inset-bottom, 0px));
-  background: rgba(255, 255, 255, 0.97);
+  background: color-mix(in srgb, var(--color-surface) 97%, transparent);
   border-top: 1px solid var(--color-line);
   box-shadow: 0 -12px 30px rgba(15, 39, 68, 0.1);
   backdrop-filter: blur(8px);
@@ -2674,9 +2681,18 @@ body:has([aria-label="Course categories"])
   border-radius: 18px;
   background:
     radial-gradient(circle at 92% 18%, rgba(178, 34, 52, 0.08), transparent 20rem),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(245, 249, 255, 0.92));
+    linear-gradient(135deg, color-mix(in srgb, var(--color-surface) 96%, transparent), rgba(245, 249, 255, 0.92));
   box-shadow: var(--shadow-soft);
   padding: 1.5rem;
+}
+
+/* The gradient's SECOND stop is a near-white (#f5f9ff) that can't be tokenised
+   without shifting light mode, so dark gets the same flat-surface override the
+   marketplace cards already use. */
+[data-theme="dark"] .course-builder-hero {
+  background:
+    radial-gradient(circle at 92% 18%, rgba(178, 34, 52, 0.08), transparent 20rem),
+    linear-gradient(135deg, var(--color-surface), var(--color-surface-soft));
 }
 
 .course-builder-hero__actions {
@@ -2689,7 +2705,7 @@ body:has([aria-label="Course categories"])
 .course-builder-stepper {
   border: 1px solid var(--color-line);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
   box-shadow: var(--shadow-soft);
   padding: 1rem 1.25rem 1.1rem;
   display: grid;
@@ -2743,7 +2759,7 @@ body:has([aria-label="Course categories"])
   overflow-y: auto;
   border: 1px solid var(--color-line);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
   box-shadow: var(--shadow-soft);
   padding: 1rem;
 }
@@ -2846,35 +2862,10 @@ body:has([aria-label="Course categories"])
   line-height: 1.2;
 }
 
-.course-builder-tip {
-  position: relative;
-  overflow: hidden;
-  margin-top: 1rem;
-  border-radius: 14px;
-  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
-  padding: 1rem;
-}
-
-.course-builder-tip::after {
-  content: "";
-  position: absolute;
-  top: -3rem;
-  right: -3rem;
-  width: 8rem;
-  height: 8rem;
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(178, 34, 52, 0.42), transparent 70%);
-}
-
-.course-builder-tip > * {
-  position: relative;
-  z-index: 1;
-}
-
 .course-builder-panel {
   border: 1px solid var(--color-line);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.96);
+  background: color-mix(in srgb, var(--color-surface) 96%, transparent);
   box-shadow: var(--shadow-soft);
   padding: 1.5rem;
 }
@@ -3303,7 +3294,7 @@ body:has([aria-label="Course categories"])
 .lesson-video-source-picker__dropzone:hover,
 .lesson-video-source-picker__dropzone.is-drag-active {
   border-color: var(--color-brass);
-  background: color-mix(in srgb, var(--color-ink-indigo) 4%, #ffffff);
+  background: color-mix(in srgb, var(--color-ink-indigo) 4%, var(--color-surface));
   color: var(--color-ink-indigo);
 }
 
@@ -3493,7 +3484,7 @@ body:has([aria-label="Course categories"])
 
 .lesson-modal-upload__input:focus-visible + .lesson-modal-upload__trigger {
   border-color: var(--color-primary-light);
-  outline: 2px solid rgba(44, 82, 130, 0.28);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
@@ -5071,7 +5062,7 @@ body:has([aria-label="Course categories"])
     radial-gradient(circle at 92% 8%, rgba(178, 34, 52, 0.08), transparent 18rem),
     linear-gradient(
       135deg,
-      #ffffff 0%,
+      var(--color-surface) 0%,
       var(--color-surface-soft) 58%,
       var(--color-surface-strong) 100%
     );
@@ -5101,7 +5092,7 @@ body:has([aria-label="Course categories"])
     radial-gradient(circle at 16% 0%, rgba(44, 82, 130, 0.12), transparent 18rem),
     linear-gradient(
       135deg,
-      #ffffff 0%,
+      var(--color-surface) 0%,
       var(--color-surface-soft) 56%,
       var(--color-surface-strong) 100%
     );
@@ -5304,6 +5295,11 @@ button:hover > .dash-card,
   line-height: 1.55;
 }
 
+/* Both gradient stops are pinned to fixed navies (the end stop is the LIGHT
+   value of --color-primary, so light mode is byte-identical). The token end
+   inverted to a light blue in dark, fading the card's right half out from under
+   its own white text — and this surface is always-dark by design, which every
+   white literal inside it already assumes. Same for .studio-payout-chip. */
 .studio-payout-card {
   position: relative;
   overflow: hidden;
@@ -5311,7 +5307,7 @@ button:hover > .dash-card,
   border-radius: 18px;
   background:
     radial-gradient(circle at 86% 50%, rgba(178, 34, 52, 0.42), transparent 10rem),
-    linear-gradient(135deg, #0f2744 0%, var(--color-primary) 100%);
+    linear-gradient(135deg, #0f2744 0%, #102a43 100%);
   box-shadow: 0 18px 38px rgba(15, 39, 68, 0.18);
   padding: 1.55rem;
 }
@@ -5339,7 +5335,7 @@ button:hover > .dash-card,
   padding: 0.7rem 1rem;
   background:
     radial-gradient(circle at 88% 30%, rgba(178, 34, 52, 0.36), transparent 7rem),
-    linear-gradient(135deg, #0f2744 0%, var(--color-primary) 100%);
+    linear-gradient(135deg, #0f2744 0%, #102a43 100%);
   box-shadow: 0 10px 22px rgba(15, 39, 68, 0.18);
   text-decoration: none;
   transition:
@@ -5412,7 +5408,7 @@ button:hover > .dash-card,
   background:
     radial-gradient(circle at 75% 20%, rgba(178, 34, 52, 0.28), transparent 1.5rem),
     var(--color-primary);
-  color: #ffffff;
+  color: var(--color-on-primary);
   font-size: 0.75rem;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -5456,7 +5452,7 @@ button:hover > .dash-card,
   min-height: 100%;
   border: 1px solid var(--color-line);
   border-radius: 16px;
-  background: radial-gradient(circle at 90% 12%, rgba(26, 54, 93, 0.07), transparent 9rem), #ffffff;
+  background: radial-gradient(circle at 90% 12%, rgba(26, 54, 93, 0.07), transparent 9rem), var(--color-surface);
   box-shadow: 0 12px 28px rgba(26, 54, 93, 0.04);
   padding: 1.25rem;
   text-decoration: none;
@@ -5522,7 +5518,7 @@ button:hover > .dash-card,
   min-height: 100%;
   border: 1px solid var(--color-line);
   border-radius: 14px;
-  background: linear-gradient(180deg, #ffffff 0%, var(--color-surface-soft) 100%);
+  background: linear-gradient(180deg, var(--color-surface) 0%, var(--color-surface-soft) 100%);
   padding: 1rem;
   color: var(--color-ink-soft);
   text-decoration: none;
@@ -5604,7 +5600,7 @@ button:hover > .dash-card,
     radial-gradient(circle at 14% 0%, rgba(44, 82, 130, 0.13), transparent 17rem),
     linear-gradient(
       135deg,
-      #ffffff 0%,
+      var(--color-surface) 0%,
       var(--color-surface-soft) 58%,
       var(--color-surface-strong) 100%
     );
@@ -5631,7 +5627,7 @@ button:hover > .dash-card,
   border: 1px solid var(--color-line);
   border-radius: 18px;
   background:
-    radial-gradient(circle at 88% 18%, rgba(178, 34, 52, 0.08), transparent 8rem), #ffffff;
+    radial-gradient(circle at 88% 18%, rgba(178, 34, 52, 0.08), transparent 8rem), var(--color-surface);
   box-shadow: var(--shadow-soft);
   padding: 1.25rem;
 }
@@ -5662,7 +5658,7 @@ button:hover > .dash-card,
     radial-gradient(circle at 12% 0%, rgba(26, 54, 93, 0.11), transparent 17rem),
     linear-gradient(
       135deg,
-      #ffffff 0%,
+      var(--color-surface) 0%,
       var(--color-surface-soft) 56%,
       var(--color-surface-strong) 100%
     );
@@ -6380,14 +6376,14 @@ button:hover > .dash-card,
 .marketplace-filter-button:hover {
   transform: translateY(-1px);
   border-color: var(--color-line-strong);
-  background: #ffffff;
+  background: var(--color-surface-hover);
   color: var(--color-primary);
 }
 
 .marketplace-filter-button.is-active {
   border-color: var(--color-primary);
   background: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-on-primary);
   box-shadow: 0 10px 22px rgba(26, 54, 93, 0.18);
 }
 
@@ -6512,7 +6508,7 @@ button:hover > .dash-card,
 .marketplace-icon-button:hover,
 .marketplace-icon-button.is-active {
   background: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-on-primary);
 }
 
 .marketplace-icon-button:hover {
@@ -6699,7 +6695,7 @@ button:hover > .dash-card,
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
   color: var(--color-primary);
   cursor: pointer;
   box-shadow: 0 12px 24px rgba(15, 39, 68, 0.24);

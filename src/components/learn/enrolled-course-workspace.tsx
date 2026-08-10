@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   Award,
   Bookmark,
@@ -82,6 +82,9 @@ type EnrolledCourseWorkspaceProps = {
   enableFirestoreAssets?: boolean;
   previewExitHref?: string;
   previewMode?: boolean;
+  /** The shell is running under a teacher's own brand: hide every link that
+   *  leads back into our platform (dashboard, public course page, credentials). */
+  whitelabel?: boolean;
 };
 
 export function EnrolledCourseWorkspace({
@@ -89,6 +92,7 @@ export function EnrolledCourseWorkspace({
   enableFirestoreAssets = false,
   previewExitHref,
   previewMode = false,
+  whitelabel = false,
 }: EnrolledCourseWorkspaceProps) {
   const { user } = useAuth();
   const searchParams = useSearchParams();
@@ -547,6 +551,45 @@ export function EnrolledCourseWorkspace({
     }
   }
 
+  // Hotmart parity: watching to the end completes the lesson and rolls into the
+  // next one. That single write also fixes "resume where you left off" — the
+  // mount-time fallback already opens getNextCourseLesson (first incomplete),
+  // it just never had anything to resume from while completion was manual.
+  async function handleLessonEnded() {
+    // Preview writes are hard-blocked upstream; calling through would only
+    // surface "Preview mode is read-only" at the end of every clip.
+    if (previewMode || !selectedLesson) {
+      return;
+    }
+
+    const endedLessonId = selectedLesson.id;
+
+    if (!completedLessonIds.includes(endedLessonId)) {
+      await toggleLessonCompletion(endedLessonId, false);
+    }
+
+    if (!nextInOrder) {
+      return;
+    }
+
+    // Recomputed with the lesson we just finished, otherwise a sequential-drip
+    // course always reads the next lesson as locked (the state in
+    // lessonUnlockStateById predates this completion) and the chain stops on
+    // the very courses auto-advance matters most for. Still locked (date drip)?
+    // Complete this one and stop, rather than dropping the student on a lock
+    // panel.
+    const nextUnlockState = getLessonUnlockState(
+      course,
+      nextInOrder,
+      workspaceEnrollment,
+      [...completedLessonIds, endedLessonId],
+    );
+
+    if (nextUnlockState.unlocked) {
+      setSelectedLessonId(nextInOrder.id);
+    }
+  }
+
   return (
     <div
       className="member-classroom"
@@ -639,7 +682,7 @@ export function EnrolledCourseWorkspace({
               somewhere, so the state-changing one was the odd one out, and the
               end-of-lesson spot is where students look for it. Kept that one:
               it also has the richer copy ("Preview only" / "Lesson locked"). */}
-          {progressPercent === 100 ? (
+          {progressPercent === 100 && !whitelabel ? (
             <Link
               href="/learn/credentials"
               className="button-accent member-tool-button"
@@ -669,6 +712,7 @@ export function EnrolledCourseWorkspace({
             )}
             isLoadingContent={isLessonContentLoading}
             lesson={resolvedSelectedLesson}
+            onEnded={handleLessonEnded}
             unlockState={selectedLessonUnlockState}
             previewMode={previewMode}
           />
@@ -705,14 +749,14 @@ export function EnrolledCourseWorkspace({
               >
                 All lessons ({totalLessonCount})
               </button>
+              {/* One action instead of "Mark complete" + "Next": completing
+                  and advancing is a single intent, and it gives every backend
+                  the same auto-advance semantics even where the player never
+                  reports "ended". Un-marking still lives on the lesson cards
+                  in the curriculum strip. */}
               <button
                 type="button"
-                onClick={() =>
-                  toggleLessonCompletion(
-                    selectedLesson.id,
-                    completedLessonIds.includes(selectedLesson.id),
-                  )
-                }
+                onClick={handleLessonEnded}
                 disabled={
                   previewMode
                   || Boolean(
@@ -731,24 +775,15 @@ export function EnrolledCourseWorkspace({
                     : activeLessonId === selectedLesson.id
                       ? "Saving..."
                       : completedLessonIds.includes(selectedLesson.id)
-                        ? "Mark as incomplete"
-                        : "Mark complete"}
+                        ? nextInOrder
+                          ? "Next lesson"
+                          : "Completed"
+                        : nextInOrder
+                          ? "Mark complete & next"
+                          : "Mark complete"}
               </button>
             </div>
-            {nextInOrder ? (
-              <button
-                type="button"
-                onClick={() => setSelectedLessonId(nextInOrder.id)}
-                aria-label={`Next lesson: ${nextInOrder.title}`}
-                className="button-outline max-w-full px-4 py-2.5 text-sm sm:max-w-[38%]"
-              >
-                <span className="block truncate">
-                  {nextInOrder.title} &rarr;
-                </span>
-              </button>
-            ) : (
-              <span aria-hidden />
-            )}
+            <span aria-hidden />
           </nav>
         ) : null}
         </section>
@@ -804,30 +839,36 @@ export function EnrolledCourseWorkspace({
               >
                 Continue
               </button>
-            ) : (
+            ) : whitelabel ? null : (
               <Link href="/learn/credentials" className="button-solid mt-4 px-4 py-2.5 text-sm">
                 View credential
               </Link>
             )}
           </div>
-          <div className="member-sidebar-card">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-              Workspace links
-            </p>
-            <div className="mt-4 grid gap-2">
-              <Link href="/learn" className="member-sidebar-link">
-                Back to My Learning
-              </Link>
-              <Link href={`/courses/${course.slug}`} className="member-sidebar-link">
-                Public course page
-              </Link>
-              {progressPercent === 100 ? (
-                <Link href="/learn/credentials" className="member-sidebar-link">
-                  Credential status
+          {/* Whitelabel: every link in this card leads back into our platform
+              (dashboard, public marketplace page, credentials), which is
+              exactly what a teacher paying to remove our brand is paying to
+              not have in their member area. */}
+          {whitelabel ? null : (
+            <div className="member-sidebar-card">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
+                Workspace links
+              </p>
+              <div className="mt-4 grid gap-2">
+                <Link href="/learn" className="member-sidebar-link">
+                  Back to My Learning
                 </Link>
-              ) : null}
+                <Link href={`/courses/${course.slug}`} className="member-sidebar-link">
+                  Public course page
+                </Link>
+                {progressPercent === 100 ? (
+                  <Link href="/learn/credentials" className="member-sidebar-link">
+                    Credential status
+                  </Link>
+                ) : null}
+              </div>
             </div>
-          </div>
+          )}
         </aside>
       </div>
 
@@ -1351,6 +1392,7 @@ function LessonContentPanel({
   isLoadingAssets,
   isLoadingContent,
   lesson,
+  onEnded,
   previewMode,
   unlockState,
 }: {
@@ -1360,6 +1402,7 @@ function LessonContentPanel({
   isLoadingAssets: boolean;
   isLoadingContent: boolean;
   lesson: Lesson;
+  onEnded: () => void;
   previewMode: boolean;
   unlockState: LessonUnlockState | null;
 }) {
@@ -1414,18 +1457,21 @@ function LessonContentPanel({
           </div>
         ) : resolvedVideoSource === "upload" && primaryHostedVideo?.bunnyVideoId ? (
           <VideoWatermark>
-            <BunnyVideoPlayer assetId={primaryHostedVideo.id} title={lesson.title} />
+            <BunnyVideoPlayer
+              assetId={primaryHostedVideo.id}
+              title={lesson.title}
+              onEnded={onEnded}
+            />
           </VideoWatermark>
         ) : resolvedVideoSource === "upload" && primaryHostedVideo ? (
-          <ProtectedAssetPreview asset={primaryHostedVideo} />
+          <ProtectedAssetPreview asset={primaryHostedVideo} onEnded={onEnded} />
         ) : resolvedVideoSource === "youtube" && trustedEmbed ? (
           <VideoWatermark>
-            <iframe
-              src={trustedEmbed.embedUrl}
+            <TrustedEmbedPlayer
+              embedUrl={trustedEmbed.embedUrl}
+              provider={trustedEmbed.provider}
               title={lesson.title}
-              className="aspect-video w-full"
-              allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
+              onEnded={onEnded}
             />
           </VideoWatermark>
         ) : lessonContentPending ? (
@@ -1498,6 +1544,121 @@ function LessonContentPanel({
         ) : null}
       </div>
     </div>
+  );
+}
+
+// Auto-advance for embedded players. This branch renders YouTube AND Vimeo —
+// inferLessonVideoSource labels every trusted embed "youtube" — so nothing here
+// may assume one vendor: we subscribe with both handshakes and accept either
+// vendor's "ended" shape.
+//
+// No external IFrame API script is loaded (script-src does not allow
+// youtube.com); enablejsapi=1 on the embed URL is enough for the raw
+// postMessage handshake. Every inbound message is checked against this iframe's
+// own window and exact origin before anything happens.
+function TrustedEmbedPlayer({
+  embedUrl,
+  onEnded,
+  provider,
+  title,
+}: {
+  embedUrl: string;
+  onEnded: () => void;
+  provider: "youtube" | "vimeo";
+  title: string;
+}) {
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  useEffect(() => {
+    let embedOrigin: string;
+
+    try {
+      embedOrigin = new URL(embedUrl).origin;
+    } catch {
+      return;
+    }
+
+    function handleMessage(event: MessageEvent) {
+      if (
+        event.origin !== embedOrigin
+        || event.source !== iframeRef.current?.contentWindow
+      ) {
+        return;
+      }
+
+      let payload: unknown = event.data;
+
+      if (typeof payload === "string") {
+        try {
+          payload = JSON.parse(payload);
+        } catch {
+          return;
+        }
+      }
+
+      const message = payload as { event?: unknown; info?: unknown } | null;
+
+      if (!message || typeof message !== "object") {
+        return;
+      }
+
+      if (message.event === "onStateChange") {
+        // YouTube player state 0 = ENDED. `info` is the state itself on the
+        // raw protocol, but an object on some builds.
+        const info =
+          typeof message.info === "object" && message.info !== null
+            ? (message.info as { playerState?: unknown }).playerState
+            : message.info;
+
+        if (info === 0) {
+          onEnded();
+        }
+
+        return;
+      }
+
+      if (message.event === "ended" || message.event === "finish") {
+        onEnded();
+      }
+    }
+
+    window.addEventListener("message", handleMessage);
+
+    return () => window.removeEventListener("message", handleMessage);
+  }, [embedUrl, onEnded]);
+
+  function subscribeToEnded() {
+    const target = iframeRef.current?.contentWindow;
+
+    if (!target) {
+      return;
+    }
+
+    try {
+      target.postMessage(
+        JSON.stringify(
+          provider === "youtube"
+            ? { event: "listening", id: 1, channel: "widget" }
+            : { method: "addEventListener", value: "ended" },
+        ),
+        new URL(embedUrl).origin,
+      );
+    } catch {
+      // A player that ignores the handshake simply never reports "ended";
+      // the explicit "Mark complete & next" button still advances.
+    }
+  }
+
+  return (
+    <iframe
+      ref={iframeRef}
+      onLoad={subscribeToEnded}
+      src={embedUrl}
+      title={title}
+      className="aspect-video w-full"
+      allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowFullScreen
+    />
   );
 }
 
@@ -1720,7 +1881,13 @@ function LessonAssetList({
   );
 }
 
-function ProtectedAssetPreview({ asset }: { asset: CourseAsset }) {
+function ProtectedAssetPreview({
+  asset,
+  onEnded,
+}: {
+  asset: CourseAsset;
+  onEnded?: () => void;
+}) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -1769,7 +1936,11 @@ function ProtectedAssetPreview({ asset }: { asset: CourseAsset }) {
 
   if (asset.contentType.startsWith("video/")) {
     return (
-      <WatermarkedVideoPlayer fileName={asset.fileName} src={objectUrl} />
+      <WatermarkedVideoPlayer
+        fileName={asset.fileName}
+        onEnded={onEnded}
+        src={objectUrl}
+      />
     );
   }
 

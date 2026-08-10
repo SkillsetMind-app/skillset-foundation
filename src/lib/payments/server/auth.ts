@@ -69,6 +69,33 @@ export async function requireAdminUserId(): Promise<string> {
 }
 
 /**
+ * Blocks creator-only actions until the one-time activation fee is paid.
+ *
+ * Delegates to the SECURITY DEFINER creator_activation_blocked() RPC rather than
+ * reading users.activation_fee_paid_at here, so the flag lookup, the admin
+ * exemption and the "flag is off" short-circuit stay defined in exactly one
+ * place — the same predicate the courses trigger uses. A drift between the SQL
+ * gate and a hand-rolled TS copy is how a paywall ends up half-open.
+ *
+ * Throws PaymentError(402, "activation_required"); callers surface it through
+ * paymentErrorResponse like any other expected failure.
+ */
+export async function assertCreatorActivated(): Promise<void> {
+  const supabase = await createSupabaseServerClient();
+  const { data: blocked, error } = await supabase.rpc("creator_activation_blocked");
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (blocked) {
+    throw new PaymentError(
+      "Pay the one-time activation fee to activate your creator account.",
+      402,
+      "activation_required",
+    );
+  }
+}
+
+/**
  * Shared rate-limit gate for the payment Route Handlers. Wraps the
  * service-role enforce_rate_limit RPC and throws PaymentError(429) on limit.
  * Single-sourcing it means a new route can't silently ship without a throttle —

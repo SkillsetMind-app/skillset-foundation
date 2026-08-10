@@ -26,16 +26,14 @@ const typeIcons: Record<NotificationType, typeof Bell> = {
 // Unread chip color per kind. Read rows keep the muted grey chip (below), so
 // the color only reinforces the already-loud unread state — never dilutes the
 // read/unread hierarchy. Pairs are -soft bg + -fg/-saturated text so the icon
-// clears contrast on both themes. (--color-warning has no -fg variant; its
-// base token is the saturated text color, mirroring how --color-success-fg
-// equals --color-success in :root.) Primary reuses the file's existing
+// clears contrast on both themes. Primary reuses the file's existing
 // unread pair since there is no --color-primary-soft token.
 const unreadChipByType: Record<NotificationType, string> = {
   community_comment: "bg-[rgba(44,82,130,0.1)] text-[var(--color-primary)]",
   community_reply: "bg-[rgba(44,82,130,0.1)] text-[var(--color-primary)]",
   enrollment: "bg-[var(--color-success-soft)] text-[var(--color-success-fg)]",
   certificate: "bg-[var(--color-success-soft)] text-[var(--color-success-fg)]",
-  course_review: "bg-[var(--color-warning-soft)] text-[var(--color-warning)]",
+  course_review: "bg-[var(--color-warning-soft)] text-[var(--color-warning-fg)]",
   live_event: "bg-[rgba(178,34,52,0.1)] text-[var(--color-accent-fg)]",
   course_message: "bg-[rgba(44,82,130,0.1)] text-[var(--color-primary)]",
 };

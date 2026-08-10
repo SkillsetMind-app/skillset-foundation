@@ -17,7 +17,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggleMode}
-      className="relative grid size-10 place-items-center overflow-hidden rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-ink)] transition-[background-color,transform] duration-[180ms] ease-out hover:bg-[var(--color-surface-strong)] active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[rgba(26,54,93,0.28)]"
+      className="relative grid size-10 place-items-center overflow-hidden rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-ink)] transition-[background-color,transform] duration-[180ms] ease-out hover:bg-[var(--color-surface-strong)] active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[var(--color-primary)]"
       aria-label={label}
       title={label}
     >

@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { createBunnyVideo, signBunnyUpload } from "@/lib/bunny/server";
-import { enforceRateLimit, paymentErrorResponse } from "@/lib/payments/server/auth";
+import {
+  assertCreatorActivated,
+  enforceRateLimit,
+  paymentErrorResponse,
+} from "@/lib/payments/server/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // POST /api/teach/video/create — the course owner asks the server to create a
@@ -54,6 +58,16 @@ export async function POST(request: Request) {
     .maybeSingle();
   if (!course) {
     return NextResponse.json({ error: "You do not own this course." }, { status: 403 });
+  }
+
+  // Same gate as the courses trigger. The trigger already stops an unpaid
+  // creator from owning a course at all, so this only bites the creators who
+  // owned courses before the flag flip — exactly the population that could
+  // otherwise keep burning Bunny storage without ever paying.
+  try {
+    await assertCreatorActivated();
+  } catch (error) {
+    return paymentErrorResponse(error);
   }
 
   try {

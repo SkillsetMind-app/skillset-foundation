@@ -68,7 +68,16 @@ export function getTrustedLessonEmbed(value?: string | null): TrustedLessonEmbed
   if (youtubeId) {
     return {
       provider: "youtube",
-      embedUrl: `https://www.youtube-nocookie.com/embed/${youtubeId}`,
+      // enablejsapi=1 is what makes the iframe answer the postMessage
+      // handshake the player uses to hear "video ended" (auto-advance). We do
+      // NOT load YouTube's IFrame API script — script-src does not allow
+      // youtube.com — so the listener is hand-rolled on the consumer side.
+      //
+      // ponytail: no &origin=. It can only be read from window at render time,
+      // so the server and client would build different src attributes and
+      // hydration would fail. The security property that matters is checking
+      // event.origin on every inbound message, which the listener does.
+      embedUrl: `https://www.youtube-nocookie.com/embed/${youtubeId}?enablejsapi=1`,
     };
   }
 

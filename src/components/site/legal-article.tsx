@@ -72,7 +72,7 @@ export function LegalSection({
 // document that silently invents them.
 export function Define({ children }: { children: ReactNode }) {
   return (
-    <mark className="rounded bg-amber-100 px-1 py-0.5 font-semibold text-amber-900">
+    <mark className="rounded bg-[var(--color-warning-soft)] px-1 py-0.5 font-semibold text-[var(--color-warning-fg)]">
       [{children}]
     </mark>
   );

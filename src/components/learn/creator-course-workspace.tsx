@@ -16,8 +16,12 @@ import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
 export function CreatorCourseWorkspace({
   initialCourseId,
+  whitelabel = false,
 }: {
   initialCourseId?: string;
+  /** Forwarded from the member-area shell: the course is opening under a
+   *  teacher's own brand, so every link back into our platform stays hidden. */
+  whitelabel?: boolean;
 }) {
   const searchParams = useSearchParams();
   const courseId = initialCourseId ?? searchParams.get("courseId") ?? "";
@@ -234,6 +238,7 @@ export function CreatorCourseWorkspace({
       <EnrolledCourseWorkspace
         course={teacherCourseToLearningCourse(course)}
         enableFirestoreAssets
+        whitelabel={whitelabel}
       />
     </>
   );
