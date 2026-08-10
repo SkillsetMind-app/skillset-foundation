@@ -622,7 +622,7 @@ export type Database = {
           created_at: string
           expires_at: string | null
           id: string
-          max_redemptions: number
+          max_redemptions: number | null
           owner_id: string
           percent_off: number
           redeemed_count: number
@@ -635,7 +635,7 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           id?: string
-          max_redemptions?: number
+          max_redemptions?: number | null
           owner_id: string
           percent_off: number
           redeemed_count?: number
@@ -648,7 +648,7 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           id?: string
-          max_redemptions?: number
+          max_redemptions?: number | null
           owner_id?: string
           percent_off?: number
           redeemed_count?: number
@@ -2252,7 +2252,7 @@ export type Database = {
           p_code: string
           p_course_id: string
           p_expires_at?: string
-          p_max_redemptions: number
+          p_max_redemptions: number | null
           p_percent_off: number
         }
         Returns: Json

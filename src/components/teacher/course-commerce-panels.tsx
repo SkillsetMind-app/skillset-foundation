@@ -149,8 +149,9 @@ export function CouponsPanel({
   const [code, setCode] = useState("");
   const [percentOff, setPercentOff] = useState(10);
   // Numeric fields keep the raw string while typing and parse on submit —
-  // snapping to a fallback mid-keystroke mangles normal input.
-  const [maxRedemptionsText, setMaxRedemptionsText] = useState("100");
+  // snapping to a fallback mid-keystroke mangles normal input. Blank is the
+  // default and means unlimited, matching every other marketplace.
+  const [maxRedemptionsText, setMaxRedemptionsText] = useState("");
   const [expiresOn, setExpiresOn] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -177,9 +178,15 @@ export function CouponsPanel({
       setError("Coupon codes use 3-24 letters, numbers, or dashes.");
       return;
     }
-    const maxRedemptions = Number(maxRedemptionsText);
-    if (!Number.isInteger(maxRedemptions) || maxRedemptions < 1 || maxRedemptions > 100000) {
-      setError("Redemption limit must be between 1 and 100000.");
+    // Blank == unlimited. Number("") is 0, so the emptiness check has to come
+    // first or "no limit" would fail the range check as a zero.
+    const limitText = maxRedemptionsText.trim();
+    const maxRedemptions = limitText === "" ? null : Number(limitText);
+    if (
+      maxRedemptions !== null
+      && (!Number.isInteger(maxRedemptions) || maxRedemptions < 1 || maxRedemptions > 100000)
+    ) {
+      setError("Redemption limit must be between 1 and 100000, or blank for unlimited.");
       return;
     }
     setSaving(true);
@@ -262,13 +269,14 @@ export function CouponsPanel({
             ))}
           </select>
         </Field>
-        <Field label="Redemption limit">
+        <Field label="Redemption limit (optional)">
           <input
             type="number"
             min={1}
             max={100000}
             value={maxRedemptionsText}
             onChange={(event) => setMaxRedemptionsText(event.target.value)}
+            placeholder="Unlimited"
             className={inputClass}
           />
         </Field>
@@ -308,7 +316,9 @@ export function CouponsPanel({
                     </span>
                   </p>
                   <p className="text-xs text-[var(--color-ink-muted)]">
-                    Limit {coupon.maxRedemptions} uses
+                    {coupon.maxRedemptions === null
+                      ? "Unlimited uses"
+                      : `Limit ${coupon.maxRedemptions} uses`}
                     {coupon.expiresAt
                       ? ` - expires ${new Date(coupon.expiresAt).toLocaleDateString("en-US", { timeZone: "UTC" })}`
                       : " - no expiry"}

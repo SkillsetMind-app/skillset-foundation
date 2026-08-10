@@ -536,7 +536,10 @@
       "locked": "Locked",
       "unlock": "Unlock course",
       "unlockNote": "You do not have access to this course yet. Unlock it to start watching right here in your members area.",
-      "close": "Close"
+      "close": "Close",
+      "instructorEyebrow": "More to explore",
+      "instructorTitle": "More from {name}",
+      "instructorTitleFallback": "More from your instructor"
     },
     "tour": {
       "welcomeNamed": "Welcome, {name}",

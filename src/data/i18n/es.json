@@ -536,7 +536,10 @@
       "locked": "Bloqueado",
       "unlock": "Desbloquear curso",
       "unlockNote": "Todavia no tienes acceso a este curso. Desbloquealo para verlo aqui mismo en tu area de miembros.",
-      "close": "Cerrar"
+      "close": "Cerrar",
+      "instructorEyebrow": "Mas para explorar",
+      "instructorTitle": "Mas de {name}",
+      "instructorTitleFallback": "Mas de tu instructor"
     },
     "tour": {
       "welcomeNamed": "Te damos la bienvenida, {name}",

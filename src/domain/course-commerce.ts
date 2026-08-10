@@ -26,7 +26,8 @@ export type CourseCoupon = {
   ownerId: string;
   code: string;
   percentOff: number;
-  maxRedemptions: number;
+  /** null == unlimited redemptions (the marketplace default). */
+  maxRedemptions: number | null;
   redeemedCount: number;
   expiresAt?: string;
   active: boolean;
@@ -45,7 +46,8 @@ export type CreateCourseCouponInput = {
   courseId: string;
   code: string;
   percentOff: number;
-  maxRedemptions: number;
+  /** null for unlimited redemptions. */
+  maxRedemptions: number | null;
   /** ISO timestamp; omit for a coupon that never expires. */
   expiresAt?: string;
 };

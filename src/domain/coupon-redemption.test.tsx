@@ -55,4 +55,15 @@ describe("coupon-redemption", () => {
     });
     expect(result.ok).toBe(false);
   });
+
+  // null maxRedemptions == unlimited: a redemption count far past any cap must
+  // still go through, or "unlimited" silently becomes "capped at whatever the
+  // last teacher typed".
+  it("redeems an unlimited coupon past any cap", () => {
+    const result = redeemCourseCoupon({
+      amountMinor: 10_000,
+      coupon: { ...baseCoupon, redeemedCount: 999_999, maxRedemptions: null },
+    });
+    expect(result.ok).toBe(true);
+  });
 });
