@@ -14,6 +14,7 @@ import {
   TaxPanel,
 } from "@/components/teacher/course-commerce-panels";
 import { CourseOffersPanel } from "@/components/teacher/course-offers-panel";
+import { CourseStudentRoster } from "@/components/teacher/course-student-roster";
 import { SalesPageEditor } from "@/components/teacher/sales-page-editor";
 import type { PlanId } from "@/data/plans";
 import { planById } from "@/data/plans";
@@ -45,6 +46,7 @@ const manageSections = [
   { id: "basic", label: "Basic info" },
   { id: "pricing", label: "Pricing & offers" },
   { id: "members", label: "Members area" },
+  { id: "students", label: "Students" },
   { id: "page", label: "Product page" },
   { id: "content", label: "Content" },
   { id: "coupons", label: "Coupons" },
@@ -806,6 +808,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               </div>
             </PanelCard>
           ) : null}
+
+          {section === "students" ? <CourseStudentRoster courseId={course.id} /> : null}
 
           {section === "page" ? (
             <div className="grid gap-4">
