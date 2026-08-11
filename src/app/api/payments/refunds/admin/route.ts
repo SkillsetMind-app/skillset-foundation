@@ -101,17 +101,19 @@ export async function POST(request: Request) {
     }
 
     const stripe = getStripeClient();
+    // Stripe's smallest unit, not ours. A partial refund on a zero-decimal order
+    // would otherwise ask for 100x the amount and be rejected (or, worse,
+    // over-refund a large order). Omitting `amount` = full refund, which Stripe
+    // computes itself and needs no conversion.
+    const stripeRefundAmount =
+      amountMinor !== null
+        ? toStripeAmount(amountMinor, String(order.currency || "USD"))
+        : null;
     const refund = await stripe.refunds.create(
       {
         payment_intent: paymentIntentId,
         refund_application_fee: true,
-        // Stripe's smallest unit, not ours. A partial refund on a zero-decimal
-        // order would otherwise ask for 100x the amount and be rejected (or,
-        // worse, over-refund a large order). Omitting `amount` = full refund,
-        // which Stripe computes itself and needs no conversion.
-        ...(amountMinor !== null
-          ? { amount: toStripeAmount(amountMinor, String(order.currency || "USD")) }
-          : {}),
+        ...(stripeRefundAmount !== null ? { amount: stripeRefundAmount } : {}),
         metadata: {
           orderId,
           courseId: typeof order.course_id === "string" ? order.course_id : "",
@@ -121,9 +123,13 @@ export async function POST(request: Request) {
         },
       },
       {
+        // Keyed on what Stripe is actually asked for, not on what we were sent.
+        // Conversion is many-to-one (100050 and 100100 JPY both become 1001), so
+        // keying on the raw request would mint two keys for one identical refund
+        // and let both through.
         idempotencyKey:
-          amountMinor !== null
-            ? `admin_refund_${orderId}_${amountMinor}`
+          stripeRefundAmount !== null
+            ? `admin_refund_${orderId}_${stripeRefundAmount}`
             : `admin_refund_${orderId}_full`,
         stripeAccount: connectedAccountId,
       },

@@ -16,6 +16,7 @@ import {
   shouldReleaseCheckoutLock,
   stripeProcessingFeeMinor,
 } from "@/lib/payments/rules";
+import { fromStripeAmount } from "@/lib/payments/currencies";
 import { getStripeClient, isStripeConfigured } from "@/lib/payments/server/stripe";
 import {
   courseSubscriptionInterval,
@@ -493,8 +494,14 @@ async function handleCourseSubscriptionInvoicePaid(
     owner?.stripe_connected_account_id ||
     null;
 
-  const grossAmountMinor = Number(invoice.amount_paid || 0);
   const currencyUpper = String(invoice.currency || "USD").toUpperCase();
+  // Stripe's smallest unit, not ours. A ¥1,000 renewal arrives as 1000; storing
+  // it raw would show the teacher ¥10 in the ledger and book our commission
+  // 100x too low on every renewal.
+  const grossAmountMinor = fromStripeAmount(
+    Number(invoice.amount_paid || 0),
+    currencyUpper,
+  );
   // Stripe freezes application_fee_percent when the subscription is created and
   // keeps charging that percent on every renewal. Recomputing the fee from the
   // teacher's CURRENT plan would book a number Stripe never took: a teacher who
@@ -818,6 +825,15 @@ async function handleChargeRefunded(
   const isFullRefund = charge.refunded === true;
   const refundedStatus = isFullRefund ? "refunded" : "partially_refunded";
   const ts = nowIso();
+  // Stripe's smallest unit, not ours. This value is stored as
+  // refunded_amount_minor and later SUBTRACTED from order.amount_minor (which is
+  // in our units) to cap the next partial refund — so on a zero-decimal currency
+  // an unconverted total makes a ¥500 refund look like ¥5 and lets the cap pass
+  // a second refund that over-refunds the order.
+  const refundedAmountMinor = fromStripeAmount(
+    Number(charge.amount_refunded || 0),
+    String(charge.currency || "USD"),
+  );
 
   if (!payment) {
     // Subscription invoice charge refunded from the Dashboard: no payments doc.
@@ -836,7 +852,7 @@ async function handleChargeRefunded(
         .from("payout_ledger")
         .update({
           status: ledgerRefundStatus(isFullRefund),
-          refunded_amount_minor: charge.amount_refunded,
+          refunded_amount_minor: refundedAmountMinor,
           refunded_at: ts,
           updated_at: ts,
         })
@@ -882,7 +898,7 @@ async function handleChargeRefunded(
       .from("payments")
       .update({
         status: refundedStatus,
-        refunded_amount_minor: charge.amount_refunded,
+        refunded_amount_minor: refundedAmountMinor,
         refunded_at: ts,
         updated_at: ts,
       })
@@ -895,7 +911,7 @@ async function handleChargeRefunded(
       .from("orders")
       .update({
         status: refundedStatus,
-        refunded_amount_minor: charge.amount_refunded,
+        refunded_amount_minor: refundedAmountMinor,
         updated_at: ts,
       })
       .eq("id", orderId),
@@ -907,7 +923,7 @@ async function handleChargeRefunded(
       .from("payout_ledger")
       .update({
         status: nextLedgerStatus,
-        refunded_amount_minor: charge.amount_refunded,
+        refunded_amount_minor: refundedAmountMinor,
         refunded_at: ts,
         updated_at: ts,
       })

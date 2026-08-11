@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   defaultSkillsetCurrency,
+  fromStripeAmount,
   isSupportedStripeCurrency,
   normalizeSkillsetCurrency,
   supportedStripeCurrencies,
@@ -89,6 +90,42 @@ describe("toStripeAmount", () => {
     for (const currency of supportedStripeCurrencies) {
       if (currency === "JPY" || currency === "CLP") continue;
       expect(toStripeAmount(12345, currency)).toBe(12345);
+    }
+  });
+
+  it("never sends a zero amount for a positive price", () => {
+    // There is no minimum-price floor in the studio, so a teacher can set
+    // ¥0.49. Rounding that to 0 would leave for Stripe as a zero-amount charge,
+    // which it rejects — a paid course nobody can ever buy.
+    expect(toStripeAmount(49, "JPY")).toBe(1);
+    expect(toStripeAmount(1, "JPY")).toBe(1);
+    // A genuinely free course still converts to 0, not 1.
+    expect(toStripeAmount(0, "JPY")).toBe(0);
+  });
+});
+
+describe("fromStripeAmount", () => {
+  // Amounts READ BACK from Stripe (invoice totals, refunded totals) arrive in
+  // Stripe's unit. The ledger, the refund cap and every display site assume
+  // ours, so the reverse conversion has to happen at the same boundary.
+
+  it("passes two-decimal currencies through untouched", () => {
+    expect(fromStripeAmount(100000, "USD")).toBe(100000);
+    expect(fromStripeAmount(0, "BRL")).toBe(0);
+  });
+
+  it("multiplies zero-decimal currencies by 100", () => {
+    // A ¥1,000 subscription renewal arrives as 1000. Stored raw, the teacher's
+    // ledger would read ¥10 and our commission would be booked 100x too low.
+    expect(fromStripeAmount(1000, "JPY")).toBe(100000);
+    expect(fromStripeAmount(1000, "clp")).toBe(100000);
+  });
+
+  it("round-trips with toStripeAmount", () => {
+    for (const currency of supportedStripeCurrencies) {
+      expect(fromStripeAmount(toStripeAmount(100000, currency), currency)).toBe(
+        100000,
+      );
     }
   });
 });

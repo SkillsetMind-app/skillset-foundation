@@ -73,12 +73,27 @@ export function normalizeSkillsetCurrency(currency?: string | null): string {
 const zeroDecimalCurrencies = new Set<string>(["CLP", "JPY"]);
 
 export function toStripeAmount(amountMinor: number, currency: string): number {
+  if (!zeroDecimalCurrencies.has(currency.toUpperCase())) return amountMinor;
   // ponytail: rounds a fractional unit up (100050 -> 1001). A currency with no
   // sub-unit cannot express the half, and rounding toward the buyer's favour
   // would let a teacher shave a unit off every sale.
+  const converted = Math.round(amountMinor / 100);
+  // A positive price below half a unit (¥0.49 -> 0) would otherwise leave for
+  // Stripe as a zero-amount charge, which it rejects — a paid course that can
+  // never be bought. Floor at the smallest unit that exists.
+  return amountMinor > 0 ? Math.max(1, converted) : converted;
+}
+
+// The same boundary in reverse: an amount READ BACK from Stripe (invoice
+// totals, refunded totals) is in Stripe's unit, and everything downstream —
+// the ledger, the refund cap, every display site — assumes ours.
+export function fromStripeAmount(
+  stripeAmount: number,
+  currency: string,
+): number {
   return zeroDecimalCurrencies.has(currency.toUpperCase())
-    ? Math.round(amountMinor / 100)
-    : amountMinor;
+    ? stripeAmount * 100
+    : stripeAmount;
 }
 
 export function getCurrencyLabel(currency: string): string {
