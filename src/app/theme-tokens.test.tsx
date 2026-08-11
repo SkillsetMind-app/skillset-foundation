@@ -188,3 +188,83 @@ describe("dark mode contrast", () => {
     expect(regressions, `dark-only contrast regressions:\n${regressions.join("\n")}`).toEqual([]);
   });
 });
+
+// The member area renders under a CROSS PRODUCT of two themes that vary
+// INDEPENDENTLY: data-members-theme (per-course, the teacher picks it) and
+// data-theme (the student's platform toggle). Member CSS mixes --ma-* with
+// platform --color-*, so all four combinations ship. The check above only
+// compares light-vs-dark of ONE of them, which is why white-on-green survived
+// in both: it failed identically in each, so it never read as a regression.
+function anchoredPalette(selector: string): Record<string, string> {
+  // Anchored at line start: a bare `[data-members-theme] {` search also matches
+  // inside `.member-classroom[data-members-theme] {`, which declares no --ma-*
+  // at all. That returns an empty palette, every --ma-* becomes unresolvable,
+  // and the whole check silently passes on zero rules.
+  const at = new RegExp(`^${selector.replace(/[[\]().*+?^$|\\{}]/g, "\\$&")} \\{`, "m").exec(sheet);
+  if (!at) throw new Error(`${selector} block not found`);
+  const body = sheet.slice(at.index, sheet.indexOf("\n}", at.index));
+  const vars = Object.fromEntries(
+    [...body.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g)].map(([, k, v]) => [k, v.trim()]),
+  );
+  if (Object.keys(vars).length === 0) throw new Error(`${selector} parsed to an empty palette`);
+  return vars;
+}
+
+const maShared = anchoredPalette("[data-members-theme]");
+const maLight = { ...maShared, ...anchoredPalette('[data-members-theme="light"]') };
+const maDark = { ...maShared, ...anchoredPalette('[data-members-theme="dark"]') };
+
+const COMBOS = [
+  ["course light / platform light", { ...light, ...maLight }, "light", false],
+  ["course light / platform dark", { ...dark, ...maLight }, "light", true],
+  ["course dark / platform light", { ...light, ...maDark }, "dark", false],
+  ["course dark / platform dark", { ...dark, ...maDark }, "dark", true],
+] as const;
+
+/** The key this selector part collapses to, or null if it is dead in this combo. */
+function liveKey(part: string, courseTheme: string, platformDark: boolean): string | null {
+  if (part.includes('[data-theme="dark"]') && !platformDark) return null;
+  if (part.includes('[data-members-theme="light"]') && courseTheme !== "light") return null;
+  if (part.includes('[data-members-theme="dark"]') && courseTheme !== "dark") return null;
+  return (
+    part
+      .replaceAll('[data-theme="dark"]', "")
+      .replace(/\.member-classroom\[data-members-theme(?:="\w+")?\]/g, "")
+      .split(/\s+/)
+      .join(" ")
+      .trim() || null
+  );
+}
+
+describe.each(COMBOS)("member area contrast — %s", (_name, vars, courseTheme, platformDark) => {
+  it("keeps every member color/background pair at or above AA", () => {
+    // Merge the cascade rather than skipping overridden selectors: an override
+    // can BE the failure (the member-scoped "done" pill re-applied white with
+    // !important, which is how it defeated the platform-level dark fix).
+    const merged = new Map<string, { fg?: string; bg?: string }>();
+    for (const [selector, body] of rules) {
+      if (selector.startsWith("@") || !selector.includes("member")) continue;
+      const fg = /(?:^|;|\s)color\s*:\s*([^;]+)/.exec(body)?.[1]?.trim();
+      const bg = /(?:^|;|\s)background(?:-color)?\s*:\s*([^;]+)/.exec(body)?.[1]?.trim();
+      if (!fg && !bg) continue;
+
+      for (const raw of selector.split(",")) {
+        const key = liveKey(raw.trim(), courseTheme, platformDark);
+        if (!key) continue;
+        const entry = merged.get(key) ?? {};
+        if (fg) entry.fg = fg;
+        if (bg) entry.bg = bg;
+        merged.set(key, entry);
+      }
+    }
+
+    const failures: string[] = [];
+    for (const [selector, { fg, bg }] of merged) {
+      if (!fg || !bg || bg.includes("gradient") || bg.includes("url(")) continue;
+      const r = ratio(fg, bg.includes(" ") ? bg.split(" ")[0] : bg, vars);
+      if (r !== null && r < 4.5) failures.push(`${selector} — ${r.toFixed(2)}:1 (${fg} on ${bg})`);
+    }
+
+    expect(failures, `member area below AA:\n${failures.join("\n")}`).toEqual([]);
+  });
+});
