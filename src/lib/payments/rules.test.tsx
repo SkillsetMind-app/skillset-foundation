@@ -9,6 +9,7 @@ import {
   shouldCancelCourseSubscriptionForRefund,
   shouldMarkEnrollmentRefundedAfterChargeRefund,
   shouldReactivateEnrollment,
+  stripeFeeMinorFromBalanceTransaction,
   stripeProcessingFeeMinor,
 } from "@/lib/payments/rules";
 
@@ -153,5 +154,97 @@ describe("stripeProcessingFeeMinor", () => {
 
   it("still applies the fixed fee to a zero-amount charge", () => {
     expect(stripeProcessingFeeMinor(0, "USD")).toBe(30);
+  });
+});
+
+// The estimate above is a US-shaped guess and its result is RENDERED to the
+// teacher as "you earned" (teacher-wallet-panel.tsx). When Stripe hands us the
+// balance transaction we prefer the fee it actually took; these cases pin the
+// two ways that preference could silently corrupt the number instead.
+describe("stripeFeeMinorFromBalanceTransaction", () => {
+  it("returns null when there is no balance transaction to read", () => {
+    // Null = "use the estimate", not "the fee was zero".
+    expect(stripeFeeMinorFromBalanceTransaction(null, "USD")).toBeNull();
+    expect(stripeFeeMinorFromBalanceTransaction(undefined, "USD")).toBeNull();
+  });
+
+  it("returns the fee net of our own application fee", () => {
+    // On a direct charge, balance_transaction.fee is EVERYTHING Stripe took —
+    // its processing fee AND our commission. Our commission is computed
+    // separately from platform_fee_bps, so counting it here would debit the
+    // teacher twice in the record they read.
+    expect(
+      stripeFeeMinorFromBalanceTransaction(
+        {
+          currency: "USD",
+          fee: 1320,
+          fee_details: [
+            { type: "stripe_fee", amount: 320 },
+            { type: "application_fee", amount: 1000 },
+          ],
+        },
+        "USD",
+      ),
+    ).toBe(320);
+  });
+
+  it("handles a charge with no application fee", () => {
+    expect(
+      stripeFeeMinorFromBalanceTransaction(
+        { currency: "USD", fee: 320, fee_details: [] },
+        "USD",
+      ),
+    ).toBe(320);
+    expect(
+      stripeFeeMinorFromBalanceTransaction({ currency: "USD", fee: 320 }, "USD"),
+    ).toBe(320);
+  });
+
+  it("refuses a balance transaction in a different settlement currency", () => {
+    // A balance transaction is denominated in the ACCOUNT's settlement
+    // currency. Subtracting a BRL fee from a USD gross would be worse than the
+    // estimate we already had.
+    expect(
+      stripeFeeMinorFromBalanceTransaction(
+        { currency: "BRL", fee: 320 },
+        "USD",
+      ),
+    ).toBeNull();
+    expect(
+      stripeFeeMinorFromBalanceTransaction({ fee: 320 }, "USD"),
+    ).toBeNull();
+  });
+
+  it("matches the currency case-insensitively", () => {
+    expect(
+      stripeFeeMinorFromBalanceTransaction({ currency: "usd", fee: 320 }, "USD"),
+    ).toBe(320);
+  });
+
+  it("returns null when the fee is missing or unusable", () => {
+    expect(
+      stripeFeeMinorFromBalanceTransaction({ currency: "USD" }, "USD"),
+    ).toBeNull();
+    expect(
+      stripeFeeMinorFromBalanceTransaction(
+        { currency: "USD", fee: null },
+        "USD",
+      ),
+    ).toBeNull();
+  });
+
+  it("never returns a negative fee", () => {
+    // Defensive: a fee smaller than the application-fee detail would otherwise
+    // produce a negative that INFLATES the teacher's net.
+    expect(
+      stripeFeeMinorFromBalanceTransaction(
+        {
+          currency: "USD",
+          fee: 100,
+          fee_details: [{ type: "application_fee", amount: 1000 }],
+        },
+        "USD",
+      ),
+    ).toBe(0);
   });
 });

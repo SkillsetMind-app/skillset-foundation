@@ -14,6 +14,7 @@ import {
   shouldMarkEnrollmentRefundedAfterChargeRefund,
   shouldReactivateEnrollment,
   shouldReleaseCheckoutLock,
+  stripeFeeMinorFromBalanceTransaction,
   stripeProcessingFeeMinor,
 } from "@/lib/payments/rules";
 import { fromStripeAmount } from "@/lib/payments/currencies";
@@ -275,6 +276,11 @@ async function handleCheckoutCompleted(
 
   // Best-effort receipt url off the PaymentIntent's latest charge. Never blocks.
   let receiptUrl: string | null = null;
+  // Stripe's REAL processing fee, when the balance transaction is readable.
+  // Our estimate is a US-shaped guess (2.9% / 5.4% + $0.30); a Brazilian or
+  // Caribbean teacher pays local rates, and this number is what their wallet
+  // displays as "you earned". Null = fall back to the estimate.
+  let actualStripeFeeMinor: number | null = null;
   const receiptIntentId =
     typeof session.payment_intent === "string"
       ? session.payment_intent
@@ -285,12 +291,22 @@ async function handleCheckoutCompleted(
       // the lookup must carry the account header or it 404s.
       const intent = await getStripeClient().paymentIntents.retrieve(
         receiptIntentId,
-        { expand: ["latest_charge"] },
+        // Expanding the balance transaction here costs no extra round-trip: we
+        // are already retrieving this PaymentIntent for the receipt url.
+        { expand: ["latest_charge.balance_transaction"] },
         connectedAccountId ? { stripeAccount: connectedAccountId } : undefined,
       );
       const latestCharge = intent.latest_charge;
       if (latestCharge && typeof latestCharge !== "string") {
         receiptUrl = latestCharge.receipt_url ?? null;
+        const balanceTransaction = latestCharge.balance_transaction;
+        const rawFee = stripeFeeMinorFromBalanceTransaction(
+          typeof balanceTransaction === "string" ? null : balanceTransaction,
+          latestCharge.currency,
+        );
+        if (rawFee !== null) {
+          actualStripeFeeMinor = fromStripeAmount(rawFee, latestCharge.currency);
+        }
       }
     } catch {
       // ponytail: receipt lookup is best-effort; never blocks fulfilment.
@@ -301,7 +317,9 @@ async function handleCheckoutCompleted(
   // ?? not || so an explicitly snapshotted 0-bps fee survives.
   const platformFeeBps = Number(order.platform_fee_bps ?? DEFAULT_PLATFORM_FEE_BPS);
   const skillsetFeeMinor = Math.floor((grossAmountMinor * platformFeeBps) / 10000);
-  const stripeFeeMinor = stripeProcessingFeeMinor(grossAmountMinor, order.currency);
+  const stripeFeeMinor =
+    actualStripeFeeMinor ??
+    stripeProcessingFeeMinor(grossAmountMinor, order.currency);
   // Under direct charges Stripe already deducted both our application fee and
   // its own processing fee from the teacher's settlement. This net is therefore
   // a RECORD of what the teacher actually received, not an amount we owe them.
