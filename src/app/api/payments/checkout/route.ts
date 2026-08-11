@@ -6,6 +6,7 @@ import { normalizeCouponCode } from "@/domain/course-commerce";
 import { redeemCourseCoupon } from "@/domain/coupon-redemption";
 import { buildInstallmentPlan } from "@/domain/installments";
 import { isCoursePubliclySellable } from "@/domain/teacher-course";
+import { toStripeAmount } from "@/lib/payments/currencies";
 import { canonicalPlatformFeeBpsForPlan } from "@/lib/payments/rules";
 import {
   PaymentError,
@@ -596,12 +597,19 @@ export async function POST(request: Request) {
     const enableStripeCardInstallments =
       installmentPlan.enabled && installmentPlan.stripeCardInstallmentsEligible;
 
+    // Everything below this line is in STRIPE's smallest unit, which is not
+    // 1/100 for every currency (¥1,000 is 1000, not 100000). Our stored
+    // amountMinor is always value x 100, so it converts once here and the fee
+    // math runs on the converted value — otherwise the cap below could compute
+    // a fee equal to the charge after rounding.
+    const stripeUnitAmount = toStripeAmount(amountMinor, currency);
+
     // Platform cut on this charge. Floored so rounding never favours us over the
     // teacher, and capped below the charge so Stripe can never reject the
     // session for a fee that exceeds the amount being collected.
     const applicationFeeMinor = Math.min(
-      Math.max(0, Math.floor((amountMinor * platformFeeBps) / 10000)),
-      Math.max(0, amountMinor - 1),
+      Math.max(0, Math.floor((stripeUnitAmount * platformFeeBps) / 10000)),
+      Math.max(0, stripeUnitAmount - 1),
     );
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
@@ -613,7 +621,7 @@ export async function POST(request: Request) {
           quantity: 1,
           price_data: {
             currency,
-            unit_amount: amountMinor,
+            unit_amount: stripeUnitAmount,
             product_data: {
               name: course.title,
               description: course.summary?.slice(0, 900),

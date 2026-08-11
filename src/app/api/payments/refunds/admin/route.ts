@@ -8,6 +8,7 @@ import {
   paymentErrorResponse,
   requireAdminUserId,
 } from "@/lib/payments/server/auth";
+import { toStripeAmount } from "@/lib/payments/currencies";
 import { getStripeClient } from "@/lib/payments/server/stripe";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
     const { data: order } = await admin
       .from("orders")
       .select(
-        "status, payment_intent_id, amount_minor, refunded_amount_minor, course_id, user_id, teacher_stripe_connected_account_id",
+        "status, payment_intent_id, amount_minor, refunded_amount_minor, currency, course_id, user_id, teacher_stripe_connected_account_id",
       )
       .eq("id", orderId)
       .maybeSingle();
@@ -104,7 +105,13 @@ export async function POST(request: Request) {
       {
         payment_intent: paymentIntentId,
         refund_application_fee: true,
-        ...(amountMinor !== null ? { amount: amountMinor } : {}),
+        // Stripe's smallest unit, not ours. A partial refund on a zero-decimal
+        // order would otherwise ask for 100x the amount and be rejected (or,
+        // worse, over-refund a large order). Omitting `amount` = full refund,
+        // which Stripe computes itself and needs no conversion.
+        ...(amountMinor !== null
+          ? { amount: toStripeAmount(amountMinor, String(order.currency || "USD")) }
+          : {}),
         metadata: {
           orderId,
           courseId: typeof order.course_id === "string" ? order.course_id : "",
