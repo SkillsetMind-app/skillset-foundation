@@ -1543,7 +1543,7 @@ p {
 }
 
 .account-settings-tab:hover {
-  background: #ffffff;
+  background: var(--color-surface);
   color: var(--color-ink);
   transform: translateY(-1px);
 }
@@ -1580,7 +1580,7 @@ p {
   place-items: center;
   border: 1px solid var(--color-line);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--color-surface);
   color: var(--color-primary);
 }
 
@@ -2825,7 +2825,7 @@ body:has([aria-label="Course categories"])
   place-items: center;
   border: 1px solid var(--color-line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--color-surface);
   color: var(--color-primary);
   font-size: 0.6875rem;
   font-weight: 800;
@@ -3426,7 +3426,7 @@ body:has([aria-label="Course categories"])
   width: 100%;
   border: 1px solid var(--color-line);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--color-surface);
   padding: 0.8rem 0.95rem;
   color: var(--color-ink);
   font-size: 0.875rem;
@@ -3496,7 +3496,7 @@ body:has([aria-label="Course categories"])
   gap: 0.65rem;
   border: 1px solid var(--color-line);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--color-surface);
   padding: 0.9rem 1rem;
   color: var(--color-ink-soft);
   font-size: 0.8125rem;
@@ -4268,6 +4268,13 @@ body:has([aria-label="Course categories"])
   box-shadow: 0 4px 12px rgba(31, 138, 91, 0.4);
 }
 
+/* --color-success-fg inverts to a LIGHT green (#5fc99a) in dark, so the white
+   checkmark drops to 2.04:1. Same shape as the .button-solid fix: put dark ink
+   on the light fill (9.4:1). Dark-scoped — light mode keeps white on #1f8a5b. */
+[data-theme="dark"] .member-module-card__seal {
+  color: var(--color-base);
+}
+
 .member-module-card__bar {
   position: absolute;
   right: 0;
@@ -4429,6 +4436,14 @@ body:has([aria-label="Course categories"])
   border-color: var(--color-success-fg);
   background: var(--color-success-fg);
   color: #ffffff;
+}
+
+/* Both status pills invert their FILL in dark (--color-primary -> #8fb4e4,
+   --color-success-fg -> #5fc99a) while keeping a white glyph: 2.14:1 and
+   2.04:1. Dark ink on the light fill restores 8.7:1 / 9.4:1. Light untouched. */
+[data-theme="dark"] .member-lesson-card--active .member-lesson-card__status,
+[data-theme="dark"] .member-lesson-card--done .member-lesson-card__status {
+  color: var(--color-base);
 }
 
 .member-lesson-card--locked .member-lesson-card__status {
