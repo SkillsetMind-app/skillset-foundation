@@ -12,6 +12,7 @@ import {
   getOrCreateBillingStripeCustomer,
   getUserRow,
 } from "@/lib/payments/server/stripe-helpers";
+import { isPlatformFlagOn } from "@/domain/platform-settings";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   ACTIVATION_FEE_CHECKOUT_PURPOSE,
@@ -53,10 +54,12 @@ export async function POST() {
     if (settingsError) throw new Error(settingsError.message);
 
     const activationRequired = settings?.some(
-      (setting) => setting.key === "require_activation_fee" && setting.value === true,
+      (setting) => setting.key === "require_activation_fee"
+        && isPlatformFlagOn(setting.value),
     );
     const verificationRequired = settings?.some(
-      (setting) => setting.key === "require_creator_verification" && setting.value === true,
+      (setting) => setting.key === "require_creator_verification"
+        && isPlatformFlagOn(setting.value),
     );
 
     if (!activationRequired) {
