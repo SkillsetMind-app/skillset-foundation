@@ -12,6 +12,7 @@ import type {
 import {
   LEADERBOARD_WINDOWS,
   leaderboardWindowLabels,
+  levelProgress,
 } from "@/domain/gamification";
 import { subscribeToLeaderboard } from "@/lib/data/gamification";
 
@@ -63,6 +64,13 @@ export function CommunityLeaderboard({
     : [];
   const selfRank = selfMatches.length === 1 ? selfMatches[0].rank : null;
   const currentUserInTop = selfRank !== null;
+  // The viewer's own standing. Derived from their all-time points, which the
+  // leaderboard windows do not expose — a "7d" board says nothing about how
+  // close you are to the next level, so this is read from member_stats and is
+  // independent of the selected window.
+  const progress = currentUserStats
+    ? levelProgress(currentUserStats.points)
+    : null;
 
   return (
     <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
@@ -95,6 +103,43 @@ export function CommunityLeaderboard({
         Earn points when members like your posts — 1 like = 1 point. Levels rise
         as your points grow.
       </p>
+
+      {progress ? (
+        <div className="mt-4 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <LevelBadge level={progress.level} />
+              <p className="text-sm font-semibold text-[var(--color-ink)]">
+                Your level
+              </p>
+            </div>
+            <p className="text-xs font-semibold tabular-nums text-[var(--color-ink-soft)]">
+              {progress.isMax
+                ? "Top level reached"
+                : `${progress.pointsToNextLevel} ${
+                    progress.pointsToNextLevel === 1 ? "pt" : "pts"
+                  } to Level ${progress.level + 1}`}
+            </p>
+          </div>
+          <div
+            role="progressbar"
+            aria-valuenow={progress.percentToNext}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={
+              progress.isMax
+                ? `Level ${progress.level}, top level reached`
+                : `Level ${progress.level}, ${progress.percentToNext}% toward Level ${progress.level + 1}`
+            }
+            className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-line)]"
+          >
+            <div
+              className="h-full rounded-full bg-[var(--color-primary)] transition-[width] duration-300"
+              style={{ width: `${progress.percentToNext}%` }}
+            />
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-5 grid gap-2">
         {!ready ? (
