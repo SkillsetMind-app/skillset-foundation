@@ -124,8 +124,16 @@ function luminance([r, g, b]: readonly number[]): number {
   return 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
 }
 
-function ratio(fg: string, bg: string, vars: Record<string, string>): number | null {
-  const base = parseColor(vars["--color-base"], vars);
+// `baseToken` is the surface a translucent background composites over. Member
+// area rules sit on --ma-bg (the course's own page), NOT --color-base (the
+// platform page) — compositing them over the platform base invents failures.
+function ratio(
+  fg: string,
+  bg: string,
+  vars: Record<string, string>,
+  baseToken = "--color-base",
+): number | null {
+  const base = parseColor(vars[baseToken], vars);
   const fgColor = parseColor(fg, vars);
   const bgColor = parseColor(bg, vars);
   if (!base || !fgColor || !bgColor) return null;
@@ -134,6 +142,26 @@ function ratio(fg: string, bg: string, vars: Record<string, string>): number | n
   const text = fgColor[3] < 1 ? over(fgColor, backdrop) : fgColor.slice(0, 3);
   const [hi, lo] = [luminance(text), luminance(backdrop)].sort((a, b) => b - a);
   return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * First top-level token of a background shorthand (`#fff url(...) no-repeat`).
+ *
+ * Splitting on EVERY space breaks `rgba(39, 160, 106, 0.12)` into `rgba(39,`,
+ * which parseColor cannot read, so ratio() returned null and the rule was
+ * skipped SILENTLY — not reported as passing, not reported as failing, just
+ * gone. 72 rules in this sheet use a spaced rgba background; none of them were
+ * ever evaluated. Split only at paren depth 0.
+ */
+function firstColorToken(value: string): string {
+  let depth = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    const ch = value[i];
+    if (ch === "(") depth += 1;
+    else if (ch === ")") depth -= 1;
+    else if (ch === " " && depth === 0) return value.slice(0, i);
+  }
+  return value;
 }
 
 const rules = [...sheet.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(
@@ -164,6 +192,12 @@ describe("dark mode contrast", () => {
     for (const [selector, body] of rules) {
       if (selector.startsWith("@") || selector.startsWith(":root")) continue;
       if (selector.includes('[data-theme="dark"]')) continue;
+      // Member selectors are owned by the four-combo check below, which merges
+      // the cascade. Judged here they read as false positives: the base
+      // .member-meta-chip rule is (0,1,0) and unreachable — every chip renders
+      // inside .member-classroom[data-members-theme], whose (0,3,0) rule
+      // re-declares the colour with !important.
+      if (selector.includes(".member-")) continue;
 
       const fg = /(?:^|;|\s)color\s*:\s*([^;]+)/.exec(body)?.[1];
       const bg = /(?:^|;|\s)background(?:-color)?\s*:\s*([^;]+)/.exec(body)?.[1]?.trim();
@@ -175,7 +209,7 @@ describe("dark mode contrast", () => {
       });
       if (patched) continue;
 
-      const flat = bg.includes(" ") ? bg.split(" ")[0] : bg;
+      const flat = firstColorToken(bg);
       const inDark = ratio(fg, flat, dark);
       const inLight = ratio(fg, flat, light);
       if (inDark === null || inLight === null) continue;
@@ -213,6 +247,14 @@ function anchoredPalette(selector: string): Record<string, string> {
 const maShared = anchoredPalette("[data-members-theme]");
 const maLight = { ...maShared, ...anchoredPalette('[data-members-theme="light"]') };
 const maDark = { ...maShared, ...anchoredPalette('[data-members-theme="dark"]') };
+
+// Selectors whose real backdrop is NOT the page background, so compositing them
+// over --ma-bg is meaningless. Static analysis cannot resolve these; the note is
+// the check. Verified in enrolled-course-workspace.tsx.
+const UNRESOLVABLE_BACKDROP: Record<string, string> = {
+  ".member-dark-stat": "sits inside .member-sidebar-card--dark (:792), a dark gradient card",
+  ".member-module-card__now": "absolute badge over an arbitrary course cover image (:923)",
+};
 
 const COMBOS = [
   ["course light / platform light", { ...light, ...maLight }, "light", false],
@@ -259,12 +301,25 @@ describe.each(COMBOS)("member area contrast — %s", (_name, vars, courseTheme, 
     }
 
     const failures: string[] = [];
+    let evaluated = 0;
     for (const [selector, { fg, bg }] of merged) {
       if (!fg || !bg || bg.includes("gradient") || bg.includes("url(")) continue;
-      const r = ratio(fg, bg.includes(" ") ? bg.split(" ")[0] : bg, vars);
-      if (r !== null && r < 4.5) failures.push(`${selector} — ${r.toFixed(2)}:1 (${fg} on ${bg})`);
+      if (selector in UNRESOLVABLE_BACKDROP) continue;
+      const r = ratio(fg, firstColorToken(bg), vars, "--ma-bg");
+      if (r === null) continue;
+      evaluated += 1;
+      if (r < 4.5) failures.push(`${selector} — ${r.toFixed(2)}:1 (${fg} on ${bg})`);
     }
 
+    // A guard that silently parses nothing passes forever, and that is exactly
+    // how this one shipped green: splitting a background shorthand on every
+    // space mangled `rgba(39, 160, 106, .12)`, ratio() returned null, and the
+    // rule vanished — not passing, not failing, gone. That cut the real count
+    // from 19 to ~13, so the floor sits at 15: high enough to have caught it,
+    // low enough that deleting a few member rules will not trip it.
+    expect(evaluated, "member guard parsed almost nothing — check the CSS parser").toBeGreaterThan(
+      15,
+    );
     expect(failures, `member area below AA:\n${failures.join("\n")}`).toEqual([]);
   });
 });

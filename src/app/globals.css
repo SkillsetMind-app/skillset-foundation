@@ -4613,7 +4613,7 @@ body:has([aria-label="Course categories"])
 }
 
 .member-classroom[data-members-theme] [class*="text-[var(--color-accent-fg)]"] {
-  color: var(--ma-accent) !important;
+  color: var(--ma-accent-ink) !important;
 }
 
 .member-classroom[data-members-theme] .member-preview-banner,
@@ -4671,13 +4671,13 @@ body:has([aria-label="Course categories"])
 }
 
 .member-classroom[data-members-theme] .member-curriculum-progress > span {
-  color: var(--ma-success);
+  color: var(--ma-success-ink);
 }
 
 .member-classroom[data-members-theme] .member-lesson-chip--done {
   border-color: rgba(39, 160, 106, 0.32);
   background: rgba(39, 160, 106, 0.12);
-  color: var(--ma-success) !important;
+  color: var(--ma-success-ink) !important;
 }
 
 .member-classroom[data-members-theme] .member-sidebar-link {
@@ -4763,7 +4763,7 @@ body:has([aria-label="Course categories"])
 
 .member-classroom[data-members-theme] .member-lesson-card--locked .member-lesson-card__status,
 .member-classroom[data-members-theme] .member-lesson-card__lock {
-  color: var(--ma-accent) !important;
+  color: var(--ma-accent-ink) !important;
 }
 
 .member-classroom[data-members-theme="light"]
@@ -5791,7 +5791,9 @@ button:hover > .dash-card,
 .member-review-star.is-active {
   border-color: rgba(178, 34, 52, 0.28);
   background: rgba(178, 34, 52, 0.08);
-  color: var(--color-accent-fg);
+  /* Platform token here read 2.83:1 on a light course and 1.48:1 on a dark one
+     — this control only ever renders inside .member-classroom. */
+  color: var(--ma-accent-ink);
   transform: translateY(-1px);
 }
 
@@ -6057,6 +6059,11 @@ button:hover > .dash-card,
     ),
     linear-gradient(0deg, rgba(7, 9, 13, 0.7), rgba(7, 9, 13, 0) 40%);
   --ma-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+  /* Brand colours used as TEXT need a per-theme variant: --ma-accent (#b22234)
+     reads 2.84:1 on this background, so dark courses get a lighter red.
+     --ma-success is already 5.14:1 here and stays as-is. */
+  --ma-accent-ink: #e8697c;
+  --ma-success-ink: #27a06a;
 }
 [data-members-theme="light"] {
   --ma-bg: #f6f8fb;
@@ -6079,6 +6086,11 @@ button:hover > .dash-card,
     ),
     linear-gradient(0deg, rgba(8, 20, 38, 0.54), rgba(8, 20, 38, 0) 42%);
   --ma-shadow: 0 16px 40px rgba(15, 39, 68, 0.1);
+  /* Mirror of the dark block: --ma-accent already reads 5.48:1 here, but
+     --ma-success (#27a06a) is only 2.75:1 on near-white, so light courses get
+     a darker green for text. */
+  --ma-accent-ink: #b22234;
+  --ma-success-ink: #0d6640;
 }
 [data-members-theme] {
   /* theme-independent */
