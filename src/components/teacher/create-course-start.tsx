@@ -18,6 +18,10 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CourseCategorySelect } from "@/components/teacher/course-category-select";
 import { InlineHelp } from "@/components/shared/inline-help";
 import {
+  ACTIVATION_REQUIRED_MESSAGE,
+  isActivationRequiredError,
+} from "@/domain/creator-verification";
+import {
   normalizeCourseCategories,
   resolveTeacherCoursePaymentType,
   skillsetCourseCategories,
@@ -122,11 +126,16 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
       setError(
         message.toLowerCase().includes("already")
           ? "A course with this title already exists. Choose a more specific name."
-          : message.toLowerCase().includes("permission")
-            ? "Course creation is blocked until creator setup is complete. Verify your email and accept Teacher Terms first."
-            : message.toLowerCase().includes("summary")
-              ? "Add a course summary with at least 20 characters."
-              : "We could not create this course. Please try again."
+          : // The activation trigger fires on INSERT, so this is the very first
+            // wall a brand-new creator hits — before it was answered with
+            // "Please try again", which is advice that can never work.
+            isActivationRequiredError(message)
+            ? ACTIVATION_REQUIRED_MESSAGE
+            : message.toLowerCase().includes("permission")
+              ? "Course creation is blocked until creator setup is complete. Verify your email and accept Teacher Terms first."
+              : message.toLowerCase().includes("summary")
+                ? "Add a course summary with at least 20 characters."
+                : "We could not create this course. Please try again."
       );
       setIsSaving(false);
     }
@@ -352,12 +361,20 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
             </div>
 
             {error ? (
-              <p
+              <div
                 role="alert"
                 className="mt-5 rounded-[8px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
               >
-                {error}
-              </p>
+                <p>{error}</p>
+                {error === ACTIVATION_REQUIRED_MESSAGE ? (
+                  <Link
+                    href="/teach/activate"
+                    className="button-solid mt-3 inline-flex px-4 py-2 text-xs"
+                  >
+                    Activate storefront
+                  </Link>
+                ) : null}
+              </div>
             ) : null}
 
             <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] pt-5">

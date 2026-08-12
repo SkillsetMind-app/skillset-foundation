@@ -3,6 +3,8 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { isActivationRequiredError } from "@/domain/creator-verification";
+
 /**
  * The activation paywall has exactly one definition: the SECURITY DEFINER
  * predicate `creator_activation_blocked()`. It folds together three things —
@@ -44,6 +46,33 @@ describe("creator activation predicate", () => {
         && !allowed.some((tail) => f.endsWith(tail)),
     );
     expect(offenders.map((f) => f.slice(SRC.length + 1))).toEqual([]);
+  });
+
+  it("recognises every sentence the gate actually raises", () => {
+    // The gate refuses in words, and the UI decides what to show by matching
+    // those words. That coupling is invisible: reword the migration and every
+    // screen silently falls back to "Please try again". So harvest the real
+    // sentences from the places that raise them and assert the matcher still
+    // catches each one.
+    const sources = [
+      join(
+        process.cwd(),
+        "supabase",
+        "migrations",
+        "20260810030000_creator_activation_gate_earlier.sql",
+      ),
+      join(SRC, "lib", "payments", "server", "auth.ts"),
+      join(SRC, "lib", "data", "course-assets.ts"),
+    ];
+    const raised = sources.flatMap((file) =>
+      [...readFileSync(file, "utf8").matchAll(/["'](Pay the one-time[^"']+)["']/g)]
+        .map((match) => match[1]),
+    );
+
+    expect(raised.length).toBeGreaterThanOrEqual(3);
+    for (const sentence of raised) {
+      expect(isActivationRequiredError(sentence)).toBe(true);
+    }
   });
 
   it("is read through the shared RPC wherever the UI gates on it", () => {

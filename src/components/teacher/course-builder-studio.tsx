@@ -81,6 +81,10 @@ import {
   type UploadCourseAssetProgress,
 } from "@/lib/data/course-assets";
 import type { CourseAsset } from "@/domain/course-asset";
+import {
+  ACTIVATION_REQUIRED_MESSAGE,
+  isActivationRequiredError,
+} from "@/domain/creator-verification";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import { isPublicFeatureEnabled } from "@/lib/feature-flags";
 import {
@@ -1211,6 +1215,10 @@ export function CourseBuilderStudio() {
       setError(
         message.includes("already")
           ? "A course with this title already exists. Choose a different name."
+          : isActivationRequiredError(message)
+          // The trigger fires on UPDATE too, so an unpaid creator editing an
+          // existing course lands here — not only on publish.
+          ? ACTIVATION_REQUIRED_MESSAGE
           : "We could not save this course. Please try again.",
       );
     } finally {
@@ -1269,8 +1277,8 @@ export function CourseBuilderStudio() {
           ? "Teacher setup must be complete before publishing courses."
           : message.toLowerCase().includes("verification")
           ? "Professional verification must be approved before publishing."
-          : message.toLowerCase().includes("activation fee")
-          ? "Activate your storefront to unlock publishing — it is a one-time fee, charged once."
+          : isActivationRequiredError(message)
+          ? ACTIVATION_REQUIRED_MESSAGE
           : message.toLowerCase().includes("payout")
           || message.toLowerCase().includes("onboarding")
           ? "Finish Stripe payout onboarding before publishing a paid course — open the Payouts panel in your studio."
