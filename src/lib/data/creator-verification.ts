@@ -99,23 +99,26 @@ export async function fetchRequireCreatorVerification(): Promise<boolean> {
 }
 
 /**
- * Reads the activation-fee flag. Same shape as the verification flag above —
- * platform_settings is anon-readable, so this is a plain browser read.
- * false (the default) means creators can build without paying yet.
+ * Answers "is THIS signed-in creator blocked by the activation fee right now?"
+ *
+ * Calls the same SECURITY DEFINER predicate the courses trigger and
+ * assertCreatorActivated() use, instead of reading require_activation_fee and
+ * pairing it with a profile field in the component. The flag alone is not the
+ * answer: the predicate also folds in the admin exemption and the paid check.
+ * Reading the raw flag here would paywall an admin the server lets straight
+ * through — UI saying "pay" while the API says "you're fine".
  */
-export async function fetchRequireActivationFee(): Promise<boolean> {
+export async function fetchCreatorActivationBlocked(): Promise<boolean> {
   const supabase = getSupabaseBrowserClient();
-  const { data, error } = await supabase
-    .from("platform_settings")
-    .select("value")
-    .eq("key", "require_activation_fee")
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("creator_activation_blocked");
 
   if (error) {
     throw error;
   }
 
-  return isPlatformFlagOn(data?.value);
+  // creator_activation_blocked returns a plain boolean, not a flag row: reading
+  // data?.value here yields undefined and silently unblocks every creator.
+  return data === true;
 }
 
 export function subscribeToMyVerificationCase(
