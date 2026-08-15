@@ -409,6 +409,30 @@ function activationFeeEvent() {
   };
 }
 
+// A refund of the activation fee. It is a PLATFORM charge, so it has no row in
+// `payments` and no payout_ledger entry — the handler must recognise it by
+// metadata alone, which Stripe copies from the PaymentIntent onto the charge.
+function activationRefundEvent() {
+  return {
+    id: "evt_activation_refund",
+    type: "charge.refunded",
+    data: {
+      object: {
+        id: "ch_activation_1",
+        payment_intent: "pi_activation_1",
+        amount: 2500,
+        amount_refunded: 2500,
+        currency: "usd",
+        refunded: true,
+        metadata: {
+          uid: "teacher_1",
+          purpose: ACTIVATION_FEE_CHECKOUT_PURPOSE,
+        },
+      },
+    },
+  };
+}
+
 async function postEvent(event: Record<string, unknown>) {
   return POST(
     new Request("http://localhost/api/webhooks/stripe", {
@@ -489,6 +513,40 @@ describe("Stripe webhook financial integrity", () => {
         p_metadata: expect.objectContaining({ checkoutSessionId: "cs_activation_1" }),
       }),
     });
+  });
+
+  it("revokes the storefront when the activation fee is fully refunded", async () => {
+    // "checkout" mode on purpose: there is no payments row for this charge, so
+    // without the metadata branch the handler falls through and returns silently
+    // — the creator keeps a storefront they were refunded for.
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const response = await postEvent(activationRefundEvent());
+
+    expect(response.status).toBe(200);
+    expect(admin.state.userUpdates).toHaveLength(1);
+    expect(admin.state.userUpdates[0].activation_fee_paid_at).toBeNull();
+    expect(admin.state.rpcCalls).toContainEqual({
+      name: "log_audit_event",
+      args: expect.objectContaining({
+        p_action: "STOREFRONT_ACTIVATION_FEE_REFUNDED",
+        p_target_id: "teacher_1",
+      }),
+    });
+  });
+
+  it("keeps the storefront when the activation fee is only partially refunded", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    const event = activationRefundEvent();
+    (event.data.object as Record<string, unknown>).refunded = false;
+    (event.data.object as Record<string, unknown>).amount_refunded = 500;
+
+    const response = await postEvent(event);
+
+    expect(response.status).toBe(200);
+    expect(admin.state.userUpdates).toHaveLength(0);
   });
 
   it("does not swallow a failed course subscription status write", async () => {
