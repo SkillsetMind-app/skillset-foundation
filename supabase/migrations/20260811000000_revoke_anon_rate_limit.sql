@@ -1,0 +1,33 @@
+-- Revoke the browser roles' EXECUTE on enforce_rate_limit.
+--
+-- 20260704_tighten_content_access_and_rpc_grants.sql deliberately KEPT this
+-- grant, with the rationale "pre-signup pwned-check". That rationale is stale:
+-- /api/auth/pwned-check calls runRateLimit(), which goes through
+-- getSupabaseAdminClient() (service_role). No browser ever holds this RPC.
+--
+-- Verified before revoking, so this cannot be a lockout:
+--   * TypeScript — the only two rpc("enforce_rate_limit") call sites are
+--     src/lib/supabase/rate-limit.ts and src/app/api/payments/checkout/route.ts,
+--     and both use the admin (service_role) client.
+--   * In-database — of the functions whose body calls enforce_rate_limit,
+--     0 are SECURITY INVOKER and 8 are SECURITY DEFINER. A definer's inner
+--     `perform` runs as the function OWNER, not as the caller's role, so none
+--     of them needs anon to hold the grant either.
+--
+-- What it closes: any holder of the publishable key could POST
+-- /rest/v1/rpc/enforce_rate_limit with an arbitrary p_key and insert unbounded
+-- rows into public.rate_limits — a storage-growth primitive, and one that
+-- needs no signup at all while anon holds the grant.
+--
+-- `authenticated` goes with it: signing up is free, so leaving it would leave
+-- the identical primitive open one email away. Confirmed safe the same way —
+-- and no RLS policy calls this function (0 rows in pg_policies), so nothing is
+-- evaluating it as the querying role.
+--
+-- NOT touched, because the browser genuinely needs them:
+-- verify_skillset_certificate (the public certificate page) and the is_* /
+-- is_target_author helpers (evaluated inside RLS policies as the querying
+-- role — revoking those WOULD break public marketplace reads).
+
+revoke execute on function public.enforce_rate_limit(text, integer, integer)
+  from anon, authenticated;
