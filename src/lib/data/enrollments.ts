@@ -131,6 +131,51 @@ export async function createAdminEnrollmentForTeacherCourse(
   return enrollmentId;
 }
 
+export type CourseStudent = {
+  enrollmentId: string;
+  courseId: string;
+  courseTitle: string;
+  uid: string;
+  displayName: string;
+  email: string;
+  photoUrl: string;
+  status: EnrollmentStatus;
+  source: EnrollmentSource;
+  progressPercent: number;
+  enrolledAt: string;
+};
+
+/**
+ * Every student enrolled in a course the caller owns.
+ *
+ * Not a plain SELECT on purpose: `enrollments` RLS only lets the STUDENT read
+ * their own row, and `public.users` only lets you read yourself -- a teacher
+ * querying either one gets zero rows, silently. This RPC is SECURITY DEFINER
+ * with no arguments, so the caller can only ask "who is in my courses", never
+ * "who is user X". Same shape as `getMySubscriberProfiles`.
+ *
+ * Returns every course at once; the per-course screen filters client-side.
+ */
+export async function getMyCourseStudents(): Promise<CourseStudent[]> {
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase.rpc("get_my_course_students");
+
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    enrollmentId: row.enrollment_id ?? "",
+    courseId: row.course_id ?? "",
+    courseTitle: row.course_title ?? "",
+    uid: row.uid ?? "",
+    displayName: row.display_name ?? "",
+    email: row.email ?? "",
+    photoUrl: row.photo_url ?? "",
+    status: (row.status ?? "active") as EnrollmentStatus,
+    source: (row.source ?? "payment") as EnrollmentSource,
+    progressPercent: row.progress_percent ?? 0,
+    enrolledAt: row.enrolled_at ?? "",
+  }));
+}
+
 export function subscribeToUserEnrollments(
   userId: string,
   callback: (enrollments: Enrollment[]) => void,

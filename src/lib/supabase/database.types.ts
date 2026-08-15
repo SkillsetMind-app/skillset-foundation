@@ -2317,6 +2317,22 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: undefined
       }
+      get_my_course_students: {
+        Args: never
+        Returns: {
+          course_id: string
+          course_title: string
+          display_name: string
+          email: string
+          enrolled_at: string
+          enrollment_id: string
+          photo_url: string
+          progress_percent: number
+          source: string
+          status: string
+          uid: string
+        }[]
+      }
       get_my_subscriber_profiles: {
         Args: never
         Returns: {
