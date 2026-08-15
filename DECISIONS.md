@@ -240,3 +240,62 @@ Nós zeramos a retenção **da plataforma**, e só isso. Nenhuma copy pode dizer
 rápida que ninguém. Como criamos contas **Express**, também não podemos dizer que o
 professor "controla" o cronograma de payout — só que ele é **dele**, no dashboard dele.
 **Plano completo:** `docs/plans/2026-07-24-pivot-direct-charges.md`.
+
+---
+
+## D23 — Bunny rede **Volume**, e o custo real é banda, não armazenamento
+**Data:** 2026-08-10 · **Decisão do fundador:** tier Volume ("bunny volume mesmo").
+
+**Decisão:** Bunny Stream na rede **Volume** ($0.005/GB global).
+**Alternativa descartada:** rede **Standard**, que na América do Sul custa $0.045/GB — **9×**.
+**Por quê:** a Volume entrega dos mesmos PoPs para a maioria do tráfego; a Standard só se
+justifica se latência de first-byte virar reclamação real de aluno. Não virou, e 9× não se
+paga em hipótese.
+
+### Conversão para a unidade que importa
+1080p H.264 ≈ 3 Mbps ⇒ **1,32 GB por hora assistida**.
+
+| Rede | $/GB | **$/hora assistida** |
+|---|---|---|
+| **Volume (escolhida)** | $0,005 | **≈ $0,0066** |
+| Standard América do Sul | $0,045 | ≈ $0,059 |
+
+### Armazenamento é ruído — a cota `videoStorageMinutes` não é o que custa
+Ladder multi-rendição ≈1,8× o master ⇒ ≈0,040 GB/min. A $0,005/GB/mês:
+
+| Plano | Cota | GB armazenados | **Custo/mês** |
+|---|---|---|---|
+| Free | 60 min | 2,4 | $0,01 |
+| Starter | 600 min | 24 | $0,12 |
+| Pro | 3.000 min | 120 | $0,60 |
+| Plus | 10.000 min | 400 | $2,00 |
+
+O plano mais caro custa **$2/mês** de armazenamento. Armazenamento não precisa de defesa.
+
+### Banda é o que custa — e é a cota que NÃO existe
+Receita = assinatura + comissão no GMV de referência do plano. Custo = horas × $0,0066.
+
+| Plano | Receita/mês | Banda a 25% de conclusão | Banda a 100% | **Ponto de virada** |
+|---|---|---|---|---|
+| Free | 10% do GMV | $0,08 | $0,30 | irrelevante |
+| Starter | ≈$38 | $4,50 | $18 | positivo mesmo a 100% |
+| Pro | $194–419 | $150 | **$600** | **≈640 alunos** concluindo as 50 h |
+| Plus | $419+ | — | **ilimitado** | **≈70.000 h/mês ≈ 420 alunos** concluindo as 167 h |
+
+**Achado estrutural:** `activeStudents: null` no Plus, combinado com 167 h de catálogo e
+**zero medição de banda no código**, é exposição sem teto. Pro tem o mesmo problema em
+escala menor: permite 2.000 alunos, mas fica negativo acima de ~640 concluintes.
+
+### O que NÃO foi feito, e o gatilho para fazer
+**Não construí medidor de banda.** Hoje: Bunny não está conectado (modelo híbrido — YouTube
+embed primeiro), 1 curso em produção, 0 criadores Plus. Medir agora é infraestrutura para
+um problema que não existe.
+
+**Construir quando qualquer um destes for verdade:**
+1. Bunny servindo vídeo em produção **e** um criador passar de ~400 alunos ativos; ou
+2. a fatura mensal da Bunny passar de ~$50.
+
+**O que construir:** contador de GB servidos por professor (a própria Bunny expõe por
+library/collection — não precisa ser instrumentado por nós) + o **overage suave** já
+decidido: cobra o excedente, **nunca bloqueia vídeo em plano pago**. Aluno que pagou pelo
+curso não pode bater em paywall de infraestrutura nossa.
