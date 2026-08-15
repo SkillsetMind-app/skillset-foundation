@@ -8,7 +8,7 @@ import type {
 } from "@/domain/product-pricing";
 import { resolveCoursePrice } from "@/domain/product-pricing";
 import type { TeacherCoursePaymentType } from "@/domain/teacher-course";
-import { normalizeSkillsetCurrency } from "@/lib/payments/currencies";
+import { normalizeSkillsetCurrency, toStripeAmount } from "@/lib/payments/currencies";
 import { PaymentError } from "@/lib/payments/server/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
@@ -328,7 +328,8 @@ export async function getOrCreateCourseSubscriptionPrice(
   const price = await stripe.prices.create(
     {
       currency,
-      unit_amount: amountMinor,
+      // Stripe's smallest unit, not ours: zero-decimal currencies divide by 100.
+      unit_amount: toStripeAmount(amountMinor, currency),
       recurring: { interval },
       product_data: {
         name: course.title,

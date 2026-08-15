@@ -41,6 +41,47 @@ export function stripeProcessingFeeMinor(
   return Math.round((grossMinor * percentBps) / 10000) + FIXED_FEE_MINOR;
 }
 
+// The estimate above is a US-shaped guess. When Stripe hands us the charge's
+// balance transaction it states the fee it ACTUALLY took, so prefer that: the
+// resulting net is what the teacher's wallet shows as "you earned", and a
+// Brazilian or Caribbean teacher on local rates would otherwise see a number
+// that disagrees with their own Stripe dashboard. Null = use the estimate.
+//
+// Returns STRIPE's smallest unit, like every other value read off Stripe — the
+// caller runs it through fromStripeAmount() at the same boundary as the rest.
+export function stripeFeeMinorFromBalanceTransaction(
+  balanceTransaction:
+    | {
+        currency?: string | null;
+        fee?: number | null;
+        fee_details?:
+          | readonly { type?: string | null; amount?: number | null }[]
+          | null;
+      }
+    | null
+    | undefined,
+  chargeCurrency: string,
+): number | null {
+  if (!balanceTransaction) return null;
+  // A balance transaction is denominated in the account's SETTLEMENT currency,
+  // which can differ from the charge currency. Subtracting a BRL fee from a USD
+  // gross would be worse than the estimate, so only trust it when they agree.
+  const btCurrency = String(balanceTransaction.currency || "").toUpperCase();
+  if (!btCurrency || btCurrency !== chargeCurrency.toUpperCase()) return null;
+
+  const fee = Number(balanceTransaction.fee ?? NaN);
+  if (!Number.isFinite(fee)) return null;
+
+  // `fee` is everything Stripe took: processing fee, tax on that fee, AND our
+  // application fee. Our commission is computed separately from
+  // platform_fee_bps, so subtract it back out or the teacher is charged twice.
+  const applicationFee = (balanceTransaction.fee_details || [])
+    .filter((detail) => detail?.type === "application_fee")
+    .reduce((sum, detail) => sum + Number(detail?.amount || 0), 0);
+
+  return Math.max(0, fee - applicationFee);
+}
+
 export type StripeSecretResult =
   | { ok: true; key: string }
   | { ok: false; reason: "missing" | "malformed" };
