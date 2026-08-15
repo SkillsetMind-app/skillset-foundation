@@ -1543,7 +1543,7 @@ p {
 }
 
 .account-settings-tab:hover {
-  background: #ffffff;
+  background: var(--color-surface);
   color: var(--color-ink);
   transform: translateY(-1px);
 }
@@ -1580,7 +1580,7 @@ p {
   place-items: center;
   border: 1px solid var(--color-line);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--color-surface);
   color: var(--color-primary);
 }
 
@@ -2825,7 +2825,7 @@ body:has([aria-label="Course categories"])
   place-items: center;
   border: 1px solid var(--color-line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--color-surface);
   color: var(--color-primary);
   font-size: 0.6875rem;
   font-weight: 800;
@@ -3426,7 +3426,7 @@ body:has([aria-label="Course categories"])
   width: 100%;
   border: 1px solid var(--color-line);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--color-surface);
   padding: 0.8rem 0.95rem;
   color: var(--color-ink);
   font-size: 0.875rem;
@@ -3496,7 +3496,7 @@ body:has([aria-label="Course categories"])
   gap: 0.65rem;
   border: 1px solid var(--color-line);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--color-surface);
   padding: 0.9rem 1rem;
   color: var(--color-ink-soft);
   font-size: 0.8125rem;
@@ -4263,8 +4263,12 @@ body:has([aria-label="Course categories"])
   height: 26px;
   place-items: center;
   border-radius: 999px;
-  background: var(--color-success-fg);
-  color: #ffffff;
+  /* The seal only ever renders inside .member-classroom, so it belongs to the
+     COURSE palette, not the platform toggle: --color-success-fg tracked the
+     student's light/dark switch and left white at 4.33:1 in light. --ma-* is
+     the teacher's per-course theme and does not invert underneath it. */
+  background: var(--ma-success);
+  color: var(--ma-on-success);
   box-shadow: 0 4px 12px rgba(31, 138, 91, 0.4);
 }
 
@@ -4429,6 +4433,14 @@ body:has([aria-label="Course categories"])
   border-color: var(--color-success-fg);
   background: var(--color-success-fg);
   color: #ffffff;
+}
+
+/* Both status pills invert their FILL in dark (--color-primary -> #8fb4e4,
+   --color-success-fg -> #5fc99a) while keeping a white glyph: 2.14:1 and
+   2.04:1. Dark ink on the light fill restores 8.7:1 / 9.4:1. Light untouched. */
+[data-theme="dark"] .member-lesson-card--active .member-lesson-card__status,
+[data-theme="dark"] .member-lesson-card--done .member-lesson-card__status {
+  color: var(--color-base);
 }
 
 .member-lesson-card--locked .member-lesson-card__status {
@@ -4601,7 +4613,7 @@ body:has([aria-label="Course categories"])
 }
 
 .member-classroom[data-members-theme] [class*="text-[var(--color-accent-fg)]"] {
-  color: var(--ma-accent) !important;
+  color: var(--ma-accent-ink) !important;
 }
 
 .member-classroom[data-members-theme] .member-preview-banner,
@@ -4659,13 +4671,13 @@ body:has([aria-label="Course categories"])
 }
 
 .member-classroom[data-members-theme] .member-curriculum-progress > span {
-  color: var(--ma-success);
+  color: var(--ma-success-ink);
 }
 
 .member-classroom[data-members-theme] .member-lesson-chip--done {
   border-color: rgba(39, 160, 106, 0.32);
   background: rgba(39, 160, 106, 0.12);
-  color: var(--ma-success) !important;
+  color: var(--ma-success-ink) !important;
 }
 
 .member-classroom[data-members-theme] .member-sidebar-link {
@@ -4746,12 +4758,12 @@ body:has([aria-label="Course categories"])
 .member-classroom[data-members-theme] .member-lesson-card--done .member-lesson-card__status {
   border-color: var(--ma-success);
   background: var(--ma-success);
-  color: #ffffff !important;
+  color: var(--ma-on-success) !important;
 }
 
 .member-classroom[data-members-theme] .member-lesson-card--locked .member-lesson-card__status,
 .member-classroom[data-members-theme] .member-lesson-card__lock {
-  color: var(--ma-accent) !important;
+  color: var(--ma-accent-ink) !important;
 }
 
 .member-classroom[data-members-theme="light"]
@@ -5779,7 +5791,9 @@ button:hover > .dash-card,
 .member-review-star.is-active {
   border-color: rgba(178, 34, 52, 0.28);
   background: rgba(178, 34, 52, 0.08);
-  color: var(--color-accent-fg);
+  /* Platform token here read 2.83:1 on a light course and 1.48:1 on a dark one
+     — this control only ever renders inside .member-classroom. */
+  color: var(--ma-accent-ink);
   transform: translateY(-1px);
 }
 
@@ -6045,6 +6059,11 @@ button:hover > .dash-card,
     ),
     linear-gradient(0deg, rgba(7, 9, 13, 0.7), rgba(7, 9, 13, 0) 40%);
   --ma-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+  /* Brand colours used as TEXT need a per-theme variant: --ma-accent (#b22234)
+     reads 2.84:1 on this background, so dark courses get a lighter red.
+     --ma-success is already 5.14:1 here and stays as-is. */
+  --ma-accent-ink: #e8697c;
+  --ma-success-ink: #27a06a;
 }
 [data-members-theme="light"] {
   --ma-bg: #f6f8fb;
@@ -6067,12 +6086,21 @@ button:hover > .dash-card,
     ),
     linear-gradient(0deg, rgba(8, 20, 38, 0.54), rgba(8, 20, 38, 0) 42%);
   --ma-shadow: 0 16px 40px rgba(15, 39, 68, 0.1);
+  /* Mirror of the dark block: --ma-accent already reads 5.48:1 here, but
+     --ma-success (#27a06a) is only 2.75:1 on near-white, so light courses get
+     a darker green for text. */
+  --ma-accent-ink: #b22234;
+  --ma-success-ink: #0d6640;
 }
 [data-members-theme] {
   /* theme-independent */
   --ma-accent: #b22234;
   --ma-accent-hover: #9e1f2f;
   --ma-success: #27a06a;
+  /* White on --ma-success is 3.32:1. --ma-success has to stay light enough to
+     work as TEXT on member surfaces (see .member-lesson-card__meta), so the
+     readable pairing is dark ink on the green fill: 5.86:1. */
+  --ma-on-success: #0a0d12;
   --ma-display: "Cormorant Garamond", Georgia, serif;
   --ma-sans: "Manrope", system-ui, -apple-system, sans-serif;
 }
