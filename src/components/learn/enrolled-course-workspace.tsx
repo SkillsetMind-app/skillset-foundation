@@ -440,6 +440,15 @@ export function EnrolledCourseWorkspace({
         )
       : [];
   const assetCountByLessonId = new Map<string, number>();
+  // Module cover art. Teachers already upload these through the course asset
+  // uploader's "Module cover" preset, which stamps the asset with its moduleId;
+  // module_cover lives in the world-readable bucket, so downloadUrl renders
+  // straight into the card with no signed-URL round trip. Cards without one
+  // keep the numbered gradient tone.
+  // ponytail: one cover per module — assets arrive sorted by fileName, so if a
+  // teacher uploads two the alphabetically last wins. Add an explicit picker
+  // only if that ever confuses someone.
+  const moduleCoverUrlById = new Map<string, string>();
   const totalLessonCount = allLessons.length;
   const completedLessonCount = completedLessonIds.length;
   const selectedModule = selectedLesson
@@ -482,6 +491,9 @@ export function EnrolledCourseWorkspace({
           asset.lessonId,
           (assetCountByLessonId.get(asset.lessonId) ?? 0) + 1,
         );
+      }
+      if (asset.kind === "module_cover" && asset.moduleId && asset.downloadUrl) {
+        moduleCoverUrlById.set(asset.moduleId, asset.downloadUrl);
       }
     }
   }
@@ -900,6 +912,7 @@ export function EnrolledCourseWorkspace({
               : 0;
             const moduleIsActive = activeCurriculumModule?.id === module.id;
             const firstLesson = module.lessons[0] ?? null;
+            const moduleCoverUrl = moduleCoverUrlById.get(module.id) ?? null;
 
             return (
               <button
@@ -916,9 +929,18 @@ export function EnrolledCourseWorkspace({
                 }`}
               >
                 <div className="member-module-card__cover">
-                  <span className="member-module-card__number">
-                    {String(moduleIndex + 1).padStart(2, "0")}
-                  </span>
+                  {moduleCoverUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- module cover is an arbitrary CourseAsset URL
+                    <img
+                      src={moduleCoverUrl}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="member-module-card__number">
+                      {String(moduleIndex + 1).padStart(2, "0")}
+                    </span>
+                  )}
                   {moduleIsActive ? (
                     <span className="member-module-card__now">
                       <span />
