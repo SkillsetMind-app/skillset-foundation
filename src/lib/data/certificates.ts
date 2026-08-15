@@ -134,23 +134,9 @@ export type CertificateVerificationResult =
       };
     };
 
-// In-app verification path (authenticated or anon session). Public embedders
-// use verifySkillsetCertificatePublic (Route Handler with CORS) instead.
-export async function verifySkillsetCertificate(
-  verificationCode: string,
-): Promise<CertificateVerificationResult> {
-  const supabase = getSupabaseBrowserClient();
-  const { data, error } = await supabase.rpc("verify_skillset_certificate", {
-    p_code: verificationCode,
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return data as unknown as CertificateVerificationResult;
-}
-
+// Single verification path: the Route Handler at /api/certificates/verify, which
+// sets CORS "*" so external sites can embed the check. The direct RPC variant
+// that used to live here had no callers -- its own comment already pointed here.
 export async function verifySkillsetCertificatePublic(
   verificationCode: string,
 ): Promise<CertificateVerificationResult> {
