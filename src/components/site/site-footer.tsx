@@ -5,14 +5,16 @@ import { PrivacyChoicesButton } from "@/components/site/privacy-choices-button";
 import { BrandName } from "@/components/shared/brand-name";
 import { getServerTranslation } from "@/lib/i18n/server";
 
-// Slim 3-column footer. /courses and /how-it-works were removed —
-// Courses is the in-app sidebar Marketplace; How it works is a homepage
-// anchor (not a standalone page worth promoting twice). Labels are i18n keys
-// resolved at render against the request locale.
+// Slim 3-column footer. /courses is not listed — it is the in-app sidebar
+// Marketplace. /how-it-works IS listed: the standalone page exists and was
+// otherwise orphaned (the homepage only has a `#how-it-works` anchor, which is
+// a different surface), so the footer is its single entry point — deliberately
+// not the top nav. Labels are i18n keys resolved against the request locale.
 const footerColumns = [
   {
     titleKey: "footer.platform",
     links: [
+      ["footer.howItWorks", "/how-it-works"],
       ["footer.pricing", "/pricing"],
       ["footer.forCreators", "/for-creators"],
       ["footer.thePromise", "/promise"],

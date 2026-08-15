@@ -28,6 +28,15 @@ export function isInternalSmokeCourse(course: Pick<TeacherCourse, "id">): boolea
   return course.id.startsWith("smoke-");
 }
 
+// Public course URLs use `title_key` — the unique, unaccented, hyphenated key
+// Postgres already derives from the title (public.course_title_key) on create
+// and on rename, with uniqueness enforced by the RPC. No new column and no
+// backfill: the pretty slug has been sitting in the row all along. Rows written
+// before title_key existed fall back to the id, which stays a valid URL.
+export function courseUrlSlug(course: Pick<TeacherCourse, "id" | "titleKey">): string {
+  return course.titleKey || course.id;
+}
+
 export function rowToTeacherCourse(row: CourseRow): TeacherCourse {
   return {
     id: row.id,
@@ -182,47 +191,80 @@ export function subscribeToPublishedTeacherCoursesByOwner(
  * is rejected by RLS and surfaces through `onError`.
  */
 export function subscribeToViewableTeacherCourse(
-  courseId: string,
+  courseRef: string,
   callback: (course: TeacherCourse | null) => void,
   onError: (error: Error) => void,
 ): () => void {
   const supabase = getSupabaseBrowserClient();
+  let cancelled = false;
+  let channel: ReturnType<typeof supabase.channel> | null = null;
 
-  void supabase
-    .from(coursesTable)
-    .select("*")
-    .eq("id", courseId)
-    .maybeSingle()
-    .then(({ data, error }) => {
-      if (error) {
-        onError(error instanceof Error ? error : new Error(String(error)));
-        return;
-      }
-      callback(data ? rowToTeacherCourse(data) : null);
+  // `courseRef` is a URL segment, so it is either a course id (every link
+  // minted before pretty URLs — including the Stripe checkout redirects, which
+  // hardcode the id) or a title_key slug. Id is tried first, so a course whose
+  // title happens to slugify into another course's id can never shadow it.
+  // Two `.eq()` round-trips instead of one `.or()`: the segment is untrusted
+  // input and PostgREST's `or` filter is a string grammar, so building it from
+  // a URL segment would be an injection surface for one saved request.
+  const resolve = async (): Promise<CourseRow | null> => {
+    const byId = await supabase
+      .from(coursesTable)
+      .select("*")
+      .eq("id", courseRef)
+      .maybeSingle();
+    if (byId.error) throw byId.error;
+    if (byId.data) return byId.data;
+
+    // title_key uniqueness is enforced by the create/rename RPCs rather than a
+    // DB constraint, so take the first match instead of maybeSingle() — a
+    // duplicate should never render an error page.
+    const bySlug = await supabase
+      .from(coursesTable)
+      .select("*")
+      .eq("title_key", courseRef)
+      .limit(1);
+    if (bySlug.error) throw bySlug.error;
+    return bySlug.data?.[0] ?? null;
+  };
+
+  void resolve()
+    .then((row) => {
+      if (cancelled) return;
+      callback(row ? rowToTeacherCourse(row) : null);
+      if (!row) return;
+
+      // Realtime filters match on the primary key, so subscribe with the
+      // resolved id — never the slug the visitor typed.
+      channel = supabase
+        .channel(`courses:one:${row.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: coursesTable,
+            filter: `id=eq.${row.id}`,
+          },
+          (payload) => {
+            if (payload.eventType === "DELETE") {
+              callback(null);
+              return;
+            }
+            callback(rowToTeacherCourse(payload.new as unknown as CourseRow));
+          },
+        )
+        .subscribe();
+    })
+    .catch((error: unknown) => {
+      if (cancelled) return;
+      onError(error instanceof Error ? error : new Error(String(error)));
     });
 
-  const channel = supabase
-    .channel(`courses:one:${courseId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: coursesTable,
-        filter: `id=eq.${courseId}`,
-      },
-      (payload) => {
-        if (payload.eventType === "DELETE") {
-          callback(null);
-          return;
-        }
-        callback(rowToTeacherCourse(payload.new as unknown as CourseRow));
-      },
-    )
-    .subscribe();
-
   return () => {
-    void supabase.removeChannel(channel);
+    cancelled = true;
+    if (channel) {
+      void supabase.removeChannel(channel);
+    }
   };
 }
 
@@ -240,8 +282,10 @@ export function teacherCourseToCourseCard(course: TeacherCourse): CourseCard {
       ? `${course.ratingAverage.toFixed(1)} rating (${course.ratingCount})`
       : "New course";
 
+  const urlSlug = courseUrlSlug(course);
+
   return {
-    slug: course.id,
+    slug: urlSlug,
     title: course.title,
     category: course.category,
     duration: `${course.lessonCount} lesson${course.lessonCount === 1 ? "" : "s"}`,
@@ -255,9 +299,9 @@ export function teacherCourseToCourseCard(course: TeacherCourse): CourseCard {
       ? "Free preview selected"
       : "Preview coming soon",
     hasPaidAccess: false,
-    href: `/courses/${course.id}`,
+    href: `/courses/${urlSlug}`,
     freePreviewHref: hasFreePreview
-      ? `/courses/${course.id}#free-preview`
+      ? `/courses/${urlSlug}#free-preview`
       : undefined,
     sourceLabel: "Teacher published",
     ratingLabel,

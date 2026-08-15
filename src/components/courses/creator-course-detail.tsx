@@ -44,7 +44,10 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
   const { status: authStatus, user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const courseId = courseIdOverride ?? searchParams.get("courseId") ?? "";
+  // URL segment: a course id on legacy links (and the Stripe checkout
+  // redirects) or a title_key slug on pretty ones. Only route back to it;
+  // every backend call below uses `resolvedCourseId`, the real primary key.
+  const courseRef = courseIdOverride ?? searchParams.get("courseId") ?? "";
   const checkoutStatus = searchParams.get("checkout");
   const requestedOfferId = searchParams.get("offerId")?.trim() ?? "";
   const requestedOfferCode = searchParams.get("offer")?.trim().toUpperCase() ?? "";
@@ -73,12 +76,12 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
   }>({ key: null, content: null });
 
   useEffect(() => {
-    if (!courseId || !hasBackendConfig) {
+    if (!courseRef || !hasBackendConfig) {
       return;
     }
 
     return subscribeToViewableTeacherCourse(
-      courseId,
+      courseRef,
       (nextCourse) => {
         setCourse(nextCourse);
         setIsLoading(false);
@@ -88,13 +91,16 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
         setIsLoading(false);
       },
     );
-  }, [courseId, hasBackendConfig]);
+  }, [courseRef, hasBackendConfig]);
+
+  // Resolved primary key — empty until the course row loads.
+  const resolvedCourseId = course?.id ?? "";
 
   // B1: one-shot fetch of the free-preview lesson's gated content. Keyed on the
   // preview lesson id so it re-runs if the educator changes the preview.
   const freePreviewLessonId = course?.freePreviewLessonId ?? null;
   useEffect(() => {
-    if (!courseId || !hasBackendConfig || !freePreviewLessonId) {
+    if (!resolvedCourseId || !hasBackendConfig || !freePreviewLessonId) {
       // No reset here: render resolves preview content only when
       // previewContent.key matches the current course+preview lesson, so a stale
       // value is ignored and falls back to inline — avoids a setState-in-effect.
@@ -102,9 +108,9 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
     }
 
     let cancelled = false;
-    const key = `${courseId}__${freePreviewLessonId}`;
+    const key = `${resolvedCourseId}__${freePreviewLessonId}`;
 
-    getLessonContentDoc(courseId, freePreviewLessonId)
+    getLessonContentDoc(resolvedCourseId, freePreviewLessonId)
       .then((content) => {
         if (!cancelled) {
           setPreviewContent({ key, content });
@@ -120,15 +126,15 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
     return () => {
       cancelled = true;
     };
-  }, [courseId, hasBackendConfig, freePreviewLessonId]);
+  }, [resolvedCourseId, hasBackendConfig, freePreviewLessonId]);
 
   useEffect(() => {
-    if (!courseId || !isCoursePubliclySellable(course?.status)) {
+    if (!resolvedCourseId || !isCoursePubliclySellable(course?.status)) {
       return;
     }
 
     const controller = new AbortController();
-    void fetch(`/api/courses/${encodeURIComponent(courseId)}/offers`, {
+    void fetch(`/api/courses/${encodeURIComponent(resolvedCourseId)}/offers`, {
       signal: controller.signal,
     })
       .then(async (response) => {
@@ -140,7 +146,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
           throw new Error(body.error || "Offers are temporarily unavailable.");
         }
         setOfferLoadError("");
-        setOfferState({ courseId, offers: body.offers ?? [] });
+        setOfferState({ courseId: resolvedCourseId, offers: body.offers ?? [] });
       })
       .catch((loadError: unknown) => {
         if (controller.signal.aborted) return;
@@ -152,9 +158,9 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
       });
 
     return () => controller.abort();
-  }, [course?.status, courseId]);
+  }, [course?.status, resolvedCourseId]);
 
-  if (!courseId) {
+  if (!courseRef) {
     return (
       <CourseDetailState
         title="Course not selected."
@@ -348,7 +354,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
     params.set("offerId", offerId);
     const query = params.toString();
     router.replace(
-      `/courses/${encodeURIComponent(courseId)}${query ? `?${query}` : ""}`,
+      `/courses/${encodeURIComponent(courseRef)}${query ? `?${query}` : ""}`,
       { scroll: false },
     );
   }
