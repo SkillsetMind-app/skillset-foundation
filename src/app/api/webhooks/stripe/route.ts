@@ -909,6 +909,17 @@ async function handleChargeRefunded(
     .eq("id", orderId)
     .maybeSingle();
   if (ledgerError) throw new Error(ledgerError.message);
+  // Fulfilment writes the earnings row LAST (the re-arm gate), so "no row" means
+  // the purchase is still being fulfilled, not that this order has no earnings.
+  // Without this guard the update below matches zero rows -- which Supabase does
+  // NOT report as an error -- we answer Stripe 200, and fulfilment then writes a
+  // `settled` row for an order that was already refunded. Throw so Stripe retries
+  // once fulfilment has finished.
+  if (!ledger) {
+    throw new Error(
+      `Earnings record for order ${orderId} is not written yet; retry this refund.`,
+    );
+  }
   const nextLedgerStatus = ledgerRefundStatus(isFullRefund);
 
   await requireSupabaseWrite(
@@ -1099,12 +1110,16 @@ async function uidFromCustomer(
 ): Promise<string | null> {
   const customerId = typeof customer === "string" ? customer : customer.id;
   if (!customerId) return null;
-  const { data } = await admin
+  const { data, error } = await admin
     .from("users")
     .select("uid")
     .eq("stripe_customer_id", customerId)
     .limit(1)
     .maybeSingle();
+  // Discarding `error` here would turn a transient lookup failure into "no such
+  // user": the caller returns early on null, the event is marked processed, and
+  // that subscription never syncs again. Throw so Stripe retries.
+  if (error) throw new Error(error.message);
   return data?.uid ?? null;
 }
 
@@ -1216,8 +1231,15 @@ async function handleInvoicePaymentFailed(
       undefined,
       eventAccountId ? { stripeAccount: eventAccountId } : undefined,
     );
-  } catch {
-    // fall through to plan-subscription handling
+  } catch (retrieveError) {
+    // A deleted subscription (404) is terminal: fall through and let the plan
+    // update no-op. Anything else -- network blip, Stripe 5xx, rate limit --
+    // must NOT be swallowed. Without the object we cannot tell a course
+    // subscription from a plan one, so we would update the plan table with a
+    // course subscription id, match zero rows (which Supabase does not report as
+    // an error), answer 200, and lose the past_due flag permanently.
+    const code = (retrieveError as { code?: string } | null)?.code;
+    if (code !== "resource_missing") throw retrieveError;
   }
 
   if (subscription?.metadata?.purpose === "course_subscription") {
@@ -1231,6 +1253,11 @@ async function handleInvoicePaymentFailed(
     return;
   }
 
+  // ponytail: a zero-row update here (invoice.payment_failed arriving before
+  // customer.subscription.created, or for an already-deleted subscription) still
+  // passes silently. Left as-is because throwing would retry forever on deleted
+  // subscriptions; upgrade path is to distinguish the two by retrying only when
+  // the subscription still exists in Stripe.
   await requireSupabaseWrite(
     admin
       .from("subscriptions")
