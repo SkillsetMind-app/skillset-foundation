@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { PrivacyChoicesButton } from "@/components/site/privacy-choices-button";
 import { BrandName } from "@/components/shared/brand-name";
@@ -81,6 +82,7 @@ export async function SiteFooter() {
           </span>
           <div className="flex flex-wrap items-center gap-4">
             <PrivacyChoicesButton />
+            <LocaleSwitcher />
           </div>
           <span>{t("footer.rightsLine")}</span>
         </div>
