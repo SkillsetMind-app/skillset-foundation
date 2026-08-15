@@ -4,6 +4,7 @@ import type {
   CreatorVerificationCase,
   SubmitCreatorVerificationInput,
 } from "@/domain/creator-verification";
+import { isPlatformFlagOn } from "@/domain/platform-settings";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -94,7 +95,7 @@ export async function fetchRequireCreatorVerification(): Promise<boolean> {
     throw error;
   }
 
-  return data?.value === true;
+  return isPlatformFlagOn(data?.value);
 }
 
 /**
@@ -114,7 +115,7 @@ export async function fetchRequireActivationFee(): Promise<boolean> {
     throw error;
   }
 
-  return data?.value === true;
+  return isPlatformFlagOn(data?.value);
 }
 
 export function subscribeToMyVerificationCase(

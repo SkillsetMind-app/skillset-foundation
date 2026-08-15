@@ -38,9 +38,13 @@ vi.mock("@/lib/payments/server/stripe-helpers", () => ({
 
 import { POST } from "@/app/api/payments/activation/checkout/route";
 
+// Values are `unknown`, not boolean: platform_settings.value is jsonb, and the
+// flag gets flipped by hand in SQL. `'"true"'::jsonb` arrives here as the
+// STRING "true" — the shape that used to leave this route disagreeing with the
+// database trigger.
 function createAdmin(input: {
-  activationRequired?: boolean;
-  verificationRequired?: boolean;
+  activationRequired?: unknown;
+  verificationRequired?: unknown;
 } = {}) {
   const userUpdates: Array<Record<string, unknown>> = [];
 
@@ -130,6 +134,22 @@ describe("storefront activation checkout", () => {
       code: "activation_not_required",
     });
     expect(mocks.getStripe).not.toHaveBeenCalled();
+  });
+
+  // The lockout regression. The courses trigger reads this same row as
+  // `(value #>> '{}')::boolean`, which is TRUE for a jsonb string. If this
+  // route disagreed, creators would be blocked from building AND handed a 409
+  // when they tried to pay their way out.
+  it("opens checkout when the gate was flipped as a jsonb string", async () => {
+    mocks.getAdmin.mockReturnValue(createAdmin({ activationRequired: "true" }));
+
+    const response = await POST();
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      clientSecret: "secret_activation",
+      sessionId: "cs_activation",
+    });
   });
 
   it("rejects non-creators and creators still awaiting verification", async () => {
