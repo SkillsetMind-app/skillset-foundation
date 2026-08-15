@@ -833,6 +833,46 @@ async function handleChargeRefunded(
       : charge.payment_intent?.id;
   if (!paymentIntentId) return;
 
+  // The activation fee is a PLATFORM charge with no payments row: without this
+  // branch the lookup below finds nothing, falls through to the ledger path,
+  // finds no course_subscription ledger and returns — leaving the creator with
+  // a storefront they were refunded for. Stripe copies the PaymentIntent
+  // metadata onto the charge (see payments/activation/checkout/route.ts), so
+  // {uid, purpose} is already here: no extra API call.
+  // ponytail: refunds only. A LOST DISPUTE on the fee does not fire
+  // charge.refunded and still leaves the storefront active — add the same check
+  // to handleDisputeClosed (needs a PaymentIntent fetch) if chargebacks appear.
+  if (charge.metadata?.purpose === ACTIVATION_FEE_CHECKOUT_PURPOSE) {
+    const activationUid = charge.metadata?.uid;
+    // Partial refund does not revoke: they still paid for the storefront.
+    if (activationUid && charge.refunded === true) {
+      const revokedAt = nowIso();
+      await requireSupabaseWrite(
+        admin
+          .from("users")
+          .update({ activation_fee_paid_at: null, updated_at: revokedAt })
+          .eq("uid", activationUid),
+        "Revoke storefront activation after refund",
+      );
+      const { error: auditError } = await admin.rpc("log_audit_event", {
+        p_action: "STOREFRONT_ACTIVATION_FEE_REFUNDED",
+        p_actor_id: activationUid,
+        p_actor_email: "",
+        p_target_type: "user",
+        p_target_id: activationUid,
+        p_summary: `Storefront activation revoked after refund for ${activationUid}`,
+        p_metadata: {
+          chargeId: charge.id,
+          paymentIntentId,
+          amountRefunded: charge.amount_refunded,
+          currency: charge.currency,
+        },
+      });
+      if (auditError) throw new Error(auditError.message);
+    }
+    return;
+  }
+
   const { data: payment, error: paymentError } = await admin
     .from("payments")
     .select("*")
