@@ -22,7 +22,7 @@ import {
 } from "@/domain/creator-ops";
 import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import type { UserProfile } from "@/domain/user-profile";
-import { fetchRequireActivationFee } from "@/lib/data/creator-verification";
+import { fetchCreatorActivationBlocked } from "@/lib/data/creator-verification";
 import { subscribeToTeacherPayoutLedger } from "@/lib/data/payout-ledger";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 import { toDate } from "@/lib/format-date";
@@ -56,19 +56,19 @@ export function TeacherWalletPanel() {
   // verifiable or usable — so the panel must not present one as "Connected".
   const [platformPayoutsUnavailable, setPlatformPayoutsUnavailable] =
     useState(false);
-  const [activationRequired, setActivationRequired] = useState(false);
+  const [activationBlocked, setActivationBlocked] = useState(false);
   const autoRefreshedRef = useRef(false);
 
-  // Flag read is best-effort: if platform_settings is unreachable we fall back
-  // to "not required", which shows the normal onboarding. The server-side gate
-  // is the one that actually enforces payment, so a failed read here can only
-  // cost a clearer message, never open the paywall.
+  // Best-effort: if the RPC is unreachable we fall back to "not blocked", which
+  // shows the normal onboarding. The server-side gate is the one that actually
+  // enforces payment, so a failed read here can only cost a clearer message,
+  // never open the paywall.
   useEffect(() => {
     let active = true;
-    fetchRequireActivationFee()
-      .then((required) => {
+    fetchCreatorActivationBlocked()
+      .then((blocked) => {
         if (active) {
-          setActivationRequired(required);
+          setActivationBlocked(blocked);
         }
       })
       .catch(() => {});
@@ -203,8 +203,9 @@ export function TeacherWalletPanel() {
   // no explanation. Swap it for the activation call to action instead —
   // /account/payments is where a new creator lands first, so this doubles as
   // the earliest discoverable entry point to /teach/activate.
-  const activationBlocked =
-    activationRequired && !profile?.activationFeePaidAt;
+  // (activationBlocked comes straight from creator_activation_blocked() above —
+  // same predicate as the courses trigger, so the admin exemption and the paid
+  // check can't drift out of sync with a second copy written here.)
   // A panel must never claim "Ready" while the platform itself can't run
   // Connect — stale profile flags don't outrank the live platform signal.
   const ready =
