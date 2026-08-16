@@ -1036,10 +1036,17 @@ async function handleChargeRefunded(
 // Under direct charges a dispute debits the TEACHER's own Stripe balance —
 // the platform never held the funds. These handlers only record the contested
 // state on the earnings ledger so creator reports stay truthful.
+type DisputeLedger = {
+  id: string;
+  status: string;
+  kind: string | null;
+  order_id: string | null;
+};
+
 async function resolveLedgerForDispute(
   admin: Admin,
   dispute: Stripe.Dispute,
-): Promise<{ id: string; status: string } | null> {
+): Promise<DisputeLedger | null> {
   const paymentIntentId =
     typeof dispute.payment_intent === "string"
       ? dispute.payment_intent
@@ -1047,12 +1054,14 @@ async function resolveLedgerForDispute(
   if (!paymentIntentId) return null;
   const { data, error } = await admin
     .from("payout_ledger")
-    .select("id,status")
+    // kind + order_id are only needed by the lost branch below, but the row is
+    // already being fetched — a second round trip to widen it would be waste.
+    .select("id,status,kind,order_id")
     .eq("payment_id", paymentIntentId)
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return (data as { id: string; status: string } | null) ?? null;
+  return (data as DisputeLedger | null) ?? null;
 }
 
 async function handleDisputeCreated(admin: Admin, dispute: Stripe.Dispute): Promise<void> {
@@ -1086,14 +1095,54 @@ async function handleDisputeClosed(admin: Admin, dispute: Stripe.Dispute): Promi
     event,
     currentStatus: ledger.status,
   });
-  if (!next) return;
-  await requireSupabaseWrite(
-    admin
-      .from("payout_ledger")
-      .update({ status: next, updated_at: nowIso() })
-      .eq("id", ledger.id),
-    "Resolve payout dispute",
-  );
+  if (next) {
+    await requireSupabaseWrite(
+      admin
+        .from("payout_ledger")
+        .update({ status: next, updated_at: nowIso() })
+        .eq("id", ledger.id),
+      "Resolve payout dispute",
+    );
+  }
+
+  // A LOST chargeback is a full loss of funds — same money outcome as a refund,
+  // so it has to have the same access outcome. handleChargeRefunded revokes the
+  // enrollment; a dispute never fires charge.refunded, so without this the buyer
+  // keeps the course for free. Deliberately OUTSIDE the `next` guard above:
+  // nextLedgerStatusOnDispute only resolves "lost" when the ledger already sits
+  // at "disputed", so a missed dispute.created would otherwise swallow the
+  // revocation too. The update is idempotent, so a redelivery is harmless.
+  if (
+    event === "lost"
+    && shouldMarkEnrollmentRefundedAfterChargeRefund({
+      isFullRefund: true,
+      ledgerKind: ledger.kind,
+    })
+    && ledger.order_id
+  ) {
+    // payout_ledger has no user_id; the student is only reachable through the
+    // order. Subscription ledgers are excluded by the rule above precisely
+    // because their order_id is an invoice id with no matching order row.
+    const { data: order, error: orderError } = await admin
+      .from("orders")
+      .select("user_id, course_id")
+      .eq("id", ledger.order_id)
+      .maybeSingle();
+    if (orderError) throw new Error(orderError.message);
+    if (order?.user_id && order?.course_id) {
+      await requireSupabaseWrite(
+        admin
+          .from("enrollments")
+          .update({ status: "refunded", updated_at: nowIso() })
+          .eq("id", `${order.user_id}__${order.course_id}`),
+        "Revoke enrollment after lost chargeback",
+      );
+    }
+  }
+  // ponytail: course SUBSCRIPTION chargebacks still fall through. Stripe cancels
+  // the subscription itself on a lost dispute and the lifecycle handler revokes
+  // from there; add ensureCourseSubscriptionCanceled here if that ever proves
+  // unreliable.
 }
 
 // --- terminal order status (expired / failed) with lock release + B2 guard --
