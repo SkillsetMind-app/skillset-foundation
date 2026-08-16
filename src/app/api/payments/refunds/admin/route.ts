@@ -109,6 +109,12 @@ export async function POST(request: Request) {
       amountMinor !== null
         ? toStripeAmount(amountMinor, String(order.currency || "USD"))
         : null;
+    // What was already given back, in the same unit. The key below needs to say
+    // WHICH refund in the sequence this is, and it is compared inside Stripe.
+    const stripeAlreadyRefunded = toStripeAmount(
+      alreadyRefundedMinor,
+      String(order.currency || "USD"),
+    );
     const refund = await stripe.refunds.create(
       {
         payment_intent: paymentIntentId,
@@ -127,9 +133,14 @@ export async function POST(request: Request) {
         // Conversion is many-to-one (100050 and 100100 JPY both become 1001), so
         // keying on the raw request would mint two keys for one identical refund
         // and let both through.
+        // The already-refunded total is in the key because amount alone repeats:
+        // two legitimate partial refunds of the same size on one order produced
+        // the same key, so Stripe replayed the first and the second silently
+        // never happened. That total only moves once a refund lands, so a true
+        // double-submit still collides and still dedupes.
         idempotencyKey:
           stripeRefundAmount !== null
-            ? `admin_refund_${orderId}_${stripeRefundAmount}`
+            ? `admin_refund_${orderId}_${stripeAlreadyRefunded}_${stripeRefundAmount}`
             : `admin_refund_${orderId}_full`,
         stripeAccount: connectedAccountId,
       },

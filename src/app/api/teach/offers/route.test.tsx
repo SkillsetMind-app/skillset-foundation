@@ -131,6 +131,28 @@ describe("atomic product offer creation", () => {
     expect(offerCalls(rpc)).toHaveLength(1);
   });
 
+  // A minor unit is the smallest amount a currency has, so 12.5 is not a price.
+  // The old finite-only check accepted it and let a fraction of a cent into the
+  // price row, where every conversion downstream had to round it back.
+  it("refuses a fractional amountMinor before touching the database", async () => {
+    const rpc = vi.fn(async () => ({ data: null, error: null }));
+    const admin = { from: vi.fn(() => courseQuery()), rpc };
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const response = await POST(request({
+      courseId: "course",
+      name: "Half a cent",
+      amountMinor: 12.5,
+      currency: "USD",
+      paymentType: "one_time",
+      isDefault: false,
+    }));
+
+    expect(response.status).toBe(400);
+    expect(admin.from).not.toHaveBeenCalled();
+    expect(offerCalls(rpc)).toHaveLength(0);
+  });
+
   // Creating an offer is billable work on our Stripe account, so the throttle
   // fails CLOSED: over the limit, nothing reaches the course lookup or the write.
   it("refuses the write when the caller is over the offer rate limit", async () => {

@@ -48,8 +48,11 @@ export async function POST(request: Request) {
     if (!courseId) {
       throw new PaymentError("courseId is required.");
     }
-    if (!Number.isFinite(amountMinor) || amountMinor < 0) {
-      throw new PaymentError("amountMinor must be a non-negative number.");
+    // Integer, not just finite: a minor unit is the smallest amount that exists,
+    // so 12.5 is not a price. isFinite accepted it and let a fraction of a cent
+    // reach the price row, where every later conversion has to round it.
+    if (!Number.isInteger(amountMinor) || amountMinor < 0) {
+      throw new PaymentError("amountMinor must be a non-negative whole number.");
     }
     if (
       !["one_time", "subscription_monthly", "subscription_yearly", "free"].includes(
