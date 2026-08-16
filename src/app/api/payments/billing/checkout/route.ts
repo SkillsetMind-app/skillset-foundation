@@ -26,6 +26,10 @@ const PLAN_CHECKOUT_BLOCKING_STATUSES = [
   "unpaid",
 ];
 
+// Written onto every plan session and read back below to tell them apart from
+// activation-fee and course sessions on the same customer.
+const PLAN_SUBSCRIPTION_CHECKOUT_PURPOSE = "skillset_plan_subscription";
+
 // Ports createBillingCheckoutSession: embedded Stripe Checkout for a plan
 // subscription. Firebase-free; getStripeClient()/resolvePriceId() surface a
 // clean 503 when payments are not configured.
@@ -113,9 +117,41 @@ export async function POST(request: Request) {
       );
     }
 
+    // Third pass: the sessions themselves. The two checks above only see
+    // subscriptions that already exist, and the idempotency bucket below only
+    // collapses requests landing inside the same hour — two tabs spanning the
+    // boundary still minted two live sessions, and Checkout never replaces a
+    // subscription, so paying both opens two plans on one card. Asking Stripe
+    // which sessions are open removes the boundary instead of narrowing it.
+    // Same shape as the activation checkout, which guards the identical window.
+    const sessions = await stripe.checkout.sessions.list({
+      customer: customerId,
+      limit: 100,
+    });
+    const openPlanSessions = sessions.data.filter(
+      (candidate) => candidate.status === "open"
+        && candidate.client_secret
+        && candidate.metadata?.uid === uid
+        && candidate.metadata?.purpose === PLAN_SUBSCRIPTION_CHECKOUT_PURPOSE,
+    );
+    const reusableSession = openPlanSessions.find(
+      (candidate) => candidate.metadata?.planId === planId
+        && candidate.metadata?.cycle === cycle,
+    );
+
+    // Every open session stays payable until it expires, so one left behind for
+    // a plan the user has moved on from is the same hazard one step removed.
+    for (const staleSession of openPlanSessions) {
+      if (staleSession.id !== reusableSession?.id) {
+        await stripe.checkout.sessions.expire(staleSession.id);
+      }
+    }
+
     const appUrl = getAppUrl();
 
-    const session = await stripe.checkout.sessions.create(
+    // Reuse before create: the response shape below is identical either way, so
+    // the returning user gets the session they already have instead of a second.
+    const session = reusableSession ?? await stripe.checkout.sessions.create(
       {
         mode: "subscription",
         // stripe@22 (apiVersion 2026-04-22.dahlia) renamed the old
@@ -135,7 +171,7 @@ export async function POST(request: Request) {
           uid,
           planId,
           cycle,
-          purpose: "skillset_plan_subscription",
+          purpose: PLAN_SUBSCRIPTION_CHECKOUT_PURPOSE,
         },
         return_url: `${appUrl}/account/billing/return?session_id={CHECKOUT_SESSION_ID}`,
       },
