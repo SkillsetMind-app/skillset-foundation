@@ -89,6 +89,24 @@ describe("ActivationGate", () => {
     expect(blockedMock).not.toHaveBeenCalled();
   });
 
+  it("releases the scroll lock when the creator leaves for checkout", async () => {
+    // The verdict stays true across this navigation — only the route changes.
+    // Keying the focus trap and the scroll lock off the raw verdict froze the
+    // page with no dialog left on screen to explain why.
+    blockedMock.mockResolvedValue(true);
+
+    const { rerender } = render(<ActivationGate />);
+    await act(async () => {});
+    expect(document.body.style.overflow).toBe("hidden");
+
+    state.pathname = "/teach/activate";
+    rerender(<ActivationGate />);
+    await act(async () => {});
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.body.style.overflow).not.toBe("hidden");
+  });
+
   it("fails open when the verdict cannot be read", async () => {
     // A network blip must not lock a creator who already paid out of their own
     // studio. Publishing stays gated in SQL by the courses trigger regardless.

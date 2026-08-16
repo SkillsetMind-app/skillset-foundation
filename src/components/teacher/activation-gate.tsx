@@ -45,10 +45,10 @@ export function ActivationGate() {
   const onActivationRoute = Boolean(pathname?.startsWith("/teach/activate"));
 
   useEffect(() => {
-    if (!isTeacher || onActivationRoute) {
-      setBlocked(false);
-      return;
-    }
+    // No synchronous reset here: `blocked` holds the fetch result only, and the
+    // render guard below applies isTeacher/onActivationRoute. Resetting state in
+    // the effect body made those two jobs one, and cost a cascading render.
+    if (!isTeacher || onActivationRoute) return;
     let active = true;
     fetchCreatorActivationBlocked()
       .then((value) => {
@@ -65,18 +65,23 @@ export function ActivationGate() {
     };
   }, [isTeacher, onActivationRoute, uid]);
 
-  useModalFocus(dialogRef, blocked);
+  // Focus trap and scroll lock follow what is on screen, not what the fetch
+  // returned: a stale `blocked` on the checkout route would otherwise lock the
+  // page scroll with no dialog rendered to explain it.
+  const visible = blocked && isTeacher && !onActivationRoute;
+
+  useModalFocus(dialogRef, visible);
 
   useEffect(() => {
-    if (!blocked) return;
+    if (!visible) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [blocked]);
+  }, [visible]);
 
-  if (!blocked) return null;
+  if (!visible) return null;
 
   return (
     <div
