@@ -58,20 +58,41 @@ export async function POST(request: Request) {
     // Direct charges: the subscription lives on the teacher's connected
     // account, so a platform-scoped call 404s with resource_missing. Both the
     // read and the write have to be scoped to that account.
-    const { data: course } = await admin
-      .from("courses")
-      .select("stripe_connected_account_id, owner_id")
-      .eq("id", courseId)
+    // Prefer the FROZEN snapshot from this buyer's own paid order, exactly like
+    // both refund routes do. The live course/owner value can change under the
+    // learner: connect-self-heal mints a NEW connected account when the stored
+    // one is orphaned, and after that the subscription still lives on the OLD
+    // account — a live-resolved cancel would 404 with resource_missing and the
+    // learner would keep being billed every month with no way to stop it.
+    // Subscription renewals write this column too (course-subscription-sale.ts).
+    const { data: paidOrder } = await admin
+      .from("orders")
+      .select("teacher_stripe_connected_account_id")
+      .eq("user_id", uid)
+      .eq("course_id", courseId)
+      .eq("status", "paid")
+      .not("teacher_stripe_connected_account_id", "is", null)
+      .order("paid_at", { ascending: false, nullsFirst: false })
+      .limit(1)
       .maybeSingle();
-    // Mirror the checkout resolution exactly (payments/checkout/route.ts):
-    // a course row with a null account is still sellable through the owner's
-    // account, so resolving from the course alone would leave those students
-    // unable to cancel — the subscription lookup would run platform-scoped and
-    // 404 — while Stripe keeps billing them every month.
-    let stripeAccount = course?.stripe_connected_account_id || null;
-    if (!stripeAccount && course?.owner_id) {
-      const owner = await getUserRow(course.owner_id);
-      stripeAccount = owner?.stripe_connected_account_id || null;
+
+    let stripeAccount = paidOrder?.teacher_stripe_connected_account_id || null;
+    if (!stripeAccount) {
+      const { data: course } = await admin
+        .from("courses")
+        .select("stripe_connected_account_id, owner_id")
+        .eq("id", courseId)
+        .maybeSingle();
+      // Mirror the checkout resolution exactly (payments/checkout/route.ts):
+      // a course row with a null account is still sellable through the owner's
+      // account, so resolving from the course alone would leave those students
+      // unable to cancel — the subscription lookup would run platform-scoped and
+      // 404 — while Stripe keeps billing them every month.
+      stripeAccount = course?.stripe_connected_account_id || null;
+      if (!stripeAccount && course?.owner_id) {
+        const owner = await getUserRow(course.owner_id);
+        stripeAccount = owner?.stripe_connected_account_id || null;
+      }
     }
     const accountOptions = stripeAccount ? { stripeAccount } : undefined;
 
