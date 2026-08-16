@@ -36,6 +36,9 @@ type RefundClaim = {
 type AdminState = {
   mode: "checkout" | "refund";
   failAt?: FailurePoint;
+  // Opt-in: the plan subscription row does not exist yet, so its UPDATE matches
+  // zero rows (a silent success in PostgREST).
+  planRowMissing?: boolean;
   doneEvents: Set<string>;
   refundClaims: Record<string, RefundClaim>;
   ledger: Record<string, unknown>;
@@ -64,10 +67,15 @@ function baseLedger() {
   };
 }
 
-function createAdmin(mode: AdminState["mode"], failAt?: FailurePoint) {
+function createAdmin(
+  mode: AdminState["mode"],
+  failAt?: FailurePoint,
+  planRowMissing?: boolean,
+) {
   const state: AdminState = {
     mode,
     failAt,
+    planRowMissing,
     doneEvents: new Set(),
     refundClaims: {},
     ledger: baseLedger(),
@@ -188,6 +196,15 @@ function createAdmin(mode: AdminState["mode"], failAt?: FailurePoint) {
               "stripe_connected_account_id",
             ),
           });
+        }
+
+        // The plan past_due write reads its row back, so it needs a real row
+        // here -- the default null below is exactly the zero-row case it guards.
+        if (this.table === "subscriptions" && this.operation === "update") {
+          return {
+            data: state.planRowMissing ? null : { id: this.filterValue("id") },
+            error: null,
+          };
         }
 
         return { data: null, error: null };
@@ -375,6 +392,22 @@ function failedInvoiceEvent() {
         id: "in_1",
         parent: {
           subscription_details: { subscription: "sub_1" },
+        },
+      },
+    },
+  };
+}
+
+// Plan subscriptions live on the platform, so their events carry no `account`.
+function failedPlanInvoiceEvent() {
+  return {
+    id: "evt_plan_invoice_failed",
+    type: "invoice.payment_failed",
+    data: {
+      object: {
+        id: "in_plan_1",
+        parent: {
+          subscription_details: { subscription: "sub_plan_1" },
         },
       },
     },
@@ -579,6 +612,51 @@ describe("Stripe webhook financial integrity", () => {
       { stripeAccount: "acct_teacher" },
     );
     expect(admin.state.doneEvents).not.toContain("evt_invoice_failed");
+  });
+
+  it("marks a plan subscription past due", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.subscriptionRetrieve.mockResolvedValueOnce({ metadata: {} });
+
+    const response = await postEvent(failedPlanInvoiceEvent());
+
+    expect(response.status).toBe(200);
+    expect(mocks.subscriptionRetrieve).toHaveBeenCalledWith(
+      "sub_plan_1",
+      undefined,
+      undefined,
+    );
+    expect(admin.state.doneEvents).toContain("evt_plan_invoice_failed");
+  });
+
+  // Control for the test above: same setup, one input flipped.
+  it("retries when the plan subscription row does not exist yet", async () => {
+    const admin = createAdmin("checkout", undefined, true);
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.subscriptionRetrieve.mockResolvedValueOnce({ metadata: {} });
+
+    const response = await postEvent(failedPlanInvoiceEvent());
+
+    expect(response.status).toBe(500);
+    expect(admin.state.doneEvents).not.toContain("evt_plan_invoice_failed");
+  });
+
+  // Control for the retry above: a deleted subscription is terminal, so the
+  // same missing row must NOT retry -- otherwise Stripe loops until it gives up.
+  it("does not retry when Stripe already deleted the subscription", async () => {
+    const admin = createAdmin("checkout", undefined, true);
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.subscriptionRetrieve.mockRejectedValueOnce(
+      Object.assign(new Error("No such subscription"), {
+        code: "resource_missing",
+      }),
+    );
+
+    const response = await postEvent(failedPlanInvoiceEvent());
+
+    expect(response.status).toBe(200);
+    expect(admin.state.doneEvents).toContain("evt_plan_invoice_failed");
   });
 
   it("fulfils a paid course renewal on the connected account", async () => {

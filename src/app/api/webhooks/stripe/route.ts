@@ -1424,18 +1424,28 @@ async function handleInvoicePaymentFailed(
     return;
   }
 
-  // ponytail: a zero-row update here (invoice.payment_failed arriving before
-  // customer.subscription.created, or for an already-deleted subscription) still
-  // passes silently. Left as-is because throwing would retry forever on deleted
-  // subscriptions; upgrade path is to distinguish the two by retrying only when
-  // the subscription still exists in Stripe.
-  await requireSupabaseWrite(
-    admin
-      .from("subscriptions")
-      .update({ past_due: true, updated_at: ts })
-      .eq("id", subscriptionId),
-    "Mark plan subscription past due",
-  );
+  // A zero-row update is a silent success in PostgREST, so past_due would be
+  // lost for good. Retry only when the row can still show up, which needs BOTH:
+  //   - the subscription still exists in Stripe. A deleted one 404s above and
+  //     leaves `subscription` null; retrying that would loop until Stripe gives
+  //     up. This is the upgrade path the old comment here described.
+  //   - the event came from the platform. Plan subscriptions only ever live
+  //     here; a connected-account event is a teacher's own Stripe subscription
+  //     and has no row in this table, so retrying it would also loop forever.
+  const { data: updatedPlan, error: planError } = await admin
+    .from("subscriptions")
+    .update({ past_due: true, updated_at: ts })
+    .eq("id", subscriptionId)
+    .select("id")
+    .maybeSingle();
+  if (planError) {
+    throw new Error(`Mark plan subscription past due: ${planError.message}`);
+  }
+  if (!updatedPlan && subscription && !eventAccountId) {
+    throw new Error(
+      `Mark plan subscription past due: no row for ${subscriptionId} yet`,
+    );
+  }
 }
 
 async function handleConnectedAccountUpdated(
