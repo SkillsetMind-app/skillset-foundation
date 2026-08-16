@@ -140,10 +140,21 @@ export async function signInWithEmail(
   return mapSupabaseUser(data.user, await getUserProfile(data.user.id));
 }
 
+export type SignupResult = {
+  user: SkillsetUser;
+  /**
+   * True when Supabase created the account but returned no session, i.e. the
+   * project requires email confirmation. Nothing that needs a signed-in client
+   * (profile writes, onboarding) can run yet — RLS filters every row and a
+   * zero-row update comes back as a silent success.
+   */
+  needsEmailConfirmation: boolean;
+};
+
 export async function signUpWithEmail(
   { displayName, email, password }: SignupInput,
   captchaToken?: string,
-): Promise<SkillsetUser> {
+): Promise<SignupResult> {
   const supabase = getSupabaseBrowserClient();
   const trimmedName = displayName.trim();
 
@@ -186,9 +197,12 @@ export async function signUpWithEmail(
 
   // The on_auth_user_created trigger provisions public.users (display_name from
   // the metadata above). When email confirmation is required data.session is
-  // null and the client can't read the row yet — the app's verify-email
-  // onboarding screen drives that state, so a null profile here is expected.
-  return mapSupabaseUser(data.user, await getUserProfile(data.user.id));
+  // null and the client can't read the row yet, so a null profile here is
+  // expected — the caller shows the confirm-your-email screen instead.
+  return {
+    user: mapSupabaseUser(data.user, await getUserProfile(data.user.id)),
+    needsEmailConfirmation: !data.session,
+  };
 }
 
 export async function signInWithGoogle(): Promise<SkillsetUser> {
