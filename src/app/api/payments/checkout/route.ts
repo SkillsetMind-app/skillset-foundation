@@ -270,6 +270,37 @@ export async function POST(request: Request) {
 
       const lock = lockRows?.[0];
       if (lock?.action === "reuse" && lock.checkout_url) {
+        // Same guard as the one-time path below. The lock is per buyer+course,
+        // so without this a request for a DIFFERENT offer is handed the first
+        // offer's URL and the buyer checks out expecting the offer they picked.
+        // A subscription has no order row yet, so the open session's own
+        // metadata is where its offer identity lives.
+        const { data: existingLock, error: existingLockError } = await admin
+          .from("checkout_locks")
+          .select("checkout_session_id")
+          .eq("lock_key", lockKey)
+          .maybeSingle();
+        if (existingLockError) throw new Error(existingLockError.message);
+
+        const openSession = existingLock?.checkout_session_id
+          ? await stripe.checkout.sessions.retrieve(
+              existingLock.checkout_session_id,
+              undefined,
+              { stripeAccount: connectedAccountId },
+            )
+          : null;
+        const openMetadata = openSession?.metadata ?? null;
+        if (
+          !openMetadata
+          || (openMetadata.offerId ?? null) !== (priced.offerId ?? null)
+          || (openMetadata.priceId ?? null) !== (priced.priceId ?? null)
+        ) {
+          throw new PaymentError(
+            "Another offer already has an active checkout. Close it or wait for it to expire before switching offers.",
+            409,
+          );
+        }
+
         return NextResponse.json({ url: lock.checkout_url });
       }
       if (lock?.action === "wait") {

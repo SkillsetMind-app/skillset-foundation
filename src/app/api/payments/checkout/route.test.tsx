@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   getStripe: vi.fn(),
   createSession: vi.fn(),
   expireSession: vi.fn(),
+  retrieveSession: vi.fn(),
   getPercentOffCoupon: vi.fn(),
 }));
 
@@ -84,6 +85,7 @@ function createAdmin(input: {
   subscription?: ExistingRow;
   lockReplies?: LockReply[];
   coupon?: Record<string, unknown> | null;
+  checkoutLock?: Record<string, unknown> | null;
 }) {
   const lockReplies = [...(input.lockReplies ?? [])];
   const lockUpdates: Array<Record<string, unknown>> = [];
@@ -153,6 +155,11 @@ function createAdmin(input: {
       if (this.table === "course_coupons") {
         const couponRow = input.coupon ?? null;
         return { data: single ? couponRow : couponRow ? [couponRow] : [], error: null };
+      }
+
+      if (this.table === "checkout_locks") {
+        const lockRow = input.checkoutLock ?? null;
+        return { data: single ? lockRow : lockRow ? [lockRow] : [], error: null };
       }
 
       const candidate = this.table === "enrollments"
@@ -244,11 +251,16 @@ describe("course checkout subscription exclusivity", () => {
       url: "https://checkout.example/subscription",
     });
     mocks.expireSession.mockResolvedValue({ id: "cs_subscription", status: "expired" });
+    mocks.retrieveSession.mockResolvedValue({
+      id: "cs_subscription",
+      metadata: { offerId: "offer-monthly", priceId: "price-monthly" },
+    });
     mocks.getStripe.mockReturnValue({
       checkout: {
         sessions: {
           create: mocks.createSession,
           expire: mocks.expireSession,
+          retrieve: mocks.retrieveSession,
         },
       },
     });
@@ -278,12 +290,36 @@ describe("course checkout subscription exclusivity", () => {
     expect(mocks.createSession).not.toHaveBeenCalled();
   });
 
-  it("reuses one persistent buyer-course checkout across offers", async () => {
+  it("reuses one persistent buyer-course checkout for the same offer", async () => {
     const admin = createAdmin({
       lockReplies: [
         { action: "claim", checkout_url: null },
         { action: "reuse", checkout_url: "https://checkout.example/subscription" },
       ],
+      checkoutLock: { checkout_session_id: "cs_subscription" },
+    });
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const body = { courseId: "course", offerId: "offer-monthly", priceId: "price-monthly" };
+    const first = await POST(request(body));
+    const second = await POST(request(body));
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(await second.json()).toEqual({ url: "https://checkout.example/subscription" });
+    expect(mocks.createSession).toHaveBeenCalledTimes(1);
+    expect(mocks.retrieveSession).toHaveBeenCalledWith("cs_subscription", undefined, {
+      stripeAccount: "acct_teacher",
+    });
+  });
+
+  it("blocks a reused subscription checkout when the buyer switched offers", async () => {
+    const admin = createAdmin({
+      lockReplies: [
+        { action: "claim", checkout_url: null },
+        { action: "reuse", checkout_url: "https://checkout.example/subscription" },
+      ],
+      checkoutLock: { checkout_session_id: "cs_subscription" },
     });
     mocks.getAdmin.mockReturnValue(admin);
 
@@ -299,8 +335,13 @@ describe("course checkout subscription exclusivity", () => {
     }));
 
     expect(first.status).toBe(200);
-    expect(second.status).toBe(200);
-    expect(await second.json()).toEqual({ url: "https://checkout.example/subscription" });
+    expect(second.status).toBe(409);
+    expect(await second.json()).toEqual({
+      error:
+        "Another offer already has an active checkout. Close it or wait for it to expire before switching offers.",
+    });
+    // The lock still stays one-per-buyer-per-course: the second attempt is
+    // refused, never given a second Stripe session.
     expect(mocks.createSession).toHaveBeenCalledTimes(1);
     const lockCalls = admin.rpc.mock.calls.filter(([name]) => name === "claim_checkout_lock");
     expect(lockCalls).toHaveLength(2);
