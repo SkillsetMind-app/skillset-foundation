@@ -24,6 +24,7 @@ import {
   ensureCourseSubscriptionCanceled,
 } from "@/lib/payments/server/stripe-helpers";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import type { Json } from "@/lib/supabase/database.types";
 
 // POST /api/webhooks/stripe — the fulfilment core. Verifies the Stripe
 // signature, dedupes via two-phase idempotency on processed_stripe_events
@@ -816,6 +817,42 @@ async function handleCourseSubscriptionLifecycle(
   return true;
 }
 
+// Clearing activation_fee_paid_at re-arms the SQL gate: the creator's storefront
+// closes again on the next course touch. Shared by the refund and the lost
+// chargeback paths — both are a total loss of the fee, and the fee is the door.
+// The audit action is a parameter on purpose: a chargeback logged as a refund is
+// a lie in the record everyone reads when the money is disputed later.
+async function revokeStorefrontActivation(
+  admin: Admin,
+  entry: {
+    uid: string;
+    action: string;
+    summary: string;
+    // Json, not Record<string, unknown>: the generated RPC signature types
+    // p_metadata as Json, and a widened Record does not satisfy it.
+    metadata: Json;
+  },
+): Promise<void> {
+  const revokedAt = nowIso();
+  await requireSupabaseWrite(
+    admin
+      .from("users")
+      .update({ activation_fee_paid_at: null, updated_at: revokedAt })
+      .eq("uid", entry.uid),
+    "Revoke storefront activation",
+  );
+  const { error: auditError } = await admin.rpc("log_audit_event", {
+    p_action: entry.action,
+    p_actor_id: entry.uid,
+    p_actor_email: "",
+    p_target_type: "user",
+    p_target_id: entry.uid,
+    p_summary: entry.summary,
+    p_metadata: entry.metadata,
+  });
+  if (auditError) throw new Error(auditError.message);
+}
+
 // --- charge.refunded ---------------------------------------------------------
 // Under direct charges a refund debits the TEACHER's own Stripe balance, and
 // Stripe returns the proportional application fee to them automatically when
@@ -839,36 +876,23 @@ async function handleChargeRefunded(
   // a storefront they were refunded for. Stripe copies the PaymentIntent
   // metadata onto the charge (see payments/activation/checkout/route.ts), so
   // {uid, purpose} is already here: no extra API call.
-  // ponytail: refunds only. A LOST DISPUTE on the fee does not fire
-  // charge.refunded and still leaves the storefront active — add the same check
-  // to handleDisputeClosed (needs a PaymentIntent fetch) if chargebacks appear.
+  // A LOST DISPUTE on the fee does not fire charge.refunded; that path lives in
+  // handleDisputeClosed, which reads the same metadata off the PaymentIntent.
   if (charge.metadata?.purpose === ACTIVATION_FEE_CHECKOUT_PURPOSE) {
     const activationUid = charge.metadata?.uid;
     // Partial refund does not revoke: they still paid for the storefront.
     if (activationUid && charge.refunded === true) {
-      const revokedAt = nowIso();
-      await requireSupabaseWrite(
-        admin
-          .from("users")
-          .update({ activation_fee_paid_at: null, updated_at: revokedAt })
-          .eq("uid", activationUid),
-        "Revoke storefront activation after refund",
-      );
-      const { error: auditError } = await admin.rpc("log_audit_event", {
-        p_action: "STOREFRONT_ACTIVATION_FEE_REFUNDED",
-        p_actor_id: activationUid,
-        p_actor_email: "",
-        p_target_type: "user",
-        p_target_id: activationUid,
-        p_summary: `Storefront activation revoked after refund for ${activationUid}`,
-        p_metadata: {
+      await revokeStorefrontActivation(admin, {
+        uid: activationUid,
+        action: "STOREFRONT_ACTIVATION_FEE_REFUNDED",
+        summary: `Storefront activation revoked after refund for ${activationUid}`,
+        metadata: {
           chargeId: charge.id,
           paymentIntentId,
           amountRefunded: charge.amount_refunded,
           currency: charge.currency,
         },
       });
-      if (auditError) throw new Error(auditError.message);
     }
     return;
   }
@@ -1085,10 +1109,68 @@ async function handleDisputeCreated(admin: Admin, dispute: Stripe.Dispute): Prom
   // creator reports show the sale as contested.
 }
 
-async function handleDisputeClosed(admin: Admin, dispute: Stripe.Dispute): Promise<void> {
+// The activation fee is a PLATFORM charge and has no payout_ledger row, so the
+// ledger lookup in handleDisputeClosed returns null and the event would be
+// dropped — leaving a creator who charged the fee back with an open storefront.
+// Since the gate went live that fee IS the access control, so that is free
+// access to the platform, paid for by us.
+//
+// A Dispute carries no metadata of its own; the PaymentIntent does, because
+// payments/activation/checkout mirrors {uid, purpose} onto it for exactly this.
+// Returns true when it handled the dispute, false when it was an ordinary sale.
+async function revokeActivationAfterLostDispute(
+  admin: Admin,
+  dispute: Stripe.Dispute,
+): Promise<boolean> {
+  const paymentIntentId =
+    typeof dispute.payment_intent === "string"
+      ? dispute.payment_intent
+      : dispute.payment_intent?.id;
+  if (!paymentIntentId) return false;
+
+  const intent = await getStripeClient().paymentIntents.retrieve(paymentIntentId);
+  if (intent.metadata?.purpose !== ACTIVATION_FEE_CHECKOUT_PURPOSE) return false;
+
+  const uid = intent.metadata?.uid;
+  // Fail closed, like handleActivationFeePaid: an activation charge without a
+  // uid means the stamp cannot be traced back, and silently dropping it hands
+  // out permanent access.
+  if (!uid) {
+    throw new Error(
+      `Activation fee dispute ${dispute.id} is missing uid metadata.`,
+    );
+  }
+
+  await revokeStorefrontActivation(admin, {
+    uid,
+    action: "STOREFRONT_ACTIVATION_FEE_CHARGEBACK",
+    summary: `Storefront activation revoked after lost chargeback for ${uid}`,
+    metadata: {
+      disputeId: dispute.id,
+      paymentIntentId,
+      amount: dispute.amount,
+      currency: dispute.currency,
+      reason: dispute.reason,
+    },
+  });
+  return true;
+}
+
+async function handleDisputeClosed(
+  admin: Admin,
+  dispute: Stripe.Dispute,
+  connectedAccountId: string | null,
+): Promise<void> {
   const event =
     dispute.status === "won" ? "won" : dispute.status === "lost" ? "lost" : null;
   if (!event) return; // warning_closed etc.: no money movement to settle
+
+  // Only platform charges can be the activation fee, so a connected-account
+  // dispute (every course sale) never pays for the PaymentIntent fetch.
+  if (event === "lost" && !connectedAccountId) {
+    if (await revokeActivationAfterLostDispute(admin, dispute)) return;
+  }
+
   const ledger = await resolveLedgerForDispute(admin, dispute);
   if (!ledger) return;
   const next = nextLedgerStatusOnDispute({
@@ -1471,7 +1553,7 @@ export async function POST(request: Request) {
         await handleDisputeCreated(admin, event.data.object);
         break;
       case "charge.dispute.closed":
-        await handleDisputeClosed(admin, event.data.object);
+        await handleDisputeClosed(admin, event.data.object, eventAccountId);
         break;
       case "customer.subscription.created":
       case "customer.subscription.updated":
