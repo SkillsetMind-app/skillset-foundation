@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   isStripeConfigured: vi.fn(() => true),
   reversalCreate: vi.fn(),
   subscriptionRetrieve: vi.fn(),
+  paymentIntentRetrieve: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -466,12 +467,15 @@ describe("Stripe webhook financial integrity", () => {
       metadata: { purpose: "course_subscription" },
     });
     mocks.isStripeConfigured.mockReturnValue(true);
+    mocks.paymentIntentRetrieve
+      .mockReset()
+      .mockResolvedValue({ latest_charge: null });
     mocks.getStripe.mockReset().mockReturnValue({
       webhooks: {
         constructEvent: (rawBody: string) => JSON.parse(rawBody),
       },
       paymentIntents: {
-        retrieve: vi.fn().mockResolvedValue({ latest_charge: null }),
+        retrieve: mocks.paymentIntentRetrieve,
       },
       transfers: {
         createReversal: mocks.reversalCreate,
@@ -684,6 +688,55 @@ describe("Stripe webhook financial integrity", () => {
       );
     },
   );
+
+  // The fee is a PLATFORM charge with no payout_ledger row, so before this the
+  // handler bailed at the ledger lookup and a creator who charged back the $25
+  // kept the storefront the fee is supposed to buy. Since the gate went live,
+  // that stamp IS the access control.
+  it("revokes the storefront when the activation fee chargeback is lost", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.paymentIntentRetrieve.mockResolvedValue({
+      metadata: { uid: "teacher_1", purpose: ACTIVATION_FEE_CHECKOUT_PURPOSE },
+    });
+
+    const response = await postEvent(
+      disputeClosedEvent("evt_dispute_activation", "lost"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(admin.state.userUpdates).toHaveLength(1);
+    expect(admin.state.userUpdates[0].activation_fee_paid_at).toBeNull();
+    // Not the refund action: the audit trail has to say chargeback, or the
+    // record everyone reads when the money is contested is wrong.
+    expect(admin.state.rpcCalls).toContainEqual({
+      name: "log_audit_event",
+      args: expect.objectContaining({
+        p_action: "STOREFRONT_ACTIVATION_FEE_CHARGEBACK",
+        p_target_id: "teacher_1",
+      }),
+    });
+  });
+
+  it("does not look up the PaymentIntent for a connected-account dispute", async () => {
+    // Course sales are direct charges, so their disputes always carry an
+    // account. Only platform charges can be the fee — checking them all would
+    // add a Stripe round trip to every course chargeback for nothing.
+    const admin = createAdmin("refund");
+    admin.state.ledger.status = "disputed";
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const event = disputeClosedEvent("evt_dispute_connected", "lost");
+    (event as Record<string, unknown>).account = "acct_teacher_1";
+
+    const response = await postEvent(event);
+
+    expect(response.status).toBe(200);
+    expect(mocks.paymentIntentRetrieve).not.toHaveBeenCalled();
+    expect(admin.state.enrollmentUpdates).toContainEqual(
+      expect.objectContaining({ id: "user_1__course_1", status: "refunded" }),
+    );
+  });
 
   it("keeps the enrollment when the dispute is won", async () => {
     // Control: without this the test above would pass even if the handler
