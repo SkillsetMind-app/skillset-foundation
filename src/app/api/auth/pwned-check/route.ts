@@ -1,8 +1,6 @@
-import { createHash } from "node:crypto";
-
 import { NextResponse } from "next/server";
 
-import { runRateLimit } from "@/lib/supabase/rate-limit";
+import { allowByIp } from "@/lib/supabase/rate-limit";
 
 // Server-side proxy for the HaveIBeenPwned "Pwned Passwords" range API. The
 // browser sends ONLY the first 5 hex chars of a password's SHA-1 hash
@@ -24,31 +22,16 @@ const PREFIX_RE = /^[0-9A-Fa-f]{5}$/;
 // below) never reach here, so this only counts cache misses.
 const RATE_LIMIT_PER_MINUTE = 100;
 
-function rateLimitKeyFromIp(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for") ?? "";
-  const ip = forwarded.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
-  return `pwned_${createHash("sha256").update(ip).digest("hex").slice(0, 24)}`;
-}
-
 export async function GET(request: Request) {
   const prefix = new URL(request.url).searchParams.get("prefix") ?? "";
   if (!PREFIX_RE.test(prefix)) {
     return NextResponse.json({ error: "Invalid prefix." }, { status: 400 });
   }
 
-  // Fail-open rate limit: a breach returns 429, but a limiter outage must never
-  // block the pwned check — the whole route is best-effort auth assist.
-  try {
-    const { error: rlError } = await runRateLimit(
-      rateLimitKeyFromIp(request),
-      RATE_LIMIT_PER_MINUTE,
-      60_000,
-    );
-    if (rlError?.message?.includes("RATE_LIMIT")) {
-      return NextResponse.json({ error: "Too many requests." }, { status: 429 });
-    }
-  } catch {
-    // Deliberately fail open: this endpoint is a best-effort password signal.
+  // allowByIp fails open on a limiter outage — the whole route is best-effort
+  // auth assist and must never block signup because the limiter blinked.
+  if (!(await allowByIp(request, "pwned", RATE_LIMIT_PER_MINUTE, 60_000))) {
+    return NextResponse.json({ error: "Too many requests." }, { status: 429 });
   }
 
   const controller = new AbortController();

@@ -36,6 +36,16 @@ function courseQuery() {
   return query;
 }
 
+/**
+ * The route makes two RPC calls: the rate-limit check and the atomic offer
+ * write. Counting `rpc` globally would make "is the write atomic?" fail the
+ * moment any unrelated RPC is added, so the assertions below count calls by
+ * function name instead.
+ */
+function offerCalls(rpc: ReturnType<typeof vi.fn>) {
+  return rpc.mock.calls.filter((call) => call[0] === "create_product_offer_atomic");
+}
+
 describe("atomic product offer creation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -64,7 +74,11 @@ describe("atomic product offer creation", () => {
     }));
 
     expect(response.status).toBe(200);
-    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(offerCalls(rpc)).toHaveLength(1);
+    expect(rpc).toHaveBeenCalledWith(
+      "enforce_rate_limit",
+      expect.objectContaining({ p_key: "offer_write_teacher" }),
+    );
     expect(rpc).toHaveBeenCalledWith(
       "create_product_offer_atomic",
       expect.objectContaining({
@@ -91,13 +105,13 @@ describe("atomic product offer creation", () => {
   });
 
   it("surfaces the atomic RPC failure without falling back to partial writes", async () => {
-    const admin = {
-      from: vi.fn(() => courseQuery()),
-      rpc: vi.fn(async () => ({
-        data: null,
-        error: { message: "atomic offer failed" },
-      })),
-    };
+    const rpc = vi.fn(async (fn: string) => ({
+      data: null,
+      error: fn === "create_product_offer_atomic"
+        ? { message: "atomic offer failed" }
+        : null,
+    }));
+    const admin = { from: vi.fn(() => courseQuery()), rpc };
     mocks.getAdmin.mockReturnValue(admin);
 
     const response = await POST(request({
@@ -114,6 +128,30 @@ describe("atomic product offer creation", () => {
       error: "Something went wrong. Please try again.",
     });
     expect(admin.from).toHaveBeenCalledTimes(1);
-    expect(admin.rpc).toHaveBeenCalledTimes(1);
+    expect(offerCalls(rpc)).toHaveLength(1);
+  });
+
+  // Creating an offer is billable work on our Stripe account, so the throttle
+  // fails CLOSED: over the limit, nothing reaches the course lookup or the write.
+  it("refuses the write when the caller is over the offer rate limit", async () => {
+    const rpc = vi.fn(async (fn: string) => ({
+      data: null,
+      error: fn === "enforce_rate_limit" ? { message: "RATE_LIMIT exceeded" } : null,
+    }));
+    const admin = { from: vi.fn(() => courseQuery()), rpc };
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const response = await POST(request({
+      courseId: "course",
+      name: "Monthly access",
+      amountMinor: 10_000,
+      currency: "USD",
+      paymentType: "subscription_monthly",
+      isDefault: false,
+    }));
+
+    expect(response.status).toBe(429);
+    expect(admin.from).not.toHaveBeenCalled();
+    expect(offerCalls(rpc)).toHaveLength(0);
   });
 });

@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
 
 import {
+  enforceRateLimit,
   PaymentError,
   paymentErrorResponse,
   requireUserId,
 } from "@/lib/payments/server/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+
+// Each POST creates a Stripe product + price, so it is billable work on our
+// account: 30/hour is far above any real editing session. The GET is read-only
+// but fans out one price query per offer, so it gets a looser per-minute cap.
+const OFFER_WRITES_PER_HOUR = 30;
+const OFFER_READS_PER_MINUTE = 60;
 
 type Body = {
   courseId?: unknown;
@@ -24,6 +31,7 @@ type Body = {
 export async function POST(request: Request) {
   try {
     const userId = await requireUserId();
+    await enforceRateLimit(`offer_write_${userId}`, OFFER_WRITES_PER_HOUR, 60 * 60 * 1000);
     const body = (await request.json().catch(() => ({}))) as Body;
     const courseId = String(body.courseId ?? "").trim();
     const name = String(body.name ?? "Offer").trim().slice(0, 80) || "Offer";
@@ -117,6 +125,7 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     const userId = await requireUserId();
+    await enforceRateLimit(`offer_read_${userId}`, OFFER_READS_PER_MINUTE, 60_000);
     const courseId = new URL(request.url).searchParams.get("courseId")?.trim() || "";
     if (!courseId) {
       throw new PaymentError("courseId is required.");
