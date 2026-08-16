@@ -135,7 +135,12 @@ export async function POST(request: Request) {
       },
     );
 
-    await admin
+    // ponytail: log, never throw. Stripe already moved the money, so failing
+    // here would report a refund that actually happened as an error. But a lost
+    // write is not harmless: refunds/request gates its duplicate guard on
+    // refund_request_id being non-null, so this row silently looks refundable
+    // again. Visible beats swallowed.
+    const { error: refundStampError } = await admin
       .from("orders")
       .update({
         refund_requested_at: new Date().toISOString(),
@@ -143,6 +148,13 @@ export async function POST(request: Request) {
         updated_at: new Date().toISOString(),
       })
       .eq("id", orderId);
+    if (refundStampError) {
+      console.error("Refund stamp failed after Stripe accepted the refund", {
+        orderId,
+        refundId: refund.id,
+        message: refundStampError.message,
+      });
+    }
 
     // Audit trail: record who refunded what. The charge.refunded webhook does
     // the money/ledger transition; this is the who-did-what record so a rogue or

@@ -74,11 +74,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: certificate } = await admin
+    const { data: certificate, error: certificateError } = await admin
       .from("certificates")
       .select("status")
       .eq("id", enrollmentId)
       .maybeSingle();
+    // Fail closed: a read failure here is indistinguishable from "no
+    // certificate", and swallowing it lets an issued-certificate refund
+    // through. Money path — same handling as priorRefundError below.
+    if (certificateError) {
+      throw new Error(certificateError.message);
+    }
 
     if (certificate && certificate.status === "issued") {
       throw new PaymentError(
@@ -189,7 +195,12 @@ export async function POST(request: Request) {
       },
     );
 
-    await admin
+    // ponytail: log, never throw. Stripe already moved the money, so failing
+    // here would report a refund that actually happened as an error. But this
+    // exact column is the duplicate guard above (refund_request_id.not.is.null),
+    // so a lost write re-arms self-serve refunds on this order. Visible beats
+    // swallowed.
+    const { error: refundStampError } = await admin
       .from("orders")
       .update({
         refund_requested_at: new Date().toISOString(),
@@ -197,6 +208,13 @@ export async function POST(request: Request) {
         updated_at: new Date().toISOString(),
       })
       .eq("id", order.id);
+    if (refundStampError) {
+      console.error("Refund stamp failed after Stripe accepted the refund", {
+        orderId: order.id,
+        refundId: refund.id,
+        message: refundStampError.message,
+      });
+    }
 
     // ponytail: dropped captureServerEvent + recordAuditEvent (analytics
     // side-channel; no gate or return-shape depends on them).

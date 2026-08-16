@@ -40,6 +40,7 @@ type AdminState = {
   ledger: Record<string, unknown>;
   rpcCalls: Array<{ name: string; args: Record<string, unknown> }>;
   userUpdates: Array<Record<string, unknown>>;
+  enrollmentUpdates: Array<Record<string, unknown>>;
 };
 
 type Filter = { column: string; value: unknown };
@@ -71,6 +72,7 @@ function createAdmin(mode: AdminState["mode"], failAt?: FailurePoint) {
     ledger: baseLedger(),
     rpcCalls: [],
     userUpdates: [],
+    enrollmentUpdates: [],
   };
 
   class Query {
@@ -171,6 +173,13 @@ function createAdmin(mode: AdminState["mode"], failAt?: FailurePoint) {
           Object.assign(state.ledger, this.values);
         }
 
+        if (this.table === "enrollments" && this.operation === "update") {
+          state.enrollmentUpdates.push({
+            ...this.values,
+            id: this.filterValue("id"),
+          });
+        }
+
         if (this.table === "users" && this.operation === "update") {
           state.userUpdates.push({
             ...this.values,
@@ -212,8 +221,12 @@ function createAdmin(mode: AdminState["mode"], failAt?: FailurePoint) {
           course_id: "course_1",
         };
       } else if (this.table === "payout_ledger" && state.mode === "refund") {
-        const id = this.filterValue("id");
-        data = id === "order_1" ? { ...state.ledger } : null;
+        // Refunds resolve the ledger by id; disputes only know the payment
+        // intent, so they look it up by payment_id.
+        const matched =
+          this.filterValue("id") === "order_1"
+          || this.filterValue("payment_id") === "pi_1";
+        data = matched ? { ...state.ledger } : null;
       }
 
       return {
@@ -640,5 +653,49 @@ describe("Stripe webhook financial integrity", () => {
         (call) => call.name === "claim_payout_transfer_reversal",
       ),
     ).toHaveLength(0);
+  });
+
+  function disputeClosedEvent(id: string, status: string) {
+    return {
+      id,
+      type: "charge.dispute.closed",
+      data: { object: { id: "dp_1", status, payment_intent: "pi_1" } },
+    };
+  }
+
+  // "disputed" is the normal path (dispute.created was processed first).
+  // "released" is a missed dispute.created: nextLedgerStatusOnDispute returns
+  // null there, so if the revoke sat behind that guard the buyer would keep a
+  // course they were fully charged back for.
+  it.each(["disputed", "released"])(
+    "revokes the enrollment when a chargeback is lost (ledger %s)",
+    async (ledgerStatus) => {
+      const admin = createAdmin("refund");
+      admin.state.ledger.status = ledgerStatus;
+      mocks.getAdmin.mockReturnValue(admin);
+
+      const response = await postEvent(
+        disputeClosedEvent(`evt_dispute_lost_${ledgerStatus}`, "lost"),
+      );
+
+      expect(response.status).toBe(200);
+      expect(admin.state.enrollmentUpdates).toContainEqual(
+        expect.objectContaining({ id: "user_1__course_1", status: "refunded" }),
+      );
+    },
+  );
+
+  it("keeps the enrollment when the dispute is won", async () => {
+    // Control: without this the test above would pass even if the handler
+    // revoked on every closed dispute.
+    const admin = createAdmin("refund");
+    admin.state.ledger.status = "disputed";
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const response = await postEvent(disputeClosedEvent("evt_dispute_won", "won"));
+
+    expect(response.status).toBe(200);
+    expect(admin.state.enrollmentUpdates).toEqual([]);
+    expect(admin.state.ledger.status).toBe("settled");
   });
 });
