@@ -1,11 +1,34 @@
 import { describe, expect, it, vi } from "vitest";
+import type Stripe from "stripe";
 
 import {
+  createFreshConnectedAccount,
   ensureCourseSubscriptionCanceled,
+  getOrCreateBillingStripeCustomer,
   normalizeCoursePrice,
 } from "@/lib/payments/server/stripe-helpers";
 import type { ProductOffer } from "@/domain/product-pricing";
 import type { CourseRow } from "@/lib/payments/server/stripe-helpers";
+
+const { supabaseQuery } = vi.hoisted(() => {
+  // One self-returning object covers both chains the create helpers use:
+  // .from().select().eq().maybeSingle() for the profile read, and
+  // .from().update().eq() awaited for the write — awaiting a plain
+  // non-thenable destructures to { error: undefined }, the same silent
+  // success the real driver returns on a zero-error UPDATE.
+  const q: Record<string, unknown> = {};
+  Object.assign(q, {
+    select: () => q,
+    eq: () => q,
+    update: () => q,
+    maybeSingle: async () => ({ data: null, error: null }),
+  });
+  return { supabaseQuery: q };
+});
+
+vi.mock("@/lib/supabase/admin", () => ({
+  getSupabaseAdminClient: () => ({ from: () => supabaseQuery }),
+}));
 
 describe("ensureCourseSubscriptionCanceled", () => {
   it("cancels an active subscription", async () => {
@@ -135,5 +158,41 @@ describe("normalizeCoursePrice dual-read", () => {
       offerId: "offer-launch",
       priceId: "price-launch",
     });
+  });
+});
+
+describe("idempotency keys on first-use creates", () => {
+  it("keys the billing customer per user so racing first checkouts collapse", async () => {
+    const create = vi.fn().mockResolvedValue({ id: "cus_1" });
+    const stripe = { customers: { create } } as unknown as Stripe;
+
+    await getOrCreateBillingStripeCustomer(stripe, "uid_1", "a@b.co");
+    await getOrCreateBillingStripeCustomer(stripe, "uid_1", "a@b.co");
+
+    expect(create.mock.calls[0][1].idempotencyKey).toBe("billing_customer_uid_1");
+    expect(create.mock.calls[1][1].idempotencyKey).toBe("billing_customer_uid_1");
+  });
+
+  it("keys a connect recreate apart from the initial create", async () => {
+    // The control. A uid-only key would pass the customer test above, but here
+    // it would make the self-heal replay a create from up to 24h earlier and
+    // hand back the very orphaned account it is replacing.
+    const create = vi.fn().mockResolvedValue({ id: "acct_new" });
+    const stripe = { accounts: { create } } as unknown as Stripe;
+
+    await createFreshConnectedAccount({ uid: "uid_1", email: undefined, stripe });
+    await createFreshConnectedAccount({
+      uid: "uid_1",
+      email: undefined,
+      stripe,
+      replacingAccountId: "acct_orphan",
+    });
+
+    expect(create.mock.calls[0][1].idempotencyKey).toBe(
+      "connect_account_uid_1_initial",
+    );
+    expect(create.mock.calls[1][1].idempotencyKey).toBe(
+      "connect_account_uid_1_acct_orphan",
+    );
   });
 });
