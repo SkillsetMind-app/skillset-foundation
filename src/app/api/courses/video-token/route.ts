@@ -4,11 +4,18 @@ import { canViewCourseAssetVideo } from "@/domain/course-asset";
 import { getLessonUnlockState, type DripStrategy } from "@/domain/drip-policy";
 import { signBunnyEmbedUrl } from "@/lib/bunny/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { allowByIp, allowByKey } from "@/lib/supabase/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // Protected playback uses assetId plus an explicit entitlement check. Public
 // playback resolves only the configured preview lesson of a published course.
 export const runtime = "nodejs";
+
+// Every call mints a signed embed URL, so an unthrottled loop is a token
+// factory. A student changing lessons fires one per video; 120/min per member
+// is far above real playback, and anonymous preview callers get half that.
+const TOKENS_PER_MINUTE = 120;
+const ANON_TOKENS_PER_MINUTE = 60;
 
 type VideoAsset = {
   bunny_video_id: string | null;
@@ -88,6 +95,13 @@ export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
   const { data: auth, error: authError } = await supabase.auth.getUser();
   const callerId = authError ? null : auth.user?.id ?? null;
+
+  const allowed = callerId
+    ? await allowByKey(`video_token_${callerId}`, TOKENS_PER_MINUTE, 60_000)
+    : await allowByIp(request, "video_token", ANON_TOKENS_PER_MINUTE, 60_000);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests." }, { status: 429 });
+  }
 
   let body: {
     assetId?: unknown;
