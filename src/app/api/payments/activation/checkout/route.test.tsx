@@ -152,6 +152,25 @@ describe("storefront activation checkout", () => {
     });
   });
 
+  // Product decision: the $25 is the door, not a line item. No coupon, promo
+  // code, or percent-off ever reduces it. Course coupons are minted on the
+  // TEACHER's connected account (see stripe-helpers), and this is a platform
+  // charge with no `stripeAccount` — the two coupon universes cannot touch.
+  // This test keeps it that way: opening either surface here would be the
+  // first step to a free storefront.
+  it("never exposes a discount surface on the activation charge", async () => {
+    const response = await POST();
+
+    expect(response.status).toBe(200);
+    const [params, options] = mocks.createSession.mock.calls[0];
+    expect(params).not.toHaveProperty("discounts");
+    expect(params).not.toHaveProperty("allow_promotion_codes");
+    expect(params.line_items).toHaveLength(1);
+    // Platform scope: a request option carrying stripeAccount would put this
+    // charge on a connected account, where course coupons live.
+    expect(options).not.toHaveProperty("stripeAccount");
+  });
+
   it("rejects non-creators and creators still awaiting verification", async () => {
     mocks.getUserRow.mockResolvedValueOnce(profile({ roles: ["student"] }));
     expect((await POST()).status).toBe(403);
