@@ -250,19 +250,32 @@ export async function createFreshConnectedAccount(params: {
   uid: string;
   email: string | undefined;
   stripe: Stripe;
+  replacingAccountId?: string | null;
 }): Promise<string> {
-  const { uid, email, stripe } = params;
+  const { uid, email, stripe, replacingAccountId } = params;
 
-  const account = await stripe.accounts.create({
-    type: "express",
-    email,
-    business_type: "individual",
-    capabilities: {
-      card_payments: { requested: true },
-      transfers: { requested: true },
+  const account = await stripe.accounts.create(
+    {
+      type: "express",
+      email,
+      business_type: "individual",
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
+      metadata: { skillsetUserId: uid },
     },
-    metadata: { skillsetUserId: uid },
-  });
+    // Two onboarding requests racing both read a null account id and both mint
+    // an Express account; the loser's is orphaned by the later UPDATE.
+    // The key MUST carry what is being replaced, not just the uid: this same
+    // function is the self-heal recreate path, and a uid-only key lives 24h, so
+    // a heal inside that window would replay the create and hand back the very
+    // orphaned account it is replacing. Racing healers share the stale id, so
+    // they still collapse to one fresh account.
+    {
+      idempotencyKey: `connect_account_${uid}_${replacingAccountId ?? "initial"}`,
+    },
+  );
 
   const supabase = getSupabaseAdminClient();
   const { error } = await supabase
@@ -451,11 +464,19 @@ export async function getOrCreateBillingStripeCustomer(
     return profile.stripe_customer_id;
   }
 
-  const customer = await stripe.customers.create({
-    email: profile?.email ?? emailFromAuth ?? undefined,
-    name: profile?.display_name ?? undefined,
-    metadata: { uid },
-  });
+  const customer = await stripe.customers.create(
+    {
+      email: profile?.email ?? emailFromAuth ?? undefined,
+      name: profile?.display_name ?? undefined,
+      metadata: { uid },
+    },
+    // Two first-time checkouts racing: the read above saw no id in either, so
+    // without a key Stripe mints two customers and the second UPDATE orphans
+    // the first (its saved cards and invoices become unreachable). The key is
+    // per-user and lives 24h; after that the row exists and the early return
+    // above short-circuits, so it never needs to be longer.
+    { idempotencyKey: `billing_customer_${uid}` },
+  );
 
   const supabase = getSupabaseAdminClient();
   const { error } = await supabase

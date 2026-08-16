@@ -61,7 +61,13 @@ export async function POST() {
             return_url: `${appUrl}/account/payments?stripe=return`,
             type: "account_onboarding",
           }),
-        recreateAccount: () => createFreshConnectedAccount({ uid, email, stripe }),
+        recreateAccount: () =>
+          createFreshConnectedAccount({
+            uid,
+            email,
+            stripe,
+            replacingAccountId: accountId,
+          }),
         onRecreate: () => {},
       });
 

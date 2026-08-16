@@ -66,7 +66,13 @@ export async function POST() {
             },
           });
         },
-        recreateAccount: () => createFreshConnectedAccount({ uid, email, stripe }),
+        recreateAccount: () =>
+          createFreshConnectedAccount({
+            uid,
+            email,
+            stripe,
+            replacingAccountId: accountId,
+          }),
         onRecreate: () => {},
       });
 
