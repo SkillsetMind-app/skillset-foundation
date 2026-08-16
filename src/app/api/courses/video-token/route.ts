@@ -42,11 +42,24 @@ async function isLessonDripLocked(
     enrolledAt: string | null;
   },
 ): Promise<boolean> {
-  const { data: course } = await admin
+  const { data: course, error: courseError } = await admin
     .from("courses")
     .select("modules, drip_strategy, drip_interval_days, free_preview_lesson_id")
     .eq("id", params.courseId)
     .maybeSingle();
+  // ponytail: fail open on a read failure, same rule the rate limiter uses for
+  // playback — a DB blip must not black out a paid student. Drip is scheduling,
+  // not entitlement: enrollment is checked separately by the caller, so the
+  // worst case here is early access to a lesson the student already bought.
+  // Logged instead of swallowed so a persistent failure is visible.
+  if (courseError) {
+    console.error("Drip lock read failed, allowing playback", {
+      courseId: params.courseId,
+      lessonId: params.lessonId,
+      message: courseError.message,
+    });
+    return false;
+  }
 
   const strategy = (course?.drip_strategy as DripStrategy | null) ?? "instant";
   if (!course || strategy === "instant") {

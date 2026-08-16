@@ -140,10 +140,15 @@ export async function POST(request: Request) {
         return_url: `${appUrl}/account/billing/return?session_id={CHECKOUT_SESSION_ID}`,
       },
       {
-        // Idempotency on (uid, plan, cycle) so a double-click doesn't create two
-        // parallel sessions in the same minute.
+        // Idempotency on (uid, plan, cycle). The bucket is hourly, not
+        // per-minute: a minute bucket only collapsed a double-click, so two
+        // tabs 2s apart across a minute boundary minted two live sessions and
+        // paying both opened two subscriptions. An hour still sits inside the
+        // 24h life of both a Checkout Session and a Stripe idempotency record,
+        // so a returning user gets the same usable session instead of a second
+        // charge.
         idempotencyKey: `billing_checkout_${uid}_${planId}_${cycle}_${Math.floor(
-          Date.now() / 60000,
+          Date.now() / 3600000,
         )}`,
       },
     );

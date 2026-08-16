@@ -74,11 +74,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: certificate } = await admin
+    const { data: certificate, error: certificateError } = await admin
       .from("certificates")
       .select("status")
       .eq("id", enrollmentId)
       .maybeSingle();
+    // Fail closed: a read failure here is indistinguishable from "no
+    // certificate", and swallowing it lets an issued-certificate refund
+    // through. Money path — same handling as priorRefundError below.
+    if (certificateError) {
+      throw new Error(certificateError.message);
+    }
 
     if (certificate && certificate.status === "issued") {
       throw new PaymentError(
