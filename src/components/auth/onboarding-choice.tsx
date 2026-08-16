@@ -127,6 +127,14 @@ export function OnboardingChoice() {
     useState(false);
 
   useEffect(() => {
+    // Supabase re-fires onAuthStateChange on TOKEN_REFRESHED / USER_UPDATED —
+    // the hourly refresh, a tab regaining focus, the email-verification round
+    // trip this very screen triggers. uid and emailVerified are server truth
+    // and have to stay fresh, but re-seeding the form on those events throws
+    // away everything typed since. Seed once per subscription; a pathIntent
+    // change re-runs the effect and seeds again.
+    let seeded = false;
+
     return listenToAuthState((session) => {
       if (session.status === "loading") {
         return;
@@ -140,6 +148,12 @@ export function OnboardingChoice() {
       const authedUser = session.user;
       setUid(authedUser.uid);
       setEmailVerified(authedUser.emailVerified);
+
+      if (seeded) {
+        return;
+      }
+      seeded = true;
+
       setDisplayName(authedUser.displayName ?? "");
 
       void (async () => {
