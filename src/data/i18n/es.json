@@ -149,7 +149,11 @@
       "acceptTermsToCreate": "Acepta los Términos del Servicio y la Política de Privacidad para crear tu cuenta.",
       "acceptTermsForGoogle": "Acepta los Términos del Servicio y la Política de Privacidad antes de continuar con Google.",
       "passwordRequirements": "Usa una contraseña que cumpla todos los requisitos.",
-      "mfaUseSignIn": "Esta cuenta tiene la verificación en dos pasos activada. Inicia sesión para introducir tu código."
+      "mfaUseSignIn": "Esta cuenta tiene la verificación en dos pasos activada. Inicia sesión para introducir tu código.",
+      "confirmTitle": "Confirma tu correo para continuar",
+      "confirmBody": "Ábrelo para activar tu cuenta y vuelve para iniciar sesión. Puede tardar un minuto — revisa también tu carpeta de spam o promociones.",
+      "confirmSentTo": "Enviamos un enlace de confirmación a",
+      "confirmSignIn": "Ir a iniciar sesión"
     },
     "guard": {
       "loadingTitle": "Preparando tu espacio de trabajo",

@@ -101,6 +101,7 @@ export function SignupForm() {
   // market-standard signup shape. The rest of the profile is collected later at
   // /welcome onboarding.
   const [step, setStep] = useState<1 | 2>(1);
+  const [confirmSent, setConfirmSent] = useState(false);
   const passwordReady = isStrongPassword(password);
   const passwordsMatch = password === confirmPassword;
   const showMismatch = confirmPassword.length > 0 && !passwordsMatch;
@@ -141,18 +142,29 @@ export function SignupForm() {
     setIsLoading(true);
 
     try {
-      const user = await signUpWithEmail(
+      const { user, needsEmailConfirmation } = await signUpWithEmail(
         { displayName, email, password },
         captchaToken || undefined,
       );
+      track.userSignedUp({
+        role: intent === "teacher" ? "teacher" : "student",
+        source: "email",
+      });
+
+      // No session yet: every profile write below would be filtered by RLS and
+      // return a silent zero-row success, and /welcome would bounce straight to
+      // sign-in with no explanation. Park on the confirm screen instead — terms
+      // are re-captured by the acceptance modal and the username by onboarding,
+      // both of which run once the confirmed session exists.
+      if (needsEmailConfirmation) {
+        setConfirmSent(true);
+        return;
+      }
+
       await acceptUserTerms(user.uid, false);
       await updateUserIdentity(user.uid, {
         displayName,
         username: deriveUsername(displayName, email),
-      });
-      track.userSignedUp({
-        role: intent === "teacher" ? "teacher" : "student",
-        source: "email",
       });
       router.push(`/welcome${getAuthPathQuery(intent)}`);
     } catch (caughtError) {
@@ -214,6 +226,33 @@ export function SignupForm() {
       {error}
     </p>
   ) : null;
+
+  // Account created, session pending confirmation. The form is done — replacing
+  // it (rather than routing to /welcome) keeps the user on a screen that
+  // explains the next step instead of an unexplained sign-in page.
+  if (confirmSent) {
+    return (
+      <section
+        className="mt-5 grid gap-3 rounded-[12px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-5 py-6"
+        aria-live="polite"
+      >
+        <h2 className="text-lg font-semibold text-[var(--color-ink)]">
+          {t("auth.signup.confirmTitle")}
+        </h2>
+        <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
+          {t("auth.signup.confirmSentTo")}{" "}
+          <strong className="font-semibold text-[var(--color-ink)]">{email}</strong>.{" "}
+          {t("auth.signup.confirmBody")}
+        </p>
+        <Link
+          href="/auth?mode=signin"
+          className="justify-self-start rounded-[10px] bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--color-base)]"
+        >
+          {t("auth.signup.confirmSignIn")}
+        </Link>
+      </section>
+    );
+  }
 
   return (
     <form className="mt-5 grid gap-3" onSubmit={handleEmailSignup}>
