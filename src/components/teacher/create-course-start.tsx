@@ -30,6 +30,7 @@ import {
   type TeacherCourseSubscriptionInterval,
 } from "@/domain/teacher-course";
 import { createTeacherCourse } from "@/lib/data/teacher-courses";
+import { track } from "@/lib/posthog/events";
 
 type CreateCourseStartProps = {
   ownerId: string;
@@ -115,6 +116,8 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
         paymentType: courseType,
         communityEnabled: productFormat === "community",
       });
+
+      track.courseDraftCreated({ course_id: courseId, teacher_id: ownerId });
 
       router.push(
         productFormat === "event"
