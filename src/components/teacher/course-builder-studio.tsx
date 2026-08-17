@@ -87,6 +87,7 @@ import {
 } from "@/domain/creator-verification";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import { isPublicFeatureEnabled } from "@/lib/feature-flags";
+import { track } from "@/lib/posthog/events";
 import {
   defaultSkillsetCurrency,
   getCurrencyLabel,
@@ -1267,6 +1268,12 @@ export function CourseBuilderStudio() {
       setSavedSignature(signatureAtSubmit);
       setAutosaveState("saved");
       await publishTeacherCourse(courseId);
+      track.coursePublished({
+        course_id: courseId,
+        teacher_id: user?.uid ?? "",
+        modules_count: modules.length,
+        lessons_count: modules.reduce((total, item) => total + item.lessons.length, 0),
+      });
       setSuccess("Course published. Its product page is now live.");
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "";
