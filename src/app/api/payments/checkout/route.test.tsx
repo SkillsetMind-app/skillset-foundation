@@ -86,6 +86,7 @@ function createAdmin(input: {
   lockReplies?: LockReply[];
   coupon?: Record<string, unknown> | null;
   checkoutLock?: Record<string, unknown> | null;
+  orderVanished?: boolean;
 }) {
   const lockReplies = [...(input.lockReplies ?? [])];
   const lockUpdates: Array<Record<string, unknown>> = [];
@@ -146,10 +147,12 @@ function createAdmin(input: {
     private evaluate(single: boolean) {
       if (this.mode === "delete") return { data: null, error: null };
       if (this.mode === "update") {
-        return {
-          data: single && this.table === "checkout_locks" ? { lock_key: "buyer__course" } : null,
-          error: null,
-        };
+        if (!single) return { data: null, error: null };
+        if (this.table === "checkout_locks") return { data: { lock_key: "buyer__course" }, error: null };
+        if (this.table === "orders") {
+          return { data: input.orderVanished ? null : { id: "order" }, error: null };
+        }
+        return { data: null, error: null };
       }
 
       if (this.table === "course_coupons") {
@@ -503,6 +506,37 @@ describe("course checkout subscription exclusivity", () => {
     expect(response.status).toBe(500);
     expect(mocks.expireSession).toHaveBeenCalledWith(
       "cs_no_url",
+      {},
+      { stripeAccount: "acct_teacher" },
+    );
+    expect(admin.lockDeletes).toEqual(["checkout_locks"]);
+  });
+
+  it("refuses to hand out a session whose order never took the session id", async () => {
+    const admin = createAdmin({
+      lockReplies: [{ action: "claim", checkout_url: null }],
+      // A zero-row UPDATE is a silent success in PostgREST. Without the row
+      // check the buyer gets a payable url and fulfillment finds no order.
+      orderVanished: true,
+    });
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.getCourseRow.mockResolvedValue(course("one_time"));
+    mocks.normalizePrice.mockReturnValue({
+      amountMinor: 12_000,
+      currency: "usd",
+      paymentType: "one_time",
+      source: "legacy",
+    });
+    mocks.createSession.mockResolvedValue({
+      id: "cs_orphan",
+      url: "https://checkout.example/payment",
+    });
+
+    const response = await POST(request({ courseId: "course" }));
+
+    expect(response.status).toBe(500);
+    expect(mocks.expireSession).toHaveBeenCalledWith(
+      "cs_orphan",
       {},
       { stripeAccount: "acct_teacher" },
     );

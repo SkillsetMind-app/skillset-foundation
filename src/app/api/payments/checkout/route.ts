@@ -732,12 +732,22 @@ export async function POST(request: Request) {
         stripeAccount: connectedAccountId,
       });
 
-      const { error: orderSessionError } = await admin
+      // A zero-row update here is a silent success in PostgREST: the buyer would
+      // get a payable session whose order never learned its session id, and
+      // fulfillment later finds nothing to settle. Nothing has been charged yet
+      // at this point, so failing closed is free — the catch below expires the
+      // session and frees the lock.
+      const { data: updatedOrder, error: orderSessionError } = await admin
         .from("orders")
         .update({ checkout_session_id: session.id, updated_at: new Date().toISOString() })
-        .eq("id", orderId);
+        .eq("id", orderId)
+        .select("id")
+        .maybeSingle();
       if (orderSessionError) {
         throw new Error(orderSessionError.message);
+      }
+      if (!updatedOrder) {
+        throw new Error("Order disappeared before the checkout session was attached.");
       }
 
       if (!session.url) {
