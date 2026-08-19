@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { notifyOps } from "@/lib/ops/alert";
 import { StripeConfigError } from "@/lib/payments/server/stripe";
 import { runRateLimit } from "@/lib/supabase/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -63,6 +64,15 @@ export async function requireAdminUserId(): Promise<string> {
   }
   const { data: isAdmin, error } = await supabase.rpc("is_admin");
   if (error || !isAdmin) {
+    // A signed-in account reaching an admin-only route is either a bug in our
+    // own navigation or someone walking the API surface. Worth a look either
+    // way; the throttle keeps a scripted sweep down to one message.
+    notifyOps({
+      event: "admin.route.denied",
+      severity: "warn",
+      summary:
+        "A signed-in account without admin rights was refused at an admin-only route.",
+    });
     throw new PaymentError("Admin privileges are required.", 403, "permission_denied");
   }
   return userData.user.id;

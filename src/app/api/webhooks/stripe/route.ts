@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
 import { ACTIVATION_FEE_CHECKOUT_PURPOSE, planByStripePriceId } from "@/data/plans";
+import { notifyOps } from "@/lib/ops/alert";
 import { buildCourseSubscriptionSaleRecords } from "@/lib/payments/course-subscription-sale";
 import {
   DEFAULT_PLATFORM_FEE_BPS,
@@ -1508,6 +1509,15 @@ export async function POST(request: Request) {
   const rawBody = await request.text();
   const event = constructStripeWebhookEvent(rawBody, signature, webhookSecrets);
   if (!event) {
+    // A signature that does not verify is either a misconfigured secret or
+    // someone forging payment events. Both need a human today, not whenever
+    // the logs are next read.
+    notifyOps({
+      event: "stripe.webhook.bad_signature",
+      severity: "critical",
+      summary:
+        "A Stripe webhook arrived with a signature that did not verify. Either the signing secret is wrong or someone is forging payment events.",
+    });
     return NextResponse.json({ error: "Invalid Stripe webhook signature." }, { status: 400 });
   }
 
