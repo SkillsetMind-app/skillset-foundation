@@ -4,9 +4,9 @@ import { LoginForm } from "@/components/auth/login-form";
 import { SignupForm } from "@/components/auth/signup-form";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
+import { RotatingPortrait } from "@/components/shared/rotating-portrait";
 import { getAuthPathIntentFromSearchParams } from "@/lib/auth/routing";
 import { ArrowLeft, Check } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
@@ -54,16 +54,17 @@ export function AuthPage() {
       <aside className="auth-aside" aria-hidden="true">
         {/* Portrait crop (1300x1272 from the 3000px master) so the tall panel
             downscales instead of blowing up a low-res landscape frame. */}
-        <Image
-          src="/brand/hero/auth-portrait.jpg"
-          alt=""
-          fill
-          priority
-          // Cover is height-driven in this tall panel, so the served width must
-          // track viewport height, not the 44% column width.
+        {/* The same ten faces the homepage hero cycles, on the same 3s beat and
+            1.4s crossfade, so signing up reads as walking further into the same
+            building rather than landing on a different brand.
+            Cover is height-driven in this tall panel, so the served width tracks
+            viewport height, not the 44% column width.
+            ponytail: 75% keeps the subject in the panel crop (the hero needs 78%
+            at its narrowest); nudge the x% if a portrait ever crops off-centre. */}
+        <RotatingPortrait
+          imageClassName="pointer-events-none object-cover object-[75%_center] transition-opacity duration-[1400ms] ease-in-out motion-reduce:transition-none"
           sizes="(min-width: 1024px) 60vw, 0px"
-          // ponytail: x% keeps her face in the panel crop; nudge if off-centre.
-          className="pointer-events-none object-cover [object-position:40%_center]"
+          priority
         />
         <div
           className="pointer-events-none absolute inset-0"
