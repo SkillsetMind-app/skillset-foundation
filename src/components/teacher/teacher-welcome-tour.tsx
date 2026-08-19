@@ -116,7 +116,7 @@ export function TeacherWelcomeTour({ userId, firstName }: { userId: string; firs
         role="dialog"
         aria-modal="true"
         aria-labelledby="teacher-welcome-tour-title"
-        className="w-full max-w-md overflow-hidden rounded-[18px] border border-[var(--color-line)] bg-white shadow-[0_24px_60px_rgba(15,31,58,0.28)] outline-none"
+        className="modal-panel modal-panel-scroll w-full max-w-md overflow-hidden rounded-[18px] border border-[var(--color-line)] bg-white shadow-[0_24px_60px_rgba(15,31,58,0.28)] outline-none"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 px-6 pt-6">
