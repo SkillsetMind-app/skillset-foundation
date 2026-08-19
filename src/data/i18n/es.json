@@ -253,7 +253,7 @@
   },
   "home": {
     "hero": {
-      "eyebrow": "Para coaches y expertos en desarrollo personal",
+      "eyebrow": "Para coaches, psicólogos y expertos en desarrollo personal que enseñan",
       "title1": "Tu conocimiento cambia vidas.",
       "title2": "Ahora haz que llegue a miles.",
       "sub": "Hecho para coaches, facilitadores y expertos en desarrollo personal. Sin web que montar, sin herramientas que configurar. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe, así que nunca retenemos tu dinero. Tú enseñas.",
@@ -326,7 +326,7 @@
       "readFull": "Lee la Promesa completa"
     },
     "creators": {
-      "eyebrow": "Para coaches y expertos en desarrollo personal",
+      "eyebrow": "Para coaches, psicólogos y expertos en desarrollo personal que enseñan",
       "title": "Llega a más gente de la que tu consulta jamás podría.",
       "ctaStart": "Empieza a enseñar",
       "ctaPromise": "Lee la Promesa al Creador",

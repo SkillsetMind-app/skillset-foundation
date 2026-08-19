@@ -253,7 +253,7 @@
   },
   "home": {
     "hero": {
-      "eyebrow": "For coaches & personal-development experts",
+      "eyebrow": "For coaches, psychologists & personal-development experts who teach",
       "title1": "Your knowledge changes lives.",
       "title2": "Now let it reach thousands.",
       "sub": "Built for coaches, facilitators, and personal-development experts. No site to build, no tools to wire up. We run the checkout and the classroom — your buyers pay your own Stripe account, so we never hold a cent of your money. You teach.",
@@ -326,7 +326,7 @@
       "readFull": "Read the full Promise"
     },
     "creators": {
-      "eyebrow": "For coaches & personal-development experts",
+      "eyebrow": "For coaches, psychologists & personal-development experts who teach",
       "title": "Reach more people than your practice ever could.",
       "ctaStart": "Start teaching",
       "ctaPromise": "Read the Creator Promise",

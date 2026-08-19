@@ -432,6 +432,13 @@ export function getAuthErrorMessage(error: unknown): string {
     return "Use a stronger password with at least 8 characters.";
   }
 
+  // Supabase refuses every sign-in/signup when CAPTCHA protection is on in the
+  // project but the client sends no token. Raw GoTrue text ("captcha protection:
+  // request disallowed") leaks config detail and tells the visitor nothing.
+  if (matches("captcha")) {
+    return "The security check did not go through. Reload the page and try again.";
+  }
+
   // Covers over_email_send_rate_limit, over_request_rate_limit and the
   // human-readable "rate limit" variants GoTrue puts in messages.
   if (matches("rate_limit") || matches("rate limit")) {
