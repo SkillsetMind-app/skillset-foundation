@@ -1,82 +1,11 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
-
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { RotatingPortrait } from "@/components/shared/rotating-portrait";
 import { HeroCtas } from "@/components/site/hero-ctas";
-
-const HERO_PORTRAITS = [
-  "/brand/hero/01_blonde_expert_green_macbook.webp",
-  "/brand/hero/02_white_male_tobacco_knit.webp",
-  "/brand/hero/03_black_female_terracotta_seated.webp",
-  "/brand/hero/04_black_male_burgundy_polo.webp",
-  "/brand/hero/05_indian_female_aubergine_notebook.webp",
-  "/brand/hero/06_middle_eastern_male_petrol_notebook.webp",
-  "/brand/hero/07_east_asian_female_offwhite_tablet.webp",
-  "/brand/hero/08_east_asian_male_camel_blazer.webp",
-  "/brand/hero/09_brazilian_latina_emerald_blouse.webp",
-  "/brand/hero/10_brazilian_latino_burgundy_knit.webp",
-] as const;
-
-const HERO_PORTRAIT_INTERVAL_MS = 3_000;
-const HERO_PORTRAIT_FADE_MS = 1_400;
 
 export function MarketingHero() {
   const { t } = useTranslation();
-  const activeIndexRef = useRef(0);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-
-  useEffect(() => {
-    const reducedMotion =
-      typeof window.matchMedia === "function"
-        ? window.matchMedia("(prefers-reduced-motion: reduce)")
-        : null;
-    let intervalId: number | undefined;
-    let transitionTimeoutId: number | undefined;
-
-    const stopTimers = () => {
-      if (intervalId !== undefined) window.clearInterval(intervalId);
-      if (transitionTimeoutId !== undefined) {
-        window.clearTimeout(transitionTimeoutId);
-      }
-      intervalId = undefined;
-      transitionTimeoutId = undefined;
-    };
-
-    const startCycle = () => {
-      intervalId = window.setInterval(() => {
-        setIsTransitioning(true);
-        transitionTimeoutId = window.setTimeout(() => {
-          const nextIndex =
-            (activeIndexRef.current + 1) % HERO_PORTRAITS.length;
-          activeIndexRef.current = nextIndex;
-          setActiveIndex(nextIndex);
-          setIsTransitioning(false);
-          transitionTimeoutId = undefined;
-        }, HERO_PORTRAIT_FADE_MS);
-      }, HERO_PORTRAIT_INTERVAL_MS);
-    };
-
-    if (!reducedMotion) return stopTimers;
-
-    const handleMotionPreference = () => {
-      stopTimers();
-      setIsTransitioning(false);
-      if (!reducedMotion.matches) startCycle();
-    };
-
-    if (!reducedMotion.matches) startCycle();
-    reducedMotion.addEventListener("change", handleMotionPreference);
-
-    return () => {
-      stopTimers();
-      reducedMotion.removeEventListener("change", handleMotionPreference);
-    };
-  }, []);
-
-  const nextIndex = (activeIndex + 1) % HERO_PORTRAITS.length;
   // Keep the hero behind the floating nav while fitting the primary CTA
   // inside the first viewport on standard desktop screens.
   return (
@@ -87,27 +16,10 @@ export function MarketingHero() {
           cache, so each transition starts immediately without loading flashes. */}
       <div aria-hidden="true" className="absolute inset-0">
         <div className="absolute inset-0 opacity-65 lg:opacity-100">
-          <Image
-            key={`active-${HERO_PORTRAITS[activeIndex]}`}
-            src={HERO_PORTRAITS[activeIndex]}
-            alt=""
-            fill
-            priority={activeIndex === 0}
+          <RotatingPortrait
+            imageClassName="hero-portrait-image object-cover object-[78%_center] transition-opacity duration-[1400ms] ease-in-out motion-reduce:transition-none sm:object-[74%_center] md:object-[68%_center] lg:object-center"
             sizes="100vw"
-            className={`hero-portrait-image object-cover object-[78%_center] transition-opacity duration-[1400ms] ease-in-out motion-reduce:transition-none sm:object-[74%_center] md:object-[68%_center] lg:object-center ${
-              isTransitioning ? "opacity-0" : "opacity-100"
-            }`}
-          />
-          <Image
-            key={`next-${HERO_PORTRAITS[nextIndex]}`}
-            src={HERO_PORTRAITS[nextIndex]}
-            alt=""
-            fill
-            loading="lazy"
-            sizes="100vw"
-            className={`hero-portrait-image object-cover object-[78%_center] transition-opacity duration-[1400ms] ease-in-out motion-reduce:transition-none sm:object-[74%_center] md:object-[68%_center] lg:object-center ${
-              isTransitioning ? "opacity-100" : "opacity-0"
-            }`}
+            priority
           />
         </div>
           <div className="absolute inset-0 bg-[#071523]/55 lg:bg-transparent" />
