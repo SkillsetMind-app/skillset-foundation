@@ -50,36 +50,41 @@ describe("country filter in the proxy", () => {
   it("leaves the public site open to everyone", async () => {
     // The proxy matcher covers every route because the session refresh needs
     // it. If the country check ever leaked past the guarded list, the homepage
-    // would go dark for most of the world — so this is asserted first.
+    // would go dark for most of the world — so this is asserted first, and
+    // with a list configured, since without one nothing is filtered at all.
     for (const path of ["/", "/courses", "/pricing", "/instructors"]) {
-      const response = await run(path, "RU");
+      const response = await run(path, "RU", "US,BR");
       expect(response.status, path).toBe(200);
     }
     expect(mocks.notifyOps).not.toHaveBeenCalled();
   });
 
-  it("allows a country on the list", async () => {
-    const response = await run("/auth", "US");
+  it("filters nobody by default", async () => {
+    // The platform is not limited by country. With no GEO_ALLOWED_COUNTRIES
+    // set, every country reaches every door — this is the shipped behaviour,
+    // and the most important thing in this file to keep true.
+    for (const country of ["US", "BR", "RU", "CN", "PT"]) {
+      const response = await run("/auth", country);
+      expect(response.status, country).toBe(200);
+    }
+    expect(mocks.notifyOps).not.toHaveBeenCalled();
+  });
+
+  it("allows a country on the list once a list exists", async () => {
+    const response = await run("/auth", "US", "US,BR");
     expect(response.status).toBe(200);
     expect(mocks.notifyOps).not.toHaveBeenCalled();
   });
 
-  it("allows Brazil by default, because the founder is there", async () => {
-    // The default list locking the owner out of his own platform is the most
-    // expensive way this can fail, so it is asserted, not assumed.
-    const response = await run("/auth", "BR");
-    expect(response.status).toBe(200);
-  });
-
   it("refuses a guarded path from a country off the list, and reports it", async () => {
-    const response = await run("/auth", "RU");
+    const response = await run("/auth", "RU", "US,BR");
     expect(response.status).toBe(403);
     expect(mocks.notifyOps).toHaveBeenCalledTimes(1);
   });
 
-  it("guards the payment and auth APIs too", async () => {
+  it("guards the payment and auth APIs too, once a list exists", async () => {
     for (const path of ["/api/payments/checkout", "/api/auth/pwned-check"]) {
-      const response = await run(path, "RU");
+      const response = await run(path, "RU", "US,BR");
       expect(response.status, path).toBe(403);
     }
   });
@@ -89,7 +94,7 @@ describe("country filter in the proxy", () => {
     // confirmation link opened from an email client on another network still
     // has to complete.
     for (const path of ["/auth/callback", "/auth/confirm"]) {
-      const response = await run(path, "RU");
+      const response = await run(path, "RU", "US,BR");
       expect(response.status, path).toBe(200);
     }
   });
@@ -97,7 +102,7 @@ describe("country filter in the proxy", () => {
   it("allows when the country is unknown", async () => {
     // Fails open on purpose. A filter that blocks whenever the signal is
     // missing takes the platform down the first time the header hiccups.
-    const response = await run("/auth", null);
+    const response = await run("/auth", null, "US,BR");
     expect(response.status).toBe(200);
   });
 

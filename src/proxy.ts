@@ -44,7 +44,11 @@ function isGuardedPath(pathname: string): boolean {
   );
 }
 
-const DEFAULT_ALLOWED = "US,BR";
+// Off unless someone turns it on. Patrick decided the platform should not
+// be limited by country, so the filter ships dormant rather than being
+// deleted: the code, the tests and the escape hatch stay, and switching it
+// on later is one environment variable instead of a new pull request.
+const DEFAULT_ALLOWED = "";
 
 function allowedCountries(): ReadonlySet<string> {
   const raw = process.env.GEO_ALLOWED_COUNTRIES ?? DEFAULT_ALLOWED;
