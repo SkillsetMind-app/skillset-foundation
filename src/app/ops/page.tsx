@@ -1,5 +1,7 @@
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { OpsDashboard } from "@/components/admin/ops-dashboard";
+import { RoleManager } from "@/components/admin/role-manager";
+import { ViewAsSwitcher } from "@/components/admin/view-as";
 import { PlatformShell } from "@/components/platform/platform-shell";
 
 const opsCards = [
@@ -41,6 +43,21 @@ export default function OpsPage() {
           ))}
         </div>
         <OpsDashboard />
+        {/* Access levels. Sits behind the same platform.accessAdmin gate as
+            the rest of this page; the database gates every write again on
+            its own, so the surface alone grants nothing. */}
+        <div className="mt-8">
+          <h2 className="display-title text-3xl leading-none text-[var(--color-ink)]">
+            Access levels
+          </h2>
+          <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
+            Who can do what on the platform, and who holds each level.
+          </p>
+          <div className="mt-5 space-y-5">
+            <ViewAsSwitcher />
+            <RoleManager />
+          </div>
+        </div>
       </PlatformShell>
     </ProtectedSurface>
   );
