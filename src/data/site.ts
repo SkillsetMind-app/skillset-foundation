@@ -1,19 +1,5 @@
-import { getFeaturedCourseCards, getProductSurfaces } from "@/lib/data/catalog";
+import { getProductSurfaces } from "@/lib/data/catalog";
 import type { Permission } from "@/lib/permissions";
-
-export type Track = {
-  slug: string;
-  title: string;
-  category: string;
-  duration: string;
-  status: string;
-  summary: string;
-  image: string;
-  detail: string;
-  priceLabel: string;
-  freePreviewLabel: string;
-  hasPaidAccess: boolean;
-};
 
 export type Surface = {
   title: string;
@@ -43,18 +29,9 @@ export type PlatformNavItem = {
   newTab?: boolean;
 };
 
-export const featuredTracks: Track[] = getFeaturedCourseCards();
-
 export const productSurfaces: Surface[] = getProductSurfaces().map(
   ({ title, href, label, summary }) => ({ title, href, label, summary })
 );
-
-export const marketplaceHighlights = [
-  "Professional programs across coaching, leadership, wellbeing, and management",
-  "Experienced instructors with practical, verifiable credibility",
-  "A learning experience shaped for clarity, support, and momentum",
-  "Designed for international learners and instructors",
-];
 
 export const platformNav: PlatformNavItem[] = [
   // --- Learner workspace ---

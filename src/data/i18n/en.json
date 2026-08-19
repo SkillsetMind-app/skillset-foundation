@@ -283,7 +283,11 @@
       "title": "Courses by verified experts, ready to learn.",
       "sub": "Every course is built by an independent professional verified by SkillsetMind, with live programs monitored for marketplace compliance.",
       "browseAll": "Browse all courses",
-      "viewCourse": "View course"
+      "viewCourse": "View course",
+      "highlight1": "Professional programs across coaching, leadership, wellbeing, and management",
+      "highlight2": "Experienced instructors with practical, verifiable credibility",
+      "highlight3": "A learning experience shaped for clarity, support, and momentum",
+      "highlight4": "Designed for international learners and instructors"
     },
     "capabilities": {
       "kicker": "Built into SkillsetMind",

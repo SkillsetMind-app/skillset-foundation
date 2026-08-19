@@ -283,7 +283,11 @@
       "title": "Cursos de expertos verificados, listos para aprender.",
       "sub": "Cada curso lo crea un profesional independiente verificado por SkillsetMind, y los programas activos se monitorean para garantizar el cumplimiento del marketplace.",
       "browseAll": "Ver todos los cursos",
-      "viewCourse": "Ver curso"
+      "viewCourse": "Ver curso",
+      "highlight1": "Programas profesionales de coaching, liderazgo, bienestar y gestión",
+      "highlight2": "Instructores con experiencia y credibilidad práctica y verificable",
+      "highlight3": "Una experiencia de aprendizaje pensada para la claridad, el apoyo y el impulso",
+      "highlight4": "Diseñada para estudiantes e instructores de todo el mundo"
     },
     "capabilities": {
       "kicker": "Incluido en SkillsetMind",
