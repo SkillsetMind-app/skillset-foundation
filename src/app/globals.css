@@ -295,8 +295,24 @@ html {
 }
 
 @media (min-width: 1024px) {
+  /* The portrait sits lower on desktop so faces clear the floating header.
+     Nudging the element down leaves the top of the hero uncovered, and the
+     hero is pulled above the viewport by its negative margin, so that strip
+     was visible as a hard horizontal seam across the whole top edge.
+
+     The layer behind the photos is filled with the portraits' own backdrop,
+     so the strip and the photo read as one surface. Measured across all ten
+     files: the top band averages rgb(5, 16, 31) and no file deviates by more
+     than 8/255 on any channel, which is invisible at this darkness.
+
+     These two rules are a pair. Changing the translate without the fill (or
+     removing the fill) brings the seam straight back. */
   .hero-portrait-image {
     transform: translateY(clamp(6rem, 10vh, 8rem));
+  }
+
+  .hero-portrait-layer {
+    background-color: #05101f;
   }
 }
 
