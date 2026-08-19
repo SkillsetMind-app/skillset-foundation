@@ -36,10 +36,15 @@ export const featureFlagDefinitions = {
     mfa: {
       key: "auth.mfa",
       area: "auth",
+      // On since 2026-08-19, when Supabase Auth MFA (TOTP) was enabled on the
+      // project. The flag guards ENROLMENT only: the sign-in challenge in the
+      // login form runs unconditionally, so anyone already enrolled keeps
+      // signing in even if this is switched back off. Turning it on or off
+      // cannot lock anyone out in either direction.
       label: "Two-factor authentication",
       description:
-        "Enables TOTP two-factor enrollment and the sign-in challenge. Requires Supabase Auth MFA (TOTP) to be enabled on the project.",
-      defaultEnabled: false,
+        "Enables TOTP two-factor enrolment. The sign-in challenge is always active. Requires Supabase Auth MFA (TOTP) on the project.",
+      defaultEnabled: true,
     },
   },
   payments: {
