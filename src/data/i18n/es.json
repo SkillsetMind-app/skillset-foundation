@@ -253,7 +253,7 @@
   },
   "home": {
     "hero": {
-      "eyebrow": "Para coaches y expertos en desarrollo personal",
+      "eyebrow": "Para coaches, psicólogos y expertos en desarrollo personal que enseñan",
       "title1": "Tu conocimiento cambia vidas.",
       "title2": "Ahora haz que llegue a miles.",
       "sub": "Hecho para coaches, facilitadores y expertos en desarrollo personal. Sin web que montar, sin herramientas que configurar. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe, así que nunca retenemos tu dinero. Tú enseñas.",
@@ -283,7 +283,11 @@
       "title": "Cursos de expertos verificados, listos para aprender.",
       "sub": "Cada curso lo crea un profesional independiente verificado por SkillsetMind, y los programas activos se monitorean para garantizar el cumplimiento del marketplace.",
       "browseAll": "Ver todos los cursos",
-      "viewCourse": "Ver curso"
+      "viewCourse": "Ver curso",
+      "highlight1": "Programas profesionales de coaching, liderazgo, bienestar y gestión",
+      "highlight2": "Instructores con experiencia y credibilidad práctica y verificable",
+      "highlight3": "Una experiencia de aprendizaje pensada para la claridad, el apoyo y el impulso",
+      "highlight4": "Diseñada para estudiantes e instructores de todo el mundo"
     },
     "capabilities": {
       "kicker": "Incluido en SkillsetMind",
@@ -326,7 +330,7 @@
       "readFull": "Lee la Promesa completa"
     },
     "creators": {
-      "eyebrow": "Para coaches y expertos en desarrollo personal",
+      "eyebrow": "Para coaches, psicólogos y expertos en desarrollo personal que enseñan",
       "title": "Llega a más gente de la que tu consulta jamás podría.",
       "ctaStart": "Empieza a enseñar",
       "ctaPromise": "Lee la Promesa al Creador",

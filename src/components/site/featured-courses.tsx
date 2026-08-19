@@ -18,9 +18,20 @@ import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
 // A curated slice of the LIVE catalog, shown on the homepage so visitors see the
 // real programs teachers have published. Same stream the /courses marketplace
-// uses; ops-featured picks lead, capped at 6. Renders nothing while the catalog
-// is empty — an honest homepage beats a fabricated one.
+// uses; ops-featured picks lead, capped at 6. While the catalog is empty the
+// band keeps its heading and states what the marketplace is, instead of
+// vanishing and leaving the #courses anchor pointing at nothing — an honest
+// homepage beats a fabricated one, but silence is not honesty either.
 const FEATURED_LIMIT = 6;
+
+// t() returns a string, so the copy lives as numbered keys (house pattern:
+// home.creators.bullet1, home.hero.trust1Title) rather than a JSON array.
+const HIGHLIGHT_KEYS = [
+  "home.marketplace.highlight1",
+  "home.marketplace.highlight2",
+  "home.marketplace.highlight3",
+  "home.marketplace.highlight4",
+] as const;
 
 export function FeaturedCourses() {
   const { t } = useTranslation();
@@ -48,10 +59,6 @@ export function FeaturedCourses() {
       },
     );
   }, []);
-
-  if (featuredCourses.length === 0) {
-    return null;
-  }
 
   return (
     <section className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
@@ -82,6 +89,18 @@ export function FeaturedCourses() {
           </Link>
         </div>
 
+        {featuredCourses.length === 0 ? (
+          <ul className="mt-10 grid gap-4 sm:grid-cols-2">
+            {HIGHLIGHT_KEYS.map((key) => (
+              <li
+                key={key}
+                className="h-full rounded-[14px] border border-[var(--color-line)] bg-white p-6 text-[15px] leading-7 text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)]"
+              >
+                {t(key)}
+              </li>
+            ))}
+          </ul>
+        ) : (
         <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {featuredCourses.map((course) => (
             <li key={course.slug}>
@@ -137,6 +156,7 @@ export function FeaturedCourses() {
             </li>
           ))}
         </ul>
+        )}
       </RevealSection>
     </section>
   );

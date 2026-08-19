@@ -253,7 +253,7 @@
   },
   "home": {
     "hero": {
-      "eyebrow": "For coaches & personal-development experts",
+      "eyebrow": "For coaches, psychologists & personal-development experts who teach",
       "title1": "Your knowledge changes lives.",
       "title2": "Now let it reach thousands.",
       "sub": "Built for coaches, facilitators, and personal-development experts. No site to build, no tools to wire up. We run the checkout and the classroom — your buyers pay your own Stripe account, so we never hold a cent of your money. You teach.",
@@ -283,7 +283,11 @@
       "title": "Courses by verified experts, ready to learn.",
       "sub": "Every course is built by an independent professional verified by SkillsetMind, with live programs monitored for marketplace compliance.",
       "browseAll": "Browse all courses",
-      "viewCourse": "View course"
+      "viewCourse": "View course",
+      "highlight1": "Professional programs across coaching, leadership, wellbeing, and management",
+      "highlight2": "Experienced instructors with practical, verifiable credibility",
+      "highlight3": "A learning experience shaped for clarity, support, and momentum",
+      "highlight4": "Designed for international learners and instructors"
     },
     "capabilities": {
       "kicker": "Built into SkillsetMind",
@@ -326,7 +330,7 @@
       "readFull": "Read the full Promise"
     },
     "creators": {
-      "eyebrow": "For coaches & personal-development experts",
+      "eyebrow": "For coaches, psychologists & personal-development experts who teach",
       "title": "Reach more people than your practice ever could.",
       "ctaStart": "Start teaching",
       "ctaPromise": "Read the Creator Promise",

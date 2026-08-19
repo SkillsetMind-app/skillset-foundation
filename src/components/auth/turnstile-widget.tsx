@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Cloudflare Turnstile — env-gated bot check for the auth forms (login, signup,
 // password reset). When NEXT_PUBLIC_TURNSTILE_SITE_KEY is unset the component
@@ -19,6 +19,9 @@ const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 export const isCaptchaEnabled = Boolean(SITE_KEY);
 
+// A blocked or hung script must not stall the promise forever.
+const SCRIPT_TIMEOUT_MS = 10_000;
+
 type TurnstileApi = {
   render: (el: HTMLElement, opts: Record<string, unknown>) => string;
   reset: (id?: string) => void;
@@ -31,18 +34,28 @@ declare global {
   }
 }
 
-let scriptPromise: Promise<void> | null = null;
+let scriptPromise: Promise<boolean> | null = null;
 
-function loadTurnstile(): Promise<void> {
-  if (typeof window === "undefined") return Promise.resolve();
-  if (window.turnstile) return Promise.resolve();
+// Resolves false when the script cannot load (ad blocker, network policy,
+// Cloudflare outage) instead of never settling. A hung promise left the widget
+// unrendered, so the token stayed "" and BOTH auth submit buttons sat disabled
+// with nothing on screen saying why.
+function loadTurnstile(): Promise<boolean> {
+  if (typeof window === "undefined") return Promise.resolve(false);
+  if (window.turnstile) return Promise.resolve(true);
   if (scriptPromise) return scriptPromise;
-  scriptPromise = new Promise<void>((resolve) => {
+  scriptPromise = new Promise<boolean>((resolve) => {
     const s = document.createElement("script");
     s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
     s.async = true;
     s.defer = true;
-    s.onload = () => resolve();
+    const timer = setTimeout(() => resolve(false), SCRIPT_TIMEOUT_MS);
+    const settle = (ok: boolean) => {
+      clearTimeout(timer);
+      resolve(ok);
+    };
+    s.onload = () => settle(true);
+    s.onerror = () => settle(false);
     document.head.appendChild(s);
   });
   return scriptPromise;
@@ -62,6 +75,7 @@ export function TurnstileWidget({
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   // Keep the latest onToken without making it a mount-effect dep (which would
   // re-render the widget on every parent render).
   const onTokenRef = useRef(onToken);
@@ -75,8 +89,12 @@ export function TurnstileWidget({
     if (!el) return;
     let cancelled = false;
 
-    void loadTurnstile().then(() => {
-      if (cancelled || !window.turnstile) return;
+    void loadTurnstile().then((ok) => {
+      if (cancelled) return;
+      if (!ok || !window.turnstile) {
+        setLoadFailed(true);
+        return;
+      }
       widgetIdRef.current = window.turnstile.render(el, {
         sitekey: SITE_KEY,
         callback: (token: string) => onTokenRef.current(token),
@@ -102,5 +120,17 @@ export function TurnstileWidget({
   }, [resetSignal]);
 
   if (!SITE_KEY) return null;
+  if (loadFailed) {
+    return (
+      <p
+        role="alert"
+        aria-live="assertive"
+        className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+      >
+        The security check could not load, so sign-in is blocked. Turn off any ad
+        blocker for this site or switch networks, then reload the page.
+      </p>
+    );
+  }
   return <div ref={containerRef} className="flex justify-center" />;
 }
