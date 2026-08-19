@@ -1,6 +1,7 @@
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { OpsDashboard } from "@/components/admin/ops-dashboard";
 import { RoleManager } from "@/components/admin/role-manager";
+import { ViewAsSwitcher } from "@/components/admin/view-as";
 import { PlatformShell } from "@/components/platform/platform-shell";
 
 const opsCards = [
@@ -52,7 +53,8 @@ export default function OpsPage() {
           <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
             Who can do what on the platform, and who holds each level.
           </p>
-          <div className="mt-5">
+          <div className="mt-5 space-y-5">
+            <ViewAsSwitcher />
             <RoleManager />
           </div>
         </div>

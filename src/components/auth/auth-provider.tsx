@@ -4,8 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react";
@@ -24,12 +26,24 @@ import {
   currentPrivacyVersion,
   currentTermsVersion,
 } from "@/lib/legal/versions";
+import { ViewAsBanner } from "@/components/admin/view-as";
+import { isRole, type Role } from "@/lib/permissions";
 import { identifyUser, resetUser } from "@/lib/posthog/client";
 
 type AuthContextValue = AuthSession & {
   refreshUser: () => Promise<void>;
   signOut: () => Promise<void>;
+  /** The role an admin is previewing the product as, or null. */
+  viewAsRole: Role | null;
+  setViewAsRole: (role: Role | null) => void;
+  /** True when the SIGNED-IN account is an admin, ignoring any preview. */
+  isRealAdmin: boolean;
 };
+
+// sessionStorage, not a cookie: a preview is a look around, and it should die
+// with the tab rather than follow someone back tomorrow wondering why half the
+// product vanished.
+const VIEW_AS_KEY = "skillsetmind.viewAs";
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -38,6 +52,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     status: "loading",
     user: null,
   });
+
+  // Read once during the first render rather than in an effect: an effect would
+  // paint the un-previewed product first and then swap it, and this base treats
+  // setState-inside-an-effect as an error. Safe against hydration mismatch
+  // because the session is still loading on the first client render, so the
+  // banner is absent on both sides regardless of what is stored.
+  const [viewAsRole, setViewAsRoleState] = useState<Role | null>(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+    const stored = window.sessionStorage.getItem(VIEW_AS_KEY);
+    return stored && isRole(stored) ? stored : null;
+  });
+
+  const setViewAsRole = useCallback((role: Role | null) => {
+    setViewAsRoleState(role);
+    if (role) {
+      window.sessionStorage.setItem(VIEW_AS_KEY, role);
+    } else {
+      window.sessionStorage.removeItem(VIEW_AS_KEY);
+    }
+  }, []);
 
   useEffect(() => {
     return listenToAuthState(setSession);
@@ -70,15 +106,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  const isRealAdmin = session.user?.roles?.includes("admin") ?? false;
+
+  /**
+   * What the rest of the app sees.
+   *
+   * A preview can only ever NARROW: it applies solely when the signed-in
+   * account really is an admin, and it replaces the role set outright, so it
+   * can never hand anyone a permission they did not already have. Every write
+   * is still gated server-side by RLS and by is_admin() in SQL, which know
+   * nothing about this and cannot be fooled by it — the preview changes what
+   * the interface offers, never what the database allows.
+   *
+   * Reading isRealAdmin from the untouched session (not the previewed one) is
+   * what stops a preview from being able to hide the way back out of itself.
+   */
+  const previewSession = useMemo<AuthSession>(() => {
+    if (!isRealAdmin || !viewAsRole || !session.user) {
+      return session;
+    }
+    return { ...session, user: { ...session.user, roles: [viewAsRole] } };
+  }, [session, isRealAdmin, viewAsRole]);
+
   return (
     <AuthContext.Provider
       value={{
-        ...session,
+        ...previewSession,
         refreshUser,
         signOut: signOutOfSkillsetMind,
+        viewAsRole: isRealAdmin ? viewAsRole : null,
+        setViewAsRole,
+        isRealAdmin,
       }}
     >
       <LegalAcceptanceGate />
+      <ViewAsBanner />
       {children}
     </AuthContext.Provider>
   );
