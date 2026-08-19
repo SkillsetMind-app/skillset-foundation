@@ -2215,6 +2215,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_list_platform_users: {
+        Args: { p_limit?: number; p_search?: string }
+        Returns: {
+          created_at: string
+          creator_verification_status: string
+          display_name: string
+          email: string
+          roles: Json
+          uid: string
+        }[]
+      }
+      admin_set_user_roles: {
+        Args: { p_roles: Json; p_target_uid: string }
+        Returns: Json
+      }
       assert_course_owner: { Args: { p_course_id: string }; Returns: string }
       claim_checkout_lock: {
         Args: {
