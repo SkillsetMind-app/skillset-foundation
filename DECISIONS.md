@@ -299,3 +299,98 @@ um problema que não existe.
 library/collection — não precisa ser instrumentado por nós) + o **overage suave** já
 decidido: cobra o excedente, **nunca bloqueia vídeo em plano pago**. Aluno que pagou pelo
 curso não pode bater em paywall de infraestrutura nossa.
+
+---
+
+## D24 — Afiliados saem do roadmap: são incompatíveis com *direct charge*
+**Data:** 2026-08-20 · **Decisão do fundador:** *"a gente não tem afiliado — tire, porque não dá para ter agora perante o método de pagamento que temos."*
+
+**Decisão:** rede de afiliados sai da lista de gaps competitivos e do roadmap. Não é "adiado por prioridade" — é incompatível com o modelo de pagamento atual.
+
+**Por quê:** em *direct charge* o dinheiro nunca passa pela plataforma. A venda cai na conta Stripe conectada do professor, que é o merchant of record, e nós retiramos `application_fee_amount` no ato da cobrança. **Não existe saldo retido de onde pagar um terceiro.** Um programa de afiliados exigiria uma de duas coisas, e as duas são ruins hoje:
+
+1. **Reter o dinheiro do professor** para repassar ao afiliado — quebra a Skillset Promise (*"você continua dono do seu dinheiro, sem hold da plataforma"*), que é o nosso argumento contra a Hotmart.
+2. **Transferências saindo da conta conectada do professor** para a do afiliado, com autorização dele — dobra o escopo de compliance (KYC do afiliado, 1099/informe de rendimentos, chargeback em cadeia) por um recurso que nenhum criador do nicho pediu ainda.
+
+**O que os concorrentes fazem:** Teachable, Thinkific, Kajabi e Skool têm afiliados no plano de entrada — mas os quatro são **merchant of record** ou seguram o dinheiro. O recurso é barato para eles exatamente porque o modelo de pagamento é o oposto do nosso.
+
+**Consequência aceita:** perdemos uma linha na comparação lado a lado. A troca é deliberada — o direct charge é o que sustenta *"o dinheiro cai direto na sua conta"*, e esse argumento vale mais que a linha de afiliados.
+
+**Gatilho para reabrir:** se e quando a plataforma passar a operar como merchant of record em alguma jurisdição, ou se três ou mais criadores pagantes pedirem explicitamente.
+
+---
+
+## D25 — Limitadores por plano: ancorar no número do concorrente, ganhar no preço
+**Data:** 2026-08-20 · **Decisão do fundador:** *"devemos colocar limitadores, seja 1 curso ou 1 comunidade, algo equiparável ao nosso concorrente mas possivelmente melhor."*
+
+**Decisão:** os planos passam a ter cotas reais. A regra de calibração é **entregar o mesmo número que o concorrente cobra caro, por menos dinheiro** — não inventar generosidade nem inventar escassez.
+
+### Tabela decidida
+
+| Cota | Free $0 | Starter $19 | Pro $89 | Plus $199 |
+|---|---|---|---|---|
+| Cursos publicados | 1 | 5 | 50 | ilimitado |
+| Comunidades | 1 | 1 | 3 | ilimitado |
+| Alunos ativos | 100 | 1.000 | 5.000 | ilimitado |
+| Banda de vídeo/mês | 20 GB | 100 GB | 400 GB | 1.500 GB |
+| **Armazenamento de vídeo** | **ilimitado** | ilimitado | ilimitado | ilimitado |
+| Domínio próprio | 0 | 1 | 3 | 5 |
+| Assentos de equipe | 1 | 2 | 6 | 15 |
+| Destaques no marketplace | 0 | 1 | 3 | 5 |
+
+### Ancoragem de cada número (preços lidos em 20/08/2026)
+
+| Linha | Quem cobra o mesmo, e quanto |
+|---|---|
+| Free: 1 curso + 1 comunidade | Kajabi Starter, **$89/mês** |
+| Free: 100 alunos | Teachable Starter, **$39/mês** |
+| Starter: 5 cursos | Teachable Starter $39 · Kajabi Basic $179 |
+| Starter: 1.000 alunos | Teachable Builder, **$89** |
+| Pro: 50 cursos | Teachable Growth $189 · Kajabi Growth $249 |
+| Pro: 3 comunidades | Thinkific Grow $219 · Kajabi Pro $499 |
+| Pro: 5.000 alunos + 400 GB | Teachable Growth $189 · Thinkific Grow $219 |
+
+### O que muda contra a tabela que está no código hoje
+
+1. **Pro sobe de 25 → 50 cursos.** Estávamos abaixo de Teachable e Kajabi na mesma faixa.
+2. **Alunos sobem de 50/300/2.000 → 100/1.000/5.000.** Estávamos abaixo do Teachable em **todos** os degraus, inclusive contra o plano de $39.
+3. **Armazenamento vira ilimitado, inclusive no Free.** Ver justificativa abaixo.
+4. **Comunidades e banda entram como cotas** — não existiam em `entitlements.ts`.
+5. **Domínio próprio desce para o Starter** (era `0/0/1/3`, vira `0/1/3/5`).
+
+### Por que armazenamento vira ilimitado e banda vira a cota real
+
+Consequência direta do **D23**: armazenamento custa **$2/mês no plano mais caro**. Limitar storage é defender um custo que não existe, e nos deixa piores que o Teachable — que dá "até 1 TB" em todos os planos — numa linha onde podemos ganhar de todo mundo.
+
+O custo real é **banda**: $0,0066 por hora assistida na rede Volume. É por isso que o mercado limita o que limita — Teachable raciona **aluno** (proxy de banda e suporte), Thinkific raciona **banda em GB** explicitamente. Ninguém raciona storage de verdade.
+
+**"Armazenamento de vídeo ilimitado, inclusive no plano grátis"** passa a ser vitrine, com **cláusula de fair use no ToS** — o mesmo instrumento que Teachable e Kajabi já usam — e o tripwire anti-abuso interno já decidido no estudo de 14/07 (conta com muito armazenamento e zero venda em 90 dias entra em revisão de **novos uploads**, nunca da entrega a alunos).
+
+### Free vale para sempre, não é degrau de trial
+Decisão explícita do fundador. Quem estoura 100 alunos **já está vendendo** e sobe pelo teto de comissão (D26), não por bloqueio. O Free entregar o que a Kajabi cobra $89 é a arma competitiva — encurtá-lo destrói o argumento.
+
+### Ressalvas registradas
+- **A cota de banda só passa a valer quando a Bunny entrar em produção.** Hoje o modelo é híbrido com YouTube embed, custo zero. Até lá o número existe na tabela e não é cobrado.
+- **O banco é o ponto de aplicação, não o TypeScript.** Hoje **6 das 7 cotas de `entitlements.ts` são decorativas** — só `featuredSlots` é conferido em SQL. Publicar esta tabela antes de as travas existirem no banco é vender limite que não se aplica; a implementação vem junto com a publicação, nunca antes.
+- `entitlement_requests` (concessão de cota extra) ainda **não existe em nenhuma migração**. `effectiveLimit()` já aceita o parâmetro; falta a tabela e a tela de ops.
+
+---
+
+## D26 — Teto de comissão por plano
+**Data:** 2026-08-20 · Proposto a partir da análise competitiva de 20/08; **pendente de aprovação do fundador.**
+
+**Problema:** cobrar porcentagem ganha de mensalidade fixa em volume baixo e perde em volume alto, sempre. O **Teachable Builder — $89 fixo e 0% de comissão** — fica mais barato que qualquer plano nosso a partir de **$1.400/mês** de venda, e aos $10.000/mês custa $89 contra os nossos $389.
+
+**Proposta:** a comissão para de subir a partir de um teto por plano.
+
+| Plano | Hoje | Proposta | Efeito aos $10.000/mês |
+|---|---|---|---|
+| Starter $19 | 5% sem teto | 5% até **$60/mês** | $519 → **$79** |
+| Pro $89 | 3% sem teto | 3% até **$120/mês** | $389 → **$209** |
+| Plus $199 | 2% sem teto | 2% até **$200/mês** | $399 (já no teto) |
+
+**Custo de implementar:** um campo por plano em `plans.ts` e um `Math.min` no cálculo da comissão — com a trava espelhada em SQL, como toda cota.
+
+**Por que preserva o modelo:** o "$0 para começar" continua intacto, e o professor grande deixa de ter motivo aritmético para migrar. Vira argumento de venda: *"a sua taxa tem teto; a mensalidade deles não tem piso."*
+
+**Fonte da análise:** `docs/benchmarks/2026-08-20-teachable-thinkific-kajabi-vs-skillset.md`
