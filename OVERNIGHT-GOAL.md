@@ -18,7 +18,7 @@ Duas features implementadas no repo, com teste e migração, prontas para revis�
 | 3 | Lint limpo | `npx eslint .` → exit 0 |
 | 4 | Migração de domínio existe | `ls supabase/migrations/*custom_domain*.sql` |
 | 5 | Migração de landing existe | `ls supabase/migrations/*landing*.sql` |
-| 6 | Roteamento por host no proxy | `grep -q "custom domain" src/proxy.ts` |
+| 6 | Roteamento por host no proxy | `grep -q "routedByHost" src/proxy.ts` |
 | 7 | Testes de deriva novos | `entitlements.test.tsx` cobre `customDomains` e cota de landing |
 | 8 | PRs abertos | `gh pr list` mostra os PRs desta rodada |
 
