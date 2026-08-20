@@ -44,6 +44,47 @@ describe("plan entitlements", () => {
     }
   });
 
+  it("keeps the sales-page block quota in step with the SQL enforcement copy", () => {
+    // Mirrors landing_block_limit_for_plan() in
+    // supabase/migrations/20260820010000_course_landing_pages.sql. Free is 4
+    // rather than 0 on purpose: it gets a complete short page, not a crippled
+    // long one.
+    expect(planEntitlements.free.quotas.landingBlocks).toBe(4);
+    expect(planEntitlements.starter.quotas.landingBlocks).toBe(8);
+    expect(planEntitlements.pro.quotas.landingBlocks).toBe(20);
+    expect(planEntitlements.plus.quotas.landingBlocks).toBe(20);
+  });
+
+  // The drift tests above copy the SQL's numbers by hand, which catches a change
+  // to the TypeScript and misses a change to the migration — the more likely
+  // direction, since the migration is the side someone edits when enforcement is
+  // wrong. This one reads both files and compares them, so editing either alone
+  // fails the build.
+  it("reads the landing migration and refuses to let the two sides drift", async () => {
+    const { readFileSync } = await import("node:fs");
+    const sql = readFileSync(
+      "supabase/migrations/20260820010000_course_landing_pages.sql",
+      "utf8",
+    );
+    const body = sql.slice(sql.indexOf("function public.landing_block_limit_for_plan"));
+
+    const fromSql = (planId: string): number => {
+      const match = body.match(new RegExp(`when '${planId}'\\s+then\\s+(\\d+)`));
+      if (!match) {
+        throw new Error(`landing_block_limit_for_plan has no branch for ${planId}`);
+      }
+      return Number(match[1]);
+    };
+
+    // `free` is the else branch, so it is matched separately.
+    const free = body.match(/else\s+(\d+)\s*--\s*free/);
+    expect(Number(free?.[1])).toBe(planEntitlements.free.quotas.landingBlocks);
+
+    for (const planId of ["starter", "pro", "plus"] as const) {
+      expect(fromSql(planId)).toBe(planEntitlements[planId].quotas.landingBlocks);
+    }
+  });
+
   it("raises a limit with an approved grant but never lowers one", () => {
     expect(effectiveLimit("starter", "featuredSlots", 4)).toBe(4);
     expect(effectiveLimit("pro", "featuredSlots", 1)).toBe(3);

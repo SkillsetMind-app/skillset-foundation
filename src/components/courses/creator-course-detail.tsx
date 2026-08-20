@@ -12,7 +12,10 @@ import {
   CourseReviewsSection,
 } from "@/components/courses/course-social-proof";
 import { getSafeExternalUrl } from "@/domain/external-url";
+import { CourseLandingBlocks } from "@/components/courses/course-landing-blocks";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
+import type { CourseLanding } from "@/lib/data/course-landings";
+import { emptyCourseLanding, getCourseLanding } from "@/lib/data/course-landings";
 import {
   resolveCoursePrice,
   type ProductOffer,
@@ -55,6 +58,34 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
   const hasBackendConfig = Boolean(getSupabaseClientConfig());
   const checkoutEnabled = isPublicFeatureEnabled("payments.checkout");
   const [course, setCourse] = useState<TeacherCourse | null>(null);
+  const [landing, setLanding] = useState<CourseLanding>(emptyCourseLanding);
+
+  // Declared here, with the other hooks, so it runs before any early return --
+  // the component bails out while `course` is still null, and a hook after that
+  // point would change hook order between renders.
+  //
+  // Loaded separately from the course because the landing lives in its own
+  // table; see the header of migration 20260820010000 for why it is not a
+  // column on `courses`. One extra read on the page that needs it, instead of a
+  // fat column on every marketplace listing.
+  const landingCourseId = course?.id ?? null;
+  useEffect(() => {
+    // No reset in the null branch: the initial state is already the empty
+    // landing, and writing it back here would be a synchronous setState inside
+    // an effect body. This surface mounts one course and keeps it, so there is
+    // no path where a previous course's page could linger.
+    if (!landingCourseId) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void getCourseLanding(landingCourseId).then((next) => {
+        if (!cancelled) setLanding(next);
+      });
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [landingCourseId]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
@@ -373,6 +404,19 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
             {course.summary}
           </p>
         </div>
+
+        {/* The teacher's own sales page, when they built one. Renders nothing
+            at all when empty, so a course without one keeps today's layout
+            exactly. The price and the checkout handler are passed in rather
+            than recomputed: re-deriving from the course row would ignore
+            offers and coupons and quote the buyer a number that is not what
+            they will be charged. */}
+        <CourseLandingBlocks
+          blocks={landing.blocks}
+          template={landing.template}
+          priceLabel={priceLabel}
+          onEnrol={handleCheckout}
+        />
 
         {learningOutcomes.length > 0 ? (
           <section className="mt-8 rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
