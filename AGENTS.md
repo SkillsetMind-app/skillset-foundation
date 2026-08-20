@@ -86,7 +86,20 @@ document.documentElement.scrollWidth > document.documentElement.clientWidth  // 
 - **Never commit to `main`.** Branch, open a PR, let CI run.
 - **Money and auth writes fail closed; reads fail open.** A throw inside a
   Stripe webhook handler *is* the retry mechanism — do not swallow it.
-- **Psychology is a subject, never a seller identity.** See the comment at the
-  top of `src/domain/teacher-course.ts`; it is a licensing constraint in all 50
-  US states, not a style preference.
+- **Psychology is a subject — never a seller identity, and never the
+  audience.** Two rules, both licensing constraints in all 50 US states rather
+  than style preferences. (1) No seller-facing category may use a protected
+  title; see the comment at the top of `src/domain/teacher-course.ts`. (2) No
+  interface copy may address a licensed audience — "for psychologists", "for
+  therapists". Naming them as the audience implies the platform is a place to
+  practise, which is the claim that needs a licence, independently of what a
+  seller teaches. Say coaches, facilitators, mentors, or personal-development
+  experts. `src/data/i18n/regulated-wording.test.ts` fails the build if one
+  comes back.
+
+  The disclaimers on `/legal/terms` and `/legal/teacher-terms`, and the
+  guardrail in `src/lib/assistant/knowledge.ts`, say "not therapy" and "no
+  therapist-client relationship" **on purpose**. Those sentences deny the
+  relationship; they are the shield, not the exposure. Never strip them while
+  cleaning marketing wording.
 - **No secret in code, ever.** Server-only values have no `NEXT_PUBLIC_` prefix.
