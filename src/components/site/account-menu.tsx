@@ -12,9 +12,11 @@ import {
   LogOut,
   Presentation,
   Settings,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type RefObject } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -22,6 +24,7 @@ import { UserAvatar } from "@/components/shared/user-avatar";
 import { planById, type PlanId } from "@/data/plans";
 import { primaryRoleKey, type SkillsetUser } from "@/domain/auth";
 import { getPrimaryWorkspaceHref } from "@/lib/auth/routing";
+import { hasPermission } from "@/lib/permissions";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 
 type AccountMenuProps = {
@@ -66,6 +69,7 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentPlanId, setCurrentPlanId] = useState<PlanId>("free");
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname() ?? "";
   const moneyHref = user.roles.includes("teacher")
     ? "/account/payments"
     : "/account/billing";
@@ -75,21 +79,42 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
   const currentPlanName = planById(currentPlanId).name;
   const accountRoleLabel = t(primaryRoleKey(user.roles));
   const memberFallback = t("account.memberFallback");
-  // One account, both roles: a teacher can drop into their student side; a
-  // learner can open the teacher application (the onboarding quiz). The switch
-  // opens in a new tab so each side keeps its own context — signalled by the
-  // external-link icon on the item.
-  const isStaff =
-    user.roles.includes("admin") || user.roles.includes("support");
-  const roleSwitch = isStaff
+  // One account, several workspaces. Everyone signed in has the classroom; a
+  // teacher also has the studio; an admin also has operations. The menu lists
+  // every workspace this account can actually enter and hides the one it is
+  // already in, so it reads as a toggle rather than a pile of links.
+  //
+  // This is NOT the admin preview in /ops. That one only narrows what the
+  // interface offers, to answer "what does a learner see". This switches
+  // between workspaces the account genuinely holds, so the person can do the
+  // work, not just look at it.
+  //
+  // Staff used to be excluded outright, which is why the founder — admin and
+  // teacher on the same account — never saw a way to reach his own studio.
+  const workspaces = [
+    { href: "/learn", label: t("account.studentView"), icon: GraduationCap },
+    ...(user.roles.includes("teacher")
+      ? [{ href: "/teach", label: t("account.teacherView"), icon: Presentation }]
+      : []),
+    ...(hasPermission({ roles: user.roles }, "platform.accessAdmin")
+      ? [{ href: "/ops", label: t("account.opsView"), icon: ShieldCheck }]
+      : []),
+  ];
+  const otherWorkspaces = workspaces.filter(
+    (workspace) =>
+      pathname !== workspace.href && !pathname.startsWith(`${workspace.href}/`),
+  );
+
+  // Someone with no studio yet gets the application instead. That one still
+  // opens in a new tab: it is a side trip through the onboarding quiz, not a
+  // switch between places the account already lives.
+  const becomeTeacher = user.roles.includes("teacher")
     ? null
-    : user.roles.includes("teacher")
-      ? { href: "/learn", label: t("account.studentView"), icon: GraduationCap }
-      : {
-          href: "/onboarding?path=teacher",
-          label: t("account.becomeTeacher"),
-          icon: Presentation,
-        };
+    : {
+        href: "/onboarding?path=teacher",
+        label: t("account.becomeTeacher"),
+        icon: Presentation,
+      };
 
   useDismissableLayer(wrapperRef, isOpen, () => setIsOpen(false));
 
@@ -164,19 +189,30 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
             />
           </div>
 
-          {roleSwitch ? (
+          {otherWorkspaces.length > 0 || becomeTeacher ? (
             <>
               <div className="account-menu-separator" />
               <div className="py-1">
                 <p className="account-menu-section-label">
                   {t("account.switchView")}
                 </p>
-                <RoleSwitchItem
-                  href={roleSwitch.href}
-                  icon={roleSwitch.icon}
-                  label={roleSwitch.label}
-                  onNavigate={() => setIsOpen(false)}
-                />
+                {otherWorkspaces.map((workspace) => (
+                  <MenuLink
+                    key={workspace.href}
+                    href={workspace.href}
+                    icon={workspace.icon}
+                    label={workspace.label}
+                    onNavigate={() => setIsOpen(false)}
+                  />
+                ))}
+                {becomeTeacher ? (
+                  <RoleSwitchItem
+                    href={becomeTeacher.href}
+                    icon={becomeTeacher.icon}
+                    label={becomeTeacher.label}
+                    onNavigate={() => setIsOpen(false)}
+                  />
+                ) : null}
               </div>
             </>
           ) : null}
