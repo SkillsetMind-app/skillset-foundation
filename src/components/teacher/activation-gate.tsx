@@ -96,7 +96,7 @@ export function ActivationGate() {
         className="absolute inset-0 bg-[rgba(15,39,68,0.72)] backdrop-blur-[2px]"
         aria-hidden="true"
       />
-      <div className="relative z-[85] flex w-full max-w-md flex-col justify-center bg-white p-7 shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:rounded-[8px]">
+      <div className="modal-panel modal-panel-scroll relative z-[85] flex w-full max-w-md flex-col justify-center bg-white p-7 shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:rounded-[8px]">
         <h2
           id="activation-gate-title"
           className="text-xl font-semibold text-[var(--color-ink)]"

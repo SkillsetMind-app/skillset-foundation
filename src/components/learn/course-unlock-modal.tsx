@@ -113,7 +113,7 @@ export function CourseUnlockModal({
         aria-label={t("learn.paths.close")}
         onClick={onClose}
       />
-      <div className="relative z-[75] flex w-full max-w-lg flex-col overflow-hidden bg-white shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:rounded-[8px]">
+      <div className="modal-panel relative z-[75] flex w-full max-w-lg flex-col overflow-hidden bg-white shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:rounded-[8px]">
         <div className="relative aspect-[16/9] w-full overflow-hidden">
           <CourseCover course={course} sizes="(min-width: 640px) 512px, 100vw" />
           <button
