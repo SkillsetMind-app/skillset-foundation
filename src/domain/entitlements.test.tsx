@@ -55,11 +55,23 @@ describe("plan entitlements", () => {
     expect(planEntitlements.plus.quotas.landingBlocks).toBe(20);
   });
 
+  it("keeps the custom-domain quota in step with the SQL enforcement copy", () => {
+    // Mirrors custom_domain_limit_for_plan() in
+    // supabase/migrations/20260820000000_custom_domains.sql. Free stays at 0
+    // deliberately: claim_custom_domain() refuses outright at 0, so raising it
+    // here without touching the SQL would offer the teacher a button that the
+    // server always rejects.
+    expect(planEntitlements.free.quotas.customDomains).toBe(0);
+    expect(planEntitlements.starter.quotas.customDomains).toBe(1);
+    expect(planEntitlements.pro.quotas.customDomains).toBe(3);
+    expect(planEntitlements.plus.quotas.customDomains).toBe(5);
+  });
+
   // The drift tests above copy the SQL's numbers by hand, which catches a change
   // to the TypeScript and misses a change to the migration — the more likely
   // direction, since the migration is the side someone edits when enforcement is
-  // wrong. This one reads both files and compares them, so editing either alone
-  // fails the build.
+  // wrong. The two below read both files and compare them, so editing either
+  // side alone fails the build.
   it("reads the landing migration and refuses to let the two sides drift", async () => {
     const { readFileSync } = await import("node:fs");
     const sql = readFileSync(
@@ -82,6 +94,37 @@ describe("plan entitlements", () => {
 
     for (const planId of ["starter", "pro", "plus"] as const) {
       expect(fromSql(planId)).toBe(planEntitlements[planId].quotas.landingBlocks);
+    }
+  });
+
+  it("reads the migration and refuses to let the two sides drift apart", async () => {
+    const { readFileSync } = await import("node:fs");
+    const sql = readFileSync(
+      "supabase/migrations/20260820000000_custom_domains.sql",
+      "utf8",
+    );
+
+    const body = sql.slice(
+      sql.indexOf("function public.custom_domain_limit_for_plan"),
+    );
+
+    const fromSql = (planId: string): number => {
+      const match = body.match(
+        new RegExp(`when '${planId}'\\s+then\\s+(\\d+)`),
+      );
+      if (!match) {
+        throw new Error(`custom_domain_limit_for_plan has no branch for ${planId}`);
+      }
+      return Number(match[1]);
+    };
+
+    // `free` is the else branch rather than a named `when`, so it is asserted
+    // separately — and it is the one that matters most: a non-zero default
+    // would hand every free account a custom domain.
+    expect(body).toMatch(/else\s+0\b/);
+
+    for (const planId of ["starter", "pro", "plus"] as const) {
+      expect(fromSql(planId)).toBe(planEntitlements[planId].quotas.customDomains);
     }
   });
 

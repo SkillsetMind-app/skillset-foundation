@@ -22,7 +22,7 @@
     "mobileNavLabel": "Navegación móvil"
   },
   "footer": {
-    "tagline": "La plataforma de cursos para psicólogos, coaches, facilitadores y expertos en desarrollo personal. Expertos verificados, sin retención de la plataforma sobre tu dinero, certificados verificables.",
+    "tagline": "La plataforma de cursos para coaches, facilitadores, mentores y expertos en desarrollo personal. Expertos verificados, sin retención de la plataforma sobre tu dinero, certificados verificables.",
     "platform": "Plataforma",
     "creator": "Creador",
     "helpLegal": "Ayuda y legal",
@@ -239,6 +239,8 @@
     "memberFallback": "Miembro de SkillsetMind",
     "switchView": "Cambiar de vista",
     "studentView": "Vista de estudiante",
+    "teacherView": "Vista de profesor",
+    "opsView": "Vista de operaciones",
     "becomeTeacher": "Conviértete en profesor",
     "sectionAccount": "Cuenta",
     "creatorPlan": "Plan de creador",
@@ -253,10 +255,10 @@
   },
   "home": {
     "hero": {
-      "eyebrow": "Para psicólogos, coaches y expertos en desarrollo personal",
+      "eyebrow": "Para coaches, facilitadores y expertos en desarrollo personal",
       "title1": "Tu conocimiento cambia vidas.",
       "title2": "Ahora haz que llegue a miles.",
-      "sub": "Hecho para psicólogos, coaches, facilitadores y expertos en desarrollo personal. Sin web que montar, sin herramientas que configurar. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe, así que nunca retenemos tu dinero. Tú enseñas.",
+      "sub": "Hecho para coaches, facilitadores, mentores y expertos en desarrollo personal. Sin web que montar, sin herramientas que configurar. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe, así que nunca retenemos tu dinero. Tú enseñas.",
       "trust1Title": "Verificado",
       "trust1Desc": "Los profesionales se verifican antes de publicar y los programas activos se supervisan para garantizar el cumplimiento.",
       "trust2Title": "Global",
@@ -330,7 +332,7 @@
       "readFull": "Lee la Promesa completa"
     },
     "creators": {
-      "eyebrow": "Para psicólogos, coaches y expertos en desarrollo personal",
+      "eyebrow": "Para coaches, facilitadores y expertos en desarrollo personal",
       "title": "Llega a más gente de la que tu consulta jamás podría.",
       "ctaStart": "Empieza a enseñar",
       "ctaPromise": "Lee la Promesa al Creador",

@@ -5,7 +5,10 @@ import type { DripStrategy } from "@/domain/drip-policy";
 // all 50 states, and "school"/"academy" trigger state education-agency
 // licensure — so none of them may name a category a seller picks to describe
 // what they sell. Psychology survives as a SUBJECT ("Applied Psychology"),
-// never as an identity. The category column is free text (max 80 chars, see
+// never as an identity — and never as the audience either. Copy that says
+// "for psychologists" implies the platform is a place to practise, which is
+// the claim that needs a licence, independently of what a seller teaches;
+// src/data/i18n/regulated-wording.test.ts fails the build if it returns. The category column is free text (max 80 chars, see
 // 20260716000100_live_teacher_course_rpcs.sql), so renaming here needs no
 // migration; it only changes the picker.
 export const skillsetCourseCategories = [

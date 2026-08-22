@@ -56,8 +56,7 @@ export const demoCourses: Course[] = [
     statusLabel: "Opening soon",
     summary:
       "A flagship behavior-change pathway for learners who want a serious, career-focused study experience.",
-    // ponytail: asset filename left alone — renaming the file is a separate chore.
-    image: "/courses/clinical-psychology.jpg",
+    image: "/courses/applied-behavior.jpg",
     detail: "Built for structured learning, guided support, and clear progression.",
     level: "Advanced",
     priceLabel: "Price to be announced",

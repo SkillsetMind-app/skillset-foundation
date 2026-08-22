@@ -294,6 +294,39 @@ html {
   display: block;
 }
 
+/* A centred dialog must never grow past the screen.
+
+   When it does, the overflow lands above AND below the viewport, and because
+   the panel is centred the top half is simply unreachable — the buttons go
+   with it. An inner scroll region does not save you: with nothing bounding the
+   panel, the region is as tall as its content and never scrolls.
+
+   Measured on /pricing in a 672px-tall window: the upgrade panel rendered
+   1516px tall with its top at -422 and the confirm button at y=1050, off
+   screen, and its inner scroll region never engaged. With the cap the same
+   panel became 624px, top at 24, and the button was reachable.
+
+   .modal-panel caps the height. Add .modal-panel-scroll as well when the panel
+   has no scrolling region of its own, so the panel itself scrolls. Panels that
+   already manage an inner region keep their own overflow and take only the cap.
+
+   Drawers and dropdown menus are not dialogs and do not use these. */
+.modal-panel {
+  max-height: 100svh;
+}
+
+.modal-panel-scroll {
+  overflow-y: auto;
+}
+
+@media (min-width: 640px) {
+  /* Matches the sm:p-6 gutter the overlays use, so the panel never touches the
+     edges of the screen. */
+  .modal-panel {
+    max-height: calc(100svh - 3rem);
+  }
+}
+
 @media (min-width: 1024px) {
   /* The portrait sits lower on desktop so faces clear the floating header.
      Nudging the element down leaves the top of the hero uncovered, and the

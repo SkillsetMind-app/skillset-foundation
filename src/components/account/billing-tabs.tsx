@@ -560,7 +560,7 @@ function RefundModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-[16px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]"
+        className="modal-panel modal-panel-scroll w-full max-w-md rounded-[16px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]"
         onClick={(event) => event.stopPropagation()}
       >
         {done ? (

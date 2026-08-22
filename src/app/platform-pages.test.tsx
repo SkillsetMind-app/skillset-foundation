@@ -155,13 +155,14 @@ describe("platform shells", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open account menu" }));
 
     // One account, both roles: a teacher can drop into the student classroom.
-    // The switch opens in a new tab so the studio context is preserved.
+    // It navigates in the SAME tab. It used to open a new one to preserve the
+    // studio context, but the menu now lists every workspace the account holds
+    // and hides the current one, so it reads as a toggle — and a toggle that
+    // opens a tab per press leaves you with a pile of them.
     expect(screen.getByText("Switch view")).toBeInTheDocument();
-    const studentViewLink = screen.getByRole("link", {
-      name: /Student view \(opens in a new tab\)/i,
-    });
+    const studentViewLink = screen.getByRole("link", { name: /Student view/i });
     expect(studentViewLink).toHaveAttribute("href", "/learn");
-    expect(studentViewLink).toHaveAttribute("target", "_blank");
+    expect(studentViewLink).not.toHaveAttribute("target");
     // A teacher should not see the learner-to-teacher upgrade prompt.
     expect(
       screen.queryByRole("link", { name: /Become a teacher/i }),

@@ -245,7 +245,7 @@ function LegalAcceptanceGate() {
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[rgba(12,25,39,0.62)] px-4 backdrop-blur-sm">
-      <div className="w-full max-w-xl rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]">
+      <div className="modal-panel modal-panel-scroll w-full max-w-xl rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
           Legal update
         </p>
