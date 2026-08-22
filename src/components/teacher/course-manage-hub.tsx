@@ -15,6 +15,7 @@ import {
 } from "@/components/teacher/course-commerce-panels";
 import { CourseOffersPanel } from "@/components/teacher/course-offers-panel";
 import { CourseStudentRoster } from "@/components/teacher/course-student-roster";
+import { CourseLandingEditor } from "@/components/teacher/course-landing-editor";
 import { SalesPageEditor } from "@/components/teacher/sales-page-editor";
 import type { PlanId } from "@/data/plans";
 import { planById } from "@/data/plans";
@@ -814,6 +815,10 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
           {section === "page" ? (
             <div className="grid gap-4">
               <SalesPageEditor course={course} />
+              {/* The block editor sits below the title/summary form rather than
+                  replacing it: those fields also feed the marketplace card and
+                  the course header, so they are not page-only copy. */}
+              <CourseLandingEditor course={course} />
               <PanelCard
                 title="Public product page"
                 description="The buyer-facing URL. Until published, only you can open it."

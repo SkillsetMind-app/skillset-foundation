@@ -53,7 +53,13 @@ export type QuotaKey =
   | "featuredSlots"
   | "customDomains"
   | "teamSeats"
-  | "emailSendsPerMonth";
+  | "emailSendsPerMonth"
+  /**
+   * Blocks on a course sales page. Not a cost quota — the blocks are a few
+   * kilobytes of jsonb. It is a shape quota: how much page the plan buys. Free
+   * gets a complete short page rather than a crippled long one.
+   */
+  | "landingBlocks";
 
 export type FeatureKey =
   | "removePlatformBranding"
@@ -78,6 +84,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       customDomains: 0,
       teamSeats: 1,
       emailSendsPerMonth: 0,
+      landingBlocks: 4,
     },
     features: {
       removePlatformBranding: false,
@@ -94,6 +101,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       customDomains: 1,
       teamSeats: 2,
       emailSendsPerMonth: 2_000,
+      landingBlocks: 8,
     },
     features: {
       removePlatformBranding: false,
@@ -110,6 +118,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       customDomains: 3,
       teamSeats: 5,
       emailSendsPerMonth: 10_000,
+      landingBlocks: 20,
     },
     features: {
       removePlatformBranding: true,
@@ -126,6 +135,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       customDomains: 5,
       teamSeats: 15,
       emailSendsPerMonth: 50_000,
+      landingBlocks: 20,
     },
     features: {
       removePlatformBranding: true,
@@ -226,6 +236,7 @@ export const quotaLabels: Record<QuotaKey, string> = {
   customDomains: "Custom domains",
   teamSeats: "Team seats",
   emailSendsPerMonth: "Email sends per month",
+  landingBlocks: "Sales page blocks",
 };
 
 export function formatLimit(limit: QuotaLimit): string {
