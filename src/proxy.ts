@@ -2,6 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { createServerClient } from "@supabase/ssr";
 
+import {
+  decideHostRoute,
+  isPlatformHost,
+  normaliseHostHeader,
+} from "@/domain/host-routing";
+import { resolveHostToUid } from "@/lib/domains/resolve-host";
 import { notifyOps } from "@/lib/ops/alert";
 import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
@@ -101,12 +107,66 @@ function refusedForCountry(request: NextRequest): NextResponse | null {
 // short-lived and would otherwise expire between renders), so Server Components
 // and Route Handlers always read a valid session and auth.uid() drives RLS.
 // This is the documented @supabase/ssr proxy pattern.
+/**
+ * Custom domain resolution. A teacher points their own hostname here and the
+ * root of it serves their storefront.
+ *
+ * Ordering inside this function is load-bearing twice over:
+ *
+ * - AFTER the country filter, so a refused request never costs a lookup, and so
+ *   the filter still reads the ORIGINAL pathname. Rewriting first would hand it
+ *   `/instructors/<uid>` and `/login` on a teacher's domain would sail past a
+ *   guard that was looking for `/login`.
+ *
+ * - BEFORE the session refresh, because a redirect away from this host makes the
+ *   refresh pointless — the cookie belongs to an origin we are leaving.
+ *
+ * `isPlatformHost()` short-circuits ahead of everything, so ordinary traffic on
+ * skillsetmind.com never touches the database.
+ */
+async function routedByHost(request: NextRequest): Promise<NextResponse | null> {
+  const hostname = normaliseHostHeader(request.headers.get("host"));
+  if (!hostname || isPlatformHost(hostname)) {
+    return null;
+  }
+
+  const resolvedUid = await resolveHostToUid(hostname);
+  const decision = decideHostRoute({
+    hostname,
+    pathname: request.nextUrl.pathname,
+    search: request.nextUrl.search,
+    resolvedUid,
+  });
+
+  switch (decision.kind) {
+    case "pass":
+      return null;
+    case "rewrite": {
+      const url = request.nextUrl.clone();
+      const [path, query] = decision.path.split("?");
+      url.pathname = path;
+      url.search = query ? `?${query}` : "";
+      return NextResponse.rewrite(url);
+    }
+    case "redirect":
+      // 308 rather than 302: the move is permanent for this path on this host,
+      // and 308 preserves the method so a POST to a form that moved does not
+      // silently become a GET.
+      return NextResponse.redirect(decision.url, 308);
+  }
+}
+
 export async function proxy(request: NextRequest) {
   // Before any of the session work: refreshing a token for a request we are
   // about to refuse is wasted round trips against Supabase.
   const refused = refusedForCountry(request);
   if (refused) {
     return refused;
+  }
+
+  const routed = await routedByHost(request);
+  if (routed) {
+    return routed;
   }
 
   let response = NextResponse.next({ request });
