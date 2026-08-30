@@ -264,6 +264,13 @@ export function LessonContentModal({
           onProgress: setUploadProgress,
         });
       }
+      // A fonte da aula passa a ser "upload" AQUI, e não na escolha do arquivo:
+      // agora existe de fato um vídeo para tocar. Declarar antes do envio
+      // deixava a aula vazia para o aluno pagante enquanto o professor lia
+      // "Media is connected." na própria tela.
+      if (uploadKind === "lesson_video" || uploadKind === "live_recording") {
+        onUpdateLesson({ videoSource: "upload" });
+      }
       setSuccess("File uploaded to this lesson.");
       setSelectedFile(null);
       setUploadProgress(null);

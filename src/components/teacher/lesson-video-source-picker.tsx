@@ -23,9 +23,18 @@ export function LessonVideoSourcePicker(props: {
   const [isDragActive, setIsDragActive] = useState(false);
 
   function selectFile(file: File) {
-    if (props.value !== "upload") {
-      props.onChange("upload");
-    }
+    // Escolher um arquivo NÃO declara a fonte da aula. Antes declarava, e isso
+    // apagava a aula para quem já tinha pago: `videoSource` é persistido pelo
+    // autosave de 1,8s e é o campo que o aluno lê para escolher o player. Com a
+    // fonte em "upload" e nenhum arquivo enviado — porque o professor escolheu o
+    // arquivo errado, ou desistiu ao estourar o limite —, o aluno passava a ver
+    // "Media not attached yet", enquanto o link do YouTube continuava salvo e
+    // válido, só nunca mais consultado. E o cabeçalho do modal seguia dizendo
+    // "Media is connected.", porque aquele rótulo olha anexo e embed e ignora a
+    // fonte: a tela do professor se contradizia sozinha.
+    //
+    // Quem declara a fonte agora é o caminho de SUCESSO do envio, no
+    // lesson-content-modal — quando existe, de fato, um arquivo para tocar.
     props.onSelectFile(file);
   }
 
