@@ -73,13 +73,34 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // HSTS abrangente (2 anos, subdomínios, preload) SÓ no host da própria
+        // plataforma. Desde que servimos domínios de professor (PR #105), a
+        // regra antiga em `/:path*` sem condição de host mandava o navegador
+        // forçar HTTPS por 2 anos em TODOS os subdomínios de um domínio que não
+        // é nosso, e inscrevia o nome dele na lista de preload — um efeito
+        // sobre propriedade de terceiro que o dono não pediu e não consegue
+        // desfazer rápido (sair da preload leva meses).
         source: "/:path*",
+        has: [{ type: "host", value: "(www\\.)?skillsetmind\\.com" }],
         headers: [
-          // Force HTTPS for 2 years incl. subdomains; eligible for preload list.
           {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",
           },
+        ],
+      },
+      {
+        // Demais hosts (domínio do professor): ainda força HTTPS, mas fala só
+        // pelo host exato — sem falar pelos subdomínios dele e sem preload.
+        source: "/:path*",
+        missing: [{ type: "host", value: "(www\\.)?skillsetmind\\.com" }],
+        headers: [
+          { key: "Strict-Transport-Security", value: "max-age=31536000" },
+        ],
+      },
+      {
+        source: "/:path*",
+        headers: [
           // Our pages may only be framed by ourselves (anti-clickjacking). Does
           // NOT affect us embedding YouTube/Vimeo/Bunny — that is the reverse.
           { key: "X-Frame-Options", value: "SAMEORIGIN" },

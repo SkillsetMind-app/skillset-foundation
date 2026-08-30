@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
 import {
+  isSupportedStripeCurrency,
+  supportedStripeCurrencies,
+} from "@/lib/payments/currencies";
+import {
   enforceRateLimit,
   PaymentError,
   paymentErrorResponse,
@@ -60,6 +64,16 @@ export async function POST(request: Request) {
       )
     ) {
       throw new PaymentError("Invalid paymentType.");
+    }
+    // A moeda era o único campo desta rota que entrava sem validação: qualquer
+    // sigla de 3 letras passava. Downstream, normalizeSkillsetCurrency() troca o
+    // que não reconhece por USD EM SILÊNCIO — então "SEK 990" vira "USD 990", um
+    // preço quase 10x errado que ninguém vê acontecer. Recusar na entrada, como
+    // a rota já faz com paymentType, em vez de deixar a normalização decidir.
+    if (!isSupportedStripeCurrency(currency)) {
+      throw new PaymentError(
+        `Unsupported currency "${currency}". Supported: ${supportedStripeCurrencies.join(", ")}.`,
+      );
     }
     if (paymentType === "free" && amountMinor !== 0) {
       throw new PaymentError("A free offer must have a zero price.");

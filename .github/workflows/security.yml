@@ -27,7 +27,14 @@ jobs:
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
+          # Num push para main e no cron semanal, `base` e `head` seriam o MESMO
+          # commit: o intervalo main..main é vazio, o TruffleHog inspeciona zero
+          # commits e o job termina VERDE sem ter varrido nada — o oposto do que
+          # o `fetch-depth: 0` acima e o comentário "full history" prometem.
+          # Deixar os dois vazios fora de PR faz a varredura completa do
+          # histórico, que é a intenção original.
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || '' }}
           extra_args: --only-verified --results=verified
 
   sast:

@@ -40,3 +40,21 @@ jobs:
       # values, so the production build works in CI without extra secrets.
       - name: Build (next)
         run: npm run build
+
+      # Os smoke tests de RLS em supabase/tests/ existem desde julho e nenhum
+      # comando os executava — inclusive o que prova que ninguém consegue setar
+      # o próprio activation_fee_paid_at (virar criador ativado sem pagar). Eles
+      # precisam de um banco COM DADOS, então rodam contra staging; cada um roda
+      # em transação com rollback.
+      #
+      # Sem o secret, este passo AVISA em vez de passar calado: o objetivo é que
+      # a lacuna fique visível em toda execução, e não invisível como estava.
+      - name: RLS smoke tests (supabase/tests)
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::warning title=RLS não verificado::STAGING_DATABASE_URL não está configurado; os 4 smoke tests de RLS em supabase/tests/ NÃO rodaram. Uma regressão de policy passa por este pipeline sem ser vista."
+            exit 0
+          fi
+          npm run test:db

@@ -1,0 +1,50 @@
+[
+  {
+    "id": "DB-01",
+    "titulo": "Limite de tentativas da verificacao de certificado e burlavel: a chave vem do proprio chamador",
+    "severidade": "MEDIA",
+    "arquivo": "supabase/migrations/20260819000000_certificates.sql",
+    "linha": 1,
+    "origem": "banco-ao-vivo",
+    "porque": "public.verify_skillset_certificate monta a chave do limite assim: coalesce(auth.uid()::text, p_rate_key, 'anon'). Para quem NAO esta logado, auth.uid() e nulo, entao a chave vira p_rate_key -- um parametro que o proprio chamador manda. Mandando um valor diferente a cada chamada, o anonimo ganha um balde novo toda vez e o teto de 60/hora nunca e atingido. Confirmado lendo a definicao das duas funcoes no banco de producao.",
+    "como_reproduzir": "POST /rest/v1/rpc/verify_skillset_certificate com {p_code: <codigo>, p_rate_key: <valor aleatorio novo a cada requisicao}, sem token de sessao. Repetir 1000 vezes: nenhuma devolve RATE_LIMIT.",
+    "impacto": "Enumeracao ilimitada de codigos de certificado por quem nao tem conta. Cada acerto devolve titulo do curso, categoria e data de emissao.",
+    "veredito": "CONFIRMADO por leitura direta da definicao em producao"
+  },
+  {
+    "id": "DB-02",
+    "titulo": "A tabela rate_limits cresce sem teto, com chave escolhida por anonimo",
+    "severidade": "ALTA",
+    "arquivo": "supabase/migrations/20260819000000_certificates.sql",
+    "linha": 1,
+    "origem": "banco-ao-vivo",
+    "porque": "public.enforce_rate_limit faz INSERT ... ON CONFLICT (key) DO NOTHING para toda chave nova. Como o DB-01 deixa o anonimo escolher a chave, cada requisicao com um p_rate_key inedito INSERE UMA LINHA. Nao ha limpeza: a linha mais antiga da tabela e de 01/07 e continua la. O mecanismo que existe para conter abuso e, ele proprio, o vetor de abuso.",
+    "como_reproduzir": "Mesmo POST do DB-01 em laco, com p_rate_key aleatorio. Cada chamada acrescenta uma linha permanente em public.rate_limits.",
+    "impacto": "Enchimento de disco e de custo do banco por parte nao autenticada. Hoje a tabela tem 73 linhas e 72 kB, e ZERO chaves cert_verify_* -- ou seja, e vetor latente, ninguem explorou ainda.",
+    "veredito": "CONFIRMADO por leitura da definicao + medicao da tabela em producao"
+  },
+  {
+    "id": "DB-03",
+    "titulo": "Correcao de sync_public_domain esta escrita e nao foi commitada",
+    "severidade": "MEDIA",
+    "arquivo": "supabase/migrations/20260826120000_revoke_public_execute_on_sync_public_domain.sql",
+    "linha": 12,
+    "origem": "banco-ao-vivo",
+    "porque": "A migration que revoga o EXECUTE publico existe no disco desde 26/08, esta bem escrita (inclusive com assercao que falha se algum grant sobreviver), e continua UNTRACKED no git. O banco de producao segue com o grant: a ACL de public.sync_public_domain mostra '=X/postgres', que e o EXECUTE de PUBLIC. Como e funcao de gatilho (RETURNS trigger), a exploracao direta e improvavel, mas o grant e indevido e a correcao ja esta pronta.",
+    "como_reproduzir": "git status mostra o arquivo como untracked; no banco, select proacl from pg_proc where proname='sync_public_domain' ainda traz '=X/postgres'.",
+    "impacto": "Funcao SECURITY DEFINER exposta na superficie REST para anon e authenticated. Risco real baixo (funcao de gatilho), mas e divida aberta com conserto pronto.",
+    "veredito": "CONFIRMADO no git e no banco"
+  },
+  {
+    "id": "DB-04",
+    "titulo": "REFUTADO: as 39 funcoes privilegiadas alcancaveis por usuario logado",
+    "severidade": "BAIXA",
+    "arquivo": "supabase/migrations/20260723000000_admin_console.sql",
+    "linha": 1,
+    "origem": "banco-ao-vivo",
+    "porque": "O linter do Supabase acusa 39 funcoes SECURITY DEFINER executaveis por 'authenticated', entre elas admin_set_user_roles e admin_list_platform_users -- nomes que parecem escalonamento de privilegio. Li a definicao da mais perigosa: admin_set_user_roles comeca com 'if not public.is_admin() then raise exception ... 42501', fixa search_path, valida a lista de papeis contra uma lista fechada, impede o admin de remover o proprio papel, impede a plataforma de ficar sem nenhum admin, e grava evento de auditoria. O aviso do linter e esperado por desenho: o padrao do Supabase e conceder a authenticated e barrar por dentro.",
+    "como_reproduzir": "Nao se aplica -- este item existe para registrar a refutacao e evitar que a proxima auditoria gaste tempo com o mesmo alarme.",
+    "impacto": "Nenhum. Registrado para nao virar achado falso em auditoria futura.",
+    "veredito": "REFUTADO por leitura da definicao em producao"
+  }
+]
