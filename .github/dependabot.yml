@@ -1,0 +1,45 @@
+version: 2
+updates:
+  # Um grupo único com `patterns: ["*"]` junta tudo num PR só: basta um bump
+  # transitivo quebrar o build para o lote inteiro travar — e um patch de
+  # segurança fica esperando atrás dele, sem ninguém perceber, contra um teto de
+  # 5 PRs abertos. Por isso patch e minor viajam separados: patch é onde moram
+  # as correções de segurança e quase nunca quebra, então segue sozinho e rápido;
+  # minor pode carregar comportamento novo e merece revisão própria.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      patch:
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
+      minor:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      patch:
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
+      minor:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"

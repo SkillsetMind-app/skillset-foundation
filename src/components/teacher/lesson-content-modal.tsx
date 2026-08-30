@@ -23,11 +23,12 @@ import {
   getCourseAssetUploadErrorMessage,
   isAllowedBunnyVideoFile,
   isAllowedCourseAssetFile,
+  isVideoAssetKind,
   supabaseUploadLimitBytes,
 } from "@/domain/course-asset";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import {
-  inferLessonVideoSource,
+  resolveLessonVideoSource,
   type LessonType,
   type TeacherCourse,
   type TeacherCourseModule,
@@ -83,9 +84,7 @@ const editableLessonTypes: Array<{ value: LessonType; label: string }> = [
 ];
 
 function getAssetStatusLabel(assets: CourseAsset[], lesson: TeacherLesson) {
-  const hasVideo = assets.some(
-    (asset) => asset.kind === "lesson_video" || asset.kind === "live_recording",
-  );
+  const hasVideo = assets.some((asset) => isVideoAssetKind(asset.kind));
 
   if (hasVideo) {
     return "Uploaded";
@@ -130,16 +129,22 @@ export function LessonContentModal({
   const [success, setSuccess] = useState("");
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
   const lessonAssets = assets.filter((asset) => asset.lessonId === lesson.id);
-  const videoAssets = lessonAssets.filter(
-    (asset) => asset.kind === "lesson_video" || asset.kind === "live_recording",
-  );
+  const videoAssets = lessonAssets.filter((asset) => isVideoAssetKind(asset.kind));
   const materialAssets = lessonAssets.filter((asset) => asset.kind === "lesson_material");
   const thumbnailAssets = lessonAssets.filter((asset) => asset.kind === "lesson_thumbnail");
   const trustedEmbed = getTrustedLessonEmbed(lesson.externalUrl);
-  const resolvedSource = lesson.videoSource ?? inferLessonVideoSource({
+  const resolvedSource = resolveLessonVideoSource({
+    declared: lesson.videoSource,
     hasVideoAsset: videoAssets.length > 0,
     hasTrustedEmbed: Boolean(trustedEmbed),
   });
+  // O painel de envio abre pela INTENÇÃO do professor (escolheu um arquivo),
+  // não pelo campo persistido. São duas perguntas diferentes que o `videoSource`
+  // vinha respondendo sozinho: "que editor eu mostro agora" e "que player o
+  // aluno recebe". Amarrar a primeira ao campo salvo deixava o único caminho de
+  // envio inalcançável numa aula nova — a fonte só vira "upload" no sucesso do
+  // envio, e o envio só aparecia se a fonte já fosse "upload".
+  const isUploadPanelOpen = resolvedSource === "upload" || selectedFile !== null;
   const videoStatus = getAssetStatusLabel(lessonAssets, lesson);
 
   const dialogRef = useRef<HTMLElement>(null);
@@ -218,8 +223,7 @@ export function LessonContentModal({
 
     // Videos route to Bunny Stream (HLS + CDN) when configured; everything else
     // — and videos before Bunny is wired — stays on Supabase Storage.
-    const isVideoKind =
-      uploadKind === "lesson_video" || uploadKind === "live_recording";
+    const isVideoKind = isVideoAssetKind(uploadKind);
     const useBunny = isVideoKind && isBunnyConfigured;
 
     if (useBunny) {
@@ -268,7 +272,7 @@ export function LessonContentModal({
       // agora existe de fato um vídeo para tocar. Declarar antes do envio
       // deixava a aula vazia para o aluno pagante enquanto o professor lia
       // "Media is connected." na própria tela.
-      if (uploadKind === "lesson_video" || uploadKind === "live_recording") {
+      if (isVideoKind) {
         onUpdateLesson({ videoSource: "upload" });
       }
       setSuccess("File uploaded to this lesson.");
@@ -307,8 +311,21 @@ export function LessonContentModal({
     setSuccess("");
     setDeletingAssetId(asset.id);
 
+    // Apagar o último vídeo deixava a aula declarada como "upload" sem nenhum
+    // arquivo para tocar — o mesmo buraco que a auditoria fechou do lado da
+    // escolha do arquivo, entrando pela porta dos fundos. O leitor já cai para o
+    // embed sozinho (resolveLessonVideoSource), mas limpar aqui evita gravar uma
+    // promessa que o banco não pode cumprir.
+    const wasLastVideoAsset =
+      isVideoAssetKind(asset.kind) && videoAssets.length === 1;
+
     try {
       await deleteCourseAsset(asset);
+
+      if (wasLastVideoAsset && lesson.videoSource === "upload") {
+        onUpdateLesson({ videoSource: null });
+      }
+
       setSuccess("Asset deleted.");
     } catch {
       setError("We could not delete this file. Check course ownership and current permissions.");
@@ -392,7 +409,7 @@ export function LessonContentModal({
               </div>
 
               <LessonVideoSourcePicker
-                value={resolvedSource}
+                value={isUploadPanelOpen ? "upload" : resolvedSource}
                 disabled={!isEditable || isUploading}
                 accept={courseAssetAcceptTypes[uploadKind]}
                 externalUrl={lesson.externalUrl ?? ""}
@@ -415,7 +432,7 @@ export function LessonContentModal({
                 }
               />
 
-              {resolvedSource === "upload" ? (
+              {isUploadPanelOpen ? (
                 <>
                   <div className="grid gap-3 md:grid-cols-2">
                     <button

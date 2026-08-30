@@ -33,8 +33,13 @@ export function LessonVideoSourcePicker(props: {
     // "Media is connected.", porque aquele rótulo olha anexo e embed e ignora a
     // fonte: a tela do professor se contradizia sozinha.
     //
-    // Quem declara a fonte agora é o caminho de SUCESSO do envio, no
+    // Quem declara a fonte é o caminho de SUCESSO do envio, no
     // lesson-content-modal — quando existe, de fato, um arquivo para tocar.
+    //
+    // O que abre o painel de envio é o `value` que o modal passa: ele considera
+    // "upload" enquanto houver arquivo escolhido, mesmo antes de gravar a fonte.
+    // Sem isso o professor ficava sem saída — o formulário de envio só aparecia
+    // depois de uma gravação que só acontece depois do envio.
     props.onSelectFile(file);
   }
 

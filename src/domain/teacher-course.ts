@@ -289,6 +289,34 @@ export function inferLessonVideoSource(params: {
   return null;
 }
 
+// A fonte declarada só vale enquanto a mídia que ela promete ainda existe.
+//
+// `videoSource` é um campo persistido, e todo campo persistido descola do mundo
+// mais cedo ou mais tarde: o professor apaga o arquivo enviado e o campo segue
+// dizendo "upload"; troca o link do YouTube por um inválido e o campo segue
+// dizendo "youtube". Quem lia o campo cru caía no vazio — "Media not attached
+// yet" numa aula paga que ainda tinha um embed válido salvo e nunca consultado.
+//
+// Por isso a decisão é tomada AQUI, uma vez, e não em cada leitor: confirmar a
+// fonte declarada contra a evidência e, quando ela não se sustenta, cair para o
+// que de fato existe. Isso cura sozinho os dados já gravados errados — não
+// depende de todo escritor ter feito a limpeza na hora certa.
+export function resolveLessonVideoSource(params: {
+  declared?: LessonVideoSource | null;
+  hasVideoAsset: boolean;
+  hasTrustedEmbed: boolean;
+}): LessonVideoSource | null {
+  if (params.declared === "upload" && params.hasVideoAsset) {
+    return "upload";
+  }
+
+  if (params.declared === "youtube" && params.hasTrustedEmbed) {
+    return "youtube";
+  }
+
+  return inferLessonVideoSource(params);
+}
+
 // Serialize the builder's modules for the course-doc payload. contentText /
 // externalUrl are always kept (trimmed) so the Cloud Function receives the real
 // lesson content and can mirror it into the gated lessonContent subcollection;

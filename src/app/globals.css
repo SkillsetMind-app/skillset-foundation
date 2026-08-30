@@ -7061,17 +7061,24 @@ button:hover > .dash-card,
    13px em campos (formulário geral, busca da barra lateral, URL do vídeo,
    campos do modal de aula, busca do catálogo).
 
-   Só no celular, de propósito: no desktop não há zoom e a densidade projetada
-   fica como está.
+   O gatilho é o aparelho de toque primário (hover: none + pointer: coarse), e
+   não a largura da tela: o zoom nasce do tamanho da fonte do campo e dispara
+   igual com o iPhone deitado, onde a viewport passa de 900px. A primeira versão
+   desta regra parava em 640px e deixava a tela de login quebrada em paisagem —
+   e o iPhone SE de pé, com 667px, também ficava de fora. O par de condições
+   exclui o notebook de tela sensível ao toque, que tem ponteiro fino e não dá
+   zoom: ali a densidade projetada para o desktop continua valendo.
 
-   O !important é obrigatório aqui, não preguiça: as regras originais usam
-   seletor de classe (.platform-sidebar-search input), que vence um seletor de
-   elemento por especificidade. Sem ele a regra sobe e não faz efeito.
+   Sem !important, de propósito. `:not([type=...])` herda a especificidade do
+   argumento, então o seletor abaixo é (0,2,1) e já vence .platform-sidebar-search
+   input, que é (0,1,1) — o comentário anterior errava essa conta. Um !important
+   de folha de estilo ainda atropelaria todo `style={{ fontSize }}` inline da
+   aplicação, e obrigaria o próximo override legítimo a nascer com outro.
    (Auditoria de produto de 2026-08-30, achado P-11.) */
-@media (max-width: 640px) {
+@media (hover: none) and (pointer: coarse) {
   input:not([type="checkbox"]):not([type="radio"]),
   textarea,
   select {
-    font-size: 16px !important;
+    font-size: 16px;
   }
 }

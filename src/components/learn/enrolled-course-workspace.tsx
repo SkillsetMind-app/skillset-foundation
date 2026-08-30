@@ -54,7 +54,7 @@ import {
   getNextCourseLesson,
 } from "@/domain/lesson-progress";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
-import { inferLessonVideoSource } from "@/domain/teacher-course";
+import { resolveLessonVideoSource } from "@/domain/teacher-course";
 import { subscribeToCourseEvents } from "@/lib/data/course-events";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import {
@@ -1448,7 +1448,8 @@ function LessonContentPanel({
       && (!primaryHostedVideo || asset.id !== primaryHostedVideo.id),
   );
   const trustedEmbed = locked ? null : getTrustedLessonEmbed(lesson.externalUrl);
-  const resolvedVideoSource = lesson.videoSource ?? inferLessonVideoSource({
+  const resolvedVideoSource = resolveLessonVideoSource({
+    declared: lesson.videoSource,
     hasVideoAsset: Boolean(primaryHostedVideo),
     hasTrustedEmbed: Boolean(trustedEmbed),
   });

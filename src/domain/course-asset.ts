@@ -27,6 +27,14 @@ export type CourseAsset = {
   updatedAt?: unknown;
 };
 
+// Quais kinds contam como "o vídeo da aula". A comparação literal estava aberta
+// em cinco lugares (rótulo de status, filtro de assets, gravação da fonte após o
+// envio, escolha do player); um sexto kind de vídeo teria que ser lembrado em
+// todos eles, e esquecer um significa a fonte parar de ser declarada em silêncio.
+export function isVideoAssetKind(kind: CourseAssetKind): boolean {
+  return kind === "lesson_video" || kind === "live_recording";
+}
+
 export const courseAssetKindLabels: Record<CourseAssetKind, string> = {
   course_cover: "Course cover",
   members_cover: "Members area cover",
