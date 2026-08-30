@@ -69,16 +69,38 @@ export function decideHostRoute(input: {
   /** uid resolved from public_domains, or null when this host is not ours. */
   resolvedUid: string | null;
 }): HostRouteDecision {
-  const { pathname, search, resolvedUid } = input;
+  const { hostname, pathname, search, resolvedUid } = input;
 
-  // Unknown host. Could be the platform's own hostname, a preview URL, or
-  // localhost — in every case the request is already where it belongs.
-  if (!resolvedUid) {
+  // Assets e API nunca são tocados, em host nenhum: reescrever quebra o Next, e
+  // a API já é agnóstica de origem. Vem antes de tudo porque um domínio não
+  // resolvido ainda precisa servir os próprios assets enquanto o visitante é
+  // mandado embora.
+  if (NEVER_TOUCH.some((prefix) => pathname.startsWith(prefix))) {
     return { kind: "pass" };
   }
 
-  if (NEVER_TOUCH.some((prefix) => pathname.startsWith(prefix))) {
+  // O host da plataforma segue normalmente.
+  if (isPlatformHost(hostname)) {
     return { kind: "pass" };
+  }
+
+  // Chegou aqui: o host NÃO é nosso e não resolve para nenhum professor.
+  //
+  // O comentário antigo aqui dizia "pode ser o próprio host da plataforma, uma
+  // URL de preview ou localhost — em qualquer caso a requisição já está onde
+  // deveria" e devolvia `pass`. Essa premissa ficou falsa quando a feature de
+  // domínio próprio entrou: `src/proxy.ts` já descarta isPlatformHost ANTES de
+  // chamar esta função, então o que sobra aqui é justamente o caso perigoso —
+  // um hostname anexado ao projeto da Vercel mas ainda NÃO verificado (a rota
+  // anexa antes de provar posse), ou um cuja linha sumiu quando o professor
+  // desanexou. Nos dois, servir `pass` publicava /login e /signup reais sob um
+  // nome que a plataforma não controla, com certificado válido: exatamente o
+  // coletor de credenciais que o cabeçalho deste arquivo existe para impedir.
+  //
+  // Falhar FECHADO. O visitante vai para a plataforma; nada de identidade é
+  // renderizado sob um host de terceiro.
+  if (!resolvedUid) {
+    return { kind: "redirect", url: `${PLATFORM_ORIGIN}${pathname}${search}` };
   }
 
   // The root of a teacher's domain is their storefront. This is the whole point
