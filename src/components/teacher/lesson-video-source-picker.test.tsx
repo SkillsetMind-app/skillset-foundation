@@ -36,7 +36,13 @@ describe("LessonVideoSourcePicker", () => {
     ).toBeInTheDocument();
   });
 
-  it("selects a dropped video file and switches the source to upload", () => {
+  // Escolher NAO declara a fonte. A versao anterior destes dois testes exigia
+  // `onChange("upload")` na escolha, e era essa a regra que apagava a aula para
+  // quem ja tinha pago: `videoSource` e persistido pelo autosave e e o campo que
+  // o aluno le para escolher o player, entao a fonte virava "upload" sem existir
+  // arquivo nenhum. Quem declara a fonte agora e o caminho de sucesso do envio,
+  // no lesson-content-modal. (Auditoria de produto de 2026-08-30, achado P-01.)
+  it("selects a dropped video file without declaring the source yet", () => {
     const props = renderPicker();
     const file = videoFile();
 
@@ -44,8 +50,8 @@ describe("LessonVideoSourcePicker", () => {
       dataTransfer: { files: [file] },
     });
 
-    expect(props.onChange).toHaveBeenCalledWith("upload");
     expect(props.onSelectFile).toHaveBeenCalledWith(file);
+    expect(props.onChange).not.toHaveBeenCalled();
   });
 
   it("ignores dropped non-video files", () => {
@@ -61,7 +67,7 @@ describe("LessonVideoSourcePicker", () => {
     expect(props.onSelectFile).not.toHaveBeenCalled();
   });
 
-  it("selects a browsed file through the hidden input", () => {
+  it("selects a browsed file without declaring the source yet", () => {
     const props = renderPicker();
     const file = videoFile();
 
@@ -69,8 +75,8 @@ describe("LessonVideoSourcePicker", () => {
       target: { files: [file] },
     });
 
-    expect(props.onChange).toHaveBeenCalledWith("upload");
     expect(props.onSelectFile).toHaveBeenCalledWith(file);
+    expect(props.onChange).not.toHaveBeenCalled();
   });
 
   it("reports URL typing and switches the source to youtube only when needed", () => {

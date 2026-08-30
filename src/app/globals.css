@@ -7053,3 +7053,25 @@ button:hover > .dash-card,
     padding: 1rem;
   }
 }
+
+/* ─── iOS: campo de formulário nunca abaixo de 16px no celular ──────────────
+   O Safari do iPhone dá zoom ao focar um campo com fonte menor que 16px, e o
+   zoom NÃO volta sozinho: a pessoa fica com a tela deslocada no meio do login,
+   que é a primeira tela do produto. Cinco regras da casa usavam 0.875rem ou
+   13px em campos (formulário geral, busca da barra lateral, URL do vídeo,
+   campos do modal de aula, busca do catálogo).
+
+   Só no celular, de propósito: no desktop não há zoom e a densidade projetada
+   fica como está.
+
+   O !important é obrigatório aqui, não preguiça: as regras originais usam
+   seletor de classe (.platform-sidebar-search input), que vence um seletor de
+   elemento por especificidade. Sem ele a regra sobe e não faz efeito.
+   (Auditoria de produto de 2026-08-30, achado P-11.) */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
