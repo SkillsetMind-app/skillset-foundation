@@ -57,6 +57,19 @@ const nextConfig: NextConfig = {
   // tuned against Stripe.js, PostHog, Supabase, Google OAuth, and the
   // Bunny/YouTube/Vimeo iframes); until then we ship it REPORT-ONLY (below), so
   // violations are observed without any risk of breaking the site.
+  // /lp e o atalho curto para a landing de Founding Creator, que vive em seu
+  // proprio dominio (lp.skillsetmind.com, projeto Vercel skillsetmind-landing).
+  // E redirect, nao rewrite: a landing e HTML estatico que chama support.js e
+  // uploads/ por caminho RELATIVO, entao servi-la sob /lp resolveria os assets
+  // em /support.js e quebraria tudo. Forcar barra no fim brigaria com o
+  // trailingSlash:false do Next. O fragmento (#pricing, #start...) e preservado
+  // pelo navegador no redirect. ponytail: uma linha em vez de um proxy.
+  async redirects() {
+    return [
+      { source: "/lp", destination: "https://lp.skillsetmind.com", permanent: false },
+      { source: "/lp/:path*", destination: "https://lp.skillsetmind.com/:path*", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

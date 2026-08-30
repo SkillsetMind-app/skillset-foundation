@@ -15,10 +15,13 @@ import { describe, expect, it } from "vitest";
 // the claim that needs a licence — separately from whatever a seller actually
 // teaches. Psychology as a SUBJECT is fine and deliberately absent from this
 // list; see the comment at the top of src/domain/teacher-course.ts.
+//
+// "Psychologist" / "psicólogo" were on this list until 2026-08-29 and are the
+// owner's deliberate exception: the marketing copy names psychologists as the
+// audience it sells to. The words that describe DELIVERING care — therapist,
+// psychotherapy, counselor — stay blocked, because those claim the service,
+// not the reader.
 const REGULATED_AUDIENCE = [
-  "psychologist",
-  "psicólogo",
-  "psicologo",
   "therapist",
   "terapeuta",
   "psychotherapy",
