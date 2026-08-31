@@ -123,9 +123,7 @@ function shell({ slug, dashboardTab, subject, preheader, title, intro, main, out
             <tr>
               <td style="background-color:${C.footerBg};border-radius:0 0 14px 14px;padding:20px 40px;border:1px solid ${C.line};border-top:none;">
                 <p style="margin:0;font-family:${SANS};font-size:12px;line-height:1.7;color:${C.muted};text-align:center;">
-                  ${footer}
-                  <br />
-                  Questions? <a href="mailto:${SUPPORT}" style="color:${C.navy};font-weight:bold;">${SUPPORT}</a>
+                  ${footer ? `${footer}\n                  <br />\n                  ` : ""}Questions? <a href="mailto:${SUPPORT}" style="color:${C.navy};font-weight:bold;">${SUPPORT}</a>
                 </p>
               </td>
             </tr>
