@@ -74,6 +74,42 @@ describe("decideHostRoute — auth never renders on a domain we do not control",
     },
   );
 
+  // Os testes acima usam um host de professor JÁ RESOLVIDO. A janela perigosa é
+  // outra: o host não é o da plataforma e `resolvedUid` é nulo — o domínio foi
+  // anexado ao projeto da Vercel (o que a rota faz de imediato, sem esperar
+  // prova de posse) e ainda não foi verificado; ou já foi desanexado e a chamada
+  // de remoção falhou. Nesse estado a função devolvia `pass`, servindo a
+  // plataforma inteira, /login incluído, sob um nome que não é nosso.
+  //
+  // O "unknown host" testado acima é o host da PRÓPRIA plataforma sem uid, que é
+  // um caso diferente e tem de continuar passando.
+  it.each(["/login", "/signup", "/account"])(
+    "does not serve %s on a host that is neither the platform nor a resolved teacher",
+    (pathname) => {
+      const decision = decideHostRoute({
+        hostname: "dominio-de-um-professor.com",
+        pathname,
+        search: "",
+        resolvedUid: null,
+      });
+
+      expect(decision.kind).not.toBe("pass");
+    },
+  );
+
+  it("still serves the platform's own host when no teacher resolves", () => {
+    // A função precisa aprender a diferença entre "host desconhecido" e "meu
+    // host" — não simplesmente parar de devolver pass.
+    expect(
+      decideHostRoute({
+        hostname: "skillsetmind.com",
+        pathname: "/login",
+        search: "",
+        resolvedUid: null,
+      }).kind,
+    ).toBe("pass");
+  });
+
   // The default matters more than any single path above: a route added later by
   // someone who has never read this file is protected without them doing
   // anything.
