@@ -147,3 +147,37 @@ não por largura, e não precisa de `!important`).
 Continuam na pasta, ainda não movidas: `criticos.test.ts` (8) e
 `dinheiro-e-config.test.ts` (14). Estão todas verdes — os bugs que elas provam já
 foram corrigidos —, então pelo mesmo protocolo deveriam migrar para `src/`.
+
+---
+
+## Provas migradas — fim da suíte paralela
+
+As 22 provas restantes saíram de `provas/` para dentro de `src/`, e a
+`vitest.provas.config.ts` foi removida junto: a pasta não tem mais o que rodar.
+
+O protocolo dela dizia para mover cada prova para junto do código que exercita
+assim que o bug fosse corrigido. Todas estavam verdes há tempo — os bugs foram
+corrigidos, e as provas continuaram fora do CI, provando algo que ninguém via.
+Uma suíte que só roda quando alguém lembra do comando é uma suíte que não roda.
+
+| Prova | Vive agora em | Nota |
+|---|---|---|
+| A-01 · login em domínio de professor | `src/domain/host-routing.test.tsx` | +4 |
+| A-02 · matrícula grátis vs. oferta paga | `src/lib/supabase/rpc-definition-guards.test.ts` | +2 |
+| DB-01 · balde de limite escolhido pelo chamador | `src/lib/supabase/rpc-definition-guards.test.ts` | +2 |
+| A-03 · ninguém executa os testes de RLS | `src/app/repo-automation.test.ts` | +2 |
+| A-18 · scan de segredos com intervalo vazio | `src/app/repo-automation.test.ts` | +2 |
+| A-10 · HSTS preload vazando p/ domínio do professor | `src/app/repo-automation.test.ts` | +1 |
+| A-17 · moeda da oferta sem validação | `src/app/api/teach/offers/route.test.tsx` | +1, reescrita |
+
+Duas correções na migração, não transcrição:
+
+- **A-01** parecia já coberto em `src/domain/host-routing.test.tsx`, e não estava:
+  o `onCustomDomain` de lá usa um host de professor **já resolvido**, e o caso
+  "unknown host" usa o host da própria plataforma. A janela perigosa — host que
+  não é o nosso com `resolvedUid` nulo, entre anexar e verificar o domínio — não
+  tinha guarda nenhuma.
+- **A-17** era um grep atrás da chamada de `isSupportedStripeCurrency` no texto
+  do arquivo. Grep passa verde com a validação presente e inerte. A versão em
+  `src/` faz um POST com moeda `XYZ` e exige 400 sem tocar no banco — verificada
+  vermelha com a validação desligada.
