@@ -46,13 +46,19 @@ export function LoginForm() {
     : "/auth?mode=signup";
   // Auth callback failures (expired/invalid recovery or OAuth links) arrive as
   // ?error= — without seeding it here they failed with no visible message.
-  const callbackError = useMemo(
-    () =>
-      searchParams.get("error")
-        ? "That link is invalid or has expired. Request a new one and try again."
-        : "",
-    [searchParams],
-  );
+  // Distinct reasons get distinct copy: collapsing them all into "expired"
+  // sent users re-requesting links to fix a problem a new link can't fix.
+  const callbackError = useMemo(() => {
+    const reason = searchParams.get("error");
+    if (!reason) return "";
+    if (reason === "auth_callback") {
+      return "This link has to be opened in the same browser that requested it. Open it there, or request a new one from this browser.";
+    }
+    if (reason === "otp_expired" || reason === "access_denied") {
+      return "That link has already been used or has expired. Reset links work once. Request a new one and try again.";
+    }
+    return "That link is invalid or has expired. Request a new one and try again.";
+  }, [searchParams]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
