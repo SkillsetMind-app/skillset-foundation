@@ -153,6 +153,30 @@ describe("atomic product offer creation", () => {
     expect(offerCalls(rpc)).toHaveLength(0);
   });
 
+  // A moeda passava direto: String(body.currency ?? "USD").toUpperCase(), sem
+  // nenhuma lista. Qualquer sigla de tres letras virava o codigo enviado ao
+  // Stripe, e a correcao (isSupportedStripeCurrency) so tinha um teste que
+  // procurava a chamada no texto do arquivo — grep passa verde com a validacao
+  // presente e inerte. Este exercita a rota. (Auditoria de 2026-08-30, A-17.)
+  it("refuses a currency Stripe does not support before touching the database", async () => {
+    const rpc = vi.fn(async () => ({ data: null, error: null }));
+    const admin = { from: vi.fn(() => courseQuery()), rpc };
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const response = await POST(request({
+      courseId: "course",
+      name: "Moeda inventada",
+      amountMinor: 10_000,
+      currency: "XYZ",
+      paymentType: "one_time",
+      isDefault: false,
+    }));
+
+    expect(response.status).toBe(400);
+    expect(admin.from).not.toHaveBeenCalled();
+    expect(offerCalls(rpc)).toHaveLength(0);
+  });
+
   // Creating an offer is billable work on our Stripe account, so the throttle
   // fails CLOSED: over the limit, nothing reaches the course lookup or the write.
   it("refuses the write when the caller is over the offer rate limit", async () => {
