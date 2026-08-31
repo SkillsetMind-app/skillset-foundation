@@ -24,6 +24,7 @@ import type { TeacherCourse, TeacherCourseStatus } from "@/domain/teacher-course
 import {
   isCoursePubliclySellable,
   normalizeLearningOutcomes,
+  resolveLessonVideoSource,
 } from "@/domain/teacher-course";
 import { subscribeToViewableTeacherCourse } from "@/lib/data/published-courses";
 import {
@@ -319,9 +320,23 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
       : { contentText: null, externalUrl: null };
   const previewLessonContentText = resolvedPreviewContent.contentText;
   const previewLessonRawExternalUrl = resolvedPreviewContent.externalUrl;
-  const previewLessonEmbed = previewLesson?.videoSource === "upload"
-    ? null
-    : getTrustedLessonEmbed(previewLessonRawExternalUrl);
+  const previewLessonTrustedEmbed = getTrustedLessonEmbed(previewLessonRawExternalUrl);
+  // A vitrine é o terceiro leitor da fonte do vídeo, e era o único que lia o
+  // campo cru enquanto o modal do professor e a área do aluno já passavam pelo
+  // resolvedor. Isso a deixava sozinha em desacordo com as outras duas telas.
+  //
+  // Aqui não existe lista de assets — a página pública recebe só o que o
+  // serializador publica —, então a única evidência de arquivo enviado é a
+  // própria fonte declarada. É menos evidência que os outros leitores têm; o
+  // ganho é a decisão ficar na mesma função, e o embed voltar a ser consultado
+  // quando a fonte declarada não se sustenta.
+  const previewVideoSource = resolveLessonVideoSource({
+    declared: previewLesson?.videoSource,
+    hasVideoAsset: previewLesson?.videoSource === "upload",
+    hasTrustedEmbed: Boolean(previewLessonTrustedEmbed),
+  });
+  const previewLessonEmbed =
+    previewVideoSource === "upload" ? null : previewLessonTrustedEmbed;
   const previewLessonExternalUrl = getSafeExternalUrl(previewLessonRawExternalUrl);
   const lockedLessonCount = Math.max(lessons.length - (previewLesson ? 1 : 0), 0);
   const ratingLabel =
@@ -478,7 +493,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
                   />
                 </div>
               ) : null}
-              {previewLesson.videoSource === "upload" ? (
+              {previewVideoSource === "upload" ? (
                 <div className="overflow-hidden rounded-[12px] border border-[var(--color-line)] bg-[var(--color-primary)]">
                   <BunnyVideoPlayer
                     courseId={course.id}
@@ -497,7 +512,7 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
                   Open preview resource
                 </a>
               ) : null}
-              {!previewLessonRawExternalUrl && previewLesson.videoSource !== "upload" ? (
+              {!previewLessonRawExternalUrl && previewVideoSource !== "upload" ? (
                 <p className="rounded-[12px] bg-white p-4 text-xs leading-6 text-[var(--color-ink-soft)]">
                   Preview media can be attached by the educator as a video,
                   external lesson link, or text resource.

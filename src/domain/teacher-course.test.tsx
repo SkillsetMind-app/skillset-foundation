@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   countCourseLessons,
   inferLessonVideoSource,
+  resolveLessonVideoSource,
   normalizeCourseCategories,
   normalizeInstallmentsMax,
   resolveTeacherCoursePaymentType,
@@ -236,5 +237,76 @@ describe("teacher course domain", () => {
     expect(
       inferLessonVideoSource({ hasVideoAsset: false, hasTrustedEmbed: false }),
     ).toBeNull();
+  });
+});
+
+describe("resolveLessonVideoSource", () => {
+  it("keeps the declared source while its media still exists", () => {
+    expect(
+      resolveLessonVideoSource({
+        declared: "upload",
+        hasVideoAsset: true,
+        hasTrustedEmbed: true,
+      }),
+    ).toBe("upload");
+
+    expect(
+      resolveLessonVideoSource({
+        declared: "youtube",
+        hasVideoAsset: true,
+        hasTrustedEmbed: true,
+      }),
+    ).toBe("youtube");
+  });
+
+  // Este e o caso que apagava a aula de quem ja tinha pago: o professor apaga o
+  // arquivo enviado, `videoSource` segue gravado como "upload", e o link do
+  // YouTube continua salvo e valido — so nunca mais consultado.
+  it("falls back to the trusted embed when the declared upload has no file", () => {
+    expect(
+      resolveLessonVideoSource({
+        declared: "upload",
+        hasVideoAsset: false,
+        hasTrustedEmbed: true,
+      }),
+    ).toBe("youtube");
+  });
+
+  it("falls back to the uploaded file when the declared embed is gone", () => {
+    expect(
+      resolveLessonVideoSource({
+        declared: "youtube",
+        hasVideoAsset: true,
+        hasTrustedEmbed: false,
+      }),
+    ).toBe("upload");
+  });
+
+  it("reports no source when the declared one has no media behind it", () => {
+    expect(
+      resolveLessonVideoSource({
+        declared: "upload",
+        hasVideoAsset: false,
+        hasTrustedEmbed: false,
+      }),
+    ).toBeNull();
+  });
+
+  it("infers from the evidence when nothing is declared", () => {
+    expect(
+      resolveLessonVideoSource({
+        declared: null,
+        hasVideoAsset: true,
+        hasTrustedEmbed: false,
+      }),
+    ).toBe("upload");
+
+    expect(
+      resolveLessonVideoSource({
+        declared: undefined,
+        hasVideoAsset: false,
+        hasTrustedEmbed: true,
+      }),
+    ).toBe("youtube");
   });
 });

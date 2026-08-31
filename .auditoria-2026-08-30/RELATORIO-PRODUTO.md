@@ -104,3 +104,46 @@ npx vitest run --config .auditoria-2026-08-30/vitest.provas.config.ts
 ```
 
 26 provas: as 22 da auditoria de segurança mais as 4 desta. As duas correções de produto estão entre elas.
+
+---
+
+## Fechamento — 2026-08-30 (segunda passada)
+
+A primeira correção de P-01 tratou o sintoma e criou um bug maior: ao remover a
+declaração da fonte na escolha do arquivo, o único caminho que revelava o
+formulário de envio sumiu junto (o formulário renderizava sob
+`resolvedSource === "upload"`, e a fonte só passava a ser "upload" no sucesso do
+envio). O professor ficou sem conseguir enviar vídeo nenhum, e os testes foram
+reescritos afirmando o estado quebrado como invariante.
+
+O que fechou de verdade:
+
+- **P-01** — o painel de envio agora abre pela intenção (`isUploadPanelOpen`:
+  há arquivo escolhido), e a gravação da fonte segue só no sucesso do envio.
+  As duas perguntas que o `videoSource` respondia sozinho ficaram separadas.
+- **P-01 (porta dos fundos)** — apagar o último vídeo limpava nada;
+  `handleDeleteAsset` agora limpa a fonte, e `resolveLessonVideoSource` confirma
+  a fonte declarada contra a evidência antes de usá-la. Isso cura os dados já
+  gravados errados, sem depender de todo escritor ter limpado na hora.
+- **P-11** — a regra de 16px passou a valer por tipo de aparelho
+  (`hover: none and pointer: coarse`) em vez de `max-width: 640px`, que deixava
+  o iPhone em paisagem de fora; e o `!important` saiu, porque era desnecessário
+  (`:not([type=…])` já dá (0,2,1) contra (0,1,1) do seletor de classe).
+
+As provas de `provas/produto.test.tsx` foram movidas para `src/` como testes de
+regressão de verdade, seguindo o protocolo de `vitest.provas.config.ts`:
+
+| Prova | Vive agora em |
+|---|---|
+| P-01 | `src/components/teacher/lesson-content-modal.test.tsx` (7 testes) |
+| P-11 | `src/app/mobile-field-zoom.test.ts` (3 testes) |
+| fonte do vídeo | `src/domain/teacher-course.test.tsx` (`resolveLessonVideoSource`) |
+
+O detector de P-11 exigia literalmente `!important` dentro de uma media query de
+`max-width` — travava a solução de ontem e cobrava o preço da correção de hoje.
+A versão em `src/` afirma o requisito (existe piso de 16px, vale por aparelho e
+não por largura, e não precisa de `!important`).
+
+Continuam na pasta, ainda não movidas: `criticos.test.ts` (8) e
+`dinheiro-e-config.test.ts` (14). Estão todas verdes — os bugs que elas provam já
+foram corrigidos —, então pelo mesmo protocolo deveriam migrar para `src/`.
