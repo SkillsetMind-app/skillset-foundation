@@ -230,7 +230,10 @@ export async function resetPassword(
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     // Lands on the dedicated reset page — /account's change-password form
     // demands the current password, which is exactly what the user forgot.
-    redirectTo: authCallbackUrl("/auth/callback?next=/reset-password"),
+    // /auth/confirm (verifyOtp), not /auth/callback (PKCE): the recovery email
+    // is routinely opened on a different device than the one that asked for it,
+    // and PKCE's code_verifier cookie doesn't travel between browsers.
+    redirectTo: authCallbackUrl("/auth/confirm?next=/reset-password"),
     // No-op unless Supabase CAPTCHA is enabled + the Turnstile widget is on.
     captchaToken: captchaToken || undefined,
   });

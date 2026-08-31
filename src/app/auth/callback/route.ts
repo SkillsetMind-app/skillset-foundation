@@ -1,25 +1,37 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { PASSWORD_RECOVERY_COOKIE } from "@/lib/auth/recovery-cookie";
+import {
+  RESET_PASSWORD_PATH,
+  attachRecoveryCookie,
+} from "@/lib/auth/recovery-cookie";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-// OAuth (Google) + recovery-link landing. Supabase redirects here with a
-// short-lived `code` that we exchange for a session cookie, then forward to
-// `next` (defaults to the app root).
+// OAuth (Google) landing, plus recovery links minted before the email template
+// moved to /auth/confirm. Supabase redirects here with a short-lived `code`
+// that we exchange for a session cookie, then forward to `next`.
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/";
   const safeNext = next.startsWith("/") ? next : "/";
 
+  // A consumed or expired one-time token arrives with Supabase's own error
+  // params and no `code`. Forwarding the real reason is what lets the login
+  // screen say "already used" instead of guessing "expired" at everything.
+  const providerError = searchParams.get("error_code") ?? searchParams.get("error");
+
   if (!code) {
-    return NextResponse.redirect(`${origin}/login?error=missing_code`);
+    return NextResponse.redirect(
+      `${origin}/login?error=${encodeURIComponent(providerError ?? "missing_code")}`,
+    );
   }
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
+    // Overwhelmingly this is the PKCE verifier missing because the link was
+    // opened in a different browser than the one that requested it.
     return NextResponse.redirect(`${origin}/login?error=auth_callback`);
   }
 
@@ -28,17 +40,7 @@ export async function GET(request: NextRequest) {
   // Only a session minted by exchanging a recovery code lands here with
   // next=/reset-password — a plain authenticated session never gets this
   // cookie, which is what proves recovery provenance to the reset page.
-  if (safeNext === "/reset-password") {
-    response.cookies.set(PASSWORD_RECOVERY_COOKIE, "1", {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/reset-password",
-      // ponytail: cookie simply expires instead of being cleared post-reset;
-      // 10 minutes bounds the window without an extra clearing endpoint.
-      maxAge: 600,
-    });
-  }
-
-  return response;
+  return safeNext === RESET_PASSWORD_PATH
+    ? attachRecoveryCookie(response)
+    : response;
 }
