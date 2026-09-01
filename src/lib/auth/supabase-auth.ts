@@ -241,11 +241,21 @@ export async function signUpWithEmail(
   };
 }
 
-export async function signInWithGoogle(): Promise<SkillsetUser> {
+// `next` is where the browser lands after Google: /auth/callback exchanges the
+// code and forwards it verbatim. Callers pass a /loading URL (getLoadingRoute)
+// so the usual post-auth router decides — a new account goes to onboarding, an
+// onboarded one to its deep link or workspace. Without it the callback fell
+// back to "/", which skipped onboarding and dropped the deep link for every
+// Google sign-in; the code after this call in the forms never runs (see below).
+export async function signInWithGoogle(next: string): Promise<SkillsetUser> {
   const supabase = getSupabaseBrowserClient();
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: authCallbackUrl("/auth/callback") },
+    options: {
+      redirectTo: authCallbackUrl(
+        `/auth/callback?next=${encodeURIComponent(next)}`,
+      ),
+    },
   });
 
   if (error) {
@@ -370,6 +380,7 @@ export async function requestSkillsetEmailChange(
 export async function changeSkillsetPassword(
   currentPassword: string,
   nextPassword: string,
+  captchaToken?: string,
 ): Promise<void> {
   const supabase = getSupabaseBrowserClient();
   const {
@@ -381,9 +392,12 @@ export async function changeSkillsetPassword(
   }
 
   // Re-authenticate by verifying the current password before allowing a change.
+  // Same CAPTCHA contract as signInWithEmail: with Attack Protection on, GoTrue
+  // refuses a password sign-in that carries no token — and this is one.
   const { error: reauthError } = await supabase.auth.signInWithPassword({
     email: user.email,
     password: currentPassword,
+    options: captchaToken ? { captchaToken } : undefined,
   });
 
   if (reauthError) {

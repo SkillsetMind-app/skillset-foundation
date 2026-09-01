@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   router: { push: vi.fn(), replace: vi.fn() },
   searchParams: new URLSearchParams(),
   signUpWithEmail: vi.fn(),
+  signInWithGoogle: vi.fn(),
   acceptUserTerms: vi.fn(),
   updateUserIdentity: vi.fn(),
   getUserProfile: vi.fn(),
@@ -32,8 +33,10 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
 vi.mock("@/lib/auth/supabase-auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/auth/supabase-auth")>()),
   signUpWithEmail: mocks.signUpWithEmail,
-  signInWithGoogle: vi.fn(),
+  signInWithGoogle: mocks.signInWithGoogle,
 }));
+
+vi.mock("@/lib/auth/providers", () => ({ isGoogleAuthEnabled: true }));
 
 vi.mock("@/lib/data/user-profiles", () => ({
   acceptUserTerms: mocks.acceptUserTerms,
@@ -177,5 +180,30 @@ describe("SignupForm when the account was not created", () => {
       screen.queryByRole("link", { name: "auth.signup.existingAccountSignIn" }),
     ).toBeNull();
     expect(mocks.router.push).not.toHaveBeenCalled();
+  });
+});
+
+describe("SignupForm with Google", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // The real call navigates the browser away and never resolves.
+    mocks.signInWithGoogle.mockReturnValue(new Promise(() => {}));
+  });
+
+  afterEach(cleanup);
+
+  // A brand-new Google account used to land on "/" with onboarding never
+  // completed — the callback had no destination to forward.
+  it("sends a Google signup through /loading so onboarding runs", () => {
+    render(<SignupForm />);
+
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(
+      screen.getByRole("button", { name: /auth\.continueWithGoogle/ }),
+    );
+
+    expect(mocks.signInWithGoogle).toHaveBeenCalledWith(
+      "/loading?next=welcome&path=student",
+    );
   });
 });

@@ -111,7 +111,11 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      const user = await signInWithGoogle();
+      const user = await signInWithGoogle(
+        // Carried through the OAuth round trip: /loading applies the same
+        // onboarded-or-welcome rule finishLogin applies for email.
+        getLoadingRoute("welcome", pathIntent, returnTo),
+      );
       await finishLogin(user.uid);
     } catch (caughtError) {
       if (isMultiFactorRequiredError(caughtError)) {
