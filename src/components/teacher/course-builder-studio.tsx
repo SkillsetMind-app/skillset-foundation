@@ -77,6 +77,7 @@ import {
 import {
   fetchCourseAssets,
   subscribeToCourseAssets,
+  syncLessonPreviewAssets,
   uploadCourseAsset,
   type UploadCourseAssetProgress,
 } from "@/lib/data/course-assets";
@@ -2710,13 +2711,20 @@ export function CourseBuilderStudio() {
           isEditable={isEditable}
           isFreePreview={freePreviewLessonId === activeLessonStudioLesson.id}
           onClose={() => setActiveLessonStudio(null)}
-          onSetFreePreview={() =>
-            setFreePreviewLessonId(
+          onSetFreePreview={() => {
+            const next =
               freePreviewLessonId === activeLessonStudioLesson.id
                 ? ""
-                : activeLessonStudioLesson.id,
-            )
-          }
+                : activeLessonStudioLesson.id;
+            setFreePreviewLessonId(next);
+            // A flag do curso sozinha não abre o vídeo para quem ainda não
+            // comprou: a busca anônima filtra por is_preview no asset. Sem este
+            // passo, marcar a prévia depois do upload deixava a loja com
+            // "Video unavailable" e nenhum aviso no estúdio.
+            void syncLessonPreviewAssets(course.id, next).catch(() => {
+              // Falha aqui não pode derrubar o builder; o publish revalida.
+            });
+          }}
           onUpdateLesson={(patch) =>
             updateLesson(
               activeLessonStudioModule.id,

@@ -32,25 +32,56 @@ export function PaymentOperationsPanel() {
     );
   }, []);
 
+  // Somar BRL com EUR e rotular o resultado como USD produz um número que não
+  // existe — e era exibido como "receita da plataforma". Agora acumula por
+  // moeda e cada uma é formatada na sua própria.
   const totals = useMemo(() => {
-    return orders.reduce(
-      (summary, order) => {
+    const byCurrency = new Map<
+      Order["currency"],
+      { grossMinor: number; feeMinor: number }
+    >();
+
+    const summary = orders.reduce(
+      (acc, order) => {
         if (order.status === "paid") {
-          summary.paid += 1;
-          summary.grossMinor += order.amountMinor;
-          summary.feeMinor += Math.floor(
+          acc.paid += 1;
+          const bucket = byCurrency.get(order.currency) ?? {
+            grossMinor: 0,
+            feeMinor: 0,
+          };
+          bucket.grossMinor += order.amountMinor;
+          bucket.feeMinor += Math.floor(
             (order.amountMinor * order.platformFeeBps) / 10000,
           );
+          byCurrency.set(order.currency, bucket);
         }
 
         if (order.status === "refunded" || order.status === "partially_refunded") {
-          summary.refunds += 1;
+          acc.refunds += 1;
         }
 
-        return summary;
+        return acc;
       },
-      { paid: 0, refunds: 0, grossMinor: 0, feeMinor: 0 },
+      { paid: 0, refunds: 0 },
     );
+
+    const currencies = [...byCurrency.entries()].sort(([a], [b]) =>
+      a.localeCompare(b),
+    );
+
+    return {
+      ...summary,
+      gross: currencies.length
+        ? currencies
+            .map(([currency, v]) => formatMoney(v.grossMinor, currency))
+            .join(" · ")
+        : "—",
+      fee: currencies.length
+        ? currencies
+            .map(([currency, v]) => formatMoney(v.feeMinor, currency))
+            .join(" · ")
+        : "—",
+    };
   }, [orders]);
   const exportRows = useMemo(
     () =>
@@ -93,9 +124,13 @@ export function PaymentOperationsPanel() {
 
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
         {[
-          ["Paid orders", String(totals.paid)],
-          ["Gross paid", formatMoney(totals.grossMinor, "USD")],
-          ["Platform fee est.", formatMoney(totals.feeMinor, "USD")],
+          // subscribeToRecentOrders usa .limit(12): estes números descrevem a
+          // amostra visível, não a plataforma. Rotulados como "Gross paid" eram
+          // lidos como receita total — errado por ordem de grandeza assim que
+          // houver mais de 12 vendas.
+          ["Paid in this sample", String(totals.paid)],
+          ["Gross (last 12 orders)", totals.gross],
+          ["Platform fee est. (same 12)", totals.fee],
         ].map(([label, value]) => (
           <div
             key={label}

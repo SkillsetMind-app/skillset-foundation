@@ -409,6 +409,93 @@ select {
   font: inherit;
 }
 
+/* ─── Fundo branco fixo no tema escuro ────────────────────────────────────
+   182 elementos combinam `bg-white` (fundo branco literal) com tinta por token
+   (`text-[var(--color-ink...)]`). No tema escuro a tinta clareia e o fundo não:
+   dá texto claro sobre branco. Medido na política de privacidade — rótulos em
+   negrito ficavam a 1.18:1 de contraste, contra os 4.5:1 exigidos pela WCAG AA.
+
+   Trocar os 182 à mão seria 182 chances de errar. Aqui o utilitário passa a
+   seguir o tema, que é o que cada um desses usos já pretendia.
+
+   Quem PRECISA continuar branco no escuro — documento impresso, ativo de marca
+   sobre fundo colorido — usa `keep-white`. O certificado é o caso: é baixado em
+   PDF e compartilhado, então não deve seguir o tema de quem abre. */
+[data-theme="dark"] .bg-white:not(.keep-white):not(.cert-doc) {
+  background-color: var(--color-surface);
+}
+
+/* O certificado inteiro fica fora, inclusive o que está dentro dele. */
+[data-theme="dark"] .cert-doc .bg-white,
+[data-theme="dark"] .keep-white .bg-white {
+  background-color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .bg-white:not(.keep-white):not(.cert-doc) {
+    background-color: var(--color-surface);
+  }
+
+  :root:not([data-theme="light"]) .cert-doc .bg-white,
+  :root:not([data-theme="light"]) .keep-white .bg-white {
+    background-color: #ffffff;
+  }
+}
+
+/* ─── Affordance base ─────────────────────────────────────────────────────
+   Duas regras que faltavam no projeto inteiro, medidas em produção antes de
+   escrever:
+
+     um <button> recém-criado, sem classe nenhuma  ->  cursor: default
+     /teach  20 de 25 botões sem pointer, 14 sem foco visível
+     /ops    18 de 19 botões sem pointer, 15 sem foco visível
+     /learn   4 de  5 botões sem pointer
+
+   Causa: o navegador define `cursor: default` para <button>, e o Preflight do
+   Tailwind v4 deixou de sobrescrever isso. Só <a href> ganha o "dedinho" de
+   graça — daí a impressão de que os links funcionam e os botões não. As
+   classes .button-solid/.button-outline até resolviam, mas só onde eram
+   usadas; menu lateral, abas, sino e toggle de tema não usam nenhuma.
+
+   Ficam como regras de ELEMENTO, não de classe, para valer nas 76 páginas sem
+   depender de alguém lembrar de aplicar. Qualquer classe utilitária continua
+   sobrescrevendo (mesma especificidade, declarada depois). */
+button:not(:disabled),
+summary,
+label[for],
+[role="button"]:not([aria-disabled="true"]),
+[role="tab"]:not([aria-disabled="true"]),
+[role="menuitem"]:not([aria-disabled="true"]),
+[role="option"]:not([aria-disabled="true"]),
+[role="switch"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+/* WCAG 2.4.7 (Focus Visible, AA). :focus-visible só aparece para teclado, então
+   o clique de mouse segue sem anel. Usa outline — e não box-shadow — porque
+   outline não é cortado por overflow:hidden nem afeta layout. */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+  border-radius: inherit;
+}
+
+/* Sobre fundo escuro o navy some; o anel vira claro para manter contraste. */
+[data-theme="dark"] :focus-visible {
+  outline-color: var(--color-primary-light, #b8d2f0);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) :focus-visible {
+    outline-color: var(--color-primary-light, #b8d2f0);
+  }
+}
+
 /* ─── Craft layer ─────────────────────────────────────────────────────────
    Universal, layout-safe polish applied site-wide: branded text selection,
    widow/orphan-resistant headings, and anchor offsets that clear the sticky
@@ -2553,6 +2640,23 @@ select:focus-visible {
   overscroll-behavior: contain;
   padding-bottom: 0;
   scrollbar-width: thin;
+}
+
+/* "Members & communities" saía cortado no meio da palavra: o link media 228px e
+   terminava em x=250, o nav terminava em x=245 com overflow-x:hidden, e não
+   havia text-overflow — a barra tem 260px de largura para 277px de conteúdo.
+   Reticências fazem o corte virar informação em vez de defeito, e o title
+   devolve o texto inteiro no hover. */
+.platform-sidebar-nav a,
+.platform-sidebar-nav button {
+  min-width: 0;
+}
+
+.platform-sidebar-nav a > span,
+.platform-sidebar-nav button > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* The Advisor is the only global floating action. Contextual help lives beside

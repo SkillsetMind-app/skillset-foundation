@@ -1435,13 +1435,29 @@ function LessonContentPanel({
   // a loading state instead of the "not attached" empty copy.
   const lessonContentPending =
     isLoadingContent && !lesson.contentText && !lesson.externalUrl;
+  // O que toca é o vídeo MAIS RECENTE da aula, não o primeiro da lista.
+  // fetchCourseAssets ordena por fileName (bom para a lista de anexos), então
+  // um `.find()` aqui escolhia por ordem alfabética: quem regravava e subia
+  // `final-v2.mp4` sobre `aula-01.mp4` via "arquivo enviado" e os alunos
+  // continuavam vendo a take antiga, sem nenhuma forma de trocar.
   const primaryHostedVideo = locked
     ? null
-    : assets.find(
-        (asset) =>
-          (asset.kind === "lesson_video" || asset.kind === "live_recording")
-          && asset.contentType.startsWith("video/"),
-      ) ?? null;
+    : assets
+        .filter(
+          (asset) =>
+            (asset.kind === "lesson_video" || asset.kind === "live_recording")
+            && asset.contentType.startsWith("video/"),
+        )
+        .reduce<(typeof assets)[number] | null>((newest, asset) => {
+          if (!newest) return asset;
+          const a = Date.parse(String(asset.createdAt ?? ""));
+          const b = Date.parse(String(newest.createdAt ?? ""));
+          // createdAt ausente ou inválido não desbanca um candidato datado;
+          // sem data dos dois lados, mantém o primeiro para ficar estável.
+          if (Number.isNaN(a)) return newest;
+          if (Number.isNaN(b)) return asset;
+          return a > b ? asset : newest;
+        }, null);
   const supportingAssets = assets.filter(
     (asset) =>
       asset.kind !== "lesson_thumbnail"

@@ -115,10 +115,16 @@ export function PlatformNav({ collapsed = false, onRequestExpand }: PlatformNavP
   const { t } = useTranslation();
   const pathname = usePathname() ?? "";
   const panelIdPrefix = useId();
+  // Antes isto guardava UMA seção: abrir um grupo fechava todos os outros.
+  // Medido no /teach, com 6 grupos: nunca havia mais de 7 a 9 links visíveis,
+  // então o criador nunca via o mapa do produto — precisava abrir, memorizar e
+  // fechar. Foi assim que /teach/media e /teach/sales ficaram sem caminho
+  // algum a partir do estado inicial. Agora o conjunto é aberto, e abrir um
+  // grupo não custa fechar outro.
   const [sectionChoice, setSectionChoice] = useState<{
     pathname: string;
-    section: string | null;
-  }>({ pathname: "", section: null });
+    sections: string[] | null;
+  }>({ pathname: "", sections: null });
   const subject: PermissionSubject = { roles: user?.roles ?? ["guest"] };
   const context = resolveContext(pathname, subject);
 
@@ -157,21 +163,27 @@ export function PlatformNav({ collapsed = false, onRequestExpand }: PlatformNavP
       group.items.some((item) => isActivePlatformRoute(pathname, item.href))
   )?.section;
   const firstAccordionSection = groups.find((group) => !directSections.has(group.section))?.section;
-  const expandedSection =
-    sectionChoice.pathname === pathname
-      ? sectionChoice.section
-      : (activeAccordionSection ?? firstAccordionSection ?? null);
+  // Padrão: o grupo da rota atual aberto (ou o primeiro), como antes. A
+  // diferença é que a partir daí o usuário acumula grupos abertos.
+  const defaultSections = [activeAccordionSection ?? firstAccordionSection]
+    .filter((section): section is string => Boolean(section));
+  const expandedSections =
+    sectionChoice.pathname === pathname && sectionChoice.sections
+      ? sectionChoice.sections
+      : defaultSections;
 
   function toggleSection(section: string) {
     if (collapsed) {
-      setSectionChoice({ pathname, section });
+      setSectionChoice({ pathname, sections: [section] });
       onRequestExpand?.();
       return;
     }
 
     setSectionChoice({
       pathname,
-      section: expandedSection === section ? null : section,
+      sections: expandedSections.includes(section)
+        ? expandedSections.filter((open) => open !== section)
+        : [...expandedSections, section],
     });
   }
 
@@ -199,7 +211,7 @@ export function PlatformNav({ collapsed = false, onRequestExpand }: PlatformNavP
 
         const SectionIcon = sectionIconMap[group.section] ?? LayoutDashboard;
         const isActiveSection = group.section === activeSection;
-        const isExpanded = !collapsed && expandedSection === group.section;
+        const isExpanded = !collapsed && expandedSections.includes(group.section);
         const panelId = `${panelIdPrefix}-${group.section.toLowerCase().replace(/\s+/g, "-")}`;
 
         return (

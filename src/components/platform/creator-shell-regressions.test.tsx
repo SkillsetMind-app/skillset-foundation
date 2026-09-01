@@ -75,7 +75,13 @@ describe("creator shell regressions", () => {
     expect(activeLink).toHaveClass("h-11", "min-h-11");
   });
 
-  it("opens the active category and lets the user switch accordion groups", () => {
+  // Este teste afirmava que abrir um grupo FECHAVA o anterior. O objetivo
+  // declarado no nome era "lets the user switch groups" — fechar o outro era o
+  // mecanismo, e era o defeito: medido no /teach, com seis grupos, nunca havia
+  // mais de 7 a 9 links visíveis, então o criador nunca via o mapa do produto e
+  // /teach/media e /teach/sales não tinham caminho a partir do estado inicial.
+  // Agora os grupos acumulam; trocar continua possível, sem custo de esconder.
+  it("abre a categoria ativa e deixa vários grupos abertos ao mesmo tempo", () => {
     render(<PlatformNav />);
 
     const products = screen.getByRole("button", { name: "Products" });
@@ -87,8 +93,21 @@ describe("creator shell regressions", () => {
 
     fireEvent.click(sales);
 
-    expect(products).toHaveAttribute("aria-expanded", "false");
+    // O ponto do conserto: abrir Sales não custa perder Products de vista.
+    expect(products).toHaveAttribute("aria-expanded", "true");
     expect(sales).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: "My products" })).toBeInTheDocument();
+  });
+
+  it("fecha um grupo ao clicar nele de novo", () => {
+    render(<PlatformNav />);
+
+    const products = screen.getByRole("button", { name: "Products" });
+    expect(products).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.click(products);
+
+    expect(products).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByRole("link", { name: "My products" })).toBeNull();
   });
 

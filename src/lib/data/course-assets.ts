@@ -394,6 +394,60 @@ export function subscribeToCourseAssets(
  * course_assets + storage.objects RLS), so callers must guard the UI behind an
  * editable course state.
  */
+/**
+ * Alinha a flag is_preview dos vídeos do curso com a aula escolhida como prévia
+ * gratuita.
+ *
+ * A busca anônima que alimenta a página pública de vendas filtra por
+ * `.eq("is_preview", true)` (src/app/api/courses/video-token/route.ts). Marcar a
+ * aula como prévia no builder só mexia num campo do curso, então um vídeo já
+ * enviado nunca ganhava a flag e a loja respondia "Video unavailable" — com o
+ * estúdio mostrando tudo pronto.
+ *
+ * Limpa a flag dos vídeos das outras aulas na mesma passagem: prévia é uma só, e
+ * trocar de aula tem de despublicar a anterior, senão o curso vai acumulando
+ * vídeos pagos abertos ao público.
+ */
+export async function syncLessonPreviewAssets(
+  courseId: string,
+  previewLessonId: string,
+) {
+  const supabase = getSupabaseBrowserClient();
+  const videoKinds = ["lesson_video", "live_recording"];
+
+  // Desmarca todo vídeo que não seja da aula de prévia (inclui o caso de
+  // previewLessonId vazio, que é "nenhuma prévia").
+  const clear = supabase
+    .from(courseAssetsTable)
+    .update({ is_preview: false })
+    .eq("course_id", courseId)
+    .in("kind", videoKinds)
+    .eq("is_preview", true);
+
+  const { error: clearError } = previewLessonId
+    ? await clear.neq("lesson_id", previewLessonId)
+    : await clear;
+
+  if (clearError) {
+    throw clearError;
+  }
+
+  if (!previewLessonId) {
+    return;
+  }
+
+  const { error: markError } = await supabase
+    .from(courseAssetsTable)
+    .update({ is_preview: true })
+    .eq("course_id", courseId)
+    .eq("lesson_id", previewLessonId)
+    .in("kind", videoKinds);
+
+  if (markError) {
+    throw markError;
+  }
+}
+
 export async function deleteCourseAsset(asset: CourseAsset) {
   const supabase = getSupabaseBrowserClient();
 
