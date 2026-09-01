@@ -216,4 +216,25 @@ describe("LessonContentModal — video tab", () => {
 
     expect(onUpdateLesson).not.toHaveBeenCalled();
   });
+
+  // Sem Bunny, o vídeo vai para o Supabase Storage, cujo teto do plano é
+  // ~50 MB. O validador recusa antes de qualquer byte sair — este é o único
+  // caminho de recusa por tamanho aqui; um segundo ramo, inalcançável, foi
+  // removido. Se o validador voltar a aceitar o teto do bucket (500 MB), o
+  // arquivo chega ao envio e este teste fica vermelho.
+  it("recusa um vídeo acima do teto do plano antes de enviar", async () => {
+    renderModal();
+
+    const big = new File(["video-bytes"], "aula.mp4", { type: "video/mp4" });
+    Object.defineProperty(big, "size", { value: 51 * 1024 * 1024 });
+    fireEvent.change(screen.getByLabelText("Upload a lesson video"), {
+      target: { files: [big] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /upload file/i }));
+
+    expect(
+      await screen.findByText("Use a valid lesson video file under 50.0 MB."),
+    ).toBeInTheDocument();
+    expect(uploadCourseAsset).not.toHaveBeenCalled();
+  });
 });

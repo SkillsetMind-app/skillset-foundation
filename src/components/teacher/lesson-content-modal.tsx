@@ -18,7 +18,6 @@ import {
   bunnyVideoMaxBytes,
   courseAssetAcceptTypes,
   courseAssetKindLabels,
-  courseAssetUploadLimitMessage,
   formatCourseAssetSize,
   getCourseAssetUploadErrorMessage,
   isAllowedBunnyVideoFile,
@@ -255,15 +254,12 @@ export function LessonContentModal({
         return;
       }
     } else if (!isAllowedCourseAssetFile(selectedFile, uploadKind)) {
+      // Sem Bunny os bytes vão para o Supabase Storage, e o validador já
+      // recusa acima do teto do plano (~50 MB), não do bucket — o ramo
+      // separado de tamanho que existia aqui virou inalcançável (#138).
       setError(
         `Use a valid ${courseAssetKindLabels[uploadKind].toLowerCase()} file under ${formatCourseAssetSize(supabaseUploadLimitBytes)}.`,
       );
-      return;
-    } else if (selectedFile.size > supabaseUploadLimitBytes) {
-      // Without Bunny the bytes go to Supabase Storage, whose plan-level cap
-      // (default 50MB) is far below the 500MB bucket ceiling — validate against
-      // the limit the API will actually enforce.
-      setError(courseAssetUploadLimitMessage());
       return;
     }
 

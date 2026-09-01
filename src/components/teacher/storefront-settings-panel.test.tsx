@@ -275,4 +275,37 @@ describe("StorefrontSettingsPanel", () => {
       alert.compareDocumentPosition(themeSelect) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
+
+  // O painel mostrava "Uploading 0%" o envio inteiro: o Storage não informa
+  // progresso, e 0% parado se lia como "travou". Mesmo contrato do #138 —
+  // sem número do transporte, não há número na tela.
+  it("não inventa porcentagem enquanto o logo sobe", async () => {
+    mocks.uploadUserStorefrontImage.mockImplementation(
+      (
+        _uid: string,
+        _kind: string,
+        file: File,
+        onProgress: (progress: {
+          bytesTransferred: number;
+          totalBytes: number;
+          percent: number | null;
+          state: "running";
+        }) => void,
+      ) => {
+        onProgress({ bytesTransferred: 0, totalBytes: file.size, percent: null, state: "running" });
+        return new Promise<string>(() => undefined);
+      },
+    );
+
+    render(<StorefrontSettingsPanel />);
+
+    const logoInput = await screen.findByLabelText("Upload storefront logo");
+    fireEvent.change(logoInput, {
+      target: { files: [new File(["logo"], "logo.png", { type: "image/png" })] },
+    });
+
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent("Sending...");
+    expect(status).not.toHaveTextContent("%");
+  });
 });
