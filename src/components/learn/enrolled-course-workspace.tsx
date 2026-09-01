@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   Award,
   Bookmark,
@@ -139,19 +139,47 @@ export function EnrolledCourseWorkspace({
     ready: false,
   });
   const [error, setError] = useState("");
-  const previewEnrollment: Enrollment = {
-    id: `preview__${course.id}`,
-    userId: user?.uid ?? "preview",
-    courseId: course.id,
-    courseSlug: course.slug,
-    courseTitle: course.title,
-    courseCategory: course.category,
-    courseImage: course.image,
-    status: "active",
-    source: "admin",
-    progressPercent: 0,
-    lastLessonId: null,
-  };
+  // A matrícula falsa do preview PRECISA de identidade estável.
+  //
+  // POR QUE ISTO EXISTE
+  //
+  // Ela é a única matrícula que o preview do professor tem, e três efeitos
+  // abaixo declaram `workspaceEnrollment` como dependência — o OBJETO, não o
+  // id. Montado a cada render, este literal ganhava identidade nova a cada
+  // render, e dois desses efeitos abrem inscrição no Supabase e gravam estado
+  // no callback. Estado novo -> render -> objeto novo -> cancela e reinscreve
+  // -> callback -> estado novo. Laço fechado, sem condição de parada.
+  //
+  // O professor abria o preview do próprio curso e a aba martelava o banco
+  // indefinidamente: cota de requisições, churn de canais realtime, aba
+  // travando e bateria do celular indo embora — sem nada na tela que dissesse
+  // o que estava acontecendo.
+  //
+  // `useMemo` sobre os campos que realmente compõem a matrícula: enquanto o
+  // curso e a pessoa forem os mesmos, a identidade é a mesma.
+  const previewEnrollment: Enrollment = useMemo(
+    () => ({
+      id: `preview__${course.id}`,
+      userId: user?.uid ?? "preview",
+      courseId: course.id,
+      courseSlug: course.slug,
+      courseTitle: course.title,
+      courseCategory: course.category,
+      courseImage: course.image,
+      status: "active",
+      source: "admin",
+      progressPercent: 0,
+      lastLessonId: null,
+    }),
+    [
+      course.id,
+      course.slug,
+      course.title,
+      course.category,
+      course.image,
+      user?.uid,
+    ],
+  );
   const workspaceEnrollment = previewMode ? previewEnrollment : enrollment;
   const progressKey = workspaceEnrollment?.id ?? null;
 
