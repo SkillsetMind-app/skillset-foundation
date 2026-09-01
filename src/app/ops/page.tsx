@@ -27,21 +27,27 @@ export default function OpsPage() {
         title="A calm operations layer behind the learning experience."
         description="Professional verification, marketplace compliance, and learner support keep the platform trustworthy as it grows."
       >
-        <div className="grid gap-5 lg:grid-cols-3">
-          {opsCards.map((card) => (
-            <div key={card.title} className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-              <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-                Platform controls
-              </p>
-              <h3 className="display-title mt-3 text-3xl leading-none text-[var(--color-ink)]">
+        {/* Estes três cards eram 376x180 cada, com borda, sombra e fundo — os
+            três sinais de card clicável — e nenhum link dentro: pura decoração
+            prometendo uma interação que não existe. Junto com o título, comiam
+            77% da primeira dobra (a primeira aba de trabalho começava a 522px
+            de 674px de viewport), então quem OPERA a plataforma rolava para
+            alcançar a ferramenta, todo dia.
+
+            Viram uma linha de legenda: o mesmo conteúdo, sem fingir que clica e
+            sem empurrar a fila de trabalho para fora da tela. */}
+        <p className="text-sm leading-7 text-[var(--color-ink-soft)]">
+          {opsCards.map((card, index) => (
+            <span key={card.title}>
+              {index > 0 ? " · " : ""}
+              <strong className="font-semibold text-[var(--color-ink)]">
                 {card.title}
-              </h3>
-              <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-                {card.description}
-              </p>
-            </div>
+              </strong>
+              {": "}
+              {card.description}
+            </span>
           ))}
-        </div>
+        </p>
         <OpsDashboard />
         {/* Access levels. Sits behind the same platform.accessAdmin gate as
             the rest of this page; the database gates every write again on

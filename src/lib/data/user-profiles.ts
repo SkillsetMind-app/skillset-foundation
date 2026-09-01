@@ -251,7 +251,33 @@ export async function updateUserRoles(
   roles: ReadonlyArray<Extract<Role, "student" | "teacher">>,
 ) {
   const supabase = getSupabaseBrowserClient();
-  const normalizedRoles = Array.from(new Set(roles));
+
+  // O onboarding SOMA papéis, nunca remove. Antes isto gravava o array recebido
+  // por cima do existente: um professor que reabrisse o onboarding — o que a
+  // própria plataforma sugere ao topar com uma tela sem permissão — clicava nos
+  // três passos aceitando o padrão e voltava com roles = ["student"], sem o
+  // Teacher Studio e sem nenhum aviso de que perdera o acesso.
+  //
+  // O trigger users_field_guard já barra a perda de 'admin' levantando exceção;
+  // 'teacher' está dentro do conjunto auto-atribuível, então essa proteção não
+  // alcançava o caso real.
+  //
+  // Corrida é aceitável aqui: a única escrita concorrente plausível é o próprio
+  // usuário em outra aba, e a mesclagem só pode ampliar o conjunto.
+  const { data: current } = await supabase
+    .from("users")
+    .select("roles")
+    .eq("uid", uid)
+    .maybeSingle();
+
+  const existing = Array.isArray(current?.roles)
+    ? (current.roles as string[]).filter(
+        (role): role is Extract<Role, "student" | "teacher"> =>
+          role === "student" || role === "teacher",
+      )
+    : [];
+
+  const normalizedRoles = Array.from(new Set([...existing, ...roles]));
   const includesTeacher = normalizedRoles.includes("teacher");
   const timestamp = nowIso();
 
