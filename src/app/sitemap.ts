@@ -1,8 +1,13 @@
 import type { MetadataRoute } from "next";
 
+import { listPublishedCourses } from "@/lib/data/server/public-course";
 import { SITE_URL } from "@/lib/seo/page-metadata";
 
-export const dynamic = "force-static";
+// Era `force-static`, e por isso o sitemap não conseguia enumerar curso nenhum:
+// a leitura precisa acontecer em tempo de requisição. Revalida de hora em hora —
+// catálogo de curso não muda de minuto a minuto, e um sitemap que consulta o
+// banco a cada acesso de crawler é desperdício.
+export const revalidate = 3600;
 
 // Public, indexable surfaces only. Authenticated app routes
 // (/learn, /teach, /ops, /account) and auth/onboarding flow routes
@@ -34,7 +39,7 @@ const publicRoutes: Array<{
   { path: "/legal/teacher-terms", changeFrequency: "yearly", priority: 0.3 },
 ];
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date();
 
   const staticEntries = publicRoutes.map((route) => ({
@@ -44,10 +49,25 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: route.priority,
   }));
 
-  // Per-course URLs are deliberately absent. The only enumerable slugs here come
-  // from the static demo catalog, i.e. courses nobody can actually buy — listing
-  // them had search engines indexing six phantom product pages. Real creator
-  // courses resolve client-side and cannot be enumerated in a `force-static`
-  // sitemap anyway; /courses is the crawlable entry point for them.
-  return staticEntries;
+  // Cursos de criador PUBLICADOS, um por URL. Isto era impossível antes por dois
+  // motivos que caíram hoje: o sitemap era `force-static` (não podia consultar o
+  // banco) e a leitura anônima abortava com 42501.
+  //
+  // Os 6 cursos do catálogo de demonstração seguem FORA de propósito: ninguém
+  // pode comprá-los, e listá-los fazia buscador indexar seis páginas de produto
+  // fantasma. Aqui entram só cursos com linha em `courses` e status `published`
+  // — os que existem para ser vendidos.
+  //
+  // Falha de leitura devolve lista vazia (ver public-course.ts): o sitemap perde
+  // os cursos naquela revalidação em vez de derrubar a rota inteira.
+  const courses = await listPublishedCourses();
+
+  const courseEntries = courses.map((course) => ({
+    url: `${SITE_URL}/courses/${course.urlSlug}`,
+    lastModified: course.updatedAt ? new Date(course.updatedAt) : lastModified,
+    changeFrequency: "weekly" as const,
+    priority: 0.8,
+  }));
+
+  return [...staticEntries, ...courseEntries];
 }

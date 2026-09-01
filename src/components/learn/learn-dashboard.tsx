@@ -19,8 +19,13 @@ import {
   type Enrollment,
 } from "@/domain/enrollment";
 import { getNextCourseLessonAfter } from "@/domain/lesson-progress";
+import type { TeacherCourse } from "@/domain/teacher-course";
 import { getCourseBySlug } from "@/lib/data/catalog";
 import { subscribeToUserEnrollments } from "@/lib/data/enrollments";
+import {
+  subscribeToPublishedTeacherCourses,
+  teacherCourseToLearningCourse,
+} from "@/lib/data/published-courses";
 
 export function LearnDashboard() {
   const { user } = useAuth();
@@ -29,6 +34,13 @@ export function LearnDashboard() {
   const [enrollmentQuery, setEnrollmentQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  // Cursos REAIS publicados. Sem isto o painel só enxergava os 6 cursos de
+  // demonstração de `catalog.ts`, e uma matrícula real nunca carrega slug de
+  // demonstração — `enrollments.ts:115` e o webhook do Stripe gravam o id do
+  // curso em `course_slug`. Resultado: `getCourseBySlug` devolvia undefined para
+  // 100% das compras reais e o cartão caía no texto de espaço reservado
+  // ("Private modules"), justamente na primeira tela depois de pagar.
+  const [realCourses, setRealCourses] = useState<TeacherCourse[]>([]);
   const firstName = user?.displayName?.trim().split(/\s+/)[0] ?? "";
   const normalizedEnrollmentQuery = enrollmentQuery.toLowerCase().trim();
   const visibleEnrollments = normalizedEnrollmentQuery
@@ -38,6 +50,32 @@ export function LearnDashboard() {
           .includes(normalizedEnrollmentQuery),
       )
     : enrollments;
+
+  // Casa a matrícula com o curso, seja de demonstração ou real.
+  //
+  // `course_slug` guarda ora o id ora o slug, dependendo do caminho de escrita
+  // (`enrollments.ts:69` grava slug, `:115` e o webhook gravam id) — por isso
+  // testa as duas formas em vez de assumir uma. Uma migration de hoje já tolera
+  // essa ambiguidade no banco; aqui o cliente precisa tolerar igual, senão a
+  // metade que resolve o acesso funciona e a que mostra o curso não.
+  const resolveCourse = (enrollment: Enrollment) => {
+    const demo = getCourseBySlug(enrollment.courseSlug);
+    if (demo) return demo;
+
+    const real = realCourses.find(
+      (course) =>
+        course.id === enrollment.courseId
+        || course.id === enrollment.courseSlug,
+    );
+    return real ? teacherCourseToLearningCourse(real) : undefined;
+  };
+
+  useEffect(() => {
+    // Falha aqui não pode derrubar o painel: sem os cursos reais o cartão volta
+    // ao texto genérico, que é ruim, mas melhor que uma tela de erro sobre uma
+    // compra que existe.
+    return subscribeToPublishedTeacherCourses(setRealCourses, () => undefined);
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -149,7 +187,7 @@ export function LearnDashboard() {
       .sort((left, right) => right.progressPercent - left.progressPercent)[0]
     ?? null;
   const continueCourse = continueEnrollment
-    ? getCourseBySlug(continueEnrollment.courseSlug)
+    ? resolveCourse(continueEnrollment)
     : undefined;
   const continueHref = continueEnrollment
     ? continueCourse
@@ -261,7 +299,7 @@ export function LearnDashboard() {
               {t("learn.dashboard.noEnrollmentsMatch")}
             </p>
           ) : visibleEnrollments.map((enrollment) => {
-            const course = getCourseBySlug(enrollment.courseSlug);
+            const course = resolveCourse(enrollment);
             // Next lesson after the learner's last *completed* lesson — not a
             // hardcoded first lesson, which mislabeled progress on the card.
             const nextLesson = course
