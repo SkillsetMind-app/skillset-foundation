@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { maxCredentialEntries, maxCredentialLength } from "@/domain/user-profile";
 import {
+  deriveUsername,
   formatValidationMessage,
   normalizeCredentials,
   normalizeGoals,
@@ -43,6 +44,58 @@ describe("validateUsername", () => {
   it("accepts the exact boundary lengths", () => {
     expect(validateUsername("abc")).toBe("");
     expect(validateUsername("a".repeat(32))).toBe("");
+  });
+});
+
+describe("deriveUsername", () => {
+  // The bug: signup derived the handle with normalizeUsername, which only
+  // lowercases and strips the "@", so "Patrick Simon" became "patrick simon" —
+  // a space — and validateUsername refuses that. Everyone with a compound name
+  // got an invalid handle written on day one.
+  it.each([
+    ["Patrick Simon", "patrick-simon"],
+    ["  Ana   Souza  ", "ana-souza"],
+    ["José da Silva", "jose-da-silva"],
+    ["Zoë 🚀 Müller", "zoe-muller"],
+    ["@Ana_Souza.dev", "ana-souza-dev"],
+    ["Jean-Luc Picard", "jean-luc-picard"],
+  ])("shapes %j into %j", (displayName, expected) => {
+    expect(deriveUsername(displayName, "someone@example.com")).toBe(expected);
+  });
+
+  it("cuts at 32 without ending on a hyphen", () => {
+    // 10 + 1 + 10 + 1 + 9 + 1 = 32: the cut lands right after a hyphen.
+    const handle = deriveUsername("abcdefghij klmnopqrst uvwxyzabc defg", "x@y.z");
+
+    expect(handle).toBe("abcdefghij-klmnopqrst-uvwxyzabc");
+    expect(deriveUsername("a".repeat(50), "x@y.z")).toBe("a".repeat(32));
+  });
+
+  it("falls back to the e-mail's local part when the name is too short", () => {
+    expect(deriveUsername("Li", "li.wang+courses@example.com")).toBe("li-wang-courses");
+  });
+
+  it("returns null when nothing usable is left — the handle is optional", () => {
+    expect(deriveUsername("A", "a@example.com")).toBeNull();
+    expect(deriveUsername("李小龍", "李@example.com")).toBeNull();
+    expect(deriveUsername("🚀🚀🚀", "!!@example.com")).toBeNull();
+  });
+
+  it("never hands back something validateUsername would refuse", () => {
+    const inputs: [string, string][] = [
+      ["Patrick Simon", "p@x.y"],
+      ["  --weird--  ", "weird@x.y"],
+      ["a".repeat(50), "z@x.y"],
+      ["Ünïcödé Nämé", "u@x.y"],
+      ["Li", "li.wang+courses@example.com"],
+    ];
+
+    for (const [displayName, email] of inputs) {
+      const handle = deriveUsername(displayName, email);
+
+      expect(handle).not.toBeNull();
+      expect(validateUsername(handle as string)).toBe("");
+    }
   });
 });
 

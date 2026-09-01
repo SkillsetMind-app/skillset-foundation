@@ -23,8 +23,8 @@ import {
   signUpWithEmail,
 } from "@/lib/auth/supabase-auth";
 import {
+  deriveUsername,
   formatValidationMessage,
-  normalizeUsername,
   validateDisplayName,
 } from "@/lib/auth/profile-validation";
 import {
@@ -40,22 +40,8 @@ import {
 import { track } from "@/lib/posthog/events";
 
 // Username is no longer asked at signup (it lived in a heavy field that made
-// the form scroll). We derive a valid handle from the name/email so the
-// existing profile contract stays intact; the member can change it later
-// from their profile.
-function deriveUsername(displayName: string, email: string): string {
-  const fromName = normalizeUsername(displayName);
-  if (fromName.length >= 3) {
-    return fromName.slice(0, 32);
-  }
-
-  const fromEmail = normalizeUsername(email.split("@")[0] ?? "");
-  if (fromEmail.length >= 3) {
-    return fromEmail.slice(0, 32);
-  }
-
-  return `member-${Math.random().toString(36).slice(2, 8)}`;
-}
+// the form scroll). deriveUsername shapes a valid handle from the name/e-mail,
+// or null — it is optional — and the member can change it from their profile.
 
 export function SignupForm() {
   const router = useRouter();

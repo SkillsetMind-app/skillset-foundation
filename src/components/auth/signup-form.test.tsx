@@ -132,9 +132,11 @@ describe("SignupForm once the account exists", () => {
       expect(mocks.router.push).toHaveBeenCalledWith("/welcome?path=student"),
     );
     expect(mocks.acceptUserTerms).toHaveBeenCalledWith("u-1", false);
+    // A compound name used to come out as "patrick simon" — a handle the
+    // profile validator itself refuses.
     expect(mocks.updateUserIdentity).toHaveBeenCalledWith("u-1", {
       displayName: "Patrick Simon",
-      username: expect.stringMatching(/^patrick/),
+      username: "patrick-simon",
     });
   });
 });
