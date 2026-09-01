@@ -106,11 +106,19 @@ export function getSafeReturnTo(
 export function getLoadingRoute(
   next: "route" | "welcome",
   intent: AuthPathIntent | null = null,
+  returnTo: string | null = null,
 ): string {
   const searchParams = new URLSearchParams({ next });
 
   if (intent) {
     searchParams.set("path", intent);
+  }
+
+  // Deep link to honor once /loading confirms the account is onboarded. Google
+  // sign-in has to carry it through the OAuth round trip, so it rides in the
+  // URL like the intent does.
+  if (returnTo) {
+    searchParams.set("returnTo", returnTo);
   }
 
   return `/loading?${searchParams.toString()}`;

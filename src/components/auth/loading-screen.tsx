@@ -4,6 +4,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import {
   getAuthPathQuery,
   getPostAuthRoute,
+  getSafeReturnTo,
   parseAuthPathIntent,
 } from "@/lib/auth/routing";
 import { getUserProfile } from "@/lib/data/user-profiles";
@@ -42,6 +43,7 @@ export function LoadingScreen() {
         parseAuthPathIntent(searchParams.get("path")) ??
         parseAuthPathIntent(searchParams.get("role"));
       const next = searchParams.get("next");
+      const returnTo = getSafeReturnTo(searchParams);
       let destination = "/auth?mode=signin";
 
       if (status === "authenticated" && user) {
@@ -49,6 +51,11 @@ export function LoadingScreen() {
 
         if (next === "welcome" && !profile?.onboardingCompleted) {
           destination = `/welcome${getAuthPathQuery(intent)}`;
+        } else if (returnTo && profile?.onboardingCompleted) {
+          // The deep link the sign-in wall captured, carried here by Google
+          // sign-in. Onboarded accounts only — first-timers went to /welcome
+          // above, the same rule the email login applies.
+          destination = returnTo;
         } else if (intent === "teacher" && profile?.roles.includes("teacher")) {
           destination = "/teach";
         } else if (intent === "student") {

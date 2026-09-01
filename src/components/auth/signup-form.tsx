@@ -206,7 +206,9 @@ export function SignupForm() {
     setIsLoading(true);
 
     try {
-      const user = await signInWithGoogle();
+      // Through /loading, so a brand-new Google account reaches onboarding
+      // instead of the home page; the legal gate re-collects the terms after.
+      const user = await signInWithGoogle(getLoadingRoute("welcome", intent));
       await acceptUserTerms(user.uid, false);
       const profile = await getUserProfile(user.uid);
       // Only track as signup if this is the user's first hit (no completed

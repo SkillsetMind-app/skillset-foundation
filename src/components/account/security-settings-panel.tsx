@@ -9,6 +9,10 @@ import {
   PasswordStrengthChecklist,
 } from "@/components/auth/password-strength-checklist";
 import {
+  TurnstileWidget,
+  isCaptchaEnabled,
+} from "@/components/auth/turnstile-widget";
+import {
   changeSkillsetPassword,
   getAuthErrorMessage,
   isEmailRateLimitError,
@@ -28,6 +32,15 @@ export function SecuritySettingsPanel() {
   const [isBusy, setIsBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  // Both password actions below go through GoTrue endpoints that CAPTCHA
+  // protection guards (a password sign-in to re-authenticate, and the reset
+  // email). Same widget as the login form: with no site key it renders nothing
+  // and the token stays "", so with CAPTCHA off nothing here changes; with it
+  // on, the token rides along instead of the calls dead-ending on "captcha
+  // protection: request disallowed" with no widget in sight.
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
+  const captchaPending = isCaptchaEnabled && !captchaToken;
 
   // Every handler here writes into the shared message/error pair, but both are
   // rendered after the card grid AND after the two-factor card — which below
@@ -105,7 +118,11 @@ export function SecuritySettingsPanel() {
     setMessage("");
 
     try {
-      await changeSkillsetPassword(currentPassword, nextPassword);
+      await changeSkillsetPassword(
+        currentPassword,
+        nextPassword,
+        captchaToken || undefined,
+      );
       setCurrentPassword("");
       setNextPassword("");
       setMessage("Password updated.");
@@ -122,6 +139,8 @@ export function SecuritySettingsPanel() {
         setError(getAuthErrorMessage(caughtError));
       }
     } finally {
+      // Turnstile tokens are single-use — refresh for the next attempt.
+      if (isCaptchaEnabled) setCaptchaResetSignal((n) => n + 1);
       setIsBusy(false);
     }
   }
@@ -143,7 +162,7 @@ export function SecuritySettingsPanel() {
     setMessage("");
 
     try {
-      await resetPassword(user.email);
+      await resetPassword(user.email, captchaToken || undefined);
       setMessage(
         `Reset link sent to ${user.email}. Open it to set a new password — you won't need your current one.`,
       );
@@ -159,6 +178,7 @@ export function SecuritySettingsPanel() {
         setError(getAuthErrorMessage(caughtError));
       }
     } finally {
+      if (isCaptchaEnabled) setCaptchaResetSignal((n) => n + 1);
       setIsBusy(false);
     }
   }
@@ -277,10 +297,16 @@ export function SecuritySettingsPanel() {
             {nextPassword ? (
               <PasswordStrengthChecklist password={nextPassword} />
             ) : null}
+            <TurnstileWidget
+              onToken={setCaptchaToken}
+              resetSignal={captchaResetSignal}
+            />
             <button
               type="button"
               onClick={handlePasswordChangeRequest}
-              disabled={isBusy || !currentPassword || !passwordReady}
+              disabled={
+                isBusy || !currentPassword || !passwordReady || captchaPending
+              }
               className="button-outline justify-self-start px-3.5 py-2 text-xs disabled:opacity-60"
             >
               Update password
@@ -293,7 +319,7 @@ export function SecuritySettingsPanel() {
               <button
                 type="button"
                 onClick={handleSendPasswordReset}
-                disabled={isBusy}
+                disabled={isBusy || captchaPending}
                 className="mt-2 text-xs font-bold text-[var(--color-primary)] underline-offset-2 hover:underline disabled:opacity-60"
               >
                 Email me a reset link
