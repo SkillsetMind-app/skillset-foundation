@@ -122,6 +122,18 @@ export function CourseCategorySelect({
             return (
               <label
                 key={item}
+                // O `title` mora AQUI, no rótulo visível, e não mais no input.
+                // O input é `sr-only` — 1px recortado —, então o texto que
+                // explicava por que o clique não faz nada estava preso num
+                // elemento que o mouse nunca alcança: a última categoria
+                // simplesmente não respondia, sem uma palavra de explicação.
+                title={
+                  isRequiredSelection
+                    ? "Pick the new category first — a course needs at least one."
+                    : isLockedOut
+                      ? "Maximum categories selected. Remove one to add another."
+                      : undefined
+                }
                 className={`flex w-full items-center gap-2.5 rounded-[6px] px-3 py-2 text-left text-sm transition-colors ${
                   isSelected
                     ? "bg-[var(--color-surface-soft)] font-semibold text-[var(--color-primary)]"
@@ -134,11 +146,6 @@ export function CourseCategorySelect({
                   disabled={isLockedOut || isRequiredSelection}
                   onChange={() => onToggle(item)}
                   aria-label={item}
-                  title={
-                    isRequiredSelection
-                      ? "Select another category before removing this one."
-                      : undefined
-                  }
                   className="peer sr-only"
                 />
                 <span
@@ -156,6 +163,14 @@ export function CourseCategorySelect({
               </label>
             );
           })}
+          {/* Dica visível, não só `title`: no celular não existe hover, e a
+              regra ("a última não sai") é justamente a que trava o clique. */}
+          {selected.length === 1 ? (
+            <p className="px-3 py-2 text-[11px] leading-4 text-[var(--color-ink-muted)]">
+              To swap the category, pick the new one first — a course needs at
+              least one.
+            </p>
+          ) : null}
         </div>
       ) : null}
     </div>

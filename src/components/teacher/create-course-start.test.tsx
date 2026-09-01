@@ -183,3 +183,32 @@ describe("CreateCourseStart", () => {
     expect(screen.getByRole("group", { name: /Course categories/i })).toBeInTheDocument();
   });
 });
+
+describe("CreateCourseStart — o que falta para continuar", () => {
+  // O botão ficava só cinza. Nada na tela dizia se faltava título, resumo ou
+  // categoria, e os mínimos (3 e 20 caracteres) não apareciam em lugar nenhum:
+  // quem escrevia um resumo de 15 caracteres via um botão morto sem motivo.
+  it("nomeia cada condição pendente, e some quando todas são atendidas", async () => {
+    render(<CreateCourseStart ownerId="teacher-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /One-time/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
+
+    expect(screen.getByText(/Before you continue:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Give the course a title/i)).toBeInTheDocument();
+    expect(screen.getByText(/at least 20 characters/i)).toBeInTheDocument();
+    expect(screen.getByText(/Choose a marketplace category/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Product title"), {
+      target: { value: "Clinical performance foundations" },
+    });
+    fireEvent.change(screen.getByLabelText(/Product promise/i), {
+      target: { value: "A practical course about clinical performance." },
+    });
+    selectPrimaryCategory();
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Before you continue:/i)).not.toBeInTheDocument();
+    });
+  });
+});
