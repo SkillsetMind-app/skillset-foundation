@@ -36,6 +36,12 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
+  // Remover o segundo fator é irreversível sem refazer o cadastro inteiro, e o
+  // controle era um link de ~16px sem confirmação nenhuma — menos protegido que
+  // "Send change confirmation", que só dispara um e-mail. Um clique errado
+  // deixava a conta com senha apenas, em silêncio. Confirmação em dois passos,
+  // inline: window.confirm trava a aba e é ignorável por hábito.
+  const [confirmingDisable, setConfirmingDisable] = useState<string | null>(null);
 
   useEffect(() => {
     // Read enrolled factors once on mount. Client-side only —
@@ -179,14 +185,41 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                     : ""}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => handleDisable(factor.uid)}
-                disabled={busy}
-                className="text-xs font-bold text-[var(--color-accent-fg)] underline-offset-2 hover:underline disabled:opacity-60"
-              >
-                Turn off
-              </button>
+              {confirmingDisable === factor.uid ? (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-[var(--color-ink-soft)]">
+                    Turn off two-factor?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmingDisable(null);
+                      void handleDisable(factor.uid);
+                    }}
+                    disabled={busy}
+                    className="min-h-[32px] rounded-md border border-[var(--color-danger)] px-3 text-xs font-bold text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)] disabled:opacity-60"
+                  >
+                    Yes, turn off
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingDisable(null)}
+                    disabled={busy}
+                    className="min-h-[32px] px-2 text-xs font-bold text-[var(--color-ink-soft)] underline-offset-2 hover:underline disabled:opacity-60"
+                  >
+                    Keep it on
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDisable(factor.uid)}
+                  disabled={busy}
+                  className="min-h-[32px] px-2 text-xs font-bold text-[var(--color-danger)] underline-offset-2 hover:underline disabled:opacity-60"
+                >
+                  Turn off
+                </button>
+              )}
             </div>
           ))}
         </div>

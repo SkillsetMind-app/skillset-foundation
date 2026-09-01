@@ -414,7 +414,10 @@ export function TeacherCourseStudio({
                             type="button"
                             onClick={() => handleDeleteCourse(course.id)}
                             disabled={deletingCourseId === course.id}
-                            className="button-accent min-h-9 px-3 text-xs disabled:opacity-60"
+                            // button-accent é o dourado da marca — a mesma cor
+                            // do "destaque positivo". Confirmar exclusão tem de
+                            // ler como perigo, não como ação recomendada.
+                            className="inline-flex min-h-9 items-center justify-center rounded-[10px] bg-[var(--color-danger)] px-3 text-xs font-bold text-white hover:opacity-90 disabled:opacity-60"
                           >
                             {deletingCourseId === course.id ? "Deleting..." : "Confirm delete"}
                           </button>
@@ -428,13 +431,20 @@ export function TeacherCourseStudio({
                           </button>
                         </>
                       ) : (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmingDeleteId(course.id)}
-                          className="min-h-9 px-2 text-xs font-semibold text-[var(--color-accent-fg)] underline-offset-4 hover:underline"
-                        >
-                          Delete
-                        </button>
+                        // Separador antes da ação destrutiva: medido, "Delete"
+                        // ficava a 9px de "Review & publish", com a mesma cor de
+                        // destaque da marca. Dois alvos vizinhos e indistintos,
+                        // um deles irreversível. Agora usa --color-danger e um
+                        // respiro que o tira do grupo das ações comuns.
+                        <span className="ml-2 flex items-center gap-2 border-l border-[var(--color-line)] pl-3">
+                          <button
+                            type="button"
+                            onClick={() => setConfirmingDeleteId(course.id)}
+                            className="min-h-9 px-2 text-xs font-semibold text-[var(--color-danger)] underline-offset-4 hover:underline"
+                          >
+                            Delete
+                          </button>
+                        </span>
                       )
                     ) : null}
                   </div>
