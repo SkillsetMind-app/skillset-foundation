@@ -409,6 +409,60 @@ select {
   font: inherit;
 }
 
+/* ─── Affordance base ─────────────────────────────────────────────────────
+   Duas regras que faltavam no projeto inteiro, medidas em produção antes de
+   escrever:
+
+     um <button> recém-criado, sem classe nenhuma  ->  cursor: default
+     /teach  20 de 25 botões sem pointer, 14 sem foco visível
+     /ops    18 de 19 botões sem pointer, 15 sem foco visível
+     /learn   4 de  5 botões sem pointer
+
+   Causa: o navegador define `cursor: default` para <button>, e o Preflight do
+   Tailwind v4 deixou de sobrescrever isso. Só <a href> ganha o "dedinho" de
+   graça — daí a impressão de que os links funcionam e os botões não. As
+   classes .button-solid/.button-outline até resolviam, mas só onde eram
+   usadas; menu lateral, abas, sino e toggle de tema não usam nenhuma.
+
+   Ficam como regras de ELEMENTO, não de classe, para valer nas 76 páginas sem
+   depender de alguém lembrar de aplicar. Qualquer classe utilitária continua
+   sobrescrevendo (mesma especificidade, declarada depois). */
+button:not(:disabled),
+summary,
+label[for],
+[role="button"]:not([aria-disabled="true"]),
+[role="tab"]:not([aria-disabled="true"]),
+[role="menuitem"]:not([aria-disabled="true"]),
+[role="option"]:not([aria-disabled="true"]),
+[role="switch"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+/* WCAG 2.4.7 (Focus Visible, AA). :focus-visible só aparece para teclado, então
+   o clique de mouse segue sem anel. Usa outline — e não box-shadow — porque
+   outline não é cortado por overflow:hidden nem afeta layout. */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+  border-radius: inherit;
+}
+
+/* Sobre fundo escuro o navy some; o anel vira claro para manter contraste. */
+[data-theme="dark"] :focus-visible {
+  outline-color: var(--color-primary-light, #b8d2f0);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) :focus-visible {
+    outline-color: var(--color-primary-light, #b8d2f0);
+  }
+}
+
 /* ─── Craft layer ─────────────────────────────────────────────────────────
    Universal, layout-safe polish applied site-wide: branded text selection,
    widow/orphan-resistant headings, and anchor offsets that clear the sticky
