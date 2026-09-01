@@ -409,6 +409,39 @@ select {
   font: inherit;
 }
 
+/* ─── Fundo branco fixo no tema escuro ────────────────────────────────────
+   182 elementos combinam `bg-white` (fundo branco literal) com tinta por token
+   (`text-[var(--color-ink...)]`). No tema escuro a tinta clareia e o fundo não:
+   dá texto claro sobre branco. Medido na política de privacidade — rótulos em
+   negrito ficavam a 1.18:1 de contraste, contra os 4.5:1 exigidos pela WCAG AA.
+
+   Trocar os 182 à mão seria 182 chances de errar. Aqui o utilitário passa a
+   seguir o tema, que é o que cada um desses usos já pretendia.
+
+   Quem PRECISA continuar branco no escuro — documento impresso, ativo de marca
+   sobre fundo colorido — usa `keep-white`. O certificado é o caso: é baixado em
+   PDF e compartilhado, então não deve seguir o tema de quem abre. */
+[data-theme="dark"] .bg-white:not(.keep-white):not(.cert-doc) {
+  background-color: var(--color-surface);
+}
+
+/* O certificado inteiro fica fora, inclusive o que está dentro dele. */
+[data-theme="dark"] .cert-doc .bg-white,
+[data-theme="dark"] .keep-white .bg-white {
+  background-color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .bg-white:not(.keep-white):not(.cert-doc) {
+    background-color: var(--color-surface);
+  }
+
+  :root:not([data-theme="light"]) .cert-doc .bg-white,
+  :root:not([data-theme="light"]) .keep-white .bg-white {
+    background-color: #ffffff;
+  }
+}
+
 /* ─── Affordance base ─────────────────────────────────────────────────────
    Duas regras que faltavam no projeto inteiro, medidas em produção antes de
    escrever:

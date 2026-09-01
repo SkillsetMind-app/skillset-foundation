@@ -26,7 +26,13 @@ export function CertificateDocument({
   const issuedOn = formatIssuedAt(certificate.issuedAt);
 
   return (
-    <article className="cert-doc mx-auto w-full max-w-4xl bg-white text-[var(--color-ink)] shadow-[var(--shadow-soft)] print:max-w-none print:shadow-none">
+    // O certificado é um DOCUMENTO, não uma tela: é impresso, baixado em PDF e
+    // compartilhado. Tem de ser claro sempre. Antes combinava bg-white fixo com
+    // text-[var(--color-ink)], que no tema escuro vira tinta clara — quem já
+    // tinha ligado o dark mode alguma vez abria o certificado por link direto e
+    // baixava um PDF ilegível. Cores literais aqui são a escolha certa, não
+    // descuido: o artefato não deve seguir o tema de quem o abre.
+    <article className="cert-doc mx-auto w-full max-w-4xl bg-white text-[#102a43] shadow-[var(--shadow-soft)] print:max-w-none print:shadow-none">
       <div className="relative overflow-hidden rounded-[8px] border-[3px] border-[var(--color-primary)] p-6 sm:p-10 print:rounded-none print:border-2">
         <div
           className="pointer-events-none absolute inset-2 rounded-[4px] border border-[var(--color-line-strong)] print:inset-1"

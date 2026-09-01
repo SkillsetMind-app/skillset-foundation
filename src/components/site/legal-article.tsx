@@ -26,7 +26,7 @@ export function LegalArticle({
     <div className="page-shell">
       <SiteNav />
       <main className="mx-auto w-full max-w-5xl px-6 py-12 sm:px-8">
-        <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-8 shadow-[var(--shadow-soft)] sm:p-10">
+        <section className="rounded-[18px] border border-[var(--color-line)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-soft)] sm:p-10">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {kicker}
           </p>
@@ -41,7 +41,7 @@ export function LegalArticle({
           </p>
         </section>
 
-        <section className="mt-6 space-y-10 rounded-[18px] border border-[var(--color-line)] bg-white p-8 text-sm leading-8 text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)] sm:p-10">
+        <section className="mt-6 space-y-10 rounded-[18px] border border-[var(--color-line)] bg-[var(--color-surface)] p-8 text-sm leading-8 text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)] sm:p-10">
           {children}
         </section>
       </main>
