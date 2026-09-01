@@ -478,20 +478,43 @@ button:disabled,
 
 /* WCAG 2.4.7 (Focus Visible, AA). :focus-visible só aparece para teclado, então
    o clique de mouse segue sem anel. Usa outline — e não box-shadow — porque
-   outline não é cortado por overflow:hidden nem afeta layout. */
-:focus-visible {
+   outline não é cortado por overflow:hidden nem afeta layout.
+
+   Seletor de ELEMENTO, não `:focus-visible` sozinho: existem 103 usos de
+   `outline-none` nos componentes, e uma utilitária de classe tem a mesma
+   especificidade (0,1,0) que `:focus-visible` isolado — empate que a utilitária
+   ganha por vir depois. `button:focus-visible` é (0,1,1) e vence sem !important.
+   Foi assim que 14 botões do /teach continuaram sem anel mesmo com a regra
+   global no ar; medido em produção depois do primeiro deploy.
+
+   Campos de formulário ficam DE FORA de propósito: ali o `outline-none` é
+   deliberado e o projeto já dá o retorno de foco por box-shadow (ver a regra do
+   input mais abaixo). Forçar outline neles criaria indicador duplo. */
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible,
+[role="menuitem"]:focus-visible,
+[role="switch"]:focus-visible,
+[tabindex]:not(input):not(textarea):not(select):focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 3px;
-  border-radius: inherit;
 }
 
 /* Sobre fundo escuro o navy some; o anel vira claro para manter contraste. */
-[data-theme="dark"] :focus-visible {
+[data-theme="dark"] button:focus-visible,
+[data-theme="dark"] a:focus-visible,
+[data-theme="dark"] [role="button"]:focus-visible,
+[data-theme="dark"] [role="tab"]:focus-visible {
   outline-color: var(--color-primary-light, #b8d2f0);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) :focus-visible {
+  :root:not([data-theme="light"]) button:focus-visible,
+  :root:not([data-theme="light"]) a:focus-visible,
+  :root:not([data-theme="light"]) [role="button"]:focus-visible,
+  :root:not([data-theme="light"]) [role="tab"]:focus-visible {
     outline-color: var(--color-primary-light, #b8d2f0);
   }
 }
