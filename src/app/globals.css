@@ -968,26 +968,37 @@ p {
   }
 }
 
-.button-solid,
-.button-outline,
-.button-accent {
-  display: inline-flex;
-  min-height: 44px;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  border-radius: 7px;
-  font-size: 0.84375rem;
-  font-weight: 700;
-  line-height: 1;
-  text-decoration: none;
-  transition:
-    transform 180ms ease,
-    background-color 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    color 180ms ease;
+/* Os DEFAULTS de tamanho dos botões vivem na camada `components` para que as
+   utilities de tamanho escritas ao lado da classe (text-xs, px-3.5, py-2,
+   min-h-10...) valham de verdade. O Tailwind v4 coloca toda utility dentro de
+   `@layer utilities`, e uma regra SEM camada vence qualquer regra em camada,
+   não importa a ordem nem a especificidade — enquanto este bloco ficou fora
+   de camada, 287 botões que pediam um tamanho saíram todos iguais (P-16).
+   As cores logo abaixo seguem fora de camada de propósito: o !important delas
+   é o que mantém o rótulo legível nas inversões do tema escuro. */
+@layer components {
+  .button-solid,
+  .button-outline,
+  .button-accent,
+  .button-danger {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 7px;
+    font-size: 0.84375rem;
+    font-weight: 700;
+    line-height: 1;
+    text-decoration: none;
+    transition:
+      transform 180ms ease,
+      background-color 180ms ease,
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      color 180ms ease;
+  }
 }
 
 .button-solid {
@@ -1026,12 +1037,18 @@ p {
   outline-offset: 3px;
 }
 
+.button-danger:focus-visible {
+  outline: 2px solid var(--color-danger);
+  outline-offset: 3px;
+}
+
 /* Tactile press: a quick sink + micro-scale so every CTA reacts the way the
    reference platforms (Hotmart/Kajabi) feel when clicked. The 180ms transform
    transition on the base rule eases it back out on release. */
 .button-solid:active,
 .button-outline:active,
 .button-accent:active,
+.button-danger:active,
 .button-solid-light:active,
 .button-outline-light:active {
   transform: translateY(1px) scale(0.985);
@@ -1058,6 +1075,31 @@ p {
   border-color: var(--color-line-strong);
 }
 
+/* Destructive variant. Quatro botões "Delete" tentavam `.button-outline` mais
+   uma utility de cor, e a cor nunca chegava à tela: o !important do outline
+   vence qualquer utility (P-08). Excluir tem de PARECER perigoso, e só uma
+   variante própria consegue isso. Mesmo desenho do outline, tinta de perigo. */
+.button-danger {
+  border: 1px solid rgba(178, 34, 52, 0.38);
+  background: var(--color-surface);
+  color: var(--color-danger-fg) !important;
+  box-shadow: 0 8px 18px rgba(178, 34, 52, 0.08);
+}
+
+.button-danger:hover {
+  border-color: var(--color-danger);
+  background: var(--color-danger-soft);
+  color: var(--color-danger-fg) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(178, 34, 52, 0.12);
+}
+
+/* --color-danger-fg já inverte no escuro (#e8808c); a borda fixa em vermelho
+   escuro sumia sobre a superfície escura. */
+[data-theme="dark"] .button-danger {
+  border-color: rgba(232, 128, 140, 0.5);
+}
+
 /* Accent CTAs use the reserved antique-gold signal with dark ink for AA contrast. */
 .button-accent {
   border: 1px solid var(--color-accent);
@@ -1074,24 +1116,28 @@ p {
   box-shadow: 0 12px 24px rgba(121, 86, 21, 0.28);
 }
 
-.button-solid-light,
-.button-outline-light {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  /* Same unified default height as the solid/outline base. */
-  padding: 0.625rem 1rem;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  line-height: 1.25rem;
-  text-decoration: none;
-  transition:
-    transform 180ms ease,
-    background-color 180ms ease,
-    border-color 180ms ease,
-    color 180ms ease;
+/* Mesma razão do bloco de tamanho acima: defaults em camada, para as
+   utilities de tamanho escritas no JSX valerem. */
+@layer components {
+  .button-solid-light,
+  .button-outline-light {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    /* Same unified default height as the solid/outline base. */
+    padding: 0.625rem 1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    text-decoration: none;
+    transition:
+      transform 180ms ease,
+      background-color 180ms ease,
+      border-color 180ms ease,
+      color 180ms ease;
+  }
 }
 
 .button-solid-light {

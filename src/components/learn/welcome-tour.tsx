@@ -132,7 +132,7 @@ export function WelcomeTour({ userId, firstName }: { userId: string; firstName: 
             type="button"
             onClick={dismiss}
             aria-label={t("learn.tour.skipTour")}
-            className="rounded-full p-1 text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]"
+            className="grid h-11 w-11 place-items-center rounded-full text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -166,7 +166,7 @@ export function WelcomeTour({ userId, firstName }: { userId: string; firstName: 
           <button
             type="button"
             onClick={dismiss}
-            className="text-sm font-medium text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
+            className="-ml-3 inline-flex min-h-11 items-center rounded-[8px] px-3 text-sm font-medium text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
           >
             {t("learn.tour.skip")}
           </button>
