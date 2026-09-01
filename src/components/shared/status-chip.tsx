@@ -85,6 +85,11 @@ const statusVariants: Record<string, string> = {
   incomplete_expired: "inactive",
   refunded: "info",
   reviewed: "info",
+  // Domínio próprio do professor: esperar DNS/verificação é aviso, falha é
+  // perigo — as mesmas variantes que o resto do estúdio usa (P-26).
+  pending_dns: "warning",
+  pending_verification: "warning",
+  error: "danger",
 };
 
 export function StatusChip({ status, label, className }: StatusChipProps) {

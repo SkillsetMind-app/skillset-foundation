@@ -565,7 +565,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
           to say so; deciding for them is not our call, and staying quiet about
           it is not either. */}
       {warnings.length > 0 ? (
-        <p className="mt-4 rounded-[10px] border border-amber-300 bg-amber-50 p-3 text-sm leading-6 text-amber-900">
+        <p className="mt-4 rounded-[10px] border border-[rgba(192,123,10,0.35)] bg-[var(--color-warning-soft)] p-3 text-sm leading-6 text-[var(--color-warning-fg)]">
           Heads up — this page uses {warnings.map((w) => `“${w}”`).join(", ")}.
           Some of those are protected professional titles or outcome claims in
           the United States. If they apply to you, keep them; if not, they can
@@ -583,7 +583,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Save page
         </button>
-        {message ? <span className="text-sm text-emerald-800">{message}</span> : null}
+        {message ? <span className="text-sm text-[var(--color-success-fg)]">{message}</span> : null}
         {error ? <span className="text-sm text-[var(--color-danger-fg)]">{error}</span> : null}
       </div>
     </section>

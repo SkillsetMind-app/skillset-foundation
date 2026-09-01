@@ -3,6 +3,7 @@
 import { Check, Copy, Globe, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
+import { StatusChip } from "@/components/shared/status-chip";
 import type { CustomDomainStatus } from "@/domain/custom-domain";
 import {
   dnsInstructionFor,
@@ -27,18 +28,6 @@ const statusLabel: Record<CustomDomainStatus, string> = {
   pending_verification: "Waiting for verification",
   active: "Live",
   error: "Problem",
-};
-
-/**
- * Status colour carries the same information as the label, for the same reason
- * the rest of the studio does it: a teacher scanning a list of three domains
- * should see which one needs them without reading.
- */
-const statusTone: Record<CustomDomainStatus, string> = {
-  pending_dns: "bg-amber-100 text-amber-900",
-  pending_verification: "bg-amber-100 text-amber-900",
-  active: "bg-emerald-100 text-emerald-900",
-  error: "bg-red-100 text-red-900",
 };
 
 /**
@@ -98,15 +87,14 @@ function DomainCard({
         <span className="min-w-0 flex-1 truncate font-semibold text-[var(--color-ink)]">
           {domain.hostname}
         </span>
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-bold ${statusTone[domain.status]}`}
-        >
-          {statusLabel[domain.status]}
-        </span>
+        {/* O chip da casa: a cor carrega a mesma informação do rótulo, no
+            mesmo vocabulário do resto do estúdio, e acompanha o tema escuro —
+            a paleta crua do Tailwind (bg-amber-100...) não acompanhava. */}
+        <StatusChip status={domain.status} label={statusLabel[domain.status]} />
       </div>
 
       {domain.status === "error" && domain.error_reason ? (
-        <p className="text-sm text-red-800">{domain.error_reason}</p>
+        <p className="text-sm text-[var(--color-danger-fg)]">{domain.error_reason}</p>
       ) : null}
 
       {action ? (
@@ -137,17 +125,28 @@ function DomainCard({
             type="button"
             disabled={busy}
             onClick={() => onRecheck(domain.id)}
-            className="inline-flex items-center gap-2 rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50"
+            className="button-outline px-3 py-2 text-sm disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} />
             Check again
           </button>
         ) : null}
+        {/* Confirmação + folga do vizinho (mesmo remédio do #129). Este botão
+            era gêmeo do "Check again" — o que o professor martela enquanto o
+            DNS propaga — a 8px dele, e derrubava o domínio em um clique, sem
+            desfazer: certificado descartado e DNS inteiro para refazer. */}
         <button
           type="button"
           disabled={busy}
-          onClick={() => onRemove(domain.id)}
-          className="inline-flex items-center gap-2 rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50"
+          onClick={() => {
+            const confirmed = window.confirm(
+              `Disconnect ${domain.hostname}? Students go back to the platform address, and the DNS setup starts over if you reconnect it.`,
+            );
+            if (confirmed) {
+              onRemove(domain.id);
+            }
+          }}
+          className="button-danger ml-auto px-3 py-2 text-sm disabled:opacity-50"
         >
           <Trash2 className="h-4 w-4" />
           Disconnect
@@ -324,7 +323,7 @@ export function CustomDomainsPanel() {
               </p>
             ) : null}
 
-            {error ? <p className="text-sm text-red-700">{error}</p> : null}
+            {error ? <p className="text-sm text-[var(--color-danger-fg)]">{error}</p> : null}
           </form>
         </>
       )}

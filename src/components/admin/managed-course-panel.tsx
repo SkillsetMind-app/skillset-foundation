@@ -230,7 +230,7 @@ export function ManagedCoursePanel() {
                     type="button"
                     onClick={() => setConfirmingDeleteId(course.id)}
                     disabled={busyCourseId === course.id}
-                    className="button-outline px-3.5 py-2 text-xs text-[var(--color-accent-fg)] disabled:opacity-60"
+                    className="button-danger px-3.5 py-2 text-xs disabled:opacity-60"
                   >
                     Delete
                   </button>
