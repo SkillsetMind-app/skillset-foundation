@@ -153,7 +153,8 @@
       "confirmTitle": "Confirma tu correo para continuar",
       "confirmBody": "Ábrelo para activar tu cuenta y vuelve para iniciar sesión. Puede tardar un minuto — revisa también tu carpeta de spam o promociones.",
       "confirmSentTo": "Enviamos un enlace de confirmación a",
-      "confirmSignIn": "Ir a iniciar sesión"
+      "confirmSignIn": "Ir a iniciar sesión",
+      "existingAccountSignIn": "Inicia sesión en su lugar"
     },
     "guard": {
       "loadingTitle": "Preparando tu espacio de trabajo",
