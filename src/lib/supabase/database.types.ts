@@ -1894,19 +1894,28 @@ export type Database = {
       }
       processed_stripe_events: {
         Row: {
+          attempts: number
           claimed_at: string | null
+          failed_at: string | null
+          last_error: string | null
           processed_at: string
           status: string
           stripe_event_id: string
         }
         Insert: {
+          attempts?: number
           claimed_at?: string | null
+          failed_at?: string | null
+          last_error?: string | null
           processed_at?: string
           status?: string
           stripe_event_id: string
         }
         Update: {
+          attempts?: number
           claimed_at?: string | null
+          failed_at?: string | null
+          last_error?: string | null
           processed_at?: string
           status?: string
           stripe_event_id?: string
