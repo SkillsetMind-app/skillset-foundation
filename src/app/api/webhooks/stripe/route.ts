@@ -829,14 +829,24 @@ async function handleCourseSubscriptionLifecycle(
   const enrollmentId = `${userId}__${courseId}`;
   const { data: enrollment, error: enrollmentError } = await admin
     .from("enrollments")
-    .select("status")
+    .select("status, progress_percent")
     .eq("id", enrollmentId)
     .maybeSingle();
   if (enrollmentError) throw new Error(enrollmentError.message);
   if (!enrollment) return true; // invoice.paid creates it; lifecycle never creates
 
   const enrollmentStatus = String(enrollment.status ?? "");
-  if (revoke && enrollmentStatus === "active") {
+  // 'completed' revoga igual a 'active'. Enquanto a condição era só
+  // `=== "active"`, cancelar a assinatura de um curso já concluído não tirava
+  // nada — e 'completed' é escrito pelo PRÓPRIO ALUNO: `record_lesson_progress`
+  // faz `case when v_progress >= 100 then 'completed'` e é concedida a
+  // `authenticated`. Como a policy `course_lesson_content_select` aceita
+  // 'completed' exatamente como 'active', o caminho era: assinar um mês, marcar
+  // todas as aulas como vistas, cancelar — e ficar com o curso para sempre.
+  const holdsAccess =
+    enrollmentStatus === "active" || enrollmentStatus === "completed";
+
+  if (revoke && holdsAccess) {
     await requireSupabaseWrite(
       admin
         .from("enrollments")
@@ -845,11 +855,16 @@ async function handleCourseSubscriptionLifecycle(
       "Revoke course subscription enrollment",
     );
   } else if (entitled && enrollmentStatus === "revoked") {
+    // Volta para 'completed' quando o aluno já tinha terminado, em vez de
+    // rebaixar para 'active': quem reassina não deve perder a conclusão.
+    const restoredStatus =
+      Number(enrollment.progress_percent ?? 0) >= 100 ? "completed" : "active";
+
     await requireSupabaseWrite(
       admin
         .from("enrollments")
         .update({
-          status: "active",
+          status: restoredStatus,
           source: "subscription",
           subscription_id: subscription.id,
           updated_at: ts,
@@ -972,6 +987,25 @@ async function handleChargeRefunded(
       .limit(5);
     if (ledgersError) throw new Error(ledgersError.message);
     const ledger = (ledgers ?? []).find((l) => l.kind === "course_subscription");
+
+    // Uma compra AVULSA também cai aqui enquanto a linha de `payments` ainda não
+    // foi escrita — e ela nunca tem `kind === "course_subscription"`, então o
+    // `return` silencioso abaixo era o caminho dela: 200 para o Stripe, nada
+    // gravado em orders/enrollments/payout_ledger, nenhuma retentativa, e a
+    // fulfilment (que segue correndo) entregava o curso a quem acabou de ser
+    // reembolsado.
+    //
+    // O Stripe copia o metadata do PaymentIntent para a Charge (é do que o ramo
+    // da taxa de ativação, acima, já depende), então `orderId` presente
+    // identifica com precisão a compra de curso. Aqui vale o MESMO raciocínio
+    // que a linha ~1041 já aplica no ramo de baixo: lançar para o Stripe
+    // reenviar depois que a fulfilment terminar, em vez de perder o reembolso.
+    if (!ledger && typeof charge.metadata?.orderId === "string") {
+      throw new Error(
+        `Refund for order ${charge.metadata.orderId} arrived before its payment row; retry this refund.`,
+      );
+    }
+
     if (!ledger) return;
     await requireSupabaseWrite(
       admin
