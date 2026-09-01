@@ -69,6 +69,19 @@ function hasControlChar(s: string): boolean {
 let inFlight = 0;
 const MAX_INFLIGHT = 6;
 
+// Take the slot first, then look at the counter — one synchronous step, so a
+// request that yields to the event loop anywhere after this has already been
+// counted. The check used to sit one await above the increment: a burst of N
+// requests all read zero there, all passed, and all reached the model.
+function acquireSlot(): boolean {
+  inFlight += 1;
+  if (inFlight > MAX_INFLIGHT) {
+    inFlight -= 1;
+    return false;
+  }
+  return true;
+}
+
 // The behaviour contract. It is deliberately blunt about the failure mode that
 // matters: a model asked for business advice will happily invent a commission
 // rate, a refund window or a payout schedule, and a teacher has no way to tell
@@ -261,59 +274,93 @@ export async function POST(request: Request) {
       ? body.conversationId
       : null;
 
-  if (inFlight >= MAX_INFLIGHT) {
+  if (!acquireSlot()) {
     return NextResponse.json(
       { error: "The advisor is busy right now. Please try again in a moment." },
       { status: 429 },
     );
   }
 
-  const question = cleaned[cleaned.length - 1].content;
-
-  // Both grounding lookups swallow their own failures, so this pair cannot throw
-  // — deliberately, because the catch around the model call below reads a throw
-  // as "the model is unreachable" and would answer "being set up", which is a
-  // lie when the real failure was a context query. Run them together: the
-  // embedding round-trip and the catalogue queries have no reason to be serial.
-  // Retrieval runs on the admin client, the teacher snapshot on the caller's.
-  // Deliberate: advisor_documents is deny-all under RLS, so the search only
-  // worked because match_advisor_documents was SECURITY DEFINER *and* granted to
-  // `authenticated` — which also published an unthrottled pgvector scan on the
-  // public PostgREST surface, callable with any match_count. Reading it here
-  // with the service role lets that grant be revoked. buildTeacherContext keeps
-  // the caller's client on purpose: it reads this teacher's own rows and RLS is
-  // the thing that stops it reading someone else's.
-  const [teacherContext, passages] = await Promise.all([
-    buildTeacherContext(supabase, uid).catch(() => ""),
-    retrieveKnowledge(getSupabaseAdminClient(), question),
-  ]);
-
-  const context = [buildAssistantKnowledge(), formatKnowledge(passages), teacherContext]
-    .filter((block) => block.length > 0)
-    .join("\n\n");
-
-  const messages: KimiMessage[] = [
-    { role: "system", content: SYSTEM_PROMPT },
-    // Context rides as its own system turn rather than being glued onto the
-    // instructions: it is data, and keeping it separate makes it harder for a
-    // sentence inside the Doc to read as an instruction to the model.
-    { role: "system", content: context },
-    ...cleaned,
-  ];
-
-  inFlight += 1;
+  // Everything below holds the slot, the grounding lookups included — they are
+  // the await the old check-then-increment gap sat across. The outer finally is
+  // the only place the slot is given back.
   try {
-    const reply = await askKimi({
-      messages,
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-    });
+    const question = cleaned[cleaned.length - 1].content;
 
-    const storedId = await persistTurn(supabase, uid, conversationId, question, reply);
-    return NextResponse.json({ reply, conversationId: storedId });
-  } catch (caughtError) {
-    // A missing key is a deployment gap, not a failed request: same calm copy
-    // the UI already renders for an unconfigured backend.
-    if (caughtError instanceof KimiConfigError) {
+    // Both grounding lookups swallow their own failures, so this pair cannot throw
+    // — deliberately, because the catch around the model call below reads a throw
+    // as "the model is unreachable" and would answer "being set up", which is a
+    // lie when the real failure was a context query. Run them together: the
+    // embedding round-trip and the catalogue queries have no reason to be serial.
+    // Retrieval runs on the admin client, the teacher snapshot on the caller's.
+    // Deliberate: advisor_documents is deny-all under RLS, so the search only
+    // worked because match_advisor_documents was SECURITY DEFINER *and* granted to
+    // `authenticated` — which also published an unthrottled pgvector scan on the
+    // public PostgREST surface, callable with any match_count. Reading it here
+    // with the service role lets that grant be revoked. buildTeacherContext keeps
+    // the caller's client on purpose: it reads this teacher's own rows and RLS is
+    // the thing that stops it reading someone else's.
+    const [teacherContext, passages] = await Promise.all([
+      buildTeacherContext(supabase, uid).catch(() => ""),
+      retrieveKnowledge(getSupabaseAdminClient(), question),
+    ]);
+
+    const context = [buildAssistantKnowledge(), formatKnowledge(passages), teacherContext]
+      .filter((block) => block.length > 0)
+      .join("\n\n");
+
+    const messages: KimiMessage[] = [
+      { role: "system", content: SYSTEM_PROMPT },
+      // Context rides as its own system turn rather than being glued onto the
+      // instructions: it is data, and keeping it separate makes it harder for a
+      // sentence inside the Doc to read as an instruction to the model.
+      { role: "system", content: context },
+      ...cleaned,
+    ];
+
+    try {
+      const reply = await askKimi({
+        messages,
+        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+      });
+
+      const storedId = await persistTurn(supabase, uid, conversationId, question, reply);
+      return NextResponse.json({ reply, conversationId: storedId });
+    } catch (caughtError) {
+      // A missing key is a deployment gap, not a failed request: same calm copy
+      // the UI already renders for an unconfigured backend.
+      if (caughtError instanceof KimiConfigError) {
+        return NextResponse.json(
+          {
+            error: "advisor_not_configured",
+            reply: "The studio advisor is being set up and will be available shortly.",
+          },
+          { status: 503 },
+        );
+      }
+
+      if (caughtError instanceof KimiError) {
+        // Retrying an exhausted reasoning budget fails identically, so this one
+        // asks for a different question instead of the usual "try again".
+        const message =
+          caughtError.code === "reasoning_budget_exhausted"
+            ? "That question was too broad for the advisor to finish. Try asking about one thing at a time."
+            : "The advisor is unavailable right now. Please try again.";
+        return NextResponse.json({ error: message }, { status: 502 });
+      }
+
+      // Match on name, not instanceof: AbortSignal.timeout rejects with a
+      // DOMException, which is not an Error subclass in every runtime this ships
+      // to. Anything else here is the host being unreachable — from where the
+      // teacher sits that is indistinguishable from a backend never wired, so it
+      // gets the same calm copy as the missing-key branch.
+      const failure = (caughtError as { name?: string } | null)?.name;
+      if (failure === "TimeoutError" || failure === "AbortError") {
+        return NextResponse.json(
+          { error: "The advisor is taking too long to respond. Please try again." },
+          { status: 504 },
+        );
+      }
       return NextResponse.json(
         {
           error: "advisor_not_configured",
@@ -322,36 +369,6 @@ export async function POST(request: Request) {
         { status: 503 },
       );
     }
-
-    if (caughtError instanceof KimiError) {
-      // Retrying an exhausted reasoning budget fails identically, so this one
-      // asks for a different question instead of the usual "try again".
-      const message =
-        caughtError.code === "reasoning_budget_exhausted"
-          ? "That question was too broad for the advisor to finish. Try asking about one thing at a time."
-          : "The advisor is unavailable right now. Please try again.";
-      return NextResponse.json({ error: message }, { status: 502 });
-    }
-
-    // Match on name, not instanceof: AbortSignal.timeout rejects with a
-    // DOMException, which is not an Error subclass in every runtime this ships
-    // to. Anything else here is the host being unreachable — from where the
-    // teacher sits that is indistinguishable from a backend never wired, so it
-    // gets the same calm copy as the missing-key branch.
-    const failure = (caughtError as { name?: string } | null)?.name;
-    if (failure === "TimeoutError" || failure === "AbortError") {
-      return NextResponse.json(
-        { error: "The advisor is taking too long to respond. Please try again." },
-        { status: 504 },
-      );
-    }
-    return NextResponse.json(
-      {
-        error: "advisor_not_configured",
-        reply: "The studio advisor is being set up and will be available shortly.",
-      },
-      { status: 503 },
-    );
   } finally {
     inFlight -= 1;
   }
