@@ -1,0 +1,125 @@
+name: Backup
+
+# Off-site copy of the database and Storage objects.
+#
+# Supabase already takes its own daily backups, kept 7 days, in the same account
+# as the data — and they exclude Storage objects. This job covers what those
+# don't: losing access to the account, damage found after a week, and the files
+# themselves. The archive is encrypted before it leaves the runner, so the
+# destination never holds readable user data.
+
+on:
+  schedule:
+    # 04:10 UTC — after Supabase's own ~00:00 regional snapshot, off peak.
+    - cron: "10 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Dump, encrypt, ship
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Without the secrets this job would "pass" while backing up nothing,
+      # which is the failure mode that hurts most: a green tick and no data.
+      - name: Check configuration
+        env:
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          AGE_PUBLIC_KEY: ${{ secrets.BACKUP_AGE_PUBLIC_KEY }}
+          SERVICE_ROLE: ${{ secrets.BACKUP_SERVICE_ROLE_KEY }}
+        run: |
+          missing=""
+          [ -n "$DATABASE_URL" ]   || missing="$missing BACKUP_DATABASE_URL"
+          [ -n "$AGE_PUBLIC_KEY" ] || missing="$missing BACKUP_AGE_PUBLIC_KEY"
+          [ -n "$SERVICE_ROLE" ]   || missing="$missing BACKUP_SERVICE_ROLE_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error title=Backup not configured::Missing secrets:$missing — see docs/BACKUP.md. No backup was taken."
+            exit 1
+          fi
+
+      # Server is Postgres 17; pg_dump must be >= the server or it refuses.
+      - name: Install postgresql-client-17
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+            https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+          pg_dump --version
+
+      - name: Install age
+        run: sudo apt-get install -y -qq age
+
+      - name: Create backup
+        id: backup
+        env:
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.BACKUP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.BACKUP_SERVICE_ROLE_KEY }}
+          AGE_PUBLIC_KEY: ${{ secrets.BACKUP_AGE_PUBLIC_KEY }}
+        run: |
+          chmod +x scripts/backup-supabase.sh
+          ./scripts/backup-supabase.sh ./backup-out | tee /tmp/backup.log
+          grep '^BACKUP_FILE=' /tmp/backup.log >> "$GITHUB_OUTPUT"
+
+      - name: Install rclone
+        run: sudo apt-get install -y -qq rclone
+
+      # R2 speaks the S3 API. The token should be scoped to this bucket with
+      # write permission only — a leaked CI token must not be able to read old
+      # backups or delete them.
+      - name: Upload to Cloudflare R2
+        env:
+          RCLONE_CONFIG_R2_TYPE: s3
+          RCLONE_CONFIG_R2_PROVIDER: Cloudflare
+          RCLONE_CONFIG_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          RCLONE_CONFIG_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          RCLONE_CONFIG_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          RCLONE_CONFIG_R2_NO_CHECK_BUCKET: "true"
+          BUCKET: ${{ secrets.R2_BUCKET }}
+          FILE: ${{ steps.backup.outputs.BACKUP_FILE }}
+        run: |
+          rclone copy "$FILE" "R2:$BUCKET/daily/" --s3-no-head --stats-one-line
+          rclone lsl "R2:$BUCKET/daily/" | tail -5
+
+      # Retention lives here rather than as a bucket lifecycle rule so the
+      # window is visible in the repo. 30 days covers the gap left by
+      # Supabase's 7.
+      - name: Prune backups older than 30 days
+        env:
+          RCLONE_CONFIG_R2_TYPE: s3
+          RCLONE_CONFIG_R2_PROVIDER: Cloudflare
+          RCLONE_CONFIG_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          RCLONE_CONFIG_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          RCLONE_CONFIG_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          BUCKET: ${{ secrets.R2_BUCKET }}
+        run: rclone delete "R2:$BUCKET/daily/" --min-age 30d --rmdirs || true
+
+      - name: Summary
+        if: always()
+        env:
+          FILE: ${{ steps.backup.outputs.BACKUP_FILE }}
+        run: |
+          {
+            echo "### Backup"
+            echo ""
+            if [ -f "$FILE" ]; then
+              echo "- archive: \`$(basename "$FILE")\`"
+              echo "- size: $(wc -c < "$FILE" | tr -d ' ') bytes (encrypted)"
+              echo "- destination: R2 \`daily/\`, pruned after 30 days"
+            else
+              echo "- **no archive produced**"
+            fi
+            echo ""
+            echo "Restore drill: \`./scripts/restore-backup.sh <file>\` — see docs/BACKUP.md"
+          } >> "$GITHUB_STEP_SUMMARY"
