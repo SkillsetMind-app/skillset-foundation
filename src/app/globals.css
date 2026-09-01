@@ -2543,7 +2543,7 @@ select:focus-visible {
    sobre cookies, a navegação principal — Home, Market, Teach, Profile — estava
    coberta e inalcançável. O banner sobe a altura da barra em vez de disputar o
    mesmo espaço; o safe-area sai do padding porque a barra de baixo já o
-   consome. */
+   consome.
    O `:has()` é o que evita o efeito colateral: o banner é global e aparece
    também nas páginas públicas, que não têm barra inferior nenhuma. Só sobe
    quando a barra existe de fato no documento; abaixo de 1023px ela existir
