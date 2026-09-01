@@ -47,19 +47,33 @@ canonical origin, while production actually serves `www`. Harmless for auth
 SEO canonical currently points at a redirecting host. Worth reconciling
 separately.
 
-## Sender address (the remaining 10%)
+## Sender address — done
 
-With templates applied, the email CONTENT is fully branded, but the sender
-still shows `Supabase Auth <noreply@mail.app.supabase.io>` until custom SMTP
-is configured. To send as `SkillsetMind <no-reply@skillset...>`:
+Custom SMTP is configured. Verified 2026-09-01 by sending a real recovery email:
+it arrived from `no-reply@skillsetmind.com`, not the Supabase default sender.
 
-1. Create a free Resend account (3k emails/month free) and verify the
-   platform's domain (requires adding DNS records).
-2. Supabase Dashboard → Project Settings → Authentication → SMTP Settings:
-   host `smtp.resend.com`, port 465, user `resend`, password = Resend API key,
-   sender name `SkillsetMind`, sender email on the verified domain.
-3. Store the Resend API key in the vault as `SKILLSET_RESEND_API_KEY` — never
-   in this repo.
+This section previously claimed the sender was still
+`Supabase Auth <noreply@mail.app.supabase.io>` and that SMTP was "founder-gated".
+That was stale, and it mattered: it also implied the default mailer's ~2
+emails/hour cap still applied to reset links, which it does not.
 
-Founder-gated: needs domain DNS access + a Resend account. Everything else is
-done.
+If SMTP ever needs reconfiguring, it lives in Dashboard → Project Settings →
+Authentication → SMTP Settings. Keep the provider's API key in the vault, never
+in this repo.
+
+## End-to-end verification (2026-09-01)
+
+A real reset was requested and the link followed from a client with **no cookies
+and no prior session** — the exact case that used to fail, because the PKCE
+`code_verifier` only ever existed in the requesting browser:
+
+```
+hop 1: 307 /auth/confirm?token_hash=...
+       set-cookie: password_recovery, sb-<ref>-auth-token
+       -> /reset-password
+hop 2: 200 /reset-password   (reset form rendered, no expiry error)
+```
+
+Worth re-running after any change to the recovery flow. The check that matters
+is the cold client: opening the link in the *same* browser that requested it
+would have passed even while the bug was live.
