@@ -9,6 +9,7 @@ import {
   enforceRateLimit,
   paymentErrorResponse,
 } from "@/lib/payments/server/auth";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // POST   /api/teach/domains/[id] — "check again": ask Vercel to re-verify.
@@ -64,8 +65,18 @@ export async function POST(
 
   const result = await refreshDomainStatus(domain.hostname, config);
 
-  await supabase.rpc("sync_own_custom_domain", {
+  // Gravacao pelo service_role, nao pela sessao do usuario. O status de
+  // verificacao e um fato do SERVIDOR — quem o conhece e esta rota, que acabou
+  // de falar com a API da Vercel. Enquanto era escrito com o JWT do usuario, a
+  // funcao precisava ser EXECUTE para `authenticated`, e entao qualquer criador
+  // podia chama-la direto pelo PostgREST passando status='active': dominio
+  // "verificado" sem nunca ter passado pela Vercel, e entrando em
+  // public_domains, que e o que o proxy le para decidir de quem e a vitrine
+  // servida naquele host. O dono vai explicito e continua sendo conferido no
+  // banco.
+  await getSupabaseAdminClient().rpc("sync_custom_domain_status", {
     p_id: id,
+    p_owner_uid: auth.user.id,
     p_status: result.status,
     p_verification_name: result.verificationRecord?.name ?? null,
     p_verification_value: result.verificationRecord?.value ?? null,
