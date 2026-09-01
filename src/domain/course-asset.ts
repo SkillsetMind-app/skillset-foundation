@@ -227,7 +227,10 @@ function getFileExtension(fileName: string) {
 }
 
 export function isAllowedCourseAssetFile(file: File, kind: CourseAssetKind): boolean {
-  if (file.size > courseAssetMaxBytes) {
+  // Valida contra o teto que de fato recusa o envio (o do plano), não contra o
+  // do bucket. Tudo que passa por aqui vai para o Supabase Storage; validar em
+  // 500 MB deixava um PNG de 80 MB "passar" na tela e cair num 413 em seguida.
+  if (file.size > supabaseUploadLimitBytes) {
     return false;
   }
 

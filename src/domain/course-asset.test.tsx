@@ -61,6 +61,15 @@ describe("course asset validation", () => {
       false,
     );
   });
+
+  // O teto que recusa o envio é o do plano (50 MB), não o do bucket (500 MB).
+  // Validar em 500 MB deixava um PNG de 80 MB passar na tela e cair num 413.
+  it("rejects a file above the effective Supabase limit even under the bucket ceiling", () => {
+    const big = file("render.png", "image/png");
+    Object.defineProperty(big, "size", { value: supabaseUploadLimitBytes + 1 });
+
+    expect(isAllowedCourseAssetFile(big, "course_cover")).toBe(false);
+  });
 });
 
 describe("upload error mapping", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   Layers3,
   UploadCloud,
@@ -11,9 +11,10 @@ import type { CourseAsset, CourseAssetKind } from "@/domain/course-asset";
 import {
   courseAssetAcceptTypes,
   courseAssetKindLabels,
-  courseAssetMaxBytes,
   formatCourseAssetSize,
+  getCourseAssetUploadErrorMessage,
   isAllowedCourseAssetFile,
+  supabaseUploadLimitBytes,
 } from "@/domain/course-asset";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import {
@@ -22,6 +23,8 @@ import {
   uploadCourseAsset,
   type UploadCourseAssetProgress,
 } from "@/lib/data/course-assets";
+
+import { UploadProgressNote } from "./upload-progress-note";
 
 const assetKinds: CourseAssetKind[] = ["course_cover", "module_cover"];
 
@@ -36,7 +39,9 @@ const uploadPresets: Array<{
   {
     kind: "module_cover",
     label: "Module cover",
-    detail: "Visual cover for one module in the student members area.",
+    // A proporção é a do .member-module-card__cover (16/10, object-cover):
+    // sem dizer isso aqui o professor só descobria o enquadramento na área do aluno.
+    detail: "Visual cover for one module in the student members area. Shown at 16:10.",
     icon: Layers3,
   },
   {
@@ -80,6 +85,24 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
   const lessonAssets = assets.filter((asset) => asset.lessonId);
   const activePreset = uploadPresets.find((preset) => preset.kind === kind);
 
+  // Prévia do arquivo escolhido antes de enviar. Os dois presets deste painel
+  // são imagens; sem isto o professor subia a capa do módulo às cegas.
+  const previewUrl = useMemo(
+    () =>
+      selectedFile?.type.startsWith("image/")
+        ? URL.createObjectURL(selectedFile)
+        : "",
+    [selectedFile],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
   useEffect(() => {
     return subscribeToCourseAssets(
       course.id,
@@ -101,7 +124,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
 
     if (!isAllowedCourseAssetFile(selectedFile, kind)) {
       setError(
-        `Use a valid ${courseAssetKindLabels[kind].toLowerCase()} file under ${formatCourseAssetSize(courseAssetMaxBytes)}.`,
+        `Use a valid ${courseAssetKindLabels[kind].toLowerCase()} file under ${formatCourseAssetSize(supabaseUploadLimitBytes)}.`,
       );
       return;
     }
@@ -130,8 +153,11 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
       setIsPreview(false);
       setUploadProgress(null);
       setFileInputKey((current) => current + 1);
-    } catch {
-      setError("We could not upload this asset. Check the file, course ownership, and current permissions.");
+    } catch (uploadError) {
+      // O motivo real (teto de tamanho, permissão, conexão) já vem pronto do
+      // domínio; o texto genérico culpava "permissões" por um 413 de tamanho.
+      setUploadProgress(null);
+      setError(getCourseAssetUploadErrorMessage(uploadError));
     } finally {
       setIsUploading(false);
     }
@@ -233,7 +259,8 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
             {activePreset?.label ?? courseAssetKindLabels[kind]}
           </p>
           <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
-            {activePreset?.detail ?? "Choose the target and file before uploading."}
+            {activePreset?.detail ?? "Choose the target and file before uploading."}{" "}
+            Image up to {formatCourseAssetSize(supabaseUploadLimitBytes)}.
           </p>
         </div>
 
@@ -281,6 +308,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
           key={fileInputKey}
           type="file"
           accept={courseAssetAcceptTypes[kind]}
+          aria-label={`Choose a ${courseAssetKindLabels[kind].toLowerCase()} file`}
           disabled={!isEditable || isUploading}
           onChange={(event) => {
             setSelectedFile(event.target.files?.[0] ?? null);
@@ -301,31 +329,23 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
         </label>
 
         {selectedFile ? (
-          <p className="rounded-[10px] bg-[var(--color-surface-soft)] px-4 py-3 text-xs font-semibold text-[var(--color-primary)]">
-            Selected: {selectedFile.name} ({formatCourseAssetSize(selectedFile.size)})
-          </p>
-        ) : null}
-
-        {uploadProgress ? (
-          <div className="rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] p-3">
-            <div className="flex items-center justify-between gap-3 text-xs font-semibold text-[var(--color-primary)]">
-              <span>
-                {uploadProgress.state === "success" ? "Upload complete" : "Uploading"}
-              </span>
-              <span>{uploadProgress.percent}%</span>
-            </div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
-              <div
-                className="h-full rounded-full bg-[var(--color-primary)] transition-[width] duration-200"
-                style={{ width: `${uploadProgress.percent}%` }}
+          <div className="flex items-center gap-3 rounded-[10px] bg-[var(--color-surface-soft)] px-4 py-3 text-xs font-semibold text-[var(--color-primary)]">
+            {previewUrl ? (
+              // Blob URL local; next/image não se aplica a um objeto em memória.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={previewUrl}
+                alt={`Preview of ${selectedFile.name}`}
+                className="h-16 w-24 shrink-0 rounded-[8px] border border-[var(--color-line)] bg-white object-cover"
               />
-            </div>
-            <p className="mt-2 text-[11px] text-[var(--color-ink-soft)]">
-              {formatCourseAssetSize(uploadProgress.bytesTransferred)} of{" "}
-              {formatCourseAssetSize(uploadProgress.totalBytes)}
-            </p>
+            ) : null}
+            <span>
+              Selected: {selectedFile.name} ({formatCourseAssetSize(selectedFile.size)})
+            </span>
           </div>
         ) : null}
+
+        {uploadProgress ? <UploadProgressNote progress={uploadProgress} /> : null}
 
         {error ? (
           <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
@@ -436,7 +456,16 @@ function AssetGroup({
               className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
+                {asset.downloadUrl && asset.contentType.startsWith("image/") ? (
+                  // Capas vivem no bucket público: a URL já está na linha.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={asset.downloadUrl}
+                    alt={`${courseAssetKindLabels[asset.kind]}: ${asset.fileName}`}
+                    className="h-16 w-24 shrink-0 rounded-[8px] border border-[var(--color-line)] bg-white object-cover"
+                  />
+                ) : null}
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-[var(--color-ink)]">
                     {asset.fileName}
                   </p>

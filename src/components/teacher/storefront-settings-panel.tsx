@@ -53,6 +53,7 @@ function moveItem<T>(items: T[], from: number, direction: -1 | 1): T[] {
 
 function StorefrontImageUpload({
   description,
+  error,
   imageUrl,
   isUploading,
   kind,
@@ -62,6 +63,7 @@ function StorefrontImageUpload({
   onRemove,
 }: {
   description: string;
+  error: string;
   imageUrl: string;
   isUploading: boolean;
   kind: StorefrontImageKind;
@@ -142,6 +144,17 @@ function StorefrontImageUpload({
             Uploading {progress.percent}%
           </p>
         ) : null}
+        {/* O erro nasce ao lado do botão que o disparou, e anunciado ao leitor
+            de tela. No rodapé do formulário ficava fora da tela no celular, e o
+            botão voltava a "Upload" como se nada tivesse acontecido. */}
+        {error ? (
+          <p
+            role="alert"
+            className="mt-2 rounded-[8px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]"
+          >
+            {error}
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -172,8 +185,16 @@ export function StorefrontSettingsPanel() {
   const [pendingImageRemovals, setPendingImageRemovals] = useState<
     ReadonlySet<StorefrontImageKind>
   >(() => new Set());
+  // Falha de imagem fica no campo dela; `error` é só para carregar/salvar.
+  const [imageErrors, setImageErrors] = useState<
+    Partial<Record<StorefrontImageKind, string>>
+  >({});
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  function setImageError(kind: StorefrontImageKind, message: string) {
+    setImageErrors((current) => ({ ...current, [kind]: message }));
+  }
 
   // Load the saved storefront config.
   useEffect(() => {
@@ -278,11 +299,11 @@ export function StorefrontSettingsPanel() {
     }
 
     if (!isAllowedAvatarFile(file)) {
-      setError(`Use a ${storefrontImageRequirementLabel} image.`);
+      setImageError(kind, `Use a ${storefrontImageRequirementLabel} image.`);
       return;
     }
 
-    setError("");
+    setImageError(kind, "");
     setSuccess("");
     setUploadProgress((current) => {
       const next = { ...current };
@@ -313,7 +334,8 @@ export function StorefrontSettingsPanel() {
       setSuccess(`${kind === "logo" ? "Logo" : "Hero image"} uploaded. Save the storefront to publish it.`);
     } catch (uploadError) {
       console.error("Storefront image upload failed", { uid: user.uid, kind }, uploadError);
-      setError(
+      setImageError(
+        kind,
         uploadError instanceof Error && uploadError.message
           ? uploadError.message
           : "We could not upload this image. Please try again.",
@@ -339,7 +361,7 @@ export function StorefrontSettingsPanel() {
       setHeroImageUrl("");
     }
     setPendingImageRemovals((current) => new Set(current).add(kind));
-    setError("");
+    setImageError(kind, "");
     setSuccess("Save the storefront to publish this removal.");
   }
 
@@ -522,6 +544,7 @@ export function StorefrontSettingsPanel() {
             label="Storefront logo"
             description="Use a square image with a transparent or simple background. On paid plans it is also printed on the certificates you issue."
             imageUrl={logoUrl}
+            error={imageErrors.logo ?? ""}
             isUploading={uploadingImages.has("logo")}
             progress={uploadProgress.logo ?? null}
             onChange={(file) => void handleStorefrontImageChange("logo", file)}
@@ -533,6 +556,7 @@ export function StorefrontSettingsPanel() {
             label="Storefront cover"
             description="Use a wide image that keeps its subject clear on desktop and mobile."
             imageUrl={heroImageUrl}
+            error={imageErrors.hero ?? ""}
             isUploading={uploadingImages.has("hero")}
             progress={uploadProgress.hero ?? null}
             onChange={(file) => void handleStorefrontImageChange("hero", file)}
