@@ -132,3 +132,30 @@ describe("purge_stale_rate_limits — a tabela rate_limits tem teto", () => {
     );
   });
 });
+
+describe("claim_custom_domain — a cota de domínios é atômica", () => {
+  // O bug (A-27): a função contava os domínios do dono e inseria sem travar
+  // nada no meio. Em READ COMMITTED, duas chamadas simultâneas liam o mesmo
+  // count, as duas passavam pela cota e as duas inseriam — um professor em
+  // starter (cota 1) ficava com N domínios pelo preço de 1, cada um anexado ao
+  // projeto Vercel da plataforma. A rota diz ter delegado a cota ao SQL
+  // justamente para não ter essa corrida; ela só tinha sido movida de lugar.
+  const corpo = definicaoEfetiva("claim_custom_domain");
+  const travaODono = /from\s+public\.users\s+where\s+uid\s*=\s*v_uid\s+for\s+update/i;
+
+  it("trava a linha do dono em users antes de contar os domínios dele", () => {
+    expect(
+      corpo,
+      "o SELECT do plano voltou a ser sem `for update`: duas reivindicações "
+        + "simultâneas do mesmo professor passam as duas pela cota",
+    ).toMatch(travaODono);
+
+    // A ordem é parte da regra: um lock depois da contagem não serializa nada.
+    expect(corpo.search(travaODono)).toBeLessThan(corpo.search(/count\(\*\)/));
+  });
+
+  it("a cota continua sendo conferida e aplicada aqui, não na rota", () => {
+    expect(corpo).toMatch(/v_used\s*>=\s*v_limit/);
+    expect(corpo).toMatch(/insert into public\.custom_domains/i);
+  });
+});
