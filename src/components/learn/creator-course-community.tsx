@@ -188,9 +188,9 @@ function CreatorCommunityState({
       <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         Creator course community
       </p>
-      <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+      <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
         {title}
-      </h3>
+      </h2>
       <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
         {detail}
       </p>

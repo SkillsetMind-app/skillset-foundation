@@ -70,9 +70,9 @@ export function LearnCommunityHub() {
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           Course communities
         </p>
-        <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+        <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
           Community opens after enrollment.
-        </h3>
+        </h2>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
           Enroll in a course first, then its discussion space appears here with
           announcements, questions, and shared resources.
@@ -108,9 +108,9 @@ export function LearnCommunityHub() {
 
       {filteredCards.length === 0 ? (
         <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <h3 className="display-title text-3xl text-[var(--color-ink)]">
+          <h2 className="display-title text-3xl text-[var(--color-ink)]">
             No communities match this filter.
-          </h3>
+          </h2>
           <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
             Clear the search or switch filters to see enrolled course spaces.
           </p>
@@ -129,9 +129,9 @@ export function LearnCommunityHub() {
           <span className="mt-4 inline-flex rounded-[8px] bg-[var(--color-surface-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
             Enrolled course
           </span>
-          <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+          <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
             {space.name}
-          </h3>
+          </h2>
           <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
             {space.description}
           </p>
