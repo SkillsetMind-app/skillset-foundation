@@ -180,6 +180,17 @@ export async function uploadCourseAsset(input: UploadCourseAssetInput) {
   return assetId;
 }
 
+/**
+ * Lançado quando o próprio criador cancela o envio. É um desfecho normal, não
+ * uma falha: quem chama deve limpar o estado sem mostrar mensagem de erro.
+ */
+export class CourseAssetUploadCancelled extends Error {
+  constructor() {
+    super("upload-cancelled");
+    this.name = "CourseAssetUploadCancelled";
+  }
+}
+
 type UploadBunnyVideoInput = {
   courseId: string;
   ownerId: string;
@@ -188,6 +199,13 @@ type UploadBunnyVideoInput = {
   isPreview: boolean;
   lessonId: string;
   onProgress?: (progress: UploadCourseAssetProgress) => void;
+  /**
+   * Recebe a função de cancelamento assim que o envio começa. Sem isto a
+   * instância do tus ficava presa dentro do executor da Promise e
+   * `upload.abort()` era inalcançável — não havia como cancelar um envio em
+   * andamento a não ser fechando a aba.
+   */
+  onCancelAvailable?: (cancel: () => void) => void;
 };
 
 /**
@@ -253,6 +271,12 @@ export async function uploadLessonVideoToBunny(
   });
 
   // 2. Browser → Bunny, resumable.
+  //
+  // A instância do Upload precisa escapar do executor: antes ela nascia e morria
+  // aqui dentro, então `upload.abort()` era inalcançável e não havia como
+  // cancelar. Quem escolhia o arquivo errado de 4 GB, ou travava numa conexão
+  // ruim, só tinha a saída de fechar a aba — e aí nada retomava, o próximo
+  // envio recomeçava do zero e sobrava um vídeo órfão no Bunny.
   await new Promise<void>((resolve, reject) => {
     const upload = new Upload(input.file, {
       endpoint,
@@ -278,6 +302,15 @@ export async function uploadLessonVideoToBunny(
       },
       onSuccess: () => resolve(),
     });
+
+    // Entrega o cancelador a quem chamou. `abort` do tus devolve uma promise;
+    // ignorá-la é aceitável porque o resultado que interessa é a rejeição
+    // abaixo, que devolve o controle da UI imediatamente.
+    input.onCancelAvailable?.(() => {
+      void upload.abort();
+      reject(new CourseAssetUploadCancelled());
+    });
+
     upload.start();
   });
 
