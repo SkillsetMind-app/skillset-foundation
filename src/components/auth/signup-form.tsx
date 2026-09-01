@@ -17,6 +17,7 @@ import {
 } from "@/components/auth/password-strength-checklist";
 import {
   getAuthErrorMessage,
+  isAccountExistsError,
   isMultiFactorRequiredError,
   signInWithGoogle,
   signUpWithEmail,
@@ -91,6 +92,10 @@ export function SignupForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [legalAccepted, setLegalAccepted] = useState(false);
   const [error, setError] = useState("");
+  // The email already has an account. The way forward is sign-in, so the
+  // error grows a link there instead of leaving a "Create account" button that
+  // can only fail the same way again.
+  const [accountExists, setAccountExists] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   // Turnstile token — empty unless the widget is enabled. Shown on step 2 where
   // the account is actually created (Google OAuth doesn't use a captcha token).
@@ -109,6 +114,7 @@ export function SignupForm() {
   async function handleEmailSignup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setAccountExists(false);
 
     if (!legalAccepted) {
       setError(t("auth.signup.acceptTermsToCreate"));
@@ -161,15 +167,28 @@ export function SignupForm() {
         return;
       }
 
-      await acceptUserTerms(user.uid, false);
-      await updateUserIdentity(user.uid, {
-        displayName,
-        username: deriveUsername(displayName, email),
-      });
+      // The account exists from here on, so these two writes are best-effort.
+      // When one fails the member still has to reach /welcome: the same
+      // recovery the confirmation path already relies on picks up what is
+      // missing — the legal gate re-asks for the terms on the first page after
+      // onboarding, and the username stays optional until they pick one in
+      // their profile. Reporting the failure as a signup error left the
+      // account orphaned behind a form whose only next answer was "already
+      // exists".
+      try {
+        await acceptUserTerms(user.uid, false);
+        await updateUserIdentity(user.uid, {
+          displayName,
+          username: deriveUsername(displayName, email),
+        });
+      } catch (profileError) {
+        console.error("Post-signup profile writes failed", profileError);
+      }
       router.push(`/welcome${getAuthPathQuery(intent)}`);
     } catch (caughtError) {
       // Single-use Turnstile token — refresh for the retry.
       if (isCaptchaEnabled) setCaptchaResetSignal((n) => n + 1);
+      setAccountExists(isAccountExistsError(caughtError));
       setError(getAuthErrorMessage(caughtError));
     } finally {
       setIsLoading(false);
@@ -224,6 +243,14 @@ export function SignupForm() {
       className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
     >
       {error}
+      {accountExists ? (
+        <>
+          {" "}
+          <Link href={signinHref} className="underline underline-offset-4">
+            {t("auth.signup.existingAccountSignIn")}
+          </Link>
+        </>
+      ) : null}
     </p>
   ) : null;
 

@@ -440,6 +440,14 @@ export function isEmailRateLimitError(error: unknown): boolean {
   return matches("rate_limit") || matches("rate limit");
 }
 
+// Signup can only fail this way because the account is already there, so the
+// way forward is signing in, not pressing "Create account" again. Callers that
+// know that render the link.
+export function isAccountExistsError(error: unknown): boolean {
+  const { matches } = authErrorMatcher(error);
+  return matches("user_already_exists") || matches("already registered");
+}
+
 export function getAuthErrorMessage(error: unknown): string {
   const { rawMessage, status, matches } = authErrorMatcher(error);
 
@@ -459,7 +467,7 @@ export function getAuthErrorMessage(error: unknown): string {
     return "Verify your email to finish signing in. Check your inbox for the link.";
   }
 
-  if (matches("user_already_exists") || matches("already registered")) {
+  if (isAccountExistsError(error)) {
     return "An account already exists with this email.";
   }
 
