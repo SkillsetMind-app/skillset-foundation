@@ -227,6 +227,21 @@ export function LessonContentModal({
     const useBunny = isVideoKind && isBunnyConfigured;
 
     if (useBunny) {
+      // Separado em duas checagens porque isAllowedBunnyVideoFile reprova tanto
+      // tipo quanto tamanho: um PDF de 200 MB recebia uma mensagem sobre o teto
+      // de 5 GB, que não tem nada a ver com o motivo da recusa.
+      if (!selectedFile.type.startsWith("video/")) {
+        setError(
+          `"${selectedFile.name}" is not a video file. Use MP4, MOV or WebM.`,
+        );
+        return;
+      }
+      if (selectedFile.size > bunnyVideoMaxBytes) {
+        setError(
+          `This video is ${formatCourseAssetSize(selectedFile.size)} — the limit is ${formatCourseAssetSize(bunnyVideoMaxBytes)}.`,
+        );
+        return;
+      }
       if (!isAllowedBunnyVideoFile(selectedFile)) {
         setError(`Use a video file under ${formatCourseAssetSize(bunnyVideoMaxBytes)}.`);
         return;
@@ -246,6 +261,18 @@ export function LessonContentModal({
 
     setIsUploading(true);
 
+    // O vídeo da aula marcada como "prévia gratuita" PRECISA subir com
+    // is_preview, senão a página pública de vendas não o encontra: a busca
+    // anônima em /api/courses/video-token filtra por .eq("is_preview", true).
+    //
+    // Antes, isso dependia de o criador também marcar um checkbox separado na
+    // aba de vídeo. Quem marcava só o toggle da aula — o caminho óbvio, e o
+    // único chamado de "prévia" — publicava com tudo verde no estúdio e via
+    // "Video unavailable" na própria loja, sem nenhum sinal do que faltava.
+    // Duas perguntas para a mesma decisão; agora o toggle da aula manda.
+    const uploadAsPreview =
+      isPreviewAsset || (isFreePreview && isVideoAssetKind(uploadKind));
+
     try {
       if (useBunny) {
         await uploadLessonVideoToBunny({
@@ -253,7 +280,7 @@ export function LessonContentModal({
           ownerId: course.ownerId,
           kind: uploadKind as "lesson_video" | "live_recording",
           file: selectedFile,
-          isPreview: isPreviewAsset,
+          isPreview: uploadAsPreview,
           lessonId: lesson.id,
           onProgress: setUploadProgress,
         });
@@ -263,7 +290,7 @@ export function LessonContentModal({
           ownerId: course.ownerId,
           kind: uploadKind,
           file: selectedFile,
-          isPreview: isPreviewAsset,
+          isPreview: uploadAsPreview,
           lessonId: lesson.id,
           onProgress: setUploadProgress,
         });

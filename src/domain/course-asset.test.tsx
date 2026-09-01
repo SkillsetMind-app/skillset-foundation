@@ -4,6 +4,7 @@ import {
   canViewCourseAssetVideo,
   courseAssetAcceptTypes,
   courseAssetKindLabels,
+  formatCourseAssetSize,
   getCourseAssetUploadErrorMessage,
   isAllowedCourseAssetFile,
   supabaseUploadLimitBytes,
@@ -134,5 +135,59 @@ describe("lesson video access authorization", () => {
 
   it("allows platform admins", () => {
     expect(canViewCourseAssetVideo({ ...base, isAdmin: true })).toBe(true);
+  });
+});
+
+describe("formatCourseAssetSize", () => {
+  // O teto de vídeo do Bunny é 5 GiB e era anunciado como "5120.0 MB".
+  it("usa GB acima de 1 GiB em vez de milhares de MB", () => {
+    expect(formatCourseAssetSize(5 * 1024 * 1024 * 1024)).toBe("5 GB");
+    expect(formatCourseAssetSize(1.5 * 1024 * 1024 * 1024)).toBe("1.5 GB");
+  });
+
+  it("mantém as faixas menores intactas", () => {
+    expect(formatCourseAssetSize(512)).toBe("512 B");
+    expect(formatCourseAssetSize(2 * 1024)).toBe("2.0 KB");
+    expect(formatCourseAssetSize(50 * 1024 * 1024)).toBe("50.0 MB");
+  });
+});
+
+describe("getCourseAssetUploadErrorMessage — falhas de vídeo", () => {
+  // O criador lia "bunny-create-failed:429" na caixa vermelha do estúdio.
+  it("traduz o rate limit do provedor sem citar código", () => {
+    const msg = getCourseAssetUploadErrorMessage(new Error("bunny-create-failed:429"));
+    expect(msg).toMatch(/too many uploads/i);
+    expect(msg).not.toMatch(/429|bunny/i);
+  });
+
+  it("traduz sessão expirada e falta de permissão", () => {
+    expect(getCourseAssetUploadErrorMessage(new Error("bunny-create-failed:401")))
+      .toMatch(/session expired/i);
+    expect(getCourseAssetUploadErrorMessage(new Error("bunny-create-failed:403")))
+      .toMatch(/permission/i);
+  });
+
+  it("trata status desconhecido do provedor como falha temporária", () => {
+    const msg = getCourseAssetUploadErrorMessage(new Error("bunny-create-failed:500"));
+    expect(msg).toMatch(/try again/i);
+    expect(msg).not.toMatch(/500|bunny/i);
+  });
+
+  // tus lança DetailedError, cuja mensagem é um parágrafo de método, URL e offset.
+  it("reconhece queda de conexão do upload retomável pela forma do erro", () => {
+    const tusError = Object.assign(
+      new Error("tus: failed to upload chunk at offset 0, originated from request (method: PATCH, url: https://x)"),
+      { originalRequest: {}, originalResponse: {} },
+    );
+    const msg = getCourseAssetUploadErrorMessage(tusError);
+    expect(msg).toMatch(/interrupted|connection/i);
+    expect(msg).not.toMatch(/PATCH|offset|tus:/);
+  });
+
+  it("nunca devolve string interna crua como mensagem ao criador", () => {
+    expect(getCourseAssetUploadErrorMessage(new Error("some-service:503")))
+      .not.toMatch(/some-service:503/);
+    expect(getCourseAssetUploadErrorMessage(new Error("fetch failed")))
+      .not.toBe("fetch failed");
   });
 });
