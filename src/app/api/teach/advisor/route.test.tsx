@@ -215,6 +215,67 @@ describe("advisor route guards", () => {
     mocks.askKimi.mockResolvedValue("Here is one concrete next step.");
     expect((await ask()).status).toBe(200);
   });
+
+  // The shape the test above could never see: it waited for the first six to
+  // be counted before sending the seventh. In production the requests arrive
+  // together, and the check used to sit one await ahead of the increment, so
+  // all of them read zero, all passed, and all reached the paid model.
+  it("sheds the excess of a simultaneous burst, not just late arrivals", async () => {
+    const release: (() => void)[] = [];
+    mocks.askKimi.mockImplementation(
+      () => new Promise<string>((resolve) => release.push(() => resolve("held"))),
+    );
+
+    const burst = Array.from({ length: 9 }, () => ask());
+    const shed: number[] = [];
+    for (const pending of burst) {
+      void pending.then((response) => {
+        if (response.status === 429) shed.push(response.status);
+      });
+    }
+
+    try {
+      await vi.waitFor(() => expect(shed).toHaveLength(3));
+      expect(mocks.askKimi).toHaveBeenCalledTimes(6);
+    } finally {
+      // Also on failure, so held slots never bleed into the next test.
+      release.forEach((resolve) => resolve());
+    }
+
+    const statuses = (await Promise.all(burst)).map((response) => response.status);
+    expect(statuses.filter((status) => status === 200)).toHaveLength(6);
+  });
+
+  // The slot is now taken before the grounding lookups, so it has to come back
+  // if one of them blows up — otherwise six such failures leave the endpoint
+  // answering 429 to everyone until the lambda is recycled.
+  it("gives the slot back when a grounding lookup throws", async () => {
+    mocks.retrieveKnowledge.mockRejectedValueOnce(new Error("embedding service down"));
+    await expect(ask()).rejects.toThrow("embedding service down");
+
+    const release: (() => void)[] = [];
+    mocks.askKimi.mockImplementation(
+      () => new Promise<string>((resolve) => release.push(() => resolve("held"))),
+    );
+    const held = Array.from({ length: 6 }, () => ask());
+    try {
+      // All six admitted: a leaked slot would have shed the sixth.
+      await vi.waitFor(() => expect(mocks.askKimi).toHaveBeenCalledTimes(6));
+    } finally {
+      release.forEach((resolve) => resolve());
+    }
+    await Promise.all(held);
+  });
+
+  it("gives the slot back when the model call fails", async () => {
+    mocks.askKimi.mockRejectedValue(new KimiError("upstream_error", "502 from gateway"));
+
+    const failed = await Promise.all(Array.from({ length: 6 }, () => ask()));
+    expect(failed.map((response) => response.status)).toEqual([502, 502, 502, 502, 502, 502]);
+
+    mocks.askKimi.mockResolvedValue("Here is one concrete next step.");
+    expect((await ask()).status).toBe(200);
+  });
 });
 
 describe("advisor route input validation", () => {
