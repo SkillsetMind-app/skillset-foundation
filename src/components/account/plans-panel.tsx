@@ -38,7 +38,13 @@ const billingCycles: ReadonlyArray<{
 export function PlansPanel() {
   const { user } = useAuth();
   const [cycle, setCycle] = useState<PlanBillingCycle>("monthly");
-  const [currentPlanId, setCurrentPlanId] = useState<PlanId>("free");
+  // null = ainda não sabemos. Assumir "free" antes de carregar fazia um
+  // assinante Pro ver "Current plan: Free" com o cartão Free marcado como
+  // "Your plan" e nenhum botão Manage — piscando a cada carga, e permanente se
+  // o perfil falhasse. Como Manage é o único caminho de cancelamento, o
+  // palpite otimista escondia justamente o controle que o assinante procurava.
+  const [currentPlanId, setCurrentPlanId] = useState<PlanId | null>(null);
+  const [planLoadFailed, setPlanLoadFailed] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [upgrade, setUpgrade] = useState<UpgradeState>(null);
@@ -48,12 +54,14 @@ export function PlansPanel() {
     const unsubscribe = subscribeToUserProfile(
       user.uid,
       (profile) => {
+        setPlanLoadFailed(false);
         setCurrentPlanId(profile?.currentPlanId ?? "free");
       },
       () => {
-        // Profile fetch failures keep the user on the safe default (Free)
-        // without blocking the page — the upgrade buttons still work.
-        setCurrentPlanId("free");
+        // Falha em carregar o perfil não é evidência de plano gratuito. Marca
+        // como desconhecido para a UI não afirmar "Free" a um assinante nem
+        // esconder o Manage; os botões de upgrade seguem funcionando.
+        setPlanLoadFailed(true);
       },
     );
     return () => unsubscribe();
@@ -126,8 +134,18 @@ export function PlansPanel() {
             Current plan
           </p>
           <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
-            {plans.find((plan) => plan.id === currentPlanId)?.name ?? "Free"}
+            {currentPlanId === null
+              ? planLoadFailed
+                ? "Unavailable"
+                : "Loading…"
+              : (plans.find((plan) => plan.id === currentPlanId)?.name ?? "Free")}
           </h2>
+          {planLoadFailed ? (
+            <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
+              We could not read your plan. Manage subscription still opens
+              Stripe, where your real plan is shown.
+            </p>
+          ) : null}
         </div>
         {currentPlanId !== "free" ? (
           <button

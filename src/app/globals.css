@@ -2609,6 +2609,23 @@ select:focus-visible {
   scrollbar-width: thin;
 }
 
+/* "Members & communities" saía cortado no meio da palavra: o link media 228px e
+   terminava em x=250, o nav terminava em x=245 com overflow-x:hidden, e não
+   havia text-overflow — a barra tem 260px de largura para 277px de conteúdo.
+   Reticências fazem o corte virar informação em vez de defeito, e o title
+   devolve o texto inteiro no hover. */
+.platform-sidebar-nav a,
+.platform-sidebar-nav button {
+  min-width: 0;
+}
+
+.platform-sidebar-nav a > span,
+.platform-sidebar-nav button > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* The Advisor is the only global floating action. Contextual help lives beside
    individual labels and opens a right-side native dialog. */
 .floating-action {
