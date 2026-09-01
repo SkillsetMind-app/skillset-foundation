@@ -2,10 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   removeUserStorefrontImage,
+  uploadUserAvatar,
   uploadUserStorefrontImage,
+  type UploadAvatarProgress,
 } from "@/lib/data/profile-media";
 
 const mocks = vi.hoisted(() => ({
+  eq: vi.fn(),
   getPublicUrl: vi.fn(),
   remove: vi.fn(),
   storageFrom: vi.fn(),
@@ -15,6 +18,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/supabase/client", () => ({
   getSupabaseBrowserClient: () => ({
     storage: { from: mocks.storageFrom },
+    from: () => ({ update: () => ({ eq: mocks.eq }) }),
   }),
 }));
 
@@ -35,6 +39,8 @@ describe("profile media storefront uploads", () => {
       getPublicUrl: mocks.getPublicUrl,
       remove: mocks.remove,
     });
+    mocks.eq.mockReset();
+    mocks.eq.mockResolvedValue({ error: null });
     vi.spyOn(Date, "now").mockReturnValue(1234);
   });
 
@@ -80,5 +86,52 @@ describe("profile media storefront uploads", () => {
     await expect(
       removeUserStorefrontImage("teacher-1", "logo"),
     ).rejects.toThrow("remove failed");
+  });
+});
+
+// Mesmo contrato dos uploads de curso (#138): o Storage não informa progresso,
+// então "running" sai sem porcentagem — um 0% parado o envio inteiro se lia
+// como "travou" — e "success" só sai depois da última escrita.
+describe("profile media — progresso honesto", () => {
+  type Seen = Pick<UploadAvatarProgress, "percent" | "state">;
+
+  function record(events: Seen[]) {
+    return (progress: UploadAvatarProgress) =>
+      events.push({ percent: progress.percent, state: progress.state });
+  }
+
+  it("storefront: 'running' sem número, e 'success' com 100% só depois de o objeto subir", async () => {
+    const events: Seen[] = [];
+    mocks.upload.mockImplementationOnce(async () => {
+      expect(events).toEqual([{ percent: null, state: "running" }]);
+      return { error: null };
+    });
+
+    await uploadUserStorefrontImage(
+      "teacher-1",
+      "logo",
+      new File(["logo"], "logo.png", { type: "image/png" }),
+      record(events),
+    );
+
+    expect(events).toEqual([
+      { percent: null, state: "running" },
+      { percent: 100, state: "success" },
+    ]);
+  });
+
+  it("avatar: sem 'success' se a gravação em users falha depois de o objeto subir", async () => {
+    const events: Seen[] = [];
+    mocks.eq.mockResolvedValueOnce({ error: new Error("update failed") });
+
+    await expect(
+      uploadUserAvatar(
+        "user-1",
+        new File(["me"], "me.png", { type: "image/png" }),
+        record(events),
+      ),
+    ).rejects.toThrow("update failed");
+
+    expect(events).toEqual([{ percent: null, state: "running" }]);
   });
 });

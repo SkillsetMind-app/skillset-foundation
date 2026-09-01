@@ -1,5 +1,6 @@
 "use client";
 
+import type { UploadCourseAssetProgress } from "@/lib/data/course-assets";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export const maxAvatarBytes = 5 * 1024 * 1024;
@@ -21,11 +22,10 @@ export const storefrontImageRequirementLabel = "JPG, PNG, or WebP under 5 MB";
 
 export type StorefrontImageKind = "logo" | "hero";
 
-export type UploadAvatarProgress = {
-  bytesTransferred: number;
-  totalBytes: number;
-  percent: number;
-};
+// Mesmo contrato de progresso dos uploads de curso (#138): `percent` é null
+// enquanto o transporte não informa nada, e `success` só sai depois de a
+// escrita existir. Assim a mesma UploadProgressNote serve às duas famílias.
+export type UploadAvatarProgress = UploadCourseAssetProgress;
 
 const publicMediaBucket = "public-media";
 
@@ -35,24 +35,31 @@ export function isAllowedAvatarFile(file: File) {
     && (allowedAvatarTypes as readonly string[]).includes(file.type);
 }
 
-// ponytail: supabase-js upload() exposes no per-byte progress, so callers get a
-// coarse 0% -> 100% pair. Fine for a <=5 MB avatar/signature.
-function emitCoarseProgress(
-  size: number,
-  onProgress?: (progress: UploadAvatarProgress) => void,
-) {
-  onProgress?.({ bytesTransferred: 0, totalBytes: size, percent: 0 });
+type OnProgress = ((progress: UploadAvatarProgress) => void) | undefined;
+
+// ponytail: supabase-js upload() exposes no per-byte progress. "running" sai
+// sem porcentagem (a UI mostra "Sending..." e o tamanho); um 0% parado o envio
+// inteiro se lia como "travou". Cada função exportada emite "success" no fim,
+// depois da SUA última escrita — o avatar e a assinatura ainda gravam em
+// `users` depois de o objeto subir.
+function emitProgress(file: File, state: "running" | "success", onProgress: OnProgress) {
+  onProgress?.({
+    bytesTransferred: state === "success" ? file.size : 0,
+    totalBytes: file.size,
+    percent: state === "success" ? 100 : null,
+    state,
+  });
 }
 
 async function uploadUserPublicImage(
   uid: string,
   storageSlot: string,
   file: File,
-  onProgress?: (progress: UploadAvatarProgress) => void,
+  onProgress: OnProgress,
 ) {
   const supabase = getSupabaseBrowserClient();
   const storagePath = `users/${uid}/${storageSlot}`;
-  emitCoarseProgress(file.size, onProgress);
+  emitProgress(file, "running", onProgress);
 
   const { error: uploadError } = await supabase.storage
     .from(publicMediaBucket)
@@ -61,12 +68,6 @@ async function uploadUserPublicImage(
   if (uploadError) {
     throw uploadError;
   }
-
-  onProgress?.({
-    bytesTransferred: file.size,
-    totalBytes: file.size,
-    percent: 100,
-  });
 
   const publicUrl = supabase.storage
     .from(publicMediaBucket)
@@ -104,6 +105,7 @@ export async function uploadUserAvatar(
     throw updateError;
   }
 
+  emitProgress(file, "success", onProgress);
   return photoUrl;
 }
 
@@ -141,6 +143,7 @@ export async function uploadTeacherSignature(
     throw updateError;
   }
 
+  emitProgress(file, "success", onProgress);
   return teacherSignatureUrl;
 }
 
@@ -154,12 +157,16 @@ export async function uploadUserStorefrontImage(
     throw new Error(`Use a ${storefrontImageRequirementLabel} image.`);
   }
 
-  return uploadUserPublicImage(
+  // Aqui a única escrita é o objeto no Storage: a URL só vai para o perfil
+  // quando o professor salva a vitrine.
+  const url = await uploadUserPublicImage(
     uid,
     `storefront/${kind}/${kind}`,
     file,
     onProgress,
   );
+  emitProgress(file, "success", onProgress);
+  return url;
 }
 
 export async function removeUserStorefrontImage(

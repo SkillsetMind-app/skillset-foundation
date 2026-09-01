@@ -25,6 +25,7 @@ import {
 } from "@/lib/data/profile-media";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 import { getUserProfile, updateUserStorefront } from "@/lib/data/user-profiles";
+import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
 
 const themePresetLabels: Record<StorefrontThemePreset, string> = {
   default: "Platform default",
@@ -140,9 +141,9 @@ function StorefrontImageUpload({
           ) : null}
         </div>
         {progress ? (
-          <p className="mt-2 text-xs font-semibold text-[var(--color-primary)]">
-            Uploading {progress.percent}%
-          </p>
+          <div className="mt-2">
+            <UploadProgressNote progress={progress} />
+          </div>
         ) : null}
         {/* O erro nasce ao lado do botão que o disparou, e anunciado ao leitor
             de tela. No rodapé do formulário ficava fora da tela no celular, e o

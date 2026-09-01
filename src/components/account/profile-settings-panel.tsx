@@ -33,6 +33,7 @@ import {
   uploadUserAvatar,
   type UploadAvatarProgress,
 } from "@/lib/data/profile-media";
+import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
 
 const goalOptions = [
   ["career_growth", "Career growth"],
@@ -339,9 +340,9 @@ export function ProfileSettingsPanel() {
               />
             </label>
             {avatarProgress ? (
-              <p className="mt-2 text-xs font-semibold text-[var(--color-primary)]">
-                Uploading {avatarProgress.percent}%
-              </p>
+              <div className="mt-2">
+                <UploadProgressNote progress={avatarProgress} />
+              </div>
             ) : null}
           </div>
         </div>
@@ -485,9 +486,9 @@ export function ProfileSettingsPanel() {
                 />
               </label>
               {signatureProgress ? (
-                <p className="mt-2 text-xs font-semibold text-[var(--color-primary)]">
-                  Uploading {signatureProgress.percent}%
-                </p>
+                <div className="mt-2">
+                  <UploadProgressNote progress={signatureProgress} />
+                </div>
               ) : null}
             </div>
           </div>
