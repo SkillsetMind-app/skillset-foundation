@@ -55,12 +55,48 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
   // overwrite the state produced by a newer one.
   let eventSeq = 0;
 
+  // Última sessão realmente emitida, para não emitir de novo o que não mudou.
+  //
+  // POR QUE ISTO EXISTE
+  //
+  // `onAuthStateChange` dispara em coisas que não mudam nada para o app —
+  // `TOKEN_REFRESHED` (a cada ~1h), `SIGNED_IN` ao voltar o foco da aba. A cada
+  // disparo, `mapSupabaseUser` devolvia um OBJETO NOVO com exatamente o mesmo
+  // conteúdo. E 41 efeitos deste app declaram `[user]` como dependência — o
+  // objeto, não o uid.
+  //
+  // Cinco desses efeitos semeiam campos EDITÁVEIS a partir do servidor
+  // (perfil, storefront, verificação de criador, eventos). O professor escrevia
+  // a tagline, o token era renovado no meio, o efeito rodava de novo e
+  // sobrescrevia tudo com o último valor salvo. Digitação perdida sem uma
+  // palavra, e sem nada que o usuário pudesse ter feito diferente.
+  //
+  // O conserto vai na FONTE, não nos 41 chamadores: emitir só quando o conteúdo
+  // muda de fato. `SkillsetUser` é um objeto raso de primitivos mais um array
+  // de papéis, então comparar o JSON é confiável e barato. Um falso "mudou"
+  // apenas repete o comportamento antigo — o erro seguro é para este lado.
+  let lastEmitted: string | null = null;
+
+  function emit(next: AuthSession) {
+    const signature = JSON.stringify({
+      status: next.status,
+      user: next.user,
+    });
+
+    if (signature === lastEmitted) {
+      return;
+    }
+
+    lastEmitted = signature;
+    callback(next);
+  }
+
   const { data } = supabase.auth.onAuthStateChange((_event, session) => {
     const user = session?.user ?? null;
     const seq = ++eventSeq;
 
     if (!user) {
-      callback({ status: "unauthenticated", user: null });
+      emit({ status: "unauthenticated", user: null });
       return;
     }
 
@@ -87,7 +123,7 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
       }
 
       if (seq === eventSeq) {
-        callback({
+        emit({
           status: "authenticated",
           user: mapSupabaseUser(currentUser, profile),
         });
