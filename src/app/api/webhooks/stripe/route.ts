@@ -132,9 +132,52 @@ async function claimStripeEvent(
 async function markStripeEventDone(admin: Admin, eventId: string): Promise<void> {
   const { error } = await admin
     .from("processed_stripe_events")
-    .update({ status: "done", processed_at: nowIso() })
+    .update({
+      status: "done",
+      processed_at: nowIso(),
+      // Limpa o rastro de tentativas anteriores: o evento concluiu.
+      last_error: null,
+      failed_at: null,
+    })
     .eq("stripe_event_id", eventId);
   if (error) throw new Error(error.message);
+}
+
+// Uma falha aqui é o caminho do dinheiro quebrando: entre orders.status='paid'
+// e a inserção da matrícula há uma janela em que o comprador pagou e não tem
+// acesso. Antes, o único registro era um console.error, e a linha ficava em
+// 'processing' para sempre — indistinguível de um evento morto por deploy.
+// Havia um preso há 16 dias em produção sem que nada apontasse para ele.
+//
+// Isto não impede a falha; torna-a consultável (view
+// stripe_events_needing_attention) e, por isso, alertável.
+async function markStripeEventFailed(
+  admin: Admin,
+  eventId: string,
+  error: unknown,
+): Promise<void> {
+  const message = error instanceof Error ? error.message : String(error);
+
+  try {
+    const { data: current } = await admin
+      .from("processed_stripe_events")
+      .select("attempts")
+      .eq("stripe_event_id", eventId)
+      .maybeSingle();
+
+    await admin
+      .from("processed_stripe_events")
+      .update({
+        status: "failed",
+        last_error: message.slice(0, 2000),
+        failed_at: nowIso(),
+        attempts: (current?.attempts ?? 0) + 1,
+      })
+      .eq("stripe_event_id", eventId);
+  } catch {
+    // Registrar a falha nunca pode mascarar a falha original: o webhook precisa
+    // devolver 500 para o Stripe reentregar, aconteça o que acontecer aqui.
+  }
 }
 
 // --- one-time checkout fulfilment -------------------------------------------
@@ -1612,6 +1655,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error("Stripe webhook handling failed", error);
+    // Deixa rastro consultável antes de devolver 500. O Stripe reentrega por
+    // ~3 dias; passado isso o evento existe apenas aqui.
+    await markStripeEventFailed(admin, event.id, error);
     return NextResponse.json({ error: "Webhook handling failed." }, { status: 500 });
   }
 }

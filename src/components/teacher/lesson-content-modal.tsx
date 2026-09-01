@@ -35,6 +35,7 @@ import {
   type TeacherLesson,
 } from "@/domain/teacher-course";
 import {
+  CourseAssetUploadCancelled,
   deleteCourseAsset,
   subscribeToCourseAssets,
   uploadCourseAsset,
@@ -124,6 +125,8 @@ export function LessonContentModal({
   const [fileInputKey, setFileInputKey] = useState(0);
   const [isPreviewAsset, setIsPreviewAsset] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  // Guarda o cancelador entregue pelo uploader enquanto o envio corre.
+  const [cancelUpload, setCancelUpload] = useState<(() => void) | null>(null);
   const [uploadProgress, setUploadProgress] = useState<UploadCourseAssetProgress | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -283,6 +286,9 @@ export function LessonContentModal({
           isPreview: uploadAsPreview,
           lessonId: lesson.id,
           onProgress: setUploadProgress,
+          // setState com função guarda o CALLBACK, não o resultado dele — daí o
+          // wrapper: setCancelUpload(cancel) trataria `cancel` como updater.
+          onCancelAvailable: (cancel) => setCancelUpload(() => cancel),
         });
       } else {
         await uploadCourseAsset({
@@ -308,15 +314,23 @@ export function LessonContentModal({
       setIsPreviewAsset(false);
       setFileInputKey((current) => current + 1);
     } catch (caughtError) {
-      // Show the real blocker (413 size cap, 403 permission, ...) instead of a
-      // generic message that made failures look random.
-      setError(
-        getCourseAssetUploadErrorMessage(
-          caughtError,
-          useBunny ? bunnyVideoMaxBytes : supabaseUploadLimitBytes,
-        ),
-      );
+      // Cancelar é desfecho normal, não falha: limpa a tela sem caixa vermelha.
+      if (caughtError instanceof CourseAssetUploadCancelled) {
+        setUploadProgress(null);
+        setSelectedFile(null);
+        setFileInputKey((current) => current + 1);
+      } else {
+        // Show the real blocker (413 size cap, 403 permission, ...) instead of a
+        // generic message that made failures look random.
+        setError(
+          getCourseAssetUploadErrorMessage(
+            caughtError,
+            useBunny ? bunnyVideoMaxBytes : supabaseUploadLimitBytes,
+          ),
+        );
+      }
     } finally {
+      setCancelUpload(null);
       setIsUploading(false);
     }
   }
@@ -498,6 +512,7 @@ export function LessonContentModal({
                     }}
                     onSubmit={handleUpload}
                     progressLabel={formatProgress(uploadProgress)}
+                onCancel={cancelUpload}
                     selectedFile={selectedFile}
                     fileInputKey={fileInputKey}
                     success={success}
@@ -580,6 +595,7 @@ export function LessonContentModal({
                   void handleUpload(event);
                 }}
                 progressLabel={formatProgress(uploadProgress)}
+                onCancel={cancelUpload}
                 selectedFile={selectedFile}
                 fileInputKey={fileInputKey}
                 success={success}
@@ -688,6 +704,7 @@ export function LessonContentModal({
                   void handleUpload(event);
                 }}
                 progressLabel={formatProgress(uploadProgress)}
+                onCancel={cancelUpload}
                 selectedFile={selectedFile}
                 fileInputKey={fileInputKey}
                 success={success}
@@ -729,6 +746,7 @@ function LessonUploadForm({
   isEditable,
   isPreviewAsset,
   isUploading,
+  onCancel,
   onChangePreview,
   onFileChange,
   onSubmit,
@@ -742,6 +760,8 @@ function LessonUploadForm({
   isEditable: boolean;
   isPreviewAsset: boolean;
   isUploading: boolean;
+  /** Disponível só enquanto há bytes em voo; null fora disso. */
+  onCancel?: (() => void) | null;
   onChangePreview: (nextValue: boolean) => void;
   onFileChange: (file: File | null) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -786,7 +806,23 @@ function LessonUploadForm({
         </p>
       ) : null}
       {progressLabel ? (
-        <p className="lesson-modal-upload__file">{progressLabel}</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="lesson-modal-upload__file">{progressLabel}</p>
+          {/* Sem isto não havia saída: durante o envio o modal sela (Escape,
+              X, Done e o overlay ficam inertes) e a instância do tus vivia
+              presa no executor da Promise, então abort() era inalcançável.
+              Arquivo errado de 4 GB ou conexão ruim só se resolviam fechando
+              a aba — e aí nada retomava. */}
+          {onCancel ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="min-h-9 rounded-md border border-[var(--color-line)] px-3 text-xs font-bold text-[var(--color-ink-soft)] hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
+            >
+              Cancel upload
+            </button>
+          ) : null}
+        </div>
       ) : null}
       {error ? <p className="lesson-modal-upload__error">{error}</p> : null}
       {success ? <p className="lesson-modal-upload__success">{success}</p> : null}

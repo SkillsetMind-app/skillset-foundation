@@ -14,7 +14,17 @@ const uploadLessonVideoToBunny = vi.fn<(input: unknown) => Promise<void>>(
 let currentAssets: CourseAsset[] = [];
 
 vi.mock("@/lib/data/course-assets", () => ({
+  // A classe é usada com `instanceof` no catch do modal para distinguir
+  // cancelamento (desfecho normal) de falha real. Sem ela no mock, o acesso
+  // dispara unhandled rejection e o teste passa por sorte.
+  CourseAssetUploadCancelled: class CourseAssetUploadCancelled extends Error {
+    constructor() {
+      super("upload-cancelled");
+      this.name = "CourseAssetUploadCancelled";
+    }
+  },
   deleteCourseAsset: (asset: CourseAsset) => deleteCourseAsset(asset),
+  syncLessonPreviewAssets: async () => {},
   uploadCourseAsset: (input: unknown) => uploadCourseAsset(input),
   uploadLessonVideoToBunny: (input: unknown) => uploadLessonVideoToBunny(input),
   subscribeToCourseAssets: (
