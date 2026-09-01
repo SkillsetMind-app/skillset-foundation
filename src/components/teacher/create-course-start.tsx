@@ -56,11 +56,19 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
   const [error, setError] = useState("");
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
   const previousStepRef = useRef(step);
-  const canSubmit =
-    title.trim().length >= 3 &&
-    summary.trim().length >= 20 &&
-    selectedCategories.length > 0 &&
-    !isSaving;
+  // As três condições que travam o envio, cada uma com o texto que diz o que
+  // fazer. Antes isto era um booleano só: o botão ficava cinza e não havia nada
+  // na tela dizendo se faltava título, resumo ou categoria — e os mínimos (3 e
+  // 20 caracteres) não aparecem em lugar nenhum. Quem escrevia um resumo de 15
+  // caracteres via um botão morto sem motivo.
+  const submitBlockers = [
+    title.trim().length >= 3 ? null : "Give the course a title (3+ characters).",
+    summary.trim().length >= 20
+      ? null
+      : "Write a summary with at least 20 characters.",
+    selectedCategories.length > 0 ? null : "Choose a marketplace category.",
+  ].filter((item): item is string => item !== null);
+  const canSubmit = submitBlockers.length === 0 && !isSaving;
   const courseType: NonNullable<CreateTeacherCourseInput["paymentType"]> =
     resolveTeacherCoursePaymentType(productFormat, subscriptionInterval);
   const nextBuilderTab = productFormat === "free" ? "content" : "pricing";
@@ -380,6 +388,18 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
               </div>
             ) : null}
 
+            {submitBlockers.length > 0 ? (
+              <p
+                id="create-course-blockers"
+                className="mt-5 text-xs leading-5 text-[var(--color-ink-soft)]"
+              >
+                <span className="font-semibold text-[var(--color-ink)]">
+                  Before you continue:
+                </span>{" "}
+                {submitBlockers.join(" ")}
+              </p>
+            ) : null}
+
             <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] pt-5">
               <button
                 type="button"
@@ -393,6 +413,9 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
               <button
                 type="submit"
                 disabled={!canSubmit}
+                aria-describedby={
+                  submitBlockers.length > 0 ? "create-course-blockers" : undefined
+                }
                 className="button-solid min-h-10 px-4 text-sm disabled:opacity-60"
               >
                 {isSaving ? "Creating..." : submitLabel}

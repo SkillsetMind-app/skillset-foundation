@@ -470,6 +470,7 @@ export function CourseBuilderStudio() {
   const [communityEnabled, setCommunityEnabled] = useState(false);
   const [moduleTitle, setModuleTitle] = useState("");
   const [moduleSummary, setModuleSummary] = useState("");
+  const [moduleError, setModuleError] = useState("");
   const [lessonModuleId, setLessonModuleId] = useState("");
   const [lessonTitle, setLessonTitle] = useState("");
   const [lessonType, setLessonType] = useState<LessonType>("video");
@@ -852,21 +853,25 @@ export function CourseBuilderStudio() {
   const draftStructureError = getCourseStructureError(
     builderDraftPayload.modules,
   );
-  const canAutosaveDraft =
-    isEditable
-    && priceFieldIsValid
-    && installmentsAreValid
-    && !draftStructureError;
+  const autosaveBlockedReason = getAutosaveBlockedReason({
+    isEditable,
+    priceFieldIsValid,
+    installmentsAreValid,
+    draftStructureError,
+  });
+  const canAutosaveDraft = isEditable && autosaveBlockedReason === null;
   const draftIsDirty =
     savedSignature !== null && builderDraftSignature !== savedSignature;
-  const displayedSaveStatus: "pending" | "saving" | "saved" | "error" =
+  const displayedSaveStatus: "pending" | "saving" | "saved" | "error" | "blocked" =
     autosaveState === "saving"
       ? "saving"
       : autosaveState === "error"
         ? "error"
-        : draftIsDirty
-          ? "pending"
-          : "saved";
+        : draftIsDirty && autosaveBlockedReason
+          ? "blocked"
+          : draftIsDirty
+            ? "pending"
+            : "saved";
 
   function handlePaymentTypeChange(nextPaymentType: TeacherCoursePaymentType) {
     if (!isEditable) {
@@ -914,9 +919,15 @@ export function CourseBuilderStudio() {
     const nextTitle = moduleTitle.trim();
 
     if (!nextTitle) {
-      setError("Add a module title before creating the module.");
+      // Erro LOCAL do formulário, não o `error` compartilhado do estúdio: aquele
+      // é renderizado ~600 linhas abaixo daqui, três telas de rolagem longe do
+      // botão. Clicar em "Add module" sem título parecia não fazer nada, e a
+      // explicação estava fora da tela.
+      setModuleError("Add a module title before creating the module.");
       return;
     }
+
+    setModuleError("");
 
     const nextModule = {
       id: createLocalId("module"),
@@ -1386,6 +1397,60 @@ export function CourseBuilderStudio() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [draftIsDirty]);
 
+  // O `beforeunload` acima só existe para o navegador: fechar a aba, recarregar,
+  // voltar. Ele NÃO dispara em navegação client-side do App Router — e é por ali
+  // que se sai daqui na prática, clicando "Courses", "Sales" ou o logo na
+  // barra lateral. O componente desmontava, o timer de 1,8s morria com ele e o
+  // rascunho ia junto, sem uma palavra.
+  //
+  // Captura no document, antes de o Link do Next tratar o clique. Só intercepta
+  // link que sai desta página; âncora interna (#builder-sec-…), target=_blank
+  // e clique modificado (ctrl/cmd/meio, que abre em outra aba e não desmonta
+  // nada) seguem direto.
+  useEffect(() => {
+    if (!draftIsDirty || typeof document === "undefined") {
+      return;
+    }
+
+    const handleClickCapture = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0) {
+        return;
+      }
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+      }
+
+      const anchor = (event.target as Element | null)?.closest?.("a[href]");
+      if (!(anchor instanceof HTMLAnchorElement)) {
+        return;
+      }
+      if (anchor.target && anchor.target !== "_self") {
+        return;
+      }
+
+      const destination = new URL(anchor.href, window.location.href);
+      if (destination.origin !== window.location.origin) {
+        return;
+      }
+      if (destination.pathname === window.location.pathname) {
+        return;
+      }
+
+      const proceed = window.confirm(
+        "This course has unsaved changes. Leave the page and lose them?",
+      );
+
+      if (!proceed) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    document.addEventListener("click", handleClickCapture, true);
+    return () =>
+      document.removeEventListener("click", handleClickCapture, true);
+  }, [draftIsDirty]);
+
   // Stepper -> section scroll. The ref is read/cleared only here and in the
   // stepper click handler (never during render). useCallback keeps the effect
   // dependency stable.
@@ -1452,15 +1517,23 @@ export function CourseBuilderStudio() {
               {readinessProgress}% ready
             </span>
             {isEditable ? (
-              <BuilderSaveStatus state={displayedSaveStatus} />
+              <BuilderSaveStatus
+                state={displayedSaveStatus}
+                blockedReason={autosaveBlockedReason}
+              />
             ) : null}
           </div>
           <p className="mt-6 text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Course builder
           </p>
-          <h2 className="display-title mt-3 text-[clamp(2rem,4vw,3.2rem)] leading-[1.02] text-[var(--color-primary)]">
+          {/* h1, não h2: esta é a única página do builder e o título do curso é
+              o assunto dela. Enquanto era h2, /teach/builder não tinha h1
+              nenhum — quem navega por cabeçalho (leitor de tela, atalho de
+              navegação) entrava numa página sem título anunciado, e a árvore
+              de headings começava direto no nível 2. */}
+          <h1 className="display-title mt-3 text-[clamp(2rem,4vw,3.2rem)] leading-[1.02] text-[var(--color-primary)]">
             {title.trim() || "Untitled course"}
-          </h2>
+          </h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
             Build the course learners will actually experience: details, modules,
             lessons, media, pricing, drip rules, and publication checks in one
@@ -2029,7 +2102,10 @@ export function CourseBuilderStudio() {
             <form className="mt-3 grid gap-3" onSubmit={handleAddModule}>
               <input
                 value={moduleTitle}
-                onChange={(event) => setModuleTitle(event.target.value)}
+                onChange={(event) => {
+                  setModuleTitle(event.target.value);
+                  setModuleError("");
+                }}
                 disabled={!isEditable}
                 aria-label="Module title"
                 placeholder="Example: Foundations"
@@ -2044,6 +2120,14 @@ export function CourseBuilderStudio() {
                 placeholder="Optional module description. Example: Set up the concepts students need before the practical lessons."
                 className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               />
+              {moduleError ? (
+                <p
+                  role="alert"
+                  className="text-xs font-semibold text-[var(--color-danger-fg)]"
+                >
+                  {moduleError}
+                </p>
+              ) : null}
               <button
                 type="submit"
                 disabled={!isEditable}
@@ -2738,11 +2822,64 @@ export function CourseBuilderStudio() {
   );
 }
 
+/**
+ * O QUE, exatamente, está impedindo o autosave — ou `null` quando nada impede.
+ *
+ * Antes isto era só um booleano (`canAutosaveDraft`), e por isso o pior modo de
+ * falha deste editor era silencioso: com um preço malformado (ou um limite de
+ * parcelas inválido, ou um módulo sem aula) o autosave simplesmente parava, e o
+ * único sinal na tela era o mesmo selo cinza "Unsaved changes" que também
+ * aparece durante o debounce normal de 1,8s. O professor seguia montando
+ * módulos e aulas achando que estava tudo gravado — e perdia tudo ao recarregar.
+ *
+ * `canAutosaveDraft` passou a DERIVAR daqui, e não o contrário: assim um gate
+ * novo não entra sem trazer junto o texto que diz ao professor o que corrigir.
+ */
+export function getAutosaveBlockedReason(input: {
+  isEditable: boolean;
+  priceFieldIsValid: boolean;
+  installmentsAreValid: boolean;
+  draftStructureError: string;
+}): string | null {
+  if (!input.isEditable) {
+    // Curso não editável não tem rascunho para perder — não há bloqueio a
+    // anunciar, e alarmar aqui seria ruído.
+    return null;
+  }
+  if (!input.priceFieldIsValid) {
+    return "fix the price";
+  }
+  if (!input.installmentsAreValid) {
+    return "fix the installment limit";
+  }
+  if (input.draftStructureError) {
+    return "fix the course structure";
+  }
+  return null;
+}
+
 function BuilderSaveStatus({
   state,
+  blockedReason,
 }: {
-  state: "pending" | "saving" | "saved" | "error";
+  state: "pending" | "saving" | "saved" | "error" | "blocked";
+  blockedReason?: string | null;
 }) {
+  // Autosave parado por campo inválido. Precisa ser visualmente diferente do
+  // "Unsaved changes" neutro — este estado não passa sozinho, e continuar
+  // digitando só aumenta o que vai se perder.
+  if (state === "blocked") {
+    return (
+      <span
+        role="status"
+        className="inline-flex items-center gap-1.5 rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]"
+      >
+        <CloudOff aria-hidden="true" size={12} strokeWidth={2} />
+        Not saving — {blockedReason ?? "fix the highlighted field"}
+      </span>
+    );
+  }
+
   if (state === "saving") {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">

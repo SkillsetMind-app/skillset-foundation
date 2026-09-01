@@ -145,32 +145,42 @@ function BlockFields({
           </label>
           {block.steps.map((step, index) => (
             <div key={index} className="grid gap-2 rounded-[10px] border border-[var(--color-line)] p-3">
-              <input
-                className={fieldClass}
-                placeholder={`Step ${index + 1}`}
-                value={step.title}
-                onChange={(e) => {
-                  const steps = [...block.steps];
-                  steps[index] = { ...steps[index], title: e.target.value };
-                  onChange({ ...block, steps });
-                }}
-              />
-              <textarea
-                className={`${fieldClass} min-h-20`}
-                placeholder="What happens in this step"
-                value={step.body}
-                onChange={(e) => {
-                  const steps = [...block.steps];
-                  steps[index] = { ...steps[index], body: e.target.value };
-                  onChange({ ...block, steps });
-                }}
-              />
+              {/* Rótulo de verdade, não placeholder. Todo campo repetido deste
+                  editor identificava-se só pelo placeholder — que some no
+                  primeiro caractere digitado. Revisando uma página de vendas com
+                  seis passos preenchidos, nada na tela dizia qual caixa era
+                  título e qual era descrição, e leitor de tela não anunciava
+                  nome nenhum. */}
+              <label className={labelClass}>
+                {`Step ${index + 1} title`}
+                <input
+                  className={fieldClass}
+                  value={step.title}
+                  onChange={(e) => {
+                    const steps = [...block.steps];
+                    steps[index] = { ...steps[index], title: e.target.value };
+                    onChange({ ...block, steps });
+                  }}
+                />
+              </label>
+              <label className={labelClass}>
+                What happens in this step
+                <textarea
+                  className={`${fieldClass} min-h-20`}
+                  value={step.body}
+                  onChange={(e) => {
+                    const steps = [...block.steps];
+                    steps[index] = { ...steps[index], body: e.target.value };
+                    onChange({ ...block, steps });
+                  }}
+                />
+              </label>
               <button
                 type="button"
                 onClick={() =>
                   onChange({ ...block, steps: block.steps.filter((_, i) => i !== index) })
                 }
-                className="justify-self-start text-xs font-semibold text-red-700"
+                className="justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
               >
                 Remove step
               </button>
@@ -199,32 +209,36 @@ function BlockFields({
           </label>
           {block.quotes.map((quote, index) => (
             <div key={index} className="grid gap-2 rounded-[10px] border border-[var(--color-line)] p-3">
-              <textarea
-                className={`${fieldClass} min-h-20`}
-                placeholder="What they said"
-                value={quote.quote}
-                onChange={(e) => {
-                  const quotes = [...block.quotes];
-                  quotes[index] = { ...quotes[index], quote: e.target.value };
-                  onChange({ ...block, quotes });
-                }}
-              />
-              <input
-                className={fieldClass}
-                placeholder="Who said it"
-                value={quote.author}
-                onChange={(e) => {
-                  const quotes = [...block.quotes];
-                  quotes[index] = { ...quotes[index], author: e.target.value };
-                  onChange({ ...block, quotes });
-                }}
-              />
+              <label className={labelClass}>
+                What they said
+                <textarea
+                  className={`${fieldClass} min-h-20`}
+                  value={quote.quote}
+                  onChange={(e) => {
+                    const quotes = [...block.quotes];
+                    quotes[index] = { ...quotes[index], quote: e.target.value };
+                    onChange({ ...block, quotes });
+                  }}
+                />
+              </label>
+              <label className={labelClass}>
+                Who said it
+                <input
+                  className={fieldClass}
+                  value={quote.author}
+                  onChange={(e) => {
+                    const quotes = [...block.quotes];
+                    quotes[index] = { ...quotes[index], author: e.target.value };
+                    onChange({ ...block, quotes });
+                  }}
+                />
+              </label>
               <button
                 type="button"
                 onClick={() =>
                   onChange({ ...block, quotes: block.quotes.filter((_, i) => i !== index) })
                 }
-                className="justify-self-start text-xs font-semibold text-red-700"
+                className="justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
               >
                 Remove
               </button>
@@ -255,32 +269,36 @@ function BlockFields({
           </label>
           {block.items.map((item, index) => (
             <div key={index} className="grid gap-2 rounded-[10px] border border-[var(--color-line)] p-3">
-              <input
-                className={fieldClass}
-                placeholder="Question"
-                value={item.question}
-                onChange={(e) => {
-                  const items = [...block.items];
-                  items[index] = { ...items[index], question: e.target.value };
-                  onChange({ ...block, items });
-                }}
-              />
-              <textarea
-                className={`${fieldClass} min-h-20`}
-                placeholder="Answer"
-                value={item.answer}
-                onChange={(e) => {
-                  const items = [...block.items];
-                  items[index] = { ...items[index], answer: e.target.value };
-                  onChange({ ...block, items });
-                }}
-              />
+              <label className={labelClass}>
+                Question
+                <input
+                  className={fieldClass}
+                  value={item.question}
+                  onChange={(e) => {
+                    const items = [...block.items];
+                    items[index] = { ...items[index], question: e.target.value };
+                    onChange({ ...block, items });
+                  }}
+                />
+              </label>
+              <label className={labelClass}>
+                Answer
+                <textarea
+                  className={`${fieldClass} min-h-20`}
+                  value={item.answer}
+                  onChange={(e) => {
+                    const items = [...block.items];
+                    items[index] = { ...items[index], answer: e.target.value };
+                    onChange({ ...block, items });
+                  }}
+                />
+              </label>
               <button
                 type="button"
                 onClick={() =>
                   onChange({ ...block, items: block.items.filter((_, i) => i !== index) })
                 }
-                className="justify-self-start text-xs font-semibold text-red-700"
+                className="justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
               >
                 Remove
               </button>
@@ -494,11 +512,24 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
               >
                 <ChevronDown className="h-4 w-4" />
               </button>
+              {/* Confirmação + folga do vizinho. Este botão fica a 8px do
+                  "Move down", tem o mesmo tamanho e a mesma moldura, e apagava a
+                  seção inteira — com todo o texto digitado dentro dela — em um
+                  clique, sem desfazer. Errar o alvo por um botão custava o
+                  trabalho todo. */}
               <button
                 type="button"
-                onClick={() => setBlocks((c) => c.filter((_, i) => i !== index))}
-                aria-label="Remove section"
-                className="grid h-8 w-8 place-items-center rounded-[8px] border border-[var(--color-line)] bg-white text-red-700"
+                onClick={() => {
+                  const confirmed = window.confirm(
+                    `Remove the "${courseLandingBlockLabels[block.kind]}" section and everything written in it?`,
+                  );
+                  if (confirmed) {
+                    setBlocks((c) => c.filter((_, i) => i !== index));
+                  }
+                }}
+                aria-label={`Remove ${courseLandingBlockLabels[block.kind]} section`}
+                title={`Remove ${courseLandingBlockLabels[block.kind]} section`}
+                className="ml-2 grid h-8 w-8 place-items-center rounded-[8px] border border-[var(--color-line)] bg-white text-[var(--color-danger-fg)]"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -553,7 +584,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
           Save page
         </button>
         {message ? <span className="text-sm text-emerald-800">{message}</span> : null}
-        {error ? <span className="text-sm text-red-700">{error}</span> : null}
+        {error ? <span className="text-sm text-[var(--color-danger-fg)]">{error}</span> : null}
       </div>
     </section>
   );
