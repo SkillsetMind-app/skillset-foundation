@@ -232,8 +232,20 @@ export function TeacherMediaLibrary() {
               key={asset.id}
               className="grid gap-4 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 md:grid-cols-[80px_1fr_auto]"
             >
-              <div className="grid h-20 w-20 place-items-center rounded-[10px] border border-[var(--color-line)] bg-white text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
-                {asset.contentType.split("/")[0] || "file"}
+              <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-[10px] border border-[var(--color-line)] bg-white text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+                {asset.downloadUrl && asset.contentType.startsWith("image/") ? (
+                  // Capas e thumbnails vivem no bucket público, então a URL já
+                  // está na linha. Sem a miniatura, três capas chamadas
+                  // IMG_4821.jpg eram três quadrados idênticos escritos "image".
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={asset.downloadUrl}
+                    alt={`${courseAssetKindLabels[asset.kind]}: ${asset.fileName}`}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  asset.contentType.split("/")[0] || "file"
+                )}
               </div>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
@@ -241,9 +253,6 @@ export function TeacherMediaLibrary() {
                 </p>
                 <p className="mt-1 text-xs uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
                   {courseAssetKindLabels[asset.kind]} - {formatCourseAssetSize(asset.size)}
-                </p>
-                <p className="mt-2 break-all text-xs leading-5 text-[var(--color-ink-soft)]">
-                  {asset.storagePath}
                 </p>
               </div>
               <div className="flex flex-wrap items-start gap-2 md:justify-end">

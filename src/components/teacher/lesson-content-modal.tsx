@@ -103,6 +103,11 @@ function formatProgress(progress: UploadCourseAssetProgress | null) {
     return "";
   }
 
+  // Sem porcentagem do transporte (Supabase Storage), não inventa "0%".
+  if (progress.percent === null) {
+    return `Sending ${formatCourseAssetSize(progress.totalBytes)}...`;
+  }
+
   return `${progress.percent}% - ${formatCourseAssetSize(progress.bytesTransferred)} of ${formatCourseAssetSize(progress.totalBytes)}`;
 }
 
@@ -321,7 +326,9 @@ export function LessonContentModal({
         setFileInputKey((current) => current + 1);
       } else {
         // Show the real blocker (413 size cap, 403 permission, ...) instead of a
-        // generic message that made failures look random.
+        // generic message that made failures look random. E sem deixar o
+        // progresso antigo na tela ao lado da caixa vermelha.
+        setUploadProgress(null);
         setError(
           getCourseAssetUploadErrorMessage(
             caughtError,

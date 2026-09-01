@@ -70,9 +70,10 @@ import {
 } from "@/lib/data/teacher-courses";
 import {
   courseAssetAcceptTypes,
-  courseAssetMaxBytes,
   formatCourseAssetSize,
+  getCourseAssetUploadErrorMessage,
   isAllowedCourseAssetFile,
+  supabaseUploadLimitBytes,
 } from "@/domain/course-asset";
 import {
   fetchCourseAssets,
@@ -81,6 +82,7 @@ import {
   uploadCourseAsset,
   type UploadCourseAssetProgress,
 } from "@/lib/data/course-assets";
+import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
 import type { CourseAsset } from "@/domain/course-asset";
 import {
   ACTIVATION_REQUIRED_MESSAGE,
@@ -2949,7 +2951,7 @@ function CourseCoverField({
 
     if (!isAllowedCourseAssetFile(file, "course_cover")) {
       setError(
-        `Use an image file under ${formatCourseAssetSize(courseAssetMaxBytes)}.`,
+        `Use an image file under ${formatCourseAssetSize(supabaseUploadLimitBytes)}.`,
       );
       setFileInputKey((current) => current + 1);
       return;
@@ -2966,10 +2968,10 @@ function CourseCoverField({
         isPreview: false,
         onProgress: setProgress,
       });
-    } catch {
-      setError(
-        "We could not upload this cover. Check the file and course ownership, then try again.",
-      );
+    } catch (uploadError) {
+      // O motivo real (teto de tamanho, permissão, conexão) já vem pronto do
+      // domínio; o texto genérico mandava conferir "propriedade do curso".
+      setError(getCourseAssetUploadErrorMessage(uploadError));
     } finally {
       setIsUploading(false);
       setProgress(null);
@@ -2987,7 +2989,7 @@ function CourseCoverField({
           <p className="mt-1 max-w-xl text-xs leading-5 text-[var(--color-ink-soft)]">
             Public artwork for the marketplace, the course page, and the student
             classroom hero. Recommended 16:9, under{" "}
-            {formatCourseAssetSize(courseAssetMaxBytes)}.
+            {formatCourseAssetSize(supabaseUploadLimitBytes)}.
           </p>
         </div>
         {course.coverImageUrl ? (
@@ -3040,22 +3042,7 @@ function CourseCoverField({
             />
           </label>
 
-          {progress ? (
-            <div className="rounded-[10px] border fine-rule bg-white p-3">
-              <div className="flex items-center justify-between gap-3 text-xs font-semibold text-[var(--color-primary)]">
-                <span>
-                  {progress.state === "success" ? "Upload complete" : "Uploading"}
-                </span>
-                <span>{progress.percent}%</span>
-              </div>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--color-surface-soft)]">
-                <div
-                  className="h-full rounded-full bg-[var(--color-primary)] transition-[width] duration-200"
-                  style={{ width: `${progress.percent}%` }}
-                />
-              </div>
-            </div>
-          ) : null}
+          {progress ? <UploadProgressNote progress={progress} /> : null}
 
           {error ? (
             <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">
@@ -3314,7 +3301,7 @@ function MembersCoverField({
 
     if (!isAllowedCourseAssetFile(file, "members_cover")) {
       setError(
-        `Use an image file under ${formatCourseAssetSize(courseAssetMaxBytes)}.`,
+        `Use an image file under ${formatCourseAssetSize(supabaseUploadLimitBytes)}.`,
       );
       setFileInputKey((current) => current + 1);
       return;
@@ -3332,10 +3319,8 @@ function MembersCoverField({
         onProgress: setProgress,
       });
       onUploaded(assetId);
-    } catch {
-      setError(
-        "We could not upload this cover. Check the file and course ownership, then try again.",
-      );
+    } catch (uploadError) {
+      setError(getCourseAssetUploadErrorMessage(uploadError));
     } finally {
       setIsUploading(false);
       setProgress(null);
@@ -3352,7 +3337,7 @@ function MembersCoverField({
           </p>
           <p className="mt-1 max-w-xl text-xs leading-5 text-[var(--color-ink-soft)]">
             Hero background for the enrolled-student workspace. Recommended 16:9,
-            under {formatCourseAssetSize(courseAssetMaxBytes)}.
+            under {formatCourseAssetSize(supabaseUploadLimitBytes)}.
           </p>
         </div>
         {coverUrl ? (
@@ -3415,22 +3400,7 @@ function MembersCoverField({
             </button>
           ) : null}
 
-          {progress ? (
-            <div className="rounded-[10px] border fine-rule bg-white p-3">
-              <div className="flex items-center justify-between gap-3 text-xs font-semibold text-[var(--color-primary)]">
-                <span>
-                  {progress.state === "success" ? "Upload complete" : "Uploading"}
-                </span>
-                <span>{progress.percent}%</span>
-              </div>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--color-surface-soft)]">
-                <div
-                  className="h-full rounded-full bg-[var(--color-primary)] transition-[width] duration-200"
-                  style={{ width: `${progress.percent}%` }}
-                />
-              </div>
-            </div>
-          ) : null}
+          {progress ? <UploadProgressNote progress={progress} /> : null}
 
           {error ? (
             <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">

@@ -233,4 +233,46 @@ describe("StorefrontSettingsPanel", () => {
       screen.getByText(/old image could not be removed/i),
     ).toBeInTheDocument();
   });
+
+  // A rejeição era escrita no rodapé do formulário, ~120 linhas abaixo do
+  // botão — fora da tela no celular — e sem role="alert", então nem o leitor
+  // de tela avisava. O botão voltava a "Upload" como se nada tivesse acontecido.
+  it("anuncia a rejeição do arquivo ao lado do botão que a disparou", async () => {
+    render(<StorefrontSettingsPanel />);
+
+    const logoInput = await screen.findByLabelText("Upload storefront logo");
+    fireEvent.change(logoInput, {
+      target: { files: [new File(["bmp"], "logo.bmp", { type: "image/bmp" })] },
+    });
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Use a JPG, PNG, or WebP under 5 MB image.");
+    // Fica no campo do logo: vem ANTES do campo da capa, não no fim do form.
+    const heroInput = screen.getByLabelText("Upload storefront hero image");
+    expect(
+      alert.compareDocumentPosition(heroInput) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(mocks.uploadUserStorefrontImage).not.toHaveBeenCalled();
+  });
+
+  it("mostra a falha do envio no campo da capa, antes do select de tema", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    mocks.uploadUserStorefrontImage.mockRejectedValueOnce(
+      new Error("Storage is offline"),
+    );
+
+    render(<StorefrontSettingsPanel />);
+
+    const heroInput = await screen.findByLabelText("Upload storefront hero image");
+    fireEvent.change(heroInput, {
+      target: { files: [new File(["hero"], "hero.webp", { type: "image/webp" })] },
+    });
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Storage is offline");
+    const themeSelect = screen.getByRole("combobox", { name: "Theme preset" });
+    expect(
+      alert.compareDocumentPosition(themeSelect) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
 });

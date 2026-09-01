@@ -63,7 +63,9 @@ type UploadCourseAssetInput = {
 export type UploadCourseAssetProgress = {
   bytesTransferred: number;
   totalBytes: number;
-  percent: number;
+  // null quando o transporte não informa progresso (supabase-js upload()). A UI
+  // mostra "enviando" sem número em vez de uma barra parada em 0%.
+  percent: number | null;
   state: "paused" | "running" | "success";
 };
 
@@ -86,16 +88,17 @@ function sanitizeFileName(fileName: string) {
 }
 
 export async function uploadCourseAsset(input: UploadCourseAssetInput) {
-  if (!isAllowedCourseAssetFile(input.file, input.kind)) {
-    throw new Error("Unsupported file type or file too large.");
-  }
-
   // The plan-level Supabase cap (not the bucket's 500MB ceiling) is what
   // actually rejects the upload, so fail fast with the actionable message
   // instead of streaming bytes into a 413. Every Storage upload path (modal,
-  // covers, Bunny fallback) routes through here.
+  // covers, Bunny fallback) routes through here. Checked before the type
+  // validator, which also enforces this limit but with a generic message.
   if (input.file.size > supabaseUploadLimitBytes) {
     throw new Error(courseAssetUploadLimitMessage());
+  }
+
+  if (!isAllowedCourseAssetFile(input.file, input.kind)) {
+    throw new Error("Unsupported file type or file too large.");
   }
 
   const supabase = getSupabaseBrowserClient();
@@ -104,13 +107,14 @@ export async function uploadCourseAsset(input: UploadCourseAssetInput) {
   const storagePath = `courses/${input.courseId}/assets/${input.ownerId}/${assetId}/${safeFileName}`;
   const bucket = bucketForKind(input.kind);
 
-  // ponytail: supabase-js upload() has no granular progress event, so we emit a
-  // coarse running(0%) -> success(100%) pair. Upgrade to a TUS resumable upload
-  // if per-byte progress on large videos becomes a real UX need.
+  // ponytail: supabase-js upload() has no granular progress event. Emit an
+  // honest "running, percent unknown" instead of a 0% that sat frozen for the
+  // whole transfer. Upgrade to a TUS resumable upload if per-byte progress on
+  // large files becomes a real UX need.
   input.onProgress?.({
     bytesTransferred: 0,
     totalBytes: input.file.size,
-    percent: 0,
+    percent: null,
     state: "running",
   });
 
@@ -124,13 +128,6 @@ export async function uploadCourseAsset(input: UploadCourseAssetInput) {
   if (uploadError) {
     throw uploadError;
   }
-
-  input.onProgress?.({
-    bytesTransferred: input.file.size,
-    totalBytes: input.file.size,
-    percent: 100,
-    state: "success",
-  });
 
   try {
     const downloadUrl =
@@ -176,6 +173,16 @@ export async function uploadCourseAsset(input: UploadCourseAssetInput) {
     await supabase.storage.from(bucket).remove([storagePath]).catch(() => undefined);
     throw error;
   }
+
+  // "success" só depois de a linha existir e a capa estar gravada. Emitido
+  // antes, uma falha no insert deixava "Upload complete 100%" na tela ao lado
+  // da caixa vermelha dizendo que não foi possível enviar.
+  input.onProgress?.({
+    bytesTransferred: input.file.size,
+    totalBytes: input.file.size,
+    percent: 100,
+    state: "success",
+  });
 
   return assetId;
 }
@@ -314,13 +321,6 @@ export async function uploadLessonVideoToBunny(
     upload.start();
   });
 
-  input.onProgress?.({
-    bytesTransferred: input.file.size,
-    totalBytes: input.file.size,
-    percent: 100,
-    state: "success",
-  });
-
   // 3. Record the asset (no Storage object; storage_path is a marker only).
   const supabase = getSupabaseBrowserClient();
   const assetId = createAssetId();
@@ -342,6 +342,14 @@ export async function uploadLessonVideoToBunny(
   if (insertError) {
     throw insertError;
   }
+
+  // Mesma regra do caminho Supabase: concluído é só quando a linha existe.
+  input.onProgress?.({
+    bytesTransferred: input.file.size,
+    totalBytes: input.file.size,
+    percent: 100,
+    state: "success",
+  });
 
   return assetId;
 }
