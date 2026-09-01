@@ -488,9 +488,24 @@ export function TeacherWalletPanel() {
             </div>
           ) : (
             <div className="divide-y divide-[var(--color-line)]">
-              {ledgerEntries.slice(0, 6).map((entry) => (
-                <LedgerRow key={entry.id} entry={entry} />
-              ))}
+              {/* O ledger é carregado em ordem CRESCENTE (o cálculo de saldo
+                  depende disso), então .slice(0, 6) mostrava as seis vendas
+                  MAIS ANTIGAS sob o título "recentes" — para um criador com
+                  histórico, a venda de hoje nunca aparecia. Ordena por data
+                  decrescente só para exibir, sem mexer na fonte. */}
+              {[...ledgerEntries]
+                .sort((a, b) => {
+                  const left = Date.parse(String(a.createdAt ?? ""));
+                  const right = Date.parse(String(b.createdAt ?? ""));
+                  if (Number.isNaN(left) && Number.isNaN(right)) return 0;
+                  if (Number.isNaN(left)) return 1;
+                  if (Number.isNaN(right)) return -1;
+                  return right - left;
+                })
+                .slice(0, 6)
+                .map((entry) => (
+                  <LedgerRow key={entry.id} entry={entry} />
+                ))}
             </div>
           )}
         </div>
