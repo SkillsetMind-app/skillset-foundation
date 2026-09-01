@@ -39,6 +39,13 @@ type AdminState = {
   // Opt-in: the plan subscription row does not exist yet, so its UPDATE matches
   // zero rows (a silent success in PostgREST).
   planRowMissing?: boolean;
+  // Linha de `enrollments` que o SELECT do handler enxerga. Antes o fake sempre
+  // devolvia null aqui, e por isso o ciclo de vida de assinatura saía em
+  // `if (!enrollment) return true` sem nunca exercitar a revogação.
+  enrollmentRow?: Record<string, unknown> | null;
+  // Opt-in: o reembolso chegou ANTES de a fulfilment escrever a linha de
+  // `payments` — o caso em que o handler caía no ramo de assinatura.
+  paymentRowMissing?: boolean;
   doneEvents: Set<string>;
   refundClaims: Record<string, RefundClaim>;
   ledger: Record<string, unknown>;
@@ -231,7 +238,13 @@ function createAdmin(
           cover_image_url: null,
           stripe_connected_account_id: "acct_teacher",
         };
-      } else if (this.table === "payments" && state.mode === "refund") {
+      } else if (this.table === "enrollments") {
+        data = state.enrollmentRow ?? null;
+      } else if (
+        this.table === "payments"
+        && state.mode === "refund"
+        && !state.paymentRowMissing
+      ) {
         data = {
           id: "pi_1",
           order_id: "order_1",
@@ -828,5 +841,114 @@ describe("Stripe webhook financial integrity", () => {
     expect(response.status).toBe(200);
     expect(admin.state.enrollmentUpdates).toEqual([]);
     expect(admin.state.ledger.status).toBe("settled");
+  });
+
+  describe("acesso pago que sobrevivia ao fim do pagamento", () => {
+    function subscriptionEvent(id: string, status: string) {
+      return {
+        id,
+        type: "customer.subscription.updated",
+        account: "acct_teacher",
+        data: {
+          object: {
+            id: "sub_1",
+            status,
+            customer: "cus_1",
+            cancel_at_period_end: false,
+            metadata: {
+              purpose: "course_subscription",
+              courseId: "course_1",
+              userId: "user_1",
+              teacherId: "teacher_1",
+            },
+            items: { data: [{ price: { recurring: { interval: "month" } }, current_period_end: 1900000000 }] },
+          },
+        },
+      };
+    }
+
+    // A revogacao era condicionada a `enrollmentStatus === "active"`, entao toda
+    // matricula em 'completed' escapava. E 'completed' e escrito pelo PROPRIO
+    // ALUNO: `record_lesson_progress` faz `case when v_progress >= 100 then
+    // 'completed'` e e concedida a `authenticated`. Como a policy
+    // `course_lesson_content_select` aceita 'completed' igual a 'active', o
+    // caminho era: assinar um mes, marcar todas as aulas como vistas, cancelar,
+    // e ficar com o curso para sempre.
+    it("revoga o curso de quem cancela a assinatura DEPOIS de concluir", async () => {
+      const admin = createAdmin("refund");
+      admin.state.enrollmentRow = { status: "completed", progress_percent: 100 };
+      mocks.getAdmin.mockReturnValue(admin);
+
+      const response = await postEvent(subscriptionEvent("evt_sub_done", "canceled"));
+
+      expect(response.status).toBe(200);
+      expect(admin.state.enrollmentUpdates).toContainEqual(
+        expect.objectContaining({ id: "user_1__course_1", status: "revoked" }),
+      );
+    });
+
+    it("segue revogando quem cancela sem ter concluido", async () => {
+      const admin = createAdmin("refund");
+      admin.state.enrollmentRow = { status: "active", progress_percent: 40 };
+      mocks.getAdmin.mockReturnValue(admin);
+
+      const response = await postEvent(subscriptionEvent("evt_sub_active", "canceled"));
+
+      expect(response.status).toBe(200);
+      expect(admin.state.enrollmentUpdates).toContainEqual(
+        expect.objectContaining({ id: "user_1__course_1", status: "revoked" }),
+      );
+    });
+
+    // Controle: assinatura viva nao pode revogar nada.
+    it("nao mexe na matricula enquanto a assinatura esta ativa", async () => {
+      const admin = createAdmin("refund");
+      admin.state.enrollmentRow = { status: "completed", progress_percent: 100 };
+      mocks.getAdmin.mockReturnValue(admin);
+
+      const response = await postEvent(subscriptionEvent("evt_sub_live", "active"));
+
+      expect(response.status).toBe(200);
+      expect(admin.state.enrollmentUpdates).toEqual([]);
+    });
+
+    // Quem reassina nao deve perder a conclusao que ja tinha.
+    it("restaura como 'completed' quem ja tinha terminado", async () => {
+      const admin = createAdmin("refund");
+      admin.state.enrollmentRow = { status: "revoked", progress_percent: 100 };
+      mocks.getAdmin.mockReturnValue(admin);
+
+      const response = await postEvent(subscriptionEvent("evt_sub_back", "active"));
+
+      expect(response.status).toBe(200);
+      expect(admin.state.enrollmentUpdates).toContainEqual(
+        expect.objectContaining({ id: "user_1__course_1", status: "completed" }),
+      );
+    });
+
+    // Uma compra AVULSA cai no ramo de assinatura enquanto a linha de `payments`
+    // ainda nao existe, e nunca tem kind 'course_subscription': o `return`
+    // silencioso devolvia 200, o Stripe nunca reenviava, nada era gravado, e a
+    // fulfilment seguia entregando o curso a quem acabou de ser reembolsado.
+    it("nao engole o reembolso que chega antes da linha de pagamento", async () => {
+      const admin = createAdmin("refund");
+      admin.state.paymentRowMissing = true;
+      admin.state.ledger.kind = "course_one_time";
+      mocks.getAdmin.mockReturnValue(admin);
+
+      const event = refundEvent("evt_refund_early", 10000) as unknown as {
+        data: { object: Record<string, unknown> };
+      };
+      event.data.object.refunded = true;
+      event.data.object.metadata = { orderId: "order_1", courseId: "course_1" };
+
+      const response = await postEvent(
+        event as unknown as Record<string, unknown>,
+      );
+
+      // Nao-200: o Stripe reenvia depois que a fulfilment terminar, em vez de o
+      // reembolso ser perdido para sempre.
+      expect(response.status).not.toBe(200);
+    });
   });
 });
