@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -13,11 +13,26 @@ export async function runRateLimit(key: string, limit: number, windowMs: number)
 /**
  * Rate-limit key for an UNAUTHENTICATED caller. The IP is hashed so the limiter
  * table never stores a raw address; 24 hex chars is plenty to keep buckets apart.
+ *
+ * Keyed with RATE_LIMIT_PEPPER when it is set. A plain sha256 of an IPv4 is one
+ * lookup table away from the address (four billion candidates, seconds of
+ * compute), so the stored row would still be personal data in disguise; with the
+ * pepper nobody without the server env can turn a row back into a visitor.
+ * Unset (local dev, CI) falls back to the unkeyed hash so no route is gated on
+ * the variable — production is expected to set it.
  */
 export function rateLimitKeyFromIp(request: Request, prefix: string): string {
   const forwarded = request.headers.get("x-forwarded-for") ?? "";
   const ip = forwarded.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
-  return `${prefix}_${createHash("sha256").update(ip).digest("hex").slice(0, 24)}`;
+  return `${prefix}_${hashIp(ip)}`;
+}
+
+function hashIp(ip: string): string {
+  const pepper = process.env.RATE_LIMIT_PEPPER;
+  const digest = pepper
+    ? createHmac("sha256", pepper).update(ip)
+    : createHash("sha256").update(ip);
+  return digest.digest("hex").slice(0, 24);
 }
 
 /**

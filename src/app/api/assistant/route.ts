@@ -1,9 +1,8 @@
-import { createHash } from "node:crypto";
-
 import { NextResponse } from "next/server";
 
 import { buildAssistantKnowledge } from "@/lib/assistant/knowledge";
 import { PaymentError, enforceRateLimit } from "@/lib/payments/server/auth";
+import { rateLimitKeyFromIp } from "@/lib/supabase/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // POST /api/assistant — the public platform help assistant. Proxies a visitor's
@@ -43,19 +42,16 @@ function hasControlChar(s: string): boolean {
 let inFlight = 0;
 const MAX_INFLIGHT = 8;
 
-function rateLimitKeyFromIp(request: Request): string {
-  // First hop of x-forwarded-for is the client on Vercel. Hash it so raw IPs
-  // never land in the rate_limits table.
-  const forwarded = request.headers.get("x-forwarded-for") ?? "";
-  const ip = forwarded.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
-  return `assistant_ip_${createHash("sha256").update(ip).digest("hex").slice(0, 24)}`;
-}
-
 export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
 
   const { data } = await supabase.auth.getUser();
-  const key = data.user ? `assistant_${data.user.id}` : rateLimitKeyFromIp(request);
+  // Signed-out visitors are keyed by the shared hashed-IP helper (peppered),
+  // the same one every other public route uses — a local sha256 copy lived here
+  // and missed the pepper.
+  const key = data.user
+    ? `assistant_${data.user.id}`
+    : rateLimitKeyFromIp(request, "assistant_ip");
 
   try {
     await enforceRateLimit(key, RATE_LIMIT_PER_HOUR, 3_600_000);

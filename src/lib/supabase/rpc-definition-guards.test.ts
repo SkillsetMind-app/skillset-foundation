@@ -98,3 +98,37 @@ describe("verify_skillset_certificate — o balde do limite de tentativas", () =
     expect(corpo).toMatch(/auth\.uid\(\)/);
   });
 });
+
+/**
+ * Texto de todas as migrations, em ordem, para asserções que não são sobre UMA
+ * função — aqui, se o job de limpeza está de fato agendado.
+ */
+function textoDasMigrations(): string {
+  const pasta = "supabase/migrations";
+  return readdirSync(join(RAIZ, pasta))
+    .filter((arquivo) => arquivo.endsWith(".sql"))
+    .sort()
+    .map((arquivo) => readFileSync(join(RAIZ, pasta, arquivo), "utf8"))
+    .join("\n");
+}
+
+describe("purge_stale_rate_limits — a tabela rate_limits tem teto", () => {
+  // O bug (DB-02): enforce_rate_limit insere uma linha para toda chave inédita
+  // e nada apagava — a mais antiga em produção era de 01/07. Metade das chaves
+  // vem de fora (hash do IP de visitante anônimo), então cada endereço novo era
+  // uma linha para sempre: o anti-abuso como primitivo de enchimento de disco.
+  const corpo = definicaoEfetiva("purge_stale_rate_limits");
+
+  it("apaga só o que está fora de qualquer janela em uso", () => {
+    expect(corpo).toMatch(/delete from public\.rate_limits/i);
+    // 2 dias > 24h, a maior janela (teto diário do advisor e do assistant).
+    // Encurtar isto apagaria baldes ainda em contagem e afrouxaria um limite.
+    expect(corpo).toMatch(/updated_at\s*<\s*now\(\)\s*-\s*interval\s*'2 days'/i);
+  });
+
+  it("está agendada no pg_cron em vez de depender de alguém lembrar", () => {
+    expect(textoDasMigrations()).toMatch(
+      /cron\.schedule\(\s*'purge-stale-rate-limits'[\s\S]{0,120}purge_stale_rate_limits\(\)/,
+    );
+  });
+});
