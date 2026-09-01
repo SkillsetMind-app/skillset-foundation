@@ -9,6 +9,7 @@ import { CreatorCourseDetail } from "@/components/courses/creator-course-detail"
 import { JsonLd } from "@/components/seo/json-ld";
 import { SiteNav } from "@/components/site/site-nav";
 import { getCourseBySlug, getCourseSlugs } from "@/lib/data/catalog";
+import { getPublicCourseByRef } from "@/lib/data/server/public-course";
 import { buildCourseJsonLd } from "@/lib/seo/course-jsonld";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
@@ -29,12 +30,29 @@ export async function generateMetadata({
       title: course.title,
       description: course.summary,
       path: `/courses/${slug}`,
+      image: course.image,
     });
   }
 
-  // Creator courses resolve client-side, so their title is not available at
-  // build/SSR. Give a clean course-scoped fallback instead of inheriting the
-  // generic site-wide title.
+  // Curso de criador: resolvido no SERVIDOR desde que a leitura anônima voltou
+  // a funcionar (migration 20260901120000). Antes disto, todo curso real caía no
+  // literal "Course" com a mesma descrição e o mesmo logo — colar o link de
+  // qualquer curso no WhatsApp produzia um card idêntico e sem identidade.
+  const published = await getPublicCourseByRef(slug);
+
+  if (published) {
+    return buildPageMetadata({
+      title: published.title,
+      description:
+        published.summary
+        ?? `${published.title} — curriculum, preview lessons, and enrollment on SkillsetMind.`,
+      path: `/courses/${published.urlSlug}`,
+      image: published.coverImageUrl,
+    });
+  }
+
+  // Rascunho, curso removido ou slug inválido: fallback com escopo de curso, em
+  // vez de herdar o título genérico do site.
   return buildPageMetadata({
     title: "Course",
     description:
@@ -52,10 +70,46 @@ export default async function CourseDetailPage({
   const course = getCourseBySlug(slug);
 
   if (!course) {
+    const published = await getPublicCourseByRef(slug);
+
     return (
       <div className="page-shell">
         <SiteNav />
         <main className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
+          {/* Título e resumo saem daqui, do SERVER COMPONENT, e não de dentro do
+              Suspense abaixo. Motivo concreto: CreatorCourseDetail chama
+              useSearchParams(), então numa rota prerenderizada o Next entrega
+              apenas o FALLBACK no HTML e joga a subárvore inteira para o
+              cliente. Passar os dados como prop para o client component não
+              colocaria uma palavra no HTML — só aceleraria o primeiro paint.
+              É por isso que buscador e scraper de link viam "Loading course..."
+              e o card saía vazio.
+
+              Aqui o texto é HTML de servidor de verdade. O componente cliente
+              segue montando por cima com o conteúdo interativo (preço, ofertas,
+              currículo, checkout), que depende de sessão e de dados que mudam. */}
+          {published ? (
+            <header className="mb-8">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
+                {published.category ?? "Course"}
+              </p>
+              <h1 className="display-title mt-3 text-4xl leading-tight text-[var(--color-ink)] sm:text-5xl">
+                {published.title}
+              </h1>
+              {published.summary ? (
+                <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--color-ink-soft)]">
+                  {published.summary}
+                </p>
+              ) : null}
+              {published.lessonCount ? (
+                <p className="mt-3 text-sm text-[var(--color-ink-muted)]">
+                  {published.lessonCount}{" "}
+                  {published.lessonCount === 1 ? "lesson" : "lessons"}
+                </p>
+              ) : null}
+            </header>
+          ) : null}
+
           <Suspense
             fallback={
               <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">

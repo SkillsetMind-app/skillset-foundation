@@ -2,13 +2,24 @@ import type { Metadata } from "next";
 
 import { brand } from "@/data/brand";
 
-export const SITE_URL = "https://skillsetmind.com";
+// `www` é o host canônico em produção: o apex responde com 301 para cá
+// (verificado navegando até https://skillsetmind.com, que redireciona). Enquanto
+// esta constante apontava para o apex, TODA página se declarava canônica num
+// endereço que redireciona, e o sitemap inteiro listava URLs redirecionadas —
+// buscador trata redirecionamento como sinal enfraquecido.
+export const SITE_URL = "https://www.skillsetmind.com";
 
 type PageMetadataInput = {
   title: string;
   description: string;
   path: string;
   noindex?: boolean;
+  /**
+   * Imagem do card de compartilhamento. Absoluta (capa de curso vem do Bunny/
+   * Supabase) ou começando com "/" para um ativo local. Sem isto, todo card
+   * saía com o logo da marca — o mesmo card para todo curso do catálogo.
+   */
+  image?: string | null;
 };
 
 /**
@@ -21,10 +32,17 @@ export function buildPageMetadata({
   description,
   path,
   noindex = false,
+  image = null,
 }: PageMetadataInput): Metadata {
   const fullTitle = `${title} | ${brand.name}`;
   const url = `${SITE_URL}${path}`;
-  const ogImage = `${SITE_URL}${brand.logoUrl}`;
+  // Aceita URL absoluta (capa hospedada) ou caminho local; cai no logo quando
+  // a página não tem imagem própria.
+  const ogImage = image
+    ? image.startsWith("http")
+      ? image
+      : `${SITE_URL}${image}`
+    : `${SITE_URL}${brand.logoUrl}`;
 
   return {
     title: fullTitle,
