@@ -109,9 +109,9 @@ export function LearnCredentialsHub() {
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           SkillsetMind Verified
         </p>
-        <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+        <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
           Credentials appear after enrollment.
-        </h3>
+        </h2>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
           Enroll in a course, complete the required lessons, and this area will
           show which credentials are in progress or ready for SkillsetMind review.
@@ -133,7 +133,7 @@ export function LearnCredentialsHub() {
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--color-accent-fg)]">
               SkillsetMind Verified
             </p>
-            <h2 className="display-title mt-3 max-w-3xl text-4xl leading-[1.03] text-[var(--color-primary)] sm:text-5xl">
+            <h2 className="display-title mt-3 max-w-3xl text-3xl leading-[1.03] text-[var(--color-primary)] sm:text-4xl">
               Credentials from real course progress.
             </h2>
             <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--color-ink-soft)]">
@@ -167,9 +167,9 @@ export function LearnCredentialsHub() {
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               Credential tracks
             </p>
-            <h3 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
+            <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
               Earned and in progress.
-            </h3>
+            </h2>
           </div>
           <div className="credential-filter-tabs" role="group" aria-label="Credential filters">
             {[
@@ -268,9 +268,9 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {candidate.authorityLabel}
           </p>
-          <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+          <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
             {candidate.courseTitle}
-          </h3>
+          </h2>
         </div>
         <span className="rounded-[8px] bg-[var(--color-surface-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
           {getCertificateStatusLabel(candidate.status)}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 
 import { PlansPanel } from "@/components/account/plans-panel";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -12,6 +12,7 @@ import type { Order } from "@/domain/order";
 import type { UserProfile } from "@/domain/user-profile";
 import { subscribeToUserOrders } from "@/lib/data/orders";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
+import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { toDate } from "@/lib/format-date";
 import { openBillingPortal, requestOrderRefund } from "@/lib/payments/billing";
 
@@ -530,6 +531,29 @@ function RefundModal({
   userId: string;
   onClose: () => void;
 }) {
+  // Este era o único diálogo do app que declarava `aria-modal="true"` e não
+  // gerenciava foco nenhum. `aria-modal` promete ao leitor de tela que o resto
+  // da página está inerte, e aqui a promessa era falsa nas três frentes: o foco
+  // ficava no botão atrás do modal, Tab caminhava para a página escondida, e
+  // Escape não fechava. Numa ação de DINHEIRO, a única saída era acertar o
+  // "Cancel" com o mouse.
+  //
+  // A hook já existia em @/lib/a11y — os outros sete diálogos a usam. Faltava
+  // só este.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocus(dialogRef, true);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   const [busy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [done, setDone] = useState(false);
@@ -553,7 +577,9 @@ function RefundModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-[rgba(7,9,13,0.55)] p-4"
+      ref={dialogRef}
+      tabIndex={-1}
+      className="fixed inset-0 z-50 grid place-items-center bg-[rgba(7,9,13,0.55)] p-4 outline-none"
       role="dialog"
       aria-modal="true"
       aria-label="Request a refund"

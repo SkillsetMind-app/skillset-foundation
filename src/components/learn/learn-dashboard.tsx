@@ -156,9 +156,12 @@ export function LearnDashboard() {
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {t("learn.dashboard.myLearning")}
           </p>
-          <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+          {/* h2, não h3: é a primeira seção sob o h1 da página. Como h3 a
+              árvore de headings do /learn vazio pulava do nível 1 para o 3,
+              e quem navega por cabeçalho perdia o degrau. */}
+          <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
             {t("learn.dashboard.emptyTitle")}
-          </h3>
+          </h2>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
             {t("learn.dashboard.emptyBody")}
           </p>
@@ -204,7 +207,13 @@ export function LearnDashboard() {
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--color-accent-fg)]">
               {t("learn.dashboard.workspaceEyebrow")}
             </p>
-            <h2 className="display-title mt-3 max-w-3xl text-4xl leading-[1.03] text-[var(--color-primary)] sm:text-5xl">
+            {/* Um passo ABAIXO do h1 da página em todo breakpoint. Era
+                `text-4xl sm:text-5xl` contra o `text-3xl sm:text-4xl lg:text-5xl`
+                do PlatformShell: entre 640px e 1023px o título da página ficava
+                em 36px e este subtítulo em 48px — o segundo nível maior que o
+                primeiro, e acima de 1024px os dois empatados em 48px. Em nenhuma
+                largura havia hierarquia. */}
+            <h2 className="display-title mt-3 max-w-3xl text-3xl leading-[1.03] text-[var(--color-primary)] sm:text-4xl">
               {firstName
                 ? t("learn.dashboard.welcomeBackNamed").replace("{name}", firstName)
                 : t("learn.dashboard.welcomeBack")}
@@ -283,9 +292,13 @@ export function LearnDashboard() {
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               {t("learn.dashboard.myCourses")}
             </p>
-            <h3 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
+            {/* h2: esta é uma `section` IRMÃ do hero, não filha dele. Como h3
+                ela se anunciava como subseção do hero, e a lista de cursos do
+                aluno — o conteúdo principal da página — aparecia enterrada um
+                nível abaixo do que é. */}
+            <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
               {t("learn.dashboard.enrolledPathsTitle")}
-            </h3>
+            </h2>
           </div>
           <ListingSearchBar
             value={enrollmentQuery}

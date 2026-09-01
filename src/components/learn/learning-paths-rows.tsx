@@ -149,9 +149,9 @@ export function LearningPathsRows({ enrollments }: { enrollments: Enrollment[] }
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                   {t("learn.paths.eyebrow")}
                 </p>
-                <h3 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
+                <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
                   {path.title}
-                </h3>
+                </h2>
                 {path.description ? (
                   <p className="mt-2 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
                     {path.description}
@@ -204,14 +204,14 @@ export function LearningPathsRows({ enrollments }: { enrollments: Enrollment[] }
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {t("learn.paths.instructorEyebrow")}
           </p>
-          <h3 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
+          <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
             {ownerNames.get(row.ownerId)
               ? t("learn.paths.instructorTitle").replace(
                   "{name}",
                   ownerNames.get(row.ownerId) as string,
                 )
               : t("learn.paths.instructorTitleFallback")}
-          </h3>
+          </h2>
 
           <ol className="mt-5 flex gap-4 overflow-x-auto pb-2">
             {row.courses.map((course) => (

@@ -127,9 +127,9 @@ export function LearnEventsHub() {
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           Live learning
         </p>
-        <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+        <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
           Events open after enrollment.
-        </h3>
+        </h2>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
           Enroll in a course to see live classes, mentorship sessions, office
           hours, webinars, and course deadlines.
@@ -149,9 +149,9 @@ export function LearnEventsHub() {
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           Your schedule
         </p>
-        <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+        <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
           No live sessions are scheduled yet.
-        </h3>
+        </h2>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
           When instructors schedule live classes, mentorships, office hours, or
           webinars for your enrolled courses, they will appear here.
@@ -236,9 +236,9 @@ function LearnerEventCard({
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {courseEventTypeLabels[event.type]}
           </p>
-          <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+          <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
             {event.title}
-          </h3>
+          </h2>
         </div>
         <span className="rounded-[8px] bg-[var(--color-surface-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
           {courseEventStatusLabels[event.status]}

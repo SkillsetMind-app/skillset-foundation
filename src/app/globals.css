@@ -2537,6 +2537,24 @@ select:focus-visible {
   backdrop-filter: blur(8px);
 }
 
+/* No celular a barra de navegação do app (.platform-mobile-nav) também é
+   `position: fixed; bottom: 0`, com z-index 40. Este banner, em z-index 48 e no
+   mesmo bottom: 0, ficava EM CIMA dela: enquanto o visitante não decidisse
+   sobre cookies, a navegação principal — Home, Market, Teach, Profile — estava
+   coberta e inalcançável. O banner sobe a altura da barra em vez de disputar o
+   mesmo espaço; o safe-area sai do padding porque a barra de baixo já o
+   consome. */
+   O `:has()` é o que evita o efeito colateral: o banner é global e aparece
+   também nas páginas públicas, que não têm barra inferior nenhuma. Só sobe
+   quando a barra existe de fato no documento; abaixo de 1023px ela existir
+   significa que está visível (acima disso é `display: none`). */
+@media (max-width: 1023px) {
+  body:has(.platform-mobile-nav) .cookie-consent {
+    bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: 0.875rem;
+  }
+}
+
 .cookie-consent__inner {
   margin-inline: auto;
   display: flex;

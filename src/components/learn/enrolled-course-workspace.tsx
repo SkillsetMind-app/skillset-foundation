@@ -102,6 +102,7 @@ export function EnrolledCourseWorkspace({
   // required" during that gap (the realtime listener opens the workspace).
   const cameFromCheckout = searchParams?.get("checkout") === "success";
   const [checkoutGraceExpired, setCheckoutGraceExpired] = useState(false);
+  const [enrollmentRecheck, setEnrollmentRecheck] = useState(0);
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [isLoading, setIsLoading] = useState(!previewMode);
   const [progressState, setProgressState] = useState<{
@@ -166,6 +167,34 @@ export function EnrolledCourseWorkspace({
     return () => window.clearTimeout(timer);
   }, [cameFromCheckout]);
 
+  // Rede de segurança do intervalo entre pagar e a matrícula aparecer.
+  //
+  // A tela promete ao comprador, com todas as letras: "Keep this page open: it
+  // opens automatically the moment your enrollment is confirmed." Até aqui, a
+  // ÚNICA coisa capaz de cumprir essa promessa era o `postgres_changes` — um
+  // WebSocket. Aba de celular em segundo plano, proxy corporativo ou wi-fi
+  // instável derrubam esse socket em silêncio: o canal continua "inscrito" e
+  // simplesmente nunca dispara. A promessa virava mentira e o comprador — que
+  // já pagou — ficava naquela tela para sempre, sem saber que bastava
+  // recarregar. Este é o caminho de compra principal e era o único dos dois
+  // workspaces sem nenhum fallback.
+  //
+  // Incrementar o contador re-roda a inscrição abaixo, que reemite sua leitura
+  // única. As deps são as condições de parada: a matrícula chegou, ou o
+  // componente desmontou. A carência de 90s só muda o ritmo.
+  useEffect(() => {
+    if (previewMode || !cameFromCheckout || enrollment) {
+      return;
+    }
+
+    const interval = window.setInterval(
+      () => setEnrollmentRecheck((tick) => tick + 1),
+      checkoutGraceExpired ? 20_000 : 5_000,
+    );
+
+    return () => window.clearInterval(interval);
+  }, [cameFromCheckout, checkoutGraceExpired, enrollment, previewMode]);
+
   useEffect(() => {
     if (previewMode) {
       return;
@@ -187,7 +216,7 @@ export function EnrolledCourseWorkspace({
         setIsLoading(false);
       },
     );
-  }, [course.slug, previewMode, user]);
+  }, [course.slug, enrollmentRecheck, previewMode, user]);
 
   useEffect(() => {
     if (previewMode || !workspaceEnrollment) {
@@ -342,11 +371,15 @@ export function EnrolledCourseWorkspace({
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Payment received
           </p>
-          <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+          {/* h1: enquanto a matrícula não chega, esta seção é a página
+              inteira — o MembersAreaHero, que traz o h1 do curso, só renderiza
+              depois. O comprador que acabou de pagar ficava num documento cujo
+              único cabeçalho era um h3 solto. */}
+          <h1 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
             {checkoutGraceExpired
               ? "Almost there — enrollment is taking longer than usual."
               : "Opening your course..."}
-          </h3>
+          </h1>
           <p role="status" className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
             {checkoutGraceExpired
               ? "Your payment went through and is safe in your instructor's Stripe account — they sold you this course directly, so their name may be what appears on your card statement. Keep this page open: it opens automatically the moment your enrollment is confirmed. If nothing happens in a few minutes, contact support with your payment receipt."
@@ -361,9 +394,9 @@ export function EnrolledCourseWorkspace({
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           Enrollment required
         </p>
-        <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+        <h1 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
           This private workspace opens after enrollment.
-        </h3>
+        </h1>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
           Open the public course page first, then add the course to your learning
           workspace.

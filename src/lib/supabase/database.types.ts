@@ -2347,6 +2347,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      sync_custom_domain_status: {
+        Args: {
+          p_error_reason?: string | null
+          p_id: string
+          p_owner_uid: string
+          p_status: string
+          p_verification_name?: string | null
+          p_verification_value?: string | null
+        }
+        Returns: undefined
+      }
       admin_list_platform_users: {
         Args: { p_limit?: number; p_search?: string }
         Returns: {

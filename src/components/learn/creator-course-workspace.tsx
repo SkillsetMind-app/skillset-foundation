@@ -91,13 +91,23 @@ export function CreatorCourseWorkspace({
   // double as the stop conditions: React clears the interval the moment the
   // enrollment arrives, the grace window closes, or the component unmounts.
   useEffect(() => {
-    if (!cameFromCheckout || checkoutGraceExpired || enrollment) {
+    if (!cameFromCheckout || enrollment) {
       return;
     }
 
+    // O poll NÃO para aos 90s. Antes parava — `checkoutGraceExpired` era
+    // condição de saída daqui — e isso desligava o fallback exatamente no
+    // instante em que ele passa a ser a única coisa que pode funcionar: passar
+    // dos 90s é justamente o sinal de que o WebSocket não entregou. Depois da
+    // carência a tela promete "it opens automatically the moment your
+    // enrollment is confirmed", e o socket morto era o único caminho restante
+    // para cumprir isso. Quem já pagou ficava preso até recarregar na mão.
+    //
+    // A carência agora só muda o RITMO: 5s enquanto é rápido, 20s depois — um
+    // webhook atrasado (retry do Stripe, fila cheia) ainda aterrissa.
     const interval = window.setInterval(
       () => setEnrollmentRecheck((tick) => tick + 1),
-      5_000,
+      checkoutGraceExpired ? 20_000 : 5_000,
     );
 
     return () => window.clearInterval(interval);
@@ -256,9 +266,15 @@ function CreatorWorkspaceState({
       <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         Creator course access
       </p>
-      <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+      {/* h1: nestes estados esta seção É a página inteira. O caminho feliz
+          delega ao EnrolledCourseWorkspace, que traz o MembersAreaHero com o
+          h1 — mas carregando, com erro, sem matrícula e, o que mais importa,
+          na tela de "pagamento recebido", nada disso renderiza. O comprador
+          que acabou de pagar ficava num documento cujo único cabeçalho era um
+          h3 solto, sem título de página nenhum. */}
+      <h1 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
         {title}
-      </h3>
+      </h1>
       <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
         {detail}
       </p>

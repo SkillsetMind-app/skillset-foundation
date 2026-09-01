@@ -177,9 +177,9 @@ export function CourseCommunityFeed({
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           Access required
         </p>
-        <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+        <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
           This community is linked to course enrollment.
-        </h3>
+        </h2>
         <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
           Open the course page first and add it to your learning workspace.
         </p>
@@ -226,9 +226,9 @@ export function CourseCommunityFeed({
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {space.name}
         </p>
-        <h3 className="display-title mt-3 text-4xl text-[var(--color-ink)]">
+        <h2 className="display-title mt-3 text-4xl text-[var(--color-ink)]">
           Course community
-        </h3>
+        </h2>
         <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
           {space.description}
         </p>
@@ -372,9 +372,9 @@ function CommunityInfoPanel({
       <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         Course community
       </p>
-      <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+      <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
         {title}
-      </h3>
+      </h2>
       <div className="mt-5 grid gap-3">
         {items.map(([label, value]) => (
           <div
@@ -449,7 +449,7 @@ function CommunityMembersPanel({
         Course community
       </p>
       <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
-        <h3 className="display-title text-3xl text-[var(--color-ink)]">Members</h3>
+        <h2 className="display-title text-3xl text-[var(--color-ink)]">Members</h2>
         {postsReady && contributors.length > 0 ? (
           <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
             {contributors.length}{" "}
