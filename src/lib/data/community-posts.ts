@@ -103,31 +103,37 @@ export async function createCommunityPost(input: {
   /** A aula de onde a pessoa perguntou ("from lesson 5"). */
   lessonId?: string | null;
   lessonTitle?: string | null;
-}) {
+}): Promise<{ id: string }> {
   const supabase = getSupabaseBrowserClient();
   const timestamp = nowIso();
 
-  const { error } = await supabase.from("community_posts").insert({
-    course_slug: input.courseSlug,
-    author_id: input.user.uid,
-    // NEVER fall back to email here. author_name is rendered to every
-    // co-enrolled member of the course community, so an email fallback for a
-    // learner with no displayName leaked their address as the public author
-    // label. Same rule applies to the comment + report writers below.
-    author_name: input.user.displayName?.trim() || "SkillsetMind member",
-    author_role: input.user.roles[0] ?? "student",
-    category: input.category,
-    body: input.body.trim(),
-    title: input.title?.trim() || null,
-    lesson_id: input.lessonId ?? null,
-    lesson_title: input.lessonTitle?.trim() || null,
-    created_at: timestamp,
-    updated_at: timestamp,
-  });
+  // Devolve o id: a caixa do professor fixa o aviso logo depois de publicar.
+  const { data, error } = await supabase
+    .from("community_posts")
+    .insert({
+      course_slug: input.courseSlug,
+      author_id: input.user.uid,
+      // NEVER fall back to email here. author_name is rendered to every
+      // co-enrolled member of the course community, so an email fallback for a
+      // learner with no displayName leaked their address as the public author
+      // label. Same rule applies to the comment + report writers below.
+      author_name: input.user.displayName?.trim() || "SkillsetMind member",
+      author_role: input.user.roles[0] ?? "student",
+      category: input.category,
+      body: input.body.trim(),
+      title: input.title?.trim() || null,
+      lesson_id: input.lessonId ?? null,
+      lesson_title: input.lessonTitle?.trim() || null,
+      created_at: timestamp,
+      updated_at: timestamp,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     throw error;
   }
+  return { id: data.id };
 }
 
 export function subscribeToCommunityPosts(
@@ -222,25 +228,32 @@ export async function createCommunityComment(input: {
   // null/undefined = top-level comment; a string = the top-level comment this
   // reply attaches to. Always sent explicitly so the RLS shape is satisfied.
   parentId?: string | null;
-}) {
+}): Promise<{ id: string }> {
   const supabase = getSupabaseBrowserClient();
   const timestamp = nowIso();
 
-  const { error } = await supabase.from("community_comments").insert({
-    post_id: input.postId,
-    course_slug: input.courseSlug,
-    author_id: input.user.uid,
-    author_name: input.user.displayName?.trim() || "SkillsetMind member",
-    author_role: input.user.roles[0] ?? "student",
-    body: input.body.trim(),
-    parent_id: input.parentId ?? null,
-    created_at: timestamp,
-    updated_at: timestamp,
-  });
+  // Devolve o id: "Post answer" na caixa do professor cria o comentario e,
+  // no mesmo gesto, marca-o como A resposta.
+  const { data, error } = await supabase
+    .from("community_comments")
+    .insert({
+      post_id: input.postId,
+      course_slug: input.courseSlug,
+      author_id: input.user.uid,
+      author_name: input.user.displayName?.trim() || "SkillsetMind member",
+      author_role: input.user.roles[0] ?? "student",
+      body: input.body.trim(),
+      parent_id: input.parentId ?? null,
+      created_at: timestamp,
+      updated_at: timestamp,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     throw error;
   }
+  return { id: data.id };
 }
 
 export function subscribeToCommunityComments(
