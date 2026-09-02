@@ -19,6 +19,7 @@ export function CreatorCourseWorkspace({
   initialCourseId,
   whitelabel = false,
   tab = "lesson",
+  openPostId = null,
 }: {
   initialCourseId?: string;
   /** Forwarded from the member-area shell: the course is opening under a
@@ -26,6 +27,8 @@ export function CreatorCourseWorkspace({
   whitelabel?: boolean;
   /** A aba da sala aberta pela rota (lesson | materials | community...). */
   tab?: ClassroomTab;
+  /** Um post da comunidade aberto na gaveta. */
+  openPostId?: string | null;
 }) {
   const searchParams = useSearchParams();
   const courseId = initialCourseId ?? searchParams.get("courseId") ?? "";
@@ -254,6 +257,7 @@ export function CreatorCourseWorkspace({
         enableFirestoreAssets
         whitelabel={whitelabel}
         tab={tab}
+        openPostId={openPostId}
       />
     </>
   );

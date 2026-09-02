@@ -37,6 +37,13 @@ describe("abas da sala de aula: endereco proprio", () => {
     expect(classroomBasePath("/learn/courses/community", "lesson")).toBe(
       "/learn/courses/community",
     );
+    // A gaveta da pergunta mora DENTRO da aba: o que vem depois dela tambem sai.
+    expect(classroomBasePath("/learn/courses/lideranca/community/q/post-1", "community")).toBe(
+      "/learn/courses/lideranca",
+    );
+    expect(classroomBasePath("/learn/courses/community/community/q/post-1", "community")).toBe(
+      "/learn/courses/community",
+    );
   });
 
   it("so os nomes conhecidos sao abas", () => {
