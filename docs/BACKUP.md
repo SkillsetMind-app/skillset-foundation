@@ -35,6 +35,10 @@ The archive is encrypted **before it leaves the runner**. Neither R2 nor the VPS
 ever holds readable user data — only the age private key opens it, and that key
 is never in CI.
 
+The CI half only ever writes. It cannot list the bucket and it cannot delete
+from it, so the workflow contains no step that does either — verification and
+retention happen outside CI on purpose.
+
 The VPS half is the part that matters most: it restores the backup **every
 night**. A backup nobody has restored is a guess. This one gets proven daily, so
 a broken backup shows up the next morning rather than during an outage.
@@ -70,6 +74,17 @@ manager **and** onto the VPS at `/root/skillsetmind-backup.key` (chmod 600).
      old backups or delete them.
    - VPS token: **Object Read** only.
 3. Note the S3 endpoint: `https://<account-id>.r2.cloudflarestorage.com`.
+4. Set retention **on the bucket**, not in the workflow: a lifecycle rule that
+   expires objects under `daily/` after 30 days. It lives there rather than as a
+   prune step because pruning from CI would require giving CI a token that can
+   delete backups, which defeats the write-only scoping above.
+
+   ```
+   PUT /accounts/<account-id>/r2/buckets/<bucket>/lifecycle
+   {"rules":[{"id":"expira-30-dias","enabled":true,
+              "conditions":{"prefix":"daily/"},
+              "deleteObjectsTransition":{"condition":{"type":"Age","maxAge":2592000}}}]}
+   ```
 
 ### 3. GitHub secrets
 

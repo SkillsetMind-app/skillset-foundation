@@ -45,6 +45,12 @@ jobs:
           fi
 
       # Server is Postgres 17; pg_dump must be >= the server or it refuses.
+      #
+      # Installing the package is not enough: the runner image ships its own
+      # Postgres 16 client at /usr/bin/pg_dump, which wins the PATH and makes
+      # the dump abort on "server version mismatch". So put the 17 binaries in
+      # front, and assert the version instead of just printing it — the first
+      # run of this job printed "16.15" right here and nobody noticed.
       - name: Install postgresql-client-17
         run: |
           sudo install -d /usr/share/postgresql-common/pgdg
@@ -55,7 +61,10 @@ jobs:
             | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-client-17
-          pg_dump --version
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+          ver=$(/usr/lib/postgresql/17/bin/pg_dump --version | grep -oE '[0-9]+' | head -1)
+          echo "pg_dump major: $ver"
+          [ "$ver" -ge 17 ] || { echo "::error title=pg_dump too old::got $ver, need >= 17"; exit 1; }
 
       - name: Install age
         run: sudo apt-get install -y -qq age
@@ -75,9 +84,11 @@ jobs:
       - name: Install rclone
         run: sudo apt-get install -y -qq rclone
 
-      # R2 speaks the S3 API. The token should be scoped to this bucket with
-      # write permission only — a leaked CI token must not be able to read old
-      # backups or delete them.
+      # R2 speaks the S3 API. The token is scoped to this bucket with Object
+      # Write only — a leaked CI token must not be able to read old backups or
+      # delete them. That is why nothing here lists or removes objects:
+      # --no-check-dest skips the destination listing rclone would otherwise do,
+      # which a write-only token cannot perform.
       - name: Upload to Cloudflare R2
         env:
           RCLONE_CONFIG_R2_TYPE: s3
@@ -89,21 +100,15 @@ jobs:
           BUCKET: ${{ secrets.R2_BUCKET }}
           FILE: ${{ steps.backup.outputs.BACKUP_FILE }}
         run: |
-          rclone copy "$FILE" "R2:$BUCKET/daily/" --s3-no-head --stats-one-line
-          rclone lsl "R2:$BUCKET/daily/" | tail -5
+          rclone copyto "$FILE" "R2:$BUCKET/daily/$(basename "$FILE")" \
+            --s3-no-head --no-check-dest --stats-one-line
 
-      # Retention lives here rather than as a bucket lifecycle rule so the
-      # window is visible in the repo. 30 days covers the gap left by
-      # Supabase's 7.
-      - name: Prune backups older than 30 days
-        env:
-          RCLONE_CONFIG_R2_TYPE: s3
-          RCLONE_CONFIG_R2_PROVIDER: Cloudflare
-          RCLONE_CONFIG_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          RCLONE_CONFIG_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          RCLONE_CONFIG_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-          BUCKET: ${{ secrets.R2_BUCKET }}
-        run: rclone delete "R2:$BUCKET/daily/" --min-age 30d --rmdirs || true
+      # Retention is a lifecycle rule on the bucket itself (objects under
+      # daily/ expire after 30 days), not a step here. Pruning from CI would
+      # mean handing CI a token that can delete backups, and a token that can
+      # delete backups is a token that deletes them once it leaks. 30 days
+      # covers the gap left by Supabase's 7.
+      #   verify: GET /accounts/<acc>/r2/buckets/skillsetmind-backups/lifecycle
 
       - name: Summary
         if: always()
@@ -116,7 +121,8 @@ jobs:
             if [ -f "$FILE" ]; then
               echo "- archive: \`$(basename "$FILE")\`"
               echo "- size: $(wc -c < "$FILE" | tr -d ' ') bytes (encrypted)"
-              echo "- destination: R2 \`daily/\`, pruned after 30 days"
+              echo "- sha256: \`$(sha256sum "$FILE" | cut -d' ' -f1)\`"
+              echo "- destination: R2 \`daily/\`, expires after 30 days"
             else
               echo "- **no archive produced**"
             fi
