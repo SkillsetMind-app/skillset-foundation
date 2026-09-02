@@ -13,7 +13,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 
 import { CourseCategorySelect } from "@/components/teacher/course-category-select";
 import { InlineHelp } from "@/components/shared/inline-help";
@@ -37,15 +37,20 @@ type CreateCourseStartProps = {
   initialFormat?: TeacherCourseProductFormat;
 };
 
-const creationSteps = [
-  ["01", "Product format", "Choose the delivery model that matches the offer"],
-  ["02", "Basic information", "Title, promise, and categories"],
-  ["03", "Pricing and content", "Continue in the product builder"],
+// Os cinco estagios do fluxo inteiro. O rail prometia tres passos, o
+// formulario dizia "passo 1 de 2" e o terceiro nunca acendia: a pessoa nao
+// sabia se tinha terminado. Formato e basico acontecem nesta tela; o resto
+// continua no construtor, e o rail diz isso em vez de fingir que acaba aqui.
+const creationStages = [
+  { id: "format", label: "Format", detail: "Delivery model", where: "here" },
+  { id: "basics", label: "Basics", detail: "Title, promise, categories", where: "here" },
+  { id: "pricing", label: "Pricing", detail: "Price and access model", where: "builder" },
+  { id: "lessons", label: "Lessons", detail: "Modules and lessons", where: "builder" },
+  { id: "publish", label: "Publish", detail: "Final checks", where: "builder" },
 ] as const;
 
 export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateCourseStartProps) {
   const router = useRouter();
-  const [step, setStep] = useState<"format" | "basics">("format");
   const [productFormat, setProductFormat] = useState<TeacherCourseProductFormat>(initialFormat);
   const [subscriptionInterval, setSubscriptionInterval] =
     useState<TeacherCourseSubscriptionInterval>("monthly");
@@ -54,8 +59,6 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
-  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
-  const previousStepRef = useRef(step);
   // As três condições que travam o envio, cada uma com o texto que diz o que
   // fazer. Antes isto era um booleano só: o botão ficava cinza e não havia nada
   // na tela dizendo se faltava título, resumo ou categoria — e os mínimos (3 e
@@ -78,14 +81,15 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
       : productFormat === "free"
         ? "Create and add content"
         : "Create and set pricing";
-  const activeStep = step === "format" ? 0 : 1;
-
-  useEffect(() => {
-    if (previousStepRef.current !== step) {
-      previousStepRef.current = step;
-      stepHeadingRef.current?.focus();
-    }
-  }, [step]);
+  // Um formato vem pre-selecionado, entao o estagio Format ja nasce feito;
+  // Basics acende quando as tres condicoes acima estao satisfeitas.
+  const stageDone: Record<(typeof creationStages)[number]["id"], boolean> = {
+    format: true,
+    basics: submitBlockers.length === 0,
+    pricing: false,
+    lessons: false,
+    publish: false,
+  };
 
   function toggleCategory(nextCategory: string) {
     setSelectedCategories((current) => {
@@ -167,30 +171,34 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
           Build the product foundation.
         </h1>
         <p className="create-course-screen__intro-copy mt-4 max-w-md text-sm leading-6">
-          Start with the access model and essential information. Pricing, curriculum, members area,
-          and publication follow in the builder.
+          Pick the access model and the essential information here. Pricing, lessons, and
+          publication continue in the builder.
         </p>
 
         <ol
           className="create-course-screen__progress mt-8 grid gap-2"
           aria-label="Product creation progress"
         >
-          {creationSteps.map(([number, label, detail], index) => {
-            const complete = index < activeStep;
-            const current = index === activeStep;
+          {creationStages.map((stage, index) => {
+            const done = stageDone[stage.id];
+            const here = stage.where === "here";
 
             return (
               <li
-                key={label}
-                className={`create-course-step ${current ? "is-current" : ""}`}
-                aria-current={current ? "step" : undefined}
+                key={stage.id}
+                className={`create-course-step ${here ? "is-current" : ""}`}
+                aria-current={stage.id === "basics" ? "step" : undefined}
               >
                 <span>
-                  {complete ? <Check aria-hidden="true" size={14} strokeWidth={2.4} /> : number}
+                  {done ? (
+                    <Check aria-hidden="true" size={14} strokeWidth={2.4} />
+                  ) : (
+                    String(index + 1).padStart(2, "0")
+                  )}
                 </span>
                 <div>
-                  <strong>{label}</strong>
-                  <small>{detail}</small>
+                  <strong>{stage.label}</strong>
+                  <small>{here ? stage.detail : `${stage.detail} · continues in the builder`}</small>
                 </div>
               </li>
             );
@@ -199,231 +207,185 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
       </aside>
 
       <form onSubmit={handleSubmit} className="create-course-screen__form">
-        {step === "format" ? (
-          <>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
-                Step 1 of 2
-              </p>
-              <h2
-                ref={stepHeadingRef}
-                tabIndex={-1}
-                className="mt-2 text-3xl font-semibold leading-tight text-[var(--color-primary)]"
-              >
-                Choose a product format
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-                The format defines how learners receive access. Commercial terms remain editable in
-                Pricing and offers.
-              </p>
+        <div>
+          <h2 className="text-3xl font-semibold leading-tight text-[var(--color-primary)]">
+            Set up the product
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+            This creates a private draft. Nothing becomes visible or sellable before
+            professional verification and publication.
+          </p>
+        </div>
+
+        <fieldset className="mt-6">
+          <legend className="text-sm font-semibold text-[var(--color-ink)]">Product format</legend>
+          <p className="mt-1 text-xs leading-5 text-[var(--color-ink-muted)]">
+            The format defines how learners receive access. Commercial terms remain editable in
+            Pricing and offers.
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-3">
+            <PaymentChoice
+              active={productFormat === "course"}
+              detail="One-time purchase with permanent or managed access."
+              icon="course"
+              label="Online course"
+              onClick={() => setProductFormat("course")}
+            />
+            <PaymentChoice
+              active={productFormat === "program"}
+              detail="A sequenced pathway combining learning, practice, and optional live touchpoints."
+              icon="program"
+              label="Guided program"
+              onClick={() => setProductFormat("program")}
+            />
+            <PaymentChoice
+              active={productFormat === "event"}
+              detail="Live workshops, cohorts, and scheduled group sessions."
+              icon="event"
+              label="Online event"
+              onClick={() => setProductFormat("event")}
+            />
+            <PaymentChoice
+              active={productFormat === "subscription"}
+              detail="Ongoing access billed on a recurring schedule."
+              icon="subscription"
+              label="Subscription"
+              onClick={() => setProductFormat("subscription")}
+            />
+            <PaymentChoice
+              active={productFormat === "community"}
+              detail="A recurring members space built for posts and peer exchange."
+              icon="community"
+              label="Community"
+              onClick={() => setProductFormat("community")}
+            />
+            <PaymentChoice
+              active={productFormat === "free"}
+              detail="Open enrollment with no checkout or payment."
+              icon="free"
+              label="Free program"
+              onClick={() => setProductFormat("free")}
+            />
+          </div>
+        </fieldset>
+
+        {productFormat === "subscription" || productFormat === "community" ? (
+          <fieldset className="mt-5">
+            <legend className="text-sm font-semibold text-[var(--color-ink)]">
+              Initial billing interval
+            </legend>
+            <div className="mt-2 grid grid-cols-2 gap-1 rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
+              {(["monthly", "yearly"] as const).map((interval) => (
+                <button
+                  key={interval}
+                  type="button"
+                  aria-pressed={subscriptionInterval === interval}
+                  onClick={() => setSubscriptionInterval(interval)}
+                  className={`min-h-11 rounded-[6px] px-3 py-2 text-sm font-semibold transition-colors ${
+                    subscriptionInterval === interval
+                      ? "bg-[var(--color-primary)] text-[var(--color-base)]"
+                      : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
+                  }`}
+                >
+                  {interval === "monthly" ? "Monthly" : "Yearly"}
+                </button>
+              ))}
             </div>
+          </fieldset>
+        ) : null}
 
-            <fieldset className="mt-6">
-              <legend className="sr-only">Product format</legend>
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-                <PaymentChoice
-                  active={productFormat === "course"}
-                  detail="One-time purchase with permanent or managed access."
-                  icon="course"
-                  label="Online course"
-                  onClick={() => setProductFormat("course")}
-                />
-                <PaymentChoice
-                  active={productFormat === "program"}
-                  detail="A sequenced pathway combining learning, practice, and optional live touchpoints."
-                  icon="program"
-                  label="Guided program"
-                  onClick={() => setProductFormat("program")}
-                />
-                <PaymentChoice
-                  active={productFormat === "event"}
-                  detail="Live workshops, cohorts, and scheduled group sessions."
-                  icon="event"
-                  label="Online event"
-                  onClick={() => setProductFormat("event")}
-                />
-                <PaymentChoice
-                  active={productFormat === "subscription"}
-                  detail="Ongoing access billed on a recurring schedule."
-                  icon="subscription"
-                  label="Subscription"
-                  onClick={() => setProductFormat("subscription")}
-                />
-                <PaymentChoice
-                  active={productFormat === "community"}
-                  detail="A recurring members space built for posts and peer exchange."
-                  icon="community"
-                  label="Community"
-                  onClick={() => setProductFormat("community")}
-                />
-                <PaymentChoice
-                  active={productFormat === "free"}
-                  detail="Open enrollment with no checkout or payment."
-                  icon="free"
-                  label="Free program"
-                  onClick={() => setProductFormat("free")}
-                />
-              </div>
-            </fieldset>
+        <div className="mt-6 grid gap-5">
+          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+            Product title
+            <input
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              minLength={3}
+              maxLength={120}
+              placeholder="e.g. Peak Performance Foundations"
+              className="min-h-11 rounded-[8px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
+            />
+          </label>
 
-            {productFormat === "subscription" || productFormat === "community" ? (
-              <fieldset className="mt-5">
-                <legend className="text-sm font-semibold text-[var(--color-ink)]">
-                  Initial billing interval
-                </legend>
-                <div className="mt-2 grid grid-cols-2 gap-1 rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
-                  {(["monthly", "yearly"] as const).map((interval) => (
-                    <button
-                      key={interval}
-                      type="button"
-                      aria-pressed={subscriptionInterval === interval}
-                      onClick={() => setSubscriptionInterval(interval)}
-                      className={`min-h-10 rounded-[6px] px-3 py-2 text-sm font-semibold transition-colors ${
-                        subscriptionInterval === interval
-                          ? "bg-[var(--color-primary)] text-[var(--color-base)]"
-                          : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
-                      }`}
-                    >
-                      {interval === "monthly" ? "Monthly" : "Yearly"}
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
+          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+            Product promise
+            <textarea
+              value={summary}
+              onChange={(event) => setSummary(event.target.value)}
+              minLength={20}
+              maxLength={1200}
+              rows={4}
+              placeholder="Describe the practical outcome learners can expect."
+              className="resize-none rounded-[8px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal leading-6 outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
+            />
+            <span className="text-xs font-normal text-[var(--color-ink-muted)]">
+              {summary.trim().length}/1200 characters. Minimum 20.
+            </span>
+          </label>
+
+          <div className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+            <span className="flex items-center gap-2">
+              Categories
+              <InlineHelp topic="Course categories" href="/help#course-categories">
+                Categories determine where buyers discover the product and how SkillsetMind
+                groups related expertise. Choose the most specific fit first; that first
+                selection becomes the primary marketplace category.
+              </InlineHelp>
+            </span>
+            <CourseCategorySelect
+              options={skillsetCourseCategories}
+              selected={selectedCategories}
+              onToggle={toggleCategory}
+              disabled={isSaving}
+            />
+            <span className="text-xs font-normal text-[var(--color-ink-muted)]">
+              The first selection is the primary marketplace category.
+            </span>
+          </div>
+        </div>
+
+        {error ? (
+          <div
+            role="alert"
+            className="mt-5 rounded-[8px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+          >
+            <p>{error}</p>
+            {error === ACTIVATION_REQUIRED_MESSAGE ? (
+              <Link
+                href="/teach/activate"
+                className="button-solid mt-3 inline-flex px-4 py-2 text-xs"
+              >
+                Activate storefront
+              </Link>
             ) : null}
+          </div>
+        ) : null}
 
-            <div className="mt-7 flex justify-end border-t border-[var(--color-line)] pt-5">
-              <button
-                type="button"
-                onClick={() => setStep("basics")}
-                className="button-solid px-4 text-sm"
-              >
-                Continue
-                <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
-                Step 2 of 2
-              </p>
-              <h2
-                ref={stepHeadingRef}
-                tabIndex={-1}
-                className="mt-2 text-3xl font-semibold leading-tight text-[var(--color-primary)]"
-              >
-                Add the essential information
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-                This creates a private draft. Nothing becomes visible or sellable before
-                professional verification and publication.
-              </p>
-            </div>
+        {submitBlockers.length > 0 ? (
+          <p
+            id="create-course-blockers"
+            className="mt-5 text-xs leading-5 text-[var(--color-ink-soft)]"
+          >
+            <span className="font-semibold text-[var(--color-ink)]">
+              Before you continue:
+            </span>{" "}
+            {submitBlockers.join(" ")}
+          </p>
+        ) : null}
 
-            <div className="mt-6 grid gap-5">
-              <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                Product title
-                <input
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  minLength={3}
-                  maxLength={120}
-                  placeholder="e.g. Peak Performance Foundations"
-                  className="min-h-11 rounded-[8px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
-                />
-              </label>
-
-              <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                Product promise
-                <textarea
-                  value={summary}
-                  onChange={(event) => setSummary(event.target.value)}
-                  minLength={20}
-                  maxLength={1200}
-                  rows={4}
-                  placeholder="Describe the practical outcome learners can expect."
-                  className="resize-none rounded-[8px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal leading-6 outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
-                />
-                <span className="text-xs font-normal text-[var(--color-ink-muted)]">
-                  {summary.trim().length}/1200 characters. Minimum 20.
-                </span>
-              </label>
-
-              <div className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                <span className="flex items-center gap-2">
-                  Categories
-                  <InlineHelp topic="Course categories" href="/help#course-categories">
-                    Categories determine where buyers discover the product and how SkillsetMind
-                    groups related expertise. Choose the most specific fit first; that first
-                    selection becomes the primary marketplace category.
-                  </InlineHelp>
-                </span>
-                <CourseCategorySelect
-                  options={skillsetCourseCategories}
-                  selected={selectedCategories}
-                  onToggle={toggleCategory}
-                  disabled={isSaving}
-                />
-                <span className="text-xs font-normal text-[var(--color-ink-muted)]">
-                  The first selection is the primary marketplace category.
-                </span>
-              </div>
-            </div>
-
-            {error ? (
-              <div
-                role="alert"
-                className="mt-5 rounded-[8px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-              >
-                <p>{error}</p>
-                {error === ACTIVATION_REQUIRED_MESSAGE ? (
-                  <Link
-                    href="/teach/activate"
-                    className="button-solid mt-3 inline-flex px-4 py-2 text-xs"
-                  >
-                    Activate storefront
-                  </Link>
-                ) : null}
-              </div>
-            ) : null}
-
-            {submitBlockers.length > 0 ? (
-              <p
-                id="create-course-blockers"
-                className="mt-5 text-xs leading-5 text-[var(--color-ink-soft)]"
-              >
-                <span className="font-semibold text-[var(--color-ink)]">
-                  Before you continue:
-                </span>{" "}
-                {submitBlockers.join(" ")}
-              </p>
-            ) : null}
-
-            <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] pt-5">
-              <button
-                type="button"
-                onClick={() => setStep("format")}
-                disabled={isSaving}
-                className="button-outline px-4 text-sm"
-              >
-                <ArrowLeft aria-hidden="true" size={15} strokeWidth={1.9} />
-                Back
-              </button>
-              <button
-                type="submit"
-                disabled={!canSubmit}
-                aria-describedby={
-                  submitBlockers.length > 0 ? "create-course-blockers" : undefined
-                }
-                className="button-solid px-4 text-sm disabled:opacity-60"
-              >
-                {isSaving ? "Creating..." : submitLabel}
-                <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
-              </button>
-            </div>
-          </>
-        )}
+        <div className="mt-7 flex justify-end border-t border-[var(--color-line)] pt-5">
+          <button
+            type="submit"
+            disabled={!canSubmit}
+            aria-describedby={
+              submitBlockers.length > 0 ? "create-course-blockers" : undefined
+            }
+            className="button-solid px-4 text-sm disabled:opacity-60"
+          >
+            {isSaving ? "Creating..." : submitLabel}
+            <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
+          </button>
+        </div>
       </form>
     </section>
   );

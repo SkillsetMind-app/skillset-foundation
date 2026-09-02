@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
@@ -25,15 +25,15 @@ import {
   lowestPlanWithQuota,
   quotaStatus,
 } from "@/domain/entitlements";
+import { usePublishGates } from "@/components/teacher/use-publish-gates";
+import { getCourseReadiness } from "@/domain/course-readiness";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { teacherCanPublishCourse } from "@/domain/teacher-course";
-import { fetchRequireCreatorVerification } from "@/lib/data/creator-verification";
 import {
   setOwnCourseFeatured,
   subscribeToTeacherCourse,
   subscribeToTeacherCourses,
 } from "@/lib/data/teacher-courses";
-import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 
 // Per-course management central (Hotmart-style "product hub"): one place with
 // the publish checklist, the course's real settings, and the commerce surfaces.
@@ -228,10 +228,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   // state without a synchronous setState reset when the route param changes.
   const [loadedCourseId, setLoadedCourseId] = useState<string | null>(null);
   const [myCourses, setMyCourses] = useState<TeacherCourse[]>([]);
-  const [payoutsReady, setPayoutsReady] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState("none");
-  const [requireVerification, setRequireVerification] = useState(false);
-  const [planId, setPlanId] = useState<PlanId>("free");
+  const { account, planId } = usePublishGates(user);
   const section: SectionId = sectionFromUrl ?? "overview";
   const setSection = (next: SectionId) => {
     const params = new URLSearchParams(searchParams?.toString());
@@ -273,119 +270,11 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     return subscribeToTeacherCourses(user.uid, setMyCourses, () => undefined);
   }, [user]);
 
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-    return subscribeToUserProfile(
-      user.uid,
-      (profile) => {
-        setPayoutsReady(
-          Boolean(profile?.stripeConnectChargesEnabled && profile?.stripeConnectPayoutsEnabled)
-        );
-        setVerificationStatus(profile?.creatorVerificationStatus ?? "none");
-        setPlanId(profile?.currentPlanId ?? "free");
-      },
-      () => setPayoutsReady(false)
-    );
-  }, [user]);
-
-  useEffect(() => {
-    let active = true;
-    fetchRequireCreatorVerification()
-      .then((value) => {
-        if (active) {
-          setRequireVerification(value);
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, []);
-
   const isOwner = Boolean(course && user && course.ownerId === user.uid);
   const paid = course ? isPaidCourse(course) : false;
   // Server-enforced by the commerce RPCs; surfaced here so the panels can
   // explain the gate instead of failing on click.
-  const activationBlocked = requireVerification && verificationStatus !== "approved";
-
-  const checklist = useMemo(() => {
-    if (!course) {
-      return [];
-    }
-    const items: Array<{
-      label: string;
-      hint: ReactNode;
-      done: boolean;
-      optional?: boolean;
-    }> = [
-      {
-        label: "Title & summary",
-        hint: "Name the course and describe the outcome in the summary.",
-        done: course.title.trim().length >= 3 && course.summary.trim().length >= 20,
-      },
-      {
-        label: "Category",
-        hint: "Pick the category buyers browse by.",
-        done: course.category.trim().length >= 2,
-      },
-      {
-        label: "Cover image",
-        hint: "Upload a cover — it fronts the product page and marketplace cards.",
-        done: Boolean(course.coverImageUrl),
-        optional: true,
-      },
-      {
-        label: "Curriculum",
-        hint: "At least one module with one lesson.",
-        done: course.modules.length > 0 && course.lessonCount > 0,
-      },
-      {
-        label: "Pricing",
-        hint: "Set a price or mark the course as free.",
-        done: course.paymentType === "free" || (course.priceAmountMinor ?? 0) > 0,
-      },
-      {
-        label: "Learning outcomes",
-        hint: "Optional, but outcomes lift conversion on the product page.",
-        done: (course.learningOutcomes?.length ?? 0) > 0,
-        optional: true,
-      },
-    ];
-    if (paid) {
-      items.push({
-        label: "Stripe payouts",
-        hint: "Paid courses need payout onboarding finished before publishing.",
-        done: payoutsReady,
-      });
-    }
-    items.push({
-      label: "Professional verification",
-      hint: (
-        <>
-          {requireVerification
-            ? "Required before this course can be published. "
-            : "Optional today — becomes required when professional admission opens. "}
-          <Link
-            href="/teach/verification"
-            className="font-semibold text-[var(--color-primary)] underline"
-          >
-            Open verification
-          </Link>
-        </>
-      ),
-      done: verificationStatus === "approved",
-      optional: !requireVerification,
-    });
-    return items;
-  }, [course, paid, payoutsReady, requireVerification, verificationStatus]);
-
-  const requiredItems = checklist.filter((item) => !item.optional);
-  const requiredDone = requiredItems.filter((item) => item.done).length;
-  const progressPercent = requiredItems.length
-    ? Math.round((requiredDone / requiredItems.length) * 100)
-    : 0;
+  const activationBlocked = account.verificationRequired && !account.verificationApproved;
 
   const productPagePath = `/courses/${courseId}`;
 
@@ -427,6 +316,10 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     );
   }
 
+  // A mesma lista que o construtor mostra no chip, na barra e no rodape. Antes
+  // o Manage tinha regra propria (titulo+resumo num item so, sem parcelas) e
+  // o mesmo curso aparecia com tres porcentagens diferentes.
+  const readiness = getCourseReadiness(course, account);
   const switchableCourses = myCourses.filter((candidate) => candidate.id !== course.id);
   // This course's own flag comes from the single-course subscription, the rest
   // from the owner-wide one. Mixing them keeps the count from flickering while
@@ -552,16 +445,17 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
             <PanelCard title="Publish checklist" description={statusCopy[course.status]}>
               <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--color-surface-hover)]">
                 <div
+                  data-testid="publish-readiness-bar"
                   className="h-full rounded-full bg-[var(--color-primary)] transition-all"
-                  style={{ width: `${progressPercent}%` }}
+                  style={{ width: `${readiness.percent}%` }}
                 />
               </div>
               <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                {requiredDone} of {requiredItems.length} required steps done
+                {readiness.doneCount} of {readiness.total} required steps done · {readiness.percent}% ready
               </p>
               <ul className="mt-4 grid gap-3">
-                {checklist.map((item) => (
-                  <li key={item.label} className="flex items-start gap-3">
+                {readiness.items.map((item) => (
+                  <li key={item.id} className="flex items-start gap-3">
                     <span
                       aria-hidden
                       className={`mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
@@ -581,7 +475,20 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                           </span>
                         ) : null}
                       </p>
-                      <p className="text-xs leading-5 text-[var(--color-ink-soft)]">{item.hint}</p>
+                      <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
+                        {item.hint}
+                        {item.id === "verification" ? (
+                          <>
+                            {" "}
+                            <Link
+                              href="/teach/verification"
+                              className="font-semibold text-[var(--color-primary)] underline"
+                            >
+                              Open verification
+                            </Link>
+                          </>
+                        ) : null}
+                      </p>
                     </div>
                   </li>
                 ))}
@@ -719,7 +626,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   {paid ? (
                     <DetailRow
                       label="Stripe payouts"
-                      value={payoutsReady ? "Ready" : "Onboarding incomplete"}
+                      value={account.payoutsReady ? "Ready" : "Onboarding incomplete"}
                     />
                   ) : null}
                 </div>
@@ -730,7 +637,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   >
                     Edit pricing in Builder
                   </Link>
-                  {paid && !payoutsReady ? (
+                  {paid && !account.payoutsReady ? (
                     <Link
                       href="/account/payments#stripe-connect"
                       className="button-solid px-4 py-2 text-xs"

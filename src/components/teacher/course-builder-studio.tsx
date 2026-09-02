@@ -93,6 +93,8 @@ import { isPublicFeatureEnabled } from "@/lib/feature-flags";
 import { track } from "@/lib/posthog/events";
 import { defaultSkillsetCurrency } from "@/lib/payments/currencies";
 import { CurrencySelect } from "@/components/teacher/currency-select";
+import { usePublishGates } from "@/components/teacher/use-publish-gates";
+import { getCourseReadiness } from "@/domain/course-readiness";
 
 const builderTabs = [
   { value: "details", label: "Details", sub: "Title, categories, promise" },
@@ -437,6 +439,9 @@ export function CourseBuilderStudio() {
     [router, searchParams],
   );
   const { user } = useAuth();
+  // Payouts e verificacao: so o Manage sabia; aqui a pessoa clicava em
+  // Publish e descobria pelo erro do servidor.
+  const { account: publishGates } = usePublishGates(user);
   const [course, setCourse] = useState<TeacherCourse | null>(null);
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
@@ -657,55 +662,67 @@ export function CourseBuilderStudio() {
     paymentType !== "one_time" ||
     !installmentsEnabled ||
     parseInstallmentsMax(installmentsMax) !== null;
-  const readinessItems = [
-    {
-      label: title.trim() ? "Course title is set." : "Add a course title.",
-      ready: Boolean(title.trim()),
-    },
-    {
-      label:
-        summary.trim().length >= 20
-          ? "Summary is ready."
-          : "Add a clearer summary.",
-      ready: summary.trim().length >= 20,
-    },
-    {
-      label:
-        selectedCategories.length > 0
-          ? "Marketplace category is set."
-          : "Choose at least one marketplace category.",
-      ready: selectedCategories.length > 0,
-    },
-    {
-      label: modules.length > 0 ? "At least one module exists." : "Add at least one module.",
-      ready: modules.length > 0,
-    },
-    {
-      label: lessonCount > 0 ? "At least one lesson exists." : "Add at least one lesson.",
-      ready: lessonCount > 0,
-    },
-    {
-      label:
-        pricingModelIsReady
-          ? paymentType === "free"
-            ? "Free enrollment model is ready."
-            : "Paid price is ready."
-          : "Set a paid price greater than $0, or choose Free.",
-      ready: pricingModelIsReady && priceFieldIsValid,
-    },
-    {
-      label:
-        installmentsAreValid
-          ? "Payment model is ready."
-          : "Set a valid installment limit.",
-      ready: installmentsAreValid,
-    },
-  ];
-  const readyItemCount = readinessItems.filter((item) => item.ready).length;
-  const readinessProgress = Math.round(
-    (readyItemCount / readinessItems.length) * 100,
+  // Single source of truth for what gets persisted. Manual save, submit, and
+  // autosave all serialize from here so their payloads (and the autosave
+  // change-signature) stay identical and never disagree.
+  const builderDraftPayload = useMemo(
+    () =>
+      buildBuilderDraftPayload({
+        title,
+        summary,
+        category,
+        selectedCategories,
+        learningOutcomes,
+        modules,
+        priceAmount,
+        currency,
+        paymentType,
+        installmentsEnabled,
+        installmentsMax,
+        dripStrategy,
+        dripIntervalDays,
+        freePreviewLessonId,
+        platformFeeBps: course?.platformFeeBps ?? DEFAULT_PLATFORM_FEE_BPS,
+        membersTheme,
+        membersCoverAssetId,
+        membersTitle,
+        membersSubtitle,
+        membersDescription,
+        communityEnabled,
+      }),
+    [
+      title,
+      summary,
+      category,
+      selectedCategories,
+      learningOutcomes,
+      modules,
+      priceAmount,
+      currency,
+      paymentType,
+      installmentsEnabled,
+      installmentsMax,
+      dripStrategy,
+      dripIntervalDays,
+      freePreviewLessonId,
+      course?.platformFeeBps,
+      membersTheme,
+      membersCoverAssetId,
+      membersTitle,
+      membersSubtitle,
+      membersDescription,
+      communityEnabled,
+    ],
   );
-  const nextReadinessItem = readinessItems.find((item) => !item.ready);
+  // Uma lista so de "o que falta para publicar", a mesma do rodape e do
+  // Manage. Antes o construtor montava duas listas proprias e a barra do
+  // cabecalho media outra coisa (estagios): tres numeros para um curso so.
+  // Le do payload normalizado, entao um preco digitado errado conta como
+  // preco ausente, igual ao que o servidor gravaria.
+  const readiness = getCourseReadiness(
+    { ...builderDraftPayload, coverImageUrl: course?.coverImageUrl ?? null },
+    publishGates,
+  );
   const activeLessonStudioModule = activeLessonStudio
     ? modules.find((module) => module.id === activeLessonStudio.moduleId) ?? null
     : null;
@@ -762,7 +779,7 @@ export function CourseBuilderStudio() {
       pricingModelIsReady &&
       priceFieldIsValid &&
       installmentsAreValid,
-    review: readinessProgress === 100,
+    review: readiness.ready,
   };
   const stageCompletion: Record<string, boolean> = {
     basics: tabCompletion.details,
@@ -771,12 +788,6 @@ export function CourseBuilderStudio() {
     members: tabCompletion.members,
     publish: tabCompletion.review,
   };
-  const completedStageCount = builderStages.filter(
-    (stage) => stageCompletion[stage.id],
-  ).length;
-  const builderStepProgress = Math.round(
-    (completedStageCount / builderStages.length) * 100,
-  );
   const activeStageId =
     builderStages.find((stage) => stage.target === activeTab)?.id ??
     builderStages[0].id;
@@ -789,58 +800,6 @@ export function CourseBuilderStudio() {
       ? `${Math.floor(totalDurationMinutes / 60)}h ${totalDurationMinutes % 60}m`
       : `${totalDurationMinutes}m`;
 
-  // Single source of truth for what gets persisted. Manual save, submit, and
-  // autosave all serialize from here so their payloads (and the autosave
-  // change-signature) stay identical and never disagree.
-  const builderDraftPayload = useMemo(
-    () =>
-      buildBuilderDraftPayload({
-        title,
-        summary,
-        category,
-        selectedCategories,
-        learningOutcomes,
-        modules,
-        priceAmount,
-        currency,
-        paymentType,
-        installmentsEnabled,
-        installmentsMax,
-        dripStrategy,
-        dripIntervalDays,
-        freePreviewLessonId,
-        platformFeeBps: course?.platformFeeBps ?? DEFAULT_PLATFORM_FEE_BPS,
-        membersTheme,
-        membersCoverAssetId,
-        membersTitle,
-        membersSubtitle,
-        membersDescription,
-        communityEnabled,
-      }),
-    [
-      title,
-      summary,
-      category,
-      selectedCategories,
-      learningOutcomes,
-      modules,
-      priceAmount,
-      currency,
-      paymentType,
-      installmentsEnabled,
-      installmentsMax,
-      dripStrategy,
-      dripIntervalDays,
-      freePreviewLessonId,
-      course?.platformFeeBps,
-      membersTheme,
-      membersCoverAssetId,
-      membersTitle,
-      membersSubtitle,
-      membersDescription,
-      communityEnabled,
-    ],
-  );
   const builderDraftSignature = useMemo(
     () => JSON.stringify(builderDraftPayload),
     [builderDraftPayload],
@@ -1509,7 +1468,7 @@ export function CourseBuilderStudio() {
           <div className="flex flex-wrap items-center gap-2">
             <StatusChip status={course?.status ?? "draft"} />
             <span className="rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface)]/70 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
-              {readinessProgress}% ready
+              {readiness.percent}% ready
             </span>
             {isEditable ? (
               <BuilderSaveStatus
@@ -1569,21 +1528,25 @@ export function CourseBuilderStudio() {
             <p className="mt-1 truncate text-sm font-semibold leading-snug text-[var(--color-ink-soft)]">
               Next:{" "}
               <span className="text-[var(--color-primary)]">
-                {nextReadinessItem?.label ?? "Course is ready to publish."}
+                {readiness.next?.hint ?? "Course is ready to publish."}
               </span>
             </p>
           </div>
           <div className="course-builder-stepper__meter">
             <div className="flex items-center justify-between gap-4 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-              <span>{completedStageCount} of {builderStages.length} stages ready</span>
+              <span>{readiness.doneCount} of {readiness.total} checks ready</span>
               <span className="text-[var(--color-primary)]">
-                Publish readiness {readinessProgress}%
+                Publish readiness {readiness.percent}%
               </span>
             </div>
+            {/* A barra media estagios (5) e o chip media checks (7): 40% e
+                71% no mesmo cabecalho para o mesmo curso. Agora os tres leem
+                o mesmo numero. */}
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-strong)]">
               <div
+                data-testid="publish-readiness-bar"
                 className="h-full rounded-full bg-[var(--color-primary)] transition-[width] duration-300"
-                style={{ width: `${builderStepProgress}%` }}
+                style={{ width: `${readiness.percent}%` }}
               />
             </div>
           </div>
@@ -2565,14 +2528,23 @@ export function CourseBuilderStudio() {
               </InlineHelp>
             </h4>
             <div className="mt-5 grid gap-3">
-              {readinessItems.map((item) => (
+              {readiness.items.map((item) => (
                 <div
-                  key={item.label}
+                  key={item.id}
                   className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3"
                 >
-                  <p className={`text-sm font-semibold ${item.ready ? "text-[var(--color-primary)]" : "text-[var(--color-accent-fg)]"}`}>
+                  <p className={`text-sm font-semibold ${item.done ? "text-[var(--color-primary)]" : "text-[var(--color-accent-fg)]"}`}>
+                    {item.done ? "✓ " : ""}
                     {item.label}
+                    {item.optional ? (
+                      <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+                        Optional
+                      </span>
+                    ) : null}
                   </p>
+                  {item.done ? null : (
+                    <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">{item.hint}</p>
+                  )}
                 </div>
               ))}
             </div>
@@ -2698,13 +2670,17 @@ export function CourseBuilderStudio() {
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Publish readiness
           </p>
+          {/* Era uma segunda lista, escrita a mao com regra diferente da aba
+              Publish (sem parcelas, outro texto de preco). Mesma fonte agora. */}
+          <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+            {readiness.percent}% ready
+          </p>
           <div className="mt-4 grid gap-2 text-sm text-[var(--color-ink-soft)]">
-            <p>{title.trim() ? "Course title is set." : "Add a course title."}</p>
-            <p>{summary.trim().length >= 20 ? "Summary is ready." : "Add a clearer summary."}</p>
-            <p>{selectedCategories.length > 0 ? "Marketplace category is set." : "Choose at least one marketplace category."}</p>
-            <p>{modules.length > 0 ? "At least one module exists." : "Add at least one module."}</p>
-            <p>{lessonCount > 0 ? "At least one lesson exists." : "Add at least one lesson."}</p>
-            <p>{pricingModelIsReady ? "Enrollment model is ready." : "Set price or mark the course as Free."}</p>
+            {readiness.pending.length === 0 ? (
+              <p>Every publish check passed.</p>
+            ) : (
+              readiness.pending.map((item) => <p key={item.id}>{item.hint}</p>)
+            )}
           </div>
           {error ? (
             <div
@@ -2742,14 +2718,8 @@ export function CourseBuilderStudio() {
               disabled={
                 !canPublish
                 || isSubmitting
-                || !title.trim()
-                || summary.trim().length < 20
-                || selectedCategories.length === 0
-                || modules.length === 0
-                || lessonCount === 0
+                || !readiness.ready
                 || !priceFieldIsValid
-                || !pricingModelIsReady
-                || !installmentsAreValid
               }
               className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
             >
