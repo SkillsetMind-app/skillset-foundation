@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   user: null as { uid: string; roles: string[] } | null,
   listenToAuthState: vi.fn(),
   signOut: vi.fn(),
-  getCurrentSkillsetUser: vi.fn(),
+  getCurrentAuthSession: vi.fn(),
   getUserProfile: vi.fn(),
   acceptUserTerms: vi.fn(),
   identifyUser: vi.fn(),
@@ -20,7 +20,7 @@ vi.mock("next/navigation", () => ({ usePathname: mocks.usePathname }));
 vi.mock("@/lib/auth/supabase-auth", () => ({
   listenToAuthState: mocks.listenToAuthState,
   signOutOfSkillsetMind: mocks.signOut,
-  getCurrentSkillsetUser: mocks.getCurrentSkillsetUser,
+  getCurrentAuthSession: mocks.getCurrentAuthSession,
 }));
 
 vi.mock("@/lib/data/user-profiles", () => ({

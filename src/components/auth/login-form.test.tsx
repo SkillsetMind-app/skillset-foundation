@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   router: { push: vi.fn(), replace: vi.fn() },
   searchParams: new URLSearchParams(),
   signInWithGoogle: vi.fn(),
+  getPendingSecondFactor: vi.fn(),
+  signOut: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -29,9 +31,13 @@ vi.mock("@/lib/auth/supabase-auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/auth/supabase-auth")>()),
   signInWithEmail: vi.fn(),
   signInWithGoogle: mocks.signInWithGoogle,
+  getPendingSecondFactor: mocks.getPendingSecondFactor,
+  signOutOfSkillsetMind: mocks.signOut,
 }));
 
 vi.mock("@/lib/data/user-profiles", () => ({ getUserProfile: vi.fn() }));
+
+import { MfaRequiredError } from "@/lib/auth/supabase-auth";
 
 function clickGoogle() {
   fireEvent.click(
@@ -44,6 +50,7 @@ describe("LoginForm with Google", () => {
     vi.clearAllMocks();
     // The real call navigates the browser away and never resolves.
     mocks.signInWithGoogle.mockReturnValue(new Promise(() => {}));
+    mocks.getPendingSecondFactor.mockResolvedValue(null);
   });
 
   afterEach(cleanup);
@@ -72,5 +79,44 @@ describe("LoginForm with Google", () => {
     expect(mocks.signInWithGoogle).toHaveBeenCalledWith(
       "/loading?next=welcome&path=teacher",
     );
+  });
+});
+
+// A-17: quem fechava a tela do codigo ficava com a sessao aal1 no cookie. O
+// provider agora expoe isso como `mfa_required` e manda para ca — entao esta
+// tela tem que (1) retomar o desafio sozinha, sem pedir a senha de novo, e
+// (2) ter uma saida que encerre a sessao de verdade, nao so esconda a tela.
+describe("LoginForm com segundo fator pendente", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getPendingSecondFactor.mockResolvedValue(
+      new MfaRequiredError("factor-1"),
+    );
+    mocks.signOut.mockResolvedValue(undefined);
+  });
+
+  afterEach(cleanup);
+
+  it("retoma a tela do codigo ao montar quando a sessao aal1 ficou no cookie", async () => {
+    render(<LoginForm />);
+
+    expect(await screen.findByLabelText(/auth\.mfaCodeLabel/)).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: /auth\.continueWithGoogle/ }),
+    ).toBeNull();
+  });
+
+  it("'usar outra conta' sai de verdade antes de voltar ao formulario de senha", async () => {
+    render(<LoginForm />);
+    await screen.findByLabelText(/auth\.mfaCodeLabel/);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /auth\.useDifferentAccount/ }),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: /auth\.continueWithGoogle/ }),
+    ).toBeTruthy();
+    expect(mocks.signOut).toHaveBeenCalledOnce();
   });
 });

@@ -46,7 +46,15 @@ export function LoadingScreen() {
       const returnTo = getSafeReturnTo(searchParams);
       let destination = "/auth?mode=signin";
 
-      if (status === "authenticated" && user) {
+      if (status === "mfa_required") {
+        // Senha aceita, código ainda não. A tela de login retoma o desafio ao
+        // montar; caminho e deep link seguem no query para não se perderem.
+        const params = new URLSearchParams();
+        if (intent) params.set("path", intent);
+        if (returnTo) params.set("returnTo", returnTo);
+        const query = params.toString();
+        destination = query ? `/login?${query}` : "/login";
+      } else if (status === "authenticated" && user) {
         const profile = await getUserProfile(user.uid);
 
         if (next === "welcome" && !profile?.onboardingCompleted) {

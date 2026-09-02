@@ -45,6 +45,15 @@ function buildClient() {
 
   const client = {
     auth: {
+      mfa: {
+        // Conta sem segundo fator: o Supabase responde aal1/aal1 e o listener
+        // segue para o perfil. O portão em si é provado em
+        // second-factor-gate.test.tsx.
+        getAuthenticatorAssuranceLevel: async () => ({
+          data: { currentLevel: "aal1", nextLevel: "aal1" },
+          error: null,
+        }),
+      },
       onAuthStateChange: (callback: StateHandler) => {
         handler = callback;
         return {

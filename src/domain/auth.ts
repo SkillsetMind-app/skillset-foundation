@@ -1,6 +1,16 @@
 import type { Role } from "@/lib/permissions";
 
-export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
+export type AuthStatus =
+  | "loading"
+  | "authenticated"
+  | "unauthenticated"
+  /**
+   * Há sessão (aal1), mas a conta tem segundo fator verificado e o código
+   * ainda não foi apresentado. Para o app é o mesmo que deslogado: `user` vem
+   * nulo e nenhuma superfície protegida abre. Só a tela do código de 6 dígitos
+   * sabe sair deste estado.
+   */
+  | "mfa_required";
 
 export type SkillsetUser = {
   uid: string;

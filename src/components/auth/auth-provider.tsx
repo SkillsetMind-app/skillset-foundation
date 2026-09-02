@@ -18,7 +18,7 @@ import {
   getUserProfile,
 } from "@/lib/data/user-profiles";
 import {
-  getCurrentSkillsetUser,
+  getCurrentAuthSession,
   listenToAuthState,
   signOutOfSkillsetMind,
 } from "@/lib/auth/supabase-auth";
@@ -96,14 +96,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function refreshUser() {
     // getUser() hits the server, so email_confirmed_at/roles reflect the latest
-    // state (the Supabase equivalent of Firebase's currentUser.reload()).
-    const user = await getCurrentSkillsetUser();
-
-    setSession(
-      user
-        ? { status: "authenticated", user }
-        : { status: "unauthenticated", user: null },
-    );
+    // state (the Supabase equivalent of Firebase's currentUser.reload()). Passa
+    // pelo mesmo portão de segundo fator do listener: montar a sessão aqui à
+    // mão era um caminho paralelo que voltava a marcar aal1 como logado.
+    setSession(await getCurrentAuthSession());
   }
 
   const isRealAdmin = session.user?.roles?.includes("admin") ?? false;

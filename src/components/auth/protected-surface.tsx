@@ -28,7 +28,7 @@ export function ProtectedSurface({ permissions, children }: ProtectedSurfaceProp
     );
   }
 
-  if (!user) {
+  if (status === "mfa_required" || !user) {
     // Preserve the deep link (path + query) through the sign-in wall so a
     // shared course/workspace URL lands back where the visitor was headed
     // instead of dying on the role dashboard. login-form validates it.
@@ -46,6 +46,20 @@ export function ProtectedSurface({ permissions, children }: ProtectedSurfaceProp
     const loginHref = pathname
       ? `/login?returnTo=${encodeURIComponent(destination)}`
       : "/login";
+
+    if (status === "mfa_required") {
+      // A senha passou, o código não: sessão aal1 de conta com segundo fator.
+      // Nunca é conteúdo. A tela de login retoma o desafio ao montar e volta
+      // para cá pelo returnTo — sem este ramo o TOTP era decorativo (A-17).
+      return (
+        <AccessPanel
+          eyebrow={t("auth.guard.signInEyebrow")}
+          title={t("auth.mfaTitle")}
+          description={t("auth.mfaSubtitle")}
+          cta={{ href: loginHref, label: t("auth.verify") }}
+        />
+      );
+    }
 
     return (
       <AccessPanel

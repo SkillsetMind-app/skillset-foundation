@@ -25,7 +25,7 @@ vi.mock("next/navigation", () => ({ usePathname: () => mocks.pathname }));
 vi.mock("@/lib/auth/supabase-auth", () => ({
   listenToAuthState: mocks.listenToAuthState,
   signOutOfSkillsetMind: vi.fn(),
-  getCurrentSkillsetUser: vi.fn(),
+  getCurrentAuthSession: vi.fn(),
 }));
 
 vi.mock("@/lib/data/user-profiles", () => ({
