@@ -4,11 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
-  Award,
-  Bookmark,
-  BookOpen,
   Clock,
-  Download,
   FileText,
   LockKeyhole,
   MessageCircle,
@@ -17,6 +13,7 @@ import {
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
+import { ClassroomTabs, type ClassroomTabItem } from "@/components/learn/classroom-tabs";
 import { CourseCommunityFeed } from "@/components/learn/course-community-feed";
 import { CourseMessagesPanel } from "@/components/learn/course-messages-panel";
 import { CoursePlaylist } from "@/components/learn/course-playlist";
@@ -54,6 +51,7 @@ import {
   getCourseProgressPercent,
   getNextCourseLesson,
 } from "@/domain/lesson-progress";
+import { classroomBasePath, type ClassroomTab } from "@/domain/classroom-tabs";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import { resolveLessonVideoSource } from "@/domain/teacher-course";
 import { subscribeToCourseEvents } from "@/lib/data/course-events";
@@ -87,6 +85,10 @@ type EnrolledCourseWorkspaceProps = {
   /** The shell is running under a teacher's own brand: hide every link that
    *  leads back into our platform (dashboard, public course page, credentials). */
   whitelabel?: boolean;
+  /** Qual aba da sala esta aberta. Vem da rota: /learn/courses/<curso> e a
+   *  aula; /learn/courses/<curso>/<aba> e uma das outras. Antes tudo morava
+   *  na mesma rolagem, sem endereco. */
+  tab?: ClassroomTab;
 };
 
 export function EnrolledCourseWorkspace({
@@ -95,6 +97,7 @@ export function EnrolledCourseWorkspace({
   previewExitHref,
   previewMode = false,
   whitelabel = false,
+  tab = "lesson",
 }: EnrolledCourseWorkspaceProps) {
   const { user } = useAuth();
   const searchParams = useSearchParams();
@@ -122,6 +125,9 @@ export function EnrolledCourseWorkspace({
   // mesma aula. O parâmetro é lido na montagem e reescrito a cada seleção.
   const router = useRouter();
   const pathname = usePathname() ?? "";
+  // "/learn/courses/<curso>" — sem a aba. Trocar de aula a partir de uma aba
+  // (Community, Materials...) leva de volta a aula, nao grava ?lesson= na aba.
+  const basePath = classroomBasePath(pathname, tab);
   const lessonParam = searchParams?.get("lesson") ?? null;
   // A escolha guarda o parâmetro que estava no endereço quando foi feita. A
   // escolha vale enquanto o endereço for aquele (o router ainda não gravou) ou
@@ -148,7 +154,7 @@ export function EnrolledCourseWorkspace({
 
     const params = new URLSearchParams(searchParams?.toString() ?? "");
     params.set("lesson", lessonId);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    router.replace(`${basePath}?${params.toString()}`, { scroll: false });
 
     window.requestAnimationFrame(() => {
       document
@@ -551,7 +557,6 @@ export function EnrolledCourseWorkspace({
   // only if that ever confuses someone.
   const moduleCoverUrlById = new Map<string, string>();
   const totalLessonCount = allLessons.length;
-  const completedLessonCount = completedLessonIds.length;
   const selectedLessonNumber = selectedLesson
     ? allLessons.findIndex((lesson) => lesson.id === selectedLesson.id) + 1
     : 0;
@@ -589,10 +594,6 @@ export function EnrolledCourseWorkspace({
       }
     }
   }
-  const selectedLessonFileCount = selectedLesson
-    ? assetCountByLessonId.get(selectedLesson.id) ?? 0
-    : 0;
-
   async function toggleLessonCompletion(lessonId: string, completed: boolean) {
     if (previewMode) {
       setError("Preview mode is read-only. Student progress is not saved here.");
@@ -708,11 +709,30 @@ export function EnrolledCourseWorkspace({
   }
 
   // A capa é a página inicial do curso — primeira visita (sem aula no endereço
-  // e sem progresso) ou pré-visualização do professor. Em toda aula, um
-  // cabeçalho curto: voltar, título, progresso. Antes a capa inteira (imagem,
-  // descrição, botão) empurrava o vídeo para baixo em TODA aula.
+  // e sem progresso), pré-visualização do professor, ou a aba "About". Em toda
+  // aula, um cabeçalho curto: voltar, título, progresso. Antes a capa inteira
+  // (imagem, descrição, botão) empurrava o vídeo para baixo em TODA aula.
   const isCourseHome =
-    previewMode || (!lessonParam && completedLessonIds.length === 0);
+    previewMode
+    || tab === "about"
+    || (!lessonParam && completedLessonIds.length === 0);
+
+  // As abas que este curso tem. Materiais só quando há arquivos de curso
+  // (cursos publicados por professor); lives, comunidade e mensagens não
+  // existem na pré-visualização — e comunidade só se o professor ligou.
+  const classroomTabs: ClassroomTabItem[] = [
+    { id: "lesson", label: "Lesson" },
+    ...(enableFirestoreAssets
+      ? [{ id: "materials" as const, label: "Materials", count: courseLevelAssets.length }]
+      : []),
+    ...(previewMode ? [] : [{ id: "lives" as const, label: "Lives" }]),
+    ...(course.communityEnabled && !previewMode
+      ? [{ id: "community" as const, label: "Community" }]
+      : []),
+    ...(previewMode ? [] : [{ id: "messages" as const, label: "Messages" }]),
+    { id: "review", label: "Review" },
+    { id: "about", label: "About" },
+  ];
 
   return (
     <div
@@ -762,84 +782,22 @@ export function EnrolledCourseWorkspace({
         </section>
       ) : null}
 
-      {/* V2-style lesson tools: compact utility buttons, course facts, and the
-          current lesson completion action without adding fake media controls. */}
-      <section className="member-classroom-actions fine-rule">
-        <span className="member-classroom-actions__label">Lesson tools</span>
-        <div className="member-classroom-actions__summary">
-          <span className="member-meta-chip">
-            <BookOpen size={14} aria-hidden />
-            {course.modules.length} module{course.modules.length === 1 ? "" : "s"}
-          </span>
-          <span className="member-meta-chip">
-            <PlayCircle size={14} aria-hidden />
-            {totalLessonCount} lesson{totalLessonCount === 1 ? "" : "s"}
-          </span>
-          <span className="member-meta-chip">
-            <Clock size={14} aria-hidden />
-            {course.durationLabel}
-          </span>
-          <span className="member-meta-chip">
-            {completedLessonCount} of {totalLessonCount} complete
-          </span>
-        </div>
-        <div className="member-classroom-actions__tools">
-          <button
-            type="button"
-            onClick={() =>
-              document
-                .getElementById("member-lesson-player")
-                ?.scrollIntoView({ behavior: "smooth", block: "start" })
-            }
-            className="button-outline member-tool-button"
-          >
-            <Bookmark size={14} aria-hidden />
-            Current lesson
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              document
-                .getElementById("member-lesson-content")
-                ?.scrollIntoView({ behavior: "smooth", block: "start" })
-            }
-            disabled={!selectedLessonFileCount}
-            className="button-outline member-tool-button disabled:opacity-60"
-          >
-            <Download size={14} aria-hidden />
-            Resources {selectedLessonFileCount}
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              document
-                .getElementById("member-lesson-discussion")
-                ?.scrollIntoView({ behavior: "smooth", block: "start" })
-            }
-            className="button-outline member-tool-button"
-          >
-            <MessageCircle size={14} aria-hidden />
-            Discussion
-          </button>
-          {/* A second "Mark complete" for the SAME lesson used to sit here.
-              LessonContentPanel already renders one at the end of the lesson
-              body — both on screen at once, both firing toggleLessonCompletion
-              on selectedLesson. Every other button in this strip only scrolls
-              somewhere, so the state-changing one was the odd one out, and the
-              end-of-lesson spot is where students look for it. Kept that one:
-              it also has the richer copy ("Preview only" / "Lesson locked"). */}
-          {progressPercent === 100 && !whitelabel ? (
-            <Link
-              href="/learn/credentials"
-              className="button-accent member-tool-button"
-            >
-              <Award size={16} aria-hidden />
-              Get certificate
-            </Link>
-          ) : null}
-        </div>
-      </section>
+      {/* A faixa "Lesson tools" morava aqui: chips com números do curso e três
+          botões ("Current lesson", "Resources", "Discussion") que só ROLAVAM a
+          página — pareciam navegação e não levavam a lugar nenhum, e não havia
+          como voltar de onde rolaram. Virou a barra de abas: cada uma é um
+          endereço. */}
+      <ClassroomTabs
+        basePath={basePath}
+        active={tab}
+        lessonId={selectedLesson?.id ?? null}
+        tabs={classroomTabs}
+        certificateHref={
+          progressPercent === 100 && !whitelabel ? "/learn/credentials" : null
+        }
+      />
 
+      {tab === "lesson" ? (
       <div className="member-classroom-layout">
         <section id="member-lesson-player" className="member-classroom-player">
         {error ? (
@@ -966,8 +924,12 @@ export function EnrolledCourseWorkspace({
           ) : null}
         </aside>
       </div>
+      ) : null}
 
-      {enableFirestoreAssets ? (
+      {/* As outras abas. Antes TUDO isto vinha depois do currículo, na mesma
+          rolagem (4 a 6 telas de altura), sem endereço. Agora só a aba aberta
+          renderiza — e ela tem um caminho próprio. */}
+      {tab === "materials" && enableFirestoreAssets ? (
         <CourseAssetResourceList
           assets={courseLevelAssets}
           isLoading={Boolean(
@@ -977,19 +939,21 @@ export function EnrolledCourseWorkspace({
         />
       ) : null}
 
-      {!previewMode ? <CourseEventsAgenda courseId={course.id} /> : null}
+      {tab === "lives" && !previewMode ? <CourseEventsAgenda courseId={course.id} /> : null}
 
-      {course.communityEnabled && !previewMode ? (
+      {tab === "community" && course.communityEnabled && !previewMode ? (
         <CourseCommunitySection course={course} />
       ) : null}
 
-      {!previewMode ? <CourseMessagesPanel courseId={course.id} /> : null}
+      {tab === "messages" && !previewMode ? <CourseMessagesPanel courseId={course.id} /> : null}
 
-      <CourseReviewPanel
-        courseId={course.id}
-        progressPercent={progressPercent}
-        previewMode={previewMode}
-      />
+      {tab === "review" ? (
+        <CourseReviewPanel
+          courseId={course.id}
+          progressPercent={progressPercent}
+          previewMode={previewMode}
+        />
+      ) : null}
 
       {lessonListOpen ? (
         <LessonListOverlay

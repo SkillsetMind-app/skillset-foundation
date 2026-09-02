@@ -80,13 +80,17 @@ export function createEnrollmentCommunityCards(
       courseTitle: enrollment.courseTitle,
       description:
         "A course-linked space for teacher announcements, learner questions, discussion, and shared resources.",
-      // Demo/catalog courses (manual_demo) have no teacher course row, so
-      // they must use the slug-based community route; teacher-published courses
-      // (payment / free_course / admin) resolve via the creator route by id.
-      href:
+      // A comunidade e uma ABA da sala de aula, com endereco proprio
+      // (/learn/courses/<curso>/community). Antes havia duas caras para o
+      // mesmo feed: dentro da aula, no tema do curso, e num hub separado com
+      // manchete grande — e nenhuma voltava para a aula. Demo/catalogo
+      // (manual_demo) usa o slug; curso publicado por professor usa o id (a
+      // rota da sala aceita os dois).
+      href: `/learn/courses/${
         enrollment.source === "manual_demo"
-          ? `/learn/community/${enrollment.courseSlug}`
-          : `/learn/community/creator?courseId=${enrollment.courseId}`,
+          ? enrollment.courseSlug
+          : enrollment.courseId
+      }/community`,
       name: `${enrollment.courseTitle} community`,
       visibility: "enrolled only",
     }));

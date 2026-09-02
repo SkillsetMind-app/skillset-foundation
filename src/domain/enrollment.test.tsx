@@ -121,7 +121,7 @@ describe("enrollment helpers", () => {
         courseTitle: "Leadership Development",
         description:
           "A course-linked space for teacher announcements, learner questions, discussion, and shared resources.",
-        href: "/learn/community/creator?courseId=course-1",
+        href: "/learn/courses/course-1/community",
         name: "Leadership Development community",
         visibility: "enrolled only",
       },
@@ -131,7 +131,7 @@ describe("enrollment helpers", () => {
         courseTitle: "Applied Behavior Coaching",
         description:
           "A course-linked space for teacher announcements, learner questions, discussion, and shared resources.",
-        href: "/learn/community/applied-behavior-coaching",
+        href: "/learn/courses/applied-behavior-coaching/community",
         name: "Applied Behavior Coaching community",
         visibility: "enrolled only",
       },

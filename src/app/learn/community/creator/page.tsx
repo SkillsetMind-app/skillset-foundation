@@ -1,29 +1,21 @@
-import { Suspense } from "react";
+import { redirect } from "next/navigation";
 
-import { ProtectedSurface } from "@/components/auth/protected-surface";
-import { CreatorCourseCommunity } from "@/components/learn/creator-course-community";
-import { PlatformShell } from "@/components/platform/platform-shell";
+// /learn/community/creator?courseId=<id> era o hub de comunidade dos cursos
+// publicados por professor — a segunda cara do mesmo feed que a sala de aula
+// mostra. Agora a comunidade e a aba "Community" da sala; este endereco so
+// encaminha (links antigos do sino e do painel continuam valendo). Sem
+// courseId nao ha para onde ir: volta a lista de comunidades.
+export default async function LearnCreatorCommunityPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ courseId?: string | string[] }>;
+}) {
+  const { courseId } = await searchParams;
+  const id = Array.isArray(courseId) ? courseId[0] : courseId;
 
-export default function LearnCreatorCommunityPage() {
-  return (
-    <ProtectedSurface permissions={["community.read"]}>
-      <PlatformShell
-        eyebrow="Creator course community"
-        title="A private discussion space for teacher-published courses."
-        description="Connect with other students in this course's private community space."
-      >
-        <Suspense
-          fallback={
-            <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-              <p className="text-sm text-[var(--color-ink-soft)]">
-                Loading creator community...
-              </p>
-            </section>
-          }
-        >
-          <CreatorCourseCommunity />
-        </Suspense>
-      </PlatformShell>
-    </ProtectedSurface>
-  );
+  if (!id) {
+    redirect("/learn/community");
+  }
+
+  redirect(`/learn/courses/${encodeURIComponent(id)}/community`);
 }
