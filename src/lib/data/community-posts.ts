@@ -35,6 +35,10 @@ function rowToPost(row: CommunityPostRow): CommunityPost {
     category: row.category as CommunityPostCategory,
     body: row.body,
     pinned: row.pinned ?? false,
+    title: row.title ?? null,
+    lessonId: row.lesson_id ?? null,
+    lessonTitle: row.lesson_title ?? null,
+    acceptedCommentId: row.accepted_comment_id ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -94,6 +98,11 @@ export async function createCommunityPost(input: {
   category: CommunityPostCategory;
   body: string;
   user: SkillsetUser;
+  /** A pergunta em uma linha (question). Compartilhamentos nao tem titulo. */
+  title?: string | null;
+  /** A aula de onde a pessoa perguntou ("from lesson 5"). */
+  lessonId?: string | null;
+  lessonTitle?: string | null;
 }) {
   const supabase = getSupabaseBrowserClient();
   const timestamp = nowIso();
@@ -109,6 +118,9 @@ export async function createCommunityPost(input: {
     author_role: input.user.roles[0] ?? "student",
     category: input.category,
     body: input.body.trim(),
+    title: input.title?.trim() || null,
+    lesson_id: input.lessonId ?? null,
+    lesson_title: input.lessonTitle?.trim() || null,
     created_at: timestamp,
     updated_at: timestamp,
   });
@@ -175,6 +187,26 @@ export async function setCommunityPostPinned(postId: string, pinned: boolean) {
   const { error } = await supabase
     .from("community_posts")
     .update({ pinned, updated_at: nowIso() })
+    .eq("id", postId);
+
+  if (error) {
+    throw error;
+  }
+}
+
+// "Mark as the answer": a pergunta ganha o ✓ e a resposta sobe para dentro do
+// cartao. Quem pode: o autor da pergunta ou o dono do curso (policies de
+// UPDATE); o banco recusa um comentario que nao seja deste post (trigger).
+// null desfaz.
+export async function setCommunityPostAcceptedAnswer(
+  postId: string,
+  commentId: string | null,
+) {
+  const supabase = getSupabaseBrowserClient();
+
+  const { error } = await supabase
+    .from("community_posts")
+    .update({ accepted_comment_id: commentId, updated_at: nowIso() })
     .eq("id", postId);
 
   if (error) {
@@ -250,6 +282,57 @@ export function subscribeToCommunityComments(
         schema: "public",
         table: "community_comments",
         filter: `post_id=eq.${postId}`,
+      },
+      () => {
+        void load();
+      },
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}
+
+// Todos os comentarios de um curso, numa inscricao so. O feed precisa, para
+// CADA cartao, de "View N replies" e da primeira resposta dentro do cartao —
+// uma inscricao por post (a funcao acima) viraria N canais abertos por tela.
+// A caixa do professor tambem le daqui (quem ja respondeu o que).
+export function subscribeToCourseCommunityComments(
+  courseSlug: string,
+  callback: (comments: CommunityComment[]) => void,
+  onError: (error: Error) => void,
+  maxComments = 2000,
+): () => void {
+  const supabase = getSupabaseBrowserClient();
+
+  const load = async () => {
+    const { data, error } = await supabase
+      .from("community_comments")
+      .select("*")
+      .eq("course_slug", courseSlug)
+      .order("created_at", { ascending: true })
+      .limit(maxComments);
+
+    if (error) {
+      onError(error instanceof Error ? error : new Error(String(error)));
+      return;
+    }
+
+    callback((data ?? []).map(rowToComment));
+  };
+
+  void load();
+
+  const channel = supabase
+    .channel(`community_comments:course:${courseSlug}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "community_comments",
+        filter: `course_slug=eq.${courseSlug}`,
       },
       () => {
         void load();

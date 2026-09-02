@@ -16,6 +16,13 @@ export type CommunityPost = {
   // course owner or an admin can toggle this (rules enforce it); the author
   // cannot self-pin. Absent on legacy posts, treated as false.
   pinned?: boolean;
+  /** A pergunta em uma linha (posts do tipo question). Nulo em compartilhamentos. */
+  title?: string | null;
+  /** De qual aula a pergunta saiu ("from lesson 5"). Nulo fora de uma aula. */
+  lessonId?: string | null;
+  lessonTitle?: string | null;
+  /** O comentario marcado como A resposta. Nulo = pergunta em aberto. */
+  acceptedCommentId?: string | null;
   createdAt?: unknown;
   updatedAt?: unknown;
 };

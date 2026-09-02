@@ -378,6 +378,7 @@ export type Database = {
       }
       community_posts: {
         Row: {
+          accepted_comment_id: string | null
           author_id: string
           author_name: string
           author_role: string
@@ -386,10 +387,14 @@ export type Database = {
           course_slug: string
           created_at: string | null
           id: string
+          lesson_id: string | null
+          lesson_title: string | null
           pinned: boolean | null
+          title: string | null
           updated_at: string | null
         }
         Insert: {
+          accepted_comment_id?: string | null
           author_id: string
           author_name: string
           author_role: string
@@ -398,10 +403,14 @@ export type Database = {
           course_slug: string
           created_at?: string | null
           id?: string
+          lesson_id?: string | null
+          lesson_title?: string | null
           pinned?: boolean | null
+          title?: string | null
           updated_at?: string | null
         }
         Update: {
+          accepted_comment_id?: string | null
           author_id?: string
           author_name?: string
           author_role?: string
@@ -410,7 +419,10 @@ export type Database = {
           course_slug?: string
           created_at?: string | null
           id?: string
+          lesson_id?: string | null
+          lesson_title?: string | null
           pinned?: boolean | null
+          title?: string | null
           updated_at?: string | null
         }
         Relationships: []
