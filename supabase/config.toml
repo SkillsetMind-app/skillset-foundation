@@ -28,10 +28,3 @@ port = 54323
 
 [auth]
 enabled = true
-
-# Fixtures dos smoke tests de RLS (supabase/tests/). Explicito em vez de
-# depender do padrao da CLI: o CI e o `db reset` local tem de aplicar o mesmo
-# arquivo, senao os testes falham por falta de dado e nao por regressao.
-[db.seed]
-enabled = true
-sql_paths = ["./seed.sql"]

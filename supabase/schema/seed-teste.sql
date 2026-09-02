@@ -6,9 +6,10 @@
 -- o `\gset` aborta e o teste falha por falta de dado — não por regressão de
 -- policy. Estas linhas são o mínimo que faz os testes medirem o que prometem.
 --
--- Quem aplica: a CLI do Supabase, logo depois das migrations, em
--- `supabase db start` e em `supabase db reset` (ver [db.seed] em config.toml).
--- Isto nunca roda contra produção: só existe em banco local/efêmero.
+-- Quem aplica: scripts/build-test-db.sh, no fim, depois do baseline e das
+-- migrations. Mora aqui e nao em supabase/seed.sql de proposito: no caminho
+-- padrao da CLI ele seria aplicado por `supabase db start` antes de existir
+-- tabela, e falharia. Isto nunca roda contra producao: so em banco descartavel.
 
 -- Um único uuid, usado como auth.users.id, public.users.uid e
 -- enrollments.user_id — os testes derivam um do outro e precisam casar.

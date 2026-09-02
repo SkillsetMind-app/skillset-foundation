@@ -48,8 +48,8 @@ jobs:
   # que aprova por omissão é pior que portão nenhum.
   #
   # A dependência do secret foi removida, não remendada. O job levanta um
-  # Postgres descartável no próprio runner, aplica as migrations do repositório
-  # e semeia supabase/seed.sql. Consequências:
+  # Postgres descartável no próprio runner e monta nele o esquema do
+  # repositório (scripts/build-test-db.sh). Consequências:
   #
   #   - não há credencial para faltar, então não existe caminho que passe verde
   #     sem rodar: se o banco não sobe, se o seed não aplica ou se um teste
@@ -75,15 +75,24 @@ jobs:
         with:
           version: latest
 
-      # Cria o banco, aplica supabase/migrations/ na ordem e roda
-      # supabase/seed.sql ([db.seed] em supabase/config.toml).
-      - name: Sobe o Postgres efêmero e aplica migrations + seed
-        run: supabase db start
+      # A CLI serve só para levantar um Postgres com o schema auth, os papéis
+      # (anon/authenticated/service_role) e a versão que produção usa. O esquema
+      # da aplicação NÃO vem daqui: `supabase db start` aplicaria
+      # supabase/migrations/, que não replica do zero — a segunda migration
+      # altera uma policy de public.course_assets, tabela que só nasce no
+      # baseline de 2026-07-15. Por isso o diretório sai do caminho e volta logo
+      # depois. O porquê está inteiro em scripts/build-test-db.sh.
+      - name: Sobe um Postgres do Supabase, vazio
+        run: |
+          set -euo pipefail
+          mv supabase/migrations supabase/.migrations-historico
+          mkdir supabase/migrations
+          supabase db start
+          rmdir supabase/migrations
+          mv supabase/.migrations-historico supabase/migrations
 
-      # A URL sai da própria CLI (banco local, porta dela). Se vier vazia o
-      # passo para aqui, em vez de deixar o runner decidir sozinho o que fazer
-      # sem banco.
-      - name: RLS smoke tests (supabase/tests)
+      # baseline replayável de 2026-07-21 + as 46 migrations posteriores + seed.
+      - name: Aplica o esquema do repositório
         run: |
           set -euo pipefail
           eval "$(supabase status -o env | grep '^DB_URL=')"
@@ -91,4 +100,8 @@ jobs:
             echo "::error title=Banco efêmero não subiu::supabase status não devolveu DB_URL; os smoke tests de RLS não têm onde rodar."
             exit 1
           fi
-          DATABASE_URL="$DB_URL" npm run test:db
+          echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
+          DATABASE_URL="$DB_URL" bash scripts/build-test-db.sh
+
+      - name: RLS smoke tests (supabase/tests)
+        run: npm run test:db
