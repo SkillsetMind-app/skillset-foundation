@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CreateCourseStart } from "@/components/teacher/create-course-start";
@@ -40,7 +40,6 @@ describe("CreateCourseStart", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Subscription/i }));
     fireEvent.click(screen.getByRole("button", { name: interval }));
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
     fireEvent.change(screen.getByLabelText("Product title"), {
       target: { value: "Clinical performance foundations" },
     });
@@ -67,7 +66,6 @@ describe("CreateCourseStart", () => {
     render(<CreateCourseStart ownerId="teacher-1" />);
 
     fireEvent.click(screen.getByRole("button", { name: /Free program/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
     fireEvent.change(screen.getByLabelText("Product title"), {
       target: { value: "Open clinical toolkit" },
     });
@@ -89,7 +87,6 @@ describe("CreateCourseStart", () => {
     render(<CreateCourseStart ownerId="teacher-1" />);
 
     fireEvent.click(screen.getByRole("button", { name: /Community/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
     fireEvent.change(screen.getByLabelText("Product title"), {
       target: { value: "Clinical supervision community" },
     });
@@ -119,7 +116,6 @@ describe("CreateCourseStart", () => {
       "aria-pressed",
       "true"
     );
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
     fireEvent.change(screen.getByLabelText("Product title"), {
       target: { value: "Live clinical supervision intensive" },
     });
@@ -144,7 +140,6 @@ describe("CreateCourseStart", () => {
     render(<CreateCourseStart ownerId="teacher-1" />);
 
     fireEvent.click(screen.getByRole("button", { name: /Guided program/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
     fireEvent.change(screen.getByLabelText("Product title"), {
       target: { value: "Eight-week resilience program" },
     });
@@ -162,7 +157,7 @@ describe("CreateCourseStart", () => {
     expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=pricing");
   });
 
-  it("starts on format selection and keeps categories collapsed", () => {
+  it("keeps categories collapsed until the teacher opens them", () => {
     render(<CreateCourseStart ownerId="teacher-1" initialFormat="subscription" />);
 
     expect(screen.getByRole("button", { name: /Subscription/i })).toHaveAttribute(
@@ -171,16 +166,69 @@ describe("CreateCourseStart", () => {
     );
     expect(screen.queryByRole("group", { name: /Course categories/i })).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
-
-    expect(screen.getByRole("heading", { name: /Add the essential information/i })).toHaveFocus();
-
     const categoryTrigger = screen.getByRole("button", {
       name: /Select up to 5 categories/i,
     });
     expect(categoryTrigger).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(categoryTrigger);
     expect(screen.getByRole("group", { name: /Course categories/i })).toBeInTheDocument();
+  });
+});
+
+describe("CreateCourseStart — uma tela so, cinco estagios", () => {
+  // Criar um produto pedia duas telas (formato -> informacoes). O rail
+  // prometia tres passos, o formulario dizia "passo 1 de 2" e o terceiro
+  // passo nunca acendia. Agora formato, titulo, promessa e categoria ficam no
+  // mesmo formulario, e o rail mostra os cinco estagios do fluxo inteiro,
+  // dizendo onde cada um acontece.
+  it("mostra formato e campos no mesmo formulario, sem contador de passos", () => {
+    render(<CreateCourseStart ownerId="teacher-1" />);
+
+    expect(screen.getByRole("button", { name: /Online course/i })).toBeInTheDocument();
+    expect(screen.getByLabelText("Product title")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Product promise/)).toBeInTheDocument();
+    expect(screen.queryByText(/Step \d of \d/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Continue$/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Back$/i })).toBeNull();
+  });
+
+  it("o rail lista os cinco estagios e diz que os tres ultimos continuam no construtor", () => {
+    render(<CreateCourseStart ownerId="teacher-1" />);
+
+    const rail = screen.getByRole("list", { name: "Product creation progress" });
+    const stages = within(rail).getAllByRole("listitem");
+
+    expect(stages.map((stage) => within(stage).getByText(/^(Format|Basics|Pricing|Lessons|Publish)$/).textContent)).toEqual([
+      "Format",
+      "Basics",
+      "Pricing",
+      "Lessons",
+      "Publish",
+    ]);
+    expect(within(rail).getAllByText(/continues in the builder/i)).toHaveLength(3);
+  });
+
+  it("Format ja nasce feito; Basics acende quando titulo, promessa e categoria estao ok", async () => {
+    render(<CreateCourseStart ownerId="teacher-1" />);
+
+    const rail = screen.getByRole("list", { name: "Product creation progress" });
+    const [format, basics] = within(rail).getAllByRole("listitem");
+
+    expect(format.querySelector("svg")).not.toBeNull();
+    expect(basics.querySelector("svg")).toBeNull();
+    expect(basics).toHaveAttribute("aria-current", "step");
+
+    fireEvent.change(screen.getByLabelText("Product title"), {
+      target: { value: "Clinical performance foundations" },
+    });
+    fireEvent.change(screen.getByLabelText(/Product promise/), {
+      target: { value: "A practical course about clinical performance." },
+    });
+    selectPrimaryCategory();
+
+    await waitFor(() => {
+      expect(basics.querySelector("svg")).not.toBeNull();
+    });
   });
 });
 
@@ -192,7 +240,6 @@ describe("CreateCourseStart — o que falta para continuar", () => {
     render(<CreateCourseStart ownerId="teacher-1" />);
 
     fireEvent.click(screen.getByRole("button", { name: /One-time/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
 
     expect(screen.getByText(/Before you continue:/i)).toBeInTheDocument();
     expect(screen.getByText(/Give the course a title/i)).toBeInTheDocument();
