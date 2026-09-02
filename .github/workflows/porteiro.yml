@@ -1,0 +1,98 @@
+name: Porteiro de PR
+
+# Lê o diff de cada PR e pergunta ao GLM-5: "isto abre alguma porta?".
+# Não substitui o Semgrep (padrão conhecido); pega a lógica errada — a classe
+# de bug que produziu a moeda sem validação e o base sem head.
+#
+# Regras que este arquivo obedece (skillset-ops/protecao-glm/ARQUITETURA.md):
+#   - Job separado dos existentes: o build do `checks` estoura memória de
+#     forma intermitente e não pode esconder o veredito — nem o contrário.
+#   - Repo PÚBLICO: o comentário no PR e o log trazem SÓ O PLACAR. O detalhe
+#     vai para o canal privado (webhook ops-alert do n8n -> Telegram).
+#   - Sem chave => "NÃO ANALISADO" e o check FALHA. Não repetir o `exit 0` que
+#     deixou o check de RLS verde por dois meses sem rodar.
+#   - PR de fork não recebe secret => cai no caso acima. Não usar
+#     pull_request_target com checkout do fork para contornar: é execução de
+#     código não confiável com os secrets do repo na mão.
+#   - Dependabot também não recebe os secrets do repo; um bump de lockfile não
+#     é o que este portão existe para ler, e o `npm audit` já cobre. Fica fora.
+#
+# Modo: variável do repositório PORTEIRO_MODO = avisa (padrão) | barra.
+# Em "barra", achado bloqueante derruba o check. Começa em "avisa" até o
+# analisador passar por teste adversarial (instrução plantada no diff).
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: porteiro-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  porteiro:
+    name: Porteiro de PR (segurança, GLM-5)
+    if: github.event.pull_request.draft == false && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Diff da base até a ponta do PR. Lockfile, snapshots e imagens ficam
+      # fora: não há porta para abrir ali, e é o que mais estoura o teto.
+      - name: Diff do PR
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          git diff --no-color "$BASE...$HEAD" -- . \
+            ':(exclude)package-lock.json' ':(exclude)*.snap' \
+            ':(exclude)*.png' ':(exclude)*.jpg' ':(exclude)*.jpeg' ':(exclude)*.svg' \
+            ':(exclude)*.ico' ':(exclude)*.woff' ':(exclude)*.woff2' \
+            > "$RUNNER_TEMP/pr.diff"
+          echo "diff: $(wc -c < "$RUNNER_TEMP/pr.diff") bytes"
+
+      # continue-on-error: o placar precisa ser publicado mesmo quando o
+      # veredito é "não analisado" ou "bloqueante". O passo final replica a falha.
+      - name: Analisa com o GLM-5
+        id: analisa
+        continue-on-error: true
+        env:
+          GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+          OPS_ALERT_WEBHOOK_URL: ${{ secrets.OPS_ALERT_WEBHOOK_URL }}
+          OPS_ALERT_WEBHOOK_SECRET: ${{ secrets.OPS_ALERT_WEBHOOK_SECRET }}
+          PORTEIRO_MODO: ${{ vars.PORTEIRO_MODO || 'avisa' }}
+          PORTEIRO_MODELO: ${{ vars.PORTEIRO_MODELO || 'glm-5' }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          REPO: ${{ github.repository }}
+        run: python3 scripts/porteiro.py --diff "$RUNNER_TEMP/pr.diff" --placar "$RUNNER_TEMP/placar.md"
+
+      # Um comentário só por PR, atualizado a cada push (--edit-last edita o
+      # último comentário do próprio bot; se não existe, cria).
+      - name: Publica o placar no PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if [ ! -s "$RUNNER_TEMP/placar.md" ]; then
+            printf '### 🚪 Porteiro de PR\n\n❌ **NÃO ANALISADO** — o passo de análise não produziu placar.\n' > "$RUNNER_TEMP/placar.md"
+          fi
+          gh pr comment "$PR" --edit-last --body-file "$RUNNER_TEMP/placar.md" \
+            || gh pr comment "$PR" --body-file "$RUNNER_TEMP/placar.md"
+
+      - name: Veredito
+        if: steps.analisa.outcome != 'success'
+        run: |
+          echo "::error title=Porteiro de PR::veredito negativo — veja o placar no PR (detalhe no canal privado)"
+          exit 1
