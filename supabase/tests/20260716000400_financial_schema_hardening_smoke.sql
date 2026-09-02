@@ -93,6 +93,11 @@ SELECT pg_temp.assert_true(
   'enforce_rate_limit must be service-role-only'
 );
 
+-- is_service_role() lê o claim do JWT, não o papel do Postgres: numa chamada com
+-- a chave de serviço o PostgREST manda os dois. O teste mandava só o papel, então
+-- server_write_only() recusava a escrita e o caminho positivo nunca era
+-- exercido -- ninguém percebeu porque este arquivo nunca tinha sido executado.
+SELECT set_config('request.jwt.claim.role', 'service_role', true);
 SET LOCAL ROLE service_role;
 DO $$
 DECLARE
@@ -146,7 +151,9 @@ BEGIN
 END;
 $$;
 RESET ROLE;
+SELECT set_config('request.jwt.claim.role', '', true);
 
+SELECT set_config('request.jwt.claim.role', 'service_role', true);
 SET LOCAL ROLE service_role;
 DO $$
 DECLARE
@@ -261,6 +268,7 @@ BEGIN
 END;
 $$;
 RESET ROLE;
+SELECT set_config('request.jwt.claim.role', '', true);
 
 SELECT pg_temp.assert_true(
   EXISTS (
@@ -452,6 +460,7 @@ BEGIN
 END;
 $$;
 
+SELECT set_config('request.jwt.claim.role', 'service_role', true);
 SET LOCAL ROLE service_role;
 DO $$
 DECLARE
@@ -520,5 +529,6 @@ BEGIN
 END;
 $$;
 RESET ROLE;
+SELECT set_config('request.jwt.claim.role', '', true);
 
 ROLLBACK;
