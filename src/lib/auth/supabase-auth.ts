@@ -105,6 +105,18 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
     // then hangs on "loading" forever (documented onAuthStateChange gotcha).
     // Defer the profile read to the next tick so it runs outside the lock.
     async function resolveProfile(currentUser: User) {
+      // Sessão aal1 de conta com segundo fator verificado NÃO é login. O cookie
+      // existe desde o signInWithPassword, antes do código — emitir
+      // "authenticated" aqui era o que tornava o TOTP decorativo (A-17): todo
+      // guard do app só olhava `user`. O estado próprio, com user nulo, faz o
+      // app inteiro se comportar como deslogado; só a tela do código sabe sair.
+      if (await isSecondFactorPending(supabase)) {
+        if (seq === eventSeq) {
+          emit({ status: "mfa_required", user: null });
+        }
+        return;
+      }
+
       // Read-only hot path. The on_auth_user_created trigger provisions the row
       // at signup, so this only repairs a MISSING row (defensive).
       let profile = await getUserProfile(currentUser.id);
@@ -140,18 +152,30 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
   };
 }
 
-/** Reads the current session's user + profile without opening a listener. */
-export async function getCurrentSkillsetUser(): Promise<SkillsetUser | null> {
+/**
+ * Snapshot da sessão sem abrir um listener, para o provider re-ler depois de
+ * uma mudança de perfil. Passa pelo mesmo portão de segundo fator do listener:
+ * montar "authenticated" aqui à mão era um caminho paralelo que voltava a
+ * tratar uma sessão aal1 como login.
+ */
+export async function getCurrentAuthSession(): Promise<AuthSession> {
   const supabase = getSupabaseBrowserClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return null;
+    return { status: "unauthenticated", user: null };
   }
 
-  return mapSupabaseUser(user, await getUserProfile(user.id));
+  if (await isSecondFactorPending(supabase)) {
+    return { status: "mfa_required", user: null };
+  }
+
+  return {
+    status: "authenticated",
+    user: mapSupabaseUser(user, await getUserProfile(user.id)),
+  };
 }
 
 export async function signInWithEmail(
@@ -600,26 +624,58 @@ export function isMultiFactorRequiredError(
   );
 }
 
-async function requireSecondFactorIfNeeded(
+/**
+ * Sessão aal1 numa conta que tem fator verificado: o Supabase responde
+ * `nextLevel: "aal2"` com `currentLevel: "aal1"`. Leitura local — decodifica o
+ * JWT guardado e olha os fatores do usuário guardado — sem ida ao servidor.
+ * Quem decide de verdade é o portão do servidor (src/lib/supabase/server.ts);
+ * este é o que impede a interface de abrir.
+ */
+async function isSecondFactorPending(
   supabase: SupabaseClient<Database>,
-): Promise<void> {
+): Promise<boolean> {
   const { data, error } =
     await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
 
   if (error || !data) {
-    return;
+    return false;
   }
 
-  if (data.nextLevel === "aal2" && data.currentLevel !== "aal2") {
-    const { data: factors } = await supabase.auth.mfa.listFactors();
-    const verifiedTotp = factors?.totp?.find(
-      (factor) => factor.status === "verified",
-    );
+  return data.nextLevel === "aal2" && data.currentLevel !== "aal2";
+}
 
-    if (verifiedTotp) {
-      throw new MfaRequiredError(verifiedTotp.id);
-    }
+async function findPendingSecondFactor(
+  supabase: SupabaseClient<Database>,
+): Promise<MfaRequiredError | null> {
+  if (!(await isSecondFactorPending(supabase))) {
+    return null;
   }
+
+  const { data: factors } = await supabase.auth.mfa.listFactors();
+  const verifiedTotp = factors?.totp?.find(
+    (factor) => factor.status === "verified",
+  );
+
+  return verifiedTotp ? new MfaRequiredError(verifiedTotp.id) : null;
+}
+
+async function requireSecondFactorIfNeeded(
+  supabase: SupabaseClient<Database>,
+): Promise<void> {
+  const pending = await findPendingSecondFactor(supabase);
+
+  if (pending) {
+    throw pending;
+  }
+}
+
+/**
+ * A sessão aal1 que ficou no cookie de quem fechou a tela do código. A tela de
+ * login chama isto ao montar para retomar o desafio em vez de pedir a senha de
+ * novo — é a saída do estado `mfa_required`. Null quando não há nada pendente.
+ */
+export async function getPendingSecondFactor(): Promise<MfaRequiredError | null> {
+  return findPendingSecondFactor(getSupabaseBrowserClient());
 }
 
 export async function completeMfaSignIn(

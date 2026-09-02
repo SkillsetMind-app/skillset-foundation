@@ -3,7 +3,7 @@
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { GoogleMark } from "@/components/auth/google-mark";
 import {
@@ -15,10 +15,12 @@ import { isGoogleAuthEnabled } from "@/lib/auth/providers";
 import {
   completeMfaSignIn,
   getAuthErrorMessage,
+  getPendingSecondFactor,
   isMultiFactorRequiredError,
   type MfaRequiredError,
   signInWithEmail,
   signInWithGoogle,
+  signOutOfSkillsetMind,
 } from "@/lib/auth/supabase-auth";
 import {
   getAuthPathIntentFromSearchParams,
@@ -71,6 +73,27 @@ export function LoginForm() {
   // Turnstile token — empty unless the widget is enabled (NEXT_PUBLIC_TURNSTILE_SITE_KEY).
   const [captchaToken, setCaptchaToken] = useState("");
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
+
+  // Sessão aal1 deixada no cookie por quem fechou a tela do código (o provider
+  // a expõe como `mfa_required`): retoma o desafio em vez de pedir a senha de
+  // novo. É a única saída desse estado. Se a leitura falhar, fica o formulário
+  // de senha, que era o caminho de sempre.
+  useEffect(() => {
+    let cancelled = false;
+
+    void getPendingSecondFactor()
+      .then((pending) => {
+        if (!cancelled && pending) {
+          setMfaError(pending);
+          setMfaCode("");
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function finishLogin(uid: string) {
     const profile = await getUserProfile(uid);
@@ -148,6 +171,23 @@ export function LoginForm() {
     }
   }
 
+  async function handleUseDifferentAccount() {
+    setError("");
+    setIsLoading(true);
+    try {
+      // Sair de verdade. A sessão aal1 está no cookie desde a senha; só
+      // esconder a tela do código deixava essa sessão viva para o próximo
+      // acesso.
+      await signOutOfSkillsetMind();
+      setMfaError(null);
+      setMfaCode("");
+    } catch (caughtError) {
+      setError(getAuthErrorMessage(caughtError));
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (mfaError) {
@@ -205,9 +245,7 @@ export function LoginForm() {
           type="button"
           disabled={isLoading}
           onClick={() => {
-            setMfaError(null);
-            setMfaCode("");
-            setError("");
+            void handleUseDifferentAccount();
           }}
           className="text-sm font-semibold text-[var(--color-primary)] disabled:opacity-60"
         >
