@@ -79,7 +79,21 @@ export function notifyOps(alert: OpsAlert): void {
   const send = () =>
     fetch(url, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        // Channel credential, not customer data — it authenticates this
+        // platform to its own relay, so it does not break the "carries no
+        // secrets" promise above.
+        //
+        // Unset means the header is simply absent rather than empty, which is
+        // what lets the sending side ship before the receiving side starts
+        // checking. The two must roll out in that order: a relay that requires
+        // the header before the platform sends it turns every real alert into
+        // a silent rejection, and the channel goes mute with nobody noticing.
+        ...(process.env.OPS_ALERT_WEBHOOK_SECRET
+          ? { "x-ops-secret": process.env.OPS_ALERT_WEBHOOK_SECRET }
+          : {}),
+      },
       body: JSON.stringify({
         source: "skillsetmind",
         event: alert.event,
