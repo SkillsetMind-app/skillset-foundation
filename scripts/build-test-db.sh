@@ -49,6 +49,37 @@ aplica() {
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$1"
 }
 
+# Duas diferenças entre um Postgres do Supabase recém-criado e produção. Elas
+# não são detalhe de setup: sem corrigir, dois smoke tests reprovam sem que haja
+# regressão nenhuma no repositório — e um portão que reprova por motivo errado
+# vira ruído até alguém desligá-lo.
+echo "Ambiente:"
+
+# (1) A imagem local traz default privileges que dão EXECUTE a anon/authenticated
+# em TODA função nova do schema public. Produção não tem isso: lá cada função
+# carrega só o grant que alguma migration escreveu, e é isso que o baseline
+# registra. Sem desligar os defaults, tudo que o baseline cria nasce mais aberto
+# do que em produção — e 20260716000400 reprova em claim_payout_transfer_reversal,
+# que deve ser service-role-only.
+echo "  default privileges de funções em public"
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -c "
+  alter default privileges in schema public
+    revoke execute on functions from anon, authenticated;
+"
+
+# (2) Buckets do Storage nascem pela API, não por migration. O hardening de
+# 20260723000100 é um `update storage.buckets ... where id = 'public-media'`:
+# sem a linha ele é no-op silencioso e o smoke test correspondente reprova. As
+# propriedades (limite de tamanho, mime types) continuam vindo da migration —
+# aqui só existe a linha que ela precisa encontrar.
+echo "  buckets do Storage"
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -c "
+  insert into storage.buckets (id, name, public) values
+    ('public-media',   'public-media',   true),
+    ('course-content', 'course-content', false)
+  on conflict (id) do nothing;
+"
+
 echo "Baseline:"
 aplica "$BASELINE"
 
