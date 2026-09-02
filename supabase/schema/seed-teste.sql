@@ -39,34 +39,30 @@ insert into auth.users (
   '{}'::jsonb
 ) on conflict (id) do nothing;
 
--- O trigger on_auth_user_created já cria a linha correspondente em
--- public.users. O `do update` não é redundante: ele fixa `roles` e
--- `current_plan_id` no valor que os testes procuram, em vez de deixar o
--- resultado depender do que handle_new_user() escolher hoje.
+-- A linha de public.users NÃO é inserida aqui: o trigger on_auth_user_created
+-- chama handle_new_user(), que já a cria com roles '["student"]' — o mesmo
+-- caminho de um cadastro real. Escrever por fora seria pior de duas maneiras:
+-- o trigger users_field_guard_biu recusa mexer em campos server-controlled
+-- (current_plan_id, Stripe, gate de criador), e o seed passaria a testar um
+-- perfil que a aplicação nunca produz.
 --
--- `roles` sem 'admin' e nenhuma linha em custom_domains: é exatamente o perfil
+-- roles sem 'admin' e nenhuma linha em custom_domains: é exatamente o perfil
 -- que 20260731000100 (gate de criador) e 20260901220000 (cota de domínio)
--- pescam com o `limit 1`.
-insert into public.users (
-  uid,
-  email,
-  display_name,
-  username,
-  roles,
-  current_plan_id,
-  creator_verification_status
-) values (
-  '11111111-1111-4111-8111-111111111111',
-  'smoke@ci.local',
-  'Smoke CI',
-  'smoke-ci',
-  '["student"]'::jsonb,
-  'free',
-  'none'
-) on conflict (uid) do update set
-  roles = excluded.roles,
-  current_plan_id = excluded.current_plan_id,
-  creator_verification_status = excluded.creator_verification_status;
+-- pescam com o `limit 1`. current_plan_id fica nulo de propósito — o teste de
+-- cota o define sozinho, com a flag de escrita confiável.
+--
+-- Se esse caminho quebrar, o seed precisa gritar: sem a linha, os smoke tests
+-- falhariam por falta de dado e o motivo real ficaria escondido.
+do $$
+begin
+  if not exists (
+    select 1 from public.users
+    where uid = '11111111-1111-4111-8111-111111111111'
+  ) then
+    raise exception
+      'seed: handle_new_user() nao criou public.users para o usuario de teste';
+  end if;
+end $$;
 
 -- 20260902120000 (segundo fator) matricula este usuário neste curso para provar
 -- que a policy some com a matrícula numa sessão fraca.
