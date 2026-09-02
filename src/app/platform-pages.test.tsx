@@ -114,13 +114,16 @@ vi.mock("@/components/admin/support-ticket-queue", () => ({
 }));
 
 describe("platform shells", () => {
-  it("renders the student empty state", async () => {
+  it("entrega a home do aluno ao painel, sem a manchete do shell", async () => {
     mockAuthState.roles = ["student"];
     render(await LearnPage());
 
+    // O aluno via duas boas-vindas seguidas: a manchete do shell e o
+    // "Welcome back" do painel. Com hideHeader so o painel sauda.
+    expect(screen.getByText("Learn dashboard")).toBeInTheDocument();
     expect(
-      screen.getByText("Your learning, in one place."),
-    ).toBeInTheDocument();
+      screen.queryByText("Your learning, in one place."),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the teacher publishing view", async () => {

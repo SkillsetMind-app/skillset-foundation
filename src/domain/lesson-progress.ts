@@ -85,6 +85,71 @@ export function getNextCourseLessonAfter(
   return entries[lastIndex + 1] ?? null;
 }
 
+export type ResumeCourseLesson = CourseLessonEntry & {
+  moduleNumber: number;
+  lessonNumber: number;
+};
+
+/**
+ * A aula que o painel oferece para retomar. O cartao "Continuar" abria a CAPA
+ * do curso e a pessoa tinha que achar sozinha onde parou. Com `lastLessonId`
+ * (a aula em que ela parou) a resposta e essa aula; sem registro, ou com um id
+ * que nao existe mais no curso, a primeira aula que ela ainda nao concluiu.
+ * Os numeros sao 1-based, para o rotulo "Module N · Lesson M".
+ */
+export function getResumeCourseLesson(
+  course: Course,
+  lastLessonId: string | null,
+): ResumeCourseLesson | null {
+  const entries = getCourseLessonEntries(course);
+  const entry =
+    entries.find((candidate) => candidate.lesson.id === lastLessonId)
+    ?? getNextCourseLessonAfter(course, null);
+
+  if (!entry) {
+    return null;
+  }
+
+  const moduleIndex = course.modules.findIndex(
+    (module) => module.id === entry.moduleId,
+  );
+  const lessonIndex = course.modules[moduleIndex].lessons.findIndex(
+    (lesson) => lesson.id === entry.lesson.id,
+  );
+
+  return { ...entry, moduleNumber: moduleIndex + 1, lessonNumber: lessonIndex + 1 };
+}
+
+/**
+ * Minutos que faltam a partir de uma aula, ela inclusa. `lesson.duration` e um
+ * rotulo livre ("8 min", "Self-paced"): a soma so vale quando TODAS as aulas
+ * restantes trazem um numero de minutos legivel. Com uma ilegivel devolve null
+ * e o painel omite o texto, em vez de mostrar uma soma parcial como se fosse
+ * o total.
+ */
+export function getRemainingMinutesFrom(
+  course: Course,
+  lessonId: string,
+): number | null {
+  const entries = getCourseLessonEntries(course);
+  const start = entries.findIndex((entry) => entry.lesson.id === lessonId);
+
+  if (start < 0) {
+    return null;
+  }
+
+  let total = 0;
+  for (const entry of entries.slice(start)) {
+    const match = /^\s*(\d+)\s*min/i.exec(entry.lesson.duration);
+    if (!match) {
+      return null;
+    }
+    total += Number(match[1]);
+  }
+
+  return total;
+}
+
 export function getLastCompletedCourseLesson(
   course: Course,
   completedLessonIds: readonly string[],

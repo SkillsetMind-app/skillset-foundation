@@ -6165,64 +6165,6 @@ button:hover > .dash-card,
   pointer-events: none;
 }
 
-.learner-home-hero {
-  position: relative;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 82% 22%, rgba(31, 138, 91, 0.12), transparent 15rem),
-    radial-gradient(circle at 14% 0%, rgba(44, 82, 130, 0.13), transparent 17rem),
-    linear-gradient(
-      135deg,
-      var(--color-surface) 0%,
-      var(--color-surface-soft) 58%,
-      var(--color-surface-strong) 100%
-    );
-}
-
-.learner-home-hero::after {
-  content: "";
-  position: absolute;
-  inset: 0 0 0 auto;
-  width: min(26rem, 42%);
-  pointer-events: none;
-  background:
-    linear-gradient(
-      120deg,
-      transparent 0 38%,
-      rgba(26, 54, 93, 0.055) 38% 39%,
-      transparent 39% 100%
-    ),
-    radial-gradient(circle at 72% 55%, rgba(178, 34, 52, 0.07), transparent 10rem);
-}
-
-.learner-continue-card {
-  position: relative;
-  border: 1px solid var(--color-line);
-  border-radius: 18px;
-  background:
-    radial-gradient(circle at 88% 18%, rgba(178, 34, 52, 0.08), transparent 8rem), var(--color-surface);
-  box-shadow: var(--shadow-soft);
-  padding: 1.25rem;
-}
-
-.learner-continue-card__icon {
-  display: grid;
-  width: 2.75rem;
-  height: 2.75rem;
-  place-items: center;
-  border-radius: 14px;
-  background: var(--color-primary);
-  color: #ffffff;
-  box-shadow: var(--shadow-soft);
-}
-
-/* A1-cont-2: the icon tile fills with --color-primary (light blue in dark) → a
-   white glyph drops to 2.14:1 (below the 3:1 graphical-object floor). Use
-   --color-base dark ink (8.8:1), matching .dash-card--accent. Dark-scoped. */
-[data-theme="dark"] .learner-continue-card__icon {
-  color: var(--color-base);
-}
-
 .credential-hero {
   position: relative;
   overflow: hidden;
