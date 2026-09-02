@@ -8,18 +8,20 @@ import {
   Handshake,
   Layers3,
   Megaphone,
+  MoreHorizontal,
   Plus,
   UsersRound,
 } from "lucide-react";
-import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { ListingSearchBar } from "@/components/shared/listing-search-bar";
 import { StatusChip } from "@/components/shared/status-chip";
 import { CreateCourseStart } from "@/components/teacher/create-course-start";
 import type { TeacherCourse, TeacherCourseProductFormat } from "@/domain/teacher-course";
-import { teacherCanDeleteCourse, teacherCanPublishCourse } from "@/domain/teacher-course";
+import { teacherCanDeleteCourse } from "@/domain/teacher-course";
+import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { deleteTeacherCourse, subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 
 type ProductFilter = "all" | "draft" | "in_review" | "published" | "attention";
@@ -31,6 +33,33 @@ const productFilters: Array<{ id: ProductFilter; label: string }> = [
   { id: "published", label: "Live" },
   { id: "attention", label: "Needs attention" },
 ];
+
+const workspaceShortcuts = [
+  {
+    title: "Members & communities",
+    detail: "Customize delivery and learner spaces",
+    href: "/teach/members",
+    icon: UsersRound,
+  },
+  {
+    title: "Online events",
+    detail: "Schedule workshops and live sessions",
+    href: "/teach/events",
+    icon: CalendarDays,
+  },
+  {
+    title: "Marketing workspace",
+    detail: "Pages, media, messages, and promotions",
+    href: "/teach/marketing",
+    icon: Megaphone,
+  },
+  {
+    title: "Coupons",
+    detail: "Create discount codes for your products",
+    href: "/teach/coupons",
+    icon: Handshake,
+  },
+] as const;
 
 function filterMatches(course: TeacherCourse, filter: ProductFilter) {
   if (filter === "all") return true;
@@ -45,6 +74,175 @@ function accessModelLabel(course: TeacherCourse) {
   if (course.paymentType === "subscription_monthly") return "Monthly subscription";
   if (course.paymentType === "subscription_yearly") return "Yearly subscription";
   return "One-time purchase";
+}
+
+function ProductActionsMenu({
+  course,
+  onRequestDelete,
+}: {
+  course: TeacherCourse;
+  onRequestDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const courseTitle = course.title || "Untitled product";
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`More actions for ${courseTitle}`}
+        onClick={() => setOpen((current) => !current)}
+        className="grid min-h-11 min-w-11 place-items-center rounded-[7px] border border-[var(--color-line-strong)] bg-white text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+      >
+        <MoreHorizontal aria-hidden="true" size={19} strokeWidth={2} />
+      </button>
+
+      {open ? (
+        <div
+          role="menu"
+          aria-label={`Actions for ${courseTitle}`}
+          className="absolute right-0 top-[calc(100%+8px)] z-40 w-48 rounded-[8px] border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
+        >
+          <Link
+            href={`/teach/builder?courseId=${encodeURIComponent(course.id)}`}
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="flex min-h-11 items-center rounded-[6px] px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
+          >
+            Edit
+          </Link>
+          <Link
+            href={`/teach/builder/${encodeURIComponent(course.id)}/preview`}
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="flex min-h-11 items-center rounded-[6px] px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
+          >
+            View as student
+          </Link>
+          {teacherCanDeleteCourse(course.status) ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                triggerRef.current?.focus();
+                onRequestDelete();
+              }}
+              className="flex min-h-11 w-full items-center rounded-[6px] border-t border-[var(--color-line)] px-3 text-left text-sm font-semibold text-[var(--color-danger-fg)] hover:bg-[var(--color-danger-soft)]"
+            >
+              Delete
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DeleteCourseDialog({
+  course,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  course: TeacherCourse;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const courseTitle = course.title || "Untitled product";
+  useModalFocus(dialogRef, true);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && !busy) {
+        onCancel();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [busy, onCancel]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] grid place-items-center bg-[rgba(7,9,13,0.55)] p-4"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !busy) {
+          onCancel();
+        }
+      }}
+    >
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Delete ${courseTitle}`}
+        className="modal-panel modal-panel-scroll w-full max-w-md rounded-[16px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
+      >
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-danger-fg)]">
+          Delete product
+        </p>
+        <h2 className="mt-2 text-2xl font-semibold text-[var(--color-primary)]">
+          Delete {courseTitle}?
+        </h2>
+        <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+          This permanently removes the draft and its course content. This action cannot be undone.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-end gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="button-outline px-4 text-sm disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={busy}
+            className="button-danger px-4 text-sm disabled:opacity-60"
+          >
+            {busy ? "Deleting..." : "Confirm delete"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function TeacherCourseStudio({
@@ -92,10 +290,10 @@ export function TeacherCourseStudio({
       },
       () => {
         setError(
-          "We could not load your products. Please refresh or contact SkillsetMind support."
+          "We could not load your products. Please refresh or contact SkillsetMind support.",
         );
         setIsLoadingCourses(false);
-      }
+      },
     );
   }, [user]);
 
@@ -127,6 +325,8 @@ export function TeacherCourseStudio({
     productView === "communities"
       ? "/teach/builder?newCourse=1&format=community"
       : "/teach/builder?newCourse=1&format=course";
+  const confirmingDeleteCourse =
+    courses.find((course) => course.id === confirmingDeleteId) ?? null;
 
   return (
     <div className="grid gap-6">
@@ -145,7 +345,7 @@ export function TeacherCourseStudio({
         </div>
         <Link href={createHref} className="button-solid px-4 text-sm">
           <Plus aria-hidden="true" size={16} strokeWidth={2} />
-          {productView === "communities" ? "New community" : "New product"}
+          New product
         </Link>
       </header>
 
@@ -158,151 +358,67 @@ export function TeacherCourseStudio({
         </p>
       ) : null}
 
-      <nav
-        aria-label="Product workspace shortcuts"
-        className="grid overflow-hidden rounded-[8px] border border-[var(--color-line)] sm:grid-cols-2 xl:grid-cols-4"
-      >
-        {[
-          {
-            title: "Members & communities",
-            detail: "Customize delivery and learner spaces",
-            href: "/teach/members",
-            icon: UsersRound,
-          },
-          {
-            title: "Online events",
-            detail: "Schedule workshops and live sessions",
-            href: "/teach/events",
-            icon: CalendarDays,
-          },
-          {
-            title: "Marketing workspace",
-            detail: "Pages, media, messages, and promotions",
-            href: "/teach/marketing",
-            icon: Megaphone,
-          },
-          {
-            title: "Coupons",
-            detail: "Create discount codes for your products",
-            href: "/teach/coupons",
-            icon: Handshake,
-          },
-        ].map((item) => {
-          const Icon = item.icon;
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="group flex min-h-28 items-start gap-3 border-b border-[var(--color-line)] bg-white p-4 last:border-b-0 hover:bg-[var(--color-surface-soft)] sm:[&:nth-last-child(-n+2)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0"
-            >
-              <span className="grid size-9 shrink-0 place-items-center rounded-[7px] border border-[var(--color-line)] text-[var(--color-primary)]">
-                <Icon aria-hidden="true" size={17} strokeWidth={1.8} />
-              </span>
-              <span className="min-w-0">
-                <strong className="block text-sm text-[var(--color-ink)]">{item.title}</strong>
-                <small className="mt-1 block text-xs leading-5 text-[var(--color-ink-soft)]">
-                  {item.detail}
-                </small>
-                <ArrowRight
-                  aria-hidden="true"
-                  className="mt-2 text-[var(--color-primary)] transition-transform group-hover:translate-x-1"
-                  size={14}
-                  strokeWidth={1.9}
-                />
-              </span>
-            </Link>
-          );
-        })}
-      </nav>
-
       <section aria-labelledby="product-list-title">
-        <div
-          className="mb-5 inline-grid grid-cols-2 rounded-[7px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1"
-          role="radiogroup"
-          aria-label="Product content type"
-        >
-          {(["products", "communities"] as const).map((view) => (
-            <button
-              key={view}
-              type="button"
-              role="radio"
-              aria-checked={productView === view}
-              onClick={() =>
+        <div>
+          <h2 id="product-list-title" className="text-lg font-semibold text-[var(--color-ink)]">
+            {productView === "communities" ? "Community workspace" : "Product workspace"}
+          </h2>
+          <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
+            {isLoadingCourses
+              ? "Loading products..."
+              : productView === "communities"
+                ? `${courses.filter((course) => course.communityEnabled).length} ${
+                    courses.filter((course) => course.communityEnabled).length === 1
+                      ? "community"
+                      : "communities"
+                  }`
+                : `${courses.length} ${courses.length === 1 ? "product" : "products"}`}
+          </p>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-[minmax(220px,1fr)_minmax(150px,auto)_minmax(170px,auto)] md:items-end">
+          <ListingSearchBar
+            value={courseQuery}
+            onChange={setCourseQuery}
+            placeholder={productView === "communities" ? "Search communities..." : "Search products..."}
+            className="max-w-none"
+          />
+          <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
+            Type
+            <select
+              aria-label="Product type"
+              value={productView}
+              onChange={(event) =>
                 router.push(
-                  view === "communities" ? "/teach/builder?view=communities" : "/teach/builder"
+                  event.target.value === "communities"
+                    ? "/teach/builder?view=communities"
+                    : "/teach/builder",
                 )
               }
-              className={`min-h-9 rounded-[5px] px-4 text-sm font-semibold transition-colors ${
-                productView === view
-                  ? "bg-[var(--color-primary)] text-white"
-                  : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
-              }`}
+              className="min-h-11 rounded-[7px] border border-[var(--color-line-strong)] bg-white px-3 text-sm font-semibold normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
             >
-              {view === "products" ? "Products" : "Communities"}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 id="product-list-title" className="text-lg font-semibold text-[var(--color-ink)]">
-              {productView === "communities" ? "Community workspace" : "Product workspace"}
-            </h2>
-            <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-              {isLoadingCourses
-                ? "Loading products..."
-                : productView === "communities"
-                  ? `${courses.filter((course) => course.communityEnabled).length} ${
-                      courses.filter((course) => course.communityEnabled).length === 1
-                        ? "community"
-                        : "communities"
-                    }`
-                  : `${courses.length} ${courses.length === 1 ? "product" : "products"}`}
-            </p>
-          </div>
-          {courses.length > 0 ? (
-            <ListingSearchBar
-              value={courseQuery}
-              onChange={setCourseQuery}
-              placeholder={
-                productView === "communities" ? "Search communities..." : "Search products..."
-              }
-            />
-          ) : null}
-        </div>
-
-        {courses.length > 0 ? (
-          <div
-            className="mt-4 flex gap-1 overflow-x-auto border-b border-[var(--color-line)]"
-            aria-label="Product status filters"
-          >
-            {productFilters.map((filter) => {
-              const count = courses.filter((course) => filterMatches(course, filter.id)).length;
-
-              return (
-                <button
-                  key={filter.id}
-                  type="button"
-                  aria-pressed={statusFilter === filter.id}
-                  onClick={() => setStatusFilter(filter.id)}
-                  className={`min-h-10 shrink-0 border-b-2 px-3 text-sm font-semibold transition-colors ${
-                    statusFilter === filter.id
-                      ? "border-[var(--color-primary)] text-[var(--color-primary)]"
-                      : "border-transparent text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
-                  }`}
-                >
+              <option value="products">Products</option>
+              <option value="communities">Communities</option>
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
+            Status
+            <select
+              aria-label="Product status"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as ProductFilter)}
+              className="min-h-11 rounded-[7px] border border-[var(--color-line-strong)] bg-white px-3 text-sm font-semibold normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
+            >
+              {productFilters.map((filter) => (
+                <option key={filter.id} value={filter.id}>
                   {filter.label}
-                  <span className="ml-1.5 text-xs tabular-nums text-[var(--color-ink-muted)]">
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
-        <div className="mt-2">
+        <div className="mt-5">
           {isLoadingCourses ? (
             <div className="grid gap-0" aria-label="Loading products">
               {[1, 2, 3].map((item) => (
@@ -337,123 +453,148 @@ export function TeacherCourseStudio({
               No products match this search and status filter.
             </p>
           ) : (
-            <div className="divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
-              {visibleCourses.map((course) => (
-                <article
-                  key={course.id}
-                  className="grid gap-4 bg-white px-3 py-4 transition-colors hover:bg-[var(--color-surface-soft)] sm:px-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(150px,0.55fr)_minmax(140px,0.5fr)_auto] lg:items-center"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-[6px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
-                      {course.coverImageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={course.coverImageUrl}
-                          alt=""
-                          className="h-full w-full object-cover"
+            <table
+              aria-label={productView === "communities" ? "Communities" : "Products"}
+              className="w-full border-y border-[var(--color-line)]"
+            >
+              <thead className="hidden border-b border-[var(--color-line)] bg-[var(--color-surface-soft)] lg:table-header-group">
+                <tr>
+                  <th scope="col" className="w-[42%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
+                    Product
+                  </th>
+                  <th scope="col" className="w-[16%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
+                    Status
+                  </th>
+                  <th scope="col" className="w-[18%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
+                    Access
+                  </th>
+                  <th scope="col" className="w-[10%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
+                    Students
+                  </th>
+                  <th scope="col" className="w-[14%] px-4 py-3">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="block divide-y divide-[var(--color-line)] lg:table-row-group">
+                {visibleCourses.map((course) => (
+                  <tr
+                    key={course.id}
+                    className="block bg-white px-3 py-4 transition-colors hover:bg-[var(--color-surface-soft)] sm:px-4 lg:table-row lg:px-0 lg:py-0"
+                  >
+                    <td className="block pb-4 lg:table-cell lg:px-4 lg:py-4">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-[6px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
+                          {course.coverImageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={course.coverImageUrl}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <Layers3 aria-hidden="true" size={19} strokeWidth={1.7} />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
+                            {course.title || "Untitled product"}
+                          </p>
+                          <p className="mt-1 truncate text-xs text-[var(--color-ink-soft)]">
+                            {course.category || "Uncategorized"}
+                          </p>
+                          <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
+                            {course.modules.length} modules · {course.lessonCount} lessons
+                            {course.communityEnabled ? " · Community on" : ""}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="block pb-3 lg:table-cell lg:px-4 lg:py-4">
+                      <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)] lg:hidden">
+                        Status
+                      </p>
+                      <StatusChip status={course.status} />
+                    </td>
+                    <td className="block pb-3 lg:table-cell lg:px-4 lg:py-4">
+                      <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)] lg:hidden">
+                        Access
+                      </p>
+                      <p className="text-xs font-semibold text-[var(--color-ink-soft)]">
+                        {accessModelLabel(course)}
+                      </p>
+                    </td>
+                    <td className="block pb-4 lg:table-cell lg:px-4 lg:py-4">
+                      <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)] lg:hidden">
+                        Students
+                      </p>
+                      <p className="text-sm font-semibold tabular-nums text-[var(--color-ink)]">
+                        {course.enrollmentCount ?? 0}
+                      </p>
+                    </td>
+                    <td className="block lg:table-cell lg:px-4 lg:py-4">
+                      <div className="flex items-center gap-2 lg:justify-end">
+                        <Link
+                          href={`/teach/courses/${encodeURIComponent(course.id)}/manage`}
+                          className="button-solid px-3 text-xs"
+                        >
+                          Open
+                        </Link>
+                        <ProductActionsMenu
+                          course={course}
+                          onRequestDelete={() => setConfirmingDeleteId(course.id)}
                         />
-                      ) : (
-                        <Layers3 aria-hidden="true" size={19} strokeWidth={1.7} />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
-                        {course.title || "Untitled product"}
-                      </p>
-                      <p className="mt-1 truncate text-xs text-[var(--color-ink-soft)]">
-                        {course.category || "Uncategorized"}
-                      </p>
-                      <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
-                        {course.modules.length} modules · {course.lessonCount} lessons
-                        {course.communityEnabled ? " · Community on" : ""}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)] lg:hidden">
-                      Status
-                    </p>
-                    <StatusChip status={course.status} />
-                  </div>
-
-                  <div>
-                    <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)] lg:hidden">
-                      Access model
-                    </p>
-                    <p className="text-xs font-semibold text-[var(--color-ink-soft)]">
-                      {accessModelLabel(course)}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                    <Link
-                      href={`/teach/courses/${encodeURIComponent(course.id)}/manage`}
-                      className="button-solid px-3 text-xs"
-                    >
-                      Manage
-                    </Link>
-                    <Link
-                      href={`/teach/builder?courseId=${encodeURIComponent(course.id)}`}
-                      className="button-outline px-3 text-xs"
-                    >
-                      Edit
-                    </Link>
-                    {teacherCanPublishCourse(course.status) ? (
-                      <Link
-                        href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=review`}
-                        className="button-outline px-3 text-xs"
-                      >
-                        Review & publish
-                      </Link>
-                    ) : null}
-                    {teacherCanDeleteCourse(course.status) ? (
-                      confirmingDeleteId === course.id ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteCourse(course.id)}
-                            disabled={deletingCourseId === course.id}
-                            // button-accent é o dourado da marca — a mesma cor
-                            // do "destaque positivo". Confirmar exclusão tem de
-                            // ler como perigo, não como ação recomendada.
-                            className="inline-flex min-h-9 items-center justify-center rounded-[10px] bg-[var(--color-danger)] px-3 text-xs font-bold text-white hover:opacity-90 disabled:opacity-60"
-                          >
-                            {deletingCourseId === course.id ? "Deleting..." : "Confirm delete"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setConfirmingDeleteId(null)}
-                            disabled={deletingCourseId === course.id}
-                            className="button-outline px-3 text-xs disabled:opacity-60"
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        // Separador antes da ação destrutiva: medido, "Delete"
-                        // ficava a 9px de "Review & publish", com a mesma cor de
-                        // destaque da marca. Dois alvos vizinhos e indistintos,
-                        // um deles irreversível. Agora usa --color-danger e um
-                        // respiro que o tira do grupo das ações comuns.
-                        <span className="ml-2 flex items-center gap-2 border-l border-[var(--color-line)] pl-3">
-                          <button
-                            type="button"
-                            onClick={() => setConfirmingDeleteId(course.id)}
-                            className="min-h-9 px-2 text-xs font-semibold text-[var(--color-danger)] underline-offset-4 hover:underline"
-                          >
-                            Delete
-                          </button>
-                        </span>
-                      )
-                    ) : null}
-                  </div>
-                </article>
-              ))}
-            </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       </section>
+
+      <nav
+        aria-label="Product workspace shortcuts"
+        className="grid overflow-hidden rounded-[8px] border border-[var(--color-line)] sm:grid-cols-2 xl:grid-cols-4"
+      >
+        {workspaceShortcuts.map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="group flex min-h-28 items-start gap-3 border-b border-[var(--color-line)] bg-white p-4 last:border-b-0 hover:bg-[var(--color-surface-soft)] sm:[&:nth-last-child(-n+2)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0"
+            >
+              <span className="grid size-9 shrink-0 place-items-center rounded-[7px] border border-[var(--color-line)] text-[var(--color-primary)]">
+                <Icon aria-hidden="true" size={17} strokeWidth={1.8} />
+              </span>
+              <span className="min-w-0">
+                <strong className="block text-sm text-[var(--color-ink)]">{item.title}</strong>
+                <small className="mt-1 block text-xs leading-5 text-[var(--color-ink-soft)]">
+                  {item.detail}
+                </small>
+                <ArrowRight
+                  aria-hidden="true"
+                  className="mt-2 text-[var(--color-primary)] transition-transform group-hover:translate-x-1"
+                  size={14}
+                  strokeWidth={1.9}
+                />
+              </span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      {confirmingDeleteCourse ? (
+        <DeleteCourseDialog
+          course={confirmingDeleteCourse}
+          busy={deletingCourseId === confirmingDeleteCourse.id}
+          onCancel={() => setConfirmingDeleteId(null)}
+          onConfirm={() => void handleDeleteCourse(confirmingDeleteCourse.id)}
+        />
+      ) : null}
     </div>
   );
 }
