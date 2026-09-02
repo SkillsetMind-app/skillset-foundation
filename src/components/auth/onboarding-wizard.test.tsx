@@ -45,6 +45,7 @@ vi.mock("@/lib/data/user-profiles", () => ({
 describe("boas-vindas: o passo de perfil vem primeiro", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.searchParams = new URLSearchParams();
     mocks.profile = { displayName: "Patrick Simon", phoneNumber: null, onboardingAnswers: {} };
     mocks.getUserProfile.mockImplementation(() => Promise.resolve(mocks.profile));
     mocks.updateOnboardingAnswers.mockResolvedValue(undefined);
@@ -53,7 +54,8 @@ describe("boas-vindas: o passo de perfil vem primeiro", () => {
 
   afterEach(cleanup);
 
-  it("abre pedindo nome (ja preenchido) e telefone; sem telefone nao passa", async () => {
+  it("professor: abre pedindo nome (ja preenchido) e telefone; sem telefone nao passa", async () => {
+    mocks.searchParams = new URLSearchParams("path=teacher");
     render(<OnboardingWizard />);
 
     expect(await screen.findByText("First, tell us who you are.")).toBeInTheDocument();
@@ -67,7 +69,37 @@ describe("boas-vindas: o passo de perfil vem primeiro", () => {
     expect(screen.queryByText("How will you use SkillsetMind first?")).toBeNull();
   });
 
+  it("aluno: o telefone e opcional — vazio passa, e nada e inventado no perfil", async () => {
+    mocks.searchParams = new URLSearchParams("path=student");
+    render(<OnboardingWizard />);
+    await screen.findByText("First, tell us who you are.");
+
+    expect(screen.getByLabelText("Phone (optional)")).toHaveValue("");
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    await waitFor(() =>
+      expect(mocks.updateUserIdentity).toHaveBeenCalledWith("u-1", {
+        displayName: "Patrick Simon",
+        phoneNumber: null,
+      }),
+    );
+    expect(await screen.findByText("How will you use SkillsetMind first?")).toBeInTheDocument();
+  });
+
+  it("aluno que digita um telefone torto nao passa com ele", async () => {
+    mocks.searchParams = new URLSearchParams("path=student");
+    render(<OnboardingWizard />);
+    await screen.findByText("First, tell us who you are.");
+
+    fireEvent.change(screen.getByLabelText("Phone (optional)"), { target: { value: "12" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(await screen.findByText(/Enter a phone number/)).toBeInTheDocument();
+    expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
+  });
+
   it("com nome e telefone: grava no perfil, marca o passo e segue para o proximo", async () => {
+    mocks.searchParams = new URLSearchParams("path=teacher");
     render(<OnboardingWizard />);
     await screen.findByText("First, tell us who you are.");
 
