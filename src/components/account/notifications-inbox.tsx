@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { NotificationRow } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
-import type { AppNotification } from "@/domain/notification";
+import { notificationHref, type AppNotification } from "@/domain/notification";
 import {
   markAllNotificationsAsRead,
   markNotificationAsRead,
@@ -167,7 +167,7 @@ export function NotificationsInbox() {
               <li key={notification.id}>
                 {notification.link ? (
                   <Link
-                    href={notification.link}
+                    href={notificationHref(notification) ?? notification.link}
                     onClick={() => void handleActivate(notification)}
                     className="block transition hover:bg-[var(--color-surface-soft)]"
                   >

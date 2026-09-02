@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { NotificationRow } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import type { AppNotification } from "@/domain/notification";
+import { notificationHref, type AppNotification } from "@/domain/notification";
 import {
   markAllNotificationsAsRead,
   markNotificationAsRead,
@@ -208,7 +208,7 @@ export function NotificationBell() {
                 <li key={notification.id}>
                   {notification.link ? (
                     <Link
-                      href={notification.link}
+                      href={notificationHref(notification) ?? notification.link}
                       onClick={() => {
                         void handleActivate(notification);
                         setOpen(false);
