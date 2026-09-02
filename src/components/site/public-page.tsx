@@ -6,7 +6,8 @@ import { SiteNav } from "@/components/site/site-nav";
 type PublicPageProps = {
   eyebrow: string;
   title: string;
-  description: string;
+  /** Texto corrido; aceita nós para páginas que precisam de um link no meio. */
+  description: ReactNode;
   children: ReactNode;
 };
 
@@ -25,7 +26,9 @@ export function PublicPage({
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               {eyebrow}
             </p>
-            <h1 className="display-title mt-4 text-5xl leading-none text-[var(--color-primary)] sm:text-6xl">
+            {/* .page-title (globals.css): clamp em vez de text-6xl fixo — 60px
+                não cabiam num celular de 360px. */}
+            <h1 className="display-title page-title mt-4 text-[var(--color-primary)]">
               {title}
             </h1>
           </div>

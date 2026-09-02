@@ -42,9 +42,14 @@ import {
 
 type CreatorCourseDetailProps = {
   courseIdOverride?: string;
+  /** A página já renderizou título e resumo no servidor (mesmo padrão de PlatformShell). */
+  hideHeader?: boolean;
 };
 
-export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailProps = {}) {
+export function CreatorCourseDetail({
+  courseIdOverride,
+  hideHeader = false,
+}: CreatorCourseDetailProps = {}) {
   const { status: authStatus, user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -408,17 +413,19 @@ export function CreatorCourseDetail({ courseIdOverride }: CreatorCourseDetailPro
   return (
     <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
       <section>
-        <div className="primary-fill-card rounded-[20px] border border-[var(--color-line)] bg-[var(--color-primary)] p-8 text-white shadow-[var(--shadow-soft)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">
-            From an independent educator
-          </p>
-          <h1 className="display-title mt-4 text-6xl leading-tight">
-            {course.title}
-          </h1>
-          <p className="mt-5 max-w-2xl text-sm leading-7 text-white/78">
-            {course.summary}
-          </p>
-        </div>
+        {hideHeader ? null : (
+          <div className="primary-fill-card rounded-[20px] border border-[var(--color-line)] bg-[var(--color-primary)] p-8 text-white shadow-[var(--shadow-soft)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">
+              From an independent educator
+            </p>
+            <h1 className="display-title page-title mt-4">
+              {course.title}
+            </h1>
+            <p className="mt-5 max-w-2xl text-sm leading-7 text-white/78">
+              {course.summary}
+            </p>
+          </div>
+        )}
 
         {/* The teacher's own sales page, when they built one. Renders nothing
             at all when empty, so a course without one keeps today's layout
