@@ -5490,9 +5490,13 @@ body:has([aria-label="Course categories"])
   opacity: 1;
 }
 
+/* Só o item SELECIONADO tem moldura (.platform-nav-active acima). Os outros
+   ficam limpos — sem borda nem fundo — e só ganham um fundo leve no hover.
+   Antes cada item tinha a sua caixinha, e a barra virava uma pilha de
+   retângulos onde nada se destacava (pedido do Patrick, 02/09). */
 .platform-sidebar .platform-nav-link:not(.platform-nav-active) {
-  border-color: rgba(255, 255, 255, 0.1) !important;
-  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: transparent !important;
+  background: transparent !important;
 }
 
 /* ─── Collapsed rail: ONE square per icon ─────────────────────────────────
