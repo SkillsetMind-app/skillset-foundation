@@ -151,9 +151,15 @@
       "passwordRequirements": "Usa una contraseña que cumpla todos los requisitos.",
       "mfaUseSignIn": "Esta cuenta tiene la verificación en dos pasos activada. Inicia sesión para introducir tu código.",
       "confirmTitle": "Confirma tu correo para continuar",
-      "confirmBody": "Ábrelo para activar tu cuenta y vuelve para iniciar sesión. Puede tardar un minuto — revisa también tu carpeta de spam o promociones.",
+      "confirmBody": "Abre el enlace de ese correo para activar tu cuenta. Justo después completarás tu nombre y teléfono. Puede tardar un minuto — revisa también spam o promociones.",
       "confirmSentTo": "Enviamos un enlace de confirmación a",
-      "confirmSignIn": "Ir a iniciar sesión",
+      "confirmSignIn": "Iniciar sesión",
+      "confirmResend": "Reenviar el enlace",
+      "confirmResending": "Enviando...",
+      "confirmResendIn": "Reenviar en {seconds}s",
+      "confirmResent": "Enviado de nuevo. Dale un minuto.",
+      "confirmChangeEmail": "¿Correo equivocado? Cámbialo",
+      "confirmAlreadyDone": "¿Ya lo confirmaste?",
       "existingAccountSignIn": "Inicia sesión en su lugar"
     },
     "guard": {
