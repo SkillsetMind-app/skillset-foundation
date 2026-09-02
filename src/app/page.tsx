@@ -15,13 +15,17 @@ export const metadata = buildPageMetadata({
   path: "/",
 });
 
-// Single-page landing: header items scroll to these sections. "Pricing"
-// stays a real route (no fabricated pricing section — DECISIONS D7).
+// Single-page landing: header items scroll to these sections, listed in the
+// order the sections appear below so the menu reads as a map of the page.
+// "Pricing" stays a real route (no fabricated pricing section — DECISIONS D7).
+// ponytail: "Capabilities" has no header entry — six links plus the language
+// chip no longer fit a 1024px header; the section still sits between courses
+// and the promise.
 const landingNav = [
   { labelKey: "home.nav.howItWorks", anchorId: "how-it-works" },
-  { labelKey: "home.nav.capabilities", anchorId: "capabilities" },
-  { labelKey: "home.nav.forCreators", anchorId: "for-creators" },
+  { labelKey: "home.nav.courses", anchorId: "courses" },
   { labelKey: "home.nav.promise", anchorId: "promise" },
+  { labelKey: "home.nav.forCreators", anchorId: "for-creators" },
   { labelKey: "home.nav.pricing", href: "/pricing" },
 ] as const;
 

@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
-import { RotatingPortrait } from "@/components/shared/rotating-portrait";
+import { BrandPortrait } from "@/components/shared/brand-portrait";
 import { brand } from "@/data/brand";
 import { getServerTranslation } from "@/lib/i18n/server";
 
@@ -37,14 +37,14 @@ export async function AuthShell({
         {/* Showcase panel — the brand photo on navy with overlaid copy. Faithful
             to the DESIGN V2 .mb-auth-show; hidden under lg so mobile is form-only. */}
         <section className="relative hidden min-h-[600px] overflow-hidden rounded-[16px] lg:flex">
-          {/* The same ten faces the homepage hero cycles, on the same 3s beat
-              and 1.4s crossfade, so arriving here reads as walking further into
-              the same building rather than landing on a different brand.
+          {/* The same face the homepage hero drew for this visit, held still,
+              so arriving here reads as walking further into the same building
+              rather than landing on a different brand.
               ponytail: 75% keeps the subject in frame in this tall narrow panel
               (the hero needs 78% at its narrowest); nudge the x% if a portrait
               ever crops off-centre. */}
-          <RotatingPortrait
-            imageClassName="object-cover object-[75%_center] transition-opacity duration-[1400ms] ease-in-out motion-reduce:transition-none"
+          <BrandPortrait
+            imageClassName="object-cover object-[75%_center]"
             sizes="(min-width: 1024px) 60vw, 0px"
             priority
           />

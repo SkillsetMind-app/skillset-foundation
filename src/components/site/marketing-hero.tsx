@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { RotatingPortrait } from "@/components/shared/rotating-portrait";
+import { BrandPortrait } from "@/components/shared/brand-portrait";
 import { HeroCtas } from "@/components/site/hero-ctas";
 
 export function MarketingHero() {
@@ -12,12 +12,11 @@ export function MarketingHero() {
     <section className="relative -mt-24 flex min-h-[100svh] items-center overflow-hidden bg-[var(--color-primary)] text-white lg:-mt-32">
       <div className="absolute inset-0 bg-gradient-to-br from-[#071523] via-[#102a43] to-[#173a59]" />
 
-      {/* Two full-bleed layers keep the upcoming portrait warm in the browser
-          cache, so each transition starts immediately without loading flashes. */}
+      {/* One still portrait per visit — see BrandPortrait. */}
       <div aria-hidden="true" className="absolute inset-0">
         <div className="hero-portrait-layer absolute inset-0 opacity-65 lg:opacity-100">
-          <RotatingPortrait
-            imageClassName="hero-portrait-image object-cover object-[78%_center] transition-opacity duration-[1400ms] ease-in-out motion-reduce:transition-none sm:object-[74%_center] md:object-[68%_center] lg:object-center"
+          <BrandPortrait
+            imageClassName="hero-portrait-image object-cover object-[78%_center] sm:object-[74%_center] md:object-[68%_center] lg:object-center"
             sizes="100vw"
             priority
           />

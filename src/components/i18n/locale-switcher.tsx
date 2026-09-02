@@ -14,6 +14,8 @@ import {
  *
  * ponytail: a plain button per locale rather than a <select>. Two options do
  * not need a popup, and LOCALES.map() takes a third locale without a rewrite.
+ * The ::before pad stretches each button's hit area to 44px tall while the
+ * chip itself stays compact enough for the header.
  */
 export function LocaleSwitcher() {
   const { locale, setLocale, t } = useTranslation();
@@ -33,7 +35,7 @@ export function LocaleSwitcher() {
             onClick={() => setLocale(code)}
             aria-pressed={active}
             title={LOCALE_LABELS[code]}
-            className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.08em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[var(--color-primary)] ${
+            className={`relative rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.08em] transition-colors before:absolute before:inset-x-0 before:-inset-y-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[var(--color-primary)] ${
               active
                 ? "bg-white text-[var(--color-ink)] shadow-[var(--shadow-soft)]"
                 : "text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"

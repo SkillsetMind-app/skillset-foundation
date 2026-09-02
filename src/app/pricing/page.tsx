@@ -3,7 +3,7 @@ import { Check, ChevronDown, HelpCircle } from "lucide-react";
 
 import { PublicPage } from "@/components/site/public-page";
 import { Tooltip } from "@/components/shared/tooltip";
-import { formatUsd } from "@/data/platform";
+import { formatUsd, formatUsdWhole } from "@/data/platform";
 import {
   activationFeeUsd,
   isActivationFeeConfigured,
@@ -28,41 +28,14 @@ export default function PricingPage() {
     <PublicPage
       eyebrow="Pricing"
       title="Pricing that lowers as you grow."
-      description="Selling is never gated: every plan can publish, take checkout, drip, run a community, and issue certificates. Your plan changes the commission SkillsetMind takes per paid sale, your scale limits, and your branding controls. Stripe's processing fee is passed through to you transparently — never hidden inside the platform percentage. And on every plan the buyer is charged on your own Stripe account: the sale lands in your balance, not ours, with no platform hold and nothing for us to release."
+      description="Every plan can sell. Paid plans lower the commission and raise your limits."
     >
-      {/* Quick decision hint above the cards — answers the question every
-          creator actually asks: 'which plan fits me?'. Break-even numbers
-          come straight from plans.ts so they stay in sync if pricing moves. */}
-      <aside className="mt-8 rounded-[18px] border fine-rule bg-[var(--color-surface-soft)] p-5">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-          Which plan is for me?
-        </p>
-        <div className="mt-3 grid gap-3 text-sm text-[var(--color-ink-soft)] sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <strong className="block text-[var(--color-ink)]">$0 – $380/mo</strong>
-            Stay on Free. No subscription, 10% per sale.
-          </div>
-          <div>
-            <strong className="block text-[var(--color-ink)]">$380 – $3,500/mo</strong>
-            Starter pays for itself. 5% per sale; the $19 fee costs less than the commission you save.
-          </div>
-          <div>
-            <strong className="block text-[var(--color-ink)]">$3,500 – $11,000/mo</strong>
-            Pro becomes cheaper than Starter. 3% per sale.
-          </div>
-          <div>
-            <strong className="block text-[var(--color-ink)]">$11,000/mo+</strong>
-            Plus drops commission to 2%. Worth it past this volume.
-          </div>
-        </div>
-      </aside>
-
       {/* Billing toggle + plan grid. Mirrors the monthly/yearly cycle toggle
           in plans-panel.tsx, but stays server-rendered: a native radio group
           drives the reprice purely with CSS (`group-has-[#billing-yearly:checked]`),
           so both price figures ship pre-rendered and no client JS is needed.
           The page keeps `export const metadata` (server-only) intact. */}
-      <div className="group mt-6">
+      <div className="group mt-8">
         {/* ponytail: CSS-only toggle (peer/has) instead of useState — keeps the
             page a server component so metadata export stays. Real radios keep it
             keyboard-accessible. Upgrade path: extract a client child if the
@@ -70,7 +43,7 @@ export default function PricingPage() {
         <fieldset className="mb-5">
           <legend className="sr-only">Billing cycle</legend>
           <div className="inline-flex w-fit gap-1 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] p-1">
-            <label className="cursor-pointer rounded-[8px] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)] has-[:checked]:bg-[var(--color-primary)] has-[:checked]:text-[var(--color-base)] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-primary)]">
+            <label className="inline-flex min-h-11 cursor-pointer items-center rounded-[8px] px-3 py-1.5 text-[13px] font-semibold text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)] has-[:checked]:bg-[var(--color-primary)] has-[:checked]:text-[var(--color-base)] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-primary)]">
               <input
                 type="radio"
                 name="billing-cycle"
@@ -79,11 +52,8 @@ export default function PricingPage() {
                 className="sr-only"
               />
               Monthly
-              <span className="ml-2 text-[10px] font-medium normal-case opacity-80">
-                Pay each month
-              </span>
             </label>
-            <label className="cursor-pointer rounded-[8px] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)] has-[:checked]:bg-[var(--color-primary)] has-[:checked]:text-[var(--color-base)] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-primary)]">
+            <label className="inline-flex min-h-11 cursor-pointer items-center rounded-[8px] px-3 py-1.5 text-[13px] font-semibold text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)] has-[:checked]:bg-[var(--color-primary)] has-[:checked]:text-[var(--color-base)] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-primary)]">
               <input
                 type="radio"
                 name="billing-cycle"
@@ -91,8 +61,8 @@ export default function PricingPage() {
                 className="sr-only"
               />
               Yearly
-              <span className="ml-2 text-[10px] font-medium normal-case opacity-80">
-                ~17% off vs monthly
+              <span className="ml-2 text-[11px] font-medium opacity-80">
+                ~17% off
               </span>
             </label>
           </div>
@@ -104,7 +74,7 @@ export default function PricingPage() {
         >
           {plans.map((plan, index) => {
             const isHighlight = plan.id === "pro";
-            // Yearly figure billed annually; the /month label shows the
+            // Yearly figure billed annually; the /mo label shows the
             // annualized monthly-equivalent so the scannable number stays small.
             const yearlyMonthlyEquiv = plan.yearlyUsd / 12;
             return (
@@ -112,8 +82,8 @@ export default function PricingPage() {
                 key={plan.id}
                 className={
                   isHighlight
-                    ? "relative rounded-[18px] border-2 border-[var(--color-primary)] bg-white p-6 shadow-[0_24px_48px_rgba(15,39,68,0.12)]"
-                    : "rounded-[18px] border fine-rule bg-white p-6 shadow-[var(--shadow-soft)]"
+                    ? "relative flex h-full flex-col rounded-[18px] border-2 border-[var(--color-primary)] bg-white p-6 shadow-[0_24px_48px_rgba(15,39,68,0.12)]"
+                    : "flex h-full flex-col rounded-[18px] border fine-rule bg-white p-6 shadow-[var(--shadow-soft)]"
                 }
               >
                 {isHighlight ? (
@@ -124,37 +94,30 @@ export default function PricingPage() {
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                   {plan.name}
                 </p>
+                {/* The commission is what a plan actually changes, so it is the
+                    big number; the subscription is the small line under it. */}
+                <p className="mt-3 flex items-baseline gap-1.5">
+                  <span className="display-title text-4xl text-[var(--color-primary)]">
+                    {plan.commissionPercent}%
+                  </span>
+                  <span className="text-sm text-[var(--color-ink-soft)]">
+                    per sale
+                  </span>
+                </p>
                 {plan.monthlyUsd === 0 ? (
-                  <div className="mt-3 flex items-baseline gap-1">
-                    <span className="display-title text-4xl text-[var(--color-primary)]">
-                      Free
-                    </span>
-                  </div>
+                  <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
+                    {formatUsdWhole(0)}/mo — no subscription
+                  </p>
                 ) : (
                   <>
-                    {/* Monthly price — hidden when the yearly radio is checked. */}
-                    <div className="mt-3 flex items-baseline gap-1 group-has-[#billing-yearly:checked]:hidden">
-                      <span className="display-title text-4xl text-[var(--color-primary)]">
-                        {formatUsd(plan.monthlyUsd)}
-                      </span>
-                      <span className="text-sm text-[var(--color-ink-soft)]">
-                        /month
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:hidden">
-                      or {formatUsd(plan.yearlyUsd)} billed yearly
+                    {/* Monthly line — hidden when the yearly radio is checked. */}
+                    <p className="mt-1 text-sm text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:hidden">
+                      {formatUsdWhole(plan.monthlyUsd)}/mo
                     </p>
-                    {/* Yearly price — shown only when the yearly radio is checked. */}
-                    <div className="mt-3 hidden items-baseline gap-1 group-has-[#billing-yearly:checked]:flex">
-                      <span className="display-title text-4xl text-[var(--color-primary)]">
-                        {formatUsd(yearlyMonthlyEquiv)}
-                      </span>
-                      <span className="text-sm text-[var(--color-ink-soft)]">
-                        /month
-                      </span>
-                    </div>
-                    <p className="mt-1 hidden text-xs text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:block">
-                      {formatUsd(plan.yearlyUsd)} billed yearly
+                    {/* Yearly line — shown only when the yearly radio is checked. */}
+                    <p className="mt-1 hidden text-sm text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:block">
+                      {formatUsd(yearlyMonthlyEquiv)}/mo, billed{" "}
+                      {formatUsdWhole(plan.yearlyUsd)} yearly
                     </p>
                   </>
                 )}
@@ -164,19 +127,11 @@ export default function PricingPage() {
                 <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
                   {plan.audience}
                 </p>
-                <div className="mt-5 rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
-                    Commission per sale
+                {plan.breakEvenGmvUsd ? (
+                  <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
+                    Worth it from {formatUsdWhole(plan.breakEvenGmvUsd)}/mo in sales
                   </p>
-                  <p className="mt-1 display-title text-3xl text-[var(--color-primary)]">
-                    {plan.commissionPercent}%
-                  </p>
-                  {plan.breakEvenGmvUsd ? (
-                    <p className="mt-1 text-[11px] text-[var(--color-ink-soft)]">
-                      Worth it from {formatUsd(plan.breakEvenGmvUsd)}/mo in sales
-                    </p>
-                  ) : null}
-                </div>
+                ) : null}
                 {/* Tied to isActivationFeeConfigured(), not to a hardcoded flag:
                     the fee ships dormant (placeholder Stripe Price), so this line
                     must not claim a charge that cannot happen yet. It appears on
@@ -188,7 +143,7 @@ export default function PricingPage() {
                     live. Free still has no monthly cost.
                   </p>
                 ) : null}
-                <ul className="mt-5 grid gap-2 text-sm text-[var(--color-ink-soft)]">
+                <ul className="mb-6 mt-5 grid gap-2 text-sm text-[var(--color-ink-soft)]">
                   {plan.highlights.map((highlight) => (
                     <li key={highlight} className="flex items-start gap-2">
                       <Check
@@ -201,12 +156,14 @@ export default function PricingPage() {
                     </li>
                   ))}
                 </ul>
+                {/* mt-auto pins the button to the bottom so the four cards
+                    line up whatever the length of their bullet lists. */}
                 <Link
                   href="/auth?mode=signup&path=teacher"
                   className={
                     isHighlight
-                      ? "button-solid mt-6 w-full justify-center px-4 py-2.5 text-sm"
-                      : "button-outline mt-6 w-full justify-center px-4 py-2.5 text-sm"
+                      ? "button-solid mt-auto w-full justify-center px-4 py-2.5 text-sm"
+                      : "button-outline mt-auto w-full justify-center px-4 py-2.5 text-sm"
                   }
                   aria-label={`Start on ${plan.name}`}
                   data-plan-position={index}

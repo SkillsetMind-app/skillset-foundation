@@ -19,19 +19,10 @@ import { getSupabaseClientConfig } from "@/lib/supabase/config";
 // A curated slice of the LIVE catalog, shown on the homepage so visitors see the
 // real programs teachers have published. Same stream the /courses marketplace
 // uses; ops-featured picks lead, capped at 6. While the catalog is empty the
-// band keeps its heading and states what the marketplace is, instead of
-// vanishing and leaving the #courses anchor pointing at nothing — an honest
-// homepage beats a fabricated one, but silence is not honesty either.
+// band keeps its heading and says so in one strip that invites teachers in,
+// instead of four text cards dressed up as courses — an honest homepage beats
+// a fabricated one, but silence is not honesty either.
 const FEATURED_LIMIT = 6;
-
-// t() returns a string, so the copy lives as numbered keys (house pattern:
-// home.creators.bullet1, home.hero.trust1Title) rather than a JSON array.
-const HIGHLIGHT_KEYS = [
-  "home.marketplace.highlight1",
-  "home.marketplace.highlight2",
-  "home.marketplace.highlight3",
-  "home.marketplace.highlight4",
-] as const;
 
 export function FeaturedCourses() {
   const { t } = useTranslation();
@@ -90,16 +81,17 @@ export function FeaturedCourses() {
         </div>
 
         {featuredCourses.length === 0 ? (
-          <ul className="mt-10 grid gap-4 sm:grid-cols-2">
-            {HIGHLIGHT_KEYS.map((key) => (
-              <li
-                key={key}
-                className="h-full rounded-[14px] border border-[var(--color-line)] bg-white p-6 text-[15px] leading-7 text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)]"
-              >
-                {t(key)}
-              </li>
-            ))}
-          </ul>
+          <div className="mt-10 flex flex-col gap-4 rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[15px] font-semibold leading-7 text-[var(--color-ink)]">
+              {t("home.marketplace.emptyTitle")}
+            </p>
+            <Link
+              href="/for-creators"
+              className="button-solid w-fit shrink-0 px-4 py-2.5 text-sm"
+            >
+              {t("home.marketplace.emptyCta")}
+            </Link>
+          </div>
         ) : (
         <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {featuredCourses.map((course) => (
