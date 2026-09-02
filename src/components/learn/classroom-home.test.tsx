@@ -73,6 +73,16 @@ vi.mock("@/lib/data/enrollments", () => ({
   updateEnrollmentProgress: vi.fn(),
 }));
 
+// O nome publico do professor, para o feed da comunidade.
+vi.mock("@/lib/data/user-profiles", () => ({
+  subscribeToPublicProfile: vi.fn(
+    (uid: string, onNext: (profile: unknown) => void) => {
+      onNext({ uid, displayName: "Ana Prof", username: "ana", photoURL: null, bio: null, credentials: [] });
+      return vi.fn();
+    },
+  ),
+}));
+
 vi.mock("@/lib/data/lesson-progress", () => ({
   recordLessonProgress: vi.fn(() => Promise.resolve()),
   subscribeToCompletedLessons: vi.fn(
@@ -122,7 +132,13 @@ vi.mock("@/components/learn/course-review-panel", () => ({
 // A aba Community renderiza o feed simplificado (community-feed.tsx); o
 // componente antigo (course-community-feed.tsx) ficou so no hub /learn/community.
 vi.mock("@/components/learn/community-feed", () => ({
-  CommunityFeed: () => <div data-testid="community-feed" />,
+  CommunityFeed: (props: { instructorName?: string | null; instructorIds?: string[] }) => (
+    <div
+      data-testid="community-feed"
+      data-instructor={props.instructorName ?? ""}
+      data-instructor-ids={(props.instructorIds ?? []).join(",")}
+    />
+  ),
 }));
 
 const course = {
@@ -135,6 +151,7 @@ const course = {
   image: null,
   membersTheme: "light",
   communityEnabled: true,
+  instructorId: "teacher-1",
   modules: [
     {
       id: "m1",
@@ -260,6 +277,14 @@ describe("abas da sala com endereco proprio", () => {
     expect(screen.queryByRole("button", { name: /Current lesson/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Resources/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Discussion$/ })).toBeNull();
+  });
+
+  it("na aba Community: o feed sabe quem e o professor — id e nome publico", () => {
+    renderClassroom("lesson=l2", [], "community");
+
+    const feed = screen.getByTestId("community-feed");
+    expect(feed).toHaveAttribute("data-instructor-ids", "teacher-1");
+    expect(feed).toHaveAttribute("data-instructor", "Ana Prof");
   });
 
   it("na aba Community: o feed aparece, o player nao, e 'Lesson' devolve a MESMA aula", () => {

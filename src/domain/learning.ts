@@ -54,6 +54,10 @@ export type Course = {
   outcomes: string[];
   modules: CourseModule[];
   communityEnabled: boolean;
+  // Quem publicou o curso (users.uid). So os cursos de professor tem; o
+  // catalogo da plataforma nao. A comunidade usa para marcar as respostas do
+  // professor e nomear o filtro "From <nome>".
+  instructorId?: string | null;
   // Per-course members-area hero customization (enrolled-student surface).
   // null theme → the hero defaults to "dark" (the members-area design default).
   // membersCoverAssetId is a CourseAsset id the hero resolves to an image URL.
