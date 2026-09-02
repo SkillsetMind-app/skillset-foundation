@@ -345,15 +345,54 @@ function buildIdentityPatch(input: UserIdentityInput): Record<string, unknown> {
   return patch;
 }
 
+function isUsernameUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+
+  const candidate = error as { code?: unknown; details?: unknown; message?: unknown };
+  if (String(candidate.code ?? "") === "23505") return true;
+
+  const context = [candidate.message, candidate.details]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ");
+  return /(?:users_username_key|key \(username\).*already exists)/i.test(context);
+}
+
+function usernameWithSuffix(username: string, suffix: number): string {
+  const ending = `-${suffix}`;
+  const base = username.slice(0, 32 - ending.length).replace(/-+$/, "");
+  return `${base}${ending}`;
+}
+
 export async function updateUserIdentity(uid: string, input: UserIdentityInput) {
   const supabase = getSupabaseBrowserClient();
-  const { error } = await supabase
-    .from("users")
-    .update({ ...buildIdentityPatch(input), updated_at: nowIso() })
-    .eq("uid", uid);
+  const patch = buildIdentityPatch(input);
+  const baseUsername = typeof patch.username === "string" ? patch.username : null;
+  const usernames = baseUsername
+    ? [
+        baseUsername,
+        ...Array.from({ length: 8 }, (_, index) => usernameWithSuffix(baseUsername, index + 2)),
+        null,
+      ]
+    : null;
+  const updatedAt = nowIso();
 
-  if (error) {
-    throw error;
+  // The UNIQUE constraint is the concurrency-safe availability check. Retry
+  // the same atomic identity patch with bounded suffixes; no read-before-write
+  // window can hand two simultaneous signups the same username.
+  for (let attempt = 0; ; attempt += 1) {
+    const { error } = await supabase
+      .from("users")
+      .update({
+        ...patch,
+        ...(usernames ? { username: usernames[attempt] } : {}),
+        updated_at: updatedAt,
+      })
+      .eq("uid", uid);
+
+    if (!error) return;
+    if (!usernames || usernames[attempt] === null || !isUsernameUniqueViolation(error)) {
+      throw error;
+    }
   }
 }
 
