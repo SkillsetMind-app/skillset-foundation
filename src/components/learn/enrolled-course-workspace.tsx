@@ -14,7 +14,7 @@ import {
 import { useAuth } from "@/components/auth/auth-provider";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import { ClassroomTabs, type ClassroomTabItem } from "@/components/learn/classroom-tabs";
-import { CourseCommunityFeed } from "@/components/learn/course-community-feed";
+import { CommunityFeed, type CommunityFeedLesson } from "@/components/learn/community-feed";
 import { CourseMessagesPanel } from "@/components/learn/course-messages-panel";
 import { CoursePlaylist } from "@/components/learn/course-playlist";
 import { CourseReviewPanel } from "@/components/learn/course-review-panel";
@@ -942,7 +942,14 @@ export function EnrolledCourseWorkspace({
       {tab === "lives" && !previewMode ? <CourseEventsAgenda courseId={course.id} /> : null}
 
       {tab === "community" && course.communityEnabled && !previewMode ? (
-        <CourseCommunitySection course={course} />
+        <CourseCommunitySection
+          course={course}
+          currentLesson={
+            selectedLesson
+              ? { id: selectedLesson.id, title: selectedLesson.title, number: selectedLessonNumber }
+              : null
+          }
+        />
       ) : null}
 
       {tab === "messages" && !previewMode ? <CourseMessagesPanel courseId={course.id} /> : null}
@@ -1069,7 +1076,13 @@ function CourseEventsAgenda({ courseId }: { courseId: string }) {
 // 2026-07-02: community lives here, not on a separate hub page). The space is
 // keyed by course.id — the same key CreatorCourseCommunity uses — so both
 // mounts read and write the same community_posts rows.
-function CourseCommunitySection({ course }: { course: Course }) {
+function CourseCommunitySection({
+  course,
+  currentLesson,
+}: {
+  course: Course;
+  currentLesson: CommunityFeedLesson | null;
+}) {
   const space: CommunitySpace = {
     id: `creator-${course.id}`,
     courseSlug: course.id,
@@ -1080,19 +1093,12 @@ function CourseCommunitySection({ course }: { course: Course }) {
     categories: ["announcement", "discussion", "question", "resource"],
   };
 
+  // A comunidade simplificada (mockup 5): o feed tem o proprio cabecalho; o
+  // painel com manchete ("Course community / Connect with other students")
+  // repetia a aba e empurrava o feed para baixo.
   return (
     <section className="member-resource-panel">
-      <div>
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-          Course community
-        </p>
-        <h4 className="mt-2 text-lg font-semibold text-[var(--color-primary)]">
-          Connect with other students in this course
-        </h4>
-      </div>
-      <div className="mt-4">
-        <CourseCommunityFeed space={space} />
-      </div>
+      <CommunityFeed space={space} currentLesson={currentLesson} />
     </section>
   );
 }
