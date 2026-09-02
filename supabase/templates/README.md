@@ -18,10 +18,11 @@ then re-paste.
 Keep every `{{ . }}` placeholder exactly as written — Supabase substitutes them
 at send time.
 
-## Why recovery.html does NOT use `{{ .ConfirmationURL }}`
+## Why recovery.html and confirmation.html do NOT use `{{ .ConfirmationURL }}`
 
-`confirmation.html` still uses it; `recovery.html` deliberately builds its own
-link with `{{ .TokenHash }}` pointing at `/auth/confirm`. Reason:
+`recovery.html` and, since 2026-09-02, `confirmation.html` deliberately build
+their own link with `{{ .TokenHash }}` pointing at `/auth/confirm` (magic link,
+invite and email change still use `{{ .ConfirmationURL }}`). Reason:
 
 `{{ .ConfirmationURL }}` routes through Supabase's `/auth/v1/verify`, which
 hands the app a PKCE `?code=`. Exchanging that code requires a `code_verifier`

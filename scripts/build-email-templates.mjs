@@ -40,10 +40,21 @@ const SUPPORT = "support@skillsetmind.com";
 const SANS = "'Segoe UI',Helvetica,Arial,sans-serif";
 const DISPLAY = "'Montserrat','Segoe UI',Helvetica,Arial,sans-serif";
 
-// Recovery deliberately builds its own link instead of {{ .ConfirmationURL }} —
-// see supabase/templates/README.md for the PKCE reasoning.
+// Recovery AND signup confirmation build their own link instead of
+// {{ .ConfirmationURL }} — see supabase/templates/README.md for the PKCE
+// reasoning. The short version: {{ .ConfirmationURL }} hands the app a PKCE
+// code that only the browser which requested it can exchange. Sign up on the
+// laptop, open the email on the phone (where everyone reads email) -> the
+// exchange fails -> "/login?error=auth_callback" -> the account is never
+// confirmed. Five real accounts sat in that state between 26/08 and 02/09.
+// token_hash + verifyOtp is stateless and works on any device.
 const RECOVERY_URL =
   "{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=recovery&amp;next=/reset-password";
+const SIGNUP_URL =
+  "{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=signup&amp;next=/welcome";
+// Magic link, invite and email change still go through {{ .ConfirmationURL }}:
+// each would need its own verifyOtp type, and none of them is on the path
+// that was failing. One change, one proof.
 const CONFIRMATION_URL = "{{ .ConfirmationURL }}";
 
 function button(href, label) {
@@ -159,7 +170,7 @@ const TEMPLATES = [
     title: "You're one click away.",
     intro:
       "Welcome to SkillsetMind, where coaches, facilitators, and personal-development experts sell their own courses. Confirm your email address to activate your account.",
-    main: button(CONFIRMATION_URL, "Confirm my email"),
+    main: button(SIGNUP_URL, "Confirm my email"),
     footer:
       "You're receiving this because this address was used to sign up at SkillsetMind. If it wasn't you, you can safely ignore this email.",
   },
