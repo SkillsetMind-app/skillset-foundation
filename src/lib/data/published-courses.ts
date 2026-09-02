@@ -333,6 +333,7 @@ export function teacherCourseToLearningCourse(course: TeacherCourse): Course {
     slug: course.id,
     title: course.title,
     category: course.category,
+    instructorId: course.ownerId,
     durationLabel: `${course.lessonCount} lesson${course.lessonCount === 1 ? "" : "s"}`,
     status: "published",
     statusLabel: "Published",

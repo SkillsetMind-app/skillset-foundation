@@ -56,6 +56,7 @@ import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import { resolveLessonVideoSource } from "@/domain/teacher-course";
 import { subscribeToCourseEvents } from "@/lib/data/course-events";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
+import { subscribeToPublicProfile } from "@/lib/data/user-profiles";
 import {
   recordLessonProgress,
   subscribeToCompletedLessons,
@@ -1078,8 +1079,8 @@ function CourseEventsAgenda({ courseId }: { courseId: string }) {
 
 // Teacher-opt-in community, rendered inside the members area (product decision
 // 2026-07-02: community lives here, not on a separate hub page). The space is
-// keyed by course.id — the same key CreatorCourseCommunity uses — so both
-// mounts read and write the same community_posts rows.
+// keyed by course.id — the same key the teacher's inbox (/teach/.../community)
+// uses — so both read and write the same community_posts rows.
 function CourseCommunitySection({
   course,
   currentLesson,
@@ -1089,6 +1090,27 @@ function CourseCommunitySection({
   currentLesson: CommunityFeedLesson | null;
   openPostId: string | null;
 }) {
+  // Quem e o professor. O feed marca as respostas dele ("· Instructor"), poe
+  // a resposta dele em primeiro no cartao e nomeia o filtro "From <nome>".
+  // Sem isto o professor era so mais um membro e o filtro dizia "the
+  // instructor". O nome vem da projecao publica (public_profiles), a mesma da
+  // vitrine — nada alem do que qualquer visitante ja ve.
+  const instructorId = course.instructorId ?? null;
+  const [instructor, setInstructor] = useState<{
+    forId: string | null;
+    name: string | null;
+  }>({ forId: null, name: null });
+  useEffect(() => {
+    if (!instructorId) return;
+    return subscribeToPublicProfile(
+      instructorId,
+      (profile) => setInstructor({ forId: instructorId, name: profile?.displayName ?? null }),
+      () => setInstructor({ forId: instructorId, name: null }),
+    );
+  }, [instructorId]);
+  const instructorName = instructor.forId === instructorId ? instructor.name : null;
+  const instructorIds = useMemo(() => (instructorId ? [instructorId] : []), [instructorId]);
+
   const space: CommunitySpace = {
     id: `creator-${course.id}`,
     courseSlug: course.id,
@@ -1104,7 +1126,13 @@ function CourseCommunitySection({
   // repetia a aba e empurrava o feed para baixo.
   return (
     <section className="member-resource-panel">
-      <CommunityFeed space={space} currentLesson={currentLesson} openPostId={openPostId} />
+      <CommunityFeed
+        space={space}
+        currentLesson={currentLesson}
+        openPostId={openPostId}
+        instructorName={instructorName}
+        instructorIds={instructorIds}
+      />
     </section>
   );
 }
