@@ -167,15 +167,33 @@ DECLARE
 BEGIN
   DELETE FROM public.payout_ledger
   WHERE id = 'hardening-smoke-reversal-ledger';
+  -- O fixture abaixo nunca tinha sido validado contra o schema real, porque
+  -- este arquivo nunca tinha sido executado: faltavam as três colunas NOT NULL
+  -- sem default (amount_minor, currency, status) e o dono referenciado pela FK
+  -- payout_ledger.teacher_id -> public.users(uid). Tudo desfeito no ROLLBACK.
+  INSERT INTO public.users (uid, email, display_name)
+  VALUES (
+    'hardening-smoke-owner',
+    'hardening-smoke-owner@ci.local',
+    'Hardening Smoke Owner'
+  )
+  ON CONFLICT (uid) DO NOTHING;
+
   INSERT INTO public.payout_ledger (
     id,
     teacher_id,
+    amount_minor,
+    currency,
+    status,
     transfer_amount_minor,
     transfer_reversed_amount_minor,
     refund_reversal_claims
   ) VALUES (
     'hardening-smoke-reversal-ledger',
     'hardening-smoke-owner',
+    100,
+    'brl',
+    'paid',
     100,
     0,
     '{}'::jsonb
