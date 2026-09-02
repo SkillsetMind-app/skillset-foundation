@@ -16,6 +16,61 @@ BEGIN
 END;
 $$;
 
+-- Fixtures que este arquivo sempre pressupôs e nunca criou. Ele foi escrito
+-- contra um staging semeado à mão: as linhas `hardening-smoke-*` de users e
+-- courses já estavam lá. Num banco montado a partir do repositório elas não
+-- existem, e os INSERTs adiante batem nas FKs
+-- course_subscriptions.user_id/course_id e course_lesson_content.course_id.
+-- Ninguém tinha percebido porque este teste nunca tinha sido executado.
+-- Tudo aqui é desfeito no ROLLBACK do fim do arquivo.
+DO $$
+DECLARE
+  v_sufixo text;
+BEGIN
+  FOREACH v_sufixo IN ARRAY ARRAY[
+    'active', 'trialing', 'past-due', 'paused', 'canceled', 'a', 'b', 'offer'
+  ] LOOP
+    INSERT INTO public.users (uid, email, display_name)
+    VALUES (
+      'hardening-smoke-user-' || v_sufixo,
+      'hardening-smoke-' || v_sufixo || '@ci.local',
+      'Hardening Smoke ' || v_sufixo
+    )
+    ON CONFLICT (uid) DO NOTHING;
+
+    INSERT INTO public.courses (id, owner_id, title, summary, category)
+    VALUES (
+      'hardening-smoke-course-' || v_sufixo,
+      'hardening-smoke-user-' || v_sufixo,
+      'Hardening Smoke ' || v_sufixo,
+      'Curso usado só por este smoke test.',
+      'smoke'
+    )
+    ON CONFLICT (id) DO NOTHING;
+  END LOOP;
+
+  -- O bloco de assinaturas canceladas usa nomes próprios, fora do padrão do
+  -- laço acima.
+  INSERT INTO public.users (uid, email, display_name)
+  VALUES (
+    'hardening-smoke-canceled-user',
+    'hardening-smoke-canceled@ci.local',
+    'Hardening Smoke Canceled'
+  )
+  ON CONFLICT (uid) DO NOTHING;
+
+  INSERT INTO public.courses (id, owner_id, title, summary, category)
+  VALUES (
+    'hardening-smoke-canceled-course',
+    'hardening-smoke-canceled-user',
+    'Hardening Smoke Canceled',
+    'Curso usado só por este smoke test.',
+    'smoke'
+  )
+  ON CONFLICT (id) DO NOTHING;
+END;
+$$;
+
 SELECT pg_temp.assert_true(
   (SELECT relrowsecurity
    FROM pg_class
@@ -488,8 +543,16 @@ BEGIN
   WHERE id IN ('hardening-smoke-offer', 'hardening-smoke-rollback-offer');
   DELETE FROM public.courses
   WHERE id = 'hardening-smoke-offer-course';
-  INSERT INTO public.courses (id, owner_id)
-  VALUES ('hardening-smoke-offer-course', 'hardening-smoke-owner');
+  -- courses.title/summary/category são NOT NULL sem default; o INSERT original
+  -- só trazia id e owner_id.
+  INSERT INTO public.courses (id, owner_id, title, summary, category)
+  VALUES (
+    'hardening-smoke-offer-course',
+    'hardening-smoke-owner',
+    'Hardening Smoke Offer',
+    'Curso usado só por este smoke test.',
+    'smoke'
+  );
 
   v_result := public.create_product_offer_atomic(
     'hardening-smoke-offer-course',
