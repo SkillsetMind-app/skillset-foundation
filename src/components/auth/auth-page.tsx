@@ -4,7 +4,7 @@ import { LoginForm } from "@/components/auth/login-form";
 import { SignupForm } from "@/components/auth/signup-form";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
-import { RotatingPortrait } from "@/components/shared/rotating-portrait";
+import { BrandPortrait } from "@/components/shared/brand-portrait";
 import { getAuthPathIntentFromSearchParams } from "@/lib/auth/routing";
 import { ArrowLeft, Check } from "lucide-react";
 import Link from "next/link";
@@ -54,15 +54,15 @@ export function AuthPage() {
       <aside className="auth-aside" aria-hidden="true">
         {/* Portrait crop (1300x1272 from the 3000px master) so the tall panel
             downscales instead of blowing up a low-res landscape frame. */}
-        {/* The same ten faces the homepage hero cycles, on the same 3s beat and
-            1.4s crossfade, so signing up reads as walking further into the same
-            building rather than landing on a different brand.
+        {/* The same face the homepage hero drew for this visit, held still, so
+            signing up reads as walking further into the same building rather
+            than landing on a different brand.
             Cover is height-driven in this tall panel, so the served width tracks
             viewport height, not the 44% column width.
             ponytail: 75% keeps the subject in the panel crop (the hero needs 78%
             at its narrowest); nudge the x% if a portrait ever crops off-centre. */}
-        <RotatingPortrait
-          imageClassName="pointer-events-none object-cover object-[75%_center] transition-opacity duration-[1400ms] ease-in-out motion-reduce:transition-none"
+        <BrandPortrait
+          imageClassName="pointer-events-none object-cover object-[75%_center]"
           sizes="(min-width: 1024px) 60vw, 0px"
           priority
         />

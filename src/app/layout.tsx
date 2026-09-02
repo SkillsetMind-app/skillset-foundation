@@ -30,8 +30,11 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+// Also stamps html.js: globals.css hides .reveal-on-view sections only under
+// that class, so a visitor without JavaScript still sees the whole page.
 const themeInitScript = `
 (() => {
+  document.documentElement.classList.add("js");
   try {
     const mode = window.localStorage.getItem("skillset_theme");
     const systemDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;

@@ -3,6 +3,7 @@
     "label": "Idioma"
   },
   "nav": {
+    "courses": "Cursos",
     "forCreators": "Para creadores",
     "pricing": "Precios",
     "promise": "Promesa",
@@ -14,10 +15,6 @@
     "accountSettings": "Ajustes de la cuenta",
     "openMenu": "Abrir menú",
     "closeMenu": "Cerrar menú",
-    "accessLearningTitle": "Acceder a mis cursos",
-    "accessLearningDesc": "Continúa tus programas inscritos",
-    "manageTeachingTitle": "Gestionar mi enseñanza",
-    "manageTeachingDesc": "Abrir el Estudio del Profesor",
     "primaryNavLabel": "Navegación principal",
     "mobileNavLabel": "Navegación móvil"
   },
@@ -295,10 +292,8 @@
       "sub": "Cada curso lo crea un profesional independiente verificado por SkillsetMind, y los programas activos se monitorean para garantizar el cumplimiento del marketplace.",
       "browseAll": "Ver todos los cursos",
       "viewCourse": "Ver curso",
-      "highlight1": "Programas profesionales de coaching, liderazgo, bienestar y gestión",
-      "highlight2": "Instructores con experiencia y credibilidad práctica y verificable",
-      "highlight3": "Una experiencia de aprendizaje pensada para la claridad, el apoyo y el impulso",
-      "highlight4": "Diseñada para estudiantes e instructores de todo el mundo"
+      "emptyTitle": "El marketplace abre pronto — sé uno de los primeros profesores.",
+      "emptyCta": "Mira cómo funciona publicar"
     },
     "capabilities": {
       "kicker": "Incluido en SkillsetMind",
@@ -332,12 +327,6 @@
       "clause6": "SLA de soporte humano",
       "ratified": "Ratificado · público y por escrito",
       "sealed": "Sellado",
-      "p1Title": "Tarifa fija por 24 meses",
-      "p1Desc": "Tu comisión al registrarte es tuya por dos años. Sin subidas sorpresa después de construir tu negocio aquí.",
-      "p2Title": "Portabilidad de datos",
-      "p2Desc": "Exporta cada curso, alumno, venta y post en un ZIP con un clic. Cuando quieras. Sin preguntas.",
-      "p3Title": "Cancelación en un clic",
-      "p3Desc": "Borra tu cuenta con un clic. Sin correos de retención, sin vueltas con soporte, sin fricción.",
       "readFull": "Lee la Promesa completa"
     },
     "creators": {
@@ -352,7 +341,7 @@
     },
     "nav": {
       "howItWorks": "Cómo funciona",
-      "capabilities": "Funciones",
+      "courses": "Cursos",
       "forCreators": "Para creadores",
       "promise": "La promesa",
       "pricing": "Precios"

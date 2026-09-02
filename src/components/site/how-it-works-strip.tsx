@@ -47,10 +47,10 @@ export function HowItWorksStrip() {
         </h2>
       </RevealSection>
       <div className="mt-10 grid gap-8 sm:mt-12 lg:grid-cols-3">
-        {steps.map((step, index) => {
+        {steps.map((step) => {
           const { Icon } = step;
           return (
-            <RevealSection key={step.number} delay={index * 120}>
+            <RevealSection key={step.number}>
               <article className="border-t-2 border-[var(--color-primary)] pt-6">
                 <div className="flex items-center gap-4">
                   <span

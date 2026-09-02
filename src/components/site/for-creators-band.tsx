@@ -57,8 +57,8 @@ export function ForCreatorsBand() {
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              {trustBullets.map((bullet, index) => (
-                <RevealSection key={bullet} delay={index * 80}>
+              {trustBullets.map((bullet) => (
+                <RevealSection key={bullet}>
                   <div className="flex h-full items-start gap-3 rounded-[14px] border border-white/16 bg-white/10 p-4 text-sm leading-6 text-white/85">
                     <span
                       aria-hidden="true"

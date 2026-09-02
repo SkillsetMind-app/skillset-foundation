@@ -48,10 +48,10 @@ export function CapabilitiesGrid() {
         </p>
       </RevealSection>
       <div className="mt-10 grid gap-5 sm:mt-12 md:grid-cols-2 xl:grid-cols-3">
-        {capabilities.map((capability, index) => {
+        {capabilities.map((capability) => {
           const { Icon } = capability;
           return (
-            <RevealSection key={capability.title} delay={index * 80}>
+            <RevealSection key={capability.title}>
               <article className="group h-full rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] transition duration-[180ms] ease-out hover:-translate-y-0.5 hover:border-[var(--color-line-strong)] hover:shadow-[var(--shadow-strong)]">
                 <span
                   className="grid size-12 place-items-center rounded-[10px] bg-[var(--color-surface-soft)] text-[var(--color-primary)] ring-1 ring-inset ring-[var(--color-line)] shadow-[0_6px_14px_rgba(26,54,93,0.08)] transition-all duration-[180ms] ease-out group-hover:bg-[var(--color-primary)] group-hover:text-[var(--color-base)] group-hover:shadow-[0_10px_22px_rgba(26,54,93,0.20)]"

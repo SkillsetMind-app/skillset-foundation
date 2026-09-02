@@ -3,6 +3,7 @@
     "label": "Language"
   },
   "nav": {
+    "courses": "Courses",
     "forCreators": "For creators",
     "pricing": "Pricing",
     "promise": "Promise",
@@ -14,10 +15,6 @@
     "accountSettings": "Account settings",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
-    "accessLearningTitle": "Access my learning",
-    "accessLearningDesc": "Continue your enrolled programs",
-    "manageTeachingTitle": "Manage my teaching",
-    "manageTeachingDesc": "Open Teacher Studio",
     "primaryNavLabel": "Primary navigation",
     "mobileNavLabel": "Mobile navigation"
   },
@@ -295,10 +292,8 @@
       "sub": "Every course is built by an independent professional verified by SkillsetMind, with live programs monitored for marketplace compliance.",
       "browseAll": "Browse all courses",
       "viewCourse": "View course",
-      "highlight1": "Professional programs across coaching, leadership, wellbeing, and management",
-      "highlight2": "Experienced instructors with practical, verifiable credibility",
-      "highlight3": "A learning experience shaped for clarity, support, and momentum",
-      "highlight4": "Designed for international learners and instructors"
+      "emptyTitle": "Marketplace opens soon — be one of the first teachers.",
+      "emptyCta": "See how publishing works"
     },
     "capabilities": {
       "kicker": "Built into SkillsetMind",
@@ -332,12 +327,6 @@
       "clause6": "Human support SLA",
       "ratified": "Ratified · public & in writing",
       "sealed": "Sealed",
-      "p1Title": "Fee-lock for 24 months",
-      "p1Desc": "Your commission rate at signup is yours for two years. No surprise hikes after you've built a business here.",
-      "p2Title": "Data portability",
-      "p2Desc": "Export every course, student, sale, and post as a ZIP in one click. Whenever. No questions asked.",
-      "p3Title": "One-click cancellation",
-      "p3Desc": "Delete your account in one click. No retention emails, no support runaround, no friction.",
       "readFull": "Read the full Promise"
     },
     "creators": {
@@ -352,7 +341,7 @@
     },
     "nav": {
       "howItWorks": "How it works",
-      "capabilities": "Capabilities",
+      "courses": "Courses",
       "forCreators": "For creators",
       "promise": "The promise",
       "pricing": "Pricing"

@@ -38,10 +38,28 @@ describe("FeaturedCourses", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/professional programs across coaching/i),
+      screen.getByText(/verified by SkillsetMind/i),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /browse all courses/i }),
     ).toBeInTheDocument();
+  });
+
+  it("invites teachers in one strip instead of four cards posing as courses", () => {
+    mocks.getSupabaseClientConfig.mockReturnValue(null);
+
+    render(<FeaturedCourses />);
+
+    expect(
+      screen.getByText(
+        "Marketplace opens soon — be one of the first teachers.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "See how publishing works" }),
+    ).toHaveAttribute("href", "/for-creators");
+    expect(
+      screen.queryByText(/Professional programs across coaching/),
+    ).not.toBeInTheDocument();
   });
 });

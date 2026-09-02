@@ -2,27 +2,20 @@
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
 import { AccountMenu } from "@/components/site/account-menu";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
-import {
-  ChevronDown,
-  GraduationCap,
-  LayoutDashboard,
-  Menu,
-  Presentation,
-  X,
-} from "lucide-react";
+import { LayoutDashboard, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useState } from "react";
 
 import { getPrimaryWorkspaceHref } from "@/lib/auth/routing";
 
-// The marketing nav is deliberately lean. "Courses" and "Instructors" are
-// not surfaced here: the marketplace lives at /courses and inside the in-app
-// sidebar, so the public header focuses on the conversion path (creators,
-// pricing, promise, help) instead of duplicating in-app discovery.
+// "Courses" leads: it is the door for people who come here to learn. The
+// rest is the creator conversion path (creators, pricing, promise, help).
 const navItems = [
+  { href: "/courses", labelKey: "nav.courses" },
   { href: "/for-creators", labelKey: "nav.forCreators" },
   { href: "/pricing", labelKey: "nav.pricing" },
   { href: "/promise", labelKey: "nav.promise" },
@@ -76,21 +69,6 @@ function resolveNavItems(
     isAnchor: false,
   }));
 }
-
-const signInOptions = [
-  {
-    href: "/auth?mode=signin&path=student&role=student",
-    icon: GraduationCap,
-    titleKey: "nav.accessLearningTitle",
-    descriptionKey: "nav.accessLearningDesc",
-  },
-  {
-    href: "/auth?mode=signin&path=teacher&role=teacher",
-    icon: Presentation,
-    titleKey: "nav.manageTeachingTitle",
-    descriptionKey: "nav.manageTeachingDesc",
-  },
-];
 
 function isActiveNav(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -179,6 +157,9 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
           })}
         </nav>
         <div className="site-header__actions">
+          {/* Language sits next to the entry actions on every width; the
+              footer keeps its own copy for people who scroll to the end. */}
+          <LocaleSwitcher />
           {isAuthenticated ? (
             <>
               <Link
@@ -192,7 +173,11 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
             </>
           ) : (
             <div className="hidden items-center gap-2 sm:flex">
-              <SignInDropdown />
+              {/* A plain link: the old learner/teacher menu only changed the
+                  panel copy on the same sign-in screen, so it was a detour. */}
+              <Link href="/auth?mode=signin" className="btn-signin">
+                {t("nav.signIn")}
+              </Link>
               <Link href="/auth?mode=signup" className="btn-cta-hero">
                 {t("nav.getStarted")}
               </Link>
@@ -204,7 +189,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
             aria-expanded={mobileOpen}
             aria-controls="site-mobile-menu"
             onClick={() => setMobileOpen((open) => !open)}
-            className="grid size-10 shrink-0 place-items-center rounded-[10px] border border-[var(--color-line)] bg-white text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] min-[941px]:hidden"
+            className="grid size-11 shrink-0 place-items-center rounded-[10px] border border-[var(--color-line)] bg-white text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] lg:hidden"
           >
             {mobileOpen ? (
               <X aria-hidden="true" size={18} strokeWidth={1.8} />
@@ -220,16 +205,16 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
               type="button"
               aria-label={t("nav.closeMenu")}
               onClick={() => setMobileOpen(false)}
-              className="fixed inset-0 z-[44] bg-[rgba(15,39,68,0.4)] min-[941px]:hidden"
+              className="fixed inset-0 z-[44] bg-[rgba(15,39,68,0.4)] lg:hidden"
             />
             <div
               id="site-mobile-menu"
-              className="absolute inset-x-0 top-[calc(100%+8px)] z-[46] rounded-[14px] border border-[var(--color-line)] bg-white p-3 shadow-[0_24px_48px_rgba(15,39,68,0.16)] min-[941px]:hidden"
+              className="absolute inset-x-0 top-[calc(100%+8px)] z-[46] rounded-[14px] border border-[var(--color-line)] bg-white p-3 shadow-[0_24px_48px_rgba(15,39,68,0.16)] lg:hidden"
             >
               <nav aria-label={t("nav.mobileNavLabel")} className="grid gap-1">
                 {resolvedNav.map((item) => {
                   const baseClass =
-                    "rounded-[10px] px-3 py-2.5 text-sm font-semibold transition-colors";
+                    "rounded-[10px] px-3 py-3 text-sm font-semibold transition-colors";
 
                   if (item.isAnchor) {
                     return (
@@ -303,91 +288,3 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
     </header>
   );
 }
-
-function useDismissableLayer(
-  ref: RefObject<HTMLElement | null>,
-  isOpen: boolean,
-  onDismiss: () => void,
-) {
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    function handleMouseDown(event: MouseEvent) {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        onDismiss();
-      }
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onDismiss();
-      }
-    }
-
-    document.addEventListener("mousedown", handleMouseDown);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("mousedown", handleMouseDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen, onDismiss, ref]);
-}
-
-function SignInDropdown() {
-  const { t } = useTranslation();
-  const [isOpen, setIsOpen] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-
-  useDismissableLayer(wrapperRef, isOpen, () => setIsOpen(false));
-
-  return (
-    <div ref={wrapperRef} className="relative">
-      <button
-        type="button"
-        aria-expanded={isOpen}
-        aria-controls="signin-menu"
-        className={`btn-signin ${isOpen ? "open" : ""}`}
-        onClick={() => setIsOpen((current) => !current)}
-      >
-        {t("nav.signIn")}
-        <ChevronDown
-          aria-hidden="true"
-          size={12}
-          strokeWidth={1.8}
-          className={isOpen ? "rotate-180 transition-transform duration-200" : "transition-transform duration-200"}
-        />
-      </button>
-      {isOpen ? (
-        <div id="signin-menu" className="signin-dropdown">
-          {signInOptions.map((option) => {
-            const Icon = option.icon;
-
-            return (
-              <Link
-                key={option.href}
-                href={option.href}
-                className="signin-dropdown__item"
-              >
-                <span className="signin-dropdown__icon">
-                  <Icon aria-hidden="true" size={18} strokeWidth={1.7} />
-                </span>
-                <span>
-                  <span className="block text-sm font-semibold text-[var(--color-ink)]">
-                    {t(option.titleKey)}
-                  </span>
-                  <span className="signin-dropdown__sub">
-                    {t(option.descriptionKey)}
-                  </span>
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
