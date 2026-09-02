@@ -5,6 +5,7 @@ import {
   Bookmark,
   ChevronDown,
   ExternalLink,
+  Eye,
   FileText,
   GraduationCap,
   Heart,
@@ -104,6 +105,9 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
     (workspace) =>
       pathname !== workspace.href && !pathname.startsWith(`${workspace.href}/`),
   );
+  // O admin procurava "ver como" aqui, ao lado da troca de espaco; ele mora na
+  // fila de acessos do /ops. Atalho, nao reimplementacao (reanalise Ops 5).
+  const canViewAs = hasPermission({ roles: user.roles }, "platform.accessAdmin");
 
   // Someone with no studio yet gets the application instead. That one still
   // opens in a new tab: it is a side trip through the onboarding quiz, not a
@@ -189,7 +193,7 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
             />
           </div>
 
-          {otherWorkspaces.length > 0 || becomeTeacher ? (
+          {otherWorkspaces.length > 0 || becomeTeacher || canViewAs ? (
             <>
               <div className="account-menu-separator" />
               <div className="py-1">
@@ -205,6 +209,14 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
                     onNavigate={() => setIsOpen(false)}
                   />
                 ))}
+                {canViewAs ? (
+                  <MenuLink
+                    href="/ops?tab=access"
+                    icon={Eye}
+                    label={t("account.viewAs")}
+                    onNavigate={() => setIsOpen(false)}
+                  />
+                ) : null}
                 {becomeTeacher ? (
                   <RoleSwitchItem
                     href={becomeTeacher.href}

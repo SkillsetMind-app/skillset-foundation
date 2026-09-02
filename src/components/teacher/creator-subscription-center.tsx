@@ -293,14 +293,14 @@ export function CreatorSubscriptionCenterView({
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search subscriber or product"
-                  className="min-h-10 w-full rounded-[8px] border border-[var(--color-line)] bg-white py-2 pl-9 pr-3 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)]"
+                  className="min-h-11 w-full rounded-[8px] border border-[var(--color-line)] bg-white py-2 pl-9 pr-3 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)]"
                 />
               </label>
               <select
                 aria-label="Filter subscriber status"
                 value={filter}
                 onChange={(event) => setFilter(event.target.value as SubscriberFilter)}
-                className="min-h-10 rounded-[8px] border border-[var(--color-line)] bg-white px-3 text-sm font-semibold text-[var(--color-primary)]"
+                className="min-h-11 rounded-[8px] border border-[var(--color-line)] bg-white px-3 text-sm font-semibold text-[var(--color-primary)]"
               >
                 <option value="all">All statuses</option>
                 <option value="active">Active</option>
@@ -472,7 +472,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`min-h-9 rounded-[6px] px-4 text-sm font-bold ${active ? "bg-[var(--color-primary)] text-white" : "text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"}`}
+      className={`min-h-11 rounded-[6px] px-4 text-sm font-bold ${active ? "bg-[var(--color-primary)] text-white" : "text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"}`}
     >
       {children}
     </button>

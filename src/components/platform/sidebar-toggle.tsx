@@ -39,7 +39,7 @@ export function SidebarToggle({
       aria-label={label}
       title={label}
       className={[
-        "platform-nav-link platform-sidebar-toggle group relative mt-auto flex h-11 min-h-11 w-full shrink-0 items-center gap-2.5 rounded-[10px] border border-transparent px-2.5 py-1.5 text-sm font-semibold text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(44,82,130,0.24)] focus-visible:ring-offset-2 focus-visible:ring-offset-white",
+        "platform-nav-link platform-sidebar-toggle group relative mt-auto flex h-11 min-h-11 w-full shrink-0 items-center gap-2.5 rounded-[10px] border border-transparent px-2.5 py-1.5 text-sm font-semibold text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white",
         isCollapsed ? "justify-center px-0" : "",
       ].join(" ")}
     >

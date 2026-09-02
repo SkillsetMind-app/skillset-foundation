@@ -31,13 +31,11 @@ export function ViewAsSwitcher() {
 
   return (
     <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-      <h3 className="display-title text-2xl leading-none text-[var(--color-ink)]">
+      <h3 className="text-base font-semibold text-[var(--color-ink)]">
         Preview the product
       </h3>
-      <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-        See the platform the way a learner or an instructor sees it, without
-        creating a second account. Your own access is untouched — only what the
-        interface offers changes.
+      <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
+        See the platform as a learner or an instructor; your own access is untouched.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         {PREVIEWABLE.map((entry) => (

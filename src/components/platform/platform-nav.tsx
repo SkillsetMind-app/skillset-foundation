@@ -71,46 +71,47 @@ const iconMap: Record<string, LucideIcon> = {
   Users,
 };
 
+// Chaves de `platform.navSection.*`; o rotulo visivel sai do dicionario.
 const sectionOrder = [
-  "Home",
-  "Products",
-  "Marketing",
-  "Sales",
-  "Earnings",
-  "Reports",
-  "Growth",
-  "Tools",
-  "My Learning",
-  "Discover",
-  "Learn",
-  "Operations",
-  "Account",
+  "home",
+  "products",
+  "marketing",
+  "sales",
+  "earnings",
+  "reports",
+  "growth",
+  "tools",
+  "myLearning",
+  "discover",
+  "learn",
+  "operations",
+  "account",
 ];
 
 // "Operations" era um grupo com um único item, também chamado "Operations":
 // clicar para abrir e ver o mesmo nome. Grupo de item único vira item direto.
 const directSections = new Set([
-  "Home",
-  "Earnings",
-  "My Learning",
-  "Discover",
-  "Operations",
+  "home",
+  "earnings",
+  "myLearning",
+  "discover",
+  "operations",
 ]);
 
 const sectionIconMap: Record<string, LucideIcon> = {
-  Discover: ShoppingBag,
-  Home: House,
-  Learn: GraduationCap,
-  "My Learning": BookOpen,
-  Products: PackageOpen,
-  Marketing: Megaphone,
-  Sales: Receipt,
-  Earnings: TrendingUp,
-  Reports: BarChart3,
-  Growth: Users,
-  Tools: Settings,
-  Operations: UserCheck,
-  Account: Settings,
+  discover: ShoppingBag,
+  home: House,
+  learn: GraduationCap,
+  myLearning: BookOpen,
+  products: PackageOpen,
+  marketing: Megaphone,
+  sales: Receipt,
+  earnings: TrendingUp,
+  reports: BarChart3,
+  growth: Users,
+  tools: Settings,
+  operations: UserCheck,
+  account: Settings,
 };
 
 type PlatformNavProps = {
@@ -143,7 +144,7 @@ export function PlatformNav({ collapsed = false, onRequestExpand }: PlatformNavP
         (!item.permission || hasPermission(subject, item.permission))
     )
     .sort((a, b) => {
-      const sectionDelta = getSectionRank(a.section) - getSectionRank(b.section);
+      const sectionDelta = getSectionRank(a.sectionKey) - getSectionRank(b.sectionKey);
 
       if (sectionDelta !== 0) {
         return sectionDelta;
@@ -155,8 +156,8 @@ export function PlatformNav({ collapsed = false, onRequestExpand }: PlatformNavP
   const groups: Array<{ section: string; items: typeof visibleItems }> = [];
   for (const item of visibleItems) {
     const currentGroup = groups.at(-1);
-    if (!currentGroup || currentGroup.section !== item.section) {
-      groups.push({ section: item.section, items: [item] });
+    if (!currentGroup || currentGroup.section !== item.sectionKey) {
+      groups.push({ section: item.sectionKey, items: [item] });
     } else {
       currentGroup.items.push(item);
     }
@@ -219,9 +220,12 @@ export function PlatformNav({ collapsed = false, onRequestExpand }: PlatformNavP
         }
 
         const SectionIcon = sectionIconMap[group.section] ?? LayoutDashboard;
+        // Os grupos saiam em ingles cru ("Products", "Sales") em toda lingua,
+        // e a dica do icone recolhido tambem era montada a mao em ingles.
+        const sectionLabel = t(`platform.navSection.${group.section}`);
         const isActiveSection = group.section === activeSection;
         const isExpanded = !collapsed && expandedSections.includes(group.section);
-        const panelId = `${panelIdPrefix}-${group.section.toLowerCase().replace(/\s+/g, "-")}`;
+        const panelId = `${panelIdPrefix}-${group.section}`;
 
         return (
           <div className="platform-nav-section shrink-0" key={group.section}>
@@ -230,9 +234,11 @@ export function PlatformNav({ collapsed = false, onRequestExpand }: PlatformNavP
               onClick={() => toggleSection(group.section)}
               aria-controls={collapsed ? undefined : panelId}
               aria-expanded={collapsed ? undefined : isExpanded}
-              aria-label={collapsed ? `Open ${group.section} navigation` : undefined}
-              title={collapsed ? group.section : undefined}
-              className={`platform-nav-link platform-nav-section-trigger group relative flex w-full shrink-0 items-center rounded-[10px] border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(44,82,130,0.24)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+              aria-label={
+                collapsed ? t("platform.openSectionNav").replace("{section}", sectionLabel) : undefined
+              }
+              title={collapsed ? sectionLabel : undefined}
+              className={`platform-nav-link platform-nav-section-trigger group relative flex w-full shrink-0 items-center rounded-[10px] border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
                 collapsed ? "justify-center px-0" : "px-2"
               } ${
                 collapsed && isActiveSection
@@ -245,7 +251,7 @@ export function PlatformNav({ collapsed = false, onRequestExpand }: PlatformNavP
               <span className="platform-nav-icon-chip">
                 <SectionIcon aria-hidden="true" size={17} strokeWidth={2} />
               </span>
-              <span className="platform-sidebar-label min-w-0 truncate">{group.section}</span>
+              <span className="platform-sidebar-label min-w-0 truncate">{sectionLabel}</span>
               {!collapsed ? (
                 <ChevronDown
                   aria-hidden="true"
@@ -356,7 +362,7 @@ function PlatformNavLink({
       title={collapsed ? label : undefined}
       target={newTab ? "_blank" : undefined}
       rel={newTab ? "noopener noreferrer" : undefined}
-      className={`platform-nav-link group relative flex h-11 min-h-11 shrink-0 items-center gap-2.5 rounded-[10px] border px-2.5 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(44,82,130,0.24)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+      className={`platform-nav-link group relative flex h-11 min-h-11 shrink-0 items-center gap-2.5 rounded-[10px] border px-2.5 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
         active
           ? "platform-nav-active border-[rgba(24,58,94,0.2)] shadow-[0_10px_22px_rgba(26,54,93,0.16)]"
           : "border-transparent text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]"

@@ -42,12 +42,11 @@ export function UserLookupPanel() {
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             User lookup
           </p>
-          <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+          <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
             Find learners and educators.
           </h3>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            Read-only account lookup for support and trust workflows. Role
-            changes stay outside the client until an audited admin workflow exists.
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+            Read-only lookup for support and trust workflows.
           </p>
         </div>
         <span className="rounded-[8px] bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">

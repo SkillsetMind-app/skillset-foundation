@@ -247,6 +247,7 @@
     "studentView": "Vista de estudiante",
     "teacherView": "Vista de profesor",
     "opsView": "Vista de operaciones",
+    "viewAs": "Ver como…",
     "becomeTeacher": "Conviértete en profesor",
     "sectionAccount": "Cuenta",
     "creatorPlan": "Plan de creador",
@@ -359,6 +360,7 @@
     "opensInNewTab": "(se abre en una pestaña nueva)",
     "breadcrumbLabel": "Ruta de navegación",
     "openMobileNav": "Abrir menú de navegación",
+    "openSectionNav": "Abrir navegación de {section}",
     "nav": {
       "classroom": "Aula",
       "communities": "Comunidades",
@@ -388,6 +390,21 @@
       "reports": "Informes",
       "earnings": "Ingresos",
       "verification": "Verificación"
+    },
+    "navSection": {
+      "home": "Inicio",
+      "products": "Productos",
+      "marketing": "Marketing",
+      "sales": "Ventas",
+      "earnings": "Ingresos",
+      "reports": "Informes",
+      "growth": "Crecimiento",
+      "tools": "Herramientas",
+      "myLearning": "Mi aprendizaje",
+      "discover": "Descubrir",
+      "learn": "Aprender",
+      "operations": "Operaciones",
+      "account": "Cuenta"
     },
     "crumbs": {
       "learn": "Aprender",

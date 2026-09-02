@@ -105,13 +105,11 @@ export function PaymentOperationsPanel() {
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Payments
           </p>
-          <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+          <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
             Stripe order monitor.
           </h3>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            This panel tracks live Stripe orders. It is intentionally
-            operational: no course access is granted unless payment is
-            confirmed and the enrollment is created automatically.
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+            Live Stripe orders; access is granted only after payment is confirmed.
           </p>
         </div>
         <div className="flex items-center gap-2">

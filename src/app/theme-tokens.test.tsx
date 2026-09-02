@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -24,6 +24,7 @@ describe("platform theme tokens", () => {
       "--color-warning-fg",
       "--color-line",
       "--color-line-strong",
+      "--focus-ring",
     ]) {
       expect(dark, `${token} missing from dark theme`).toContain(`${token}:`);
     }
@@ -34,6 +35,22 @@ describe("platform theme tokens", () => {
     const dark = block('[data-theme="dark"]');
     expect(dark).toContain("--color-line: rgba(255, 255, 255, 0.34)");
     expect(dark).toContain("--color-line-strong: rgba(255, 255, 255, 0.44)");
+  });
+
+  // O anel de foco mudava de cor por tela: a regra global usava --color-primary
+  // e 13 elementos pintavam o navy antigo (rgba(44,82,130,.24/.28/.35)) inline.
+  it("has one focus ring token and no screen paints its own ring colour", () => {
+    expect(block(":root")).toContain("--focus-ring:");
+    expect(css).toMatch(/:focus-visible[^{]*\{\s*outline: 2px solid var\(--focus-ring\)/);
+
+    const files = readdirSync(join(process.cwd(), "src"), { recursive: true, withFileTypes: true })
+      .filter((e) => e.isFile() && e.name.endsWith(".tsx") && !e.name.endsWith(".test.tsx"))
+      .map((e) => join(e.parentPath, e.name));
+    expect(files.length).toBeGreaterThan(0);
+    const inlineRing = files.filter((file) =>
+      /focus-visible:(?:outline|ring)-\[rgba\(44,\s*82,\s*130/.test(readFileSync(file, "utf8")),
+    );
+    expect(inlineRing).toEqual([]);
   });
 
   it("leaves no literal white on platform surfaces that must invert", () => {

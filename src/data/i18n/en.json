@@ -247,6 +247,7 @@
     "studentView": "Student view",
     "teacherView": "Teacher view",
     "opsView": "Operations view",
+    "viewAs": "View as…",
     "becomeTeacher": "Become a teacher",
     "sectionAccount": "Account",
     "creatorPlan": "Creator plan",
@@ -359,6 +360,7 @@
     "opensInNewTab": "(opens in a new tab)",
     "breadcrumbLabel": "Breadcrumb",
     "openMobileNav": "Open navigation menu",
+    "openSectionNav": "Open {section} navigation",
     "nav": {
       "classroom": "Classroom",
       "communities": "Communities",
@@ -388,6 +390,21 @@
       "reports": "Reports",
       "earnings": "Earnings",
       "verification": "Verification"
+    },
+    "navSection": {
+      "home": "Home",
+      "products": "Products",
+      "marketing": "Marketing",
+      "sales": "Sales",
+      "earnings": "Earnings",
+      "reports": "Reports",
+      "growth": "Growth",
+      "tools": "Tools",
+      "myLearning": "My Learning",
+      "discover": "Discover",
+      "learn": "Learn",
+      "operations": "Operations",
+      "account": "Account"
     },
     "crumbs": {
       "learn": "Learn",

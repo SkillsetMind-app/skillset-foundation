@@ -107,7 +107,7 @@ function StorefrontImageUpload({
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <label
-            className={`inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-[8px] border border-dashed border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] ${
+            className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-[8px] border border-dashed border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] ${
               isUploading ? "pointer-events-none opacity-60" : ""
             }`}
           >
@@ -133,7 +133,7 @@ function StorefrontImageUpload({
               disabled={isUploading}
               aria-label={`Remove storefront ${kind === "logo" ? "logo" : "hero image"}`}
               title={`Remove ${label.toLowerCase()}`}
-              className="inline-flex min-h-10 items-center gap-2 rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] disabled:opacity-60"
+              className="inline-flex min-h-11 items-center gap-2 rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] disabled:opacity-60"
             >
               <Trash2 aria-hidden="true" size={15} />
               Remove

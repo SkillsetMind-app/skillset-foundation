@@ -87,7 +87,7 @@ export function MobileSidebarDrawer({
               key={item.href}
               href={item.href}
               className={[
-                "grid min-w-0 flex-1 place-items-center gap-1 px-2 py-2 text-[10px] font-bold text-[var(--color-ink-soft)]",
+                "grid min-w-0 flex-1 place-items-center gap-1 px-2 py-2 text-[11px] font-bold text-[var(--color-ink-soft)]",
                 active ? "text-[var(--color-primary)]" : "",
               ].join(" ")}
             >
@@ -99,7 +99,7 @@ export function MobileSidebarDrawer({
         <button
           type="button"
           onClick={onOpen}
-          className="grid min-w-0 flex-1 place-items-center gap-1 px-2 py-2 text-[10px] font-bold text-[var(--color-ink-soft)]"
+          className="grid min-w-0 flex-1 place-items-center gap-1 px-2 py-2 text-[11px] font-bold text-[var(--color-ink-soft)]"
           aria-label={t("platform.mobile.openMore")}
         >
           <MoreHorizontal aria-hidden="true" size={21} strokeWidth={1.8} />

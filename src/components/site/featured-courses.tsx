@@ -68,7 +68,7 @@ export function FeaturedCourses() {
           </div>
           <Link
             href="/courses"
-            className="group inline-flex w-fit items-center gap-2 whitespace-nowrap text-sm font-bold text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(44,82,130,0.35)]"
+            className="group inline-flex w-fit items-center gap-2 whitespace-nowrap text-sm font-bold text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
           >
             {t("home.marketplace.browseAll")}
             <ArrowRight
@@ -98,7 +98,7 @@ export function FeaturedCourses() {
             <li key={course.slug}>
               <Link
                 href={course.href ?? `/courses/${course.slug}`}
-                className="marketplace-card group focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(44,82,130,0.35)]"
+                className="marketplace-card group focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
               >
                 <div className="marketplace-card__media">
                   <Image

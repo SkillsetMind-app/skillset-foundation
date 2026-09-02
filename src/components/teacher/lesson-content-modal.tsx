@@ -820,7 +820,7 @@ function LessonUploadForm({
             <button
               type="button"
               onClick={onCancel}
-              className="min-h-9 rounded-md border border-[var(--color-line)] px-3 text-xs font-bold text-[var(--color-ink-soft)] hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
+              className="min-h-11 rounded-md border border-[var(--color-line)] px-3 text-xs font-bold text-[var(--color-ink-soft)] hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
             >
               Cancel upload
             </button>

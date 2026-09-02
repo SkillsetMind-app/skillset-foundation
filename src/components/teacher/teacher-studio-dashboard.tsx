@@ -312,7 +312,7 @@ function StudioProductsSection({
             role="tab"
             aria-selected={filter === item.id}
             onClick={() => setFilter(item.id)}
-            className={`min-h-10 shrink-0 border-b-2 px-3 text-sm font-semibold transition-colors ${
+            className={`min-h-11 shrink-0 border-b-2 px-3 text-sm font-semibold transition-colors ${
               filter === item.id
                 ? "border-[var(--color-primary)] text-[var(--color-primary)]"
                 : "border-transparent text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"

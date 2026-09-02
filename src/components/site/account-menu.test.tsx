@@ -79,4 +79,18 @@ describe("workspace switcher in the account menu", () => {
     expect(screen.queryByRole("link", { name: /operations view/i })).toBeNull();
     expect(screen.getByRole("link", { name: /student view/i })).toBeInTheDocument();
   });
+
+  // O admin procurava "ver como" no menu do avatar (reanalise Ops 5). E um
+  // atalho para a fila de acessos, onde o "ver como" de verdade mora.
+  it("gives an admin a 'View as' shortcut to the access queue, and nobody else", () => {
+    openMenu(["admin"], "/ops");
+    expect(screen.getByRole("link", { name: /view as/i })).toHaveAttribute(
+      "href",
+      "/ops?tab=access",
+    );
+    cleanup();
+
+    openMenu(["teacher"], "/teach");
+    expect(screen.queryByRole("link", { name: /view as/i })).toBeNull();
+  });
 });
