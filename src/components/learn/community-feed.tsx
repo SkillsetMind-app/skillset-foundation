@@ -2,11 +2,12 @@
 
 import { CheckCircle2, HelpCircle, Pin, Radio, X } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
+import { CommunityPostDrawer } from "@/components/learn/community-post-drawer";
 import type { SkillsetUser } from "@/domain/auth";
 import {
   countOpenQuestions,
@@ -70,6 +71,8 @@ type CommunityFeedProps = {
   canModerate?: boolean;
   /** O dono do curso abrindo "como membro" nao tem matricula; nao barrar. */
   skipEnrollmentGate?: boolean;
+  /** Post aberto na gaveta — vem da rota .../community/q/<post>. */
+  openPostId?: string | null;
 };
 
 const SAY_HI_WINDOW_MS = 7 * 24 * 3_600_000;
@@ -83,22 +86,32 @@ export function CommunityFeed({
   instructorIds = [],
   canModerate = false,
   skipEnrollmentGate = false,
+  openPostId = null,
 }: CommunityFeedProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const pathname = usePathname() ?? "";
+  // "/learn/courses/<curso>/community" — sem a gaveta ("/q/<post>") no fim.
+  const communityPath = pathname.replace(/\/q\/[^/]+$/, "");
+  const openPost = useCallback(
+    (postId: string) => router.push(`${communityPath}/q/${encodeURIComponent(postId)}`),
+    [communityPath, router],
+  );
+  const closePost = useCallback(() => router.push(communityPath), [communityPath, router]);
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [enrollmentReady, setEnrollmentReady] = useState(skipEnrollmentGate);
   const [error, setError] = useState("");
 
-  // Feed: `visible` e o que esta na tela; `pending` sao posts de OUTRAS
-  // pessoas que chegaram pelo realtime e esperam a pessoa clicar na pilula.
-  // Os proprios posts entram na hora (quem publica quer ver o que publicou).
-  const latestPosts = useRef<CommunityPost[]>([]);
+  // Feed: `all` e tudo o que chegou; `visible` e o que esta na tela; `pending`
+  // sao posts de OUTRAS pessoas que chegaram pelo realtime e esperam a pessoa
+  // clicar na pilula. Os proprios posts entram na hora (quem publica quer ver
+  // o que publicou).
   const [feed, setFeed] = useState<{
+    all: CommunityPost[];
     visible: CommunityPost[];
     pending: number;
     ready: boolean;
-  }>({ visible: [], pending: 0, ready: false });
+  }>({ all: [], visible: [], pending: 0, ready: false });
   const [comments, setComments] = useState<CommunityComment[]>([]);
   const [online, setOnline] = useState<PresentMember[]>([]);
   const [events, setEvents] = useState<CourseEvent[]>([]);
@@ -135,20 +148,20 @@ export function CommunityFeed({
     return subscribeToCommunityPosts(
       space.courseSlug,
       (posts) => {
-        latestPosts.current = posts;
         setFeed((current) => {
           if (!current.ready) {
-            return { visible: posts, pending: 0, ready: true };
+            return { all: posts, visible: posts, pending: 0, ready: true };
           }
           const known = new Set(current.visible.map((post) => post.id));
           const arrivals = posts.filter(
             (post) => !known.has(post.id) && post.authorId !== user?.uid,
           );
           if (arrivals.length === 0) {
-            return { visible: posts, pending: 0, ready: true };
+            return { all: posts, visible: posts, pending: 0, ready: true };
           }
           const arrivalIds = new Set(arrivals.map((post) => post.id));
           return {
+            all: posts,
             visible: posts.filter((post) => !arrivalIds.has(post.id)),
             pending: arrivals.length,
             ready: true,
@@ -157,7 +170,7 @@ export function CommunityFeed({
       },
       () => {
         setError("We could not load community posts.");
-        setFeed({ visible: [], pending: 0, ready: true });
+        setFeed({ all: [], visible: [], pending: 0, ready: true });
       },
     );
   }, [canRead, space.courseSlug, user?.uid]);
@@ -207,9 +220,15 @@ export function CommunityFeed({
   const nextLive = useMemo(() => pickNextLive(events, now), [events, now]);
   const isNewHere =
     Boolean(enrollment) && now - toMillis(enrollment?.createdAt) < SAY_HI_WINDOW_MS;
+  // A gaveta acha o post em tudo o que chegou — inclusive o que ainda espera
+  // na pilula (um link compartilhado aponta para um post que a pessoa nunca viu).
+  const drawerPost = useMemo(
+    () => (openPostId ? feed.all.find((post) => post.id === openPostId) ?? null : null),
+    [feed.all, openPostId],
+  );
 
   function showPending() {
-    setFeed({ visible: latestPosts.current, pending: 0, ready: true });
+    setFeed((current) => ({ ...current, visible: current.all, pending: 0 }));
   }
 
   if (!enrollmentReady) {
@@ -340,11 +359,23 @@ export function CommunityFeed({
                 currentUser={user}
                 instructorIds={instructorSet}
                 canModerate={canModerate}
+                onOpen={() => openPost(post.id)}
               />
             ))
           )}
         </div>
       </div>
+
+      {drawerPost ? (
+        <CommunityPostDrawer
+          post={drawerPost}
+          comments={commentsByPost.get(drawerPost.id) ?? []}
+          currentUser={user}
+          instructorIds={instructorSet}
+          canModerate={canModerate}
+          onClose={closePost}
+        />
+      ) : null}
 
       <aside className="grid gap-3">
         <LiveCard live={nextLive} now={now} />
@@ -656,12 +687,15 @@ function FeedCard({
   currentUser,
   instructorIds,
   canModerate,
+  onOpen,
 }: {
   post: CommunityPost;
   comments: CommunityComment[];
   currentUser: SkillsetUser | null;
   instructorIds: ReadonlySet<string>;
   canModerate: boolean;
+  /** Abre o post na gaveta (titulo e "View N replies"). */
+  onOpen: () => void;
 }) {
   const [likes, setLikes] = useState<{ count: number; likerIds: string[] }>({ count: 0, likerIds: [] });
   const [likePending, setLikePending] = useState(false);
@@ -764,7 +798,15 @@ function FeedCard({
       </header>
 
       {post.title ? (
-        <h3 className="mt-3 text-base font-bold leading-6 text-[var(--color-ink)]">{post.title}</h3>
+        <h3 className="mt-3 text-base font-bold leading-6 text-[var(--color-ink)]">
+          <button
+            type="button"
+            onClick={onOpen}
+            className="text-left hover:underline"
+          >
+            {post.title}
+          </button>
+        </h3>
       ) : null}
       {post.body ? (
         <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--color-ink-soft)] line-clamp-3 md:line-clamp-none">
@@ -793,7 +835,7 @@ function FeedCard({
         {comments.length > 1 && !showAll ? (
           <button
             type="button"
-            onClick={() => setShowAll(true)}
+            onClick={onOpen}
             className="min-h-11 rounded-full px-3 hover:bg-[var(--color-surface-soft)]"
           >
             View {comments.length} replies

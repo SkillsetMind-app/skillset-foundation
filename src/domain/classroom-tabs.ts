@@ -28,13 +28,16 @@ export function isClassroomTab(value: string): value is ClassroomTab {
 }
 
 /** O caminho da sala sem a aba: "/learn/courses/<curso>". Em aula, e o
- *  proprio pathname; numa aba, tira o "/<aba>" do fim. */
+ *  proprio pathname; numa aba, tira o "/<aba>" do fim — e o que vier depois
+ *  dela (a gaveta: "/community/q/<post>"). */
 export function classroomBasePath(pathname: string, tab: ClassroomTab): string {
   if (tab === "lesson") {
     return pathname;
   }
-  const suffix = `/${tab}`;
-  return pathname.endsWith(suffix) ? pathname.slice(0, -suffix.length) : pathname;
+  // So a gaveta (/q/<post>) pode vir depois da aba. Um "/.*" generico aqui
+  // engolia desde o PRIMEIRO "/community" — um curso de slug "community"
+  // perdia o slug junto com a aba.
+  return pathname.replace(new RegExp(`/${tab}(?:/q/[^/]+)?$`), "");
 }
 
 /** O endereco de uma aba, levando a aula atual junto (?lesson=). A aba

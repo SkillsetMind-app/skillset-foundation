@@ -89,6 +89,8 @@ type EnrolledCourseWorkspaceProps = {
    *  aula; /learn/courses/<curso>/<aba> e uma das outras. Antes tudo morava
    *  na mesma rolagem, sem endereco. */
   tab?: ClassroomTab;
+  /** Um post da comunidade aberto na gaveta (.../community/q/<post>). */
+  openPostId?: string | null;
 };
 
 export function EnrolledCourseWorkspace({
@@ -98,6 +100,7 @@ export function EnrolledCourseWorkspace({
   previewMode = false,
   whitelabel = false,
   tab = "lesson",
+  openPostId = null,
 }: EnrolledCourseWorkspaceProps) {
   const { user } = useAuth();
   const searchParams = useSearchParams();
@@ -949,6 +952,7 @@ export function EnrolledCourseWorkspace({
               ? { id: selectedLesson.id, title: selectedLesson.title, number: selectedLessonNumber }
               : null
           }
+          openPostId={openPostId}
         />
       ) : null}
 
@@ -1079,9 +1083,11 @@ function CourseEventsAgenda({ courseId }: { courseId: string }) {
 function CourseCommunitySection({
   course,
   currentLesson,
+  openPostId,
 }: {
   course: Course;
   currentLesson: CommunityFeedLesson | null;
+  openPostId: string | null;
 }) {
   const space: CommunitySpace = {
     id: `creator-${course.id}`,
@@ -1098,7 +1104,7 @@ function CourseCommunitySection({
   // repetia a aba e empurrava o feed para baixo.
   return (
     <section className="member-resource-panel">
-      <CommunityFeed space={space} currentLesson={currentLesson} />
+      <CommunityFeed space={space} currentLesson={currentLesson} openPostId={openPostId} />
     </section>
   );
 }

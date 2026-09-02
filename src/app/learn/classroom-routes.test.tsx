@@ -32,6 +32,7 @@ vi.mock("@/components/learn/learn-course-page", () => ({
 }));
 
 import TabRoute from "@/app/learn/courses/[slug]/[tab]/page";
+import PostRoute from "@/app/learn/courses/[slug]/community/q/[postId]/page";
 import CommunityRedirect from "@/app/learn/community/[slug]/page";
 import CreatorCommunityRedirect from "@/app/learn/community/creator/page";
 
@@ -42,6 +43,14 @@ describe("rota da aba: /learn/courses/<curso>/<aba>", () => {
     });
 
     expect(element.props).toMatchObject({ slug: "lideranca", tab: "community" });
+  });
+
+  it("a gaveta da pergunta tem endereco proprio dentro da aba Community", async () => {
+    const element = await PostRoute({
+      params: Promise.resolve({ slug: "lideranca", postId: "post-1" }),
+    });
+
+    expect(element.props).toMatchObject({ slug: "lideranca", tab: "community", openPostId: "post-1" });
   });
 
   it("nome desconhecido e 404 — e '/lesson' tambem, porque a aula e a rota-mae", async () => {

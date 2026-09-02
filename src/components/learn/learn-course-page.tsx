@@ -18,9 +18,12 @@ import { CourseViewedTracker } from "@/lib/posthog/page-trackers";
 export async function LearnCoursePage({
   slug,
   tab,
+  openPostId = null,
 }: {
   slug: string;
   tab: ClassroomTab;
+  /** Um post da comunidade aberto na gaveta (rota .../community/q/<post>). */
+  openPostId?: string | null;
 }) {
   const course = getCourseBySlug(slug);
 
@@ -51,6 +54,7 @@ export async function LearnCoursePage({
               initialCourseId={slug}
               whitelabel={Boolean(brand)}
               tab={tab}
+              openPostId={openPostId}
             />
           </Suspense>
         </MemberAreaShell>
@@ -73,7 +77,7 @@ export async function LearnCoursePage({
           theme comes straight off it — no round trip, and shell and classroom
           card read the same value. */}
       <MemberAreaShell theme={course.membersTheme ?? "light"}>
-        <EnrolledCourseWorkspace course={course} tab={tab} />
+        <EnrolledCourseWorkspace course={course} tab={tab} openPostId={openPostId} />
       </MemberAreaShell>
     </ProtectedSurface>
   );

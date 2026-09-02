@@ -34,10 +34,13 @@ const mocks = vi.hoisted(() => ({
   // vi.hoisted roda antes das constantes do modulo: data literal (NOW - 2 dias).
   enrollmentCreatedAt: "2026-08-31T12:00:00.000Z",
   subscriptions: 0,
+  pathname: "/learn/courses/course-1/community",
+  push: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/learn/courses/course-1/community",
+  usePathname: () => mocks.pathname,
+  useRouter: () => ({ push: mocks.push, replace: vi.fn() }),
 }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
@@ -80,6 +83,7 @@ vi.mock("@/lib/data/community-posts", () => ({
   createCommunityPost: vi.fn(() => Promise.resolve()),
   createCommunityComment: vi.fn(() => Promise.resolve()),
   setCommunityPostPinned: vi.fn(() => Promise.resolve()),
+  setCommunityPostAcceptedAnswer: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock("@/lib/data/community-presence", () => ({
@@ -262,10 +266,8 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(within(answered).getByText("Show the constraint, not the pressure.")).toBeInTheDocument();
     expect(within(answered).queryByText("Following, same problem here.")).toBeNull();
     expect(within(answered).getByText("answer")).toBeInTheDocument();
+    // "View 3 replies" abre a gaveta (11b) — nao expande no cartao.
     expect(within(answered).getByRole("button", { name: "View 3 replies" })).toBeInTheDocument();
-
-    fireEvent.click(within(answered).getByRole("button", { name: "View 3 replies" }));
-    expect(within(answered).getByText("Following, same problem here.")).toBeInTheDocument();
 
     const open = screen.getByRole("article", { name: /Portuguese version/ });
     expect(open).toHaveTextContent("Question");
@@ -387,5 +389,75 @@ describe("feed da comunidade (rodada 11)", () => {
     await renderFeed();
 
     expect(screen.queryByText("New here? Say hi 👋")).toBeNull();
+  });
+});
+
+/**
+ * 11b — a gaveta da pergunta: abre por cima do feed com URL propria
+ * (.../community/q/<post>), a resposta aceita em verde no topo, Esc e
+ * "Back to feed" fecham (voltando ao endereco da aba), e quem pode marca
+ * "Mark as the answer".
+ */
+describe("gaveta da pergunta (11b)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: NOW });
+    mocks.postsCallback = null;
+    mocks.commentsCallback = null;
+    mocks.presenceCallback = null;
+    mocks.eventsCallback = null;
+    mocks.subscriptions = 0;
+    mocks.pathname = "/learn/courses/course-1/community";
+    mocks.push.mockReset();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  it("o titulo e 'View N replies' abrem a gaveta pelo endereco, sem trocar de pagina", async () => {
+    await renderFeed();
+
+    fireEvent.click(screen.getByRole("button", { name: "View 3 replies" }));
+    expect(mocks.push).toHaveBeenCalledWith("/learn/courses/course-1/community/q/answered");
+
+    fireEvent.click(screen.getByRole("button", { name: /Portuguese version/ }));
+    expect(mocks.push).toHaveBeenCalledWith("/learn/courses/course-1/community/q/open");
+  });
+
+  it("com ?q no endereco: gaveta aberta, resposta aceita primeiro; Esc devolve a aba", async () => {
+    mocks.pathname = "/learn/courses/course-1/community/q/answered";
+    await renderFeed({ openPostId: "answered" });
+
+    const drawer = screen.getByRole("dialog", { name: /real deadline/ });
+    const replies = within(drawer).getAllByRole("listitem");
+    expect(replies[0]).toHaveTextContent("Show the constraint, not the pressure.");
+    expect(replies[0]).toHaveTextContent("answer");
+    expect(replies[1]).toHaveTextContent("Following, same problem here.");
+    expect(replies).toHaveLength(3);
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(mocks.push).toHaveBeenCalledWith("/learn/courses/course-1/community");
+
+    fireEvent.click(within(drawer).getByRole("button", { name: "Back to feed" }));
+    expect(mocks.push).toHaveBeenLastCalledWith("/learn/courses/course-1/community");
+  });
+
+  it("quem NAO e o autor nem modera nao marca resposta; quem modera desmarca e marca", async () => {
+    mocks.pathname = "/learn/courses/course-1/community/q/answered";
+    const { unmount } = await renderFeed({ openPostId: "answered" });
+    expect(screen.queryByRole("button", { name: /as the answer/ })).toBeNull();
+    unmount();
+
+    await renderFeed({ openPostId: "answered", canModerate: true });
+    const drawer = screen.getByRole("dialog", { name: /real deadline/ });
+    fireEvent.click(within(drawer).getByRole("button", { name: "Unmark as the answer" }));
+    const { setCommunityPostAcceptedAnswer } = await import("@/lib/data/community-posts");
+    await waitFor(() => expect(setCommunityPostAcceptedAnswer).toHaveBeenCalledWith("answered", null));
+
+    const marks = within(drawer).getAllByRole("button", { name: "Mark as the answer" });
+    fireEvent.click(marks[0]);
+    await waitFor(() => expect(setCommunityPostAcceptedAnswer).toHaveBeenCalledWith("answered", "c-first"));
   });
 });
