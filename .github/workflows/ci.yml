@@ -41,20 +41,54 @@ jobs:
       - name: Build (next)
         run: npm run build
 
-      # Os smoke tests de RLS em supabase/tests/ existem desde julho e nenhum
-      # comando os executava — inclusive o que prova que ninguém consegue setar
-      # o próprio activation_fee_paid_at (virar criador ativado sem pagar). Eles
-      # precisam de um banco COM DADOS, então rodam contra staging; cada um roda
-      # em transação com rollback.
-      #
-      # Sem o secret, este passo AVISA em vez de passar calado: o objetivo é que
-      # a lacuna fique visível em toda execução, e não invisível como estava.
+  # Os smoke tests de RLS em supabase/tests/ existem desde julho e nunca foram
+  # executados. Até aqui eles dependiam do secret STAGING_DATABASE_URL, que
+  # nunca existiu no repositório: sem ele o passo emitia um ::warning e saía com
+  # `exit 0`, então o check ficava VERDE sem ter rodado teste nenhum. Um portão
+  # que aprova por omissão é pior que portão nenhum.
+  #
+  # A dependência do secret foi removida, não remendada. O job levanta um
+  # Postgres descartável no próprio runner, aplica as migrations do repositório
+  # e semeia supabase/seed.sql. Consequências:
+  #
+  #   - não há credencial para faltar, então não existe caminho que passe verde
+  #     sem rodar: se o banco não sobe, se o seed não aplica ou se um teste
+  #     falha, o job falha;
+  #   - PR vindo de fork roda igual (fork não recebe secret, e aqui não há
+  #     secret a receber);
+  #   - o banco de produção nunca é tocado. Estes testes escrevem.
+  rls:
+    name: RLS smoke tests (banco efêmero)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Sem `npm ci`: scripts/run-supabase-tests.mjs só usa builtins do Node e
+      # o psql que já vem no runner.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Cria o banco, aplica supabase/migrations/ na ordem e roda
+      # supabase/seed.sql ([db.seed] em supabase/config.toml).
+      - name: Sobe o Postgres efêmero e aplica migrations + seed
+        run: supabase db start
+
+      # A URL sai da própria CLI (banco local, porta dela). Se vier vazia o
+      # passo para aqui, em vez de deixar o runner decidir sozinho o que fazer
+      # sem banco.
       - name: RLS smoke tests (supabase/tests)
-        env:
-          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
         run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "::warning title=RLS não verificado::STAGING_DATABASE_URL não está configurado; os 4 smoke tests de RLS em supabase/tests/ NÃO rodaram. Uma regressão de policy passa por este pipeline sem ser vista."
-            exit 0
+          set -euo pipefail
+          eval "$(supabase status -o env | grep '^DB_URL=')"
+          if [ -z "${DB_URL:-}" ]; then
+            echo "::error title=Banco efêmero não subiu::supabase status não devolveu DB_URL; os smoke tests de RLS não têm onde rodar."
+            exit 1
           fi
-          npm run test:db
+          DATABASE_URL="$DB_URL" npm run test:db
