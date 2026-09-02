@@ -16,6 +16,65 @@ BEGIN
 END;
 $$;
 
+-- Fixtures que este arquivo sempre pressupôs e nunca criou. Ele foi escrito
+-- contra um staging semeado à mão: as linhas `hardening-smoke-*` de users e
+-- courses já estavam lá. Num banco montado a partir do repositório elas não
+-- existem, e os INSERTs adiante batem nas FKs
+-- course_subscriptions.user_id/course_id e course_lesson_content.course_id.
+-- Ninguém tinha percebido porque este teste nunca tinha sido executado.
+-- Tudo aqui é desfeito no ROLLBACK do fim do arquivo.
+DO $$
+DECLARE
+  v_sufixo text;
+BEGIN
+  -- Os seis primeiros são os status do laço de assinaturas adiante, já com o
+  -- '_' trocado por '-' como aquele laço faz; 'a' e 'b' são os dois cursos do
+  -- teste de posse de aula.
+  FOREACH v_sufixo IN ARRAY ARRAY[
+    'active', 'trialing', 'past-due', 'unpaid', 'incomplete', 'paused',
+    'canceled', 'a', 'b'
+  ] LOOP
+    INSERT INTO public.users (uid, email, display_name)
+    VALUES (
+      'hardening-smoke-user-' || v_sufixo,
+      'hardening-smoke-' || v_sufixo || '@ci.local',
+      'Hardening Smoke ' || v_sufixo
+    )
+    ON CONFLICT (uid) DO NOTHING;
+
+    INSERT INTO public.courses (id, owner_id, title, summary, category)
+    VALUES (
+      'hardening-smoke-course-' || v_sufixo,
+      'hardening-smoke-user-' || v_sufixo,
+      'Hardening Smoke ' || v_sufixo,
+      'Curso usado só por este smoke test.',
+      'smoke'
+    )
+    ON CONFLICT (id) DO NOTHING;
+  END LOOP;
+
+  -- O bloco de assinaturas canceladas usa nomes próprios, fora do padrão do
+  -- laço acima.
+  INSERT INTO public.users (uid, email, display_name)
+  VALUES (
+    'hardening-smoke-canceled-user',
+    'hardening-smoke-canceled@ci.local',
+    'Hardening Smoke Canceled'
+  )
+  ON CONFLICT (uid) DO NOTHING;
+
+  INSERT INTO public.courses (id, owner_id, title, summary, category)
+  VALUES (
+    'hardening-smoke-canceled-course',
+    'hardening-smoke-canceled-user',
+    'Hardening Smoke Canceled',
+    'Curso usado só por este smoke test.',
+    'smoke'
+  )
+  ON CONFLICT (id) DO NOTHING;
+END;
+$$;
+
 SELECT pg_temp.assert_true(
   (SELECT relrowsecurity
    FROM pg_class
@@ -93,6 +152,11 @@ SELECT pg_temp.assert_true(
   'enforce_rate_limit must be service-role-only'
 );
 
+-- is_service_role() lê o claim do JWT, não o papel do Postgres: numa chamada com
+-- a chave de serviço o PostgREST manda os dois. O teste mandava só o papel, então
+-- server_write_only() recusava a escrita e o caminho positivo nunca era
+-- exercido -- ninguém percebeu porque este arquivo nunca tinha sido executado.
+SELECT set_config('request.jwt.claim.role', 'service_role', true);
 SET LOCAL ROLE service_role;
 DO $$
 DECLARE
@@ -146,7 +210,9 @@ BEGIN
 END;
 $$;
 RESET ROLE;
+SELECT set_config('request.jwt.claim.role', '', true);
 
+SELECT set_config('request.jwt.claim.role', 'service_role', true);
 SET LOCAL ROLE service_role;
 DO $$
 DECLARE
@@ -160,15 +226,33 @@ DECLARE
 BEGIN
   DELETE FROM public.payout_ledger
   WHERE id = 'hardening-smoke-reversal-ledger';
+  -- O fixture abaixo nunca tinha sido validado contra o schema real, porque
+  -- este arquivo nunca tinha sido executado: faltavam as três colunas NOT NULL
+  -- sem default (amount_minor, currency, status) e o dono referenciado pela FK
+  -- payout_ledger.teacher_id -> public.users(uid). Tudo desfeito no ROLLBACK.
+  INSERT INTO public.users (uid, email, display_name)
+  VALUES (
+    'hardening-smoke-owner',
+    'hardening-smoke-owner@ci.local',
+    'Hardening Smoke Owner'
+  )
+  ON CONFLICT (uid) DO NOTHING;
+
   INSERT INTO public.payout_ledger (
     id,
     teacher_id,
+    amount_minor,
+    currency,
+    status,
     transfer_amount_minor,
     transfer_reversed_amount_minor,
     refund_reversal_claims
   ) VALUES (
     'hardening-smoke-reversal-ledger',
     'hardening-smoke-owner',
+    100,
+    'brl',
+    'paid',
     100,
     0,
     '{}'::jsonb
@@ -261,6 +345,7 @@ BEGIN
 END;
 $$;
 RESET ROLE;
+SELECT set_config('request.jwt.claim.role', '', true);
 
 SELECT pg_temp.assert_true(
   EXISTS (
@@ -452,6 +537,7 @@ BEGIN
 END;
 $$;
 
+SELECT set_config('request.jwt.claim.role', 'service_role', true);
 SET LOCAL ROLE service_role;
 DO $$
 DECLARE
@@ -461,8 +547,16 @@ BEGIN
   WHERE id IN ('hardening-smoke-offer', 'hardening-smoke-rollback-offer');
   DELETE FROM public.courses
   WHERE id = 'hardening-smoke-offer-course';
-  INSERT INTO public.courses (id, owner_id)
-  VALUES ('hardening-smoke-offer-course', 'hardening-smoke-owner');
+  -- courses.title/summary/category são NOT NULL sem default; o INSERT original
+  -- só trazia id e owner_id.
+  INSERT INTO public.courses (id, owner_id, title, summary, category)
+  VALUES (
+    'hardening-smoke-offer-course',
+    'hardening-smoke-owner',
+    'Hardening Smoke Offer',
+    'Curso usado só por este smoke test.',
+    'smoke'
+  );
 
   v_result := public.create_product_offer_atomic(
     'hardening-smoke-offer-course',
@@ -520,5 +614,6 @@ BEGIN
 END;
 $$;
 RESET ROLE;
+SELECT set_config('request.jwt.claim.role', '', true);
 
 ROLLBACK;
