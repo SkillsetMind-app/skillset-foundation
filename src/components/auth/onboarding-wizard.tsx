@@ -350,6 +350,10 @@ export function OnboardingWizard() {
     return "";
   }
 
+  // O caminho ja vem do cadastro (?path=) na maioria dos casos; sem ele,
+  // trata como aluno (o menos exigente).
+  const phoneRequired = answers.path === "teacher";
+
   // O passo de perfil grava nas colunas do usuario (nao nas respostas) e so
   // entao marca `profileConfirmed` e avanca. Validacao aqui, nao em
   // validateCurrentQuestion: nome e telefone vivem em estado proprio.
@@ -364,7 +368,11 @@ export function OnboardingWizard() {
       setError("Tell us your name — at least 2 letters, so we know what to call you.");
       return;
     }
-    if (!isValidPhoneNumber(profilePhone)) {
+    // Telefone: obrigatorio para quem vai VENDER (suporte, pagamentos,
+    // verificacao); opcional para o aluno — pedir e ok, exigir e friccao.
+    // Quando preenchido, tem que ser um numero de verdade.
+    const phone = profilePhone.trim();
+    if (phone ? !isValidPhoneNumber(phone) : phoneRequired) {
       setError("Enter a phone number with area code, like +1 555 123 4567.");
       return;
     }
@@ -374,7 +382,7 @@ export function OnboardingWizard() {
     try {
       await updateUserIdentity(user.uid, {
         displayName: profileName.trim(),
-        phoneNumber: profilePhone.trim(),
+        phoneNumber: phone || null,
       });
       await updateAnswer({ ...answers, profileConfirmed: true }, true);
     } catch {
@@ -594,7 +602,11 @@ export function OnboardingWizard() {
           <OnboardingQuestion
             number={question.number}
             title="First, tell us who you are."
-            lead="Your name shows on your profile and certificates. Your phone stays private — we use it for account security and support."
+            lead={
+              phoneRequired
+                ? "Your name shows on your profile and certificates. Your phone stays private — we use it for payouts, verification and support."
+                : "Your name shows on your profile and certificates. Your phone is optional and stays private — only for account security and support."
+            }
           >
             <div className="grid gap-4">
               <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
@@ -609,7 +621,7 @@ export function OnboardingWizard() {
                 />
               </label>
               <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-                Phone
+                {phoneRequired ? "Phone" : "Phone (optional)"}
                 <input
                   type="tel"
                   value={profilePhone}
