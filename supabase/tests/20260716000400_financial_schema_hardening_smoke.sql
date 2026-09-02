@@ -27,8 +27,12 @@ DO $$
 DECLARE
   v_sufixo text;
 BEGIN
+  -- Os seis primeiros são os status do laço de assinaturas adiante, já com o
+  -- '_' trocado por '-' como aquele laço faz; 'a' e 'b' são os dois cursos do
+  -- teste de posse de aula.
   FOREACH v_sufixo IN ARRAY ARRAY[
-    'active', 'trialing', 'past-due', 'paused', 'canceled', 'a', 'b', 'offer'
+    'active', 'trialing', 'past-due', 'unpaid', 'incomplete', 'paused',
+    'canceled', 'a', 'b'
   ] LOOP
     INSERT INTO public.users (uid, email, display_name)
     VALUES (
