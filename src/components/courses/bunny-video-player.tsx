@@ -17,6 +17,9 @@ type BunnyVideoPlayerProps = {
    * "Mark complete & next" button still advances the student.
    */
   onEnded?: () => void;
+  /** A aula abriu pelo cartão "Próxima aula": o embed começa a tocar sozinho
+   *  (permitido porque o aluno já interagiu com a página). */
+  autoplay?: boolean;
 } & (
   | {
       assetId: string;
@@ -29,6 +32,22 @@ type BunnyVideoPlayerProps = {
       lessonId: string;
     }
 );
+
+// Bunny's embed honors `autoplay=true` in the query. Only appended when the
+// classroom asks for it (the lesson opened from the "Next lesson" card).
+export function withAutoplay(embedUrl: string, autoplay?: boolean): string {
+  if (!autoplay) {
+    return embedUrl;
+  }
+
+  try {
+    const url = new URL(embedUrl);
+    url.searchParams.set("autoplay", "true");
+    return url.toString();
+  } catch {
+    return embedUrl;
+  }
+}
 
 export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
   const [playback, setPlayback] = useState<{
@@ -172,7 +191,7 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
     <iframe
       ref={iframeRef}
       onLoad={subscribeToEnded}
-      src={currentPlayback.embedUrl}
+      src={withAutoplay(currentPlayback.embedUrl, props.autoplay)}
       title={props.title}
       className="aspect-video w-full"
       loading="lazy"

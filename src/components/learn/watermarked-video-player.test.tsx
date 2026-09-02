@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { VideoWatermark } from "@/components/learn/watermarked-video-player";
@@ -19,6 +19,36 @@ describe("VideoWatermark", () => {
     expect(
       screen.getByText(/student@example\.com/),
     ).toBeInTheDocument();
+  });
+
+  it("uma etiqueta so, pequena, que muda de canto a cada ~30 s", () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = render(
+        <VideoWatermark>
+          <video aria-label="clip" />
+        </VideoWatermark>,
+      );
+
+      // Antes eram duas etiquetas fixas o tempo todo (e-mail/hora em cima,
+      // "protected playback" embaixo). Agora e uma, com tudo dentro.
+      const labels = container.querySelectorAll("[data-watermark-corner]");
+      expect(labels).toHaveLength(1);
+      expect(labels[0].textContent).toMatch(/student@example\.com/);
+      expect(labels[0].textContent).toMatch(/SkillsetMind/);
+      const before = labels[0].getAttribute("data-watermark-corner");
+
+      act(() => {
+        vi.advanceTimersByTime(30_000);
+      });
+
+      const after = container
+        .querySelector("[data-watermark-corner]")
+        ?.getAttribute("data-watermark-corner");
+      expect(after).not.toBe(before);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("never intercepts clicks meant for the player controls", () => {

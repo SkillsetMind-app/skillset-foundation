@@ -22,6 +22,7 @@ import { CourseCommunityFeed } from "@/components/learn/course-community-feed";
 import { CourseMessagesPanel } from "@/components/learn/course-messages-panel";
 import { CourseReviewPanel } from "@/components/learn/course-review-panel";
 import { LessonListOverlay } from "@/components/learn/lesson-list-overlay";
+import { NextLessonCard } from "@/components/learn/next-lesson-card";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { TrustedEmbedPlayer } from "@/components/learn/trusted-embed-player";
 import { CourseSubscriptionCard } from "@/components/learn/course-subscription-card";
@@ -156,6 +157,11 @@ export function EnrolledCourseWorkspace({
     });
   }
   const [lessonListOpen, setLessonListOpen] = useState(false);
+  // Fim do vídeo: a próxima aula fica proposta num cartão sobre o player (5 s,
+  // Assistir agora / Cancelar) em vez de trocar em silêncio. Quando o aluno
+  // aceita, a aula seguinte abre com autoplay — só ela, só dessa vez.
+  const [nextUp, setNextUp] = useState<Lesson | null>(null);
+  const [autoplayLessonId, setAutoplayLessonId] = useState<string | null>(null);
   const [assetsState, setAssetsState] = useState<{
     assets: CourseAsset[];
     key: string | null;
@@ -699,8 +705,21 @@ export function EnrolledCourseWorkspace({
     );
 
     if (nextUnlockState.unlocked) {
-      selectLesson(nextInOrder.id);
+      // Não troca em silêncio: o cartão "Próxima aula" sobre o vídeo conta 5 s
+      // com "Assistir agora" e "Cancelar". Sem ação, a próxima começa a tocar.
+      setNextUp(nextInOrder);
     }
+  }
+
+  // O aluno aceitou (ou deixou o tempo correr): troca de aula e pede autoplay
+  // — permitido porque ele já interagiu com a página.
+  function playNextUp() {
+    if (!nextUp) {
+      return;
+    }
+    setNextUp(null);
+    setAutoplayLessonId(nextUp.id);
+    selectLesson(nextUp.id);
   }
 
   return (
@@ -828,6 +847,10 @@ export function EnrolledCourseWorkspace({
             onEnded={handleLessonEnded}
             unlockState={selectedLessonUnlockState}
             previewMode={previewMode}
+            autoplay={autoplayLessonId === selectedLesson.id}
+            nextUp={nextUp}
+            onPlayNextUp={playNextUp}
+            onCancelNextUp={() => setNextUp(null)}
           />
         ) : null}
         {selectedLesson ? (
@@ -1510,19 +1533,29 @@ function CourseAssetResourceList({
 // never has to scroll past the discussion to find it.
 function LessonContentPanel({
   assets,
+  autoplay = false,
   courseId,
   enableFirestoreAssets,
   isLoadingAssets,
   isLoadingContent,
   lesson,
+  nextUp = null,
+  onCancelNextUp,
   onEnded,
+  onPlayNextUp,
   previewMode,
   unlockState,
 }: {
   assets: CourseAsset[];
+  /** A aula abriu pelo cartão "Próxima aula": começa a tocar sozinha. */
+  autoplay?: boolean;
   courseId: string;
   enableFirestoreAssets: boolean;
   isLoadingAssets: boolean;
+  /** Aula proposta ao fim do vídeo; o cartão de 5 s fica sobre o player. */
+  nextUp?: Lesson | null;
+  onCancelNextUp?: () => void;
+  onPlayNextUp?: () => void;
   isLoadingContent: boolean;
   lesson: Lesson;
   onEnded: () => void;
@@ -1588,7 +1621,14 @@ function LessonContentPanel({
         </span>
       </div>
 
-      <div className="member-video-stage">
+      <div className="member-video-stage relative">
+        {nextUp && onPlayNextUp && onCancelNextUp ? (
+          <NextLessonCard
+            lesson={nextUp}
+            onPlay={onPlayNextUp}
+            onCancel={onCancelNextUp}
+          />
+        ) : null}
         {locked ? (
           <div className="member-video-empty">
             <LockKeyhole size={28} aria-hidden />
@@ -1601,6 +1641,7 @@ function LessonContentPanel({
               assetId={primaryHostedVideo.id}
               title={lesson.title}
               onEnded={onEnded}
+              autoplay={autoplay}
             />
           </VideoWatermark>
         ) : resolvedVideoSource === "upload" && primaryHostedVideo ? (
@@ -1612,6 +1653,7 @@ function LessonContentPanel({
               provider={trustedEmbed.provider}
               title={lesson.title}
               onEnded={onEnded}
+              autoplay={autoplay}
             />
           </VideoWatermark>
         ) : lessonContentPending ? (
