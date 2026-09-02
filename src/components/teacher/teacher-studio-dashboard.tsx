@@ -94,13 +94,13 @@ export function TeacherStudioDashboard() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/teach/storefront" className="button-outline min-h-10 px-4 text-sm">
+          <Link href="/teach/storefront" className="button-outline px-4 text-sm">
             <Store aria-hidden="true" size={16} strokeWidth={1.9} />
             Storefront
           </Link>
           <Link
             href="/teach/builder?newCourse=1&format=course"
-            className="button-solid min-h-10 px-4 text-sm"
+            className="button-solid px-4 text-sm"
           >
             <Plus aria-hidden="true" size={16} strokeWidth={2} />
             New product
@@ -247,7 +247,7 @@ function StudioNextSteps({
             {nextStep.label}
           </h3>
           <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">{nextStep.detail}</p>
-          <Link href={nextStep.href} className="button-solid mt-5 min-h-10 px-4 text-sm">
+          <Link href={nextStep.href} className="button-solid mt-5 px-4 text-sm">
             {nextStep.action}
             <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
           </Link>
@@ -294,7 +294,7 @@ function StudioProductsSection({
             Products in your workspace
           </h2>
         </div>
-        <Link href="/teach/builder" className="button-outline min-h-10 px-4 text-sm">
+        <Link href="/teach/builder" className="button-outline px-4 text-sm">
           Show all
           <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
         </Link>
@@ -339,7 +339,7 @@ function StudioProductsSection({
           </p>
           <Link
             href="/teach/builder?newCourse=1&format=course"
-            className="button-solid mt-4 min-h-10 px-4 text-sm"
+            className="button-solid mt-4 px-4 text-sm"
           >
             Create product
           </Link>

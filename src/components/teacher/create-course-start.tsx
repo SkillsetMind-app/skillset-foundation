@@ -295,7 +295,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
               <button
                 type="button"
                 onClick={() => setStep("basics")}
-                className="button-solid min-h-10 px-4 text-sm"
+                className="button-solid px-4 text-sm"
               >
                 Continue
                 <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
@@ -405,7 +405,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                 type="button"
                 onClick={() => setStep("format")}
                 disabled={isSaving}
-                className="button-outline min-h-10 px-4 text-sm"
+                className="button-outline px-4 text-sm"
               >
                 <ArrowLeft aria-hidden="true" size={15} strokeWidth={1.9} />
                 Back
@@ -416,7 +416,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                 aria-describedby={
                   submitBlockers.length > 0 ? "create-course-blockers" : undefined
                 }
-                className="button-solid min-h-10 px-4 text-sm disabled:opacity-60"
+                className="button-solid px-4 text-sm disabled:opacity-60"
               >
                 {isSaving ? "Creating..." : submitLabel}
                 <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />

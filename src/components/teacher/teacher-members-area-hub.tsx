@@ -59,7 +59,7 @@ export function TeacherMembersAreaHub() {
             each product.
           </p>
         </div>
-        <Link href={createHref} className="button-solid min-h-10 px-4 text-sm">
+        <Link href={createHref} className="button-solid px-4 text-sm">
           <Plus aria-hidden="true" size={16} strokeWidth={2} />
           {view === "communities" ? "New community" : "New product"}
         </Link>
@@ -182,20 +182,20 @@ export function TeacherMembersAreaHub() {
                 <div className="flex flex-wrap gap-2 lg:justify-end">
                   <Link
                     href={`/teach/builder/${encodeURIComponent(course.id)}/preview`}
-                    className="button-solid min-h-9 px-3 text-xs"
+                    className="button-solid px-3 text-xs"
                   >
                     <ExternalLink aria-hidden="true" size={14} strokeWidth={1.8} />
                     Preview
                   </Link>
                   <Link
                     href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=members`}
-                    className="button-outline min-h-9 px-3 text-xs"
+                    className="button-outline px-3 text-xs"
                   >
                     Customize
                   </Link>
                   <Link
                     href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=content`}
-                    className="button-outline min-h-9 px-3 text-xs"
+                    className="button-outline px-3 text-xs"
                   >
                     Content
                   </Link>
@@ -214,7 +214,7 @@ export function TeacherMembersAreaHub() {
               Manage the public profile that groups all published products.
             </p>
           </div>
-          <Link href="/teach/storefront" className="button-outline min-h-10 px-4 text-sm">
+          <Link href="/teach/storefront" className="button-outline px-4 text-sm">
             Open storefront settings
           </Link>
         </div>
