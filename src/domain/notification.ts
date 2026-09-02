@@ -28,3 +28,24 @@ export type AppNotification = {
   // it is absent — see formatNotificationTime, which accepts both.
   createdAt?: unknown;
 };
+
+// Para onde uma notificacao leva. Quase sempre e o proprio `link` gravado no
+// servidor. A excecao e a mensagem do professor: o servidor grava
+// "/learn/courses/<curso>" (a sala inteira), mas a resposta mora na caixa de
+// mensagens do aluno — que nao existia quando o link foi desenhado. Reescrever
+// aqui (e nao numa migration) mantem as notificacoes antigas certas tambem.
+export function notificationHref(
+  notification: Pick<AppNotification, "type" | "link">,
+): string | null {
+  const link = notification.link ?? null;
+  if (!link) {
+    return null;
+  }
+  if (notification.type === "course_message") {
+    const match = /^\/learn\/courses\/([^/?#]+)/.exec(link);
+    if (match) {
+      return "/learn/messages?course=" + match[1];
+    }
+  }
+  return link;
+}

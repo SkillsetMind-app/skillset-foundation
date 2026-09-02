@@ -259,16 +259,27 @@ export const platformNav: PlatformNavItem[] = [
     contexts: ["learner", "teacher", "ops"],
     section: "Discover",
   },
-  // `contexts: []` is not a disabled entry — it means "title source only".
-  // platform-nav filters by context, so these never render in a sidebar, but
-  // platform-header's getPageLabel scans the whole list to translate the page
-  // title. Their links live in the account dropdown instead. Removing them
-  // would degrade these headers to a slugified URL segment in every language.
+  // --- Account. Para o ALUNO, um grupo "Account" na barra lateral: mensagens,
+  // avisos, compras e configuracoes. Antes nada disso aparecia na barra (os
+  // links moravam so no menu do avatar) e, dentro de /account, a barra nao
+  // acendia item nenhum — "onde eu estava?". Para o professor os itens seguem
+  // com `contexts: []`: nao renderizam, mas platform-header's getPageLabel
+  // varre a lista inteira para traduzir o titulo da pagina; remover degradaria
+  // o titulo a um segmento de URL em toda lingua. ---
+  {
+    // A caixa de entrada do aluno: uma conversa por curso (reanalise item 12).
+    href: "/learn/messages",
+    labelKey: "platform.nav.messages",
+    icon: "MessageCircle",
+    contexts: ["learner"],
+    section: "Account",
+    permission: "courses.viewLearning",
+  },
   {
     href: "/account",
     labelKey: "platform.nav.settings",
     icon: "Settings",
-    contexts: [],
+    contexts: ["learner"],
     section: "Account",
   },
   {
@@ -290,7 +301,7 @@ export const platformNav: PlatformNavItem[] = [
     href: "/account/billing",
     labelKey: "platform.nav.billing",
     icon: "Receipt",
-    contexts: [],
+    contexts: ["learner"],
     section: "Account",
   },
   {
@@ -301,7 +312,7 @@ export const platformNav: PlatformNavItem[] = [
     href: "/account/notifications",
     labelKey: "platform.notifications.title",
     icon: "Bell",
-    contexts: [],
+    contexts: ["learner"],
     section: "Account",
   },
 ];

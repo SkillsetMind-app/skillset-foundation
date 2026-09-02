@@ -143,3 +143,52 @@ export function subscribeToTeacherMessages(
     void supabase.removeChannel(channel);
   };
 }
+
+// Toda conversa de UM aluno, em todos os cursos dele — o espelho de
+// subscribeToTeacherMessages. Antes so existia a leitura por curso: o aluno
+// com tres cursos tinha tres lugares para responder ao professor, cada um no
+// fim da pagina da aula, e nenhuma lista de conversas (o professor tinha).
+export function subscribeToStudentMessages(
+  studentId: string,
+  callback: (messages: CourseMessage[]) => void,
+  onError: (error: Error) => void,
+  maxMessages = 400,
+): () => void {
+  const supabase = getSupabaseBrowserClient();
+
+  const load = async () => {
+    const { data, error } = await supabase
+      .from(courseMessagesTable)
+      .select("*")
+      .eq("student_id", studentId)
+      .order("created_at", { ascending: false })
+      .limit(maxMessages);
+    if (error) {
+      onError(error instanceof Error ? error : new Error(String(error)));
+      return;
+    }
+    callback((data ?? []).map(rowToMessage));
+  };
+
+  void load();
+
+  const channel = supabase
+    .channel(`course_messages:student:${studentId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: courseMessagesTable,
+        filter: `student_id=eq.${studentId}`,
+      },
+      () => {
+        void load();
+      },
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}
