@@ -332,7 +332,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
       <section className="border-b border-[var(--color-line)] bg-white pb-5">
         <Link
           href="/teach/builder"
-          className="mb-4 inline-flex min-h-9 items-center gap-2 text-xs font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"
+          className="mb-4 inline-flex min-h-11 items-center gap-2 text-xs font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"
         >
           <ArrowLeft aria-hidden="true" size={14} strokeWidth={1.9} />
           My products
@@ -375,7 +375,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 aria-label="Switch course"
                 value={course.id}
                 onChange={(event) => router.push(`/teach/courses/${event.target.value}/manage`)}
-                className="min-h-10 rounded-[6px] border fine-rule bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink)]"
+                className="min-h-11 rounded-[6px] border fine-rule bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink)]"
               >
                 <option value={course.id}>{course.title}</option>
                 {switchableCourses.map((candidate) => (
@@ -409,7 +409,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 key={item.id}
                 type="button"
                 onClick={() => setSection(item.id)}
-                className={`min-h-10 shrink-0 whitespace-nowrap rounded-[6px] border-b-2 px-3 py-2 text-left text-sm font-semibold transition lg:w-full lg:border-b-0 lg:border-l-2 ${
+                className={`min-h-11 shrink-0 whitespace-nowrap rounded-[6px] border-b-2 px-3 py-2 text-left text-sm font-semibold transition lg:w-full lg:border-b-0 lg:border-l-2 ${
                   section === item.id
                     ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
                     : "border-transparent text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)]"
@@ -548,7 +548,6 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   </button>
                   <Link
                     href={productPagePath}
-                    target="_blank"
                     className="button-outline px-4 py-2 text-xs"
                   >
                     Open page

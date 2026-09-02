@@ -93,12 +93,11 @@ export function SupportTicketQueue() {
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Support queue
           </p>
-          <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+          <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
             User support tickets
           </h3>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            Read user issues, identify support needs, and move tickets through
-            a simple status workflow.
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+            Read user issues and move tickets through the status workflow.
           </p>
         </div>
         <div className="flex items-center gap-2">

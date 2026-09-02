@@ -33,6 +33,17 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
     t: (key: string) =>
       ({
         "platform.sidebarNavLabel": "Workspace",
+        "platform.openSectionNav": "Open {section} navigation",
+        "platform.navSection.home": "Home",
+        "platform.navSection.products": "Products",
+        "platform.navSection.marketing": "Marketing",
+        "platform.navSection.sales": "Sales",
+        "platform.navSection.earnings": "Earnings",
+        "platform.navSection.reports": "Reports",
+        "platform.navSection.growth": "Growth",
+        "platform.navSection.tools": "Tools",
+        "platform.navSection.myLearning": "My Learning",
+        "platform.navSection.discover": "Discover",
         "platform.nav.studio": "Home",
         "platform.nav.courseBuilder": "My products",
         "platform.nav.membersArea": "Members & communities",
@@ -134,6 +145,18 @@ describe("creator shell regressions", () => {
 
     fireEvent.click(products);
     expect(onRequestExpand).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the bottom bar labels readable (11px, not 10px)", () => {
+    render(<MobileSidebarDrawer open={false} onOpen={vi.fn()} onClose={vi.fn()} />);
+
+    const bar = screen.getByRole("navigation", { name: "platform.mobile.navLabel" });
+    const items = [...bar.querySelectorAll("a, button")];
+    expect(items.length).toBeGreaterThan(2);
+    for (const item of items) {
+      expect(item.className).not.toMatch(/text-\[10px\]/);
+      expect(item.className).toMatch(/text-\[11px\]/);
+    }
   });
 
   it("keeps the mobile drawer above the sticky application chrome", () => {

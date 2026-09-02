@@ -195,7 +195,7 @@ export function CommunityPostDrawer({
                       <button
                         type="button"
                         onClick={() => void markAnswer(isAnswer ? null : reply.id)}
-                        className="mt-2 min-h-9 text-xs font-semibold text-[var(--color-primary)] hover:underline"
+                        className="mt-2 min-h-11 text-xs font-semibold text-[var(--color-primary)] hover:underline"
                       >
                         {isAnswer ? "Unmark as the answer" : "Mark as the answer"}
                       </button>

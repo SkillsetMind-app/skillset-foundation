@@ -238,9 +238,6 @@ export function LearnDashboard() {
               <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
                 {t("learn.dashboard.explorePrograms")}
               </Link>
-              <Link href="/platform" className="button-outline px-4 py-2.5 text-sm">
-                {t("learn.dashboard.viewPlatformOverview")}
-              </Link>
             </div>
           </div>
           <LearningPathsRows enrollments={enrollments} />

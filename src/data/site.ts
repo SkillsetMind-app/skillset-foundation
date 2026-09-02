@@ -1,12 +1,4 @@
-import { getProductSurfaces } from "@/lib/data/catalog";
 import type { Permission } from "@/lib/permissions";
-
-export type Surface = {
-  title: string;
-  href: string;
-  label: string;
-  summary: string;
-};
 
 export type PlatformNavContext = "learner" | "teacher" | "ops";
 
@@ -18,8 +10,8 @@ export type PlatformNavItem = {
   icon: string;
   /** Which workspace context(s) this item belongs to. */
   contexts: readonly PlatformNavContext[];
-  /** Section label; an uppercase header is drawn when the section changes. */
-  section: string;
+  /** Group of the sidebar; the label is `platform.navSection.<sectionKey>`. */
+  sectionKey: string;
   permission?: Permission;
   /**
    * Opens in a new browser tab with an external-link affordance. Used for
@@ -29,10 +21,6 @@ export type PlatformNavItem = {
   newTab?: boolean;
 };
 
-export const productSurfaces: Surface[] = getProductSurfaces().map(
-  ({ title, href, label, summary }) => ({ title, href, label, summary })
-);
-
 export const platformNav: PlatformNavItem[] = [
   // --- Learner workspace ---
   {
@@ -40,7 +28,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.classroom",
     icon: "BookOpen",
     contexts: ["learner"],
-    section: "Learn",
+    sectionKey: "learn",
     permission: "courses.viewLearning",
   },
   {
@@ -48,7 +36,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.communities",
     icon: "Users",
     contexts: ["learner"],
-    section: "Learn",
+    sectionKey: "learn",
     permission: "community.read",
   },
   {
@@ -58,7 +46,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.wishlist",
     icon: "Bookmark",
     contexts: [],
-    section: "Learn",
+    sectionKey: "learn",
     permission: "courses.viewLearning",
   },
   {
@@ -66,7 +54,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.agenda",
     icon: "Calendar",
     contexts: ["learner"],
-    section: "Learn",
+    sectionKey: "learn",
     permission: "courses.viewLearning",
   },
   {
@@ -74,7 +62,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.credentials",
     icon: "Award",
     contexts: ["learner"],
-    section: "Learn",
+    sectionKey: "learn",
     permission: "certificates.view",
   },
   // --- Teacher-as-student: a teacher also buys courses. Kept as a direct
@@ -84,7 +72,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.myCourses",
     icon: "GraduationCap",
     contexts: ["teacher"],
-    section: "My Learning",
+    sectionKey: "myLearning",
     permission: "courses.viewLearning",
   },
   // --- Teacher workspace: workflow hierarchy informed by the live producer
@@ -94,7 +82,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.studio",
     icon: "House",
     contexts: ["teacher"],
-    section: "Home",
+    sectionKey: "home",
     permission: "teacherStudio.access",
   },
   // Products
@@ -103,7 +91,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.courseBuilder",
     icon: "BookOpen",
     contexts: ["teacher"],
-    section: "Products",
+    sectionKey: "products",
     permission: "teacherStudio.manageCourses",
   },
   {
@@ -111,7 +99,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.membersArea",
     icon: "Image",
     contexts: ["teacher"],
-    section: "Products",
+    sectionKey: "products",
     permission: "teacherStudio.manageCourses",
   },
   {
@@ -119,7 +107,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.onlineEvents",
     icon: "Calendar",
     contexts: ["teacher"],
-    section: "Products",
+    sectionKey: "products",
     permission: "teacherStudio.manageCourses",
   },
   {
@@ -127,7 +115,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.marketingOverview",
     icon: "Megaphone",
     contexts: ["teacher"],
-    section: "Marketing",
+    sectionKey: "marketing",
     permission: "teacherStudio.access",
   },
   {
@@ -135,7 +123,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.storefrontPages",
     icon: "Store",
     contexts: ["teacher"],
-    section: "Marketing",
+    sectionKey: "marketing",
     // Matches the page's own gate (manageStorefront). They agree today for
     // every role, but a nav entry that gates on a different permission than
     // its destination is a denial screen waiting for the first role split.
@@ -146,7 +134,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.mediaLibrary",
     icon: "Image",
     contexts: ["teacher"],
-    section: "Marketing",
+    sectionKey: "marketing",
     permission: "teacherStudio.manageCourses",
   },
   {
@@ -154,7 +142,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.messages",
     icon: "MessageCircle",
     contexts: ["teacher"],
-    section: "Marketing",
+    sectionKey: "marketing",
     permission: "teacherStudio.access",
   },
   // Sales
@@ -163,7 +151,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.sales",
     icon: "Receipt",
     contexts: ["teacher"],
-    section: "Sales",
+    sectionKey: "sales",
     permission: "teacherStudio.access",
   },
   {
@@ -171,7 +159,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.subscriptions",
     icon: "Repeat2",
     contexts: ["teacher"],
-    section: "Sales",
+    sectionKey: "sales",
     permission: "teacherStudio.access",
   },
   // No "Reviews & refunds" entry: /teach/refunds is a bare redirect to
@@ -190,7 +178,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.earnings",
     icon: "TrendingUp",
     contexts: ["teacher"],
-    section: "Earnings",
+    sectionKey: "earnings",
     permission: "teacherStudio.access",
   },
   // Reports
@@ -199,7 +187,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.reports",
     icon: "BarChart3",
     contexts: ["teacher"],
-    section: "Reports",
+    sectionKey: "reports",
     permission: "teacherStudio.access",
   },
   // No "Business overview" entry: /teach/operations rendered the exact same
@@ -214,7 +202,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.coupons",
     icon: "Tag",
     contexts: ["teacher"],
-    section: "Growth",
+    sectionKey: "growth",
     permission: "teacherStudio.manageCourses",
   },
   {
@@ -222,7 +210,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.team",
     icon: "UserCheck",
     contexts: ["teacher"],
-    section: "Growth",
+    sectionKey: "growth",
     permission: "teacherStudio.access",
   },
   // Tools
@@ -231,7 +219,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.verification",
     icon: "UserCheck",
     contexts: ["teacher"],
-    section: "Tools",
+    sectionKey: "tools",
     permission: "teacherStudio.access",
   },
   {
@@ -239,7 +227,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.integrations",
     icon: "Plug",
     contexts: ["teacher"],
-    section: "Tools",
+    sectionKey: "tools",
     permission: "teacherStudio.access",
   },
   // --- Operations workspace ---
@@ -248,7 +236,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.operations",
     icon: "Settings",
     contexts: ["ops"],
-    section: "Operations",
+    sectionKey: "operations",
     permission: "platform.accessAdmin",
   },
   // --- Shared across every workspace ---
@@ -257,7 +245,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.marketplace",
     icon: "ShoppingBag",
     contexts: ["learner", "teacher", "ops"],
-    section: "Discover",
+    sectionKey: "discover",
   },
   // --- Account. Para o ALUNO, um grupo "Account" na barra lateral: mensagens,
   // avisos, compras e configuracoes. Antes nada disso aparecia na barra (os
@@ -272,7 +260,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.messages",
     icon: "MessageCircle",
     contexts: ["learner"],
-    section: "Account",
+    sectionKey: "account",
     permission: "courses.viewLearning",
   },
   {
@@ -280,21 +268,23 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.settings",
     icon: "Settings",
     contexts: ["learner"],
-    section: "Account",
+    sectionKey: "account",
   },
   {
+    // "Subscription" no menu do avatar leva o aluno para ca; com `contexts: []`
+    // a barra nao acendia nada nesta pagina (reanalise Ops 6).
     href: "/account/plans",
     labelKey: "platform.nav.plansFees",
     icon: "Receipt",
-    contexts: [],
-    section: "Account",
+    contexts: ["learner"],
+    sectionKey: "account",
   },
   {
     href: "/account/payments",
     labelKey: "platform.nav.payoutsTax",
     icon: "CreditCard",
     contexts: [],
-    section: "Account",
+    sectionKey: "account",
     permission: "teacherStudio.access",
   },
   {
@@ -302,7 +292,7 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.nav.billing",
     icon: "Receipt",
     contexts: ["learner"],
-    section: "Account",
+    sectionKey: "account",
   },
   {
     // The only /account subpage that renders its own PlatformShell instead of
@@ -313,6 +303,6 @@ export const platformNav: PlatformNavItem[] = [
     labelKey: "platform.notifications.title",
     icon: "Bell",
     contexts: ["learner"],
-    section: "Account",
+    sectionKey: "account",
   },
 ];

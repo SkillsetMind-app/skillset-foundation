@@ -121,12 +121,11 @@ export function AdminEnrollmentPanel() {
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Manual enrollment
           </p>
-          <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+          <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
             Grant beta access without fake checkout.
           </h3>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            Use this only for beta, support, or admin-granted access. Paid
-            enrollment still belongs to Stripe webhook activation.
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+            Beta, support, or admin-granted access only; paid enrollment still comes from Stripe.
           </p>
         </div>
         <span className="rounded-[8px] bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">

@@ -156,14 +156,14 @@ describe("grupo Account na barra lateral do aluno", () => {
   it("Messages existe no grupo Account, so para o aluno", () => {
     const item = platformNav.find((entry) => entry.href === "/learn/messages");
 
-    expect(item).toMatchObject({ section: "Account", contexts: ["learner"] });
+    expect(item).toMatchObject({ sectionKey: "account", contexts: ["learner"] });
   });
 
   it("avisos, compras e configuracoes aparecem para o aluno (antes: so no menu do avatar)", () => {
     for (const href of ["/account", "/account/billing", "/account/notifications"]) {
       const item = platformNav.find((entry) => entry.href === href);
       expect(item?.contexts, href).toContain("learner");
-      expect(item?.section, href).toBe("Account");
+      expect(item?.sectionKey, href).toBe("account");
     }
   });
 });

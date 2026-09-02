@@ -94,13 +94,12 @@ export function CreatorVerificationQueue() {
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Creator verification queue
           </p>
-          <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+          <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
             Professional admission applications
           </h3>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            Check the registration against the official registry using the
-            evidence links, then approve, request changes, or reject. Approval
-            marks the creator as a verified professional platform-wide.
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+            Check the registration against the official registry, then approve, request
+            changes, or reject.
           </p>
         </div>
         <span className="rounded-[8px] bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">

@@ -91,7 +91,7 @@ export function TeacherMembersAreaHub() {
                   nextView === "communities" ? "/teach/members?view=communities" : "/teach/members"
                 )
               }
-              className={`min-h-9 rounded-[5px] px-4 text-sm font-semibold transition-colors ${
+              className={`min-h-11 rounded-[5px] px-4 text-sm font-semibold transition-colors ${
                 view === nextView
                   ? "bg-[var(--color-primary)] text-white"
                   : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"

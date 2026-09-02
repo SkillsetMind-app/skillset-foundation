@@ -69,12 +69,11 @@ export function CommunityModerationQueue() {
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Community moderation
           </p>
-          <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+          <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
             Trust reports
           </h3>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            Review reports from course communities and close the loop without exposing
-            moderation controls to learners.
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+            Review reports from course communities and close the loop.
           </p>
         </div>
         <span className="rounded-[10px] bg-[var(--color-surface-soft)] px-4 py-2 text-sm font-semibold text-[var(--color-primary)]">

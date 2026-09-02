@@ -17,7 +17,7 @@ const root = process.cwd();
 const globalsPath = join(root, "src/app/globals.css");
 
 const PROBE_CLASSES =
-  "button-solid button-outline button-danger text-xs text-sm py-2 py-2.5 px-3.5 text-[var(--color-accent-fg)]";
+  "button-solid button-outline button-danger text-xs text-sm py-2 py-2.5 px-3.5 text-[var(--color-accent-fg)] focus-visible:outline-[var(--focus-ring)] focus-visible:ring-[var(--focus-ring)]";
 
 async function compileGlobals(): Promise<Root> {
   // Só troca a varredura de arquivos por uma lista fixa de classes: o resto
@@ -198,6 +198,39 @@ describe("tamanho dos botões (P-16)", () => {
       }
     }
     expect(violations).toEqual([]);
+  });
+
+  // F18: sobraram 12 alvos (abas, selects, botoes de texto) em min-h-9/min-h-10
+  // fora das variantes button-*. A regra e a mesma para qualquer alvo de toque.
+  it("nenhum alvo em src/components pede min-h-9 ou min-h-10 (36/40px)", () => {
+    const dir = join(root, "src/components");
+    const files = readdirSync(dir, { recursive: true, withFileTypes: true })
+      .filter(
+        (entry) =>
+          entry.isFile() && entry.name.endsWith(".tsx") && !entry.name.endsWith(".test.tsx"),
+      )
+      .map((entry) => join(entry.parentPath, entry.name));
+    const violations: string[] = [];
+
+    expect(files.length).toBeGreaterThan(0);
+    for (const file of files) {
+      const source = readFileSync(file, "utf8");
+      for (const match of source.matchAll(/\bmin-h-(?:9|10)\b/g)) {
+        const line = source.slice(0, match.index).split("\n").length;
+        violations.push(`${file}:${line}`);
+      }
+    }
+    expect(violations).toEqual([]);
+  });
+});
+
+describe("anel de foco (F19)", () => {
+  // `outline-[var(--x)]` é ambíguo para o Tailwind (largura ou cor?). A prova é
+  // o CSS compilado: o token tem de virar cor, nas duas utilities.
+  it("`focus-visible:outline-[var(--focus-ring)]` e `ring-[...]` compilam como cor", () => {
+    const compiled = css.toString();
+    expect(compiled).toContain("outline-color: var(--focus-ring)");
+    expect(compiled).toContain("--tw-ring-color: var(--focus-ring)");
   });
 });
 

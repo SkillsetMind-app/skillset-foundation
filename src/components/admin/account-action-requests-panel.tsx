@@ -77,12 +77,11 @@ export function AccountActionRequestsPanel() {
       <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         Account actions
       </p>
-      <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+      <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
         Export and deletion requests.
       </h3>
-      <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        Promise Section 03 and Section 04 requests land here. Work each request,
-        then mark it processing, completed, or rejected so the queue stays clean.
+      <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+        Work each request, then mark it processing, completed, or rejected.
       </p>
 
       {error ? (
