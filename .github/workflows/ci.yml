@@ -87,7 +87,8 @@ jobs:
           set -euo pipefail
           mv supabase/migrations supabase/.migrations-historico
           mkdir supabase/migrations
-          supabase db start
+          # PROVA TEMPORARIA: banco NAO sobe de proposito.
+          # supabase db start
           rmdir supabase/migrations
           mv supabase/.migrations-historico supabase/migrations
 
