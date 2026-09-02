@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
+import type { ClassroomTab } from "@/domain/classroom-tabs";
 import { canOpenEnrollment, type Enrollment } from "@/domain/enrollment";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
@@ -17,11 +18,14 @@ import { getSupabaseClientConfig } from "@/lib/supabase/config";
 export function CreatorCourseWorkspace({
   initialCourseId,
   whitelabel = false,
+  tab = "lesson",
 }: {
   initialCourseId?: string;
   /** Forwarded from the member-area shell: the course is opening under a
    *  teacher's own brand, so every link back into our platform stays hidden. */
   whitelabel?: boolean;
+  /** A aba da sala aberta pela rota (lesson | materials | community...). */
+  tab?: ClassroomTab;
 }) {
   const searchParams = useSearchParams();
   const courseId = initialCourseId ?? searchParams.get("courseId") ?? "";
@@ -249,6 +253,7 @@ export function CreatorCourseWorkspace({
         course={teacherCourseToLearningCourse(course)}
         enableFirestoreAssets
         whitelabel={whitelabel}
+        tab={tab}
       />
     </>
   );

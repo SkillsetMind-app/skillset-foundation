@@ -7594,3 +7594,64 @@ button:hover > .dash-card,
     font-size: 16px;
   }
 }
+
+/* ── A barra de abas da sala (reanálise item 9) ─────────────────────────────
+   Substitui a faixa "Lesson tools", cujos botões só rolavam a página. Cada aba
+   é um link de verdade (endereço próprio, entra no histórico). No celular a
+   barra rola na horizontal em vez de quebrar em duas linhas. ─────────────── */
+@layer components {
+  .member-classroom-tabs {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin: 0 0 18px;
+    border-bottom: 1px solid var(--color-line);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .member-classroom-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .member-classroom-tabs > a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 14px;
+    margin-bottom: -1px;
+    border-bottom: 2px solid transparent;
+    color: var(--color-ink-soft);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .member-classroom-tabs > a:hover {
+    color: var(--color-ink);
+  }
+
+  .member-classroom-tabs > a[aria-current="page"] {
+    color: var(--color-ink);
+    border-bottom-color: var(--color-accent-fg);
+  }
+
+  .member-classroom-tabs__count {
+    display: inline-flex;
+    align-items: center;
+    min-height: 18px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--color-surface-soft);
+    color: var(--color-ink-muted);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .member-classroom-tabs > .member-classroom-tabs__action {
+    margin-left: auto;
+    color: var(--color-accent-fg);
+  }
+}

@@ -86,7 +86,6 @@ export const platformNav: PlatformNavItem[] = [
     contexts: ["teacher"],
     section: "My Learning",
     permission: "courses.viewLearning",
-    newTab: true,
   },
   // --- Teacher workspace: workflow hierarchy informed by the live producer
   // audit, using only SkillsetMind routes and capabilities. ---

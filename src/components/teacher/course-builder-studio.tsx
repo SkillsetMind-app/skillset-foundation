@@ -1544,8 +1544,6 @@ export function CourseBuilderStudio() {
           </Link>
           <Link
             href={`/teach/builder/${courseId}/preview`}
-            target="_blank"
-            rel="noopener noreferrer"
             className="button-outline px-4 py-2.5 text-sm"
           >
             <ExternalLink aria-hidden="true" size={14} strokeWidth={1.8} />
@@ -3233,11 +3231,8 @@ function MembersAreaTab({
         </div>
         <Link
           href={`/teach/builder/${courseId}/preview`}
-          target="_blank"
-          rel="noopener noreferrer"
           className="button-outline inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm"
         >
-          <ExternalLink aria-hidden="true" size={14} strokeWidth={1.8} />
           Open full preview
         </Link>
         <p className="text-xs leading-5 text-[var(--color-ink-soft)]">

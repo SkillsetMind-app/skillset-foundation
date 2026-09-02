@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
+import type { ClassroomTab } from "@/domain/classroom-tabs";
 import type { Course } from "@/domain/learning";
 import { recordLessonProgress } from "@/lib/data/lesson-progress";
 
@@ -16,6 +17,7 @@ import { recordLessonProgress } from "@/lib/data/lesson-progress";
 
 const mocks = vi.hoisted(() => ({
   searchParams: new URLSearchParams(),
+  pathname: "/learn/courses/demo-course",
   replace: vi.fn(),
   completed: [] as string[],
   // UM objeto de usuario para a sessao inteira. A inscricao da matricula
@@ -32,7 +34,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => mocks.searchParams,
-  usePathname: () => "/learn/courses/demo-course",
+  usePathname: () => mocks.pathname,
   useRouter: () => ({ push: vi.fn(), replace: mocks.replace }),
 }));
 
@@ -112,10 +114,13 @@ vi.mock("@/lib/posthog/events", () => ({
 // verdade ("Supabase client configuration is missing" no jsdom). Nao sao o
 // alvo deste teste: viram caixas vazias.
 vi.mock("@/components/learn/course-messages-panel", () => ({
-  CourseMessagesPanel: () => null,
+  CourseMessagesPanel: () => <div data-testid="messages-panel" />,
 }));
 vi.mock("@/components/learn/course-review-panel", () => ({
-  CourseReviewPanel: () => null,
+  CourseReviewPanel: () => <div data-testid="review-panel" />,
+}));
+vi.mock("@/components/learn/course-community-feed", () => ({
+  CourseCommunityFeed: () => <div data-testid="community-feed" />,
 }));
 
 const course = {
@@ -127,6 +132,7 @@ const course = {
   durationLabel: "2h",
   image: null,
   membersTheme: "light",
+  communityEnabled: true,
   modules: [
     {
       id: "m1",
@@ -140,10 +146,16 @@ const course = {
   ],
 } as unknown as Course;
 
-function renderClassroom(search: string, completed: string[] = []) {
+function renderClassroom(
+  search: string,
+  completed: string[] = [],
+  tab: ClassroomTab = "lesson",
+) {
   mocks.searchParams = new URLSearchParams(search);
+  mocks.pathname =
+    tab === "lesson" ? "/learn/courses/demo-course" : `/learn/courses/demo-course/${tab}`;
   mocks.completed = completed;
-  return render(<EnrolledCourseWorkspace course={course} />);
+  return render(<EnrolledCourseWorkspace course={course} tab={tab} />);
 }
 
 describe("sala de aula com matricula real", () => {
@@ -201,5 +213,85 @@ describe("sala de aula com matricula real", () => {
 
     await waitFor(() => expect(recordLessonProgress).toHaveBeenCalled());
     expect(JSON.stringify(vi.mocked(recordLessonProgress).mock.calls[0])).toContain("l1");
+  });
+});
+
+/**
+ * Reanalise item 9: as abas da sala tem endereco proprio. Materiais,
+ * comunidade, mensagens e avaliacao moravam na mesma rolagem da aula, sem
+ * endereco — nem compartilhar nem voltar. E a faixa "Lesson tools" tinha tres
+ * botoes que so ROLAVAM a pagina.
+ */
+describe("abas da sala com endereco proprio", () => {
+  beforeEach(() => {
+    mocks.replace.mockReset();
+    mocks.enrollmentSubscriptions = 0;
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  it("em aula: a barra de abas leva a aula atual junto, e so a aula renderiza", () => {
+    renderClassroom("lesson=l2");
+
+    const tabs = screen.getByRole("navigation", { name: "Course sections" });
+    expect(within(tabs).getByRole("link", { name: "Lesson" })).toHaveAttribute(
+      "href",
+      "/learn/courses/demo-course?lesson=l2",
+    );
+    expect(within(tabs).getByRole("link", { name: "Lesson" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(within(tabs).getByRole("link", { name: "Community" })).toHaveAttribute(
+      "href",
+      "/learn/courses/demo-course/community?lesson=l2",
+    );
+
+    expect(document.querySelector("#member-lesson-player")).not.toBeNull();
+    expect(screen.queryByTestId("community-feed")).toBeNull();
+    expect(screen.queryByTestId("messages-panel")).toBeNull();
+    expect(screen.queryByTestId("review-panel")).toBeNull();
+  });
+
+  it("os botoes que so rolavam a pagina sairam", () => {
+    renderClassroom("lesson=l2");
+
+    expect(screen.queryByRole("button", { name: /Current lesson/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Resources/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Discussion$/ })).toBeNull();
+  });
+
+  it("na aba Community: o feed aparece, o player nao, e 'Lesson' devolve a MESMA aula", () => {
+    renderClassroom("lesson=l2", [], "community");
+
+    expect(screen.getByTestId("community-feed")).toBeInTheDocument();
+    expect(document.querySelector("#member-lesson-player")).toBeNull();
+
+    const tabs = screen.getByRole("navigation", { name: "Course sections" });
+    expect(within(tabs).getByRole("link", { name: "Community" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(within(tabs).getByRole("link", { name: "Lesson" })).toHaveAttribute(
+      "href",
+      "/learn/courses/demo-course?lesson=l2",
+    );
+  });
+
+  it("Messages e Review sao abas, cada uma renderiza so o seu painel", () => {
+    const { unmount } = renderClassroom("lesson=l2", [], "messages");
+    expect(screen.getByTestId("messages-panel")).toBeInTheDocument();
+    expect(screen.queryByTestId("review-panel")).toBeNull();
+    unmount();
+
+    renderClassroom("lesson=l2", [], "review");
+    expect(screen.getByTestId("review-panel")).toBeInTheDocument();
+    expect(screen.queryByTestId("messages-panel")).toBeNull();
+  });
+
+  it("a aba About e a capa inteira, mesmo para quem ja tem progresso", () => {
+    renderClassroom("lesson=l2", ["l1"], "about");
+
+    expect(document.querySelector(".members-hero")).not.toBeNull();
+    expect(document.querySelector("#member-lesson-player")).toBeNull();
   });
 });
