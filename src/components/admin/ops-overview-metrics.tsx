@@ -9,7 +9,19 @@ import { subscribeToCommunityReports } from "@/lib/data/community-posts";
 import { subscribeToVerificationQueue } from "@/lib/data/creator-verification";
 import { subscribeToAdminSupportTickets } from "@/lib/data/support-tickets";
 
-export function OpsOverviewMetrics() {
+export type OpsQueueCounts = {
+  isLoading: boolean;
+  pendingVerifications: number;
+  openTickets: number;
+  openReports: number;
+};
+
+// Os três números que eram três cartões de métrica entre as abas e o conteúdo.
+// Eles não mudavam com a aba, então interrompiam o caminho entre a aba escolhida
+// e a fila dela. Viraram contadores ao lado do nome de cada fila — mesma fonte,
+// mesmas regras (pendente = na fila; ticket aberto = não resolvido; report
+// aberto = status "open").
+export function useOpsQueueCounts(): OpsQueueCounts {
   const [verificationCases, setVerificationCases] = useState<CreatorVerificationCase[]>([]);
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [reports, setReports] = useState<CommunityReport[]>([]);
@@ -29,7 +41,7 @@ export function OpsOverviewMetrics() {
       // empty state instead of crashing the whole ops surface. Deliberate
       // one-shot recovery reset.
       console.warn(
-        "OpsOverviewMetrics: creator-verification subscription unavailable",
+        "useOpsQueueCounts: creator-verification subscription unavailable",
         error,
       );
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -44,7 +56,7 @@ export function OpsOverviewMetrics() {
       // Non-blocking metric: degrade silently in the UI but keep the failure
       // visible in logs.
       console.warn(
-        "OpsOverviewMetrics: support tickets subscription unavailable",
+        "useOpsQueueCounts: support tickets subscription unavailable",
         error,
       );
     }
@@ -57,60 +69,16 @@ export function OpsOverviewMetrics() {
       // Non-blocking metric: degrade silently in the UI but keep the failure
       // visible in logs.
       console.warn(
-        "OpsOverviewMetrics: community reports subscription unavailable",
+        "useOpsQueueCounts: community reports subscription unavailable",
         error,
       );
     }
   }, []);
 
-  const pendingVerifications = verificationCases.length;
-  const openTickets = tickets.filter(
-    (ticket) => ticket.status !== "resolved",
-  ).length;
-  const openReports = reports.filter(
-    (report) => report.status === "open",
-  ).length;
-
-  const cards = [
-    {
-      label: "Verification exceptions",
-      value: String(pendingVerifications),
-      hint: "Pending professional admission decisions",
-    },
-    {
-      label: "Open support tickets",
-      value: String(openTickets),
-      hint: "Open or in review",
-    },
-    {
-      label: "Pending reports",
-      value: String(openReports),
-      hint: "Community reports to triage",
-    },
-  ];
-
-  return (
-    <section className="grid gap-4 sm:grid-cols-3">
-      {cards.map((card) => (
-        <div
-          key={card.label}
-          className="rounded-[14px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
-        >
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
-            {card.label}
-          </p>
-          {isLoading ? (
-            <div className="mt-3 h-8 w-16 animate-pulse rounded bg-[var(--color-surface-strong)]" />
-          ) : (
-            <p className="mt-2 text-3xl font-bold text-[var(--color-primary)]">
-              {card.value}
-            </p>
-          )}
-          <p className="mt-2 text-xs leading-5 text-[var(--color-ink-soft)]">
-            {card.hint}
-          </p>
-        </div>
-      ))}
-    </section>
-  );
+  return {
+    isLoading,
+    pendingVerifications: verificationCases.length,
+    openTickets: tickets.filter((ticket) => ticket.status !== "resolved").length,
+    openReports: reports.filter((report) => report.status === "open").length,
+  };
 }

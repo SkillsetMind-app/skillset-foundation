@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 
+import { NotificationBell } from "@/components/platform/notification-bell";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import type { MembersTheme } from "@/domain/teacher-course";
 import { isStorefrontHexColor } from "@/domain/user-profile";
@@ -87,13 +88,23 @@ export function MemberAreaShell({
           ) : (
             <>
               <LogoWordmark href="/" nav />
-              <Link
-                href="/learn"
-                className="button-outline inline-flex items-center gap-2 px-4 py-2 text-sm"
-              >
-                <LayoutDashboard aria-hidden size={16} strokeWidth={1.9} />
-                Exit to dashboard
-              </Link>
+              {/* O sino da plataforma, aqui também. A sala de aula usa esta
+                  casca (sem barra lateral) e ela não tinha sino: o painel de
+                  mensagens dizia "a resposta cai no sino" numa tela onde o
+                  sino não existia. Mesmo componente, mesma lista de avisos.
+                  Fica fora do modo whitelabel de propósito: cada aviso leva a
+                  uma página da plataforma, e a área com marca do professor
+                  não pode ter porta de volta para dentro dela. */}
+              <div className="flex items-center gap-2 sm:gap-3">
+                <NotificationBell />
+                <Link
+                  href="/learn"
+                  className="button-outline inline-flex items-center gap-2 px-4 py-2 text-sm"
+                >
+                  <LayoutDashboard aria-hidden size={16} strokeWidth={1.9} />
+                  Exit to dashboard
+                </Link>
+              </div>
             </>
           )}
         </header>

@@ -128,65 +128,71 @@ export function PlansPanel() {
         </div>
       ) : null}
 
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            Current plan
-          </p>
-          <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
-            {currentPlanId === null
-              ? planLoadFailed
-                ? "Unavailable"
-                : "Loading…"
-              : (plans.find((plan) => plan.id === currentPlanId)?.name ?? "Free")}
-          </h2>
-          {planLoadFailed ? (
-            <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
-              We could not read your plan. Manage subscription still opens
-              Stripe, where your real plan is shown.
-            </p>
+      {/* "CURRENT PLAN / Free" flutuava entre o cartão de abertura e o seletor
+          Mensal/Anual, sem moldura, como terceira manchete da página — e o
+          cartão Free ainda repetia "Current" no chip e "Your plan" no botão.
+          Agora é uma linha: plano atual (+ Gerenciar assinatura) à esquerda e o
+          seletor de ciclo à direita, em 13px sem caixa alta. O chip "Current"
+          no cartão basta para marcar qual é o seu. */}
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <p className="flex flex-wrap items-center gap-x-2 text-[13px] text-[var(--color-ink-soft)]">
+          <span>
+            Current plan:{" "}
+            <strong className="font-bold text-[var(--color-primary)]">
+              {currentPlanId === null
+                ? planLoadFailed
+                  ? "Unavailable"
+                  : "Loading…"
+                : (plans.find((plan) => plan.id === currentPlanId)?.name ?? "Free")}
+            </strong>
+          </span>
+          {currentPlanId !== "free" ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <button
+                type="button"
+                onClick={handleManage}
+                disabled={busyAction === "portal"}
+                className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline disabled:opacity-60"
+              >
+                {busyAction === "portal" ? "Opening Stripe..." : "Manage subscription"}
+              </button>
+            </>
           ) : null}
+        </p>
+        <div
+          role="radiogroup"
+          aria-label="Billing cycle"
+          className="inline-flex w-fit gap-1 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] p-1"
+        >
+          {billingCycles.map((option) => {
+            const active = cycle === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => setCycle(option.value)}
+                title={option.hint}
+                className={
+                  active
+                    ? "rounded-[8px] bg-[var(--color-primary)] px-3 py-1.5 text-[13px] font-semibold text-[var(--color-base)]"
+                    : "rounded-[8px] px-3 py-1.5 text-[13px] font-semibold text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)]"
+                }
+              >
+                {option.label}
+              </button>
+            );
+          })}
         </div>
-        {currentPlanId !== "free" ? (
-          <button
-            type="button"
-            onClick={handleManage}
-            disabled={busyAction === "portal"}
-            className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
-          >
-            {busyAction === "portal" ? "Opening Stripe..." : "Manage subscription"}
-          </button>
-        ) : null}
       </header>
-
-      <div
-        role="radiogroup"
-        aria-label="Billing cycle"
-        className="inline-flex w-fit gap-1 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] p-1"
-      >
-        {billingCycles.map((option) => {
-          const active = cycle === option.value;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              onClick={() => setCycle(option.value)}
-              className={
-                active
-                  ? "rounded-[8px] bg-[var(--color-primary)] text-[var(--color-base)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em]"
-                  : "rounded-[8px] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)]"
-              }
-            >
-              {option.label}
-              <span className="ml-2 text-[10px] font-medium normal-case opacity-80">
-                {option.hint}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {planLoadFailed ? (
+        <p className="text-xs text-[var(--color-ink-soft)]">
+          We could not read your plan. Manage subscription still opens Stripe,
+          where your real plan is shown.
+        </p>
+      ) : null}
 
       {error ? (
         <p
@@ -213,12 +219,16 @@ export function PlansPanel() {
               : plan.monthlyUsd;
 
           return (
+            // Cartão em coluna flex com o botão em margin-top:auto: o Free
+            // lista seis itens e os pagos três, então as alturas divergiam e
+            // os "Upgrade" não se alinhavam. Preço em Manrope 800 — a serifa
+            // fica para o marketing.
             <article
               key={plan.id}
               className={
                 isCurrent
-                  ? "relative rounded-[14px] border-2 border-[var(--color-primary)] bg-white p-5 shadow-[0_18px_36px_rgba(15,39,68,0.10)]"
-                  : "rounded-[14px] border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
+                  ? "relative flex h-full flex-col rounded-[14px] border-2 border-[var(--color-primary)] bg-white p-5 shadow-[0_18px_36px_rgba(15,39,68,0.10)]"
+                  : "flex h-full flex-col rounded-[14px] border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
               }
             >
               <div className="flex items-start justify-between gap-2">
@@ -228,7 +238,7 @@ export function PlansPanel() {
                 {isCurrent ? <StatusChip status="active" label="Current" /> : null}
               </div>
               <div className="mt-3 flex items-baseline gap-1">
-                <span className="display-title text-3xl tabular-nums text-[var(--color-primary)]">
+                <span className="text-3xl font-extrabold tabular-nums tracking-[-0.02em] text-[var(--color-primary)]">
                   {isPaidPlan
                     ? formatUsdWhole(Math.round(monthlyFigure))
                     : "Free"}
@@ -254,7 +264,7 @@ export function PlansPanel() {
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
                   Commission per sale
                 </p>
-                <p className="display-title mt-0.5 text-2xl text-[var(--color-primary)]">
+                <p className="mt-0.5 text-2xl font-extrabold tabular-nums text-[var(--color-primary)]">
                   {plan.commissionPercent}%
                 </p>
               </div>
@@ -275,49 +285,49 @@ export function PlansPanel() {
                 ))}
               </ul>
 
-              {isCurrent ? (
-                <button
-                  type="button"
-                  disabled
-                  className="button-outline mt-5 w-full justify-center px-3 py-2 text-xs disabled:opacity-60"
-                >
-                  Your plan
-                </button>
-              ) : isPaidPlan && currentPlanId !== "free" ? (
-                // Checkout only opens the FIRST paid plan — a second session
-                // would bill both, so the API answers 409. Plan switches go
-                // through the portal, which prorates and swaps in place.
-                <button
-                  type="button"
-                  onClick={handleManage}
-                  disabled={busyAction === "portal"}
-                  className="button-outline mt-5 w-full justify-center px-3 py-2 text-xs disabled:opacity-60"
-                >
-                  {busyAction === "portal" ? "Opening..." : "Change plan"}
-                </button>
-              ) : isPaidPlan ? (
-                <button
-                  type="button"
-                  onClick={() => handleUpgrade(plan)}
-                  disabled={!canPurchase}
-                  className={
-                    canPurchase
-                      ? "button-solid mt-5 w-full justify-center px-3 py-2 text-xs disabled:opacity-60"
-                      : "button-outline mt-5 w-full justify-center px-3 py-2 text-xs disabled:opacity-60"
-                  }
-                  title={
-                    canPurchase
-                      ? undefined
-                      : "Card checkout isn't available on this site yet. Check back soon."
-                  }
-                >
-                  {canPurchase ? `Upgrade to ${plan.name}` : "Activating soon"}
-                </button>
-              ) : (
-                <p className="mt-5 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                  Default tier
-                </p>
-              )}
+              <div className="mt-auto pt-5">
+                {isCurrent ? (
+                  // O chip "Current" no topo do cartão já marca o plano; um
+                  // botão desabilitado dizendo "Your plan" era a terceira vez.
+                  <p className="text-center text-xs font-semibold text-[var(--color-ink-soft)]">
+                    Your plan
+                  </p>
+                ) : isPaidPlan && currentPlanId !== "free" ? (
+                  // Checkout only opens the FIRST paid plan — a second session
+                  // would bill both, so the API answers 409. Plan switches go
+                  // through the portal, which prorates and swaps in place.
+                  <button
+                    type="button"
+                    onClick={handleManage}
+                    disabled={busyAction === "portal"}
+                    className="button-outline w-full justify-center px-3 py-2 text-xs disabled:opacity-60"
+                  >
+                    {busyAction === "portal" ? "Opening..." : "Change plan"}
+                  </button>
+                ) : isPaidPlan ? (
+                  <button
+                    type="button"
+                    onClick={() => handleUpgrade(plan)}
+                    disabled={!canPurchase}
+                    className={
+                      canPurchase
+                        ? "button-solid w-full justify-center px-3 py-2 text-xs disabled:opacity-60"
+                        : "button-outline w-full justify-center px-3 py-2 text-xs disabled:opacity-60"
+                    }
+                    title={
+                      canPurchase
+                        ? undefined
+                        : "Card checkout isn't available on this site yet. Check back soon."
+                    }
+                  >
+                    {canPurchase ? `Upgrade to ${plan.name}` : "Activating soon"}
+                  </button>
+                ) : (
+                  <p className="text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+                    Default tier
+                  </p>
+                )}
+              </div>
             </article>
           );
         })}

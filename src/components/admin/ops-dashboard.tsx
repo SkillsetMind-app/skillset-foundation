@@ -1,68 +1,74 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 
 import { AccountActionRequestsPanel } from "@/components/admin/account-action-requests-panel";
 import { AdminEnrollmentPanel } from "@/components/admin/admin-enrollment-panel";
 import { CommunityModerationQueue } from "@/components/admin/community-moderation-queue";
 import { CreatorVerificationQueue } from "@/components/admin/creator-verification-queue";
 import { ManagedCoursePanel } from "@/components/admin/managed-course-panel";
-import { OpsOverviewMetrics } from "@/components/admin/ops-overview-metrics";
+import { useOpsQueueCounts } from "@/components/admin/ops-overview-metrics";
 import { PaymentOperationsPanel } from "@/components/admin/payment-operations-panel";
+import { RoleManager } from "@/components/admin/role-manager";
 import { SupportTicketQueue } from "@/components/admin/support-ticket-queue";
 import { UserLookupPanel } from "@/components/admin/user-lookup-panel";
-import { DashboardFilters } from "@/components/shared/dashboard-filters";
+import { ViewAsSwitcher } from "@/components/admin/view-as";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import {
   subscribeToAuditLog,
   type AuditLogEntry,
 } from "@/lib/data/audit-log";
 
-const opsTabs = [
-  { value: "verification", label: "Creator verification" },
-  { value: "catalog", label: "Published catalog" },
-  { value: "payments", label: "Payments" },
-  { value: "community", label: "Community reports" },
-  { value: "support", label: "Support tickets" },
-  { value: "users", label: "Users" },
-  { value: "audit", label: "Audit log" },
-];
+// Oito filas, cada uma com endereço próprio (?tab=). "Access" é a oitava:
+// papéis e "ver como" moravam no fim da página, fora das abas — dois modelos
+// de navegação na mesma tela.
+const opsTabValues = [
+  "verification",
+  "catalog",
+  "payments",
+  "community",
+  "support",
+  "users",
+  "audit",
+  "access",
+] as const;
 
-const periodOptions = [
-  { value: "today", label: "Today" },
-  { value: "last_7d", label: "Last 7 days" },
-  { value: "last_30d", label: "Last 30 days" },
-  { value: "this_month", label: "This month" },
-  { value: "last_month", label: "Last month" },
-  { value: "this_year", label: "This year" },
-];
+type OpsTab = (typeof opsTabValues)[number];
 
-const statusOptions = [
-  { value: "all", label: "All statuses" },
-  { value: "open", label: "Open" },
-  { value: "in_review", label: "In review" },
-  { value: "pending", label: "Pending" },
-  { value: "resolved", label: "Resolved" },
-];
+function isOpsTab(value: string | null): value is OpsTab {
+  return (opsTabValues as readonly string[]).includes(value ?? "");
+}
 
 export function OpsDashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const activeTab = searchParams.get("tab") ?? "verification";
-  const period = searchParams.get("period") ?? "last_7d";
-  const status = searchParams.get("status") ?? "all";
-  const filters = useMemo(
-    () => [
-      { key: "period", label: "Period", value: period, options: periodOptions },
-      { key: "status", label: "Status", value: status, options: statusOptions },
-    ],
-    [period, status],
-  );
+  const requestedTab = searchParams.get("tab");
+  const activeTab: OpsTab = isOpsTab(requestedTab) ? requestedTab : "verification";
+  const counts = useOpsQueueCounts();
 
-  function updateParam(key: string, value: string) {
+  // Os três cartões de métrica que ficavam entre as abas e o conteúdo viraram
+  // estes contadores, ao lado do nome da fila. Enquanto carrega, sem número —
+  // um "0" que depois vira "3" é pior que nada.
+  const badge = (value: number) => (counts.isLoading ? undefined : value);
+  const opsTabs = [
+    { value: "verification", label: "Creator verification", count: badge(counts.pendingVerifications) },
+    { value: "catalog", label: "Published catalog" },
+    { value: "payments", label: "Payments" },
+    { value: "community", label: "Community reports", count: badge(counts.openReports) },
+    { value: "support", label: "Support tickets", count: badge(counts.openTickets) },
+    { value: "users", label: "Users" },
+    { value: "audit", label: "Audit log" },
+    { value: "access", label: "Access" },
+  ];
+
+  // Os filtros Período e Status saíram: nenhuma das sete filas lia esses
+  // parâmetros (grep em todos os painéis: zero leituras). Eram dois seletores
+  // decorativos entre a aba e a fila. Quando uma fila ganhar filtro de verdade,
+  // ele nasce dentro dela, na linha do título.
+  function selectTab(value: string) {
     const params = new URLSearchParams(searchParams.toString());
-    params.set(key, value);
+    params.set("tab", value);
 
     startTransition(() => {
       router.replace(`/ops?${params.toString()}`, { scroll: false });
@@ -71,21 +77,25 @@ export function OpsDashboard() {
 
   return (
     <div className="grid gap-5">
-      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
+      <section className="rounded-[14px] border border-[var(--color-line)] bg-white px-5 pt-2 shadow-[var(--shadow-soft)]">
         <HorizontalTabs
           tabs={opsTabs}
           activeValue={activeTab}
-          onChange={(value) => updateParam("tab", value)}
+          onChange={selectTab}
           ariaLabel="Operations queues"
+          className="border-b-0"
         />
-        <div className="mt-5">
-          <DashboardFilters filters={filters} onChange={updateParam} />
-        </div>
       </section>
 
-      <OpsOverviewMetrics />
-
-      {activeTab === "verification" ? (
+      {activeTab === "access" ? (
+        <section className="grid gap-5">
+          <h2 className="text-base font-bold text-[var(--color-ink)]">
+            Access levels
+          </h2>
+          <ViewAsSwitcher />
+          <RoleManager />
+        </section>
+      ) : activeTab === "verification" ? (
         <CreatorVerificationQueue />
       ) : activeTab === "catalog" ? (
         <ManagedCoursePanel />
@@ -152,13 +162,12 @@ function AuditLogPanel() {
 
   return (
     <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
+      {/* Era mais uma camada de título antes da tabela: sobretítulo, manchete
+          de 30px em serifa e parágrafo. Título de 16px e a lista. */}
+      <h3 className="text-base font-bold text-[var(--color-ink)]">
         Audit log
-      </p>
-      <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-        Sensitive actions across the platform.
       </h3>
-      <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
         Refunds and account requests are recorded here automatically as they
         happen, newest first. This log is read-only — entries are written by
         the system and cannot be edited.

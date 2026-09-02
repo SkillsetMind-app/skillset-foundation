@@ -66,15 +66,18 @@ export function PlatformShell({
                   collapsed={isCollapsed}
                   href={getWorkspaceHomeHref(pathname, user)}
                 />
-                <SidebarToggle
-                  state={persistentState}
-                  isCollapsed={isCollapsed}
-                  onToggle={toggle}
-                />
                 {!isCollapsed ? <PlatformSidebarSearch pathname={pathname} /> : null}
                 <PlatformNav
                   collapsed={isCollapsed}
                   onRequestExpand={toggle}
+                />
+                {/* Último item da barra, dentro dela (mt-auto). O círculo
+                    flutuante na borda ficava em cima da linha que separa barra
+                    e conteúdo, como um elemento perdido. */}
+                <SidebarToggle
+                  state={persistentState}
+                  isCollapsed={isCollapsed}
+                  onToggle={toggle}
                 />
               </aside>
 

@@ -91,16 +91,9 @@ import {
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import { isPublicFeatureEnabled } from "@/lib/feature-flags";
 import { track } from "@/lib/posthog/events";
-import {
-  defaultSkillsetCurrency,
-  getCurrencyLabel,
-  supportedStripeCurrencies,
-  topSkillsetCurrencies,
-} from "@/lib/payments/currencies";
+import { defaultSkillsetCurrency } from "@/lib/payments/currencies";
+import { CurrencySelect } from "@/components/teacher/currency-select";
 
-const secondaryCurrencies = supportedStripeCurrencies.filter(
-  (currency) => !(topSkillsetCurrencies as readonly string[]).includes(currency),
-);
 const builderTabs = [
   { value: "details", label: "Details", sub: "Title, categories, promise" },
   { value: "pricing", label: "Pricing", sub: "Payment, drip, preview" },
@@ -1946,8 +1939,14 @@ export function CourseBuilderStudio() {
                 disabled={!isEditable}
               />
             </div>
-            <div className="mt-4 grid gap-4 md:grid-cols-[1fr_140px]">
-              <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+            {/* A coluna da moeda era 140px fixos. Um <select> nunca fica mais
+                estreito que a sua opção mais larga ("BRL - Brazilian Real"),
+                então ele empurrava a borda e saía do cartão em telas médias e
+                grandes. minmax(0, …) nas duas colunas deixa a grade encolher, e o
+                min-w-0 do próprio select (em CurrencySelect) deixa o controle
+                acompanhar a coluna em vez de a coluna acompanhar o controle. */}
+            <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,200px)]">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[var(--color-ink)]">
                 Price
                 <input
                   value={priceAmount}
@@ -1957,38 +1956,21 @@ export function CourseBuilderStudio() {
                   placeholder={
                     paymentType === "free" ? "Free course" : "Example: 149"
                   }
-                  className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                  className="min-w-0 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 />
               </label>
-              <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[var(--color-ink)]">
                 Currency
-                <select
+                <CurrencySelect
                   value={currency}
-                  onChange={(event) => {
-                    const nextCurrency = event.target.value;
+                  onChange={(nextCurrency) => {
                     setCurrency(nextCurrency);
                     if (nextCurrency !== "MXN") {
                       setInstallmentsEnabled(false);
                     }
                   }}
                   disabled={!isEditable}
-                  className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                >
-                  <optgroup label="Most used">
-                    {topSkillsetCurrencies.map((item) => (
-                      <option key={item} value={item}>
-                        {item} - {getCurrencyLabel(item)}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Other supported currencies">
-                    {secondaryCurrencies.map((item) => (
-                      <option key={item} value={item}>
-                        {item} - {getCurrencyLabel(item)}
-                      </option>
-                    ))}
-                  </optgroup>
-                </select>
+                />
               </label>
             </div>
             <div className="mt-4 flex flex-wrap items-start justify-between gap-4 rounded-[12px] border border-[var(--color-line)] bg-white p-4">

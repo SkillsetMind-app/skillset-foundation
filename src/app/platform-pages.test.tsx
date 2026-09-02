@@ -89,7 +89,12 @@ vi.mock("@/components/admin/payment-operations-panel", () => ({
 }));
 
 vi.mock("@/components/admin/ops-overview-metrics", () => ({
-  OpsOverviewMetrics: () => <div>Ops overview metrics</div>,
+  useOpsQueueCounts: () => ({
+    isLoading: false,
+    pendingVerifications: 3,
+    openTickets: 2,
+    openReports: 1,
+  }),
 }));
 
 vi.mock("@/components/admin/account-action-requests-panel", () => ({
@@ -130,11 +135,35 @@ describe("platform shells", () => {
     expect(screen.queryByRole("link", { name: "Creator" })).not.toBeInTheDocument();
   });
 
-  it("renders the support and safety surface", () => {
+  it("opens the operations page on the queues, not on a marketing headline", () => {
     mockAuthState.roles = ["admin"];
     render(<OpsPage />);
 
-    expect(screen.getByText("Learner support")).toBeInTheDocument();
+    // Título compacto: a fila começa logo abaixo, não depois de uma frase de
+    // efeito de 48px, três métricas e dois filtros que nenhuma fila lia.
+    expect(
+      screen.getByRole("heading", { name: "Operations" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/A calm operations layer/i),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Period:")).not.toBeInTheDocument();
+    expect(screen.queryByText("Status:")).not.toBeInTheDocument();
+
+    // As três métricas viraram contadores na aba da fila correspondente.
+    const queues = screen.getByRole("group", { name: "Operations queues" });
+    expect(queues).toHaveTextContent(/Creator verification\s*3/);
+    expect(queues).toHaveTextContent(/Support tickets\s*2/);
+    expect(queues).toHaveTextContent(/Community reports\s*1/);
+
+    // "Access levels" deixou de ser um bloco solto no fim da página: é a
+    // oitava fila, com endereço próprio (?tab=access).
+    expect(
+      screen.getByRole("button", { name: /^Access$/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Access levels" }),
+    ).not.toBeInTheDocument();
   });
 
   it("exposes student-view switching for a teacher in the account dropdown", () => {

@@ -11,6 +11,15 @@ type SidebarToggleProps = {
   onToggle: () => void;
 };
 
+// O último item da barra, dentro dela, com o mesmo desenho dos outros ícones.
+//
+// POR QUE ISTO EXISTE
+//
+// Antes era um círculo flutuante pregado na borda direita da barra (right:
+// -1.1rem, z-index 65 para vencer a barra do topo), sentado em cima da linha
+// que separa barra e conteúdo — lia como um elemento perdido, e no modo
+// recolhido precisava de uma regra só para não cobrir a marca. Como item da
+// barra ele tem endereço óbvio, alvo de 44px e o mesmo hover dos vizinhos.
 export function SidebarToggle({
   isCollapsed,
   onToggle,
@@ -30,11 +39,14 @@ export function SidebarToggle({
       aria-label={label}
       title={label}
       className={[
-        "mb-3 grid size-7 place-items-center rounded-[8px] text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgba(44,82,130,0.28)]",
-        isCollapsed ? "mx-auto" : "ml-auto",
+        "platform-nav-link platform-sidebar-toggle group relative mt-auto flex h-11 min-h-11 w-full shrink-0 items-center gap-2.5 rounded-[10px] border border-transparent px-2.5 py-1.5 text-sm font-semibold text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(44,82,130,0.24)] focus-visible:ring-offset-2 focus-visible:ring-offset-white",
+        isCollapsed ? "justify-center px-0" : "",
       ].join(" ")}
     >
-      <Icon aria-hidden="true" size={18} strokeWidth={2.25} />
+      <span className="platform-nav-icon-chip">
+        <Icon aria-hidden="true" size={18} strokeWidth={2} className="shrink-0" />
+      </span>
+      <span className="platform-sidebar-label min-w-0 truncate">{label}</span>
     </button>
   );
 }
