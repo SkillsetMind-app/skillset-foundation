@@ -7,7 +7,7 @@ export default function NotFound() {
         <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-accent-fg)]">
           Not found
         </p>
-        <h1 className="display-title mt-4 text-6xl text-[var(--color-ink)]">
+        <h1 className="display-title page-title mt-4 text-[var(--color-ink)]">
           This page could not be found.
         </h1>
         <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -20,11 +20,13 @@ export default function NotFound() {
           >
             Go home
           </Link>
+          {/* Era "Open platform overview" → /platform, uma vitrine interna.
+              Quem cai num 404 quer conteúdo: o catálogo. */}
           <Link
-            href="/platform"
+            href="/courses"
             className="button-outline px-4 py-2.5 text-sm"
           >
-            Open platform overview
+            Browse courses
           </Link>
         </div>
       </div>

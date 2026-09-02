@@ -9,6 +9,8 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 // FAQ content lives in src/data/help-faq.ts — shared with the platform
 // assistant so the bot and this page can never disagree.
 
+const SUPPORT_EMAIL = "support@skillsetmind.com";
+
 export const metadata = buildPageMetadata({
   title: "Help center",
   description:
@@ -38,12 +40,23 @@ export default function HelpPage() {
           Payment, payout, or course-review questions go to the human support
           queue. We answer in plain language, in business hours.
         </p>
-        <Link
-          href="/support"
-          className="button-solid mt-6 inline-flex px-4 py-2.5 text-sm"
-        >
-          Contact support
-        </Link>
+        {/* O botão principal ia para /support, que exige login: para um
+            visitante era uma tela de login sem aviso. E-mail é o caminho sem
+            conta; o ticket fica como segunda opção, dito para quem é. */}
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <a
+            href={`mailto:${SUPPORT_EMAIL}?subject=Support`}
+            className="button-solid inline-flex px-4 py-2.5 text-sm"
+          >
+            Email support
+          </a>
+          <Link
+            href="/support"
+            className="button-outline inline-flex px-4 py-2.5 text-sm"
+          >
+            Have an account? Open a ticket
+          </Link>
+        </div>
       </div>
     </PublicPage>
   );

@@ -6,27 +6,32 @@ import { PrivacyChoicesButton } from "@/components/site/privacy-choices-button";
 import { BrandName } from "@/components/shared/brand-name";
 import { getServerTranslation } from "@/lib/i18n/server";
 
-// Slim 3-column footer. /courses is not listed — it is the in-app sidebar
-// Marketplace. /how-it-works IS listed: the standalone page exists and was
-// otherwise orphaned (the homepage only has a `#how-it-works` anchor, which is
-// a different surface), so the footer is its single entry point — deliberately
-// not the top nav. Labels are i18n keys resolved against the request locale.
+// Slim 3-column footer. /how-it-works IS listed: the standalone page exists and
+// was otherwise orphaned (the homepage only has a `#how-it-works` anchor, which
+// is a different surface), so the footer is its single entry point —
+// deliberately not the top nav. /courses, /instructors and /about are public
+// pages the top nav also skips, so the footer is where a visitor finds them.
+// /promise appears once: it used to be listed twice under two names ("The
+// Promise" and "Creator Promise"). Labels are i18n keys resolved against the
+// request locale.
 const footerColumns = [
   {
     titleKey: "footer.platform",
     links: [
+      ["footer.courses", "/courses"],
+      ["footer.instructors", "/instructors"],
       ["footer.howItWorks", "/how-it-works"],
       ["footer.pricing", "/pricing"],
-      ["footer.forCreators", "/for-creators"],
       ["footer.thePromise", "/promise"],
       ["footer.trust", "/trust"],
+      ["footer.about", "/about"],
     ],
   },
   {
     titleKey: "footer.creator",
     links: [
+      ["footer.forCreators", "/for-creators"],
       ["footer.feesPayouts", "/fees-and-payouts"],
-      ["footer.creatorPromise", "/promise"],
       ["footer.teacherTerms", "/legal/teacher-terms"],
     ],
   },

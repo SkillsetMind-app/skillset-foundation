@@ -799,6 +799,17 @@ p {
   text-wrap: balance;
 }
 
+/* Título de página do site público (About, Contact, Help, curso, 404...).
+   Uma regra só: os h1 saíam com text-6xl FIXO (60px) e estouravam a largura
+   de um celular de 360px. Fica em `components` para uma utility de tamanho
+   escrita ao lado ainda valer, como nos botões acima. */
+@layer components {
+  .page-title {
+    font-size: clamp(1.9rem, 6vw, 3.5rem);
+    line-height: 1.05;
+  }
+}
+
 .pill {
   border: 1px solid rgba(26, 54, 93, 0.1);
   background: rgba(245, 249, 255, 0.96);

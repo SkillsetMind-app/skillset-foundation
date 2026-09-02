@@ -90,10 +90,24 @@ export default async function CourseDetailPage({
               currículo, checkout), que depende de sessão e de dados que mudam. */}
           {published ? (
             <header className="mb-8">
+              {/* A capa que o cartão do marketplace já mostra. Sem capa, nada:
+                  não se inventa arte. */}
+              {published.coverImageUrl ? (
+                <div className="relative mb-8 aspect-[16/9] overflow-hidden rounded-[20px] shadow-[var(--shadow-soft)] lg:max-w-3xl">
+                  <Image
+                    src={published.coverImageUrl}
+                    alt={published.title}
+                    fill
+                    priority
+                    sizes="(min-width: 1024px) 60vw, 100vw"
+                    className="object-cover"
+                  />
+                </div>
+              ) : null}
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                 {published.category ?? "Course"}
               </p>
-              <h1 className="display-title mt-3 text-4xl leading-tight text-[var(--color-ink)] sm:text-5xl">
+              <h1 className="display-title page-title mt-3 text-[var(--color-ink)]">
                 {published.title}
               </h1>
               {published.summary ? (
@@ -119,7 +133,13 @@ export default async function CourseDetailPage({
               </section>
             }
           >
-            <CreatorCourseDetail courseIdOverride={slug} />
+            {/* hideHeader: o cabeçalho acima já tem título e resumo; sem isto o
+                componente cliente desenhava um segundo h1 com o mesmo texto
+                logo abaixo. */}
+            <CreatorCourseDetail
+              courseIdOverride={slug}
+              hideHeader={Boolean(published)}
+            />
           </Suspense>
         </main>
       </div>
