@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   Award,
@@ -115,7 +115,46 @@ export function EnrolledCourseWorkspace({
     ready: false,
   });
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
-  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  // A aula atual vai no endereço (?lesson=…). Antes ficava só no estado:
+  // recarregar ou voltar no navegador abria a "primeira aula não concluída",
+  // não a que a pessoa estava vendo; e um link compartilhado nunca abria a
+  // mesma aula. O parâmetro é lido na montagem e reescrito a cada seleção.
+  const router = useRouter();
+  const pathname = usePathname() ?? "";
+  const lessonParam = searchParams?.get("lesson") ?? null;
+  // A escolha guarda o parâmetro que estava no endereço quando foi feita. A
+  // escolha vale enquanto o endereço for aquele (o router ainda não gravou) ou
+  // já for a própria escolha (gravou). Se o endereço mudar para outra coisa por
+  // fora (voltar/avançar, link novo), a aula passa a ser a do endereço —
+  // derivado, sem efeito sincronizando estado (o mesmo desenho do
+  // `sectionChoice` da barra lateral).
+  const [lessonChoice, setLessonChoice] = useState<{
+    seenParam: string | null;
+    id: string | null;
+  }>({ seenParam: lessonParam, id: lessonParam });
+  const selectedLessonId =
+    lessonChoice.seenParam === lessonParam || lessonChoice.id === lessonParam
+      ? lessonChoice.id
+      : lessonParam;
+
+  // Único caminho para trocar de aula: estado + endereço + rolar até o player.
+  // Antes a troca podia acontecer fora da tela (o aluno rolava até a discussão,
+  // o vídeo acabava, a próxima aula entrava lá em cima) — ele voltava e
+  // encontrava outro vídeo sem saber por quê. Agora a página rola até o player
+  // em toda troca, inclusive no avanço automático.
+  function selectLesson(lessonId: string) {
+    setLessonChoice({ seenParam: lessonParam, id: lessonId });
+
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    params.set("lesson", lessonId);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById("member-lesson-player")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
   const [lessonListOpen, setLessonListOpen] = useState(false);
   const [assetsState, setAssetsState] = useState<{
     assets: CourseAsset[];
@@ -660,7 +699,7 @@ export function EnrolledCourseWorkspace({
     );
 
     if (nextUnlockState.unlocked) {
-      setSelectedLessonId(nextInOrder.id);
+      selectLesson(nextInOrder.id);
     }
   }
 
@@ -804,7 +843,7 @@ export function EnrolledCourseWorkspace({
             {previousInOrder ? (
               <button
                 type="button"
-                onClick={() => setSelectedLessonId(previousInOrder.id)}
+                onClick={() => selectLesson(previousInOrder.id)}
                 aria-label={`Previous lesson: ${previousInOrder.title}`}
                 className="button-outline max-w-full px-4 py-2.5 text-sm sm:max-w-[26%]"
               >
@@ -908,7 +947,7 @@ export function EnrolledCourseWorkspace({
             {nextLesson ? (
               <button
                 type="button"
-                onClick={() => setSelectedLessonId(nextLesson.id)}
+                onClick={() => selectLesson(nextLesson.id)}
                 className="button-solid mt-4 px-4 py-2.5 text-sm"
               >
                 Continue
@@ -983,7 +1022,7 @@ export function EnrolledCourseWorkspace({
                 disabled={!firstLesson}
                 onClick={() => {
                   if (firstLesson) {
-                    setSelectedLessonId(firstLesson.id);
+                    selectLesson(firstLesson.id);
                   }
                 }}
                 className={`member-module-card member-module-card--tone-${moduleIndex % 4} ${
@@ -1069,7 +1108,7 @@ export function EnrolledCourseWorkspace({
                   >
                     <button
                       type="button"
-                      onClick={() => setSelectedLessonId(lesson.id)}
+                      onClick={() => selectLesson(lesson.id)}
                       className="member-lesson-card__button"
                     >
                       <span className="member-lesson-card__status">
@@ -1164,7 +1203,7 @@ export function EnrolledCourseWorkspace({
           selectedLessonId={selectedLesson?.id ?? null}
           completedLessonIds={completedLessonIds}
           unlockStateById={lessonUnlockStateById}
-          onSelect={setSelectedLessonId}
+          onSelect={selectLesson}
           onClose={() => setLessonListOpen(false)}
         />
       ) : null}

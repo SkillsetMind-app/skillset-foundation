@@ -6,26 +6,16 @@ import { refundWindowDays } from "@/data/plans";
 export default function AccountPlansPage() {
   return (
     <ProtectedSurface permissions={["auth.signOut"]}>
+      {/* O cartão de abertura ("Pricing model / Choose the plan that fits…")
+          era a segunda manchete da página, antes de "Current plan" virar a
+          terceira. A página abre no que importa: o plano atual e os cartões.
+          A frase de que todo plano inclui tudo foi para a descrição do título. */}
       <PlatformShell
         title="Plans & fees"
-        description="Choose a plan, check out securely through Stripe, manage your subscription, and review platform fees."
+        description="Every plan includes every SkillsetMind feature. Paid plans lower the platform commission; checkout and changes go through Stripe."
         compact
       >
         <section className="grid gap-5">
-          <div className="platform-hero-card rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              Pricing model
-            </p>
-            <h2 className="display-title mt-3 text-3xl text-[var(--color-primary)] sm:text-4xl">
-              Choose the plan that fits your course business.
-            </h2>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-              Every plan includes every SkillsetMind feature. Paid plans lower
-              the platform commission, and you check out through Stripe
-              without leaving this page.
-            </p>
-          </div>
-
           <PlansPanel />
 
           <div className="grid gap-4 lg:grid-cols-3">

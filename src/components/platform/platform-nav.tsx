@@ -87,7 +87,15 @@ const sectionOrder = [
   "Account",
 ];
 
-const directSections = new Set(["Home", "Earnings", "My Learning", "Discover"]);
+// "Operations" era um grupo com um único item, também chamado "Operations":
+// clicar para abrir e ver o mesmo nome. Grupo de item único vira item direto.
+const directSections = new Set([
+  "Home",
+  "Earnings",
+  "My Learning",
+  "Discover",
+  "Operations",
+]);
 
 const sectionIconMap: Record<string, LucideIcon> = {
   Discover: ShoppingBag,
@@ -204,6 +212,7 @@ export function PlatformNav({ collapsed = false, onRequestExpand }: PlatformNavP
                 icon={item.icon}
                 active={isActivePlatformRoute(pathname, item.href)}
                 newTab={item.newTab}
+                collapsed={collapsed}
               />
             </div>
           );
@@ -325,12 +334,14 @@ function PlatformNavLink({
   icon,
   active,
   newTab = false,
+  collapsed = false,
 }: {
   href: string;
   label: string;
   icon: string;
   active: boolean;
   newTab?: boolean;
+  collapsed?: boolean;
 }) {
   const { t } = useTranslation();
   const Icon = iconMap[icon] ?? LayoutDashboard;
@@ -339,6 +350,10 @@ function PlatformNavLink({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
+      // Recolhida, a barra esconde o rótulo (largura 0) e o ícone ficava sem
+      // nome: só os grupos tinham dica. O title devolve o nome no hover; o
+      // rótulo continua no DOM para leitores de tela.
+      title={collapsed ? label : undefined}
       target={newTab ? "_blank" : undefined}
       rel={newTab ? "noopener noreferrer" : undefined}
       className={`platform-nav-link group relative flex h-11 min-h-11 shrink-0 items-center gap-2.5 rounded-[10px] border px-2.5 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(44,82,130,0.24)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${

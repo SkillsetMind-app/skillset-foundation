@@ -1,7 +1,13 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { MemberAreaShell } from "@/components/learn/member-area-shell";
+
+// O sino precisa de AuthProvider e da assinatura de notificações; o que ele
+// faz na casca está provado em member-area-bell.test.tsx. Aqui só o shell.
+vi.mock("@/components/platform/notification-bell", () => ({
+  NotificationBell: () => null,
+}));
 
 describe("MemberAreaShell", () => {
   it("puts the members theme on its own root so the --ma-* tokens cover the page", () => {

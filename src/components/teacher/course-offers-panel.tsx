@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
+import { CurrencySelect } from "@/components/teacher/currency-select";
 import type { TeacherCoursePaymentType } from "@/domain/teacher-course";
 
 type OfferPrice = {
@@ -190,11 +191,14 @@ export function CourseOffersPanel({
           <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
             Currency
           </span>
-          <input
+          {/* Era um campo de texto livre de três letras: aceitava "ABC", que o
+              Stripe recusa só na hora de cobrar. O mesmo seletor do construtor,
+              com exatamente a lista que o Stripe aceita. */}
+          <CurrencySelect
             value={currency}
-            onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
-            className={inputClass}
-            required
+            onChange={setCurrency}
+            className={`${inputClass} w-full min-w-0`}
+            aria-label="Currency"
           />
         </label>
         <label className="flex flex-col gap-1.5">
