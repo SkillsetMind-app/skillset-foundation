@@ -92,10 +92,15 @@ export type ResumeCourseLesson = CourseLessonEntry & {
 
 /**
  * A aula que o painel oferece para retomar. O cartao "Continuar" abria a CAPA
- * do curso e a pessoa tinha que achar sozinha onde parou. Com `lastLessonId`
- * (a aula em que ela parou) a resposta e essa aula; sem registro, ou com um id
- * que nao existe mais no curso, a primeira aula que ela ainda nao concluiu.
- * Os numeros sao 1-based, para o rotulo "Module N · Lesson M".
+ * do curso e a pessoa tinha que achar sozinha onde parou.
+ *
+ * `lastLessonId` e a ultima aula CONCLUIDA — e so isso que o banco grava
+ * (record_lesson_progress escreve enrollments.last_lesson_id ao marcar a aula
+ * como feita; abrir uma aula nao grava nada). Retomar, portanto, e a aula
+ * SEGUINTE a ela: antes o cartao abria a propria aula ja concluida, e a
+ * pessoa reassistia o que acabou de terminar. Concluiu a ultima → o cartao
+ * fica nela. Sem registro, ou com um id que nao existe mais no curso, a
+ * primeira aula. Os numeros sao 1-based, para o rotulo "Module N · Lesson M".
  */
 export function getResumeCourseLesson(
   course: Course,
@@ -103,8 +108,9 @@ export function getResumeCourseLesson(
 ): ResumeCourseLesson | null {
   const entries = getCourseLessonEntries(course);
   const entry =
-    entries.find((candidate) => candidate.lesson.id === lastLessonId)
-    ?? getNextCourseLessonAfter(course, null);
+    getNextCourseLessonAfter(course, lastLessonId)
+    ?? entries.find((candidate) => candidate.lesson.id === lastLessonId)
+    ?? null;
 
   if (!entry) {
     return null;

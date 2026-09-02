@@ -255,18 +255,20 @@ describe("LearnDashboard", () => {
     ).toBeInTheDocument();
   });
 
-  it("'Continue watching' abre direto na aula em que a pessoa parou", async () => {
+  it("'Continue watching' abre na aula seguinte a ultima concluida", async () => {
     render(<LearnDashboard />);
 
     const region = await screen.findByRole("region", { name: "Continue watching" });
     const link = within(region).getByRole("link", { name: /Effective Communication/ });
+    // lastLessonId = l3 e a ultima aula CONCLUIDA; retomar e l4. Antes o
+    // cartao abria l3 de novo — a pessoa reassistia o que acabou de terminar.
     expect(link).toHaveAttribute(
       "href",
-      "/learn/courses/effective-communication?lesson=l3",
+      "/learn/courses/effective-communication?lesson=l4",
     );
-    // l3 e a primeira aula do modulo 2; faltam l3 (35) + l4 (10).
+    // l4 e a segunda aula do modulo 2; falta so ela (10).
     expect(
-      within(region).getByText("Module 2 · Lesson 1 · 45 min left"),
+      within(region).getByText("Module 2 · Lesson 2 · 10 min left"),
     ).toBeInTheDocument();
     // Curso concluido nao entra na fila de retomar.
     expect(within(region).queryByText("Brand Design Atelier")).not.toBeInTheDocument();

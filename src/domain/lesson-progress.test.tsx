@@ -90,11 +90,18 @@ describe("lesson progress helpers", () => {
 // sozinha onde parou. Estes helpers dao ao painel a aula certa e o rotulo
 // "Module N · Lesson M · X min left" sem inventar numero.
 describe("aula a retomar no painel", () => {
-  it("retoma na aula em que a pessoa parou, com posicao 1-based", () => {
-    const resume = getResumeCourseLesson(course, "lesson-3");
+  // last_lesson_id e a ultima aula CONCLUIDA (e o que o banco grava). Retomar
+  // e a seguinte — nao a que a pessoa acabou de terminar.
+  it("retoma na aula seguinte a ultima concluida, com posicao 1-based", () => {
+    const resume = getResumeCourseLesson(course, "lesson-2");
     expect(resume?.lesson.id).toBe("lesson-3");
     expect(resume?.moduleNumber).toBe(2);
     expect(resume?.lessonNumber).toBe(1);
+  });
+
+  it("concluiu a ultima aula: o cartao fica nela, sem inventar uma proxima", () => {
+    const resume = getResumeCourseLesson(course, "lesson-3");
+    expect(resume?.lesson.id).toBe("lesson-3");
   });
 
   it("sem registro, ou com id que nao existe mais, cai na primeira aula", () => {
