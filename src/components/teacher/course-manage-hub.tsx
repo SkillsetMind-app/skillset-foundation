@@ -494,7 +494,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
             ) : null}
             <Link
               href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=details`}
-              className="button-solid min-h-10 px-4 text-xs"
+              className="button-solid px-4 text-xs"
             >
               Edit in Builder
             </Link>

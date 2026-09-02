@@ -143,7 +143,7 @@ export function TeacherCourseStudio({
             professional verification is approved.
           </p>
         </div>
-        <Link href={createHref} className="button-solid min-h-10 px-4 text-sm">
+        <Link href={createHref} className="button-solid px-4 text-sm">
           <Plus aria-hidden="true" size={16} strokeWidth={2} />
           {productView === "communities" ? "New community" : "New product"}
         </Link>
@@ -327,7 +327,7 @@ export function TeacherCourseStudio({
                   ? "Create a recurring members space for posts, discussion, and practitioner-led exchange."
                   : "Start a course, subscription, community, event, or free program. The draft stays private until you publish it."}
               </p>
-              <Link href={createHref} className="button-solid mt-5 min-h-10 px-4 text-sm">
+              <Link href={createHref} className="button-solid mt-5 px-4 text-sm">
                 <Plus aria-hidden="true" size={16} strokeWidth={2} />
                 {productView === "communities" ? "Create community" : "Create product"}
               </Link>
@@ -389,20 +389,20 @@ export function TeacherCourseStudio({
                   <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                     <Link
                       href={`/teach/courses/${encodeURIComponent(course.id)}/manage`}
-                      className="button-solid min-h-9 px-3 text-xs"
+                      className="button-solid px-3 text-xs"
                     >
                       Manage
                     </Link>
                     <Link
                       href={`/teach/builder?courseId=${encodeURIComponent(course.id)}`}
-                      className="button-outline min-h-9 px-3 text-xs"
+                      className="button-outline px-3 text-xs"
                     >
                       Edit
                     </Link>
                     {teacherCanPublishCourse(course.status) ? (
                       <Link
                         href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=review`}
-                        className="button-outline min-h-9 px-3 text-xs"
+                        className="button-outline px-3 text-xs"
                       >
                         Review & publish
                       </Link>
@@ -425,7 +425,7 @@ export function TeacherCourseStudio({
                             type="button"
                             onClick={() => setConfirmingDeleteId(null)}
                             disabled={deletingCourseId === course.id}
-                            className="button-outline min-h-9 px-3 text-xs disabled:opacity-60"
+                            className="button-outline px-3 text-xs disabled:opacity-60"
                           >
                             Cancel
                           </button>

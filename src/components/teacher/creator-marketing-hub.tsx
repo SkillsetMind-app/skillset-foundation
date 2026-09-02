@@ -100,7 +100,7 @@ export function CreatorMarketingHub() {
                     {tool.description}
                   </p>
                 </div>
-                <Link href={tool.href} className="button-outline min-h-9 px-3 text-xs">
+                <Link href={tool.href} className="button-outline px-3 text-xs">
                   {tool.action}
                   <ArrowRight aria-hidden="true" size={14} strokeWidth={1.8} />
                 </Link>

@@ -176,6 +176,29 @@ describe("tamanho dos botões (P-16)", () => {
     const button = mount("button-outline px-3.5 py-2 text-xs");
     expect(resolve(css, button, "min-height")).toBe("44px");
   });
+
+  it("nenhuma variante de botão rebaixa o alvo de 44px para 36px ou 40px", () => {
+    const dir = join(root, "src");
+    const files = readdirSync(dir, { recursive: true, withFileTypes: true })
+      .filter(
+        (entry) =>
+          entry.isFile() && entry.name.endsWith(".tsx") && !entry.name.endsWith(".test.tsx"),
+      )
+      .map((entry) => join(entry.parentPath, entry.name));
+    const undersizedButton =
+      /className\s*=\s*(?:\{\s*)?["'`][^"'`]*(?=[^"'`]*\bbutton-(?:solid|outline|accent|danger)\b)(?=[^"'`]*\bmin-h-(?:9|10)\b)[^"'`]*["'`]/g;
+    const violations: string[] = [];
+
+    expect(files.length).toBeGreaterThan(0);
+    for (const file of files) {
+      const source = readFileSync(file, "utf8");
+      for (const match of source.matchAll(undersizedButton)) {
+        const line = source.slice(0, match.index).split("\n").length;
+        violations.push(`${file}:${line}: ${match[0]}`);
+      }
+    }
+    expect(violations).toEqual([]);
+  });
 });
 
 describe("botão de perigo (P-08)", () => {
