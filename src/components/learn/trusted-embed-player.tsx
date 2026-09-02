@@ -16,12 +16,32 @@ import { useEffect, useRef } from "react";
 // trust boundary that decides whether a lesson counts as watched, and the
 // workspace's import graph (auth context, Bunny player, community feed) makes
 // it impossible to render in a test without standing the whole classroom up.
+// YouTube and Vimeo both honor `autoplay=1` in the embed query. Only appended
+// when the classroom asks for it; the origin (what the ended-listener checks)
+// is untouched by a query string.
+export function withEmbedAutoplay(embedUrl: string, autoplay?: boolean): string {
+  if (!autoplay) {
+    return embedUrl;
+  }
+
+  try {
+    const url = new URL(embedUrl);
+    url.searchParams.set("autoplay", "1");
+    return url.toString();
+  } catch {
+    return embedUrl;
+  }
+}
+
 export function TrustedEmbedPlayer({
+  autoplay = false,
   embedUrl,
   onEnded,
   provider,
   title,
 }: {
+  /** A aula abriu pelo cartão "Próxima aula": o embed começa a tocar sozinho. */
+  autoplay?: boolean;
   embedUrl: string;
   onEnded: () => void;
   provider: "youtube" | "vimeo";
@@ -113,7 +133,7 @@ export function TrustedEmbedPlayer({
     <iframe
       ref={iframeRef}
       onLoad={subscribeToEnded}
-      src={embedUrl}
+      src={withEmbedAutoplay(embedUrl, autoplay)}
       title={title}
       className="aspect-video w-full"
       allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share"

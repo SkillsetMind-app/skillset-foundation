@@ -1,8 +1,6 @@
 "use client";
 
-import { LayoutDashboard } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 
 import { NotificationBell } from "@/components/platform/notification-bell";
@@ -94,17 +92,14 @@ export function MemberAreaShell({
                   sino não existia. Mesmo componente, mesma lista de avisos.
                   Fica fora do modo whitelabel de propósito: cada aviso leva a
                   uma página da plataforma, e a área com marca do professor
-                  não pode ter porta de volta para dentro dela. */}
-              <div className="flex items-center gap-2 sm:gap-3">
-                <NotificationBell />
-                <Link
-                  href="/learn"
-                  className="button-outline inline-flex items-center gap-2 px-4 py-2 text-sm"
-                >
-                  <LayoutDashboard aria-hidden size={16} strokeWidth={1.9} />
-                  Exit to dashboard
-                </Link>
-              </div>
+                  não pode ter porta de volta para dentro dela.
+
+                  Um "Exit to dashboard" morava aqui ao lado. Era a terceira
+                  saída para o mesmo lugar ("Back to dashboard" na capa, "Back
+                  to My Learning" na lateral). A sala agora tem UMA: "← My
+                  courses", na capa (página inicial) ou no cabeçalho curto
+                  (em aula). */}
+              <NotificationBell />
             </>
           )}
         </header>

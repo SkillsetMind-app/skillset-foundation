@@ -40,7 +40,7 @@ vi.mock("@/lib/data/notifications", () => ({
 const bellName = /platform\.notifications\.open/;
 
 describe("o sino na barra da area de membros", () => {
-  it("aparece na barra da plataforma, ao lado da saida para o painel", () => {
+  it("aparece na barra da plataforma — sozinho: a saida da sala mora na capa/cabecalho", () => {
     render(
       <MemberAreaShell>
         <p>Lesson</p>
@@ -48,7 +48,8 @@ describe("o sino na barra da area de membros", () => {
     );
 
     expect(screen.getByRole("button", { name: bellName })).toBeInTheDocument();
-    expect(screen.getByText("Exit to dashboard")).toBeInTheDocument();
+    // "Exit to dashboard" era a terceira saida para /learn (reanalise item 8).
+    expect(screen.queryByText("Exit to dashboard")).toBeNull();
   });
 
   it("fica fora da area com marca do professor: cada aviso e uma porta de volta para a plataforma", () => {
