@@ -11,12 +11,16 @@ import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { skillsetCourseCategories } from "@/domain/teacher-course";
 import type { OnboardingAnswers } from "@/domain/user-profile";
 import { getAuthPathIntentFromSearchParams } from "@/lib/auth/routing";
+import { isValidPhoneNumber } from "@/domain/user-profile";
+import { validateDisplayName } from "@/lib/auth/profile-validation";
 import {
   getUserProfile,
   updateOnboardingAnswers,
+  updateUserIdentity,
 } from "@/lib/data/user-profiles";
 
 type QuestionId =
+  | "profile"
   | "path"
   | "profession"
   | "sourceOfDiscovery"
@@ -99,8 +103,12 @@ function wait(ms: number) {
 function getVisibleQuestions(answers: OnboardingAnswers): QuestionDefinition[] {
   const isTeacher = answers.path === "teacher";
 
+  // "profile" (nome + telefone) vem ANTES de tudo, para os dois caminhos: e o
+  // primeiro passo depois de confirmar o e-mail — antes de ter acesso a conta,
+  // a pessoa se apresenta. O telefone nunca era pedido em lugar nenhum.
   const ids: { id: QuestionId; required: boolean }[] = isTeacher
     ? [
+        { id: "profile", required: true },
         { id: "path", required: true },
         { id: "profession", required: true },
         { id: "primaryGoal", required: true },
@@ -112,6 +120,7 @@ function getVisibleQuestions(answers: OnboardingAnswers): QuestionDefinition[] {
         { id: "instagramHandle", required: false },
       ]
     : [
+        { id: "profile", required: true },
         { id: "path", required: true },
         { id: "primaryGoal", required: true },
         { id: "sourceOfDiscovery", required: false },
@@ -121,11 +130,18 @@ function getVisibleQuestions(answers: OnboardingAnswers): QuestionDefinition[] {
 }
 
 function isAnswered(question: QuestionDefinition, answers: OnboardingAnswers) {
-  const value = answers[question.id];
-
   if (!question.required) {
     return true;
   }
+
+  // O perfil mora nas colunas do usuario (display_name, phone_number), nao
+  // nas respostas; a marca `profileConfirmed` e o que diz "ja passou por aqui"
+  // — inclusive quando a pessoa volta ao /welcome dias depois.
+  if (question.id === "profile") {
+    return Boolean(answers.profileConfirmed);
+  }
+
+  const value = answers[question.id];
 
   return Array.isArray(value) ? value.length > 0 : Boolean(value);
 }
@@ -175,6 +191,10 @@ function compactAnswers(input: OnboardingAnswers): OnboardingAnswers {
     output.audienceSize = input.audienceSize;
   }
 
+  if (input.profileConfirmed) {
+    output.profileConfirmed = true;
+  }
+
   return output;
 }
 
@@ -190,6 +210,9 @@ export function OnboardingWizard() {
     ...(pathIntent ? { path: pathIntent } : {}),
   }));
   const [currentIndex, setCurrentIndex] = useState(0);
+  // O passo de perfil: nome vem pre-preenchido do cadastro; telefone e novo.
+  const [profileName, setProfileName] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
@@ -225,6 +248,8 @@ export function OnboardingWizard() {
         const nextQuestions = getVisibleQuestions(savedAnswers);
 
         setAnswers(savedAnswers);
+        setProfileName(profile?.displayName ?? user.displayName ?? "");
+        setProfilePhone(profile?.phoneNumber ?? "");
         setCurrentIndex(getFirstIncompleteIndex(nextQuestions, savedAnswers));
       })
       .catch(() => {
@@ -325,7 +350,46 @@ export function OnboardingWizard() {
     return "";
   }
 
+  // O passo de perfil grava nas colunas do usuario (nao nas respostas) e so
+  // entao marca `profileConfirmed` e avanca. Validacao aqui, nao em
+  // validateCurrentQuestion: nome e telefone vivem em estado proprio.
+  async function saveProfileAndContinue() {
+    if (!user) {
+      router.replace("/auth?mode=signin");
+      return;
+    }
+
+    const nameError = validateDisplayName(profileName);
+    if (nameError) {
+      setError("Tell us your name — at least 2 letters, so we know what to call you.");
+      return;
+    }
+    if (!isValidPhoneNumber(profilePhone)) {
+      setError("Enter a phone number with area code, like +1 555 123 4567.");
+      return;
+    }
+
+    setIsSaving(true);
+    setError("");
+    try {
+      await updateUserIdentity(user.uid, {
+        displayName: profileName.trim(),
+        phoneNumber: profilePhone.trim(),
+      });
+      await updateAnswer({ ...answers, profileConfirmed: true }, true);
+    } catch {
+      setError("Could not save your profile. Check your connection and try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   async function handleContinue() {
+    if (activeQuestion?.id === "profile") {
+      await saveProfileAndContinue();
+      return;
+    }
+
     const validationError = validateCurrentQuestion();
 
     if (validationError) {
@@ -525,6 +589,41 @@ export function OnboardingWizard() {
 
   function renderQuestion(question: QuestionDefinition) {
     switch (question.id) {
+      case "profile":
+        return (
+          <OnboardingQuestion
+            number={question.number}
+            title="First, tell us who you are."
+            lead="Your name shows on your profile and certificates. Your phone stays private — we use it for account security and support."
+          >
+            <div className="grid gap-4">
+              <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
+                Full name
+                <input
+                  type="text"
+                  value={profileName}
+                  onChange={(event) => setProfileName(event.target.value)}
+                  autoComplete="name"
+                  placeholder="Your name"
+                  className="field-input"
+                />
+              </label>
+              <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
+                Phone
+                <input
+                  type="tel"
+                  value={profilePhone}
+                  onChange={(event) => setProfilePhone(event.target.value)}
+                  autoComplete="tel"
+                  inputMode="tel"
+                  placeholder="+1 555 123 4567"
+                  className="field-input"
+                />
+              </label>
+            </div>
+            <ErrorMessage error={error} />
+          </OnboardingQuestion>
+        );
       case "path":
         return (
           <OnboardingQuestion

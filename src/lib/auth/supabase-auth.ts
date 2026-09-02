@@ -802,3 +802,27 @@ export async function unenrollTotpFactor(factorUid: string): Promise<void> {
     throw error;
   }
 }
+
+// "E-mail nao confirmado" ao entrar: a pessoa criou a conta e nao clicou no
+// link (ou ele nao chegou). Antes isso virava uma frase de erro generica; agora
+// a tela de login mostra a mesma porta do cadastro, com "reenviar".
+export function isEmailNotConfirmedError(error: unknown): boolean {
+  const { matches } = authErrorMatcher(error);
+  return matches("email_not_confirmed") || matches("email not confirmed");
+}
+
+// Reenvia o link de confirmacao do cadastro. A tela "confirme seu e-mail" era
+// um beco sem saida: se o e-mail nao chegava, a unica opcao era "ir para o
+// login" — que devolvia "e-mail nao confirmado". 5 contas reais ficaram
+// paradas assim desde 26/08.
+export async function resendSignupConfirmation(email: string): Promise<void> {
+  const supabase = getSupabaseBrowserClient();
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: { emailRedirectTo: authCallbackUrl("/auth/confirm") },
+  });
+  if (error) {
+    throw error;
+  }
+}

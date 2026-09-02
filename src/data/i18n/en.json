@@ -151,9 +151,15 @@
       "passwordRequirements": "Use a password that meets every requirement.",
       "mfaUseSignIn": "This account has two-step verification enabled. Please sign in instead to enter your code.",
       "confirmTitle": "Confirm your email to continue",
-      "confirmBody": "Open the link to activate your account, then come back and sign in. It can take a minute to arrive — check your spam or promotions folder too.",
+      "confirmBody": "Open the link in that email to activate your account. Right after, you'll fill in your name and phone. It can take a minute to arrive — check spam or promotions too.",
       "confirmSentTo": "We sent a confirmation link to",
-      "confirmSignIn": "Go to sign in",
+      "confirmSignIn": "Sign in",
+      "confirmResend": "Resend the link",
+      "confirmResending": "Sending...",
+      "confirmResendIn": "Resend in {seconds}s",
+      "confirmResent": "Sent again. Give it a minute.",
+      "confirmChangeEmail": "Wrong email? Change it",
+      "confirmAlreadyDone": "Already confirmed?",
       "existingAccountSignIn": "Sign in instead"
     },
     "guard": {

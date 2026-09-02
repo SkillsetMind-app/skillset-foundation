@@ -1,9 +1,11 @@
 "use client";
 
+import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 
+import { ConfirmEmailGate } from "@/components/auth/confirm-email-gate";
 import { GoogleMark } from "@/components/auth/google-mark";
 import {
   TurnstileWidget,
@@ -93,6 +95,11 @@ export function SignupForm() {
   // /welcome onboarding.
   const [step, setStep] = useState<1 | 2>(1);
   const [confirmSent, setConfirmSent] = useState(false);
+  // O olhinho, um por campo: quem cria senha quer conferir o que digitou nos
+  // DOIS campos — o login ja tinha o seu; o cadastro, onde ele mais importa,
+  // nao tinha.
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const passwordReady = isStrongPassword(password);
   const passwordsMatch = password === confirmPassword;
   const showMismatch = confirmPassword.length > 0 && !passwordsMatch;
@@ -244,28 +251,17 @@ export function SignupForm() {
 
   // Account created, session pending confirmation. The form is done — replacing
   // it (rather than routing to /welcome) keeps the user on a screen that
-  // explains the next step instead of an unexplained sign-in page.
+  // explains the next step instead of an unexplained sign-in page. A porta
+  // tem "reenviar" e "trocar o e-mail": antes era um beco sem saida.
   if (confirmSent) {
     return (
-      <section
-        className="mt-5 grid gap-3 rounded-[12px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-5 py-6"
-        aria-live="polite"
-      >
-        <h2 className="text-lg font-semibold text-[var(--color-ink)]">
-          {t("auth.signup.confirmTitle")}
-        </h2>
-        <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
-          {t("auth.signup.confirmSentTo")}{" "}
-          <strong className="font-semibold text-[var(--color-ink)]">{email}</strong>.{" "}
-          {t("auth.signup.confirmBody")}
-        </p>
-        <Link
-          href="/auth?mode=signin"
-          className="justify-self-start rounded-[10px] bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--color-base)]"
-        >
-          {t("auth.signup.confirmSignIn")}
-        </Link>
-      </section>
+      <ConfirmEmailGate
+        email={email}
+        onChangeEmail={() => {
+          setConfirmSent(false);
+          setStep(1);
+        }}
+      />
     );
   }
 
@@ -401,32 +397,64 @@ export function SignupForm() {
         <>
           <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
             {t("auth.password")}
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder={t("auth.signup.passwordPlaceholder")}
-              autoComplete="new-password"
-              minLength={8}
-              required
-              autoFocus
-              className="field-input"
-            />
+            <span className="relative block">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder={t("auth.signup.passwordPlaceholder")}
+                autoComplete="new-password"
+                minLength={8}
+                required
+                autoFocus
+                className="field-input pr-11"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={t(showPassword ? "auth.hidePassword" : "auth.showPassword")}
+                aria-pressed={showPassword}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Eye className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
+            </span>
             {password ? <PasswordStrengthChecklist password={password} /> : null}
           </label>
 
           <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
             {t("auth.signup.confirmPassword")}
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              placeholder={t("auth.signup.confirmPasswordPlaceholder")}
-              autoComplete="new-password"
-              required
-              aria-invalid={showMismatch}
-              className="field-input"
-            />
+            <span className="relative block">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                placeholder={t("auth.signup.confirmPasswordPlaceholder")}
+                autoComplete="new-password"
+                required
+                aria-invalid={showMismatch}
+                className="field-input pr-11"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((visible) => !visible)}
+                aria-label={t(
+                  showConfirmPassword ? "auth.hidePassword" : "auth.showPassword",
+                )}
+                aria-pressed={showConfirmPassword}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Eye className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
+            </span>
             {showMismatch ? (
               <span className="text-xs font-semibold text-[var(--color-accent-fg)]">
                 {t("auth.signup.passwordsDontMatch")}

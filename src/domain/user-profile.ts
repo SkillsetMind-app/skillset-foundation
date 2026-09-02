@@ -24,6 +24,8 @@ export type OnboardingAnswers = {
   primaryGoal?: string[];
   instagramHandle?: string;
   audienceSize?: string;
+  /** Nome e telefone ja foram gravados no perfil (primeiro passo do /welcome). */
+  profileConfirmed?: boolean;
 };
 
 export type NotificationPreferences = {
@@ -242,3 +244,11 @@ export type PublicProfile = {
   storefront?: StorefrontConfig | null;
   updatedAt?: unknown;
 };
+
+// Telefone do perfil: aceita o que a pessoa digitar (espacos, parenteses,
+// hifen, +55) e exige entre 8 e 15 digitos — o intervalo do E.164 mais os
+// fixos curtos. Nao formata: o campo guarda o que a pessoa escreveu.
+export function isValidPhoneNumber(value: string): boolean {
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 8 && digits.length <= 15;
+}

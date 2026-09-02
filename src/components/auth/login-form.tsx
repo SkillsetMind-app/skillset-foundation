@@ -12,10 +12,12 @@ import {
 } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { isGoogleAuthEnabled } from "@/lib/auth/providers";
+import { ConfirmEmailGate } from "@/components/auth/confirm-email-gate";
 import {
   completeMfaSignIn,
   getAuthErrorMessage,
   getPendingSecondFactor,
+  isEmailNotConfirmedError,
   isMultiFactorRequiredError,
   type MfaRequiredError,
   signInWithEmail,
@@ -65,6 +67,9 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(callbackError);
+  // Conta criada, e-mail nunca confirmado: em vez de uma frase de erro, a
+  // mesma porta do cadastro (com "reenviar o link").
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   // Set when a sign-in succeeds at the password step but the account also
   // requires a TOTP second factor. Holds the original error the resolver needs.
@@ -118,6 +123,9 @@ export function LoginForm() {
       if (isMultiFactorRequiredError(caughtError)) {
         setMfaError(caughtError);
         setMfaCode("");
+        setError("");
+      } else if (isEmailNotConfirmedError(caughtError)) {
+        setUnconfirmedEmail(email);
         setError("");
       } else {
         // Turnstile tokens are single-use — refresh for the retry.
@@ -195,6 +203,15 @@ export function LoginForm() {
     } else {
       void handleEmailLogin();
     }
+  }
+
+  if (unconfirmedEmail) {
+    return (
+      <ConfirmEmailGate
+        email={unconfirmedEmail}
+        onChangeEmail={() => setUnconfirmedEmail("")}
+      />
+    );
   }
 
   // Second-factor challenge: shown after the password verifies but the account
