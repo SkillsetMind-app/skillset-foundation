@@ -105,7 +105,9 @@ export function LoginForm() {
     router.push(
       profile?.onboardingCompleted
         ? returnTo ?? getLoadingRoute("route", pathIntent)
-        : getLoadingRoute("welcome", pathIntent),
+        // Not onboarded yet: the deep link goes with them through the wizard
+        // instead of dying at its door.
+        : getLoadingRoute("welcome", pathIntent, returnTo),
     );
   }
 

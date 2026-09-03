@@ -48,7 +48,10 @@ describe("LoadingScreen after a Google sign-in", () => {
     );
   });
 
-  it("sends a new account to onboarding even with a deep link waiting", async () => {
+  // Onboarding still runs first — but it now takes the deep link with it
+  // instead of swallowing it. Dropping it here is how a first-time buyer used
+  // to finish the wizard on a dashboard, never seeing the course again.
+  it("sends a new account to onboarding and hands the deep link over", async () => {
     mocks.searchParams = new URLSearchParams(GOOGLE_RETURN);
     mocks.getUserProfile.mockResolvedValue({
       onboardingCompleted: false,
@@ -58,7 +61,9 @@ describe("LoadingScreen after a Google sign-in", () => {
 
     await waitFor(
       () =>
-        expect(mocks.router.replace).toHaveBeenCalledWith("/welcome?path=student"),
+        expect(mocks.router.replace).toHaveBeenCalledWith(
+          "/welcome?path=student&returnTo=%2Flearn%2Fcourses%2Fx",
+        ),
       ROUTED,
     );
   });

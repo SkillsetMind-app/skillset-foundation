@@ -132,3 +132,99 @@ describe("boas-vindas: o passo de perfil vem primeiro", () => {
     expect(screen.queryByText("First, tell us who you are.")).toBeNull();
   });
 });
+
+// A outra metade do bug do "voltar para o curso": mesmo carregando o endereco
+// ate aqui, o fim do onboarding sempre despejava a pessoa em /learn. O curso
+// que ela ia comprar sumia no ultimo passo.
+describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
+  const respostasDeAluno = {
+    profileConfirmed: true,
+    path: "student",
+    primaryGoal: ["Business"],
+    sourceOfDiscovery: "Instagram",
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.searchParams = new URLSearchParams();
+    mocks.profile = {
+      displayName: "Patrick Simon",
+      phoneNumber: "+1 555 123 4567",
+      onboardingAnswers: respostasDeAluno,
+    };
+    mocks.getUserProfile.mockImplementation(() => Promise.resolve(mocks.profile));
+    mocks.updateOnboardingAnswers.mockResolvedValue(undefined);
+    mocks.updateUserIdentity.mockResolvedValue(undefined);
+  });
+
+  afterEach(cleanup);
+
+  // O ultimo passo do aluno; daqui o "Continue" encerra o onboarding.
+  async function terminar() {
+    render(<OnboardingWizard />);
+    expect(
+      await screen.findByText("Where did you hear about SkillsetMind?"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  }
+
+  it("volta para o curso quando a pessoa veio de um", async () => {
+    mocks.searchParams = new URLSearchParams("returnTo=/courses/focus");
+
+    await terminar();
+
+    await waitFor(
+      () => expect(mocks.router.replace).toHaveBeenCalledWith("/courses/focus"),
+      { timeout: 4000 },
+    );
+  });
+
+  it("sem destino, termina onde sempre terminou", async () => {
+    await terminar();
+
+    await waitFor(
+      () => expect(mocks.router.replace).toHaveBeenCalledWith("/learn"),
+      { timeout: 4000 },
+    );
+  });
+
+  it("descarta destino de outro dominio", async () => {
+    mocks.searchParams = new URLSearchParams("returnTo=https://outro.com/pego");
+
+    await terminar();
+
+    await waitFor(
+      () => expect(mocks.router.replace).toHaveBeenCalledWith("/learn"),
+      { timeout: 4000 },
+    );
+  });
+
+  // O professor e a excecao de proposito: /onboarding?path=teacher e um passo
+  // obrigatorio da conta, nao um destino que da para trocar por um link.
+  it("professor ainda vai para o cadastro de professor, com destino ou sem", async () => {
+    mocks.searchParams = new URLSearchParams("path=teacher&returnTo=/courses/focus");
+    mocks.profile = {
+      displayName: "Patrick Simon",
+      phoneNumber: "+1 555 123 4567",
+      onboardingAnswers: {
+        profileConfirmed: true,
+        path: "teacher",
+        profession: "Coach",
+        primaryGoal: ["Business"],
+        alreadySold: "no",
+        audienceSize: "100,000+ followers",
+        instagramHandle: "patrick",
+      },
+    };
+
+    render(<OnboardingWizard />);
+    expect(await screen.findByText(/Instagram handle/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    await waitFor(
+      () =>
+        expect(mocks.router.replace).toHaveBeenCalledWith("/onboarding?path=teacher"),
+      { timeout: 4000 },
+    );
+  });
+});

@@ -209,3 +209,84 @@ describe("SignupForm with Google", () => {
     );
   });
 });
+
+// O bug: quem apertava "matricular" sem conta ia criar conta com o curso na
+// URL (returnTo). A tela de ENTRAR respeitava esse endereco; o CADASTRO nao —
+// jogava a pessoa em /welcome sem ele, e ela terminava no painel, longe do
+// curso que ia comprar. A venda morria entre duas telas.
+describe("SignupForm leva o curso junto para o cadastro", () => {
+  const destino = "/courses/focus";
+  const paraOnboarding = "/welcome?path=student&returnTo=%2Fcourses%2Ffocus";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.signUpWithEmail.mockResolvedValue({
+      user: { uid: "u-1" },
+      needsEmailConfirmation: false,
+    });
+    mocks.acceptUserTerms.mockResolvedValue(undefined);
+    mocks.updateUserIdentity.mockResolvedValue(undefined);
+    mocks.signInWithGoogle.mockReturnValue(new Promise(() => {}));
+  });
+
+  afterEach(() => {
+    cleanup();
+    // Os outros blocos contam com a URL limpa.
+    mocks.searchParams = new URLSearchParams();
+  });
+
+  it("manda o destino adiante ao criar a conta, em vez de descarta-lo", async () => {
+    mocks.searchParams = new URLSearchParams("returnTo=" + destino);
+    render(<SignupForm />);
+
+    submitSignup();
+
+    await waitFor(() =>
+      expect(mocks.router.push).toHaveBeenCalledWith(paraOnboarding),
+    );
+    // E tambem dentro do e-mail de confirmacao: quem confirma no celular nao
+    // tem nada da aba original, entao o endereco viaja no proprio link.
+    expect(mocks.signUpWithEmail).toHaveBeenCalledWith(
+      expect.anything(),
+      undefined,
+      paraOnboarding,
+    );
+  });
+
+  it("ignora destino de outro dominio (nao vira redirecionamento aberto)", async () => {
+    mocks.searchParams = new URLSearchParams("returnTo=https://outro.com/pego");
+    render(<SignupForm />);
+
+    submitSignup();
+
+    await waitFor(() =>
+      expect(mocks.router.push).toHaveBeenCalledWith("/welcome?path=student"),
+    );
+  });
+
+  it("nao perde o destino quando a pessoa troca aprender por ensinar", () => {
+    mocks.searchParams = new URLSearchParams("returnTo=" + destino);
+    render(<SignupForm />);
+
+    fireEvent.click(screen.getByRole("radio", { name: "auth.signup.roleTeach" }));
+
+    expect(mocks.router.replace).toHaveBeenCalledWith(
+      "/auth?mode=signup&path=teacher&returnTo=%2Fcourses%2Ffocus",
+      { scroll: false },
+    );
+  });
+
+  it("carrega o destino pela volta do Google tambem", () => {
+    mocks.searchParams = new URLSearchParams("returnTo=" + destino);
+    render(<SignupForm />);
+
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(
+      screen.getByRole("button", { name: /auth\.continueWithGoogle/ }),
+    );
+
+    expect(mocks.signInWithGoogle).toHaveBeenCalledWith(
+      "/loading?next=welcome&path=student&returnTo=%2Fcourses%2Ffocus",
+    );
+  });
+});
