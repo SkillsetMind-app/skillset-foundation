@@ -51,9 +51,14 @@ import {
   getCourseProgressPercent,
   getNextCourseLesson,
 } from "@/domain/lesson-progress";
-import { classroomBasePath, type ClassroomTab } from "@/domain/classroom-tabs";
+import {
+  classroomBasePath,
+  classroomTabHref,
+  type ClassroomTab,
+} from "@/domain/classroom-tabs";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import { resolveLessonVideoSource } from "@/domain/teacher-course";
+import { countOpenCommunityQuestions } from "@/lib/data/community-posts";
 import { subscribeToCourseEvents } from "@/lib/data/course-events";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import { subscribeToPublicProfile } from "@/lib/data/user-profiles";
@@ -167,6 +172,38 @@ export function EnrolledCourseWorkspace({
     });
   }
   const [lessonListOpen, setLessonListOpen] = useState(false);
+  // Quantas perguntas do curso seguem sem resposta aceita. Vira o numero ao
+  // lado da aba Community.
+  //
+  // POR QUE ISTO EXISTE
+  //
+  // A barra de abas ja sabia mostrar um numero (Materiais mostra), mas
+  // Comunidade nunca mostrou: quem estava na aula nao tinha como saber que
+  // havia pergunta esperando — a aba parecia igual, respondida ou nao. Uma
+  // leitura ao abrir a sala, so as colunas da regra, sem duplicar o feed.
+  const [openQuestionCount, setOpenQuestionCount] = useState(0);
+  const communityEnabled = Boolean(course.communityEnabled) && !previewMode;
+  // O feed usa `course.id` como course_slug (ver CourseCommunitySection); o
+  // contador tem que ler a MESMA chave, senao conta zero sempre.
+  const communityKey = course.id;
+  useEffect(() => {
+    if (!communityEnabled) {
+      return;
+    }
+
+    let active = true;
+    countOpenCommunityQuestions(communityKey)
+      .then((count) => {
+        if (active) {
+          setOpenQuestionCount(count);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, [communityEnabled, communityKey]);
   // Fim do vídeo: a próxima aula fica proposta num cartão sobre o player (5 s,
   // Assistir agora / Cancelar) em vez de trocar em silêncio. Quando o aluno
   // aceita, a aula seguinte abre com autoplay — só ela, só dessa vez.
@@ -721,6 +758,21 @@ export function EnrolledCourseWorkspace({
     || tab === "about"
     || (!lessonParam && completedLessonIds.length === 0);
 
+  // Voltar sobe UM nivel — nao pula para o fim do corredor.
+  //
+  // POR QUE ISTO EXISTE
+  //
+  // Dentro de uma aba (Materiais, Comunidade, Mensagens, Avaliacao, Sobre) o
+  // "←" ia direto para "My courses": quem abriu a comunidade para tirar uma
+  // duvida da aula era jogado para fora do curso inteiro e tinha que achar o
+  // curso, achar a aula e rolar de novo. Agora, de uma aba ele volta para a
+  // AULA (a mesma, pelo ?lesson=); da aula, ai sim, para a lista de cursos.
+  const inClassroomTab = tab !== "lesson";
+  const backHref = inClassroomTab
+    ? classroomTabHref(basePath, "lesson", selectedLesson?.id ?? null)
+    : "/learn";
+  const backLabel = inClassroomTab ? "Lesson" : "My courses";
+
   // As abas que este curso tem. Materiais só quando há arquivos de curso
   // (cursos publicados por professor); lives, comunidade e mensagens não
   // existem na pré-visualização — e comunidade só se o professor ligou.
@@ -730,8 +782,8 @@ export function EnrolledCourseWorkspace({
       ? [{ id: "materials" as const, label: "Materials", count: courseLevelAssets.length }]
       : []),
     ...(previewMode ? [] : [{ id: "lives" as const, label: "Lives" }]),
-    ...(course.communityEnabled && !previewMode
-      ? [{ id: "community" as const, label: "Community" }]
+    ...(communityEnabled
+      ? [{ id: "community" as const, label: "Community", count: openQuestionCount }]
       : []),
     ...(previewMode ? [] : [{ id: "messages" as const, label: "Messages" }]),
     { id: "review", label: "Review" },
@@ -748,11 +800,13 @@ export function EnrolledCourseWorkspace({
           course={course}
           coverAsset={membersCoverAsset}
           progressPercent={previewMode ? null : progressPercent}
+          backHref={backHref}
+          backTo={inClassroomTab ? "lesson" : "courses"}
         />
       ) : (
         <header className="member-classroom-head">
-          <Link href="/learn" className="member-classroom-head__back">
-            ← My courses
+          <Link href={backHref} className="member-classroom-head__back">
+            ← {backLabel}
           </Link>
           <h1 className="member-classroom-head__title">
             {course.membersTitle ?? course.title}
@@ -945,7 +999,7 @@ export function EnrolledCourseWorkspace({
 
       {tab === "lives" && !previewMode ? <CourseEventsAgenda courseId={course.id} /> : null}
 
-      {tab === "community" && course.communityEnabled && !previewMode ? (
+      {tab === "community" && communityEnabled ? (
         <CourseCommunitySection
           course={course}
           currentLesson={
@@ -1141,10 +1195,15 @@ function MembersAreaHeroBand({
   course,
   coverAsset,
   progressPercent,
+  backHref,
+  backTo,
 }: {
   course: Course;
   coverAsset?: CourseAsset;
   progressPercent: number | null;
+  backHref: string;
+  /** Voltar sobe um nivel: da aba About, para a aula; da aula, para /learn. */
+  backTo: "courses" | "lesson";
 }) {
   // Resolve the members_cover asset to a protected object URL with the same
   // mount guard and revoke-on-unmount pattern used by protected previews.
@@ -1198,7 +1257,8 @@ function MembersAreaHeroBand({
       subtitle={course.membersSubtitle ?? null}
       description={course.membersDescription ?? course.summary ?? null}
       progressPercent={progressPercent}
-      backHref="/learn"
+      backHref={backHref}
+      backTo={backTo}
     />
   );
 }

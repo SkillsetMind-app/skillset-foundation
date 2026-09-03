@@ -34,6 +34,20 @@ describe("MemberAreaShell", () => {
     expect(container.querySelector('a[href="/"]')).toBeNull();
   });
 
+  it("o nome da marca do professor nao usa a serifa de display", () => {
+    // Cormorant e uma serifa de DISPLAY: em 18px, na barra de cima, ela some.
+    const { container } = render(
+      <MemberAreaShell brand={{ name: "Atelier Curie" }}>
+        <p>content</p>
+      </MemberAreaShell>,
+    );
+
+    const name = container.querySelector("header span");
+    expect(name).toHaveTextContent("Atelier Curie");
+    expect(name).not.toHaveClass("display-title");
+    expect(name?.className).toContain("font-semibold");
+  });
+
   it("only lets a sanitized hex accent reach the CSS custom property", () => {
     const { container, rerender } = render(
       <MemberAreaShell brand={{ name: "Atelier", accentColor: "#123456" }}>

@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import type { Lesson } from "@/domain/learning";
 
 const COUNTDOWN_SECONDS = 5;
+/** Tem que bater com a transição de `.member-next-lesson.is-leaving`. */
+const EXIT_MS = 250;
 
 // O cartão "Próxima aula" que sobe sobre o vídeo quando ele termina.
 //
@@ -18,6 +20,10 @@ const COUNTDOWN_SECONDS = 5;
 //
 // Aqui: título da próxima aula, contagem de 5 s com anel, "Assistir agora" e
 // "Cancelar". Sem ação, a próxima começa (o pai troca a aula e pede autoplay).
+//
+// Entrada e saída são do cartão, não do pai: ele entra subindo (CSS) e, ao
+// cancelar, marca `is-leaving`, desce, e SÓ ENTÃO avisa o pai — que o
+// desmonta. Sem isso o cartão sumia no mesmo quadro em que aparecia.
 export function NextLessonCard({
   lesson,
   onCancel,
@@ -28,8 +34,23 @@ export function NextLessonCard({
   onPlay: () => void;
 }) {
   const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SECONDS);
+  const [leaving, setLeaving] = useState(false);
+
+  // Saindo: a contagem para (senão o cartão em queda ainda trocaria de aula) e
+  // o pai só desmonta quando a animação termina.
+  useEffect(() => {
+    if (!leaving) {
+      return;
+    }
+    const timer = window.setTimeout(onCancel, EXIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [leaving, onCancel]);
 
   useEffect(() => {
+    if (leaving) {
+      return;
+    }
+
     if (secondsLeft <= 0) {
       onPlay();
       return;
@@ -41,7 +62,7 @@ export function NextLessonCard({
     );
 
     return () => window.clearTimeout(timer);
-  }, [secondsLeft, onPlay]);
+  }, [leaving, secondsLeft, onPlay]);
 
   const progress = 1 - secondsLeft / COUNTDOWN_SECONDS;
 
@@ -50,7 +71,7 @@ export function NextLessonCard({
       role="dialog"
       aria-label="Next lesson"
       aria-live="polite"
-      className="member-next-lesson absolute inset-x-3 bottom-3 z-10 flex items-center gap-3 rounded-[12px] bg-[rgba(15,39,68,0.92)] p-3 text-white shadow-[0_18px_36px_rgba(15,39,68,0.35)] backdrop-blur sm:inset-x-auto sm:right-3 sm:max-w-[360px]"
+      className={`member-next-lesson ${leaving ? "is-leaving" : ""} absolute inset-x-3 bottom-3 z-10 flex items-center gap-3 rounded-[12px] bg-[rgba(15,39,68,0.92)] p-3 text-white shadow-[0_18px_36px_rgba(15,39,68,0.35)] backdrop-blur sm:inset-x-auto sm:right-3 sm:max-w-[360px]`}
     >
       <div
         aria-hidden="true"
@@ -80,7 +101,7 @@ export function NextLessonCard({
         </button>
         <button
           type="button"
-          onClick={onCancel}
+          onClick={() => setLeaving(true)}
           aria-label="Cancel"
           className="grid size-11 place-items-center rounded-[10px] text-white/80 hover:bg-white/10 hover:text-white"
         >

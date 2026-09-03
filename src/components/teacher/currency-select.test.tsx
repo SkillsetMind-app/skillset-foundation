@@ -30,6 +30,31 @@ describe("CurrencySelect", () => {
     expect(select.className).toMatch(/\bmin-w-0\b/);
   });
 
+  it("fechado mostra so o codigo; as outras opcoes trazem codigo + nome", () => {
+    // Um <select> fechado exibe o texto da opcao selecionada: com
+    // "USD - US Dollar" ali, a moeda escolhida chegava cortada no meio do nome
+    // numa coluna estreita.
+    render(<CurrencySelect value="USD" onChange={() => {}} />);
+
+    const options = screen.getAllByRole("option") as HTMLOptionElement[];
+    const chosen = options.find((option) => option.value === "USD");
+    expect(chosen?.textContent).toBe("USD");
+
+    const other = options.find((option) => option.value === "BRL");
+    expect(other?.textContent).toBe("BRL - Brazilian Real");
+  });
+
+  it("trocar de moeda move o rotulo curto junto — a nova e que fica so o codigo", () => {
+    const { rerender } = render(<CurrencySelect value="USD" onChange={() => {}} />);
+    rerender(<CurrencySelect value="BRL" onChange={() => {}} />);
+
+    const options = screen.getAllByRole("option") as HTMLOptionElement[];
+    expect(options.find((option) => option.value === "BRL")?.textContent).toBe("BRL");
+    expect(options.find((option) => option.value === "USD")?.textContent).toBe(
+      "USD - US Dollar",
+    );
+  });
+
   it("devolve o codigo escolhido", () => {
     const onChange = vi.fn();
     render(<CurrencySelect value="USD" onChange={onChange} />);

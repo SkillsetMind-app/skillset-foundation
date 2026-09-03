@@ -79,7 +79,7 @@ export function MemberAreaShell({
                 />
               </span>
             ) : (
-              <span className="display-title text-lg text-[var(--ma-ink)]">
+              <span className="text-lg font-semibold text-[var(--ma-ink)]">
                 {brand.name}
               </span>
             )

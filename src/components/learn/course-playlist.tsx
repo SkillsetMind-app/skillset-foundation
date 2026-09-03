@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, ChevronDown, LockKeyhole, PlayCircle, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { LessonUnlockState } from "@/domain/drip-policy";
 import type { CourseModule } from "@/domain/learning";
@@ -35,6 +35,19 @@ export function CoursePlaylist({
   onUncomplete,
 }: CoursePlaylistProps) {
   const [query, setQuery] = useState("");
+  // A aula atual era destacada mas a lista nao rolava ate ela: trocar de aula
+  // (ou o avanco automatico) deixava o destaque fora da area visivel da
+  // playlist e a pessoa perdia o lugar. `block: "nearest"` rola o minimo — e
+  // nao mexe em nada se a linha ja estiver a vista.
+  const currentLessonRef = useRef<HTMLLIElement | null>(null);
+  useEffect(() => {
+    currentLessonRef.current?.scrollIntoView({
+      block: "nearest",
+      behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+  }, [selectedLessonId]);
   // Módulos fechados pela pessoa. O módulo da aula atual abre sozinho; os
   // demais começam fechados, e a busca abre tudo que tiver resultado.
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -139,6 +152,7 @@ export function CoursePlaylist({
                     return (
                       <li
                         key={lesson.id}
+                        ref={isSelected ? currentLessonRef : undefined}
                         className={`member-playlist__lesson ${isSelected ? "is-current" : ""} ${
                           isCompleted ? "is-done" : ""
                         } ${unlocked ? "" : "is-locked"}`}

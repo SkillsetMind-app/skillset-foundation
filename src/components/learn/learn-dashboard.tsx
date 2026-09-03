@@ -337,7 +337,7 @@ export function LearnDashboard() {
         <section aria-labelledby="continue-watching-title">
           <h2
             id="continue-watching-title"
-            className="display-title text-2xl text-[var(--color-primary)]"
+            className="text-[20px] font-semibold text-[var(--color-primary)]"
           >
             {t("learn.dashboard.continueWatching")}
           </h2>
@@ -502,7 +502,7 @@ export function LearnDashboard() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h2
             id="my-courses-title"
-            className="display-title text-2xl text-[var(--color-primary)]"
+            className="text-[20px] font-semibold text-[var(--color-primary)]"
           >
             {t("learn.dashboard.myCourses")}
           </h2>

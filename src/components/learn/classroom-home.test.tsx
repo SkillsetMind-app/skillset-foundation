@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
 import type { ClassroomTab } from "@/domain/classroom-tabs";
 import type { Course } from "@/domain/learning";
+import { countOpenCommunityQuestions } from "@/lib/data/community-posts";
 import { recordLessonProgress } from "@/lib/data/lesson-progress";
 
 /**
@@ -104,6 +105,14 @@ vi.mock("@/lib/data/lesson-content", () => ({
 vi.mock("@/lib/data/course-assets", () => ({
   subscribeToCourseAssets: vi.fn(() => vi.fn()),
   getProtectedCourseAssetObjectUrl: vi.fn(),
+}));
+
+// O contador da aba Community: uma leitura ao abrir a sala. Por padrao ela
+// nunca volta — e o estado real de quase todo teste daqui (a sala renderiza
+// antes do numero chegar) e evita um setState solto fora de act(). Os testes
+// do contador dizem o que a leitura devolve.
+vi.mock("@/lib/data/community-posts", () => ({
+  countOpenCommunityQuestions: vi.fn(() => new Promise<number>(() => {})),
 }));
 
 vi.mock("@/lib/data/course-events", () => ({
@@ -320,5 +329,85 @@ describe("abas da sala com endereco proprio", () => {
 
     expect(document.querySelector(".members-hero")).not.toBeNull();
     expect(document.querySelector("#member-lesson-player")).toBeNull();
+  });
+});
+
+/**
+ * Voltar sobe UM nivel. Dentro de uma aba, o "←" ia direto para "My courses":
+ * quem abriu a comunidade para tirar uma duvida da aula era jogado para fora do
+ * curso inteiro e tinha que achar o curso, a aula e o ponto de novo.
+ */
+describe("o voltar da sala sobe um nivel", () => {
+  beforeEach(() => {
+    mocks.replace.mockReset();
+    mocks.enrollmentSubscriptions = 0;
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  it("na aula, volta para a lista de cursos", () => {
+    renderClassroom("lesson=l2");
+
+    expect(screen.getByRole("link", { name: "← My courses" })).toHaveAttribute("href", "/learn");
+  });
+
+  it("numa aba, volta para a AULA — a mesma, pelo ?lesson=", () => {
+    const { unmount } = renderClassroom("lesson=l2", [], "community");
+
+    const back = screen.getByRole("link", { name: "← Lesson" });
+    expect(back).toHaveAttribute("href", "/learn/courses/demo-course?lesson=l2");
+    expect(screen.queryByRole("link", { name: "← My courses" })).toBeNull();
+    unmount();
+
+    renderClassroom("lesson=l2", [], "materials");
+    expect(screen.getByRole("link", { name: "← Lesson" })).toHaveAttribute(
+      "href",
+      "/learn/courses/demo-course?lesson=l2",
+    );
+  });
+
+  it("na aba About (que e a capa), a capa tambem devolve a aula", () => {
+    renderClassroom("lesson=l2", ["l1"], "about");
+
+    expect(document.querySelector(".members-hero__back")).toHaveAttribute(
+      "href",
+      "/learn/courses/demo-course?lesson=l2",
+    );
+    expect(document.querySelector(".members-hero__back")).toHaveTextContent("Lesson");
+  });
+});
+
+/**
+ * A aba Community nao avisava nada: quem estava na aula nao tinha como saber
+ * que havia pergunta esperando resposta. A barra de abas ja sabia mostrar
+ * numero (Materiais mostra) — Comunidade nunca recebeu um.
+ */
+describe("o contador de perguntas abertas na aba Community", () => {
+  beforeEach(() => {
+    mocks.replace.mockReset();
+    mocks.enrollmentSubscriptions = 0;
+    Element.prototype.scrollIntoView = vi.fn();
+    vi.mocked(countOpenCommunityQuestions).mockClear();
+  });
+
+  it("mostra quantas perguntas do curso seguem sem resposta", async () => {
+    vi.mocked(countOpenCommunityQuestions).mockResolvedValueOnce(3);
+
+    renderClassroom("lesson=l2");
+
+    const tabs = screen.getByRole("navigation", { name: "Course sections" });
+    expect(await within(tabs).findByRole("link", { name: /Community\s*3/ })).toBeInTheDocument();
+    // Le pela MESMA chave que o feed usa (course.id, nao o slug da rota).
+    expect(countOpenCommunityQuestions).toHaveBeenCalledWith("course-1");
+  });
+
+  it("sem pergunta aberta, nenhum numero aparece", async () => {
+    vi.mocked(countOpenCommunityQuestions).mockResolvedValueOnce(0);
+
+    renderClassroom("lesson=l2");
+
+    const tabs = screen.getByRole("navigation", { name: "Course sections" });
+    await waitFor(() => expect(countOpenCommunityQuestions).toHaveBeenCalled());
+    expect(within(tabs).getByRole("link", { name: "Community" })).toBeInTheDocument();
+    expect(tabs.querySelector(".member-classroom-tabs__count")).toBeNull();
   });
 });
