@@ -59,7 +59,10 @@ import {
 } from "@/domain/classroom-tabs";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import { resolveLessonVideoSource } from "@/domain/teacher-course";
-import { lessonPositionKey } from "@/lib/learn/lesson-position";
+import {
+  lessonPositionRef,
+  type LessonPositionRef,
+} from "@/lib/learn/lesson-position";
 import { countOpenCommunityQuestions } from "@/lib/data/community-posts";
 import { subscribeToCourseEvents } from "@/lib/data/course-events";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
@@ -869,6 +872,7 @@ export function EnrolledCourseWorkspace({
           <LessonContentPanel
             assets={selectedLessonAssets}
             courseId={course.id}
+            enrollmentId={workspaceEnrollment?.id ?? null}
             enableFirestoreAssets={enableFirestoreAssets}
             isLoadingAssets={Boolean(
               enableFirestoreAssets
@@ -1372,6 +1376,7 @@ function LessonContentPanel({
   assets,
   autoplay = false,
   courseId,
+  enrollmentId,
   enableFirestoreAssets,
   isLoadingAssets,
   isLoadingContent,
@@ -1387,6 +1392,9 @@ function LessonContentPanel({
   /** A aula abriu pelo cartão "Próxima aula": começa a tocar sozinha. */
   autoplay?: boolean;
   courseId: string;
+  /** A matricula do aluno: sem ela (preview do professor) a posicao do video
+   *  nao vai para o banco, so para o navegador. */
+  enrollmentId: string | null;
   enableFirestoreAssets: boolean;
   isLoadingAssets: boolean;
   /** Aula proposta ao fim do vídeo; o cartão de 5 s fica sobre o player. */
@@ -1447,9 +1455,13 @@ function LessonContentPanel({
     && ((resolvedVideoSource === "upload" && Boolean(primaryHostedVideo))
       || (resolvedVideoSource === "youtube" && Boolean(trustedEmbed)));
   // No preview do professor não se guarda posição: ele não é o aluno.
-  const resumeKey = previewMode
-    ? null
-    : lessonPositionKey(viewerId, lesson.id);
+  // Memoizado porque a referência é objeto: uma nova a cada render reabriria
+  // a aula (e o evento "abriu" do funil) a cada quadro.
+  const resume = useMemo(
+    () =>
+      previewMode ? null : lessonPositionRef(viewerId, enrollmentId, lesson.id),
+    [enrollmentId, lesson.id, previewMode, viewerId],
+  );
 
   return (
     <div className="member-lesson-panel">
@@ -1490,14 +1502,14 @@ function LessonContentPanel({
               title={lesson.title}
               onEnded={onEnded}
               autoplay={autoplay}
-              resumeKey={resumeKey}
+              resume={resume}
             />
           </VideoWatermark>
         ) : resolvedVideoSource === "upload" && primaryHostedVideo ? (
           <ProtectedAssetPreview
             asset={primaryHostedVideo}
             onEnded={onEnded}
-            resumeKey={resumeKey}
+            resume={resume}
           />
         ) : resolvedVideoSource === "youtube" && trustedEmbed ? (
           <VideoWatermark>
@@ -1805,11 +1817,11 @@ function LessonAssetList({
 function ProtectedAssetPreview({
   asset,
   onEnded,
-  resumeKey = null,
+  resume = null,
 }: {
   asset: CourseAsset;
   onEnded?: () => void;
-  resumeKey?: string | null;
+  resume?: LessonPositionRef | null;
 }) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -1862,7 +1874,7 @@ function ProtectedAssetPreview({
       <WatermarkedVideoPlayer
         fileName={asset.fileName}
         onEnded={onEnded}
-        resumeKey={resumeKey}
+        resume={resume}
         src={objectUrl}
       />
     );

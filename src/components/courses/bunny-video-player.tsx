@@ -5,8 +5,10 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   clearLessonPosition,
+  markLessonOpened,
   readLessonPosition,
   saveLessonPosition,
+  type LessonPositionRef,
 } from "@/lib/learn/lesson-position";
 
 /** Igual ao player nativo: uma gravação a cada ~10 s de reprodução. */
@@ -30,13 +32,13 @@ type BunnyVideoPlayerProps = {
    *  (permitido porque o aluno já interagiu com a página). */
   autoplay?: boolean;
   /**
-   * Chave de "onde esta pessoa parou nesta aula" (lessonPositionKey). Vai pelo
-   * MESMO aperto de mão player.js que já traz o "ended": pedimos `timeupdate`
-   * e devolvemos `setCurrentTime`. Player que não fala o protocolo nunca
-   * responde, nada é guardado e nada é buscado — o vídeo começa do zero, como
-   * antes. Não verificado contra a documentação da Bunny a partir deste repo.
+   * "Esta pessoa, nesta aula" (lessonPositionRef). Vai pelo MESMO aperto de
+   * mão player.js que já traz o "ended": pedimos `timeupdate` e devolvemos
+   * `setCurrentTime`. Player que não fala o protocolo nunca responde, nada é
+   * guardado e nada é buscado — o vídeo começa do zero, como antes. Não
+   * verificado contra a documentação da Bunny a partir deste repo.
    */
-  resumeKey?: string | null;
+  resume?: LessonPositionRef | null;
 } & (
   | {
       assetId: string;
@@ -83,7 +85,7 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
     : { key: requestKey, embedUrl: null, error: "" };
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const onEnded = props.onEnded;
-  const resumeKey = props.resumeKey ?? null;
+  const resume = props.resume ?? null;
   const embedUrl = currentPlayback.embedUrl;
   const lastSavedRef = useRef(0);
   // Buscar a posição UMA vez, e só depois que o player provou estar vivo (o
@@ -103,6 +105,13 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
     } catch {
       return;
     }
+
+    // A posição agora vem do banco, então chega DEPOIS do primeiro
+    // `timeupdate`. Enquanto ela não chega nada é gravado: o vídeo ainda está
+    // no segundo zero, e gravar zero apagaria justamente o ponto que estamos
+    // buscando. `cancelado` cobre a troca de aula com a resposta em voo.
+    let cancelado = false;
+    let esperandoPosicao = false;
 
     function post(message: Record<string, unknown>) {
       try {
@@ -140,13 +149,14 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
 
       if (name === "ended" || name === "finish") {
         resumedRef.current = true;
+        esperandoPosicao = false;
         lastSavedRef.current = 0;
-        clearLessonPosition(resumeKey);
+        clearLessonPosition(resume);
         onEnded?.();
         return;
       }
 
-      if (name !== "timeupdate" || !resumeKey) {
+      if (name !== "timeupdate" || !resume) {
         return;
       }
 
@@ -163,12 +173,27 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
 
       if (!resumedRef.current) {
         resumedRef.current = true;
-        const saved = readLessonPosition(resumeKey);
+        esperandoPosicao = true;
 
-        if (saved > 0 && (!Number.isFinite(duration) || saved < duration)) {
-          post({ method: "setCurrentTime", value: saved });
-          return;
-        }
+        void readLessonPosition(resume).then((saved) => {
+          esperandoPosicao = false;
+
+          if (cancelado) {
+            return;
+          }
+
+          if (saved > 0 && (!Number.isFinite(duration) || saved < duration)) {
+            // Não regravar o que acabou de ser lido na próxima batida.
+            lastSavedRef.current = saved;
+            post({ method: "setCurrentTime", value: saved });
+          }
+        });
+
+        return;
+      }
+
+      if (esperandoPosicao) {
+        return;
       }
 
       if (Math.abs(seconds - lastSavedRef.current) < SAVE_EVERY_SECONDS) {
@@ -176,18 +201,24 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
       }
 
       lastSavedRef.current = seconds;
-      saveLessonPosition(resumeKey, seconds, duration);
+      saveLessonPosition(resume, seconds, duration);
     }
 
     window.addEventListener("message", handleMessage);
 
-    return () => window.removeEventListener("message", handleMessage);
-  }, [embedUrl, onEnded, resumeKey]);
+    return () => {
+      cancelado = true;
+      window.removeEventListener("message", handleMessage);
+    };
+  }, [embedUrl, onEnded, resume]);
 
   useEffect(() => {
     resumedRef.current = false;
     lastSavedRef.current = 0;
-  }, [embedUrl, resumeKey]);
+    // Abrir a aula já é o evento do funil: quem desiste no meio não deixava
+    // rastro nenhum, porque `lesson_progress` só nasce na conclusão.
+    markLessonOpened(resume);
+  }, [embedUrl, resume]);
 
   function subscribeToPlayerEvents() {
     if (!embedUrl) {
