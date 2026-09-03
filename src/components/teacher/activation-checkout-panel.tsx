@@ -9,6 +9,7 @@ import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { useEffect, useMemo, useState } from "react";
 
 import { BrandName } from "@/components/shared/brand-name";
+import { Card, Eyebrow, buttonClasses } from "@/components/ui";
 import { activationFeeUsd, plans } from "@/data/plans";
 import { formatUsdWhole } from "@/data/platform";
 import { createActivationCheckoutClientSecret } from "@/lib/payments/activation";
@@ -98,10 +99,10 @@ export function ActivationCheckoutPanel() {
           and we&apos;ll switch it on for your account.
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
-          <Link href="/teach/builder" className="button-solid px-4 py-2 text-sm">
+          <Link href="/teach/builder" className={buttonClasses()}>
             Back to studio
           </Link>
-          <Link href="/support" className="button-outline px-4 py-2 text-sm">
+          <Link href="/support" className={buttonClasses({ variant: "outline" })}>
             Contact support
           </Link>
         </div>
@@ -111,15 +112,12 @@ export function ActivationCheckoutPanel() {
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
-      <div className="overflow-hidden rounded-[14px] border fine-rule bg-white shadow-[var(--shadow-soft)]">
+      <Card padding="none" className="overflow-hidden">
         {error ? (
           <div className="p-6 text-sm text-[var(--color-accent-fg)]">
             <p className="font-semibold">Checkout could not start.</p>
             <p className="mt-2 text-[var(--color-ink-soft)]">{error}</p>
-            <Link
-              href="/teach/builder"
-              className="button-outline mt-4 px-4 py-2 text-sm text-[var(--color-ink)]"
-            >
+            <Link href="/teach/builder" className={buttonClasses({ variant: "outline" }, "mt-4")}>
               Back to studio
             </Link>
           </div>
@@ -136,19 +134,17 @@ export function ActivationCheckoutPanel() {
             <EmbeddedCheckout />
           </EmbeddedCheckoutProvider>
         )}
-      </div>
+      </Card>
 
-      <aside className="h-fit rounded-[14px] border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-          You&apos;re activating
-        </p>
+      <Card as="aside" padding="none" className="h-fit p-5">
+        <Eyebrow>You&apos;re activating</Eyebrow>
         <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
           Your <BrandName /> storefront
         </h2>
         <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
           Unlocks publishing. Paid once — never again.
         </p>
-        <div className="mt-4 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4">
+        <Card tone="soft" padding="sm" shadow={false} className="mt-4">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
             One-time fee
           </p>
@@ -163,7 +159,7 @@ export function ActivationCheckoutPanel() {
           <p className="mt-1 text-[11px] text-[var(--color-ink-soft)]">
             No monthly subscription on Free
           </p>
-        </div>
+        </Card>
         <p className="mt-4 text-[11px] leading-5 text-[var(--color-ink-muted)]">
           After this, the Free plan still costs nothing per month and takes{" "}
           <strong className="text-[var(--color-ink)]">{freeCommission}%</strong>{" "}
@@ -173,7 +169,7 @@ export function ActivationCheckoutPanel() {
         <p className="mt-3 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
           Powered by Stripe
         </p>
-      </aside>
+      </Card>
     </div>
   );
 }
