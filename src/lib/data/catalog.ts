@@ -18,6 +18,10 @@ export type CourseCard = {
   freePreviewHref?: string;
   sourceLabel?: string;
   ratingLabel?: string;
+  // Dono do curso, quando o cartao vem de um curso publicado por professor.
+  // O nome nao viaja aqui: o cartao resolve os perfis publicos em UMA consulta
+  // por lista (useInstructorNames), em vez de uma por cartao.
+  ownerId?: string;
   // Raw numeric signals carried alongside the display strings so the
   // marketplace can offer sort options (price, rating) without re-parsing the
   // formatted labels. Optional: static/demo cards may omit them, and the sort
