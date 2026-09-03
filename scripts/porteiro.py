@@ -253,14 +253,15 @@ def nao_analisado(motivo: str, modo: str) -> str:
             f"modo `{modo}` · o check falha de propósito: portão que aprova por omissão não é portão.\n")
 
 
-TETO_RELAY = 500  # o nó "Formatar mensagem" do n8n descarta >600 e corta em 500
+TETO_RELAY = 500     # o nó "Formatar mensagem" do n8n descarta >600 e corta o summary em 500
+TETO_DETALHE = 3000  # o mesmo nó corta `detalhe` em 3000 (teto do Telegram é 4096)
 
 
 def resumo_telegram(bloq: list[dict], aviso: list[dict], pr: str, pr_url: str) -> str:
-    """O relay do n8n exige source=skillsetmind, só repassa `summary`, descarta
-    acima de 600 caracteres e corta em 500. Então o que chega ao Telegram é o
-    ONDE e o O QUÊ de cada achado; o "como explorar" fica de fora até o relay
-    ganhar um campo de detalhe. Nunca passa de TETO_RELAY."""
+    """O `summary` é a manchete: quantos achados, onde e o quê. O relay do n8n
+    exige source=skillsetmind, descarta acima de 600 caracteres e corta em 500,
+    então isto nunca passa de TETO_RELAY. O porquê e o como explorar vão no
+    campo `detalhe` (ver detalhe_telegram)."""
     cabeca = f"Porteiro PR #{pr}: {len(bloq)} bloqueante(s), {len(aviso)} aviso(s)\n{pr_url}\n"
     linhas, resto = [], 0
     for tag, grupo in (("!!", bloq), ("!", aviso)):
@@ -276,19 +277,50 @@ def resumo_telegram(bloq: list[dict], aviso: list[dict], pr: str, pr_url: str) -
     return (cabeca + "\n".join(linhas))[:TETO_RELAY]
 
 
+def detalhe_telegram(bloq: list[dict], aviso: list[dict]) -> str:
+    """O corpo do alerta: para cada achado, POR QUÊ é vulnerável e COMO se
+    explora. Este canal é privado — é o único lugar onde isso pode aparecer,
+    já que o repositório é público e o comentário do PR leva só o placar.
+    Nunca passa de TETO_DETALHE; o que não couber vira uma linha de contagem."""
+    linhas, resto = [], 0
+    for tag, grupo in (("!!", bloq), ("!", aviso)):
+        for a in grupo:
+            onde = f"{a['arquivo']}:{a['linha']}" if a["linha"] else a["arquivo"]
+            bloco = f"{tag} {a['severidade']} {a['confianca']:.1f} {onde} — {a['titulo']}"
+            if a["porque"]:
+                bloco += f"\n   por quê: {a['porque'][:400]}"
+            if a["como_explorar"]:
+                bloco += f"\n   ataque: {a['como_explorar'][:400]}"
+            if sum(len(x) + 2 for x in linhas) + len(bloco) + 24 <= TETO_DETALHE:
+                linhas.append(bloco)
+            else:
+                resto += 1
+    if resto:
+        linhas.append(f"(+{resto} achado(s) sem espaço aqui — veja o log do job)")
+    return "\n\n".join(linhas)[:TETO_DETALHE]
+
+
+def corpo_alerta(bloq: list[dict], aviso: list[dict], pr: str, pr_url: str) -> dict:
+    """O JSON que vai ao relay. Função pura, para o auto-teste conferir o
+    contrato sem rede: `source` é o que o porteiro do nó exige, e `detalhe` é
+    o campo que carrega o porquê e o ataque."""
+    return {
+        "source": "skillsetmind",
+        "event": "porteiro_pr",
+        "severity": "critical" if bloq else "warn",
+        "summary": resumo_telegram(bloq, aviso, pr, pr_url),
+        "detalhe": detalhe_telegram(bloq, aviso),
+        "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+
+
 def manda_detalhe(bloq: list[dict], aviso: list[dict]) -> str:
     """Canal privado. Devolve o texto para o placar ('no Telegram' / 'indisponível')."""
     url = os.environ.get("OPS_ALERT_WEBHOOK_URL")
     if not url:
         return "indisponível (canal privado não configurado)"
     pr, pr_url = (os.environ.get(k, "?") for k in ("PR_NUMBER", "PR_URL"))
-    corpo = json.dumps({
-        "source": "skillsetmind",
-        "event": "porteiro_pr",
-        "severity": "critical" if bloq else "warn",
-        "summary": resumo_telegram(bloq, aviso, pr, pr_url),
-        "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-    }).encode()
+    corpo = json.dumps(corpo_alerta(bloq, aviso, pr, pr_url)).encode()
     cab = {"Content-Type": "application/json"}
     seg = os.environ.get("OPS_ALERT_WEBHOOK_SECRET")
     if seg:
@@ -397,6 +429,26 @@ def demo() -> None:
     r = resumo_telegram(muitos, [], "999", "https://github.com/x/y/pull/999")
     assert len(r) <= TETO_RELAY and "+" in r and "Porteiro PR #999" in r, len(r)
     assert len(resumo_telegram([], achados[3:], "1", "u")) <= TETO_RELAY
+
+    # O detalhe carrega o porquê e o ataque — que o placar público nunca mostra.
+    rico = normaliza({"achados": [{"titulo": "IDOR", "severidade": "alta", "confianca": 0.9,
+                                   "arquivo": "src/app/api/pay/route.ts", "linha": 3,
+                                   "porque": "o id vem do cliente sem checar dono",
+                                   "como_explorar": "trocar o id na URL pelo de outro aluno"}]})["achados"]
+    d = detalhe_telegram(rico, [])
+    assert "por quê:" in d and "ataque:" in d and "src/app/api/pay/route.ts:3" in d, d
+    assert d not in placar(1, 0, "barra", {}, "no Telegram")
+    grande = detalhe_telegram([dict(rico[0], porque="p" * 400, como_explorar="c" * 400)] * 30, [])
+    assert len(grande) <= TETO_DETALHE and "sem espaço aqui" in grande, len(grande)
+    assert detalhe_telegram([], []) == ""
+
+    # O contrato com o relay: sem `source` ele descarta calado; sem `detalhe`
+    # o ataque nunca sai do log do job.
+    c = corpo_alerta(rico, [], "7", "https://github.com/x/y/pull/7")
+    assert c["source"] == "skillsetmind" and c["event"] == "porteiro_pr", c
+    assert c["severity"] == "critical" and "ataque:" in c["detalhe"], c
+    assert len(c["summary"]) <= TETO_RELAY and len(c["detalhe"]) <= TETO_DETALHE
+    assert corpo_alerta([], rico, "7", "u")["severity"] == "warn"
 
     p = placar(1, 2, "avisa", {"modelo": "glm-5", "segundos": 30, "tokens": 900}, "no Telegram")
     assert "3 achados · 1 bloqueante" in p and "só avisa" in p and "IDOR" not in p
