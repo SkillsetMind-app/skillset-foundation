@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { StatusChip } from "@/components/shared/status-chip";
+import { buttonClasses, Card, Eyebrow, InlineAlert } from "@/components/ui";
 import type { Order } from "@/domain/order";
 import { subscribeToOrder } from "@/lib/data/orders";
 import { toDate } from "@/lib/format-date";
@@ -55,7 +56,7 @@ function CopyIdButton({ value, label }: { value: string | null; label: string })
     <button
       type="button"
       onClick={handleCopy}
-      className="inline-flex items-center gap-2 rounded-[8px] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-soft)]"
+      className="inline-flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-soft)]"
       aria-label={`Copy ${label}`}
     >
       <Copy aria-hidden="true" size={13} strokeWidth={1.9} />
@@ -145,10 +146,11 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
   if (error || !order) {
     return (
       <section className="settings-section-card">
-        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {error || "Sale not found."}
-        </p>
-        <Link href="/teach" className="button-outline mt-5 px-4 py-2.5 text-sm">
+        <InlineAlert tone="error">{error || "Sale not found."}</InlineAlert>
+        <Link
+          href="/teach"
+          className={buttonClasses({ variant: "outline" }, "mt-5")}
+        >
           Back to Teacher Studio
         </Link>
       </section>
@@ -164,9 +166,10 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
   if (!canView) {
     return (
       <section className="settings-section-card">
-        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          You do not have access to this sale. Sign in with the account that owns it, or contact support.
-        </p>
+        <InlineAlert tone="error">
+          You do not have access to this sale. Sign in with the account that
+          owns it, or contact support.
+        </InlineAlert>
       </section>
     );
   }
@@ -177,9 +180,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
         <section className="settings-section-card">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-                Sale
-              </p>
+              <Eyebrow>Sale</Eyebrow>
               <h2 className="display-title mt-3 text-4xl text-[var(--color-primary)]">
                 Order {formatOrderRef(order.id)}
               </h2>
@@ -197,10 +198,8 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
         </section>
 
         <section className="settings-section-card">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Customer
-          </p>
-          <div className="mt-4 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4">
+          <Eyebrow>Customer</Eyebrow>
+          <Card tone="soft" padding="sm" shadow={false} className="mt-4">
             <p className="text-sm font-semibold text-[var(--color-ink)]">
               Learner account
             </p>
@@ -212,33 +211,32 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
               The learner&apos;s name and email are not attached to this order.
               Use the account ID when contacting support about it.
             </p>
-          </div>
+          </Card>
         </section>
 
         <section className="settings-section-card">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Payment
-          </p>
+          <Eyebrow>Payment</Eyebrow>
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             {[
               ["Amount", formatMoney(order.amountMinor, order.currency)],
               ["SkillsetMind fee", formatMoney(platformFeeMinor, order.currency)],
               ["Net before Stripe fee", formatMoney(creatorNetMinor, order.currency)],
             ].map(([label, value]) => (
-              <div
-                key={label}
-                className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
-              >
+              <Card key={label} tone="soft" padding="sm" shadow={false}>
                 <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
                   {label}
                 </p>
                 <p className="mt-2 text-lg font-bold text-[var(--color-primary)]">
                   {value}
                 </p>
-              </div>
+              </Card>
             ))}
           </div>
-          <div className="mt-5 grid gap-3 rounded-[14px] border fine-rule bg-white p-4 text-xs text-[var(--color-ink-soft)]">
+          <Card
+            padding="sm"
+            shadow={false}
+            className="mt-5 grid gap-3 text-xs text-[var(--color-ink-soft)]"
+          >
             <p>
               Provider <strong className="text-[var(--color-ink)]">{order.provider}</strong>
             </p>
@@ -250,13 +248,11 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
               Checkout session
               <CopyIdButton value={order.checkoutSessionId} label="checkout session ID" />
             </p>
-          </div>
+          </Card>
         </section>
 
         <section className="settings-section-card">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Timeline
-          </p>
+          <Eyebrow>Timeline</Eyebrow>
           <div className="mt-5 grid gap-4">
             {timeline.map((item) => (
               <div key={`${item.label}-${item.time}`} className="flex gap-3">
@@ -278,19 +274,17 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
         </section>
 
         <section className="settings-section-card">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Actions
-          </p>
+          <Eyebrow>Actions</Eyebrow>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
               href={`/learn/courses/${order.courseSlug}`}
-              className="button-outline inline-flex items-center gap-2 px-3.5 py-2 text-xs"
+              className={buttonClasses({ variant: "outline", size: "sm" })}
             >
               View enrollment in workspace
             </Link>
             <a
               href="mailto:support@skillsetmind.com"
-              className="button-outline inline-flex items-center gap-2 px-3.5 py-2 text-xs"
+              className={buttonClasses({ variant: "outline", size: "sm" })}
             >
               <Mail aria-hidden="true" size={14} />
               Contact support
@@ -301,7 +295,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
               )}&body=${encodeURIComponent(
                 `Please help me process a refund for order ${order.id} (${order.courseTitle}).`,
               )}`}
-              className="button-outline inline-flex items-center gap-2 px-3.5 py-2 text-xs"
+              className={buttonClasses({ variant: "outline", size: "sm" })}
             >
               <RotateCcw aria-hidden="true" size={14} />
               Request refund
@@ -312,9 +306,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
 
       <aside className="space-y-5">
         <section className="settings-section-card">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Course
-          </p>
+          <Eyebrow>Course</Eyebrow>
           <h3 className="mt-3 text-lg font-bold leading-7 text-[var(--color-ink)]">
             {order.courseTitle}
           </h3>
@@ -325,7 +317,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
           </div>
           <Link
             href={`/courses/${order.courseSlug}`}
-            className="button-outline mt-5 px-3.5 py-2 text-xs"
+            className={buttonClasses({ variant: "outline", size: "sm" }, "mt-5")}
           >
             View public course
           </Link>

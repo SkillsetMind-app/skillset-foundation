@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
+import { Button, Card, Field, InlineAlert } from "@/components/ui";
 import type {
   CourseCommerceSettings,
   CourseCoupon,
@@ -37,7 +38,7 @@ import { logSubscriptionError } from "@/lib/data/subscription-error";
 // holds the money and cannot split it with a third party.
 
 const inputClass =
-  "rounded-[10px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
+  "rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
 
 export function PanelCard({
   title,
@@ -49,7 +50,7 @@ export function PanelCard({
   children?: ReactNode;
 }) {
   return (
-    <section className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-5">
+    <Card as="section" tone="soft" padding="none" shadow={false} className="p-5">
       <h3 className="text-base font-semibold text-[var(--color-ink)]">{title}</h3>
       {description ? (
         <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -57,30 +58,13 @@ export function PanelCard({
         </p>
       ) : null}
       {children}
-    </section>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-        {label}
-      </span>
-      {children}
-    </label>
+    </Card>
   );
 }
 
 function GateNotice({ action }: { action: string }) {
   return (
-    <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.18)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+    <InlineAlert tone="warning" className="mt-3 font-normal leading-6">
       Professional verification must be approved before {action}. You can
       prepare everything now — approval unlocks the switch.{" "}
       <Link
@@ -89,10 +73,15 @@ function GateNotice({ action }: { action: string }) {
       >
         Open verification
       </Link>
-    </p>
+    </InlineAlert>
   );
 }
 
+/**
+ * O texto de retorno era um <p> colorido sem papel nenhum: a falha de criar um
+ * cupom e o "salvo com sucesso" entravam na página em silêncio. Agora o erro
+ * interrompe o leitor de tela e o aviso de sucesso entra na fila educada.
+ */
 function FeedbackText({
   error,
   notice,
@@ -102,16 +91,16 @@ function FeedbackText({
 }) {
   if (error) {
     return (
-      <p className="mt-3 text-sm font-semibold text-[var(--color-accent-fg)]">
+      <InlineAlert tone="error" className="mt-3">
         {error}
-      </p>
+      </InlineAlert>
     );
   }
   if (notice) {
     return (
-      <p className="mt-3 text-sm font-semibold text-[var(--color-primary)]">
+      <InlineAlert tone="success" className="mt-3">
         {notice}
-      </p>
+      </InlineAlert>
     );
   }
   return null;
@@ -247,55 +236,65 @@ export function CouponsPanel({
     >
       {activationBlocked ? <GateNotice action="a coupon can be activated" /> : null}
       <form onSubmit={handleCreate} className="mt-4 grid gap-3 sm:grid-cols-2">
-        <Field label="Code">
-          <input
-            value={code}
-            onChange={(event) => setCode(normalizeCouponCode(event.target.value))}
-            placeholder="e.g. LAUNCH-25"
-            required
-            className={inputClass}
-          />
+        <Field id="coupon-code" label="Code" required>
+          {(a11y) => (
+            <input
+              {...a11y}
+              value={code}
+              onChange={(event) => setCode(normalizeCouponCode(event.target.value))}
+              placeholder="e.g. LAUNCH-25"
+              className={inputClass}
+            />
+          )}
         </Field>
-        <Field label="Discount">
-          <select
-            value={percentOff}
-            onChange={(event) => setPercentOff(Number(event.target.value))}
-            className={inputClass}
-          >
-            {COUPON_PERCENT_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}% off
-              </option>
-            ))}
-          </select>
+        <Field id="coupon-discount" label="Discount">
+          {(a11y) => (
+            <select
+              {...a11y}
+              value={percentOff}
+              onChange={(event) => setPercentOff(Number(event.target.value))}
+              className={inputClass}
+            >
+              {COUPON_PERCENT_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}% off
+                </option>
+              ))}
+            </select>
+          )}
         </Field>
-        <Field label="Redemption limit (optional)">
-          <input
-            type="number"
-            min={1}
-            max={100000}
-            value={maxRedemptionsText}
-            onChange={(event) => setMaxRedemptionsText(event.target.value)}
-            placeholder="Unlimited"
-            className={inputClass}
-          />
+        <Field
+          id="coupon-max-redemptions"
+          label="Redemption limit (optional)"
+        >
+          {(a11y) => (
+            <input
+              {...a11y}
+              type="number"
+              min={1}
+              max={100000}
+              value={maxRedemptionsText}
+              onChange={(event) => setMaxRedemptionsText(event.target.value)}
+              placeholder="Unlimited"
+              className={inputClass}
+            />
+          )}
         </Field>
-        <Field label="Expires (optional)">
-          <input
-            type="date"
-            value={expiresOn}
-            onChange={(event) => setExpiresOn(event.target.value)}
-            className={inputClass}
-          />
+        <Field id="coupon-expires-on" label="Expires (optional)">
+          {(a11y) => (
+            <input
+              {...a11y}
+              type="date"
+              value={expiresOn}
+              onChange={(event) => setExpiresOn(event.target.value)}
+              className={inputClass}
+            />
+          )}
         </Field>
         <div className="sm:col-span-2">
-          <button
-            type="submit"
-            disabled={saving}
-            className="button-solid px-5 py-2.5 text-xs disabled:opacity-60"
-          >
+          <Button type="submit" disabled={saving}>
             {saving ? "Creating..." : "Create coupon"}
-          </button>
+          </Button>
         </div>
       </form>
       <FeedbackText error={error} notice={notice} />
@@ -306,7 +305,7 @@ export function CouponsPanel({
             return (
               <li
                 key={coupon.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border fine-rule bg-white px-4 py-3"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-md)] border fine-rule bg-[var(--color-surface)] px-4 py-3"
               >
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-[var(--color-ink)]">
@@ -328,13 +327,13 @@ export function CouponsPanel({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {!expired ? (
-                    <button
-                      type="button"
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => void handleToggle(coupon)}
-                      className="button-outline px-3 py-1.5 text-xs"
                     >
                       {coupon.active ? "Pause" : "Activate"}
-                    </button>
+                    </Button>
                   ) : null}
                   {confirmingDeleteId === coupon.id ? (
                     <>
@@ -346,23 +345,23 @@ export function CouponsPanel({
                       >
                         {removingId === coupon.id ? "Removing..." : "Confirm remove"}
                       </button>
-                      <button
-                        type="button"
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => setConfirmingDeleteId(null)}
                         disabled={removingId === coupon.id}
-                        className="button-outline px-3 py-1.5 text-xs disabled:opacity-60"
                       >
                         Cancel
-                      </button>
+                      </Button>
                     </>
                   ) : (
-                    <button
-                      type="button"
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setConfirmingDeleteId(coupon.id)}
-                      className="button-outline px-3 py-1.5 text-xs"
                     >
                       Remove
-                    </button>
+                    </Button>
                   )}
                 </div>
               </li>
@@ -474,23 +473,22 @@ export function TaxPanel({ courseId }: { courseId: string }) {
             ))}
           </div>
         </div>
-        <Field label="Tax registration ID (optional)">
-          <input
-            value={registrationId}
-            onChange={(event) => setRegistrationId(event.target.value)}
-            maxLength={80}
-            placeholder="e.g. VAT or EIN reference"
-            className={`${inputClass} sm:max-w-sm`}
-          />
+        <Field id="tax-registration-id" label="Tax registration ID (optional)">
+          {(a11y) => (
+            <input
+              {...a11y}
+              value={registrationId}
+              onChange={(event) => setRegistrationId(event.target.value)}
+              maxLength={80}
+              placeholder="e.g. VAT or EIN reference"
+              className={`${inputClass} sm:max-w-sm`}
+            />
+          )}
         </Field>
         <div>
-          <button
-            type="submit"
-            disabled={saving || !settingsLoaded}
-            className="button-solid px-5 py-2.5 text-xs disabled:opacity-60"
-          >
+          <Button type="submit" disabled={saving || !settingsLoaded}>
             {saving ? "Saving..." : "Save tax settings"}
-          </button>
+          </Button>
         </div>
       </form>
       <FeedbackText error={error} notice={notice} />

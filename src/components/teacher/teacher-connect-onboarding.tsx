@@ -11,6 +11,7 @@ import {
 } from "@stripe/connect-js";
 import { useEffect, useRef, useState } from "react";
 
+import { Button, Card, Eyebrow, InlineAlert } from "@/components/ui";
 import {
   fetchConnectAccountSessionSecret,
   isConnectNotEnabledError,
@@ -216,10 +217,8 @@ export function TeacherConnectOnboarding({
     // loop 400s). A single low-key "Check again" re-runs setup once the platform
     // owner has enabled Connect in the Stripe Dashboard.
     return (
-      <div className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-5 shadow-[var(--shadow-soft)]">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
-          Payout setup
-        </p>
+      <Card tone="soft" padding="none" className="p-5">
+        <Eyebrow tone="muted">Payout setup</Eyebrow>
         <h4 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
           Payouts are being configured.
         </h4>
@@ -234,15 +233,11 @@ export function TeacherConnectOnboarding({
           you&apos;ll be asked for those details.
         </p>
         <div className="mt-4">
-          <button
-            type="button"
-            onClick={retryEmbeddedSetup}
-            className="button-outline px-4 py-2.5 text-sm"
-          >
+          <Button variant="outline" onClick={retryEmbeddedSetup}>
             Check again
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
     );
   }
 
@@ -253,10 +248,8 @@ export function TeacherConnectOnboarding({
     // (already configured) and redirects back to SkillsetMind when done. This
     // keeps payout setup reachable even if the publishable key is missing.
     return (
-      <div className="rounded-[14px] border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-          Payout setup
-        </p>
+      <Card padding="none" className="p-5">
+        <Eyebrow>Payout setup</Eyebrow>
         <h4 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
           Set up payouts with Stripe.
         </h4>
@@ -271,21 +264,16 @@ export function TeacherConnectOnboarding({
           payout waits on Stripe&apos;s verification of the new account.
         </p>
         {error ? (
-          <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <InlineAlert tone="error" className="mt-3">
             {error}
-          </p>
+          </InlineAlert>
         ) : null}
         <div className="mt-4">
-          <button
-            type="button"
-            onClick={openHostedFallback}
-            disabled={isOpeningHosted}
-            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
-          >
+          <Button onClick={openHostedFallback} disabled={isOpeningHosted}>
             {isOpeningHosted ? "Opening Stripe..." : "Continue with Stripe"}
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
     );
   }
 
@@ -317,8 +305,10 @@ export function TeacherConnectOnboarding({
 
   if (!connect) {
     return (
+      // Card não repassa atributos ARIA, e aqui o aria-busy/aria-live é o
+      // ponto: sai como <div> com as mesmas variáveis do primitivo.
       <div
-        className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-5 text-sm text-[var(--color-ink-soft)]"
+        className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5 text-sm text-[var(--color-ink-soft)]"
         aria-busy="true"
         aria-live="polite"
       >
@@ -328,7 +318,7 @@ export function TeacherConnectOnboarding({
   }
 
   return (
-    <div className="overflow-hidden rounded-[14px] border fine-rule bg-white shadow-[var(--shadow-soft)]">
+    <Card padding="none" className="overflow-hidden">
       <ConnectComponentsProvider connectInstance={connect}>
         <div className="p-4">
           <ConnectAccountOnboarding
@@ -347,7 +337,7 @@ export function TeacherConnectOnboarding({
           method; a new account waits on verification before its first payout.
         </p>
       </ConnectComponentsProvider>
-    </div>
+    </Card>
   );
 }
 
@@ -364,9 +354,7 @@ function StripeConnectFallback({
 }) {
   return (
     <div className="rounded-[14px] border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.04)] p-5">
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-        Stripe embedded setup needs a fallback
-      </p>
+      <Eyebrow>Stripe embedded setup needs a fallback</Eyebrow>
       <h4 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
         Continue with Stripe&apos;s secure onboarding page.
       </h4>
@@ -376,21 +364,12 @@ function StripeConnectFallback({
         still works; this fallback returns you to SkillsetMind after completion.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={onHosted}
-          disabled={isOpeningHosted}
-          className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
-        >
+        <Button onClick={onHosted} disabled={isOpeningHosted}>
           {isOpeningHosted ? "Opening Stripe..." : "Continue secure setup"}
-        </button>
-        <button
-          type="button"
-          onClick={onRetry}
-          className="button-outline px-4 py-2.5 text-sm"
-        >
+        </Button>
+        <Button variant="outline" onClick={onRetry}>
           Retry embedded setup
-        </button>
+        </Button>
       </div>
     </div>
   );

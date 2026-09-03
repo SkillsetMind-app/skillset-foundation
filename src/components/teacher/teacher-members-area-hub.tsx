@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { StatusChip } from "@/components/shared/status-chip";
+import { buttonClasses, Eyebrow, InlineAlert } from "@/components/ui";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 
@@ -48,9 +49,7 @@ export function TeacherMembersAreaHub() {
     <div className="grid gap-6">
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--color-line)] pb-5">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
-            Products
-          </p>
+          <Eyebrow>Products</Eyebrow>
           <h1 className="mt-2 text-3xl font-semibold leading-tight text-[var(--color-primary)]">
             Members & communities
           </h1>
@@ -59,24 +58,17 @@ export function TeacherMembersAreaHub() {
             each product.
           </p>
         </div>
-        <Link href={createHref} className="button-solid px-4 text-sm">
+        <Link href={createHref} className={buttonClasses()}>
           <Plus aria-hidden="true" size={16} strokeWidth={2} />
           {view === "communities" ? "New community" : "New product"}
         </Link>
       </header>
 
-      {error ? (
-        <p
-          role="alert"
-          className="rounded-[8px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-        >
-          {error}
-        </p>
-      ) : null}
+      {error ? <InlineAlert tone="error">{error}</InlineAlert> : null}
 
       <section aria-labelledby="members-products-title">
         <div
-          className="mb-5 inline-grid grid-cols-2 rounded-[7px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1"
+          className="mb-5 inline-grid grid-cols-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1"
           role="radiogroup"
           aria-label="Members content type"
         >
@@ -91,7 +83,7 @@ export function TeacherMembersAreaHub() {
                   nextView === "communities" ? "/teach/members?view=communities" : "/teach/members"
                 )
               }
-              className={`min-h-11 rounded-[5px] px-4 text-sm font-semibold transition-colors ${
+              className={`min-h-11 rounded-[var(--radius-xs)] px-4 text-sm font-semibold transition-colors ${
                 view === nextView
                   ? "bg-[var(--color-primary)] text-white"
                   : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
@@ -120,7 +112,7 @@ export function TeacherMembersAreaHub() {
             ))
           ) : visibleCourses.length === 0 ? (
             <div className="grid place-items-center px-5 py-14 text-center">
-              <span className="grid size-11 place-items-center rounded-[8px] border border-[var(--color-line)] bg-white text-[var(--color-primary)]">
+              <span className="grid size-11 place-items-center rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-primary)]">
                 <BookOpen aria-hidden="true" size={20} strokeWidth={1.8} />
               </span>
               <h3 className="mt-4 text-lg font-semibold text-[var(--color-ink)]">
@@ -136,10 +128,10 @@ export function TeacherMembersAreaHub() {
             visibleCourses.map((course) => (
               <article
                 key={course.id}
-                className="grid gap-4 bg-white px-3 py-4 transition-colors hover:bg-[var(--color-surface-soft)] sm:px-4 lg:grid-cols-[minmax(0,1fr)_minmax(180px,0.45fr)_auto] lg:items-center"
+                className="grid gap-4 bg-[var(--color-surface)] px-3 py-4 transition-colors hover:bg-[var(--color-surface-soft)] sm:px-4 lg:grid-cols-[minmax(0,1fr)_minmax(180px,0.45fr)_auto] lg:items-center"
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-[6px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
+                  <div className="grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-[var(--radius-xs)] border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
                     {course.coverImageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -182,20 +174,20 @@ export function TeacherMembersAreaHub() {
                 <div className="flex flex-wrap gap-2 lg:justify-end">
                   <Link
                     href={`/teach/builder/${encodeURIComponent(course.id)}/preview`}
-                    className="button-solid px-3 text-xs"
+                    className={buttonClasses({ size: "sm" })}
                   >
                     <ExternalLink aria-hidden="true" size={14} strokeWidth={1.8} />
                     Preview
                   </Link>
                   <Link
                     href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=members`}
-                    className="button-outline px-3 text-xs"
+                    className={buttonClasses({ variant: "outline", size: "sm" })}
                   >
                     Customize
                   </Link>
                   <Link
                     href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=content`}
-                    className="button-outline px-3 text-xs"
+                    className={buttonClasses({ variant: "outline", size: "sm" })}
                   >
                     Content
                   </Link>
@@ -214,7 +206,10 @@ export function TeacherMembersAreaHub() {
               Manage the public profile that groups all published products.
             </p>
           </div>
-          <Link href="/teach/storefront" className="button-outline px-4 text-sm">
+          <Link
+            href="/teach/storefront"
+            className={buttonClasses({ variant: "outline" })}
+          >
             Open storefront settings
           </Link>
         </div>
