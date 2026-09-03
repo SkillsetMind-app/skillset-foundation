@@ -248,9 +248,16 @@ export function PlatformNav({ collapsed = false, onRequestExpand }: PlatformNavP
                     : ""
               }`}
             >
-              <span className="platform-nav-icon-chip">
-                <SectionIcon aria-hidden="true" size={17} strokeWidth={2} />
-              </span>
+              {/* Recolhida, o item e o unico quadrado: sem o chip do icone
+                  (era a segunda camada no hover; ver bloco "Rail recolhido"
+                  no globals.css). */}
+              {collapsed ? (
+                <SectionIcon aria-hidden="true" size={18} strokeWidth={2} />
+              ) : (
+                <span className="platform-nav-icon-chip">
+                  <SectionIcon aria-hidden="true" size={17} strokeWidth={2} />
+                </span>
+              )}
               <span className="platform-sidebar-label min-w-0 truncate">{sectionLabel}</span>
               {!collapsed ? (
                 <ChevronDown
@@ -368,9 +375,13 @@ function PlatformNavLink({
           : "border-transparent text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]"
       }`}
     >
-      <span className="platform-nav-icon-chip">
+      {collapsed ? (
         <Icon aria-hidden="true" size={18} strokeWidth={2} className="shrink-0" />
-      </span>
+      ) : (
+        <span className="platform-nav-icon-chip">
+          <Icon aria-hidden="true" size={18} strokeWidth={2} className="shrink-0" />
+        </span>
+      )}
       <span className="platform-sidebar-label min-w-0 truncate">{label}</span>
       {newTab ? (
         <ExternalLink
