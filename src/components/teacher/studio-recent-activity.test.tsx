@@ -83,11 +83,18 @@ describe("Recent activity na Home do professor", () => {
       {
         id: "order-1",
         status: "paid",
+        courseId: "course-1",
         courseTitle: "Hypnosis Basics",
         paidAt: isoDaysAgo(3),
       },
       // Pedido nao pago nao e um evento: ninguem comprou nada.
-      { id: "order-2", status: "pending", courseTitle: "Hypnosis Basics", paidAt: isoDaysAgo(1) },
+      {
+        id: "order-2",
+        status: "pending",
+        courseId: "course-1",
+        courseTitle: "Hypnosis Basics",
+        paidAt: isoDaysAgo(1),
+      },
     ];
     mocks.students = [
       {
@@ -125,7 +132,13 @@ describe("Recent activity na Home do professor", () => {
 
   it("cada linha leva para a tela que responde por aquele evento", async () => {
     mocks.orders = [
-      { id: "order-1", status: "paid", courseTitle: "Hypnosis Basics", paidAt: isoDaysAgo(1) },
+      {
+        id: "order-1",
+        status: "paid",
+        courseId: "course-1",
+        courseTitle: "Hypnosis Basics",
+        paidAt: isoDaysAgo(1),
+      },
     ];
 
     render(<StudioRecentActivity courses={courses} />);
@@ -134,5 +147,43 @@ describe("Recent activity na Home do professor", () => {
       "href",
       "/teach/sales/order-1",
     );
+  });
+
+  // O painel de UM produto passa a mesma lista com um curso so. Sem o recorte,
+  // a venda e a matricula de outro produto entravam na atividade dele: as duas
+  // leituras trazem a loja inteira, so as avaliacoes e as perguntas ja vinham
+  // filtradas por curso.
+  it("mostra so o que aconteceu nos cursos que recebeu, nunca na loja inteira", async () => {
+    mocks.orders = [
+      {
+        id: "order-2",
+        status: "paid",
+        courseId: "course-2",
+        courseTitle: "Outro Produto",
+        paidAt: isoDaysAgo(1),
+      },
+    ];
+    mocks.students = [
+      {
+        enrollmentId: "enr-2",
+        courseId: "course-2",
+        courseTitle: "Outro Produto",
+        displayName: "Ana",
+        enrolledAt: isoDaysAgo(1),
+      },
+      {
+        enrollmentId: "enr-1",
+        courseId: "course-1",
+        courseTitle: "Hypnosis Basics",
+        displayName: "Bruno",
+        enrolledAt: isoDaysAgo(2),
+      },
+    ];
+
+    render(<StudioRecentActivity courses={courses} />);
+
+    const items = await screen.findAllByRole("listitem");
+    expect(items).toHaveLength(1);
+    expect(items[0].textContent).toContain("Bruno enrolled in Hypnosis Basics");
   });
 });

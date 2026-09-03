@@ -104,6 +104,13 @@ vi.mock("@/components/teacher/course-asset-uploader", () => ({
   CourseAssetUploader: () => null,
 }));
 
+// O painel do produto (numeros, atividade, manutencao) le pedidos, matriculas,
+// cupons, avaliacoes e perguntas. Nada disso muda a porcentagem que este
+// arquivo mede, e tem prova propria em course-overview-panel.test.tsx.
+vi.mock("@/components/teacher/course-overview-panel", () => ({
+  CourseOverviewPanel: () => null,
+}));
+
 // O professor via, para o mesmo curso, 71% no chip do construtor, 40% na
 // barra logo abaixo do chip e 50% no Manage. Cada tela tinha regra propria.
 // Agora as tres leem a mesma funcao e mostram o mesmo numero.
