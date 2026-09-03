@@ -31,8 +31,9 @@ import {
 } from "@/lib/auth/profile-validation";
 import {
   getAuthPathIntentFromSearchParams,
-  getAuthPathQuery,
   getLoadingRoute,
+  getSafeReturnTo,
+  getWelcomeRoute,
 } from "@/lib/auth/routing";
 import {
   acceptUserTerms,
@@ -59,13 +60,19 @@ export function SignupForm() {
   const [intent, setIntent] = useState<"student" | "teacher">(
     pathIntent ?? "student",
   );
+  // Where the visitor was headed when the wall stopped them — the course they
+  // pressed "enroll" on. Sign-in already honoured it; signup dropped it, so the
+  // buyer landed on a dashboard and the sale evaporated. Validated (same-origin
+  // path only) before it is carried anywhere.
+  const returnTo = useMemo(() => getSafeReturnTo(searchParams), [searchParams]);
 
   function chooseIntent(next: "student" | "teacher") {
     setIntent(next);
-    router.replace(
-      next === "teacher" ? "/auth?mode=signup&path=teacher" : "/auth?mode=signup&path=student",
-      { scroll: false },
-    );
+    const params = new URLSearchParams({ mode: "signup", path: next });
+    // Toggling learn/teach rewrites the URL — without this the destination was
+    // erased by a click that has nothing to do with it.
+    if (returnTo) params.set("returnTo", returnTo);
+    router.replace(`/auth?${params.toString()}`, { scroll: false });
   }
 
   const intro = t(
@@ -144,6 +151,9 @@ export function SignupForm() {
       const { user, needsEmailConfirmation } = await signUpWithEmail(
         { displayName, email, password },
         captchaToken || undefined,
+        // The confirmation link carries the destination itself, so it survives
+        // being opened on a phone where this tab does not exist.
+        getWelcomeRoute(intent, returnTo),
       );
       track.userSignedUp({
         role: intent === "teacher" ? "teacher" : "student",
@@ -177,7 +187,7 @@ export function SignupForm() {
       } catch (profileError) {
         console.error("Post-signup profile writes failed", profileError);
       }
-      router.push(`/welcome${getAuthPathQuery(intent)}`);
+      router.push(getWelcomeRoute(intent, returnTo));
     } catch (caughtError) {
       // Single-use Turnstile token — refresh for the retry.
       if (isCaptchaEnabled) setCaptchaResetSignal((n) => n + 1);
@@ -201,7 +211,9 @@ export function SignupForm() {
     try {
       // Through /loading, so a brand-new Google account reaches onboarding
       // instead of the home page; the legal gate re-collects the terms after.
-      const user = await signInWithGoogle(getLoadingRoute("welcome", intent));
+      const user = await signInWithGoogle(
+        getLoadingRoute("welcome", intent, returnTo),
+      );
       await acceptUserTerms(user.uid, false);
       const profile = await getUserProfile(user.uid);
       // Only track as signup if this is the user's first hit (no completed
@@ -215,8 +227,8 @@ export function SignupForm() {
       }
       router.push(
         profile?.onboardingCompleted
-          ? getLoadingRoute("route", intent)
-          : `/welcome${getAuthPathQuery(intent)}`,
+          ? returnTo ?? getLoadingRoute("route", intent)
+          : getWelcomeRoute(intent, returnTo),
       );
     } catch (caughtError) {
       // A returning user with TOTP enrolled trips an MFA challenge here, but

@@ -70,10 +70,6 @@ export function getAuthPathIntentFromSearchParams(
   );
 }
 
-export function getAuthPathQuery(intent: AuthPathIntent | null): string {
-  return intent ? `?path=${intent}` : "";
-}
-
 /**
  * Validates a post-login destination so deep links survive the sign-in wall
  * without opening a redirect hole. Only same-origin absolute paths pass:
@@ -124,12 +120,39 @@ export function getLoadingRoute(
   return `/loading?${searchParams.toString()}`;
 }
 
+/**
+ * The single builder for the /welcome (onboarding) entry. It carries the deep
+ * link the sign-in wall captured, because onboarding used to be where that link
+ * died: someone who pressed "enroll" on a course page, created an account and
+ * answered the wizard landed on /learn and never saw the course again — the sale
+ * was lost between two screens. Every route into /welcome goes through here so
+ * the destination cannot be dropped by one caller and kept by the next.
+ */
+export function getWelcomeRoute(
+  intent: AuthPathIntent | null = null,
+  returnTo: string | null = null,
+): string {
+  const searchParams = new URLSearchParams();
+
+  if (intent) {
+    searchParams.set("path", intent);
+  }
+
+  if (returnTo) {
+    searchParams.set("returnTo", returnTo);
+  }
+
+  const query = searchParams.toString();
+
+  return query ? `/welcome?${query}` : "/welcome";
+}
+
 export function getPostAuthRoute(
   profile: UserProfile | null,
   intent: AuthPathIntent | null = null,
 ): string {
   if (!profile?.onboardingCompleted) {
-    return `/welcome${getAuthPathQuery(intent)}`;
+    return getWelcomeRoute(intent);
   }
 
   if (profile.onboardingPath === "teacher" && !profile.roles.includes("teacher")) {

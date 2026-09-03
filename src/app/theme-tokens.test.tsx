@@ -338,3 +338,44 @@ describe.each(COMBOS)("member area contrast — %s", (_name, vars, courseTheme, 
     expect(failures, `member area below AA:\n${failures.join("\n")}`).toEqual([]);
   });
 });
+
+// O certificado é baixado em PDF e compartilhado, então tem de ficar branco no
+// tema escuro. A exceção que garante isso existia mas não valia: a regra
+// genérica de `.bg-white` no tema escuro usa `!important`, e `!important` ganha
+// de qualquer regra normal por mais específica que ela seja. Resultado: papel
+// cinza com a exceção escrita no arquivo. Este teste falha se a força sumir de
+// novo, ou se a exceção voltar a falar só dos filhos.
+describe("certificado no tema escuro", () => {
+  // Corpo da regra cujo seletor contém `needle`, ignorando espaços de sobra.
+  function ruleWith(needle: string): string {
+    const at = css.indexOf(needle);
+    expect(at, `seletor ${needle} não encontrado`).toBeGreaterThan(-1);
+    const open = css.indexOf("{", at);
+    return css.slice(open, css.indexOf("}", open));
+  }
+
+  it("mantém a exceção do certificado com a mesma força da regra genérica", () => {
+    const generica = ruleWith('[data-theme="dark"] .bg-white {');
+    expect(generica, "a regra genérica deixou de ser !important").toContain(
+      "!important",
+    );
+
+    const excecao = ruleWith('[data-theme="dark"] .cert-doc.bg-white');
+    expect(
+      excecao,
+      "sem !important a exceção do certificado perde para a regra genérica",
+    ).toContain("!important");
+    expect(excecao).toContain("#ffffff");
+  });
+
+  it("cobre o próprio papel, não só o que está dentro dele", () => {
+    // <article class="cert-doc ... bg-white"> — as duas classes no MESMO
+    // elemento, que é o caso que o seletor de descendente nunca alcançou.
+    for (const selector of [
+      '[data-theme="dark"] .cert-doc.bg-white',
+      '[data-theme="dark"] .keep-white.bg-white',
+    ]) {
+      expect(css, `${selector} ausente`).toContain(selector);
+    }
+  });
+});

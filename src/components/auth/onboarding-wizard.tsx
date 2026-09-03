@@ -10,7 +10,10 @@ import { OnboardingQuestion } from "@/components/auth/onboarding-question";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { skillsetCourseCategories } from "@/domain/teacher-course";
 import type { OnboardingAnswers } from "@/domain/user-profile";
-import { getAuthPathIntentFromSearchParams } from "@/lib/auth/routing";
+import {
+  getAuthPathIntentFromSearchParams,
+  getSafeReturnTo,
+} from "@/lib/auth/routing";
 import { isValidPhoneNumber } from "@/domain/user-profile";
 import { validateDisplayName } from "@/lib/auth/profile-validation";
 import {
@@ -206,6 +209,9 @@ export function OnboardingWizard() {
     () => getAuthPathIntentFromSearchParams(searchParams),
     [searchParams],
   );
+  // O curso de onde a pessoa veio, se veio de algum. Passa pelo mesmo filtro do
+  // login: so caminho interno, nunca URL de outro dominio.
+  const returnTo = useMemo(() => getSafeReturnTo(searchParams), [searchParams]);
   const [answers, setAnswers] = useState<OnboardingAnswers>(() => ({
     ...(pathIntent ? { path: pathIntent } : {}),
   }));
@@ -441,7 +447,14 @@ export function OnboardingWizard() {
       await persistAnswers(answers, true);
       setIsComplete(true);
       await wait(1800);
-      router.replace(answers.path === "teacher" ? "/onboarding?path=teacher" : "/learn");
+      // Fim da linha do deep link: quem chegou aqui vindo de um curso volta
+      // para ELE, nao para o painel. O professor e a excecao — /onboarding e
+      // um passo obrigatorio da conta, nao um destino que da para trocar.
+      router.replace(
+        answers.path === "teacher"
+          ? "/onboarding?path=teacher"
+          : returnTo ?? "/learn",
+      );
     } catch {
       setError("Could not finish onboarding. Please try again.");
       setIsSaving(false);

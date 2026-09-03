@@ -2,9 +2,9 @@
 
 import { useAuth } from "@/components/auth/auth-provider";
 import {
-  getAuthPathQuery,
   getPostAuthRoute,
   getSafeReturnTo,
+  getWelcomeRoute,
   parseAuthPathIntent,
 } from "@/lib/auth/routing";
 import { getUserProfile } from "@/lib/data/user-profiles";
@@ -58,7 +58,10 @@ export function LoadingScreen() {
         const profile = await getUserProfile(user.uid);
 
         if (next === "welcome" && !profile?.onboardingCompleted) {
-          destination = `/welcome${getAuthPathQuery(intent)}`;
+          // The deep link rides along into onboarding instead of stopping here:
+          // a first-timer who came from a course page finishes the wizard back
+          // on that course.
+          destination = getWelcomeRoute(intent, returnTo);
         } else if (returnTo && profile?.onboardingCompleted) {
           // The deep link the sign-in wall captured, carried here by Google
           // sign-in. Onboarded accounts only — first-timers went to /welcome

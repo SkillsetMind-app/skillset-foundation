@@ -434,10 +434,26 @@ select {
   background-color: var(--color-surface);
 }
 
-/* O certificado inteiro fica fora, inclusive o que está dentro dele. */
+/* O certificado inteiro fica fora, inclusive o que está dentro dele.
+
+   Duas coisas que esta regra tinha de errado e deixavam o certificado cinza:
+
+   1. Só falava dos FILHOS. O papel do certificado é o próprio elemento
+      (`<article class="cert-doc bg-white">`), que nenhum destes seletores
+      alcançava — daí `.cert-doc.bg-white`, sem espaço.
+   2. Não tinha `!important`. Mais abaixo (linha ~600) existe um
+      `[data-theme="dark"] .bg-white { ... !important }` que pega tudo: por ser
+      `!important` ele ganha de qualquer regra normal, por mais específica que
+      seja. A exceção precisa da mesma força para poder valer — e aí ganha, por
+      ter especificidade maior (0,3,0 contra 0,2,0).
+
+   Sem `!important` aqui a exceção existe mas não vale, que é como o certificado
+   apareceu cinza no tema escuro mesmo com a regra escrita. */
+[data-theme="dark"] .cert-doc.bg-white,
+[data-theme="dark"] .keep-white.bg-white,
 [data-theme="dark"] .cert-doc .bg-white,
 [data-theme="dark"] .keep-white .bg-white {
-  background-color: #ffffff;
+  background-color: #ffffff !important;
 }
 
 @media (prefers-color-scheme: dark) {

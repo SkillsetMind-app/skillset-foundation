@@ -214,6 +214,12 @@ export type SignupResult = {
 export async function signUpWithEmail(
   { displayName, email, password }: SignupInput,
   captchaToken?: string,
+  // Where the confirmation link lands. Defaults to onboarding; a signup that
+  // started from a deep link (a course page) passes /welcome with the returnTo
+  // attached, so the destination travels inside the email itself and survives
+  // being opened on another device, where nothing from the original tab exists.
+  // /auth/confirm re-checks it is a same-origin path before forwarding.
+  confirmNext: string = "/welcome",
 ): Promise<SignupResult> {
   const supabase = getSupabaseBrowserClient();
   const trimmedName = displayName.trim();
@@ -229,7 +235,9 @@ export async function signUpWithEmail(
       data: trimmedName
         ? { display_name: trimmedName, name: trimmedName }
         : undefined,
-      emailRedirectTo: authCallbackUrl("/auth/confirm"),
+      emailRedirectTo: authCallbackUrl(
+        `/auth/confirm?next=${encodeURIComponent(confirmNext)}`,
+      ),
       // No-op unless Supabase CAPTCHA is enabled + the Turnstile widget is on.
       captchaToken: captchaToken || undefined,
     },
