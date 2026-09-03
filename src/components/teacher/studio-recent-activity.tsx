@@ -113,9 +113,14 @@ export function StudioRecentActivity({ courses }: { courses: TeacherCourse[] }) 
 
   const events = useMemo(() => {
     const items: ActivityEvent[] = [];
+    // Vendas e matriculas chegam da loja INTEIRA (as duas leituras nao aceitam
+    // filtro por curso). As avaliacoes e as perguntas ja vinham recortadas; sem
+    // este recorte, o painel de um produto so mostraria a venda de outro.
+    const mine = new Set(courseIds);
 
     for (const order of orders) {
       if (order.status !== "paid") continue;
+      if (!mine.has(order.courseId)) continue;
       const at = toDate(order.paidAt ?? order.createdAt)?.getTime();
       if (!at) continue;
       items.push({
@@ -128,6 +133,7 @@ export function StudioRecentActivity({ courses }: { courses: TeacherCourse[] }) 
     }
 
     for (const student of students) {
+      if (!mine.has(student.courseId)) continue;
       const at = toDate(student.enrolledAt)?.getTime();
       if (!at) continue;
       items.push({
@@ -170,7 +176,7 @@ export function StudioRecentActivity({ courses }: { courses: TeacherCourse[] }) 
     }
 
     return items.sort((a, b) => b.at - a.at).slice(0, 6);
-  }, [courseTitles, orders, questions, reviews, students, t]);
+  }, [courseIds, courseTitles, orders, questions, reviews, students, t]);
 
   return (
     <section aria-labelledby="studio-activity-title">

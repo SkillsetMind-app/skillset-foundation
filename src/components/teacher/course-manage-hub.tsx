@@ -14,6 +14,7 @@ import {
   TaxPanel,
 } from "@/components/teacher/course-commerce-panels";
 import { CourseOffersPanel } from "@/components/teacher/course-offers-panel";
+import { CourseOverviewPanel } from "@/components/teacher/course-overview-panel";
 import { CourseStudentRoster } from "@/components/teacher/course-student-roster";
 import { CourseLandingEditor } from "@/components/teacher/course-landing-editor";
 import { SalesPageEditor } from "@/components/teacher/sales-page-editor";
@@ -441,6 +442,14 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
         </nav>
 
         <div className="grid gap-4">
+          {/* O painel do produto vem antes da lista de publicacao: quem abre
+              esta tela abre para saber como o produto esta indo. A lista de
+              o-que-falta continua logo abaixo, e o estado vazio do painel
+              aponta para ela quando o curso ainda nao foi publicado. */}
+          {section === "overview" ? (
+            <CourseOverviewPanel course={course} account={account} />
+          ) : null}
+
           {section === "overview" ? (
             <PanelCard title="Publish checklist" description={statusCopy[course.status]}>
               <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--color-surface-hover)]">
