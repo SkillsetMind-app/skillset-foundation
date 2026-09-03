@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Target } from "lucide-react";
+import { Star, Target } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -10,7 +10,9 @@ import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import {
   CourseInstructorCard,
   CourseReviewsSection,
+  useInstructorProfile,
 } from "@/components/courses/course-social-proof";
+import { UserAvatar } from "@/components/shared/user-avatar";
 import { getSafeExternalUrl } from "@/domain/external-url";
 import { CourseLandingBlocks } from "@/components/courses/course-landing-blocks";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
@@ -92,10 +94,16 @@ export function CreatorCourseDetail({
       window.clearTimeout(timer);
     };
   }, [landingCourseId]);
+  // Uma assinatura so do perfil do professor, usada pela assinatura embaixo do
+  // titulo E pelo cartao do instrutor.
+  const instructorProfile = useInstructorProfile(course?.ownerId ?? "");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
   const [couponCode, setCouponCode] = useState("");
+  // O campo de cupom sai da frente ate alguem ter um. Antes ele ficava sempre
+  // aberto acima do botao, sugerindo que faltava algo para poder comprar.
+  const [isCouponOpen, setIsCouponOpen] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isEnrollingFree, setIsEnrollingFree] = useState(false);
   const [offerLoadError, setOfferLoadError] = useState("");
@@ -344,11 +352,58 @@ export function CreatorCourseDetail({
     previewVideoSource === "upload" ? null : previewLessonTrustedEmbed;
   const previewLessonExternalUrl = getSafeExternalUrl(previewLessonRawExternalUrl);
   const lockedLessonCount = Math.max(lessons.length - (previewLesson ? 1 : 0), 0);
-  const ratingLabel =
-    course.ratingCount && course.ratingAverage
-      ? `${course.ratingAverage.toFixed(1)} / 5 from ${course.ratingCount} review${course.ratingCount === 1 ? "" : "s"}`
-      : "No learner reviews yet";
+  const hasRating = Boolean(course.ratingCount && course.ratingAverage);
   const learningOutcomes = normalizeLearningOutcomes(course.learningOutcomes);
+  // Duracao real do curso, somada das aulas. Sem minuto declarado em nenhuma
+  // aula o dado simplesmente nao aparece — nao se estima tempo de curso.
+  const totalMinutes = course.modules.reduce(
+    (sum, module) =>
+      sum
+      + module.lessons.reduce(
+        (lessonSum, lesson) => lessonSum + (lesson.durationMinutes ?? 0),
+        0,
+      ),
+    0,
+  );
+  const durationLabel =
+    totalMinutes >= 60
+      ? `${Math.floor(totalMinutes / 60)}h${totalMinutes % 60 ? ` ${totalMinutes % 60}m` : ""}`
+      : totalMinutes > 0
+        ? `${totalMinutes} min`
+        : null;
+  const instructorName = instructorProfile?.displayName || null;
+  // Como se cobra, ao lado do numero grande. Nunca inventado: sai do proprio
+  // tipo de pagamento que o checkout vai usar.
+  const billingSuffix = !pricingReady
+    ? null
+    : courseIsFree
+      ? "free enrollment"
+      : subscriptionInterval
+        ? `billed ${subscriptionInterval === "month" ? "monthly" : "yearly"}`
+        : hasPaidPrice
+          ? "one-time"
+          : null;
+  const coursePath = `/courses/${encodeURIComponent(courseRef)}`;
+  const enrollLabel = courseIsFree
+    ? "Enroll free"
+    : pricingReady && hasPaidPrice
+      ? `${subscriptionInterval ? "Subscribe" : "Enroll"} — ${priceLabel}`
+      : "Enroll";
+  // Secoes que EXISTEM nesta pagina. Um menu que oferece "Reviews" para um
+  // curso sem resenha leva a pessoa para lugar nenhum, entao cada item so
+  // entra quando a secao correspondente vai ser desenhada.
+  const sectionLinks: [string, string][] = [
+    ["Overview", "#overview"],
+    ...(learningOutcomes.length > 0
+      ? ([["What you'll learn", "#what-you-will-learn"]] as [string, string][])
+      : []),
+    ["Free preview", "#free-preview"],
+    ["Curriculum", "#curriculum"],
+    ...(hasRating ? ([["Reviews", "#reviews"]] as [string, string][]) : []),
+    ...(instructorProfile
+      ? ([["Instructor", "#instructor"]] as [string, string][])
+      : []),
+  ];
 
   async function handleCheckout() {
     if (!course || !resolvedPrice || !canCheckout || !checkoutEnabled) {
@@ -411,10 +466,14 @@ export function CreatorCourseDetail({
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+    <>
+    <div className="grid gap-8 pb-24 lg:grid-cols-[1.15fr_0.85fr] lg:pb-0">
       <section>
         {hideHeader ? null : (
-          <div className="primary-fill-card rounded-[20px] border border-[var(--color-line)] bg-[var(--color-primary)] p-8 text-white shadow-[var(--shadow-soft)]">
+          <div
+            id="overview"
+            className="primary-fill-card scroll-mt-24 rounded-[20px] border border-[var(--color-line)] bg-[var(--color-primary)] p-8 text-white shadow-[var(--shadow-soft)]"
+          >
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">
               From an independent educator
             </p>
@@ -426,6 +485,63 @@ export function CreatorCourseDetail({
             </p>
           </div>
         )}
+
+        {/* Assinatura do instrutor, logo abaixo do titulo. Quem compra um curso
+            escolhe uma PESSOA, e ate aqui o nome dela so aparecia no fim da
+            barra lateral, depois do preco e dos avisos de pagamento. A nota
+            tambem sobe para ca: era a quinta linha de uma lista neutra. */}
+        {instructorName || hasRating || durationLabel ? (
+          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[var(--color-ink-soft)]">
+            {instructorName ? (
+              <Link
+                href={`/instructors/${encodeURIComponent(course.ownerId)}`}
+                className="inline-flex min-h-11 items-center gap-2 font-semibold text-[var(--color-ink)] underline-offset-4 hover:underline"
+              >
+                <UserAvatar
+                  name={instructorName}
+                  photoURL={instructorProfile?.photoURL}
+                  size="sm"
+                />
+                {instructorName}
+              </Link>
+            ) : null}
+            {instructorProfile?.credentials?.[0] ? (
+              <span className="min-w-0 truncate">
+                {instructorProfile.credentials[0]}
+              </span>
+            ) : null}
+            {hasRating ? (
+              <span className="inline-flex items-center gap-1 font-semibold text-[var(--color-ink)]">
+                <Star
+                  aria-hidden="true"
+                  size={14}
+                  strokeWidth={1.5}
+                  className="fill-[var(--color-brand)] text-[var(--color-brand)]"
+                />
+                {course.ratingAverage?.toFixed(1)}
+                <span className="font-normal text-[var(--color-ink-soft)]">
+                  ({course.ratingCount})
+                </span>
+              </span>
+            ) : null}
+            {durationLabel ? <span>{durationLabel}</span> : null}
+          </div>
+        ) : null}
+
+        <nav
+          aria-label="Course sections"
+          className="mt-6 flex flex-wrap gap-1 border-b border-[var(--color-line)]"
+        >
+          {sectionLinks.map(([label, href]) => (
+            <Link
+              key={href}
+              href={href}
+              className="inline-flex min-h-11 items-center border-b-2 border-transparent px-4 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition hover:border-[var(--color-accent-fg)] hover:text-[var(--color-primary)]"
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
 
         {/* The teacher's own sales page, when they built one. Renders nothing
             at all when empty, so a course without one keeps today's layout
@@ -441,7 +557,10 @@ export function CreatorCourseDetail({
         />
 
         {learningOutcomes.length > 0 ? (
-          <section className="mt-8 rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
+          <section
+            id="what-you-will-learn"
+            className="mt-8 scroll-mt-24 rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
+          >
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               What you&apos;ll learn
             </p>
@@ -463,9 +582,20 @@ export function CreatorCourseDetail({
           </section>
         ) : null}
 
+        {/* Prova social sobe: quem ensina vem logo depois do que a pessoa vai
+            aprender, e nao no fim da barra lateral, depois do preco. */}
+        {instructorProfile ? (
+          <div id="instructor" className="mt-8 scroll-mt-24">
+            <CourseInstructorCard
+              teacherId={course.ownerId}
+              profile={instructorProfile}
+            />
+          </div>
+        ) : null}
+
         <section
           id="free-preview"
-          className="mt-8 rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
+          className="mt-8 scroll-mt-24 rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
         >
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Free preview
@@ -537,7 +667,10 @@ export function CreatorCourseDetail({
           </p>
         </section>
 
-        <section className="mt-8 rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
+        <section
+          id="curriculum"
+          className="mt-8 scroll-mt-24 rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
+        >
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             Course structure
           </p>
@@ -589,10 +722,30 @@ export function CreatorCourseDetail({
         />
       </section>
 
-      <aside className="h-fit rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          At a glance
+      {/* Cartao de compra fixo: no desktop ele acompanha a rolagem, entao o
+          preco e o botao seguem visiveis enquanto a pessoa le o curriculo.
+          Antes o cartao subia com a pagina e sumia na primeira rolagem. */}
+      <aside
+        id="enroll-card"
+        className="h-fit scroll-mt-24 self-start rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] lg:sticky lg:top-24"
+      >
+        {/* O preco era a quarta de seis linhas de uma lista "At a glance",
+            entre "Status: Published" e "Access: Secure checkout" — vocabulario
+            interno que o comprador nao precisa ler. Agora ele e o numero
+            grande no topo do cartao. */}
+        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
+          Access
         </p>
+        <p className="display-title mt-1 flex flex-wrap items-baseline gap-2 text-4xl leading-none text-[var(--color-primary)]">
+          <span>{priceLabel}</span>
+          {billingSuffix ? (
+            <span className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-ink-soft)] [font-family:var(--font-sans)]">
+              · {billingSuffix}
+            </span>
+          ) : null}
+        </p>
+
+        <div className="mt-5 h-px bg-[var(--color-line)]" />
         {offers.length > 1 ? (
           <fieldset className="mt-5 border-y border-[var(--color-line)] py-4">
             <legend className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
@@ -640,24 +793,15 @@ export function CreatorCourseDetail({
             </div>
           </fieldset>
         ) : null}
+        {/* Status e Access sairam: "Published" e o estado interno do curso e
+            "Secure checkout" e como a plataforma cobra — nenhum dos dois ajuda
+            a decidir. O preco virou o numero grande acima, e a nota subiu para
+            a assinatura do instrutor. */}
         <dl className="mt-5 grid gap-4">
           {[
             ["Category", course.category],
-            // Don't leak the internal "in_review" state to buyers, and don't
-            // falsely claim "Published" — an in_review course on sale is
-            // truthfully "Available".
-            ["Status", "Published"],
             ["Lessons", String(course.lessonCount)],
-            ["Price", priceLabel],
-            ["Rating", ratingLabel],
-            [
-              "Access",
-              courseIsFree
-                ? "Free enrollment"
-                : checkoutEnabled
-                  ? "Secure checkout"
-                  : "Checkout pending",
-            ],
+            ...(durationLabel ? [["Duration", durationLabel]] : []),
           ].map(([label, value]) => (
             <div
               key={label}
@@ -698,37 +842,25 @@ export function CreatorCourseDetail({
         ) : null}
 
         {authStatus !== "authenticated" ? (
+          // Visitante: o botao principal diz o que ele faz e quanto custa, e
+          // leva a criar conta. `returnTo` traz a pessoa de volta a ESTE curso
+          // depois de entrar, em vez de deixa-la na home.
           <div className="mt-6 grid gap-3">
-            <Link href="/auth?mode=signup" className="button-solid w-full justify-center px-5 py-2.5 text-sm">
-              Create account to enroll
+            <Link
+              href={`/auth?mode=signup&returnTo=${encodeURIComponent(coursePath)}`}
+              className="button-solid w-full justify-center px-5 py-2.5 text-sm"
+            >
+              {enrollLabel}
             </Link>
-            <Link href="/auth?mode=signin" className="button-outline w-full justify-center px-5 py-2.5 text-sm">
+            <Link
+              href={`/auth?mode=signin&returnTo=${encodeURIComponent(coursePath)}`}
+              className="button-outline w-full justify-center px-5 py-2.5 text-sm"
+            >
               Sign in
             </Link>
           </div>
         ) : (
           <>
-            {canCheckout && !subscriptionInterval ? (
-              <label className="mt-6 block">
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
-                  Coupon code
-                </span>
-                <input
-                  value={couponCode}
-                  onChange={(event) =>
-                    setCouponCode(
-                      event.target.value
-                        .toUpperCase()
-                        .replace(/[^A-Z0-9-]/g, "")
-                        .slice(0, 32),
-                    )
-                  }
-                  autoComplete="off"
-                  placeholder="Optional"
-                  className="mt-2 w-full rounded-[10px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
-                />
-              </label>
-            ) : null}
             {canEnrollFree ? (
               <button
                 type="button"
@@ -748,10 +880,43 @@ export function CreatorCourseDetail({
                 {isCheckingOut
                   ? "Opening secure checkout..."
                   : checkoutEnabled && hasPaidPrice
-                    ? `${subscriptionInterval ? "Subscribe" : "Enroll"} for ${priceLabel}`
+                    ? enrollLabel
                     : "Checkout not available yet"}
               </button>
             )}
+            {/* Cupom fora do caminho de quem nao tem um. */}
+            {canCheckout && !subscriptionInterval ? (
+              isCouponOpen ? (
+                <label className="mt-4 block">
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
+                    Coupon code
+                  </span>
+                  <input
+                    value={couponCode}
+                    autoFocus
+                    onChange={(event) =>
+                      setCouponCode(
+                        event.target.value
+                          .toUpperCase()
+                          .replace(/[^A-Z0-9-]/g, "")
+                          .slice(0, 32),
+                      )
+                    }
+                    autoComplete="off"
+                    placeholder="Optional"
+                    className="mt-2 w-full rounded-[10px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
+                  />
+                </label>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsCouponOpen(true)}
+                  className="mt-3 inline-flex min-h-11 w-full items-center justify-center text-sm font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+                >
+                  Have a coupon?
+                </button>
+              )
+            ) : null}
             {!checkoutEnabled ? (
               <p className="mt-3 rounded-[10px] border border-[rgba(24,58,94,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
                 Checkout is not available yet. You can preview this course now
@@ -798,19 +963,38 @@ export function CreatorCourseDetail({
           </p>
         ) : null}
 
-        {/* Instructor identity: buyers were asked to pay without ever seeing
-            WHO teaches the course. Renders only when the teacher has a
-            published public profile (function-projected, never fabricated). */}
-        <CourseInstructorCard teacherId={course.ownerId} />
-
         <Link
           href="/courses"
-          className="mt-4 inline-flex w-full justify-center text-sm font-semibold text-[var(--color-primary)]"
+          className="mt-4 inline-flex min-h-11 w-full items-center justify-center text-sm font-semibold text-[var(--color-primary)]"
         >
           Back to all courses
         </Link>
       </aside>
     </div>
+
+    {/* No celular a coluna do cartao cai para o fim da pagina: para achar o
+        preco e o botao era preciso rolar por todo o curriculo. Esta barra
+        mantem os dois a mao e leva ao cartao. Escondida a partir de lg, onde
+        o cartao ja acompanha a rolagem na coluna lateral. */}
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 lg:hidden">
+      <div className="pointer-events-auto flex items-center gap-3 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
+            Access
+          </p>
+          <p className="display-title truncate text-xl leading-none text-[var(--color-primary)]">
+            {priceLabel}
+          </p>
+        </div>
+        <Link
+          href="#enroll-card"
+          className="button-solid inline-flex min-h-11 shrink-0 items-center px-3.5 py-2 text-xs"
+        >
+          Enroll
+        </Link>
+      </div>
+    </div>
+    </>
   );
 }
 

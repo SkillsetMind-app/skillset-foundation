@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 
+import { CourseTile } from "@/components/courses/course-tile";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { brand } from "@/data/brand";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -280,7 +281,11 @@ export function InstructorProfileView({ uid }: { uid: string }) {
         ) : (
           <div className="marketplace-course-grid mt-6">
             {orderedCourses.map((course) => (
-              <InstructorCourseCard key={course.id} course={course} />
+              <InstructorCourseCard
+                key={course.id}
+                course={course}
+                instructor={{ name, photoURL: profile.photoURL }}
+              />
             ))}
           </div>
         )}
@@ -315,52 +320,33 @@ function InstructorMetric({
   );
 }
 
-function InstructorCourseCard({ course }: { course: TeacherCourse }) {
-  const priceLabel = formatPrice(course);
-  const lessonLabel = `${course.lessonCount} lesson${course.lessonCount === 1 ? "" : "s"}`;
-  const image = course.coverImageUrl || "/brand/logo-mark.png";
-
+function InstructorCourseCard({
+  course,
+  instructor,
+}: {
+  course: TeacherCourse;
+  instructor: { name: string; photoURL: string | null };
+}) {
   return (
-    <article className="marketplace-card">
-      <Link href={`/courses/${course.id}`} className="marketplace-card__media block">
-        <Image
-          src={image}
-          alt={course.title}
-          fill
-          sizes="(max-width: 1024px) 100vw, 33vw"
-          className="object-cover"
-        />
-        <div className="marketplace-card__scrim" />
-        <div className="marketplace-card__badges">
-          <span className="marketplace-card__tag">
-            {course.status === "in_review" ? "Under review" : "Published"}
-          </span>
-        </div>
-        <div className="marketplace-card__media-caption">
-          <span>{lessonLabel}</span>
-          <span>{priceLabel}</span>
-        </div>
-      </Link>
-      <div className="marketplace-card__body">
-        <span className="marketplace-card__kicker">{course.category}</span>
-        <h3 className="marketplace-card__title">{course.title}</h3>
-        <p className="marketplace-card__summary line-clamp-4">
-          {course.summary}
-        </p>
-        <div className="marketplace-card__meta-panel">
-          <p className="marketplace-card__price">{priceLabel}</p>
-          <p className="marketplace-card__meta">
-            {course.freePreviewLessonId ? "Free preview selected" : "Preview coming soon"}
-          </p>
-        </div>
-        <Link
-          href={`/courses/${course.id}`}
-          className="button-solid mt-auto px-4 py-2.5 text-sm"
-        >
-          View course
-        </Link>
-      </div>
-    </article>
+    <CourseTile
+      href={`/courses/${course.id}`}
+      title={course.title}
+      image={course.coverImageUrl || "/brand/logo-mark.png"}
+      summary={course.summary}
+      category={course.category}
+      meta={`${course.lessonCount} lesson${course.lessonCount === 1 ? "" : "s"}`}
+      // O selo de status saiu: nesta vitrine todo curso listado ja e publico,
+      // entao "Published" nao separava um cartao do outro.
+      badge={course.freePreviewLessonId ? "Free preview" : null}
+      priceLabel={formatPrice(course)}
+      rating={
+        course.ratingAverage && course.ratingCount
+          ? { average: course.ratingAverage, count: course.ratingCount }
+          : null
+      }
+      instructor={instructor}
+      imageSizes="(max-width: 1024px) 100vw, 33vw"
+    />
   );
 }
 

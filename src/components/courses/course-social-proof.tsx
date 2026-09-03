@@ -57,7 +57,10 @@ export function CourseReviewsSection({
       : reviews.length;
 
   return (
-    <section className="mt-8 rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
+    <section
+      id="reviews"
+      className="mt-8 scroll-mt-24 rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
+    >
       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         Learner reviews
       </p>
@@ -107,10 +110,19 @@ export function CourseReviewsSection({
   );
 }
 
-export function CourseInstructorCard({ teacherId }: { teacherId: string }) {
+/**
+ * O perfil publico do professor, uma assinatura so por pagina.
+ *
+ * A pagina de venda usa o mesmo perfil em dois lugares (a assinatura embaixo do
+ * titulo e o cartao do instrutor), e cada `subscribeToPublicProfile` abre um
+ * canal realtime com o mesmo nome — dois deles brigariam pelo mesmo canal. Por
+ * isso quem assina e a pagina, e o cartao recebe o perfil pronto.
+ */
+export function useInstructorProfile(teacherId: string): PublicProfile | null {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
 
   useEffect(() => {
+    if (!teacherId) return;
     return subscribeToPublicProfile(
       teacherId,
       setProfile,
@@ -118,6 +130,16 @@ export function CourseInstructorCard({ teacherId }: { teacherId: string }) {
     );
   }, [teacherId]);
 
+  return profile;
+}
+
+export function CourseInstructorCard({
+  teacherId,
+  profile,
+}: {
+  teacherId: string;
+  profile: PublicProfile | null;
+}) {
   // Teachers without a published public profile simply don't get the card —
   // never fabricate instructor identity. (publicProfiles is projected by a
   // Cloud Function and anonymously readable.)
@@ -128,7 +150,7 @@ export function CourseInstructorCard({ teacherId }: { teacherId: string }) {
   const name = profile.displayName || "SkillsetMind instructor";
 
   return (
-    <div className="mt-6 rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4">
+    <div className="rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4">
       <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         Your instructor
       </p>

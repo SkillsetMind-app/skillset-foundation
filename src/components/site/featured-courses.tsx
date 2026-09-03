@@ -1,10 +1,11 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { CourseTile, courseCardBadge } from "@/components/courses/course-tile";
+import { useInstructorNames } from "@/components/courses/use-instructor-names";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { RevealSection } from "@/components/shared/reveal-section";
 import type { CourseCard } from "@/lib/data/catalog";
@@ -27,6 +28,9 @@ const FEATURED_LIMIT = 6;
 export function FeaturedCourses() {
   const { t } = useTranslation();
   const [featuredCourses, setFeaturedCourses] = useState<CourseCard[]>([]);
+  const instructors = useInstructorNames(
+    featuredCourses.map((course) => course.ownerId),
+  );
 
   useEffect(() => {
     if (!getSupabaseClientConfig()) {
@@ -96,55 +100,25 @@ export function FeaturedCourses() {
         <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {featuredCourses.map((course) => (
             <li key={course.slug}>
-              <Link
+              <CourseTile
                 href={course.href ?? `/courses/${course.slug}`}
-                className="marketplace-card group focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
-              >
-                <div className="marketplace-card__media">
-                  <Image
-                    src={course.image}
-                    alt={course.title}
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover"
-                  />
-                  <div className="marketplace-card__scrim" />
-                  <div className="marketplace-card__badges">
-                    <span className="marketplace-card__tag">
-                      {course.status}
-                    </span>
-                  </div>
-                  <div className="marketplace-card__media-caption">
-                    <span>{course.duration}</span>
-                    <span>{course.priceLabel}</span>
-                  </div>
-                </div>
-                <div className="marketplace-card__body">
-                  <p className="marketplace-card__kicker">
-                    {course.category} · {course.duration}
-                  </p>
-                  <h3 className="marketplace-card__title">
-                    {course.title}
-                  </h3>
-                  <p className="marketplace-card__summary line-clamp-2">
-                    {course.summary}
-                  </p>
-                  <div className="marketplace-card__actions items-center justify-between">
-                    <span className="marketplace-card__price">
-                      {course.priceLabel}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-xs font-bold text-[var(--color-primary)]">
-                      {t("home.marketplace.viewCourse")}
-                      <ArrowRight
-                        aria-hidden="true"
-                        size={14}
-                        strokeWidth={2}
-                        className="transition-transform duration-200 group-hover:translate-x-1"
-                      />
-                    </span>
-                  </div>
-                </div>
-              </Link>
+                title={course.title}
+                image={course.image}
+                summary={course.summary}
+                category={course.category}
+                meta={course.duration}
+                badge={courseCardBadge(course)}
+                priceLabel={course.priceLabel}
+                rating={
+                  course.ratingAverage && course.ratingCount
+                    ? { average: course.ratingAverage, count: course.ratingCount }
+                    : null
+                }
+                instructor={
+                  (course.ownerId && instructors.get(course.ownerId)) || null
+                }
+                actionLabel={t("home.marketplace.viewCourse")}
+              />
             </li>
           ))}
         </ul>

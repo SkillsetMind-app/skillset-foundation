@@ -7,6 +7,8 @@ import { Bookmark, BookmarkCheck, LayoutGrid, List, Search } from "lucide-react"
 import { startTransition, useDeferredValue, useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { CourseTile, courseCardBadge } from "@/components/courses/course-tile";
+import { useInstructorNames } from "@/components/courses/use-instructor-names";
 import type { CourseCard } from "@/lib/data/catalog";
 import { canContinueEnrollment, type Enrollment } from "@/domain/enrollment";
 import { subscribeToUserEnrollments } from "@/lib/data/enrollments";
@@ -195,6 +197,9 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
     return matchesCategory && matchesQuery;
   });
   const sortedCourses = sortCourseCards(visibleCourses, sortKey);
+  const instructors = useInstructorNames(
+    sortedCourses.map((course) => course.ownerId),
+  );
 
   const hasAnyCourses = marketplaceCourses.length > 0;
   const isFiltering =
@@ -469,7 +474,6 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
           }
         >
           {sortedCourses.map((track) => {
-            const hasFreePreview = Boolean(track.freePreviewHref);
             const isWishlisted =
               status === "authenticated" && wishlistCourseIds.has(track.slug);
             const isWishlistPending = pendingWishlistCourseIds.has(track.slug);
@@ -477,31 +481,31 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
             const isList = viewMode === "list";
 
             return (
-              <article
+              <CourseTile
                 key={`${track.slug}-${track.title}`}
-                className={`marketplace-card ${
-                  isList ? "marketplace-card--list" : ""
-                }`}
-              >
-                <div className="marketplace-card__media">
-                  <Image
-                    src={track.image}
-                    alt={track.title}
-                    fill
-                    sizes={
-                      isList
-                        ? "(max-width: 768px) 100vw, 34vw"
-                        : "(max-width: 1024px) 100vw, 33vw"
-                    }
-                    className="object-cover"
-                  />
-                  <div className="marketplace-card__scrim" />
-                  <div className="marketplace-card__badges">
-                    <span className="marketplace-card__tag">{track.status}</span>
-                    <span className="marketplace-card__tag">
-                      {track.sourceLabel ?? "Preview"}
-                    </span>
-                  </div>
+                className={isList ? "marketplace-card--list" : ""}
+                href={track.href ?? `/courses/${track.slug}`}
+                title={track.title}
+                image={track.image}
+                summary={track.summary}
+                category={track.category}
+                meta={track.duration}
+                badge={courseCardBadge(track)}
+                priceLabel={track.priceLabel}
+                rating={
+                  track.ratingAverage && track.ratingCount
+                    ? { average: track.ratingAverage, count: track.ratingCount }
+                    : null
+                }
+                instructor={
+                  (track.ownerId && instructors.get(track.ownerId)) || null
+                }
+                imageSizes={
+                  isList
+                    ? "(max-width: 768px) 100vw, 34vw"
+                    : "(max-width: 1024px) 100vw, 33vw"
+                }
+                overlay={
                   <button
                     type="button"
                     aria-pressed={isWishlisted}
@@ -525,49 +529,8 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                   >
                     <WishlistIcon aria-hidden="true" size={18} strokeWidth={2} />
                   </button>
-                  <div className="marketplace-card__media-caption">
-                    <span>{track.duration}</span>
-                    <span>{track.priceLabel}</span>
-                  </div>
-                </div>
-                <div className="marketplace-card__body">
-                  <span className="marketplace-card__kicker">
-                    {track.category}
-                  </span>
-                  <h2 className="marketplace-card__title">{track.title}</h2>
-                  <p className="marketplace-card__summary">{track.summary}</p>
-                  <div className="marketplace-card__meta-panel">
-                    <p className="marketplace-card__price">{track.priceLabel}</p>
-                    <p className="marketplace-card__meta">
-                      {track.freePreviewLabel}
-                    </p>
-                    {track.ratingLabel ? (
-                      <p className="marketplace-card__rating">
-                        {track.ratingLabel}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="marketplace-card__actions">
-                    <Link
-                      href={track.href ?? `/courses/${track.slug}`}
-                      className="button-solid px-3.5 py-2 text-xs"
-                    >
-                      View course
-                    </Link>
-                    {hasFreePreview ? (
-                      <Link
-                        href={
-                          track.freePreviewHref ??
-                          `/courses/${track.slug}#free-preview`
-                        }
-                        className="button-outline px-4 py-2.5 text-sm"
-                      >
-                        Free preview
-                      </Link>
-                    ) : null}
-                  </div>
-                </div>
-              </article>
+                }
+              />
             );
           })}
         </div>

@@ -7192,6 +7192,7 @@ button:hover > .dash-card,
 }
 
 .marketplace-card {
+  position: relative;
   display: flex;
   min-height: 100%;
   flex-direction: column;
@@ -7319,22 +7320,6 @@ button:hover > .dash-card,
   color: #ffffff;
 }
 
-.marketplace-card__media-caption {
-  position: absolute;
-  right: 0.95rem;
-  bottom: 0.9rem;
-  left: 0.95rem;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 0.76rem;
-  font-weight: 800;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.28);
-}
-
 .marketplace-card__body {
   display: flex;
   flex: 1;
@@ -7350,59 +7335,94 @@ button:hover > .dash-card,
   text-transform: uppercase;
 }
 
+/* Um cartao de curso, tres telas (home, catalogo, vitrine do professor).
+   O titulo saiu do display serifado de 1.9rem: naquele tamanho ele competia
+   com o titulo da propria pagina e um nome longo virava quatro linhas. Agora
+   e Manrope 600 entre 18 e 20px, cortado em duas linhas em qualquer tela. */
 .marketplace-card__title {
+  display: -webkit-box;
+  overflow: hidden;
   margin-top: 0.7rem;
   color: var(--color-primary);
-  font-family: var(--font-display);
-  font-size: 1.9rem;
-  font-weight: 700;
-  line-height: 1.05;
+  font-family: var(--font-sans);
+  font-size: clamp(1.125rem, 1.4vw, 1.25rem);
+  font-weight: 600;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Link esticado: o <a> mora no titulo (é dele o nome acessível do cartão) e o
+   ::after cobre o cartão inteiro, então clicar em qualquer canto navega. O
+   botão de salvar fica acima pelo z-index e continua clicável — sem <button>
+   aninhado dentro de <a>, que nenhum leitor de tela sabe anunciar. */
+.marketplace-card__link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.marketplace-card__link::after {
+  position: absolute;
+  z-index: 1;
+  content: "";
+  inset: 0;
+}
+
+.marketplace-card:focus-within {
+  border-color: var(--color-line-strong);
+}
+
+.marketplace-card__link:focus-visible::after {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -3px;
+  border-radius: 14px;
 }
 
 .marketplace-card__summary {
-  margin-top: 0.75rem;
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 0.6rem;
   color: var(--color-ink-soft);
   font-size: 0.88rem;
-  line-height: 1.7;
+  line-height: 1.6;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
-.marketplace-card__meta-panel {
-  display: grid;
-  gap: 0.4rem;
-  margin-top: 1.1rem;
-  border: 1px solid var(--color-line);
-  border-radius: 12px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.68), var(--color-surface-soft));
-  padding: 0.95rem;
+.marketplace-card__instructor {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+  color: var(--color-ink-soft);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.marketplace-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: auto;
+  border-top: 1px solid var(--color-line);
+  padding-top: 0.9rem;
 }
 
 .marketplace-card__price {
   color: var(--color-ink);
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: 900;
 }
 
-.marketplace-card__meta {
-  color: var(--color-ink-soft);
-  font-size: 0.76rem;
-  font-weight: 650;
-  line-height: 1.55;
-}
-
-.marketplace-card__rating {
+.marketplace-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   color: var(--color-primary);
-  font-size: 0.72rem;
-  font-weight: 900;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-}
-
-.marketplace-card__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-  margin-top: auto;
-  padding-top: 1.15rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .marketplace-empty {
@@ -7545,7 +7565,6 @@ button:hover > .dash-card,
 [data-theme="dark"] .marketplace-searchbox,
 [data-theme="dark"] .marketplace-select,
 [data-theme="dark"] .marketplace-view-toggle,
-[data-theme="dark"] .marketplace-card__meta-panel,
 [data-theme="dark"] .instructor-storefront-metrics,
 [data-theme="dark"] .instructor-storefront-metric__icon {
   background: var(--color-surface-soft);
@@ -7562,8 +7581,7 @@ button:hover > .dash-card,
     justify-content: center;
   }
 
-  .marketplace-page-title,
-  .marketplace-card__title {
+  .marketplace-page-title {
     font-size: 2rem;
   }
 

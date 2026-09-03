@@ -89,7 +89,7 @@ export default async function CourseDetailPage({
               segue montando por cima com o conteúdo interativo (preço, ofertas,
               currículo, checkout), que depende de sessão e de dados que mudam. */}
           {published ? (
-            <header className="mb-8">
+            <header id="overview" className="mb-8 scroll-mt-24">
               {/* A capa que o cartão do marketplace já mostra. Sem capa, nada:
                   não se inventa arte. */}
               {published.coverImageUrl ? (

@@ -305,6 +305,7 @@ export function teacherCourseToCourseCard(course: TeacherCourse): CourseCard {
       : undefined,
     sourceLabel: "Teacher published",
     ratingLabel,
+    ownerId: course.ownerId,
     // Raw signals for marketplace sorting (price / rating). Display strings
     // above stay the source of truth for rendering; these feed comparators only.
     priceAmountMinor: course.priceAmountMinor ?? null,
