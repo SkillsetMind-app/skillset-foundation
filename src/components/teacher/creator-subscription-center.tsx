@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { StatusChip } from "@/components/shared/status-chip";
+import { buttonClasses, Card, InlineAlert } from "@/components/ui";
 import type { CourseSubscription } from "@/domain/course-subscription";
 import {
   buildCreatorRenewalHistory,
@@ -127,9 +128,9 @@ export function CreatorSubscriptionCenter() {
 
   if (failed.subscriptions || failed.courses) {
     return (
-      <p className="rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+      <InlineAlert tone="error">
         {error || "Subscription reporting is temporarily unavailable."}
-      </p>
+      </InlineAlert>
     );
   }
 
@@ -143,9 +144,9 @@ export function CreatorSubscriptionCenter() {
   return (
     <>
       {error ? (
-        <p className="mb-5 rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <InlineAlert tone="error" className="mb-5">
           {error}
-        </p>
+        </InlineAlert>
       ) : null}
       <CreatorSubscriptionCenterView
         subscriptions={subscriptions}
@@ -223,7 +224,7 @@ export function CreatorSubscriptionCenterView({
         <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
           Create a monthly or yearly product to start recurring billing and subscriber reporting.
         </p>
-        <Link href="/teach/builder" className="button-solid mt-5 inline-flex px-4 py-2.5 text-sm">
+        <Link href="/teach/builder" className={buttonClasses({}, "mt-5")}>
           Create subscription product
         </Link>
       </section>
@@ -269,7 +270,7 @@ export function CreatorSubscriptionCenterView({
 
       <section className="border-y border-[var(--color-line)] py-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="inline-flex rounded-[8px] border border-[var(--color-line)] bg-white p-1" role="tablist">
+          <div className="inline-flex rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] p-1" role="tablist">
             <TabButton active={tab === "subscribers"} onClick={() => setTab("subscribers")}>
               Subscribers
             </TabButton>
@@ -293,14 +294,14 @@ export function CreatorSubscriptionCenterView({
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search subscriber or product"
-                  className="min-h-11 w-full rounded-[8px] border border-[var(--color-line)] bg-white py-2 pl-9 pr-3 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)]"
+                  className="min-h-11 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] py-2 pl-9 pr-3 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)]"
                 />
               </label>
               <select
                 aria-label="Filter subscriber status"
                 value={filter}
                 onChange={(event) => setFilter(event.target.value as SubscriberFilter)}
-                className="min-h-11 rounded-[8px] border border-[var(--color-line)] bg-white px-3 text-sm font-semibold text-[var(--color-primary)]"
+                className="min-h-11 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 text-sm font-semibold text-[var(--color-primary)]"
               >
                 <option value="all">All statuses</option>
                 <option value="active">Active</option>
@@ -454,14 +455,14 @@ export function CreatorSubscriptionCenterView({
 
 function MetricCard({ label, value, detail, icon: Icon }: { label: string; value: string; detail: string; icon: typeof Users }) {
   return (
-    <article className="rounded-[8px] border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]">
+    <Card as="article" padding="sm">
       <div className="flex items-center justify-between gap-3">
         <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">{label}</p>
         <Icon aria-hidden="true" size={16} className="shrink-0 text-[var(--color-accent-fg)]" />
       </div>
       <p className="mt-3 text-2xl font-bold text-[var(--color-primary)]">{value}</p>
       <p className="mt-2 text-xs leading-5 text-[var(--color-ink-soft)]">{detail}</p>
-    </article>
+    </Card>
   );
 }
 
@@ -472,7 +473,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`min-h-11 rounded-[6px] px-4 text-sm font-bold ${active ? "bg-[var(--color-primary)] text-white" : "text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"}`}
+      className={`min-h-11 rounded-[var(--radius-xs)] px-4 text-sm font-bold ${active ? "bg-[var(--color-primary)] text-white" : "text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"}`}
     >
       {children}
     </button>
@@ -483,7 +484,7 @@ function SubscriptionCenterLoading() {
   return (
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Loading subscriptions">
       {[0, 1, 2, 3].map((item) => (
-        <div key={item} className="h-32 animate-pulse rounded-[8px] border border-[var(--color-line)] bg-white" />
+        <div key={item} className="h-32 animate-pulse rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)]" />
       ))}
     </section>
   );

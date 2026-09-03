@@ -4,6 +4,7 @@ import { Trash2, UploadCloud } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { Button, Card, Field, InlineAlert, SectionHeader } from "@/components/ui";
 import type {
   StorefrontConfig,
   StorefrontThemePreset,
@@ -78,7 +79,7 @@ function StorefrontImageUpload({
   return (
     <div className="grid gap-3 border-t border-[var(--color-line)] pt-4 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-center">
       <div
-        className={`relative grid overflow-hidden rounded-[8px] border border-[var(--color-line)] bg-white ${
+        className={`relative grid overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] ${
           kind === "logo" ? "aspect-square w-24 place-items-center" : "aspect-[16/7] w-full"
         }`}
       >
@@ -107,7 +108,7 @@ function StorefrontImageUpload({
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <label
-            className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-[8px] border border-dashed border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] ${
+            className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] ${
               isUploading ? "pointer-events-none opacity-60" : ""
             }`}
           >
@@ -133,7 +134,7 @@ function StorefrontImageUpload({
               disabled={isUploading}
               aria-label={`Remove storefront ${kind === "logo" ? "logo" : "hero image"}`}
               title={`Remove ${label.toLowerCase()}`}
-              className="inline-flex min-h-11 items-center gap-2 rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] disabled:opacity-60"
+              className="inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] disabled:opacity-60"
             >
               <Trash2 aria-hidden="true" size={15} />
               Remove
@@ -149,12 +150,9 @@ function StorefrontImageUpload({
             de tela. No rodapé do formulário ficava fora da tela no celular, e o
             botão voltava a "Upload" como se nada tivesse acontecido. */}
         {error ? (
-          <p
-            role="alert"
-            className="mt-2 rounded-[8px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]"
-          >
+          <InlineAlert tone="error" className="mt-2 px-3 py-2 text-xs">
             {error}
-          </p>
+          </InlineAlert>
         ) : null}
       </div>
     </div>
@@ -467,27 +465,21 @@ export function StorefrontSettingsPanel() {
 
   return (
     <section className="settings-section-card">
-      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-        Teacher Studio
-      </p>
-      <h2 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
-        Storefront branding
-      </h2>
-      <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        Brand your public instructor page &mdash; logo, hero image, accent color,
-        and the order your courses appear in. Saved here now; your public
-        storefront goes live in a later step.
-      </p>
+      <SectionHeader
+        eyebrow="Teacher Studio"
+        title="Storefront branding"
+        description="Brand your public instructor page — logo, hero image, accent color, and the order your courses appear in. Saved here now; your public storefront goes live in a later step."
+      />
 
       {/* Live brand preview — how your storefront header reads at a glance. */}
-      <div className="mt-6 overflow-hidden rounded-[16px] border border-[var(--color-line)] shadow-[var(--shadow-soft)]">
+      <div className="mt-6 overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] shadow-[var(--shadow-soft)]">
         <div className="relative flex min-h-32 items-center gap-4 overflow-hidden bg-[var(--color-primary)] px-5 py-6 sm:px-7">
           {heroImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={heroImageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
           ) : null}
           <span className="absolute inset-0 bg-[rgba(10,24,43,0.66)]" aria-hidden="true" />
-          <span className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-[8px] bg-white/10 text-xl font-bold text-white ring-1 ring-white/20">
+          <span className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-[var(--radius-sm)] bg-white/10 text-xl font-bold text-white ring-1 ring-white/20">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -512,33 +504,36 @@ export function StorefrontSettingsPanel() {
       </div>
 
       <form className="mt-6 grid gap-5" onSubmit={handleSubmit}>
-        <div className="grid gap-4 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
+        <Card tone="soft" padding="sm" shadow={false} className="grid gap-4">
           <p className="text-sm font-semibold text-[var(--color-ink)]">
             Brand
           </p>
 
-          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Accent color
-            <div className="flex items-center gap-3">
-              <input
-                type="color"
-                value={previewAccent}
-                onChange={(event) => setAccentColor(event.target.value)}
-                aria-label="Accent color picker"
-                className="h-11 w-14 shrink-0 cursor-pointer rounded-[10px] border border-[var(--color-line)] bg-white p-1"
-              />
-              <input
-                value={accentColor}
-                onChange={(event) => setAccentColor(event.target.value)}
-                placeholder="#183a5e"
-                spellCheck={false}
-                className="min-w-0 flex-1 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
-              />
-            </div>
-            <span className="text-xs font-normal text-[var(--color-ink-soft)]">
-              6-digit hex. Leave blank to use the platform default.
-            </span>
-          </label>
+          <Field
+            id="storefront-accent-color"
+            label="Accent color"
+            hint="6-digit hex. Leave blank to use the platform default."
+          >
+            {(a11y) => (
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={previewAccent}
+                  onChange={(event) => setAccentColor(event.target.value)}
+                  aria-label="Accent color picker"
+                  className="h-11 w-14 shrink-0 cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] p-1"
+                />
+                <input
+                  {...a11y}
+                  value={accentColor}
+                  onChange={(event) => setAccentColor(event.target.value)}
+                  placeholder="#183a5e"
+                  spellCheck={false}
+                  className="min-w-0 flex-1 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                />
+              </div>
+            )}
+          </Field>
 
           <StorefrontImageUpload
             kind="logo"
@@ -564,40 +559,46 @@ export function StorefrontSettingsPanel() {
             onRemove={() => handleStorefrontImageRemove("hero")}
           />
 
-          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Theme preset
-            <select
-              value={themePreset}
-              onChange={(event) =>
-                setThemePreset(event.target.value as StorefrontThemePreset)
-              }
-              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
-            >
-              {storefrontThemePresets.map((preset) => (
-                <option key={preset} value={preset}>
-                  {themePresetLabels[preset]}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Field id="storefront-theme-preset" label="Theme preset">
+            {(a11y) => (
+              <select
+                {...a11y}
+                value={themePreset}
+                onChange={(event) =>
+                  setThemePreset(event.target.value as StorefrontThemePreset)
+                }
+                className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              >
+                {storefrontThemePresets.map((preset) => (
+                  <option key={preset} value={preset}>
+                    {themePresetLabels[preset]}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
 
-          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Tagline
-            <textarea
-              value={tagline}
-              onChange={(event) => setTagline(event.target.value)}
-              rows={2}
-              maxLength={maxStorefrontTaglineLength}
-              placeholder="One line that sums up what you teach."
-              className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
-            />
-            <span className="text-xs font-normal text-[var(--color-ink-soft)]">
-              {tagline.trim().length}/{maxStorefrontTaglineLength} characters
-            </span>
-          </label>
-        </div>
+          <Field id="storefront-tagline" label="Tagline">
+            {(a11y) => (
+              <>
+                <textarea
+                  {...a11y}
+                  value={tagline}
+                  onChange={(event) => setTagline(event.target.value)}
+                  rows={2}
+                  maxLength={maxStorefrontTaglineLength}
+                  placeholder="One line that sums up what you teach."
+                  className="resize-none rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                />
+                <span className="text-xs font-normal text-[var(--color-ink-soft)]">
+                  {tagline.trim().length}/{maxStorefrontTaglineLength} characters
+                </span>
+              </>
+            )}
+          </Field>
+        </Card>
 
-        <div className="grid gap-3 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
+        <Card tone="soft" padding="sm" shadow={false} className="grid gap-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <p className="text-sm font-semibold text-[var(--color-ink)]">
               Course showcase order
@@ -619,7 +620,7 @@ export function StorefrontSettingsPanel() {
                 return (
                   <li
                     key={course.id}
-                    className="flex flex-wrap items-center gap-3 rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2.5"
+                    className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2.5"
                   >
                     <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--color-surface-soft)] text-xs font-semibold text-[var(--color-ink-soft)]">
                       {index + 1}
@@ -633,7 +634,7 @@ export function StorefrontSettingsPanel() {
                         setFeaturedCourseId(isFeatured ? null : course.id)
                       }
                       aria-pressed={isFeatured}
-                      className={`shrink-0 rounded-[8px] border px-2.5 py-1.5 text-xs font-semibold ${
+                      className={`shrink-0 rounded-[var(--radius-sm)] border px-2.5 py-1.5 text-xs font-semibold ${
                         isFeatured
                           ? "border-[var(--color-primary)] bg-[rgba(24,58,94,0.08)] text-[var(--color-primary)]"
                           : "border-[var(--color-line)] text-[var(--color-ink-soft)]"
@@ -647,7 +648,7 @@ export function StorefrontSettingsPanel() {
                         onClick={() => reorder(index, -1)}
                         disabled={index === 0}
                         aria-label={`Move ${course.title} up`}
-                        className="rounded-[8px] border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40"
+                        className="rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40"
                       >
                         ↑
                       </button>
@@ -656,7 +657,7 @@ export function StorefrontSettingsPanel() {
                         onClick={() => reorder(index, 1)}
                         disabled={index === orderedCourses.length - 1}
                         aria-label={`Move ${course.title} down`}
-                        className="rounded-[8px] border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40"
+                        className="rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40"
                       >
                         ↓
                       </button>
@@ -666,23 +667,19 @@ export function StorefrontSettingsPanel() {
               })}
             </ol>
           )}
-        </div>
+        </Card>
 
-        {error ? (
-          <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {error}
-          </p>
-        ) : null}
+        {error ? <InlineAlert tone="error">{error}</InlineAlert> : null}
 
         {success ? <p className="info-notice">{success}</p> : null}
 
-        <button
+        <Button
           type="submit"
           disabled={isSaving || uploadingImages.size > 0}
-          className="button-solid justify-self-start px-4 py-2.5 text-sm disabled:opacity-60"
+          className="justify-self-start"
         >
           {isSaving ? "Saving..." : "Save storefront"}
-        </button>
+        </Button>
       </form>
     </section>
   );

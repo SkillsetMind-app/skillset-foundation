@@ -2,10 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { StatusChip } from "@/components/shared/status-chip";
+import {
+  buttonClasses,
+  Button,
+  Card,
+  Eyebrow,
+  Field,
+  InlineAlert,
+} from "@/components/ui";
 import type { CreatorVerificationCase } from "@/domain/creator-verification";
 import {
   fetchRequireCreatorVerification,
@@ -17,31 +25,7 @@ import { logSubscriptionError } from "@/lib/data/subscription-error";
 const MAX_EVIDENCE_LINKS = 6;
 
 const inputClass =
-  "rounded-[10px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
-
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: ReactNode;
-}) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-        {label}
-      </span>
-      {children}
-      {hint ? (
-        <span className="text-xs font-normal text-[var(--color-ink-soft)]">
-          {hint}
-        </span>
-      ) : null}
-    </label>
-  );
-}
+  "rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
@@ -167,12 +151,10 @@ export function CreatorVerificationPanel() {
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-6">
-      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+      <Card as="section" padding="lg">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--color-accent-fg)]">
-              Teacher studio
-            </p>
+            <Eyebrow>Teacher studio</Eyebrow>
             <h1 className="display-title mt-1 text-2xl text-[var(--color-primary)]">
               Professional verification
             </h1>
@@ -193,18 +175,18 @@ export function CreatorVerificationPanel() {
           (registry lookup page, license directory, professional profile).
           Document upload ships later — for now the review works from links.
         </p>
-      </section>
+      </Card>
 
       {!caseLoaded ? (
-        <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+        <Card as="section" padding="lg">
           <p className="text-sm text-[var(--color-ink-soft)]">
             Loading your verification status...
           </p>
-        </section>
+        </Card>
       ) : null}
 
       {caseLoaded && status === "approved" ? (
-        <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+        <Card as="section" padding="lg">
           <h2 className="text-base font-semibold text-[var(--color-ink)]">
             You are verified
           </h2>
@@ -212,17 +194,14 @@ export function CreatorVerificationPanel() {
             Your professional verification is approved. It applies to every
             course you publish — nothing else to do here.
           </p>
-          <Link
-            href="/teach"
-            className="button-solid mt-4 inline-block px-4 py-2 text-xs"
-          >
+          <Link href="/teach" className={buttonClasses({ size: "sm" }, "mt-4")}>
             Back to studio
           </Link>
-        </section>
+        </Card>
       ) : null}
 
       {caseLoaded && status === "pending" && verificationCase ? (
-        <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+        <Card as="section" padding="lg">
           <h2 className="text-base font-semibold text-[var(--color-ink)]">
             In review
           </h2>
@@ -262,13 +241,13 @@ export function CreatorVerificationPanel() {
               </ul>
             </div>
           ) : null}
-        </section>
+        </Card>
       ) : null}
 
       {caseLoaded
       && (status === "needs_changes" || status === "rejected")
       && verificationCase?.reviewNote ? (
-        <section className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-6">
+        <Card as="section" tone="soft" padding="lg" shadow={false}>
           <h2 className="text-base font-semibold text-[var(--color-ink)]">
             {status === "needs_changes"
               ? "The review team asked for changes"
@@ -282,106 +261,131 @@ export function CreatorVerificationPanel() {
               ? "Update the form below and resubmit."
               : "You can submit a new application below."}
           </p>
-        </section>
+        </Card>
       ) : null}
 
       {showForm ? (
-        <form
-          onSubmit={handleSubmit}
-          className="grid gap-4 rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]"
-        >
-          <h2 className="text-base font-semibold text-[var(--color-ink)]">
-            {status === "needs_changes"
-              ? "Resubmit your application"
-              : "Apply for verification"}
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Profession">
-              <input
-                value={profession}
-                onChange={(event) => setProfession(event.target.value)}
-                placeholder="e.g. Performance coach"
+        <Card as="section" padding="lg">
+          <form onSubmit={handleSubmit} className="grid gap-4">
+            <h2 className="text-base font-semibold text-[var(--color-ink)]">
+              {status === "needs_changes"
+                ? "Resubmit your application"
+                : "Apply for verification"}
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field id="verification-profession" label="Profession" required>
+                {(a11y) => (
+                  <input
+                    {...a11y}
+                    value={profession}
+                    onChange={(event) => setProfession(event.target.value)}
+                    placeholder="e.g. Performance coach"
+                    minLength={2}
+                    maxLength={120}
+                    className={inputClass}
+                  />
+                )}
+              </Field>
+              <Field
+                id="verification-registry-type"
+                label="Registry / license type"
                 required
-                minLength={2}
-                maxLength={120}
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Registry / license type">
-              <input
-                value={registrationType}
-                onChange={(event) => setRegistrationType(event.target.value)}
-                placeholder="e.g. State medical board"
+              >
+                {(a11y) => (
+                  <input
+                    {...a11y}
+                    value={registrationType}
+                    onChange={(event) => setRegistrationType(event.target.value)}
+                    placeholder="e.g. State medical board"
+                    minLength={2}
+                    maxLength={60}
+                    className={inputClass}
+                  />
+                )}
+              </Field>
+              <Field
+                id="verification-registration-id"
+                label="Registration number"
                 required
-                minLength={2}
-                maxLength={60}
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Registration number">
-              <input
-                value={registrationId}
-                onChange={(event) => setRegistrationId(event.target.value)}
-                placeholder="e.g. 123456-7"
+              >
+                {(a11y) => (
+                  <input
+                    {...a11y}
+                    value={registrationId}
+                    onChange={(event) => setRegistrationId(event.target.value)}
+                    placeholder="e.g. 123456-7"
+                    minLength={2}
+                    maxLength={80}
+                    className={inputClass}
+                  />
+                )}
+              </Field>
+              <Field
+                id="verification-region"
+                label="Issuing country or state"
                 required
-                minLength={2}
-                maxLength={80}
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Issuing country or state">
-              <input
-                value={registrationRegion}
-                onChange={(event) => setRegistrationRegion(event.target.value)}
-                placeholder="e.g. Florida, USA"
-                required
-                minLength={2}
-                maxLength={80}
-                className={inputClass}
-              />
-            </Field>
-          </div>
-          <Field
-            label="Evidence links"
-            hint={`One https:// link per line, up to ${MAX_EVIDENCE_LINKS} — registry lookup page, license directory, professional profile.`}
-          >
-            <textarea
-              value={evidenceLinksText}
-              onChange={(event) => setEvidenceLinksText(event.target.value)}
-              rows={4}
-              placeholder={"https://registry.example.gov/lookup?id=123456\nhttps://www.linkedin.com/in/you"}
-              className={`resize-none ${inputClass}`}
-            />
-          </Field>
-          <Field label="Note to the review team (optional)">
-            <textarea
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              rows={3}
-              maxLength={2000}
-              placeholder="Anything that helps us verify you faster."
-              className={`resize-none ${inputClass}`}
-            />
-          </Field>
-          {submitError ? (
-            <p className="text-sm text-[var(--color-danger,#b42318)]">
-              {submitError}
-            </p>
-          ) : null}
-          <div>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="button-solid px-5 py-2.5 text-sm disabled:opacity-60"
+              >
+                {(a11y) => (
+                  <input
+                    {...a11y}
+                    value={registrationRegion}
+                    onChange={(event) => setRegistrationRegion(event.target.value)}
+                    placeholder="e.g. Florida, USA"
+                    minLength={2}
+                    maxLength={80}
+                    className={inputClass}
+                  />
+                )}
+              </Field>
+            </div>
+            <Field
+              id="verification-evidence"
+              label="Evidence links"
+              hint={`One https:// link per line, up to ${MAX_EVIDENCE_LINKS} — registry lookup page, license directory, professional profile.`}
             >
-              {submitting
-                ? "Submitting..."
-                : status === "needs_changes"
-                  ? "Resubmit for review"
-                  : "Submit for review"}
-            </button>
-          </div>
-        </form>
+              {(a11y) => (
+                <textarea
+                  {...a11y}
+                  value={evidenceLinksText}
+                  onChange={(event) => setEvidenceLinksText(event.target.value)}
+                  rows={4}
+                  placeholder={"https://registry.example.gov/lookup?id=123456\nhttps://www.linkedin.com/in/you"}
+                  className={`resize-none ${inputClass}`}
+                />
+              )}
+            </Field>
+            <Field
+              id="verification-note"
+              label="Note to the review team (optional)"
+            >
+              {(a11y) => (
+                <textarea
+                  {...a11y}
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  rows={3}
+                  maxLength={2000}
+                  placeholder="Anything that helps us verify you faster."
+                  className={`resize-none ${inputClass}`}
+                />
+              )}
+            </Field>
+            {/* O erro do envio era um <p> vermelho solto: quem usa leitor de
+                tela mandava o formulário e não ouvia nada. */}
+            {submitError ? (
+              <InlineAlert tone="error">{submitError}</InlineAlert>
+            ) : null}
+            <div>
+              <Button type="submit" disabled={submitting}>
+                {submitting
+                  ? "Submitting..."
+                  : status === "needs_changes"
+                    ? "Resubmit for review"
+                    : "Submit for review"}
+              </Button>
+            </div>
+          </form>
+        </Card>
       ) : null}
     </div>
   );
