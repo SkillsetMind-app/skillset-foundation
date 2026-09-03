@@ -1,14 +1,15 @@
-"use client";
-
 import Link from "next/link";
 import { ScrollText, BadgeCheck } from "lucide-react";
 
-import { useTranslation } from "@/components/i18n/i18n-provider";
 import { BrandName } from "@/components/shared/brand-name";
 import { RevealSection } from "@/components/shared/reveal-section";
+import { getServerTranslation } from "@/lib/i18n/server";
 
-export function PromisePreviewBand() {
-  const { t } = useTranslation();
+// Server component: só texto traduzido, nenhum estado. Sai do bundle do
+// navegador; o que precisa do cliente aqui é o RevealSection, que continua
+// cliente e é montado como filho.
+export async function PromisePreviewBand() {
+  const { t } = await getServerTranslation();
 
   // All six commitments, in order — listed as the clauses of the public charter.
   // Mirrors the canonical list on /promise so the visual stays truthful. The

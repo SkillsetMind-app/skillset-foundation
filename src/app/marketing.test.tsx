@@ -12,34 +12,23 @@ vi.mock("@/components/auth/auth-provider", () => ({
   }),
 }));
 
-// SiteFooter is an async server component that reads the locale via
-// next/headers — not renderable in this synchronous jsdom test, and not what
-// this test asserts (the marketing hero copy). Stub it out.
-vi.mock("@/components/site/site-footer", () => ({
-  SiteFooter: () => null,
-}));
+// O rodapé e as cinco seções de marketing são server components assíncronos:
+// resolvem o idioma via next/headers e não renderizam neste teste síncrono de
+// jsdom. O conteúdo delas é conferido em site-frame.test.tsx, montando cada
+// seção direto com `render(await Secao())`. Aqui sobra o que este arquivo
+// sempre olhou de verdade: o cabeçalho, que continua sendo cliente.
+vi.mock("@/components/site/site-footer", () => ({ SiteFooter: () => null }));
+vi.mock("@/components/site/marketing-hero", () => ({ MarketingHero: () => null }));
+vi.mock("@/components/site/how-it-works-strip", () => ({ HowItWorksStrip: () => null }));
+vi.mock("@/components/site/capabilities-grid", () => ({ CapabilitiesGrid: () => null }));
+vi.mock("@/components/site/promise-preview-band", () => ({ PromisePreviewBand: () => null }));
+vi.mock("@/components/site/for-creators-band", () => ({ ForCreatorsBand: () => null }));
 
 afterEach(() => {
   cleanup();
 });
 
 describe("marketing home", () => {
-  it("renders the product thesis", () => {
-    render(<Home />);
-
-    expect(
-      screen.getByText("Your knowledge changes lives.", {
-        exact: false,
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Three steps from your method to a published program."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Six commitments. Written down. Public."),
-    ).toBeInTheDocument();
-  });
-
   it("lists the header in the order the sections appear", () => {
     render(<Home />);
 
@@ -55,24 +44,5 @@ describe("marketing home", () => {
       "For creators",
       "Pricing",
     ]);
-  });
-
-  it("shows the promise as one charter, on every screen size", () => {
-    render(<Home />);
-
-    // Each clause appears exactly once: the 01/03/04 cards that repeated
-    // three of them out of order are gone.
-    expect(screen.getByText("Fee-lock for 24 months")).toBeInTheDocument();
-    expect(
-      screen.queryByText(/Export every course, student, sale, and post/),
-    ).not.toBeInTheDocument();
-
-    const card = screen
-      .getByText("Public record · v1.0")
-      .closest("div.relative.overflow-hidden");
-    expect(card).not.toHaveClass("hidden");
-    expect(
-      screen.getByRole("link", { name: "Read the full Promise" }),
-    ).toHaveAttribute("href", "/promise");
   });
 });

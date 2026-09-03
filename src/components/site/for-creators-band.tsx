@@ -1,16 +1,17 @@
-"use client";
-
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 
-import { useTranslation } from "@/components/i18n/i18n-provider";
 import { RevealSection } from "@/components/shared/reveal-section";
 import { planById } from "@/data/plans";
+import { getServerTranslation } from "@/lib/i18n/server";
 
 const freePlan = planById("free");
 
-export function ForCreatorsBand() {
-  const { t } = useTranslation();
+// Server component: só texto traduzido, nenhum estado. Sai do bundle do
+// navegador; o que precisa do cliente aqui é o RevealSection, que continua
+// cliente e é montado como filho.
+export async function ForCreatorsBand() {
+  const { t } = await getServerTranslation();
 
   const trustBullets = [
     t("home.creators.bullet1").replace(

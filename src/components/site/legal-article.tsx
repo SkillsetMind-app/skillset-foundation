@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 
-import { SiteNav } from "@/components/site/site-nav";
-import { SiteFooter } from "@/components/site/site-footer";
+import { PublicPage } from "@/components/site/public-page";
 
-// Shared chrome for the long-form legal documents (/legal/*). Content stays in
-// each page file; this only owns the visual frame so the three documents can't
-// drift apart visually.
+// Os documentos longos (/legal/*, /refund-policy) usam a MESMA moldura das
+// outras páginas públicas: o PublicPage, em modo leitura. Antes eram um molde
+// à parte — cartão dentro de cartão, os dois com sombra, e um h1 em text-6xl
+// fixo que não era o .page-title do resto do site. Os arquivos de página não
+// mudam: continuam passando kicker/title/intro/effectiveDate.
 
 type LegalArticleProps = {
   kicker: string;
@@ -23,30 +24,23 @@ export function LegalArticle({
   children,
 }: LegalArticleProps) {
   return (
-    <div className="page-shell">
-      <SiteNav />
-      <main className="mx-auto w-full max-w-5xl px-6 py-12 sm:px-8">
-        <section className="rounded-[18px] border border-[var(--color-line)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-soft)] sm:p-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {kicker}
-          </p>
-          <h1 className="display-title mt-4 text-5xl leading-none text-[var(--color-primary)] sm:text-6xl">
-            {title}
-          </h1>
-          <div className="mt-6 text-sm leading-8 text-[var(--color-ink-soft)]">
-            {intro}
-          </div>
+    <PublicPage
+      reading
+      eyebrow={kicker}
+      title={title}
+      description={
+        <>
+          {intro}
           <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
             Effective {effectiveDate}
           </p>
-        </section>
-
-        <section className="mt-6 space-y-10 rounded-[18px] border border-[var(--color-line)] bg-[var(--color-surface)] p-8 text-sm leading-8 text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)] sm:p-10">
-          {children}
-        </section>
-      </main>
-      <SiteFooter />
-    </div>
+        </>
+      }
+    >
+      <div className="mt-10 space-y-10 border-t border-[var(--color-line)] pt-10 text-sm leading-8 text-[var(--color-ink-soft)]">
+        {children}
+      </div>
+    </PublicPage>
   );
 }
 
