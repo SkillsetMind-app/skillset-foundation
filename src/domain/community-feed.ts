@@ -77,7 +77,12 @@ export function filterPosts(
   });
 }
 
-export function countOpenQuestions(posts: CommunityPost[]): number {
+/** Aceita qualquer coisa com as duas colunas da regra: o contador da aba
+ *  Community le so `category` e `accepted_comment_id`, sem trazer o post
+ *  inteiro do banco. */
+export function countOpenQuestions(
+  posts: Pick<CommunityPost, "category" | "acceptedCommentId">[],
+): number {
   return posts.filter((post) => postKind(post) === "question" && !isAnswered(post)).length;
 }
 

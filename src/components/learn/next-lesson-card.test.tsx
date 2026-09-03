@@ -35,15 +35,38 @@ describe("NextLessonCard", () => {
     expect(screen.getByText(/Next lesson in 5s/)).toBeInTheDocument();
   });
 
-  it("'Cancelar' interrompe: onCancel dispara e onPlay nunca", () => {
+  it("'Cancelar' faz o cartao DESCER e so entao avisa o pai; onPlay nunca", () => {
+    // Antes o cartao aparecia e sumia seco, sem nada entre um quadro e outro.
     const onPlay = vi.fn();
     const onCancel = vi.fn();
     render(<NextLessonCard lesson={lesson} onPlay={onPlay} onCancel={onCancel} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
+    // Ainda na tela, saindo: o pai so desmonta quando a animacao termina.
+    expect(screen.getByRole("dialog", { name: "Next lesson" })).toHaveClass("is-leaving");
+    expect(onCancel).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
     expect(onCancel).toHaveBeenCalledTimes(1);
+
+    // E a contagem parou junto: nem depois dos 5 s o cartao troca de aula.
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
     expect(onPlay).not.toHaveBeenCalled();
+  });
+
+  it("entra subindo com fade — animacao, nao aparicao seca", () => {
+    render(<NextLessonCard lesson={lesson} onPlay={() => {}} onCancel={() => {}} />);
+
+    // A animacao de entrada mora no CSS, na classe do cartao.
+    expect(screen.getByRole("dialog", { name: "Next lesson" })).toHaveClass(
+      "member-next-lesson",
+    );
+    expect(screen.getByRole("dialog", { name: "Next lesson" })).not.toHaveClass("is-leaving");
   });
 
   it("'Assistir agora' toca na hora", () => {

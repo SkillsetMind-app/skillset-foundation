@@ -12,6 +12,7 @@ import type {
   CommunityReportStatus,
   CommunityReportTargetType,
 } from "@/domain/community-report";
+import { countOpenQuestions } from "@/domain/community-feed";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -182,6 +183,38 @@ export function subscribeToCommunityPosts(
   return () => {
     void supabase.removeChannel(channel);
   };
+}
+
+/** So o NUMERO para o contador da aba Community — quantas perguntas do curso
+ *  seguem sem resposta aceita.
+ *
+ *  POR QUE NAO REUSA subscribeToCommunityPosts: o contador precisa existir em
+ *  TODA aba (a pessoa esta na aula e nao sabe que responderam), e abrir um
+ *  segundo canal realtime do feed inteiro so para mostrar um numero e caro.
+ *  Uma leitura ao abrir a sala, so as duas colunas da regra. A regra em si
+ *  mora no dominio (countOpenQuestions), nao aqui.
+ *
+ *  ponytail: leitura unica na montagem, sem realtime. Se o numero precisar
+ *  mudar sem recarregar, o upgrade e trocar por uma inscricao. */
+export async function countOpenCommunityQuestions(courseSlug: string): Promise<number> {
+  const supabase = getSupabaseBrowserClient();
+
+  const { data, error } = await supabase
+    .from("community_posts")
+    .select("category, accepted_comment_id")
+    .eq("course_slug", courseSlug)
+    .limit(200);
+
+  if (error) {
+    throw error;
+  }
+
+  return countOpenQuestions(
+    (data ?? []).map((row) => ({
+      category: row.category as CommunityPostCategory,
+      acceptedCommentId: row.accepted_comment_id ?? null,
+    })),
+  );
 }
 
 // Teacher/admin moderation: toggle a post's pinned state. The write touches only

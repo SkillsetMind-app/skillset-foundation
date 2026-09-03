@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CoursePlaylist } from "@/components/learn/course-playlist";
 import type { LessonUnlockState } from "@/domain/drip-policy";
@@ -45,6 +45,10 @@ function renderPlaylist(overrides: Partial<Parameters<typeof CoursePlaylist>[0]>
 }
 
 describe("CoursePlaylist", () => {
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
   it("destaca a aula atual, abre so o modulo dela e fecha os outros", () => {
     renderPlaylist();
 
@@ -109,6 +113,37 @@ describe("CoursePlaylist", () => {
     // "Setup" e a 2a aula do curso — continua "2" mesmo sendo a unica na tela.
     // (Aula atual mostra o icone de play; forcamos outra selecao no proximo teste.)
     expect(container.querySelectorAll(".member-playlist__lesson")).toHaveLength(1);
+  });
+
+  it("trocar de aula rola a lista ate a aula atual — a pessoa nao perde o lugar", () => {
+    // A aula atual era destacada, mas a lista ficava onde estava: o destaque
+    // caia fora da area visivel e a pessoa tinha que cacar onde parou.
+    const scrolled: Array<{ element: Element; options: unknown }> = [];
+    Element.prototype.scrollIntoView = function scrollIntoView(
+      this: Element,
+      options?: unknown,
+    ) {
+      scrolled.push({ element: this, options });
+    } as Element["scrollIntoView"];
+
+    const { rerender } = renderPlaylist({ selectedLessonId: "l1" });
+    scrolled.length = 0;
+
+    rerender(
+      <CoursePlaylist
+        modules={modules}
+        selectedLessonId="l2"
+        completedLessonIds={["l1"]}
+        unlockStateById={unlockStateById}
+        onSelect={() => {}}
+      />,
+    );
+
+    expect(scrolled).toHaveLength(1);
+    expect(scrolled[0].element).toHaveClass("is-current");
+    expect(scrolled[0].element).toHaveTextContent("Setup");
+    // "nearest": rola o minimo, e nao mexe se a linha ja estiver a vista.
+    expect(scrolled[0].options).toMatchObject({ block: "nearest" });
   });
 
   it("a numeracao e do curso inteiro (a 2a aula e '2' mesmo filtrada)", () => {

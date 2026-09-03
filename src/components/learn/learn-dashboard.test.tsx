@@ -255,6 +255,18 @@ describe("LearnDashboard", () => {
     ).toBeInTheDocument();
   });
 
+  it("titulo de secao nao usa a serifa de display — Manrope 600, tamanho de cartao", async () => {
+    // Cormorant e uma serifa de DISPLAY: em 24px, dentro de um cartao, ela
+    // some — vira "quase o texto do corpo", so que mais claro.
+    render(<LearnDashboard />);
+
+    for (const name of ["Continue watching", "My courses"]) {
+      const heading = await screen.findByRole("heading", { name });
+      expect(heading).not.toHaveClass("display-title");
+      expect(heading.className).toContain("font-semibold");
+    }
+  });
+
   it("'Continue watching' abre na aula seguinte a ultima concluida", async () => {
     render(<LearnDashboard />);
 

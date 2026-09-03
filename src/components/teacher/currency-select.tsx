@@ -16,9 +16,14 @@ import {
 // grandes. E em Gerenciar → Preços a moeda era um campo de texto livre de três
 // letras: aceitava "ABC", que o Stripe recusa na hora de cobrar.
 //
-// Aqui: `w-full min-w-0` deixa o select encolher junto com a coluna (o texto
-// da opção escolhida é cortado pelo navegador, não pela borda do cartão), e as
-// duas telas passam a oferecer exatamente a lista que o Stripe aceita.
+// Aqui: `w-full min-w-0` deixa o select encolher junto com a coluna, e as duas
+// telas passam a oferecer exatamente a lista que o Stripe aceita.
+//
+// E a opção ESCOLHIDA mostra só o código. Um <select> fechado exibe o texto da
+// opção selecionada: com "USD - US Dollar" ali, a moeda escolhida chegava
+// cortada no meio do nome ("USD - US Dol…") numa coluna estreita. Mostrando só
+// "USD" ela cabe inteira. As demais opções seguem com código + nome — que é o
+// que a pessoa precisa ler para ESCOLHER; a que ela já escolheu, não.
 const secondaryCurrencies = supportedStripeCurrencies.filter(
   (currency) => !(topSkillsetCurrencies as readonly string[]).includes(currency),
 );
@@ -55,17 +60,23 @@ export function CurrencySelect({
       <optgroup label="Most used">
         {topSkillsetCurrencies.map((item) => (
           <option key={item} value={item}>
-            {item} - {getCurrencyLabel(item)}
+            {optionLabel(item, value)}
           </option>
         ))}
       </optgroup>
       <optgroup label="Other supported currencies">
         {secondaryCurrencies.map((item) => (
           <option key={item} value={item}>
-            {item} - {getCurrencyLabel(item)}
+            {optionLabel(item, value)}
           </option>
         ))}
       </optgroup>
     </select>
   );
+}
+
+/** Fechado, o <select> mostra o texto da opção escolhida — então ela é só o
+ *  código. Todas as outras trazem código + nome. */
+function optionLabel(item: string, selected: string): string {
+  return item === selected ? item : `${item} - ${getCurrencyLabel(item)}`;
 }

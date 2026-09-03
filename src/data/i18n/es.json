@@ -539,7 +539,9 @@
     "membersHero": {
       "showMore": "Ver más",
       "showLess": "Ver menos",
-      "complete": "completado"
+      "complete": "completado",
+      "back": "Mis cursos",
+      "backToLesson": "Lección"
     },
     "paths": {
       "eyebrow": "Ruta de aprendizaje",
