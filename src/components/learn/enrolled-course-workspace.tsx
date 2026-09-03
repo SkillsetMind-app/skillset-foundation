@@ -23,6 +23,7 @@ import { NextLessonCard } from "@/components/learn/next-lesson-card";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { TrustedEmbedPlayer } from "@/components/learn/trusted-embed-player";
 import { CourseSubscriptionCard } from "@/components/learn/course-subscription-card";
+import { VideoDock } from "@/components/learn/video-dock";
 import {
   VideoWatermark,
   WatermarkedVideoPlayer,
@@ -58,6 +59,7 @@ import {
 } from "@/domain/classroom-tabs";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import { resolveLessonVideoSource } from "@/domain/teacher-course";
+import { lessonPositionKey } from "@/lib/learn/lesson-position";
 import { countOpenCommunityQuestions } from "@/lib/data/community-posts";
 import { subscribeToCourseEvents } from "@/lib/data/course-events";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
@@ -1397,6 +1399,8 @@ function LessonContentPanel({
   previewMode: boolean;
   unlockState: LessonUnlockState | null;
 }) {
+  const { user } = useAuth();
+  const viewerId = user?.uid ?? null;
   const locked = Boolean(unlockState && !unlockState.unlocked);
   // The lesson body + resource link live in the gated subcollection post-strip;
   // while that subscription is still loading and nothing has resolved yet, show
@@ -1438,6 +1442,14 @@ function LessonContentPanel({
     hasTrustedEmbed: Boolean(trustedEmbed),
   });
   const safeLessonExternalUrl = getSafeExternalUrl(lesson.externalUrl);
+  const hasPlayableVideo =
+    !locked
+    && ((resolvedVideoSource === "upload" && Boolean(primaryHostedVideo))
+      || (resolvedVideoSource === "youtube" && Boolean(trustedEmbed)));
+  // No preview do professor não se guarda posição: ele não é o aluno.
+  const resumeKey = previewMode
+    ? null
+    : lessonPositionKey(viewerId, lesson.id);
 
   return (
     <div className="member-lesson-panel">
@@ -1456,6 +1468,7 @@ function LessonContentPanel({
         </span>
       </div>
 
+      <VideoDock title={lesson.title} enabled={hasPlayableVideo}>
       <div className="member-video-stage relative">
         {nextUp && onPlayNextUp && onCancelNextUp ? (
           <NextLessonCard
@@ -1477,10 +1490,15 @@ function LessonContentPanel({
               title={lesson.title}
               onEnded={onEnded}
               autoplay={autoplay}
+              resumeKey={resumeKey}
             />
           </VideoWatermark>
         ) : resolvedVideoSource === "upload" && primaryHostedVideo ? (
-          <ProtectedAssetPreview asset={primaryHostedVideo} onEnded={onEnded} />
+          <ProtectedAssetPreview
+            asset={primaryHostedVideo}
+            onEnded={onEnded}
+            resumeKey={resumeKey}
+          />
         ) : resolvedVideoSource === "youtube" && trustedEmbed ? (
           <VideoWatermark>
             <TrustedEmbedPlayer
@@ -1509,6 +1527,7 @@ function LessonContentPanel({
           </div>
         )}
       </div>
+      </VideoDock>
 
       <div id="member-lesson-content" className="member-lesson-body">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1786,9 +1805,11 @@ function LessonAssetList({
 function ProtectedAssetPreview({
   asset,
   onEnded,
+  resumeKey = null,
 }: {
   asset: CourseAsset;
   onEnded?: () => void;
+  resumeKey?: string | null;
 }) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -1841,6 +1862,7 @@ function ProtectedAssetPreview({
       <WatermarkedVideoPlayer
         fileName={asset.fileName}
         onEnded={onEnded}
+        resumeKey={resumeKey}
         src={objectUrl}
       />
     );

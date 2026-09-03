@@ -1,8 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import {
+  clearLessonPosition,
+  readLessonPosition,
+  saveLessonPosition,
+} from "@/lib/learn/lesson-position";
 
 /**
  * Identity watermark over any lesson player — <video>, Bunny iframe, or
@@ -85,10 +90,15 @@ const watermarkCorners = [
   "left-3 top-3",
 ] as const;
 
+/** De quantos em quantos segundos a posição vai para o armazenamento. O evento
+ *  `timeupdate` dispara ~4x por segundo; gravar em todos é desperdício. */
+const SAVE_EVERY_SECONDS = 10;
+
 export function WatermarkedVideoPlayer({
   brandName,
   fileName,
   onEnded,
+  resumeKey = null,
   src,
 }: {
   brandName?: string;
@@ -96,17 +106,77 @@ export function WatermarkedVideoPlayer({
   /** Fires when the clip plays to the end — the auto-advance signal for the
    *  native player (the iframe backends have to hand-roll their own). */
   onEnded?: () => void;
+  /** Chave de "onde esta pessoa parou nesta aula" (lessonPositionKey). Sem ela
+   *  o vídeo simplesmente começa do zero, como antes. */
+  resumeKey?: string | null;
   src: string;
 }) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const lastSavedRef = useRef(0);
+  // Espelho da posição atual: no desmonte (trocar de aula, sair da sala) o
+  // elemento já pode ter ido embora, e é justamente aí que a última gravação
+  // importa mais.
+  const positionRef = useRef({ seconds: 0, duration: 0 });
+
+  useEffect(() => {
+    lastSavedRef.current = 0;
+    positionRef.current = { seconds: 0, duration: 0 };
+
+    return () => {
+      const { seconds, duration } = positionRef.current;
+      saveLessonPosition(resumeKey, seconds, duration);
+    };
+  }, [resumeKey, src]);
+
+  function handleLoadedMetadata() {
+    const video = videoRef.current;
+    const seconds = readLessonPosition(resumeKey);
+
+    // `seconds < duration` é o corta-circuito: uma posição de outra gravação
+    // da mesma aula (o professor regravou) não pode jogar o aluno para fora
+    // da linha do tempo.
+    if (video && seconds > 0 && seconds < video.duration) {
+      video.currentTime = seconds;
+    }
+  }
+
+  function handleTimeUpdate() {
+    const video = videoRef.current;
+
+    if (!video) {
+      return;
+    }
+
+    positionRef.current = { seconds: video.currentTime, duration: video.duration };
+
+    if (Math.abs(video.currentTime - lastSavedRef.current) < SAVE_EVERY_SECONDS) {
+      return;
+    }
+
+    lastSavedRef.current = video.currentTime;
+    saveLessonPosition(resumeKey, video.currentTime, video.duration);
+  }
+
+  function handleEnded() {
+    // Terminou: não há posição a guardar, e o desmonte não deve ressuscitá-la.
+    positionRef.current = { seconds: 0, duration: 0 };
+    lastSavedRef.current = 0;
+    clearLessonPosition(resumeKey);
+    onEnded?.();
+  }
+
   return (
     <div className="mt-3">
       <VideoWatermark brandName={brandName}>
         <video
+          ref={videoRef}
           aria-label={fileName}
           className="aspect-video w-full bg-[var(--color-primary)]"
           controls
           controlsList="nodownload"
-          onEnded={onEnded}
+          onEnded={handleEnded}
+          onLoadedMetadata={handleLoadedMetadata}
+          onTimeUpdate={handleTimeUpdate}
           src={src}
         />
       </VideoWatermark>

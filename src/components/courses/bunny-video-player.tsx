@@ -3,6 +3,15 @@
 import { PlayCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import {
+  clearLessonPosition,
+  readLessonPosition,
+  saveLessonPosition,
+} from "@/lib/learn/lesson-position";
+
+/** Igual ao player nativo: uma gravação a cada ~10 s de reprodução. */
+const SAVE_EVERY_SECONDS = 10;
+
 type BunnyVideoPlayerProps = {
   title: string;
   /**
@@ -20,6 +29,14 @@ type BunnyVideoPlayerProps = {
   /** A aula abriu pelo cartão "Próxima aula": o embed começa a tocar sozinho
    *  (permitido porque o aluno já interagiu com a página). */
   autoplay?: boolean;
+  /**
+   * Chave de "onde esta pessoa parou nesta aula" (lessonPositionKey). Vai pelo
+   * MESMO aperto de mão player.js que já traz o "ended": pedimos `timeupdate`
+   * e devolvemos `setCurrentTime`. Player que não fala o protocolo nunca
+   * responde, nada é guardado e nada é buscado — o vídeo começa do zero, como
+   * antes. Não verificado contra a documentação da Bunny a partir deste repo.
+   */
+  resumeKey?: string | null;
 } & (
   | {
       assetId: string;
@@ -66,10 +83,16 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
     : { key: requestKey, embedUrl: null, error: "" };
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const onEnded = props.onEnded;
+  const resumeKey = props.resumeKey ?? null;
   const embedUrl = currentPlayback.embedUrl;
+  const lastSavedRef = useRef(0);
+  // Buscar a posição UMA vez, e só depois que o player provou estar vivo (o
+  // primeiro `timeupdate`). Mandar `setCurrentTime` no `onLoad` chega antes de
+  // o vídeo existir e se perde no caminho.
+  const resumedRef = useRef(false);
 
   useEffect(() => {
-    if (!embedUrl || !onEnded) {
+    if (!embedUrl) {
       return;
     }
 
@@ -79,6 +102,17 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
       embedOrigin = new URL(embedUrl).origin;
     } catch {
       return;
+    }
+
+    function post(message: Record<string, unknown>) {
+      try {
+        iframeRef.current?.contentWindow?.postMessage(
+          JSON.stringify({ context: "player.js", ...message }),
+          embedOrigin,
+        );
+      } catch {
+        // idem: player que não fala player.js nunca responde.
+      }
     }
 
     function handleMessage(event: MessageEvent) {
@@ -99,33 +133,81 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
         }
       }
 
-      const name = (payload as { event?: unknown } | null)?.event;
+      const message = payload as
+        | { event?: unknown; value?: unknown; data?: unknown }
+        | null;
+      const name = message?.event;
 
       if (name === "ended" || name === "finish") {
+        resumedRef.current = true;
+        lastSavedRef.current = 0;
+        clearLessonPosition(resumeKey);
         onEnded?.();
+        return;
       }
+
+      if (name !== "timeupdate" || !resumeKey) {
+        return;
+      }
+
+      // player.js manda o payload em `value`; algumas builds usam `data`.
+      const detail = (message?.value ?? message?.data) as
+        | { seconds?: unknown; duration?: unknown }
+        | null;
+      const seconds = Number(detail?.seconds);
+      const duration = Number(detail?.duration);
+
+      if (!Number.isFinite(seconds)) {
+        return;
+      }
+
+      if (!resumedRef.current) {
+        resumedRef.current = true;
+        const saved = readLessonPosition(resumeKey);
+
+        if (saved > 0 && (!Number.isFinite(duration) || saved < duration)) {
+          post({ method: "setCurrentTime", value: saved });
+          return;
+        }
+      }
+
+      if (Math.abs(seconds - lastSavedRef.current) < SAVE_EVERY_SECONDS) {
+        return;
+      }
+
+      lastSavedRef.current = seconds;
+      saveLessonPosition(resumeKey, seconds, duration);
     }
 
     window.addEventListener("message", handleMessage);
 
     return () => window.removeEventListener("message", handleMessage);
-  }, [embedUrl, onEnded]);
+  }, [embedUrl, onEnded, resumeKey]);
 
-  function subscribeToEnded() {
-    if (!embedUrl || !onEnded) {
+  useEffect(() => {
+    resumedRef.current = false;
+    lastSavedRef.current = 0;
+  }, [embedUrl, resumeKey]);
+
+  function subscribeToPlayerEvents() {
+    if (!embedUrl) {
       return;
     }
 
     try {
-      iframeRef.current?.contentWindow?.postMessage(
-        JSON.stringify({
-          context: "player.js",
-          method: "addEventListener",
-          value: "ended",
-          listener: "ended",
-        }),
-        new URL(embedUrl).origin,
-      );
+      const origin = new URL(embedUrl).origin;
+
+      for (const name of ["ended", "timeupdate"]) {
+        iframeRef.current?.contentWindow?.postMessage(
+          JSON.stringify({
+            context: "player.js",
+            method: "addEventListener",
+            value: name,
+            listener: name,
+          }),
+          origin,
+        );
+      }
     } catch {
       // A player that does not speak player.js just never answers.
     }
@@ -190,7 +272,7 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
   return (
     <iframe
       ref={iframeRef}
-      onLoad={subscribeToEnded}
+      onLoad={subscribeToPlayerEvents}
       src={withAutoplay(currentPlayback.embedUrl, props.autoplay)}
       title={props.title}
       className="aspect-video w-full"
