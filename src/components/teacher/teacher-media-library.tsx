@@ -12,6 +12,13 @@ import {
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToCourseAssets } from "@/lib/data/course-assets";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
+import {
+  EmptyState,
+  Field,
+  InlineAlert,
+  SectionHeader,
+  buttonClasses,
+} from "@/components/ui";
 
 const assetKindFilters = [
   "all",
@@ -90,16 +97,12 @@ export function TeacherMediaLibrary() {
     <section className="settings-section-card">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Media library
-          </p>
-          <h3 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
-            Course files and lesson assets
-          </h3>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            Review assets uploaded through the builder. Private lesson files stay protected;
-            this library is for organization and course production control.
-          </p>
+          <SectionHeader
+            as="h3"
+            eyebrow="Media library"
+            title="Course files and lesson assets"
+            description="Review assets uploaded through the builder. Private lesson files stay protected; this library is for organization and course production control."
+          />
           <p className="mt-3 max-w-2xl rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold leading-6 text-[var(--color-ink)]">
             Lesson videos live in the course builder
             {selectedCourse ? (
@@ -120,7 +123,7 @@ export function TeacherMediaLibrary() {
         {selectedCourse ? (
           <Link
             href={`/teach/builder?courseId=${selectedCourse.id}`}
-            className="button-solid px-4 py-2.5 text-sm"
+            className={buttonClasses()}
           >
             Upload in builder
           </Link>
@@ -129,53 +132,59 @@ export function TeacherMediaLibrary() {
 
       {courses.length > 0 ? (
         <div className="mt-6 grid gap-3 lg:grid-cols-[1fr_180px_220px]">
-          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Search assets
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by filename or type"
-              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
-            />
-          </label>
+          <Field id="media-search" label="Search assets">
+            {(a11y) => (
+              <input
+                {...a11y}
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search by filename or type"
+                className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              />
+            )}
+          </Field>
 
-          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Type
-            <select
-              value={kindFilter}
-              onChange={(event) => setKindFilter(event.target.value as CourseAssetKind | "all")}
-              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
-            >
-              {assetKindFilters.map((kind) => (
-                <option key={kind} value={kind}>
-                  {kind === "all" ? "All files" : courseAssetKindLabels[kind]}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Field id="media-kind" label="Type">
+            {(a11y) => (
+              <select
+                {...a11y}
+                value={kindFilter}
+                onChange={(event) => setKindFilter(event.target.value as CourseAssetKind | "all")}
+                className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              >
+                {assetKindFilters.map((kind) => (
+                  <option key={kind} value={kind}>
+                    {kind === "all" ? "All files" : courseAssetKindLabels[kind]}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
 
-          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Course
-            <select
-              value={selectedCourseId}
-              onChange={(event) => setSelectedCourseId(event.target.value)}
-              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
-            >
-              {courses.map((course) => (
-                <option key={course.id} value={course.id}>
-                  {course.title}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Field id="media-course" label="Course">
+            {(a11y) => (
+              <select
+                {...a11y}
+                value={selectedCourseId}
+                onChange={(event) => setSelectedCourseId(event.target.value)}
+                className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              >
+                {courses.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.title}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
         </div>
       ) : null}
 
       {error ? (
-        <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <InlineAlert tone="error" className="mt-5">
           {error}
-        </p>
+        </InlineAlert>
       ) : null}
 
       <div className="mt-6 grid gap-3">
@@ -184,48 +193,37 @@ export function TeacherMediaLibrary() {
             Loading media library...
           </p>
         ) : courses.length === 0 ? (
-          <div className="rounded-[16px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              No course container yet
-            </p>
-            <h4 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
-              Create a course before uploading files.
-            </h4>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-              Media uploads stay attached to a course, module, or lesson. That
-              keeps access rules clean for videos, PDFs, slides, docs, and
-              private learner materials.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Link href="/teach/builder?newCourse=1" className="button-solid px-4 py-2.5 text-sm">
-                Create first course
-              </Link>
-              <Link href="/teach" className="button-outline px-4 py-2.5 text-sm">
-                Back to Studio
-              </Link>
-            </div>
-          </div>
+          <EmptyState
+            eyebrow="No course container yet"
+            title="Create a course before uploading files."
+            description="Media uploads stay attached to a course, module, or lesson. That keeps access rules clean for videos, PDFs, slides, docs, and private learner materials."
+            action={
+              <>
+                <Link href="/teach/builder?newCourse=1" className={buttonClasses()}>
+                  Create first course
+                </Link>
+                <Link href="/teach" className={buttonClasses({ variant: "outline" })}>
+                  Back to Studio
+                </Link>
+              </>
+            }
+          />
         ) : filteredAssets.length === 0 ? (
-          <div className="rounded-[16px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              Library is ready
-            </p>
-            <h4 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
-              Upload from the builder.
-            </h4>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-              Add a course cover, module cover, lesson video, PDF, slide deck,
-              worksheet, audio file, or replay from the selected course builder.
-            </p>
-            {selectedCourse ? (
-              <Link
-                href={`/teach/builder?courseId=${selectedCourse.id}`}
-                className="button-solid mt-5 px-4 py-2.5 text-sm"
-              >
-                Open builder upload area
-              </Link>
-            ) : null}
-          </div>
+          <EmptyState
+            eyebrow="Library is ready"
+            title="Upload from the builder."
+            description="Add a course cover, module cover, lesson video, PDF, slide deck, worksheet, audio file, or replay from the selected course builder."
+            action={
+              selectedCourse ? (
+                <Link
+                  href={`/teach/builder?courseId=${selectedCourse.id}`}
+                  className={buttonClasses()}
+                >
+                  Open builder upload area
+                </Link>
+              ) : null
+            }
+          />
         ) : (
           filteredAssets.map((asset) => (
             <article

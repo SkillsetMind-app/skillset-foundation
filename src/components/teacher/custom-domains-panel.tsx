@@ -4,6 +4,14 @@ import { Check, Copy, Globe, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { StatusChip } from "@/components/shared/status-chip";
+import {
+  Button,
+  Card,
+  Eyebrow,
+  Field,
+  InlineAlert,
+  SectionHeader,
+} from "@/components/ui";
 import type { CustomDomainStatus } from "@/domain/custom-domain";
 import {
   dnsInstructionFor,
@@ -41,9 +49,9 @@ function CopyableRecord({ label, value }: { label: string; value: string }) {
 
   return (
     <div className="grid gap-1">
-      <span className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
+      <Eyebrow as="span" tone="muted">
         {label}
-      </span>
+      </Eyebrow>
       <div className="flex items-center gap-2">
         <code className="min-w-0 flex-1 truncate rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-2 font-mono text-sm text-[var(--color-ink)]">
           {value}
@@ -81,7 +89,7 @@ function DomainCard({
   const dns = dnsInstructionFor(domain.hostname);
 
   return (
-    <div className="grid gap-3 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
+    <Card tone="soft" padding="sm" shadow={false} className="grid gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <Globe className="h-4 w-4 shrink-0 text-[var(--color-ink-soft)]" />
         <span className="min-w-0 flex-1 truncate font-semibold text-[var(--color-ink)]">
@@ -121,22 +129,17 @@ function DomainCard({
 
       <div className="flex flex-wrap gap-2">
         {domain.status !== "active" ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => onRecheck(domain.id)}
-            className="button-outline px-3 py-2 text-sm disabled:opacity-50"
-          >
+          <Button variant="outline" disabled={busy} onClick={() => onRecheck(domain.id)}>
             <RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} />
             Check again
-          </button>
+          </Button>
         ) : null}
         {/* Confirmação + folga do vizinho (mesmo remédio do #129). Este botão
             era gêmeo do "Check again" — o que o professor martela enquanto o
             DNS propaga — a 8px dele, e derrubava o domínio em um clique, sem
             desfazer: certificado descartado e DNS inteiro para refazer. */}
-        <button
-          type="button"
+        <Button
+          variant="danger"
           disabled={busy}
           onClick={() => {
             const confirmed = window.confirm(
@@ -146,13 +149,13 @@ function DomainCard({
               onRemove(domain.id);
             }
           }}
-          className="button-danger ml-auto px-3 py-2 text-sm disabled:opacity-50"
+          className="ml-auto"
         >
           <Trash2 className="h-4 w-4" />
           Disconnect
-        </button>
+        </Button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -248,27 +251,22 @@ export function CustomDomainsPanel() {
 
   return (
     <section className="settings-section-card">
-      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-        Teacher Studio
-      </p>
-      <h2 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
-        Your own domain
-      </h2>
-      <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        Point a domain you own at your storefront, so students arrive at your
-        address instead of ours. You keep the domain; we handle the certificate.
-      </p>
+      <SectionHeader
+        eyebrow="Teacher Studio"
+        title="Your own domain"
+        description="Point a domain you own at your storefront, so students arrive at your address instead of ours. You keep the domain; we handle the certificate."
+      />
 
       {!configured ? (
-        <p className="mt-6 rounded-[12px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-ink-soft)]">
+        <InlineAlert tone="info" className="mt-6">
           Custom domains are not switched on yet. Nothing is wrong with your
           account — check back shortly.
-        </p>
+        </InlineAlert>
       ) : lockedOnPlan ? (
-        <p className="mt-6 rounded-[12px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-ink-soft)]">
+        <InlineAlert tone="info" className="mt-6">
           Your plan does not include a custom domain. Upgrade to Starter to
           connect one.
-        </p>
+        </InlineAlert>
       ) : (
         <>
           <p className="mt-6 text-sm font-semibold text-[var(--color-ink)]">
@@ -295,26 +293,28 @@ export function CustomDomainsPanel() {
           )}
 
           <form className="mt-5 grid gap-2" onSubmit={handleAdd}>
-            <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-              Add a domain
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  value={hostname}
-                  onChange={(event) => setHostname(event.target.value)}
-                  placeholder="yourname.com"
-                  disabled={atQuota || adding}
-                  className="min-w-0 flex-1 rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2.5 font-mono text-sm text-[var(--color-ink)] disabled:opacity-50"
-                />
-                <button
-                  type="submit"
-                  disabled={atQuota || adding || !hostname.trim()}
-                  className="inline-flex items-center gap-2 rounded-[10px] bg-[var(--color-primary)] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-                >
-                  {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  Connect
-                </button>
-              </div>
-            </label>
+            {/* O erro do domínio recusado era um <p> solto no fim do
+                formulário: sem ligação com o campo e sem anúncio nenhum. Quem
+                usa leitor de tela digitava "https://meusite.com", apertava
+                Connect e não recebia absolutamente nada. */}
+            <Field id="custom-domain-hostname" label="Add a domain" error={error}>
+              {(a11y) => (
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    {...a11y}
+                    value={hostname}
+                    onChange={(event) => setHostname(event.target.value)}
+                    placeholder="yourname.com"
+                    disabled={atQuota || adding}
+                    className="min-w-0 flex-1 rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2.5 font-mono text-sm text-[var(--color-ink)] disabled:opacity-50"
+                  />
+                  <Button type="submit" disabled={atQuota || adding || !hostname.trim()}>
+                    {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Connect
+                  </Button>
+                </div>
+              )}
+            </Field>
 
             {atQuota ? (
               <p className="text-sm text-[var(--color-ink-soft)]">
@@ -322,8 +322,6 @@ export function CustomDomainsPanel() {
                 another.
               </p>
             ) : null}
-
-            {error ? <p className="text-sm text-[var(--color-danger-fg)]">{error}</p> : null}
           </form>
         </>
       )}

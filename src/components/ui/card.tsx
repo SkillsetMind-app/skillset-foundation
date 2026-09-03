@@ -29,10 +29,17 @@ const paddingClass: Record<CardPadding, string> = {
 };
 
 export type CardProps = {
-  as?: "div" | "section" | "article";
+  as?: "div" | "section" | "article" | "aside";
   tone?: CardTone;
   padding?: CardPadding;
   interactive?: boolean;
+  /**
+   * Cartão solto na página levanta da superfície; cartão dentro de uma lista,
+   * não — 121 sombras contra 432 bordas montadas à mão, e a maioria das que
+   * ficam dentro de outra caixa não tem sombra nenhuma. Sem esta saída o
+   * primitivo não serve para linha de lista, que é onde ele mais aparece.
+   */
+  shadow?: boolean;
   className?: string;
   children: ReactNode;
 };
@@ -42,13 +49,15 @@ export function Card({
   tone = "surface",
   padding = "md",
   interactive = false,
+  shadow = true,
   className,
   children,
 }: CardProps) {
   return (
     <Tag
       className={cn(
-        "rounded-[var(--radius-xl)] border border-[var(--color-line)] shadow-[var(--shadow-soft)]",
+        "rounded-[var(--radius-xl)] border border-[var(--color-line)]",
+        shadow && "shadow-[var(--shadow-soft)]",
         toneClass[tone],
         paddingClass[padding],
         interactive &&

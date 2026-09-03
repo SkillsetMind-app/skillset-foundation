@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { StatusChip } from "@/components/shared/status-chip";
+import { Button, Card, InlineAlert, buttonClasses } from "@/components/ui";
 import type { Order } from "@/domain/order";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { toDate } from "@/lib/format-date";
@@ -64,27 +65,27 @@ export function SaleList() {
 
   if (isLoading) {
     return (
-      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+      <Card as="section" padding="lg">
         <p className="text-sm text-[var(--color-ink-soft)]">
           Loading your sales...
         </p>
-      </section>
+      </Card>
     );
   }
 
   if (error) {
+    // Era uma caixa vermelha muda: a lista sumia, aparecia vermelho, e nada
+    // era anunciado.
     return (
-      <section className="rounded-[14px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] p-6">
-        <p className="text-sm font-semibold text-[var(--color-danger-fg)]">
-          {error}
-        </p>
-      </section>
+      <InlineAlert tone="error" className="p-6">
+        {error}
+      </InlineAlert>
     );
   }
 
   if (orders.length === 0) {
     return (
-      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-8 text-center shadow-[var(--shadow-soft)]">
+      <Card as="section" padding="none" className="p-8 text-center">
         <h2 className="display-title text-2xl text-[var(--color-primary)]">
           No sales yet.
         </h2>
@@ -95,13 +96,10 @@ export function SaleList() {
           payout timing then applies, and it depends on your country and the
           buyer&apos;s payment method.
         </p>
-        <Link
-          href="/teach/builder"
-          className="button-solid mt-6 inline-flex px-4 py-2.5 text-sm"
-        >
+        <Link href="/teach/builder" className={buttonClasses({}, "mt-6")}>
           Go to your courses
         </Link>
-      </section>
+      </Card>
     );
   }
 
@@ -153,13 +151,13 @@ export function SaleList() {
         ))}
       </ul>
       {hiddenCount > 0 ? (
-        <button
-          type="button"
+        <Button
+          variant="outline"
           onClick={() => setVisibleCount((count) => count + PAGE)}
-          className="button-outline justify-self-start px-4 py-2.5 text-sm"
+          className="justify-self-start"
         >
           Show {Math.min(hiddenCount, PAGE)} more
-        </button>
+        </Button>
       ) : null}
     </section>
   );

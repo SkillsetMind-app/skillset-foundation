@@ -80,6 +80,14 @@ describe("Card", () => {
     expect(card.className).toContain("bg-[var(--color-surface-soft)]");
     expect(card.className).not.toContain("p-4");
   });
+
+  // Cartão de linha de lista não levanta da superfície. Sem esta saída o
+  // primitivo não serviria para os dois lugares que já o usam assim.
+  it("dispensa a sombra quando o cartão vive dentro de outro", () => {
+    const { container } = render(<Card shadow={false}>linha</Card>);
+
+    expect(container.firstElementChild!.className).not.toContain("shadow-");
+  });
 });
 
 describe("InlineAlert", () => {
