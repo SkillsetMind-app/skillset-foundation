@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  fetchLessonPosition,
+  recordLessonPlayback,
+} from "@/lib/data/lesson-playback";
+
 /**
  * Onde a aula parou, em SEGUNDOS, por pessoa e por aula.
  *
@@ -7,16 +12,20 @@
  * posição: quem parava aos 22 minutos voltava no segundo zero e tinha de
  * arrastar a barra até achar o ponto.
  *
- * Por que localStorage e não o banco: `lesson_progress` só registra aula
- * CONCLUÍDA (enrollment_id, lesson_id, user_id, completed_at). Não há coluna
- * de posição, e criar uma é migração de banco — fora desta onda.
+ * A posição mora no BANCO (`lesson_playback`, migração 20260903120000) e o
+ * navegador virou a RESERVA. Era o contrário até o PR #186, e o preço era
+ * conhecido: a posição ficava por navegador, então quem começava no celular e
+ * terminava no computador recomeçava do zero lá.
  *
- * CAMINHO DE UPGRADE: uma coluna `position_seconds` em `lesson_progress` (ou
- * uma tabela `lesson_playback`) mais um RPC de upsert com a mesma checagem de
- * matrícula que o `record_lesson_progress` já faz. Este módulo então vira o
- * cache local e o banco passa a ser a fonte — o que dá continuidade ENTRE
- * APARELHOS. Hoje a posição é por navegador: quem começa no celular e termina
- * no computador recomeça do zero lá.
+ * As duas pontas continuam sendo escritas em toda gravação, de propósito:
+ * - **banco primeiro na leitura**, porque é ele que atravessa aparelhos;
+ * - **navegador sempre**, porque ele responde sem rede e cobre sessão anônima,
+ *   preview do professor e a hora em que a escrita no banco falha.
+ *
+ * Abrir a aula também é gravado, com posição NULA — o banco entende isso como
+ * "só registra a visita", sem tocar a posição. É a metade "abriu" do funil:
+ * `lesson_progress` só nasce quando a aula é CONCLUÍDA, então quem desiste no
+ * meio não deixava rastro nenhum.
  */
 
 const PREFIX = "skillset_lesson_pos:";
@@ -28,24 +37,38 @@ const MIN_SECONDS = 5;
 const END_MARGIN_SECONDS = 15;
 
 /**
- * A chave que identifica "esta pessoa nesta aula". Sem usuário (preview do
- * professor, sessão anônima) devolve null e todo o resto vira no-op — não se
- * guarda posição de quem não se sabe quem é.
+ * "Esta pessoa, nesta aula". `enrollmentId` nulo (preview do professor, sessão
+ * anônima) mantém tudo no navegador: sem matrícula não há linha a escrever.
  */
-export function lessonPositionKey(
+export type LessonPositionRef = {
+  storageKey: string;
+  enrollmentId: string | null;
+  lessonId: string;
+};
+
+export function lessonPositionRef(
   userId: string | null | undefined,
+  enrollmentId: string | null | undefined,
   lessonId: string | null | undefined,
-): string | null {
-  return userId && lessonId ? `${PREFIX}${userId}:${lessonId}` : null;
+): LessonPositionRef | null {
+  if (!userId || !lessonId) {
+    return null;
+  }
+
+  return {
+    storageKey: `${PREFIX}${userId}:${lessonId}`,
+    enrollmentId: enrollmentId ?? null,
+    lessonId,
+  };
 }
 
-export function readLessonPosition(key: string | null): number {
-  if (!key) {
+function readLocal(ref: LessonPositionRef | null): number {
+  if (!ref) {
     return 0;
   }
 
   try {
-    const seconds = Number(window.localStorage.getItem(key));
+    const seconds = Number(window.localStorage.getItem(ref.storageKey));
 
     return Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
   } catch {
@@ -54,17 +77,96 @@ export function readLessonPosition(key: string | null): number {
   }
 }
 
+function writeLocal(ref: LessonPositionRef | null, seconds: number): void {
+  if (!ref) {
+    return;
+  }
+
+  try {
+    if (seconds <= 0) {
+      window.localStorage.removeItem(ref.storageKey);
+      return;
+    }
+
+    window.localStorage.setItem(ref.storageKey, String(seconds));
+  } catch {
+    // Cota estourada ou armazenamento bloqueado: retomar é conforto, não
+    // pode derrubar a aula.
+  }
+}
+
+/**
+ * Manda para o banco sem esperar e sem quebrar: a aula continua tocando se a
+ * rede cair, e o navegador já guardou a mesma posição.
+ *
+ * ponytail: sem fila e sem trava de concorrência. Os players só gravam a cada
+ * 10 s (SAVE_EVERY_SECONDS), então o pior caso de duas escritas se cruzarem na
+ * rede custa os 10 s entre elas — e o freio real é `enforce_rate_limit` no
+ * servidor. Se um dia a cadência apertar, o lugar de resolver é aqui.
+ */
+function pushToDatabase(
+  ref: LessonPositionRef,
+  seconds: number | null,
+  duration?: number,
+): void {
+  if (!ref.enrollmentId) {
+    return;
+  }
+
+  void recordLessonPlayback(
+    ref.enrollmentId,
+    ref.lessonId,
+    seconds,
+    Number.isFinite(duration) ? duration : null,
+  ).catch(() => {
+    // Sem posição no banco a aula abre no que o navegador guardou.
+  });
+}
+
+/** A aula foi aberta. Só a visita — a posição guardada não é tocada. */
+export function markLessonOpened(ref: LessonPositionRef | null): void {
+  if (ref) {
+    pushToDatabase(ref, null);
+  }
+}
+
+/**
+ * Banco primeiro (atravessa aparelhos), navegador como reserva quando não há
+ * matrícula ou a leitura falha.
+ */
+export async function readLessonPosition(
+  ref: LessonPositionRef | null,
+): Promise<number> {
+  if (!ref) {
+    return 0;
+  }
+
+  if (ref.enrollmentId) {
+    try {
+      const seconds = await fetchLessonPosition(ref.enrollmentId, ref.lessonId);
+
+      if (seconds > 0) {
+        return seconds;
+      }
+    } catch {
+      // Cai para o navegador: sem rede a aula ainda retoma neste aparelho.
+    }
+  }
+
+  return readLocal(ref);
+}
+
 /**
  * Grava a posição — ou APAGA, quando ela deixa de valer a pena (começo ou fim
  * da aula). Apagar no fim é o que evita o pior caso: terminar a aula, voltar
  * nela e cair direto nos créditos.
  */
 export function saveLessonPosition(
-  key: string | null,
+  ref: LessonPositionRef | null,
   seconds: number,
   duration?: number,
 ): void {
-  if (!key || !Number.isFinite(seconds)) {
+  if (!ref || !Number.isFinite(seconds)) {
     return;
   }
 
@@ -72,28 +174,17 @@ export function saveLessonPosition(
     Number.isFinite(duration)
     && (duration ?? 0) > 0
     && seconds > (duration as number) - END_MARGIN_SECONDS;
+  const guardar = seconds < MIN_SECONDS || nearEnd ? 0 : Math.floor(seconds);
 
-  try {
-    if (seconds < MIN_SECONDS || nearEnd) {
-      window.localStorage.removeItem(key);
-      return;
-    }
-
-    window.localStorage.setItem(key, String(Math.floor(seconds)));
-  } catch {
-    // Cota estourada ou armazenamento bloqueado: retomar é conforto, não
-    // pode derrubar a aula.
-  }
+  writeLocal(ref, guardar);
+  pushToDatabase(ref, guardar, duration);
 }
 
-export function clearLessonPosition(key: string | null): void {
-  if (!key) {
+export function clearLessonPosition(ref: LessonPositionRef | null): void {
+  if (!ref) {
     return;
   }
 
-  try {
-    window.localStorage.removeItem(key);
-  } catch {
-    // idem
-  }
+  writeLocal(ref, 0);
+  pushToDatabase(ref, 0);
 }

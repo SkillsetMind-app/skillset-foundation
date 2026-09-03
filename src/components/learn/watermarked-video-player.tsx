@@ -5,8 +5,10 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import {
   clearLessonPosition,
+  markLessonOpened,
   readLessonPosition,
   saveLessonPosition,
+  type LessonPositionRef,
 } from "@/lib/learn/lesson-position";
 
 /**
@@ -98,7 +100,7 @@ export function WatermarkedVideoPlayer({
   brandName,
   fileName,
   onEnded,
-  resumeKey = null,
+  resume = null,
   src,
 }: {
   brandName?: string;
@@ -106,9 +108,9 @@ export function WatermarkedVideoPlayer({
   /** Fires when the clip plays to the end — the auto-advance signal for the
    *  native player (the iframe backends have to hand-roll their own). */
   onEnded?: () => void;
-  /** Chave de "onde esta pessoa parou nesta aula" (lessonPositionKey). Sem ela
-   *  o vídeo simplesmente começa do zero, como antes. */
-  resumeKey?: string | null;
+  /** "Esta pessoa, nesta aula" (lessonPositionRef). Sem ela o vídeo
+   *  simplesmente começa do zero, como antes. */
+  resume?: LessonPositionRef | null;
   src: string;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -121,23 +123,32 @@ export function WatermarkedVideoPlayer({
   useEffect(() => {
     lastSavedRef.current = 0;
     positionRef.current = { seconds: 0, duration: 0 };
+    // Abrir a aula já é o evento do funil: quem desiste no meio não deixava
+    // rastro nenhum, porque `lesson_progress` só nasce na conclusão.
+    markLessonOpened(resume);
 
     return () => {
       const { seconds, duration } = positionRef.current;
-      saveLessonPosition(resumeKey, seconds, duration);
+      saveLessonPosition(resume, seconds, duration);
     };
-  }, [resumeKey, src]);
+  }, [resume, src]);
 
   function handleLoadedMetadata() {
-    const video = videoRef.current;
-    const seconds = readLessonPosition(resumeKey);
+    // A posição vem do banco (atravessa aparelhos) e por isso chega depois do
+    // metadado. Guardar QUAL aula pediu: se o aluno trocou de aula enquanto a
+    // resposta vinha, ela não vale mais.
+    const pedido = resume;
 
-    // `seconds < duration` é o corta-circuito: uma posição de outra gravação
-    // da mesma aula (o professor regravou) não pode jogar o aluno para fora
-    // da linha do tempo.
-    if (video && seconds > 0 && seconds < video.duration) {
-      video.currentTime = seconds;
-    }
+    void readLessonPosition(pedido).then((seconds) => {
+      const video = videoRef.current;
+
+      // `seconds < duration` é o corta-circuito: uma posição de outra gravação
+      // da mesma aula (o professor regravou) não pode jogar o aluno para fora
+      // da linha do tempo.
+      if (video && pedido === resume && seconds > 0 && seconds < video.duration) {
+        video.currentTime = seconds;
+      }
+    });
   }
 
   function handleTimeUpdate() {
@@ -154,14 +165,14 @@ export function WatermarkedVideoPlayer({
     }
 
     lastSavedRef.current = video.currentTime;
-    saveLessonPosition(resumeKey, video.currentTime, video.duration);
+    saveLessonPosition(resume, video.currentTime, video.duration);
   }
 
   function handleEnded() {
     // Terminou: não há posição a guardar, e o desmonte não deve ressuscitá-la.
     positionRef.current = { seconds: 0, duration: 0 };
     lastSavedRef.current = 0;
-    clearLessonPosition(resumeKey);
+    clearLessonPosition(resume);
     onEnded?.();
   }
 

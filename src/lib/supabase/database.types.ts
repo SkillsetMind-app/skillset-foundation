@@ -1468,6 +1468,44 @@ export type Database = {
           },
         ]
       }
+      lesson_playback: {
+        Row: {
+          duration_seconds: number | null
+          enrollment_id: string
+          last_seen_at: string
+          lesson_id: string
+          opened_at: string
+          position_seconds: number
+          user_id: string
+        }
+        Insert: {
+          duration_seconds?: number | null
+          enrollment_id: string
+          last_seen_at?: string
+          lesson_id: string
+          opened_at?: string
+          position_seconds?: number
+          user_id: string
+        }
+        Update: {
+          duration_seconds?: number | null
+          enrollment_id?: string
+          last_seen_at?: string
+          lesson_id?: string
+          opened_at?: string
+          position_seconds?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_playback_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_stats: {
         Row: {
           display_name: string
@@ -2496,11 +2534,22 @@ export type Database = {
           email: string
           enrolled_at: string
           enrollment_id: string
+          last_seen_at: string | null
           photo_url: string
           progress_percent: number
           source: string
           status: string
           uid: string
+        }[]
+      }
+      get_my_course_lesson_funnel: {
+        Args: never
+        Returns: {
+          course_id: string
+          last_activity_at: string | null
+          lesson_id: string
+          students_completed: number
+          students_opened: number
         }[]
       }
       get_my_subscriber_profiles: {
@@ -2559,6 +2608,15 @@ export type Database = {
       }
       publish_teacher_course: { Args: { p_course_id: string }; Returns: Json }
       recompute_course_trending_scores: { Args: never; Returns: undefined }
+      record_lesson_playback: {
+        Args: {
+          p_enrollment_id: string
+          p_lesson_id: string
+          p_position_seconds?: number | null
+          p_duration_seconds?: number | null
+        }
+        Returns: Json
+      }
       record_lesson_progress: {
         Args: {
           p_completed: boolean
