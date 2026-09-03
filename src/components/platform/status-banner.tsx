@@ -2,7 +2,6 @@
 
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
@@ -20,7 +19,6 @@ type BannerState = {
 export function StatusBanner() {
   const { status, user } = useAuth();
   const { t } = useTranslation();
-  const pathname = usePathname() ?? "";
   const userId = user?.uid ?? null;
   const [profileState, setProfileState] = useState<{
     uid: string | null;
@@ -47,7 +45,7 @@ export function StatusBanner() {
     return null;
   }
 
-  const banner = getAccountBanner(user, profileState.profile, pathname, t);
+  const banner = getAccountBanner(user, profileState.profile, t);
 
   if (!banner) {
     return null;
@@ -72,7 +70,6 @@ export function StatusBanner() {
 function getAccountBanner(
   user: SkillsetUser,
   profile: UserProfile | null,
-  pathname: string,
   t: (key: string) => string,
 ): BannerState | null {
   const roles = profile?.roles?.length ? profile.roles : user.roles;
@@ -93,23 +90,12 @@ function getAccountBanner(
     };
   }
 
-  const teacherNeedsStripeSetup =
-    roles.includes("teacher")
-    && (
-      !profile?.stripeConnectChargesEnabled
-      || !profile?.stripeConnectPayoutsEnabled
-    );
-
-  const payoutContext =
-    pathname.startsWith("/teach") || pathname.startsWith("/account/payments");
-
-  if (teacherNeedsStripeSetup && payoutContext) {
-    return {
-      message: t("platform.banner.connectPayouts"),
-      ctaLabel: t("platform.banner.connectPayoutsCta"),
-      ctaHref: "/account/payments#stripe-connect",
-    };
-  }
-
+  // O aviso do Stripe MOROU aqui, como faixa amarela fixa em todo /teach: ela
+  // nunca se ia até a conta ficar conectada, então a pessoa passava semanas com
+  // um alerta permanente no topo — e alerta permanente deixa de ser alerta.
+  // Agora ele vive em dois lugares onde tem consequência: um passo da lista
+  // "Get ready for your first sale", na Home do professor, e uma linha discreta
+  // e dispensável nas telas de venda (ver `stripe-connect-notice.tsx`). Os dois
+  // somem sozinhos quando a conta conecta.
   return null;
 }

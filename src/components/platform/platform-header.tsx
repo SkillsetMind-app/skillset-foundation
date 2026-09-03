@@ -1,11 +1,13 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { ChevronRight, Menu } from "lucide-react";
+import { ChevronRight, Menu, Search } from "lucide-react";
+import { useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { NotificationBell } from "@/components/platform/notification-bell";
+import { PlatformSearch } from "@/components/platform/platform-search";
 import { AccountMenu } from "@/components/site/account-menu";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
@@ -20,6 +22,7 @@ export function PlatformHeader({
   const pathname = usePathname() ?? "";
   const { t } = useTranslation();
   const { status, user, signOut } = useAuth();
+  const [searchOpen, setSearchOpen] = useState(false);
   const surface = getSurface(pathname);
   const pageLabel = getPageLabel(pathname, t);
 
@@ -45,7 +48,20 @@ export function PlatformHeader({
           <span className="cur">{pageLabel}</span>
         </nav>
 
+        <PlatformSearch pathname={pathname} open={searchOpen} />
+
         <div className="platform-topbar__actions">
+          {/* No celular o campo não cabe na linha: o ícone o abre logo abaixo
+              da barra. Em telas maiores ele já está aberto e este botão some. */}
+          <button
+            type="button"
+            onClick={() => setSearchOpen((open) => !open)}
+            className="platform-topbar__search-toggle grid size-10 place-items-center rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-ink)] transition hover:bg-[var(--color-surface-strong)]"
+            aria-expanded={searchOpen}
+            aria-label={t("platform.openSearch")}
+          >
+            <Search aria-hidden="true" size={18} strokeWidth={1.8} />
+          </button>
           <div className="hidden sm:block">
             <ThemeToggle />
           </div>

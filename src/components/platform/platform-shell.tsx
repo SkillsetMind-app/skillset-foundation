@@ -1,11 +1,9 @@
 "use client";
 
-import { Search } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { useState, type ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
-import { useTranslation } from "@/components/i18n/i18n-provider";
 import { MobileSidebarDrawer } from "@/components/platform/mobile-sidebar-drawer";
 import { PlatformHeader } from "@/components/platform/platform-header";
 import { PlatformNav } from "@/components/platform/platform-nav";
@@ -66,7 +64,6 @@ export function PlatformShell({
                   collapsed={isCollapsed}
                   href={getWorkspaceHomeHref(pathname, user)}
                 />
-                {!isCollapsed ? <PlatformSidebarSearch pathname={pathname} /> : null}
                 <PlatformNav
                   collapsed={isCollapsed}
                   onRequestExpand={toggle}
@@ -162,76 +159,4 @@ function SidebarBrand({ collapsed, href }: { collapsed: boolean; href: string })
       />
     </div>
   );
-}
-
-function PlatformSidebarSearch({ pathname }: { pathname: string }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
-  const { t } = useTranslation();
-  const placeholder = t(getSearchPlaceholderKey(pathname));
-
-  function submitSearch() {
-    const query = inputRef.current?.value.trim();
-
-    if (!query) {
-      return;
-    }
-
-    const target = pathname.startsWith("/ops")
-      ? `/ops?q=${encodeURIComponent(query)}`
-      : pathname.startsWith("/teach")
-        ? `/teach?query=${encodeURIComponent(query)}`
-        : `/courses?q=${encodeURIComponent(query)}`;
-
-    router.push(target);
-  }
-
-  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Enter") {
-      submitSearch();
-    }
-  }
-
-  useEffect(() => {
-    function focusSidebarSearch(event: globalThis.KeyboardEvent) {
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "k") {
-        return;
-      }
-
-      event.preventDefault();
-      inputRef.current?.focus();
-    }
-
-    document.addEventListener("keydown", focusSidebarSearch);
-    return () => document.removeEventListener("keydown", focusSidebarSearch);
-  }, []);
-
-  return (
-    <label className="platform-sidebar-search mt-4">
-      <Search aria-hidden="true" size={15} strokeWidth={2} />
-      <input
-        ref={inputRef}
-        type="search"
-        placeholder={placeholder}
-        onKeyDown={handleKeyDown}
-      />
-      <span aria-hidden="true">Ctrl K</span>
-    </label>
-  );
-}
-
-function getSearchPlaceholderKey(pathname: string) {
-  if (pathname.startsWith("/teach")) {
-    return "platform.searchTeachPlaceholder";
-  }
-
-  if (pathname.startsWith("/learn")) {
-    return "platform.searchLearnPlaceholder";
-  }
-
-  if (pathname.startsWith("/ops")) {
-    return "platform.searchOpsPlaceholder";
-  }
-
-  return "platform.searchDefaultPlaceholder";
 }

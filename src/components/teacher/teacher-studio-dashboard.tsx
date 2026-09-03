@@ -22,6 +22,8 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { TeacherOverviewMetrics } from "@/components/teacher/teacher-overview-metrics";
+import { StudioRecentActivity } from "@/components/teacher/studio-recent-activity";
+import { StudioStorefrontCard } from "@/components/teacher/studio-storefront-card";
 import { TeacherStudioInsights } from "@/components/teacher/teacher-studio-insights";
 import { TeacherWelcomeTour } from "@/components/teacher/teacher-welcome-tour";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -80,10 +82,11 @@ export function TeacherStudioDashboard() {
       {user ? <TeacherWelcomeTour userId={user.uid} firstName={firstName} /> : null}
       <header className="flex flex-wrap items-end justify-between gap-5 border-b border-[var(--color-line)] pb-5">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
-            Producer home
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold leading-tight text-[var(--color-primary)] sm:text-4xl">
+          {/* Uma manchete por tela. O olho da pagina era "Producer home" em
+              versalete APOIADO por "Welcome back, {name}" logo abaixo: dois
+              titulos disputando a mesma linha de leitura, e o de cima nem
+              nomeava a tela ("Home" ja esta na barra e na trilha do topo). */}
+          <h1 className="text-3xl font-semibold leading-tight text-[var(--color-primary)] sm:text-4xl">
             {firstName
               ? t("teach.dashboard.welcomeBackNamed").replace("{name}", firstName)
               : t("teach.dashboard.welcomeBack")}
@@ -116,6 +119,18 @@ export function TeacherStudioDashboard() {
       />
 
       <StudioProductsSection courses={courses} coursesLoaded={coursesLoaded} />
+
+      <div className="grid gap-8 lg:grid-cols-2">
+        <StudioRecentActivity courses={courses} />
+        {user ? (
+          <StudioStorefrontCard
+            uid={user.uid}
+            courses={courses}
+            coursesLoaded={coursesLoaded}
+          />
+        ) : null}
+      </div>
+
       <StudioSellFormatsSection />
 
       <StudioEvolution
@@ -142,6 +157,7 @@ function StudioNextSteps({
   payoutsReady: boolean;
   verificationStatus: string;
 }) {
+  const { t } = useTranslation();
   const hasPaidProduct = courses.some((course) => course.paymentType !== "free");
   const creatorDataComplete =
     verificationStatus === "approved" && (!hasPaidProduct || payoutsReady);
@@ -156,7 +172,14 @@ function StudioNextSteps({
     },
     {
       label: "Complete creator data",
-      detail: "Finish professional verification and paid-product payouts.",
+      // Este passo herdou o texto da faixa amarela fixa que vivia no topo de
+      // todo o /teach. A frase e a mesma, ja traduzida, e diz o que importa:
+      // o comprador paga NA conta do professor, a plataforma nao segura o
+      // dinheiro. Enquanto o Stripe nao conectar, o passo mostra isso; depois
+      // volta a falar da verificacao, que e o que sobra.
+      detail: payoutsReady
+        ? "Finish professional verification and paid-product payouts."
+        : t("platform.banner.connectPayouts"),
       href:
         verificationStatus === "approved"
           ? "/account/payments#stripe-connect"

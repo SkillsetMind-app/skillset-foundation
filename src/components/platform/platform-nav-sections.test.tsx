@@ -46,9 +46,9 @@ describe("grupos da barra lateral traduzidos", () => {
       </I18nProvider>,
     );
 
-    const products = screen.getByRole("button", { name: "Abrir navegación de Productos" });
-    expect(products).toHaveAttribute("title", "Productos");
-    expect(screen.queryByRole("button", { name: /Open Products navigation/ })).toBeNull();
+    const marketing = screen.getByRole("button", { name: "Abrir navegación de Marketing" });
+    expect(marketing).toHaveAttribute("title", "Marketing");
+    expect(screen.queryByRole("button", { name: /Open Marketing navigation/ })).toBeNull();
   });
 
   it("expandida, o rotulo do grupo vem do dicionario", () => {
@@ -58,17 +58,16 @@ describe("grupos da barra lateral traduzidos", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByRole("button", { name: "Productos" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Ventas" })).toBeInTheDocument();
-    expect(screen.queryByText("Products")).toBeNull();
+    expect(screen.getByRole("button", { name: "Herramientas" })).toBeInTheDocument();
+    expect(screen.queryByText("Tools")).toBeNull();
   });
 
   it("sem provider cai no ingles, com a dica montada pelo dicionario", () => {
     render(<PlatformNav collapsed />);
 
     expect(
-      screen.getByRole("button", { name: "Open Products navigation" }),
-    ).toHaveAttribute("title", "Products");
+      screen.getByRole("button", { name: "Open Marketing navigation" }),
+    ).toHaveAttribute("title", "Marketing");
   });
 });
 

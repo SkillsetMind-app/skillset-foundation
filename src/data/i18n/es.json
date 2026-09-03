@@ -398,7 +398,6 @@
       "sales": "Ventas",
       "earnings": "Ingresos",
       "reports": "Informes",
-      "growth": "Crecimiento",
       "tools": "Herramientas",
       "myLearning": "Mi aprendizaje",
       "discover": "Descubrir",
@@ -433,7 +432,8 @@
       "acceptTerms": "Acepta los Términos del Profesor para publicar cursos.",
       "acceptTermsCta": "Aceptar términos",
       "connectPayouts": "Conecta tu cuenta de Stripe antes de vender cursos de pago: el cobro entra directo en ella. Los cursos gratuitos y en borrador aún no lo necesitan.",
-      "connectPayoutsCta": "Conectar Stripe"
+      "connectPayoutsCta": "Conectar Stripe",
+      "dismissNotice": "Descartar este aviso"
     },
     "help": {
       "needHelp": "¿Necesitas ayuda?",
@@ -462,7 +462,8 @@
       "userFallback": "Usuario de SkillsetMind"
     },
     "switchToLightMode": "Cambiar al modo claro",
-    "switchToDarkMode": "Cambiar al modo oscuro"
+    "switchToDarkMode": "Cambiar al modo oscuro",
+    "openSearch": "Abrir búsqueda"
   },
   "roles": {
     "admin": "Administrador",
@@ -635,6 +636,27 @@
       "actQuestionsDetail": "Los mensajes privados de tus estudiantes inscritos llegan a la bandeja de entrada del Studio.",
       "actScheduleTitle": "Programa la próxima sesión en vivo",
       "actScheduleDetail": "Añade una clase, mentoría, masterclass, horario de consulta, webinar o fecha límite a la agenda del curso."
+    },
+    "activity": {
+      "eyebrow": "Qué pasó",
+      "title": "Actividad reciente",
+      "sale": "Nueva venta en {course}",
+      "enrollment": "{name} se inscribió en {course}",
+      "review": "Nueva reseña de {rating} estrellas en {course}",
+      "question": "{name} hizo una pregunta en {course}",
+      "someone": "Alguien",
+      "emptyTitle": "Todavía no pasó nada.",
+      "emptyDescription": "Las inscripciones, ventas, reseñas y preguntas de la comunidad aparecen aquí en cuanto ocurren."
+    },
+    "storefrontCard": {
+      "eyebrow": "Dónde te compran",
+      "title": "Tu tienda",
+      "loading": "Verificando qué está publicado en tu tienda...",
+      "liveSingular": "1 producto publicado en tu página pública.",
+      "livePlural": "{count} productos publicados en tu página pública.",
+      "empty": "La página existe, pero todavía no hay nada publicado en ella.",
+      "open": "Abrir tienda",
+      "edit": "Editar tienda"
     }
   },
   "profileValidation": {
