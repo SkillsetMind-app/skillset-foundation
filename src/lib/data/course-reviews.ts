@@ -151,3 +151,33 @@ export function subscribeToUserCourseReview(
     void supabase.removeChannel(channel);
   };
 }
+
+/**
+ * As avaliações mais recentes de VÁRIOS cursos, numa única leitura.
+ *
+ * ponytail: leitura única, sem realtime. A alternativa era chamar
+ * subscribeToCourseReviews uma vez por curso, e cada chamada abre um canal
+ * realtime próprio — a Home do professor pagaria N canais para desenhar uma
+ * lista de "o que aconteceu". Se a lista precisar mudar sem recarregar, o
+ * upgrade é uma inscrição só, filtrada por `in`.
+ */
+export async function getRecentCourseReviews(
+  courseIds: string[],
+  limit = 10,
+): Promise<CourseReview[]> {
+  if (!courseIds.length) {
+    return [];
+  }
+
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from(courseReviewsTable)
+    .select("*")
+    .in("course_id", courseIds)
+    .eq("status", "published")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return (data ?? []).map(rowToReview);
+}

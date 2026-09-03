@@ -398,7 +398,6 @@
       "sales": "Sales",
       "earnings": "Earnings",
       "reports": "Reports",
-      "growth": "Growth",
       "tools": "Tools",
       "myLearning": "My Learning",
       "discover": "Discover",
@@ -433,7 +432,8 @@
       "acceptTerms": "Accept the Teacher Terms to publish courses.",
       "acceptTermsCta": "Accept terms",
       "connectPayouts": "Connect your Stripe account before selling paid courses — buyers are charged on it directly. Free and draft courses do not need this yet.",
-      "connectPayoutsCta": "Connect Stripe"
+      "connectPayoutsCta": "Connect Stripe",
+      "dismissNotice": "Dismiss this notice"
     },
     "help": {
       "needHelp": "Need help?",
@@ -462,7 +462,8 @@
       "userFallback": "SkillsetMind user"
     },
     "switchToLightMode": "Switch to light mode",
-    "switchToDarkMode": "Switch to dark mode"
+    "switchToDarkMode": "Switch to dark mode",
+    "openSearch": "Open search"
   },
   "roles": {
     "admin": "Admin",
@@ -635,6 +636,27 @@
       "actQuestionsDetail": "Private threads from enrolled students arrive in your Studio inbox.",
       "actScheduleTitle": "Schedule the next live session",
       "actScheduleDetail": "Add a class, mentorship, masterclass, office hour, webinar, or deadline to the course agenda."
+    },
+    "activity": {
+      "eyebrow": "What happened",
+      "title": "Recent activity",
+      "sale": "New sale in {course}",
+      "enrollment": "{name} enrolled in {course}",
+      "review": "New {rating}-star review in {course}",
+      "question": "{name} asked a question in {course}",
+      "someone": "Someone",
+      "emptyTitle": "Nothing has happened yet.",
+      "emptyDescription": "Enrollments, sales, reviews and community questions land here as soon as they happen."
+    },
+    "storefrontCard": {
+      "eyebrow": "Where people buy",
+      "title": "Your storefront",
+      "loading": "Checking what is live on your storefront...",
+      "liveSingular": "1 published product on your public page.",
+      "livePlural": "{count} published products on your public page.",
+      "empty": "The page exists, but nothing is published on it yet.",
+      "open": "Open storefront",
+      "edit": "Edit storefront"
     }
   },
   "profileValidation": {

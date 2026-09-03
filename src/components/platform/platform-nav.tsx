@@ -72,31 +72,48 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 // Chaves de `platform.navSection.*`; o rotulo visivel sai do dicionario.
+// Primeiro a lista plana do trabalho do dia (Home, Produtos, Vendas,
+// Assinaturas, Ganhos, Relatórios), depois os dois únicos grupos que sobraram,
+// e por último o rodapé.
 const sectionOrder = [
   "home",
   "products",
-  "marketing",
   "sales",
   "earnings",
   "reports",
-  "growth",
+  "marketing",
   "tools",
-  "myLearning",
-  "discover",
   "learn",
   "operations",
   "account",
+  // Rodapé — ver `footerSections`.
+  "myLearning",
+  "discover",
 ];
 
-// "Operations" era um grupo com um único item, também chamado "Operations":
-// clicar para abrir e ver o mesmo nome. Grupo de item único vira item direto.
+// Seções que NÃO viram acordeão: cada item vira uma linha direta da barra.
+//
+// Antes só o grupo de item único escapava ("Operations" abria para mostrar
+// "Operations"). Products, Sales e Reports continuavam como gaveta de um ou
+// dois links, então chegar em "Vendas" custava um clique para abrir e outro
+// para ir — e, fechada a gaveta, a pessoa não via que a tela existia. Com a
+// lista plana, Produtos, Vendas, Assinaturas, Ganhos e Relatórios estão
+// sempre à vista. Marketing e Tools seguem em grupo: são caudas longas
+// (5 e 3 itens) que só se consulta de vez em quando.
 const directSections = new Set([
   "home",
+  "products",
+  "sales",
   "earnings",
+  "reports",
   "myLearning",
   "discover",
   "operations",
 ]);
+
+// Descoberta e "o que eu estudo" não são o trabalho de produzir: vão para o pé
+// da barra, separados por uma linha, em vez de disputar o topo com Produtos.
+const footerSections = new Set(["myLearning", "discover"]);
 
 const sectionIconMap: Record<string, LucideIcon> = {
   discover: ShoppingBag,
@@ -108,7 +125,6 @@ const sectionIconMap: Record<string, LucideIcon> = {
   sales: Receipt,
   earnings: TrendingUp,
   reports: BarChart3,
-  growth: Users,
   tools: Settings,
   operations: UserCheck,
   account: Settings,
@@ -196,96 +212,107 @@ export function PlatformNav({ collapsed = false, onRequestExpand }: PlatformNavP
     });
   }
 
-  return (
-    <nav
-      className="platform-sidebar-nav mt-3 flex flex-col"
-      aria-label={t("platform.sidebarNavLabel")}
-    >
-      {groups.map((group) => {
-        if (directSections.has(group.section) && group.items.length === 1) {
-          const item = group.items[0];
+  const mainGroups = groups.filter((group) => !footerSections.has(group.section));
+  const footerGroups = groups.filter((group) => footerSections.has(group.section));
 
-          return (
-            <div className="platform-nav-section shrink-0" key={group.section}>
+  function renderGroup(group: (typeof groups)[number]) {
+    if (directSections.has(group.section)) {
+      return (
+        <div className="platform-nav-section shrink-0" key={group.section}>
+          {group.items.map((item) => (
+            <PlatformNavLink
+              key={`${item.href}-${item.labelKey}`}
+              href={item.href}
+              label={t(item.labelKey)}
+              icon={item.icon}
+              active={isActivePlatformRoute(pathname, item.href)}
+              newTab={item.newTab}
+              collapsed={collapsed}
+            />
+          ))}
+        </div>
+      );
+    }
+
+    const SectionIcon = sectionIconMap[group.section] ?? LayoutDashboard;
+    // Os grupos saiam em ingles cru ("Products", "Sales") em toda lingua,
+    // e a dica do icone recolhido tambem era montada a mao em ingles.
+    const sectionLabel = t(`platform.navSection.${group.section}`);
+    const isActiveSection = group.section === activeSection;
+    const isExpanded = !collapsed && expandedSections.includes(group.section);
+    const panelId = `${panelIdPrefix}-${group.section}`;
+
+    return (
+      <div className="platform-nav-section shrink-0" key={group.section}>
+        <button
+          type="button"
+          onClick={() => toggleSection(group.section)}
+          aria-controls={collapsed ? undefined : panelId}
+          aria-expanded={collapsed ? undefined : isExpanded}
+          aria-label={
+            collapsed ? t("platform.openSectionNav").replace("{section}", sectionLabel) : undefined
+          }
+          title={collapsed ? sectionLabel : undefined}
+          className={`platform-nav-link platform-nav-section-trigger group relative flex w-full shrink-0 items-center rounded-[10px] border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+            collapsed ? "justify-center px-0" : "px-2"
+          } ${
+            collapsed && isActiveSection
+              ? "platform-nav-active"
+              : isActiveSection
+                ? "platform-nav-section-active"
+                : ""
+          }`}
+        >
+          {/* Recolhida, o item e o unico quadrado: sem o chip do icone
+              (era a segunda camada no hover; ver bloco "Rail recolhido"
+              no globals.css). */}
+          {collapsed ? (
+            <SectionIcon aria-hidden="true" size={18} strokeWidth={2} />
+          ) : (
+            <span className="platform-nav-icon-chip">
+              <SectionIcon aria-hidden="true" size={17} strokeWidth={2} />
+            </span>
+          )}
+          <span className="platform-sidebar-label min-w-0 truncate">{sectionLabel}</span>
+          {!collapsed ? (
+            <ChevronDown
+              aria-hidden="true"
+              size={15}
+              strokeWidth={2}
+              className={`platform-nav-section-chevron ${isExpanded ? "is-open" : ""}`}
+            />
+          ) : null}
+        </button>
+
+        {isExpanded ? (
+          <div id={panelId} className="platform-nav-section-items" data-section={group.section}>
+            {group.items.map((item) => (
               <PlatformNavLink
+                key={item.href}
                 href={item.href}
                 label={t(item.labelKey)}
                 icon={item.icon}
                 active={isActivePlatformRoute(pathname, item.href)}
                 newTab={item.newTab}
-                collapsed={collapsed}
               />
-            </div>
-          );
-        }
-
-        const SectionIcon = sectionIconMap[group.section] ?? LayoutDashboard;
-        // Os grupos saiam em ingles cru ("Products", "Sales") em toda lingua,
-        // e a dica do icone recolhido tambem era montada a mao em ingles.
-        const sectionLabel = t(`platform.navSection.${group.section}`);
-        const isActiveSection = group.section === activeSection;
-        const isExpanded = !collapsed && expandedSections.includes(group.section);
-        const panelId = `${panelIdPrefix}-${group.section}`;
-
-        return (
-          <div className="platform-nav-section shrink-0" key={group.section}>
-            <button
-              type="button"
-              onClick={() => toggleSection(group.section)}
-              aria-controls={collapsed ? undefined : panelId}
-              aria-expanded={collapsed ? undefined : isExpanded}
-              aria-label={
-                collapsed ? t("platform.openSectionNav").replace("{section}", sectionLabel) : undefined
-              }
-              title={collapsed ? sectionLabel : undefined}
-              className={`platform-nav-link platform-nav-section-trigger group relative flex w-full shrink-0 items-center rounded-[10px] border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
-                collapsed ? "justify-center px-0" : "px-2"
-              } ${
-                collapsed && isActiveSection
-                  ? "platform-nav-active"
-                  : isActiveSection
-                    ? "platform-nav-section-active"
-                    : ""
-              }`}
-            >
-              {/* Recolhida, o item e o unico quadrado: sem o chip do icone
-                  (era a segunda camada no hover; ver bloco "Rail recolhido"
-                  no globals.css). */}
-              {collapsed ? (
-                <SectionIcon aria-hidden="true" size={18} strokeWidth={2} />
-              ) : (
-                <span className="platform-nav-icon-chip">
-                  <SectionIcon aria-hidden="true" size={17} strokeWidth={2} />
-                </span>
-              )}
-              <span className="platform-sidebar-label min-w-0 truncate">{sectionLabel}</span>
-              {!collapsed ? (
-                <ChevronDown
-                  aria-hidden="true"
-                  size={15}
-                  strokeWidth={2}
-                  className={`platform-nav-section-chevron ${isExpanded ? "is-open" : ""}`}
-                />
-              ) : null}
-            </button>
-
-            {isExpanded ? (
-              <div id={panelId} className="platform-nav-section-items" data-section={group.section}>
-                {group.items.map((item) => (
-                  <PlatformNavLink
-                    key={item.href}
-                    href={item.href}
-                    label={t(item.labelKey)}
-                    icon={item.icon}
-                    active={isActivePlatformRoute(pathname, item.href)}
-                    newTab={item.newTab}
-                  />
-                ))}
-              </div>
-            ) : null}
+            ))}
           </div>
-        );
-      })}
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <nav
+      className="platform-sidebar-nav mt-3 flex flex-1 flex-col"
+      aria-label={t("platform.sidebarNavLabel")}
+    >
+      {mainGroups.map(renderGroup)}
+      {footerGroups.length ? (
+        <div className="platform-nav-footer mt-auto shrink-0">
+          {footerGroups.map(renderGroup)}
+        </div>
+      ) : null}
     </nav>
   );
 }

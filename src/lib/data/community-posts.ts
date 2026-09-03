@@ -488,3 +488,31 @@ export async function updateCommunityReportStatus(
     throw error;
   }
 }
+
+/**
+ * As perguntas mais recentes de VÁRIOS cursos, numa única leitura.
+ *
+ * ponytail: leitura única, sem realtime, mesmo motivo de
+ * getRecentCourseReviews — a Home não abre um canal por curso só para listar
+ * o que aconteceu. `course_slug` é o id do curso (ver TeacherCommunityInbox).
+ */
+export async function getRecentCommunityQuestions(
+  courseSlugs: string[],
+  limit = 10,
+): Promise<CommunityPost[]> {
+  if (!courseSlugs.length) {
+    return [];
+  }
+
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("community_posts")
+    .select("*")
+    .in("course_slug", courseSlugs)
+    .eq("category", "question")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return (data ?? []).map(rowToPost);
+}

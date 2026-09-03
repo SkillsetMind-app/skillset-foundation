@@ -40,7 +40,6 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
         "platform.navSection.sales": "Sales",
         "platform.navSection.earnings": "Earnings",
         "platform.navSection.reports": "Reports",
-        "platform.navSection.growth": "Growth",
         "platform.navSection.tools": "Tools",
         "platform.navSection.myLearning": "My Learning",
         "platform.navSection.discover": "Discover",
@@ -51,6 +50,17 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
         "platform.nav.storefrontPages": "Storefront & pages",
         "platform.nav.mediaLibrary": "Media library",
         "platform.nav.coupons": "Coupons",
+        "platform.nav.sales": "Sales orders",
+        "platform.nav.subscriptions": "Subscriptions",
+        "platform.nav.reports": "Reports",
+        "platform.nav.team": "Team",
+        "platform.nav.verification": "Verification",
+        "platform.nav.integrations": "Integrations",
+        "platform.nav.messages": "Messages",
+        "platform.nav.myCourses": "My courses",
+        "platform.nav.marketplace": "Marketplace",
+        "platform.nav.earnings": "Earnings",
+        "platform.nav.onlineEvents": "Online events",
         "platform.help.needHelp": "Need help?",
         "platform.help.browseHelpCenter": "Browse Help Center",
         "platform.help.openTicket": "Open a support ticket",
@@ -88,62 +98,65 @@ describe("creator shell regressions", () => {
 
   // Este teste afirmava que abrir um grupo FECHAVA o anterior. O objetivo
   // declarado no nome era "lets the user switch groups" — fechar o outro era o
-  // mecanismo, e era o defeito: medido no /teach, com seis grupos, nunca havia
-  // mais de 7 a 9 links visíveis, então o criador nunca via o mapa do produto e
-  // /teach/media e /teach/sales não tinham caminho a partir do estado inicial.
-  // Agora os grupos acumulam; trocar continua possível, sem custo de esconder.
+  // mecanismo, e era o defeito. Agora os grupos acumulam; trocar continua
+  // possível, sem custo de esconder. Products e Sales viraram linhas diretas,
+  // então os dois grupos que sobraram (Marketing e Tools) fazem o teste.
   it("abre a categoria ativa e deixa vários grupos abertos ao mesmo tempo", () => {
     render(<PlatformNav />);
 
-    const products = screen.getByRole("button", { name: "Products" });
-    const sales = screen.getByRole("button", { name: "Sales" });
+    const marketing = screen.getByRole("button", { name: "Marketing" });
+    const tools = screen.getByRole("button", { name: "Tools" });
 
-    expect(products).toHaveAttribute("aria-expanded", "true");
-    expect(sales).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getByRole("link", { name: "My products" })).toBeInTheDocument();
+    expect(marketing).toHaveAttribute("aria-expanded", "true");
+    expect(tools).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("link", { name: "Marketing overview" })).toBeInTheDocument();
 
-    fireEvent.click(sales);
+    fireEvent.click(tools);
 
-    // O ponto do conserto: abrir Sales não custa perder Products de vista.
-    expect(products).toHaveAttribute("aria-expanded", "true");
-    expect(sales).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("link", { name: "My products" })).toBeInTheDocument();
+    // O ponto do conserto: abrir Tools não custa perder Marketing de vista.
+    expect(marketing).toHaveAttribute("aria-expanded", "true");
+    expect(tools).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: "Marketing overview" })).toBeInTheDocument();
   });
 
   it("fecha um grupo ao clicar nele de novo", () => {
     render(<PlatformNav />);
 
-    const products = screen.getByRole("button", { name: "Products" });
-    expect(products).toHaveAttribute("aria-expanded", "true");
+    const marketing = screen.getByRole("button", { name: "Marketing" });
+    expect(marketing).toHaveAttribute("aria-expanded", "true");
 
-    fireEvent.click(products);
+    fireEvent.click(marketing);
 
-    expect(products).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("link", { name: "My products" })).toBeNull();
+    expect(marketing).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("link", { name: "Marketing overview" })).toBeNull();
   });
 
-  it("keeps Home direct while grouping the producer workspace by workflow", () => {
+  it("keeps the day-to-day work flat and only the long tails grouped", () => {
     render(<PlatformNav />);
 
     expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("href", "/teach");
-    expect(screen.getByRole("button", { name: "Products" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "My products" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sales orders" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Subscriptions" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Reports" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Products" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Sales" })).toBeNull();
     expect(screen.getByRole("button", { name: "Marketing" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Growth" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tools" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Growth" })).toBeNull();
   });
 
   it("uses category icons only in the collapsed rail", () => {
     const onRequestExpand = vi.fn();
     render(<PlatformNav collapsed onRequestExpand={onRequestExpand} />);
 
-    const products = screen.getByRole("button", {
-      name: "Open Products navigation",
+    const marketing = screen.getByRole("button", {
+      name: "Open Marketing navigation",
     });
 
-    expect(products).toHaveClass("platform-nav-active");
-    expect(screen.queryByRole("link", { name: "My products" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Marketing overview" })).toBeNull();
 
-    fireEvent.click(products);
+    fireEvent.click(marketing);
     expect(onRequestExpand).toHaveBeenCalledOnce();
   });
 

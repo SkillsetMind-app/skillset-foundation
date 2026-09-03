@@ -194,26 +194,30 @@ export const platformNav: PlatformNavItem[] = [
   // <CreatorOpsHub /> as /teach/reports above it — two adjacent menu items, one
   // screen. Two names for one page reads as an unfinished product. The route
   // stays as a redirect for old bookmarks, same as /teach/refunds.
-  // Growth
-  // (Affiliates and co-productions were removed with the pivot to direct
-  // charges: the platform never holds the money, so it cannot split it.)
+  // O grupo "Growth" tinha exatamente dois itens — Coupons e Team — e nenhum
+  // dos dois era sobre crescimento: um é um desconto que se anuncia, o outro é
+  // quem tem acesso ao estúdio. (Afiliados e coproduções, que seriam o miolo do
+  // grupo, sumiram na virada para cobrança direta: a plataforma nunca segura o
+  // dinheiro, então não pode dividi-lo.) Sobrou uma gaveta com o nome errado,
+  // então cada item foi para a casa que descreve o que ele faz: Coupons é
+  // promoção (Marketing) e Team é acesso ao estúdio (Tools).
   {
     href: "/teach/coupons",
     labelKey: "platform.nav.coupons",
     icon: "Tag",
     contexts: ["teacher"],
-    sectionKey: "growth",
+    sectionKey: "marketing",
     permission: "teacherStudio.manageCourses",
   },
+  // Tools
   {
     href: "/teach/team",
     labelKey: "platform.nav.team",
     icon: "UserCheck",
     contexts: ["teacher"],
-    sectionKey: "growth",
+    sectionKey: "tools",
     permission: "teacherStudio.access",
   },
-  // Tools
   {
     href: "/teach/verification",
     labelKey: "platform.nav.verification",
