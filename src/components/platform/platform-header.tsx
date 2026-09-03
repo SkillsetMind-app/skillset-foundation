@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { ChevronRight, Menu, Search } from "lucide-react";
+import { ChevronRight, Search } from "lucide-react";
 import { useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
@@ -14,11 +14,11 @@ import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { platformNav } from "@/data/site";
 import { getWorkspaceHomeHref } from "@/lib/auth/routing";
 
-export function PlatformHeader({
-  onOpenMobileNav,
-}: {
-  onOpenMobileNav?: () => void;
-}) {
+// O hambúrguer daqui foi embora: abaixo de 640px ele abria EXATAMENTE a mesma
+// gaveta que o "More" da barra de baixo, que está sempre visível e ao alcance
+// do polegar. Duas portas para a mesma sala, uma delas no canto oposto ao da
+// mão. De 640px para cima ele já era `sm:hidden`, então nada muda ali.
+export function PlatformHeader() {
   const pathname = usePathname() ?? "";
   const { t } = useTranslation();
   const { status, user, signOut } = useAuth();
@@ -76,14 +76,6 @@ export function PlatformHeader({
           {status === "authenticated" && user ? (
             <AccountMenu user={user} onSignOut={signOut} />
           ) : null}
-          <button
-            type="button"
-            onClick={onOpenMobileNav}
-            className="grid size-10 place-items-center rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-ink)] transition hover:bg-[var(--color-surface-strong)] sm:hidden"
-            aria-label={t("platform.openMobileNav")}
-          >
-            <Menu aria-hidden="true" size={18} strokeWidth={1.8} />
-          </button>
         </div>
       </div>
     </header>

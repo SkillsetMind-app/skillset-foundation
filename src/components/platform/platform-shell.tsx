@@ -79,7 +79,7 @@ export function PlatformShell({
               </aside>
 
               <div className="platform-main-column">
-                <PlatformHeader onOpenMobileNav={() => setMobileNavOpen(true)} />
+                <PlatformHeader />
                 <section
                   className={`platform-content ${
                     compact ? "space-y-4" : "space-y-6"
