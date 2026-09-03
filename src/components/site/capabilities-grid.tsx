@@ -1,5 +1,3 @@
-"use client";
-
 import {
   Award,
   Calendar,
@@ -10,8 +8,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { useTranslation } from "@/components/i18n/i18n-provider";
 import { RevealSection } from "@/components/shared/reveal-section";
+import { getServerTranslation } from "@/lib/i18n/server";
 
 type Capability = {
   title: string;
@@ -19,8 +17,11 @@ type Capability = {
   Icon: LucideIcon;
 };
 
-export function CapabilitiesGrid() {
-  const { t } = useTranslation();
+// Server component: só texto traduzido, nenhum estado. Sai do bundle do
+// navegador; o que precisa do cliente aqui é o RevealSection, que continua
+// cliente e é montado como filho.
+export async function CapabilitiesGrid() {
+  const { t } = await getServerTranslation();
   const capabilities: ReadonlyArray<Capability> = [
     { title: t("home.capabilities.c1Title"), description: t("home.capabilities.c1Desc"), Icon: LayoutGrid },
     { title: t("home.capabilities.c2Title"), description: t("home.capabilities.c2Desc"), Icon: Calendar },

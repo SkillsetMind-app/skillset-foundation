@@ -6,6 +6,10 @@
      scheme even in dark mode — the pale strip down the right edge the founder
      flagged. [data-theme="dark"] flips it to `dark` below. */
   color-scheme: light;
+  /* Altura da barra fixa do site público. Vive aqui porque duas regras
+     dependem dela: a própria barra (min-height) e a faixa que reserva o
+     espaço que ela deixou de ocupar no fluxo (.site-header-spacer). */
+  --site-header-height: 64px;
   --color-base: #ffffff;
   --color-surface: #ffffff;
   --color-surface-soft: #eef4fc;
@@ -580,21 +584,10 @@ p {
   overflow-x: clip;
 }
 
-.page-shell::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  background:
-    radial-gradient(circle at 8% 0%, rgba(44, 82, 130, 0.08), transparent 28rem),
-    linear-gradient(180deg, #fbfdff 0%, #f2f6fc 52%, #e9f0fa 100%);
-}
-
-[data-theme="dark"] .page-shell::before {
-  background:
-    radial-gradient(circle at 8% 0%, rgba(143, 180, 228, 0.12), transparent 28rem),
-    linear-gradient(180deg, #0a0f1a 0%, #0d1424 50%, #111a2d 100%);
-}
+/* O gradiente fixo que ficava atrás de tudo saiu (F10). Ele fazia cada cartão
+   "flutuar" sobre um fundo que se movia sozinho e disputava com a superfície
+   dos próprios cartões. A página agora é plana: o fundo é o do <body>
+   (--color-base), e a elevação passa a ser decisão de cada peça. */
 
 [data-theme="dark"] .bg-white {
   background-color: var(--color-surface) !important;
@@ -739,15 +732,6 @@ p {
 [data-theme="dark"] .studio-course-row:hover,
 [data-theme="dark"] .studio-action-card:hover {
   background: var(--color-surface-strong);
-}
-
-/* Public floating header bar hardcodes a white background (CSS, not the
-   .bg-white utility, so the generic dark rule misses it) -> a white pill on a
-   dark marketing page. Flip to the dark surface; tokenize the hairline border.
-   Covers .scrolled (which only overrides padding/shadow). */
-[data-theme="dark"] .site-header__inner {
-  background: var(--color-surface);
-  border-color: var(--color-line);
 }
 
 /* Avatar fallback (no photo): a light gradient with a var(--color-primary)
@@ -1312,42 +1296,42 @@ p {
   color: var(--color-ink-soft) !important;
 }
 
+/* Uma camada só, e ela não se mexe. Antes o cabeçalho era uma ilha flutuante
+   que animava margem, topo e padding ao rolar — mudança de layout a cada
+   quadro, com a página inteira reagindo ao scroll. Agora é uma barra fixa de
+   largura total: fundo translúcido, filete embaixo, e ao rolar só a sombra
+   entra (150ms). Nenhuma propriedade de layout na transição. */
 .site-header {
-  position: sticky;
-  top: 14px;
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
   z-index: 40;
-  margin: 14px 20px 0;
-  transition:
-    margin 280ms ease,
-    top 280ms ease;
+  background: color-mix(in srgb, var(--color-base) 84%, transparent);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--color-line);
+  transition: box-shadow 150ms ease;
 }
 
 .site-header.scrolled {
-  top: 8px;
-  margin-top: 8px;
+  box-shadow: 0 8px 24px rgba(15, 39, 68, 0.1);
+}
+
+/* A barra saiu do fluxo, então o SiteNav monta esta faixa logo abaixo dela
+   para devolver a altura que a página perdeu. Uma variável só, usada nos dois
+   lugares, para não haver como as duas medidas divergirem. */
+.site-header-spacer {
+  height: var(--site-header-height);
 }
 
 .site-header__inner {
   max-width: 1280px;
+  min-height: var(--site-header-height);
   margin: 0 auto;
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 10px 14px 10px 22px;
-  background: #ffffff;
-  border: 1px solid rgba(26, 54, 93, 0.08);
-  border-radius: 18px;
-  box-shadow:
-    0 10px 28px rgba(15, 39, 68, 0.08),
-    0 1px 0 rgba(15, 39, 68, 0.04);
-  transition:
-    padding 280ms ease,
-    box-shadow 280ms ease;
-}
-
-.site-header.scrolled .site-header__inner {
-  padding: 8px 12px 8px 20px;
-  box-shadow: 0 16px 38px rgba(15, 39, 68, 0.12);
+  padding: 8px 20px;
 }
 
 .site-header__links {
@@ -1362,6 +1346,8 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  /* Alvo de toque: 32px de altura era menor que o mínimo de 44px. */
+  min-height: 44px;
   padding: 9px 12px;
   border-radius: 10px;
   color: var(--color-ink-soft);
@@ -1396,6 +1382,7 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-height: 44px;
   padding: 9px 16px;
   border: 1.5px solid var(--color-accent-fg);
   border-radius: 10px;
@@ -1424,6 +1411,7 @@ p {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 44px;
   padding: 10px 18px;
   border: none;
   border-radius: 10px;
@@ -2255,16 +2243,12 @@ select:focus-visible {
 }
 
 @media (max-width: 1023px) {
-  .site-header {
-    margin-right: 12px;
-    margin-left: 12px;
-  }
-
   .site-header__links {
     display: none;
   }
 
   .site-header__inner {
+    padding-right: 14px;
     padding-left: 14px;
   }
 

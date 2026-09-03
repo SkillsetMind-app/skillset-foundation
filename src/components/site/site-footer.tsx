@@ -51,8 +51,11 @@ export async function SiteFooter() {
   const { t } = await getServerTranslation();
 
   return (
-    <footer className="mx-auto w-full max-w-7xl px-5 pb-10 pt-12 sm:px-8">
-      <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8">
+    // Faixa de largura total com filete no topo. Antes era um cartão com sombra
+    // dentro da página — um bloco que flutuava sobre o fundo e disputava
+    // atenção com o conteúdo, em vez de fechar a página.
+    <footer className="mt-16 w-full border-t border-[var(--color-line)]">
+      <div className="mx-auto w-full max-w-7xl px-5 pb-10 pt-12 sm:px-8">
         <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">
           <div>
             <LogoWordmark compact />

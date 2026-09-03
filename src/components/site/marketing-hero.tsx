@@ -1,15 +1,18 @@
-"use client";
-
-import { useTranslation } from "@/components/i18n/i18n-provider";
 import { BrandPortrait } from "@/components/shared/brand-portrait";
 import { HeroCtas } from "@/components/site/hero-ctas";
+import { getServerTranslation } from "@/lib/i18n/server";
 
-export function MarketingHero() {
-  const { t } = useTranslation();
-  // Keep the hero behind the floating nav while fitting the primary CTA
-  // inside the first viewport on standard desktop screens.
+// Server component: só texto traduzido, nada de estado. O que tem estado é a
+// ilha HeroCtas, que continua cliente.
+export async function MarketingHero() {
+  const { t } = await getServerTranslation();
+  // Nada de margem negativa: o cabeçalho virou barra fixa com faixa própria,
+  // então o hero só começa embaixo dela. O encaixe por -mt-24/-mt-32 dependia
+  // da altura exata do cabeçalho flutuante e quebrava quando ela mudava.
+  // A altura mínima é um clamp: em janela baixa (560px) o botão principal
+  // ainda cabe na primeira tela, em telão ela para de crescer aos 900px.
   return (
-    <section className="relative -mt-24 flex min-h-[100svh] items-center overflow-hidden bg-[var(--color-primary)] text-white lg:-mt-32">
+    <section className="relative flex min-h-[clamp(560px,92svh,900px)] items-center overflow-hidden bg-[var(--color-primary)] text-white">
       <div className="absolute inset-0 bg-gradient-to-br from-[#071523] via-[#102a43] to-[#173a59]" />
 
       {/* One still portrait per visit — see BrandPortrait. */}
@@ -56,7 +59,7 @@ export function MarketingHero() {
         }}
       />
 
-      <div className="mx-auto w-full max-w-7xl px-5 pb-8 pt-28 sm:px-8 sm:pb-10 sm:pt-32 lg:pb-12 lg:pt-36">
+      <div className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-8 sm:py-14 lg:py-16">
         <div className="relative z-10 flex flex-col gap-10 lg:flex-row lg:items-center">
           <div className="hero-copy-rise mx-auto flex max-w-xl flex-col items-center text-center lg:mx-0 lg:items-start lg:text-left">
             <div className="inline-flex w-fit rounded-[8px] border border-white/20 bg-white/10 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">

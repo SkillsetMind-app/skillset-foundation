@@ -122,7 +122,8 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
   }, [mobileOpen]);
 
   return (
-    <header className={`site-header ${scrolled ? "scrolled" : ""}`}>
+    <>
+      <header className={`site-header ${scrolled ? "scrolled" : ""}`}>
       <div className="site-header__inner relative">
         <LogoWordmark nav />
         <nav
@@ -285,6 +286,11 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
           </>
         ) : null}
       </div>
-    </header>
+      </header>
+      {/* A barra é fixa, logo saiu do fluxo. Esta faixa devolve a altura dela
+          para a página, de uma vez só, em vez de cada rota lembrar de reservar
+          um padding no topo. */}
+      <div aria-hidden="true" className="site-header-spacer" />
+    </>
   );
 }
