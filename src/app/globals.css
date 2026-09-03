@@ -5449,60 +5449,6 @@ body:has([aria-label="Course categories"])
   background: transparent !important;
 }
 
-/* ─── Collapsed rail: ONE square per icon ─────────────────────────────────
-   In the 64px collapsed rail the icon chip is the only square. The link's own
-   rounded-border box is neutralized (3-class selector defined later beats the
-   3-class rule above) so icons never show a nested double frame. Inactive
-   chips get a clear white outline; the active chip becomes a solid white
-   button with a navy icon. The expanded sidebar is untouched. */
-.platform-sidebar.sidebar-collapsed .platform-nav-link {
-  width: 100%;
-  justify-content: center;
-  gap: 0;
-  padding-inline: 0 !important;
-  border-color: transparent !important;
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-.sidebar-collapsed .platform-nav-icon-chip {
-  width: 36px;
-  height: 36px;
-  flex-basis: 36px;
-  border-radius: 10px;
-}
-
-/* Recolhida: ícone sem caixinha. Cada ícone vinha numa moldura com borda —
-   dois empilhados liam como botões desabilitados. Agora o repouso é limpo, o
-   hover ganha um fundo suave, e o item ATUAL fica com fundo claro e ícone
-   escuro (o único que acende). */
-.sidebar-collapsed .platform-nav-link:not(.platform-nav-active) .platform-nav-icon-chip {
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-.sidebar-collapsed .platform-nav-link:not(.platform-nav-active):hover .platform-nav-icon-chip {
-  background: rgba(255, 255, 255, 0.1) !important;
-}
-
-.sidebar-collapsed .platform-nav-link:not(.platform-nav-active) .platform-nav-icon-chip svg {
-  color: #ffffff !important;
-  opacity: 0.85;
-}
-
-.sidebar-collapsed .platform-nav-link:not(.platform-nav-active):hover .platform-nav-icon-chip svg {
-  opacity: 1;
-}
-
-.sidebar-collapsed .platform-nav-active .platform-nav-icon-chip {
-  background: #ffffff !important;
-  box-shadow: none !important;
-}
-
-.sidebar-collapsed .platform-nav-active .platform-nav-icon-chip svg {
-  color: var(--color-primary, #0f2b47) !important;
-}
-
 /* Category accordions keep the producer information architecture visible while
    showing only the active branch. In the collapsed rail, these category buttons
    become the seven stable icon targets; leaf links never compete for 64px. */
@@ -5560,20 +5506,60 @@ body:has([aria-label="Course categories"])
   display: block;
 }
 
-.platform-sidebar.sidebar-collapsed .platform-nav-section-trigger {
-  min-height: 48px;
+/* ─── Rail recolhido (64px): UM quadrado por item ──────────────────────────
+   Link direto e gatilho de grupo desenham o MESMO quadrado de 44px, centrado
+   nos 64px, inteiro (antes o gatilho ocupava a largura toda e cortava nas
+   laterais, e o hover somava o fundo do item + o chip do icone: duas camadas).
+   O chip nao existe no rail (platform-nav.tsx so o renderiza expandido).
+   Este bloco fica DEPOIS das regras do gatilho de proposito: no hover as duas
+   tem a mesma especificidade e a ultima vence. A barra e sempre navy, nos dois
+   temas. */
+.platform-sidebar.sidebar-collapsed .platform-nav-link {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  margin-inline: auto;
   justify-content: center;
-  padding: 0;
-}
-
-.platform-sidebar.sidebar-collapsed .platform-nav-section-trigger .platform-nav-icon-chip {
-  width: 36px;
-  height: 36px;
-  flex-basis: 36px;
-}
-
-.platform-sidebar.sidebar-collapsed .platform-nav-section-trigger.platform-nav-active {
+  gap: 0;
+  padding: 0 !important;
+  border-radius: 10px;
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
   overflow: visible;
+}
+
+.platform-sidebar.sidebar-collapsed .platform-nav-link:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.platform-sidebar.sidebar-collapsed .platform-nav-link.platform-nav-active {
+  background: #ffffff !important;
+}
+
+.platform-sidebar.sidebar-collapsed .platform-nav-link svg {
+  color: #ffffff !important;
+  opacity: 0.85;
+}
+
+.platform-sidebar.sidebar-collapsed .platform-nav-link:hover svg {
+  opacity: 1;
+}
+
+.platform-sidebar.sidebar-collapsed .platform-nav-link.platform-nav-active svg {
+  color: var(--color-primary, #0f2b47) !important;
+  opacity: 1;
+}
+
+/* O filete dourado do ativo mora dentro do quadrado branco no rail: some. */
+.platform-sidebar.sidebar-collapsed .platform-nav-active::before {
+  content: none;
+}
+
+/* O botao de recolher ainda traz o chip; no rail ele e so o icone. */
+.platform-sidebar.sidebar-collapsed .platform-nav-icon-chip {
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 .platform-sidebar .grid.grid-cols-2 {

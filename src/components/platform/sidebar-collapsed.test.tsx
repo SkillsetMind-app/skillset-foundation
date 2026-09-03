@@ -77,6 +77,54 @@ describe("barra lateral recolhida", () => {
   });
 });
 
+// Itens extra da onda 3 (capturas do Patrick, 02/09): no rail, o gatilho de
+// grupo (Sales, Products...) acendia em DUAS camadas no hover — o fundo do
+// item, largo como o rail e cortado nas laterais, mais o chip do icone por
+// dentro — enquanto o link direto (Earnings) acendia numa so. Agora os dois
+// sao o mesmo quadrado de 44px, centrado nos 64px, sem chip.
+describe("rail recolhido: um quadrado por item, sem chip e sem corte", () => {
+  it("gatilho de grupo e link direto tem a mesma estrutura: o icone direto, sem chip", () => {
+    mocks.roles = ["teacher"];
+    mocks.pathname = "/teach/builder";
+    const { container, unmount } = render(<PlatformNav collapsed />);
+
+    expect(container.querySelectorAll(".platform-nav-icon-chip")).toHaveLength(0);
+    const items = [...container.querySelectorAll("a, button")];
+    expect(items.length).toBeGreaterThan(3);
+    expect(items.some((item) => item.classList.contains("platform-nav-section-trigger"))).toBe(true);
+    for (const item of items) {
+      expect(item.firstElementChild?.tagName.toLowerCase(), item.className).toBe("svg");
+    }
+
+    // Expandida, o chip continua (alinha icone e rotulo).
+    unmount();
+    render(<PlatformNav />);
+    expect(document.querySelectorAll(".platform-nav-icon-chip").length).toBeGreaterThan(3);
+  });
+
+  it("no CSS, o item do rail e um quadrado de 44px centrado, e a regra vem depois da do gatilho", () => {
+    const css = readFileSync(path.join(process.cwd(), "src/app/globals.css"), "utf8");
+    const rail = ".platform-sidebar.sidebar-collapsed .platform-nav-link {";
+    const start = css.indexOf(rail);
+    expect(start).toBeGreaterThan(-1);
+    const block = css.slice(start, css.indexOf("\n}", start));
+    expect(block).toContain("width: 44px");
+    expect(block).toContain("height: 44px");
+    expect(block).toContain("margin-inline: auto");
+    expect(block).toContain("padding: 0 !important");
+
+    // Hover do gatilho e hover do rail empatam em especificidade (0,4,0):
+    // o do rail so ganha por vir DEPOIS. Antes disso era a segunda camada.
+    const triggerHover = css.indexOf(".platform-sidebar .platform-nav-link.platform-nav-section-trigger:hover");
+    const railHover = css.indexOf(".platform-sidebar.sidebar-collapsed .platform-nav-link:hover {");
+    expect(triggerHover).toBeGreaterThan(-1);
+    expect(railHover).toBeGreaterThan(triggerHover);
+
+    // O destaque nao mora mais no chip.
+    expect(css).not.toMatch(/\.sidebar-collapsed[^{]*\.platform-nav-icon-chip[^{]*\{[^}]*background: (?!transparent)/);
+  });
+});
+
 describe("o botao de recolher/expandir", () => {
   it("e um item da barra (mesma classe dos links, alvo de 44px), nao um circulo na borda", () => {
     render(
