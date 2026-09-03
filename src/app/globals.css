@@ -4653,8 +4653,13 @@ body:has([aria-label="Course categories"])
   color: rgba(255, 255, 255, 0.82);
 }
 
+/* O realce do hover é só o branco cheio. A lavagem translúcida que estava aqui
+   criava um par branco-sobre-branco-translúcido: sobre a barra do mini (fundo
+   --color-primary, azul escuro) enxergava-se bem, mas o par não é verificável
+   sozinho — ele só passa por causa do que está ATRÁS, e a checagem de contraste
+   compõe sobre o fundo da página. Um segundo tom de branco é o mesmo aviso sem
+   depender do que está embaixo. */
 .member-video-mini__close:hover {
-  background: rgba(255, 255, 255, 0.14);
   color: #ffffff;
 }
 

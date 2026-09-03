@@ -1,6 +1,9 @@
+import { renderHook } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { useSidebarState } from "@/lib/ui/sidebar-state";
 
 /**
  * No tablet a navegação era a de CELULAR: numa tela de 1000px de largura, com
@@ -91,5 +94,37 @@ describe("tablet (768–1023px) usa o rail, não a barra de baixo", () => {
     expect(css.indexOf("@media (min-width: 768px) and (max-width: 1180px)")).toBeGreaterThan(
       css.indexOf("@media (max-width: 1180px)"),
     );
+  });
+});
+
+describe("a barra lateral no tablet", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    window.localStorage.clear();
+  });
+
+  it("na faixa do rail a barra vem recolhida, sem escrever preferência nenhuma", () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => ({ matches: true, addEventListener() {}, removeEventListener() {} })),
+    );
+
+    const { result } = renderHook(() => useSidebarState());
+
+    expect(result.current.isCollapsed).toBe(true);
+    // A preferência salva é do desktop: o rail é imposto, não escolhido.
+    expect(result.current.persistentState).toBe("expanded");
+    expect(window.localStorage.length).toBe(0);
+  });
+
+  it("sem matchMedia (jsdom cru, navegador antigo) não explode — cai no desenho de sempre", () => {
+    // O que derrubou o CI: `window.matchMedia is not a function` em três telas
+    // que só renderizavam o shell. Explodir no jsdom é explodir em algum
+    // navegador de verdade.
+    vi.stubGlobal("matchMedia", undefined);
+
+    const { result } = renderHook(() => useSidebarState());
+
+    expect(result.current.isCollapsed).toBe(false);
   });
 });
