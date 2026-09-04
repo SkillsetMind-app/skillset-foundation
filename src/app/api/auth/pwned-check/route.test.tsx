@@ -70,4 +70,14 @@ describe("pwned password rate limiting", () => {
     expect(await response.text()).toBe("ABCDEF:2\n");
     expect(mocks.fetch).toHaveBeenCalledOnce();
   });
+
+  it("fails closed when the breach corpus is unavailable", async () => {
+    mocks.fetch.mockResolvedValueOnce(new Response("", { status: 503 }));
+    const response = await GET(new Request(
+      "http://localhost/api/auth/pwned-check?prefix=ABCDE",
+      { headers: { "x-real-ip": "203.0.113.10" } },
+    ));
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "Password safety check unavailable." });
+  });
 });

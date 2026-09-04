@@ -18,17 +18,31 @@ export async function runRateLimit(key: string, limit: number, windowMs: number)
  * lookup table away from the address (four billion candidates, seconds of
  * compute), so the stored row would still be personal data in disguise; with the
  * pepper nobody without the server env can turn a row back into a visitor.
- * Unset (local dev, CI) falls back to the unkeyed hash so no route is gated on
- * the variable — production is expected to set it.
+ * If the dedicated pepper is unset, the server-only service-role key supplies
+ * equivalent entropy. Only local development/test may use an unkeyed hash;
+ * production fails configuration closed when neither secret exists.
  */
 export function rateLimitKeyFromIp(request: Request, prefix: string): string {
+  // Vercel supplies x-real-ip itself. Prefer that single trusted hop over the
+  // client-shaped x-forwarded-for chain; deployments behind another proxy must
+  // overwrite x-real-ip before forwarding to the app.
+  const realIp = request.headers.get("x-real-ip")?.trim() ?? "";
   const forwarded = request.headers.get("x-forwarded-for") ?? "";
-  const ip = forwarded.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
+  const candidate = realIp || forwarded.split(",").at(-1)?.trim() || "unknown";
+  // Bound attacker-controlled input even when this is run away from Vercel.
+  const ip = candidate.slice(0, 64);
   return `${prefix}_${hashIp(ip)}`;
 }
 
 function hashIp(ip: string): string {
-  const pepper = process.env.RATE_LIMIT_PEPPER;
+  // The service-role key is already a server-only high-entropy secret and is a
+  // safe fallback. Production must never persist reversible plain IP hashes.
+  const pepper =
+    process.env.RATE_LIMIT_PEPPER?.trim() ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!pepper && process.env.NODE_ENV === "production") {
+    throw new Error("RATE_LIMIT_PEPPER is required in production.");
+  }
   const digest = pepper
     ? createHmac("sha256", pepper).update(ip)
     : createHash("sha256").update(ip);

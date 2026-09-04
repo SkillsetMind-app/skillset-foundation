@@ -1,5 +1,8 @@
 name: Security
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
@@ -18,13 +21,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           # Full history so leaked secrets in old commits still fail the gate.
           fetch-depth: 0
 
       - name: TruffleHog (verified secrets only)
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@363923b901c911a9164f50b6c423f47c15372b1c
         with:
           path: ./
           # Num push para main e no cron semanal, `base` e `head` seriam o MESMO
@@ -44,7 +47,7 @@ jobs:
     container:
       image: semgrep/semgrep
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Semgrep CI (p/typescript + p/security-audit + p/secrets)
         run: |
@@ -64,8 +67,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm

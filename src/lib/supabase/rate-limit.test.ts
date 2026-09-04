@@ -11,7 +11,10 @@ const IP = "203.0.113.7";
 
 function requestFrom(ip: string) {
   return new Request("http://localhost/api/x", {
-    headers: { "x-forwarded-for": `${ip}, 10.0.0.1` },
+    headers: {
+      "x-real-ip": ip,
+      "x-forwarded-for": `spoofed-by-client, ${ip}`,
+    },
   });
 }
 
@@ -53,9 +56,19 @@ describe("rateLimitKeyFromIp", () => {
     expect(rateLimitKeyFromIp(requestFrom(IP), "csp")).not.toBe(primeiro);
   });
 
-  it("sem pepper cai no sha256 puro, para não travar um ambiente sem a variável", () => {
+  it("usa o service role como fallback secreto quando o pepper dedicado falta", () => {
     vi.stubEnv("RATE_LIMIT_PEPPER", "");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "unit-test-service-role");
 
-    expect(rateLimitKeyFromIp(requestFrom(IP), "csp")).toBe(`csp_${plainSha256}`);
+    expect(rateLimitKeyFromIp(requestFrom(IP), "csp")).not.toBe(`csp_${plainSha256}`);
+  });
+
+  it("ignora o primeiro x-forwarded-for controlável quando x-real-ip existe", () => {
+    vi.stubEnv("RATE_LIMIT_PEPPER", "unit-test-pepper");
+    const trusted = rateLimitKeyFromIp(requestFrom(IP), "csp");
+    const forged = new Request("http://localhost/api/x", {
+      headers: { "x-real-ip": IP, "x-forwarded-for": "1.2.3.4, 10.0.0.1" },
+    });
+    expect(rateLimitKeyFromIp(forged, "csp")).toBe(trusted);
   });
 });
