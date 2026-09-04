@@ -100,19 +100,32 @@ jobs:
         # fecha. Nao conseguiu perguntar: tenta de novo, e depois avisa alto sem
         # travar o merge. O Dependabot cobre o mesmo repo por outro caminho e nao
         # depende deste endpoint.
+        #
+        # As duas travas de tempo importam tanto quanto o retry. Com 400 o npm
+        # desiste em 3 segundos, mas com 503 ele entende "tente de novo" e entra
+        # num backoff interno de CINCO minutos -- que multiplicado por um retry
+        # externo ingenuo estoura o teto do job e volta como "cancelled", que e
+        # pior que vermelho: nao diz nada. --fetch-retries=0 tira o backoff de
+        # dentro, e o timeout de 60s e a rede embaixo, para o caso de a conexao
+        # ficar pendurada sem erro nenhum. Pior caso: 3 x 70s, com folga sobre
+        # os 10 minutos do job mesmo somando o npm ci.
         run: |
           set +e
           for tentativa in 1 2 3; do
-            saida=$(npm audit --omit=dev --audit-level=high 2>&1)
+            saida=$(timeout 60 npm audit --omit=dev --audit-level=high --fetch-retries=0 2>&1)
             codigo=$?
             if [ "$codigo" -eq 0 ]; then
               echo "$saida"
               exit 0
             fi
-            if echo "$saida" | grep -q "audit endpoint returned an error"; then
-              echo "Tentativa $tentativa de 3: o registry de auditoria respondeu erro."
-              echo "$saida" | grep -E "npm warn audit|npm error" | head -3
-              sleep 20
+            if [ "$codigo" -eq 124 ] || echo "$saida" | grep -q "audit endpoint returned an error"; then
+              if [ "$codigo" -eq 124 ]; then
+                echo "Tentativa $tentativa de 3: o registry nao respondeu em 60s."
+              else
+                echo "Tentativa $tentativa de 3: o registry de auditoria respondeu erro."
+                echo "$saida" | grep -E "npm warn audit|npm error" | head -3
+              fi
+              sleep 10
               continue
             fi
             # Chegou aqui: o npm conseguiu perguntar e a resposta foi ruim.
