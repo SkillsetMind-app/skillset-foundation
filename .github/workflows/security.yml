@@ -45,7 +45,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     container:
-      image: semgrep/semgrep
+      # Fixada por digest pela mesma razao das actions acima: sem tag nem digest
+      # o runner puxa o que estiver no registry naquele minuto, e um SAST que
+      # muda sozinho nao e um portao, e uma superficie.
+      image: semgrep/semgrep@sha256:51c9f53a4fce0d55e9abd08d7b96968654248a4b1122e77f20e0a49c0072446c # 1.175.1
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -73,6 +76,14 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
+      # O npm que vem com o Node 22 fala com o endpoint legado de auditoria
+      # (/-/npm/v1/security/audits/quick), que o registry esta aposentando e ja
+      # responde 400. O npm insiste, o job estoura os 10 minutos e morre com a
+      # mensagem generica "Invalid package tree, run npm install" -- que nao tem
+      # nada a ver com o lockfile e mandou mais de um leitor regenerar o lock a
+      # toa. O npm 11 usa o endpoint bulk e passa com o mesmo lock.
+      - name: Use npm 11 (the legacy audit endpoint 400s on npm 10)
+        run: npm i -g npm@^11
       - name: Install dependencies
         run: npm ci
       - name: Audit production deps (high and critical)

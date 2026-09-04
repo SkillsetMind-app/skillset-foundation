@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { rateLimitKeyFromIp } from "@/lib/supabase/rate-limit";
+import { allowByIp, rateLimitKeyFromIp } from "@/lib/supabase/rate-limit";
 
 // Imported by the module under test for the RPC path only; never called here.
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdminClient: () => ({}) }));
@@ -56,11 +56,37 @@ describe("rateLimitKeyFromIp", () => {
     expect(rateLimitKeyFromIp(requestFrom(IP), "csp")).not.toBe(primeiro);
   });
 
-  it("usa o service role como fallback secreto quando o pepper dedicado falta", () => {
+  // Segunda metade do A-28: o fallback NÃO pode ser a service role. Aquela chave
+  // existe para ignorar RLS; costurar uma leitura pública nela faz a rotação de
+  // uma resetar silenciosamente a outra, e qualquer valor derivado que vaze vira
+  // material para testar a chave real. Sem pepper dedicado o balde continua não
+  // sendo o sha256 puro — e não se mexe quando a service role muda.
+  it("sem pepper dedicado, o balde não é o sha256 puro nem depende da service role", () => {
     vi.stubEnv("RATE_LIMIT_PEPPER", "");
-    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "unit-test-service-role");
 
-    expect(rateLimitKeyFromIp(requestFrom(IP), "csp")).not.toBe(`csp_${plainSha256}`);
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-a");
+    const comA = rateLimitKeyFromIp(requestFrom(IP), "csp");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-b");
+    const comB = rateLimitKeyFromIp(requestFrom(IP), "csp");
+
+    expect(comA).not.toBe(`csp_${plainSha256}`);
+    expect(comA).toBe(comB);
+  });
+
+  // O bug que o próprio conserto do pepper criou: rateLimitKeyFromIp era
+  // avaliada como ARGUMENTO de allowByKey, então qualquer throw ali subia antes
+  // do try/catch e derrubava a rota pública inteira (csp-report, pwned-check,
+  // ofertas, preview de vídeo) em vez de apenas pular o limitador.
+  it("allowByIp falha ABERTO quando a montagem da chave quebra", async () => {
+    const requestQuebrada = {
+      headers: {
+        get() {
+          throw new Error("header store indisponível");
+        },
+      },
+    } as unknown as Request;
+
+    await expect(allowByIp(requestQuebrada, "csp", 60, 60_000)).resolves.toBe(true);
   });
 
   it("ignora o primeiro x-forwarded-for controlável quando x-real-ip existe", () => {

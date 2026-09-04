@@ -43,6 +43,48 @@ async function readBoundedBody(request: Request): Promise<string | null> {
   return new TextDecoder().decode(merged);
 }
 
+/**
+ * The origin a blocked URL came from, and nothing else.
+ *
+ * A blocked-uri is attacker- and browser-shaped: it can be a signed asset URL,
+ * a password-reset link the page tried to prefetch, or a path that names the
+ * customer. The alert only ever needs the HOST — "who did the page try to
+ * reach that the policy forbids" — so the query, the fragment and the path are
+ * dropped here rather than trusted to whoever reads the channel.
+ *
+ * The CSP spec also sends bare keywords ("inline", "eval", "self") and opaque
+ * schemes; those are already origin-free, so they pass through as labels.
+ */
+function originOf(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const raw = value.trim();
+  if (!raw) return undefined;
+  if (/^(inline|eval|self|data|blob|wasm-eval|trusted-types-sink)$/i.test(raw)) {
+    return raw.toLowerCase();
+  }
+  try {
+    const url = new URL(raw);
+    // data:/blob:/filesystem: have no meaningful host — the scheme IS the answer.
+    if (!url.host) return `${url.protocol.replace(":", "")}:`;
+    return url.origin.slice(0, 200);
+  } catch {
+    // Not a URL the platform can parse. Say so instead of forwarding the bytes.
+    return "unparseable";
+  }
+}
+
+/** Same idea for the page that reported: route, never the query string. */
+function routeOf(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const raw = value.trim();
+  if (!raw) return undefined;
+  try {
+    return new URL(raw).pathname.slice(0, 200);
+  } catch {
+    return "unparseable";
+  }
+}
+
 export async function POST(request: Request) {
   // Over the limit: still answer 204. A violation report has no error channel,
   // and telling a flooder they hit a limit only helps them tune the flood.
@@ -61,8 +103,11 @@ export async function POST(request: Request) {
       typeof value === "string" ? value.replace(/[\r\n]/g, " ").slice(0, 500) : undefined;
     console.warn("[csp-report]", {
       directive: safe(report["violated-directive"] ?? report["effective-directive"]),
-      blocked: safe(report["blocked-uri"]),
-      document: safe(report["document-uri"]),
+      blocked: originOf(report["blocked-uri"]),
+      // Route only. A full document-uri carries the customer's ids and one-time
+      // query parameters straight into the platform log, which is retained and
+      // read by more people than the ops channel is.
+      document: routeOf(report["document-uri"]),
     });
     notifyOps({
       event: "security.csp_violation",
@@ -70,9 +115,11 @@ export async function POST(request: Request) {
       summary: "The browser blocked a resource that violated the enforced CSP.",
       context: {
         directive: safe(report["violated-directive"] ?? report["effective-directive"]) ?? "unknown",
-        // Do not send document URLs: they can contain customer identifiers or
-        // one-time query parameters. Origin-level blocked data is sufficient.
-        blocked: safe(report["blocked-uri"]) ?? "unknown",
+        // Origin only, never the raw value. "Which host got blocked" is the whole
+        // question a CSP alert has to answer, and a blocked-uri can be a signed
+        // URL, a one-time token or a private path — none of which belong in an
+        // alert that fans out to chat.
+        blocked: originOf(report["blocked-uri"]) ?? "unknown",
       },
     });
   } catch {
