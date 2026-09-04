@@ -40,10 +40,12 @@ if (!SECRET) {
   process.exit(1);
 }
 if (!SECRET.startsWith("sk_")) {
+  // Sem eco do valor, nem dos primeiros caracteres: a variavel esta errada
+  // JUSTAMENTE porque nao e uma chave Stripe, entao o que estiver ali pode ser
+  // qualquer outro segredo colado no lugar errado -- e um terminal, um log de
+  // CI ou um screenshot de suporte carrega isso adiante.
   console.error(
-    "ERROR: STRIPE_SECRET_KEY must start with 'sk_'. Got: " +
-      SECRET.slice(0, 8) +
-      "...",
+    "ERROR: STRIPE_SECRET_KEY has an invalid format (expected a key starting with 'sk_').",
   );
   process.exit(1);
 }

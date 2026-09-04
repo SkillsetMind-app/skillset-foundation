@@ -87,6 +87,7 @@ function createAdmin(input: {
   coupon?: Record<string, unknown> | null;
   checkoutLock?: Record<string, unknown> | null;
   orderVanished?: boolean;
+  lockPublishLost?: boolean;
 }) {
   const lockReplies = [...(input.lockReplies ?? [])];
   const lockUpdates: Array<Record<string, unknown>> = [];
@@ -96,6 +97,7 @@ function createAdmin(input: {
   class Query {
     private mode: "read" | "update" | "delete" = "read";
     private statusFilter: string[] | null = null;
+    private equals = new Map<string, unknown>();
 
     constructor(private readonly table: string) {}
 
@@ -103,7 +105,8 @@ function createAdmin(input: {
       return this;
     }
 
-    eq() {
+    eq(column: string, value: unknown) {
+      this.equals.set(column, value);
       return this;
     }
 
@@ -148,7 +151,13 @@ function createAdmin(input: {
       if (this.mode === "delete") return { data: null, error: null };
       if (this.mode === "update") {
         if (!single) return { data: null, error: null };
-        if (this.table === "checkout_locks") return { data: { lock_key: "buyer__course" }, error: null };
+        if (this.table === "checkout_locks") {
+          const ownsClaim = this.equals.has("order_id");
+          return {
+            data: input.lockPublishLost && ownsClaim ? null : { lock_key: "buyer__course" },
+            error: null,
+          };
+        }
         if (this.table === "orders") {
           return { data: input.orderVanished ? null : { id: "order" }, error: null };
         }
@@ -540,6 +549,36 @@ describe("course checkout subscription exclusivity", () => {
       {},
       { stripeAccount: "acct_teacher" },
     );
+    expect(admin.lockDeletes).toEqual(["checkout_locks"]);
+  });
+
+  it("expires a late session when another request has taken over its lock", async () => {
+    const admin = createAdmin({
+      lockReplies: [{ action: "claim", checkout_url: null }],
+      lockPublishLost: true,
+    });
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.getCourseRow.mockResolvedValue(course("one_time"));
+    mocks.normalizePrice.mockReturnValue({
+      amountMinor: 12_000,
+      currency: "usd",
+      paymentType: "one_time",
+      source: "legacy",
+    });
+    mocks.createSession.mockResolvedValue({
+      id: "cs_late",
+      url: "https://checkout.example/late",
+    });
+
+    const response = await POST(request({ courseId: "course" }));
+
+    expect(response.status).toBe(500);
+    expect(mocks.expireSession).toHaveBeenCalledWith(
+      "cs_late",
+      {},
+      { stripeAccount: "acct_teacher" },
+    );
+    // The delete is owner-scoped too; it cannot remove the newer request's lock.
     expect(admin.lockDeletes).toEqual(["checkout_locks"]);
   });
 });

@@ -6,9 +6,8 @@
 // and send only the first 5 hex chars of that hash to our own proxy; the proxy
 // returns every breached suffix under that prefix and we match locally.
 //
-// Best-effort by design: ANY lookup failure (offline, timeout, HIBP down, our
-// proxy erroring) resolves to "allow", so a third-party outage can never block a
-// signup or password change. It only ever throws on a POSITIVE breach match.
+// Password writes fail closed: an unavailable breach corpus is not evidence that
+// a password is safe. The caller gets a retryable, explicit error instead.
 
 const PWNED_LOOKUP_TIMEOUT_MS = 2500;
 
@@ -19,6 +18,14 @@ export class BreachedPasswordError extends Error {
       "This password appeared in a known data breach. Choose a different one to keep the account secure.",
     );
     this.name = "BreachedPasswordError";
+  }
+}
+
+export class PwnedPasswordUnavailableError extends Error {
+  readonly code = "pwned_check_unavailable";
+  constructor() {
+    super("We could not verify this password safely. Please try again in a moment.");
+    this.name = "PwnedPasswordUnavailableError";
   }
 }
 
@@ -61,12 +68,13 @@ async function isPasswordBreached(password: string): Promise<boolean> {
       signal: controller.signal,
     });
     if (!response.ok) {
-      return false; // fail-open
+      throw new PwnedPasswordUnavailableError();
     }
     const body = await response.text();
     return body ? isSuffixBreached(body, suffix) : false;
-  } catch {
-    return false; // fail-open: never block on a lookup failure
+  } catch (error) {
+    if (error instanceof PwnedPasswordUnavailableError) throw error;
+    throw new PwnedPasswordUnavailableError();
   } finally {
     clearTimeout(timer);
   }

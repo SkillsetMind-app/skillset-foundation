@@ -765,6 +765,10 @@ export async function POST(request: Request) {
           updated_at: new Date().toISOString(),
         })
         .eq("lock_key", lockKey)
+        // The claim can be taken over after its grace period while Stripe is
+        // still answering this request. Never let the late request overwrite
+        // the newer owner's live session.
+        .eq("order_id", orderId)
         .select("lock_key")
         .maybeSingle();
       if (publishLockError) {

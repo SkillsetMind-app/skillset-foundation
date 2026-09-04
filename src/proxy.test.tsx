@@ -55,6 +55,10 @@ describe("country filter in the proxy", () => {
     for (const path of ["/", "/courses", "/pricing", "/instructors"]) {
       const response = await run(path, "RU", "US,BR");
       expect(response.status, path).toBe(200);
+      const csp = response.headers.get("content-security-policy") ?? "";
+      expect(csp).toContain("script-src 'self' 'nonce-");
+      expect(csp).not.toContain("'unsafe-eval'");
+      expect(csp).not.toContain("'unsafe-inline' https://connect-js.stripe.com");
     }
     expect(mocks.notifyOps).not.toHaveBeenCalled();
   });
