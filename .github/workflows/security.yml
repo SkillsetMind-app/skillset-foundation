@@ -87,5 +87,38 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Audit production deps (high and critical)
-        # Do not fail on moderate noise; block high/critical only.
-        run: npm audit --omit=dev --audit-level=high
+        # Bloqueia por VULNERABILIDADE, nunca por indisponibilidade de terceiro.
+        #
+        # Os dois endpoints de auditoria do npm andam instaveis: o legado
+        # (security/audits/quick) responde 400 porque esta sendo aposentado, e o
+        # atual (security/advisories/bulk) devolveu 503 em 04/09 com exatamente o
+        # mesmo lockfile que passa na maquina do dev. Um portao que fecha porque
+        # o registry caiu nao mede seguranca, mede sorte -- e o custo real e pior
+        # que o falso vermelho: ensina o time a ignorar vermelho.
+        #
+        # Entao a distincao e explicita. Achou vulnerabilidade high/critical:
+        # fecha. Nao conseguiu perguntar: tenta de novo, e depois avisa alto sem
+        # travar o merge. O Dependabot cobre o mesmo repo por outro caminho e nao
+        # depende deste endpoint.
+        run: |
+          set +e
+          for tentativa in 1 2 3; do
+            saida=$(npm audit --omit=dev --audit-level=high 2>&1)
+            codigo=$?
+            if [ "$codigo" -eq 0 ]; then
+              echo "$saida"
+              exit 0
+            fi
+            if echo "$saida" | grep -q "audit endpoint returned an error"; then
+              echo "Tentativa $tentativa de 3: o registry de auditoria respondeu erro."
+              echo "$saida" | grep -E "npm warn audit|npm error" | head -3
+              sleep 20
+              continue
+            fi
+            # Chegou aqui: o npm conseguiu perguntar e a resposta foi ruim.
+            # Este e o portao, e e agora que ele fecha.
+            echo "$saida"
+            exit 1
+          done
+          echo "::warning::npm audit nao rodou: o registry respondeu erro nas 3 tentativas. Isto NAO e um sinal de que as dependencias estao limpas -- o Dependabot segue cobrindo o repo."
+          exit 0
