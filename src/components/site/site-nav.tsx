@@ -125,7 +125,12 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
     <>
       <header className={`site-header ${scrolled ? "scrolled" : ""}`}>
       <div className="site-header__inner relative">
-        <LogoWordmark nav />
+        <div className="hidden md:block">
+          <LogoWordmark nav />
+        </div>
+        <div className="md:hidden">
+          <LogoWordmark nav variant="mark" />
+        </div>
         <nav
           aria-label={t("nav.primaryNavLabel")}
           className="site-header__links"
@@ -163,13 +168,15 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
           <LocaleSwitcher />
           {isAuthenticated ? (
             <>
-              <Link
-                href={getPrimaryWorkspaceHref(user)}
-                className="btn-cta-hero hidden items-center gap-2 sm:inline-flex"
-              >
-                <LayoutDashboard aria-hidden="true" size={16} strokeWidth={1.9} />
-                {t("nav.dashboard")}
-              </Link>
+              <div className="hidden lg:block">
+                <Link
+                  href={getPrimaryWorkspaceHref(user)}
+                  className="btn-cta-hero items-center gap-2"
+                >
+                  <LayoutDashboard aria-hidden="true" size={16} strokeWidth={1.9} />
+                  {t("nav.dashboard")}
+                </Link>
+              </div>
               <AccountMenu user={user} onSignOut={signOut} />
             </>
           ) : (
