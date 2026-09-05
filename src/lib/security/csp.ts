@@ -28,8 +28,10 @@ function supabaseOrigins(): string[] {
 }
 
 /** Per-request enforcing CSP. A nonce lets Next's bootstrap and our tiny theme
- * initializer run without opening every inline script or eval to an attacker. */
+ * initializer run without opening every inline script or eval in production. */
 export function buildContentSecurityPolicy(nonce: string): string {
+  // Next.js/React's development tooling uses eval; production must forbid it.
+  const isDevelopment = process.env.NODE_ENV === "development";
   const supabase = supabaseOrigins();
   const supabaseConnect = supabase.length ? ` ${supabase.join(" ")}` : "";
   // Protected PDFs use iframes; videos use media elements. Both need the HTTP
@@ -41,7 +43,7 @@ export function buildContentSecurityPolicy(nonce: string): string {
     "object-src 'none'",
     "frame-ancestors 'self'",
     "form-action 'self' https://checkout.stripe.com",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://checkout.stripe.com https://connect-js.stripe.com https://js.stripe.com https://us.i.posthog.com https://us-assets.i.posthog.com https://challenges.cloudflare.com https://va.vercel-scripts.com`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDevelopment ? " 'unsafe-eval'" : ""} https://checkout.stripe.com https://connect-js.stripe.com https://js.stripe.com https://us.i.posthog.com https://us-assets.i.posthog.com https://challenges.cloudflare.com https://va.vercel-scripts.com`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
