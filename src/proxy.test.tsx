@@ -5,17 +5,21 @@
 // file runs in node rather than the suite default.
 
 import { NextRequest } from "next/server";
+import type { CookieMethodsServer } from "@supabase/ssr";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   notifyOps: vi.fn(),
-  getSupabaseClientConfig: vi.fn(() => null),
+  getSupabaseClientConfig: vi.fn<() => { url: string; anonKey: string } | null>(() => null),
+  resolveHostToUid: vi.fn(),
+  createServerClient: vi.fn(),
 }));
 
 vi.mock("@/lib/ops/alert", () => ({ notifyOps: mocks.notifyOps }));
+vi.mock("@/lib/domains/resolve-host", () => ({ resolveHostToUid: mocks.resolveHostToUid }));
+vi.mock("@supabase/ssr", () => ({ createServerClient: mocks.createServerClient }));
 
-// Returning null short-circuits the session refresh, so an allowed request
-// never reaches Supabase in these tests.
+// Country-filter tests skip session refresh; session tests supply a local stub.
 vi.mock("@/lib/supabase/config", () => ({
   getSupabaseClientConfig: mocks.getSupabaseClientConfig,
 }));
@@ -43,7 +47,7 @@ async function run(
 
 afterEach(() => {
   delete process.env.GEO_ALLOWED_COUNTRIES;
-  vi.clearAllMocks();
+  vi.resetAllMocks();
 });
 
 describe("country filter in the proxy", () => {
@@ -55,6 +59,10 @@ describe("country filter in the proxy", () => {
     for (const path of ["/", "/courses", "/pricing", "/instructors"]) {
       const response = await run(path, "RU", "US,BR");
       expect(response.status, path).toBe(200);
+      const csp = response.headers.get("content-security-policy") ?? "";
+      expect(csp).toContain("script-src 'self' 'nonce-");
+      expect(csp).not.toContain("'unsafe-eval'");
+      expect(csp).not.toContain("'unsafe-inline' https://connect-js.stripe.com");
     }
     expect(mocks.notifyOps).not.toHaveBeenCalled();
   });
@@ -116,5 +124,90 @@ describe("country filter in the proxy", () => {
   it("reads the list from the environment, tolerating spaces and case", async () => {
     const response = await run("/auth", "PT", " us , pt ");
     expect(response.status).toBe(200);
+  });
+});
+
+describe("security headers across proxy response paths", () => {
+  it("forwards a fresh nonce and CSP through a custom-domain rewrite despite forged input", async () => {
+    vi.resetModules();
+    mocks.resolveHostToUid.mockResolvedValue("teacher-fixture");
+    const { proxy } = await import("@/proxy");
+    const nonces = new Set<string>();
+
+    for (let requestNumber = 0; requestNumber < 2; requestNumber += 1) {
+      const response = await proxy(new NextRequest("https://teacher.example.test/?from=audit", {
+        headers: {
+          host: "teacher.example.test",
+          "x-nonce": "forged-nonce",
+          "content-security-policy": "script-src 'nonce-forged-nonce' 'unsafe-inline'",
+        },
+      }));
+
+      expect(response.headers.get("x-middleware-rewrite"))
+        .toBe("https://teacher.example.test/instructors/teacher-fixture?from=audit");
+      const nonce = response.headers.get("x-middleware-request-x-nonce");
+      expect(typeof nonce).toBe("string");
+      expect(nonce).toMatch(/^[a-f0-9]{32}$/);
+      expect(nonce).not.toBe("forged-nonce");
+      const csp = response.headers.get("content-security-policy");
+      expect(csp).toContain(`'nonce-${nonce}'`);
+      expect(csp).not.toContain("'nonce-forged-nonce'");
+      expect(response.headers.get("x-middleware-request-content-security-policy")).toBe(csp);
+      expect(response.headers.get("x-middleware-override-headers")?.split(","))
+        .toEqual(expect.arrayContaining(["x-nonce", "content-security-policy"]));
+      nonces.add(nonce!);
+    }
+
+    expect(nonces.size).toBe(2);
+    expect(mocks.resolveHostToUid).toHaveBeenCalledWith("teacher.example.test");
+    expect(mocks.createServerClient).not.toHaveBeenCalled();
+  });
+
+  it("preserves refreshed cookies and forwards the SDK anti-cache headers", async () => {
+    vi.resetModules();
+    mocks.getSupabaseClientConfig.mockReturnValue({
+      url: "https://project.example.test",
+      anonKey: "public-test-fixture",
+    });
+    const antiCacheHeaders = {
+      "Cache-Control": "private, no-cache, no-store, must-revalidate, max-age=0",
+      Expires: "0",
+      Pragma: "no-cache",
+    };
+    const getUser = vi.fn();
+    mocks.createServerClient.mockImplementation((_url: string, _key: string, options: { cookies: CookieMethodsServer }) => {
+      getUser.mockImplementation(async () => {
+        expect(await options.cookies.getAll!()).toEqual([{ name: "audit-session", value: "old-fixture" }]);
+        await options.cookies.setAll!([
+          {
+            name: "audit-session",
+            value: "renewed-fixture",
+            options: { path: "/", httpOnly: true, secure: true, sameSite: "lax" },
+          },
+          { name: "audit-session.1", value: "", options: { path: "/", maxAge: 0 } },
+        ], antiCacheHeaders);
+        return { data: { user: null }, error: null };
+      });
+      return { auth: { getUser } };
+    });
+    const { proxy } = await import("@/proxy");
+    const request = new NextRequest("https://www.skillsetmind.com/api/auth/pwned-check?prefix=ABCDE", {
+      headers: { host: "www.skillsetmind.com", cookie: "audit-session=old-fixture" },
+    });
+    const response = await proxy(request);
+
+    expect(getUser).toHaveBeenCalledOnce();
+    expect(request.cookies.get("audit-session")?.value).toBe("renewed-fixture");
+    expect(response.cookies.get("audit-session")).toMatchObject({
+      value: "renewed-fixture", path: "/", httpOnly: true, secure: true, sameSite: "lax",
+    });
+    expect(response.cookies.get("audit-session.1")).toMatchObject({ value: "", maxAge: 0 });
+    // This is how Next makes middleware cookies visible to cookies() in RSC/API.
+    expect(response.headers.get("x-middleware-set-cookie")).toContain("audit-session=renewed-fixture");
+    for (const [name, value] of Object.entries(antiCacheHeaders)) {
+      expect(response.headers.get(name), name).toBe(value);
+    }
+    const nonce = response.headers.get("x-middleware-request-x-nonce");
+    expect(response.headers.get("content-security-policy")).toContain(`'nonce-${nonce}'`);
   });
 });
