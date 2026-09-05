@@ -9,6 +9,7 @@ import {
 } from "@/domain/host-routing";
 import { resolveHostToUid } from "@/lib/domains/resolve-host";
 import { notifyOps } from "@/lib/ops/alert";
+import { buildContentSecurityPolicy } from "@/lib/security/csp";
 import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
 /**
@@ -124,7 +125,10 @@ function refusedForCountry(request: NextRequest): NextResponse | null {
  * `isPlatformHost()` short-circuits ahead of everything, so ordinary traffic on
  * skillsetmind.com never touches the database.
  */
-async function routedByHost(request: NextRequest): Promise<NextResponse | null> {
+async function routedByHost(
+  request: NextRequest,
+  requestHeaders: Headers,
+): Promise<NextResponse | null> {
   const hostname = normaliseHostHeader(request.headers.get("host"));
   if (!hostname || isPlatformHost(hostname)) {
     return null;
@@ -146,7 +150,7 @@ async function routedByHost(request: NextRequest): Promise<NextResponse | null> 
       const [path, query] = decision.path.split("?");
       url.pathname = path;
       url.search = query ? `?${query}` : "";
-      return NextResponse.rewrite(url);
+      return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
     }
     case "redirect":
       // 308 rather than 302: the move is permanent for this path on this host,
@@ -157,24 +161,34 @@ async function routedByHost(request: NextRequest): Promise<NextResponse | null> 
 }
 
 export async function proxy(request: NextRequest) {
+  const nonce = crypto.randomUUID().replaceAll("-", "");
+  const csp = buildContentSecurityPolicy(nonce);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  // Next reads the request CSP to apply this nonce to its own bootstrap scripts.
+  requestHeaders.set("content-security-policy", csp);
+  const secure = (response: NextResponse) => {
+    response.headers.set("Content-Security-Policy", csp);
+    return response;
+  };
   // Before any of the session work: refreshing a token for a request we are
   // about to refuse is wasted round trips against Supabase.
   const refused = refusedForCountry(request);
   if (refused) {
-    return refused;
+    return secure(refused);
   }
 
-  const routed = await routedByHost(request);
+  const routed = await routedByHost(request, requestHeaders);
   if (routed) {
-    return routed;
+    return secure(routed);
   }
 
-  let response = NextResponse.next({ request });
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
 
   const config = getSupabaseClientConfig();
   if (!config) {
     // Supabase not configured yet — pass through untouched.
-    return response;
+    return secure(response);
   }
 
   const supabase = createServerClient(config.url, config.anonKey, {
@@ -182,13 +196,16 @@ export async function proxy(request: NextRequest) {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet, headersToSet) {
         for (const { name, value } of cookiesToSet) {
           request.cookies.set(name, value);
         }
-        response = NextResponse.next({ request });
+        response = NextResponse.next({ request: { headers: requestHeaders } });
         for (const { name, value, options } of cookiesToSet) {
           response.cookies.set(name, value, options);
+        }
+        for (const [name, value] of Object.entries(headersToSet)) {
+          response.headers.set(name, value);
         }
       },
     },
@@ -200,7 +217,7 @@ export async function proxy(request: NextRequest) {
   // refuses a connection, and knows nothing about who is making it.
   await supabase.auth.getUser();
 
-  return response;
+  return secure(response);
 }
 
 export const config = {

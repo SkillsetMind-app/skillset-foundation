@@ -1,33 +1,5 @@
 import type { NextConfig } from "next";
 
-// Report-only CSP: browsers evaluate it and POST any violation to
-// /api/csp-report, but NOTHING is ever blocked. This is the observe phase of a
-// CSP rollout — it lets prod traffic reveal the true directive set (Stripe.js,
-// Supabase, Google OAuth, PostHog, the Bunny/YouTube/Vimeo players) before we
-// promote to an enforcing `Content-Security-Policy`. img-src stays broad
-// (https:) because course thumbnails come from many hosts; tighten before
-// enforcing. ponytail: report-uri (not report-to) — still honored in report-only
-// and one line; add report-to only if a target browser drops report-uri.
-export const CSP_REPORT_ONLY = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "object-src 'none'",
-  "frame-ancestors 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect-js.stripe.com https://js.stripe.com https://us.i.posthog.com https://us-assets.i.posthog.com https://challenges.cloudflare.com https://va.vercel-scripts.com",
-  "style-src 'self' 'unsafe-inline' 'sha256-0hAheEzaMe6uXIKV4EehS9pu1am1lj/KnnzrOYqckXk='",
-  "img-src 'self' data: blob: https: https://*.stripe.com",
-  "font-src 'self' data:",
-  // video.bunnycdn.com is the Bunny Stream TUS endpoint the browser uploads
-  // lesson videos to (src/lib/bunny/server.ts BUNNY_TUS_ENDPOINT). Without it,
-  // every Bunny upload trips a report-only CSP violation now, and would be
-  // BLOCKED once this CSP is promoted to enforcing. The player embed
-  // (iframe.mediadelivery.net) is already covered by frame-src/media-src.
-  "connect-src 'self' https://ijtikldtjvsbtwszokvs.supabase.co wss://ijtikldtjvsbtwszokvs.supabase.co https://api.stripe.com https://api.pwnedpasswords.com https://us.i.posthog.com https://us-assets.i.posthog.com https://va.vercel-scripts.com https://vitals.vercel-insights.com https://video.bunnycdn.com",
-  "frame-src https://connect-js.stripe.com https://js.stripe.com https://hooks.stripe.com https://iframe.mediadelivery.net https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://accounts.google.com https://challenges.cloudflare.com",
-  "media-src 'self' blob: https://ijtikldtjvsbtwszokvs.supabase.co https://iframe.mediadelivery.net",
-  "report-uri /api/csp-report",
-].join("; ");
-
 const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
@@ -115,8 +87,7 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=(), browsing-topics=()",
           },
-          // Observe-only: reports violations to /api/csp-report, blocks nothing.
-          { key: "Content-Security-Policy-Report-Only", value: CSP_REPORT_ONLY },
+          // The enforcing, nonce-based CSP is attached per request by proxy.ts.
         ],
       },
     ];

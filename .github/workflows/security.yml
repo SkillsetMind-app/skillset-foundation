@@ -1,5 +1,8 @@
 name: Security
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
@@ -18,13 +21,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           # Full history so leaked secrets in old commits still fail the gate.
           fetch-depth: 0
 
       - name: TruffleHog (verified secrets only)
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@363923b901c911a9164f50b6c423f47c15372b1c
         with:
           path: ./
           # Num push para main e no cron semanal, `base` e `head` seriam o MESMO
@@ -42,9 +45,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     container:
-      image: semgrep/semgrep
+      # Fixada por digest pela mesma razao das actions acima: sem tag nem digest
+      # o runner puxa o que estiver no registry naquele minuto, e um SAST que
+      # muda sozinho nao e um portao, e uma superficie.
+      image: semgrep/semgrep@sha256:51c9f53a4fce0d55e9abd08d7b96968654248a4b1122e77f20e0a49c0072446c # 1.175.1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Semgrep CI (p/typescript + p/security-audit + p/secrets)
         run: |
@@ -64,14 +70,68 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
+      # O npm que vem com o Node 22 fala com o endpoint legado de auditoria
+      # (/-/npm/v1/security/audits/quick), que o registry esta aposentando e ja
+      # responde 400. O npm insiste, o job estoura os 10 minutos e morre com a
+      # mensagem generica "Invalid package tree, run npm install" -- que nao tem
+      # nada a ver com o lockfile e mandou mais de um leitor regenerar o lock a
+      # toa. O npm 11 usa o endpoint bulk e passa com o mesmo lock.
+      - name: Use npm 11 (the legacy audit endpoint 400s on npm 10)
+        run: npm i -g npm@^11
       - name: Install dependencies
         run: npm ci
       - name: Audit production deps (high and critical)
-        # Do not fail on moderate noise; block high/critical only.
-        run: npm audit --omit=dev --audit-level=high
+        # Bloqueia por VULNERABILIDADE, nunca por indisponibilidade de terceiro.
+        #
+        # Os dois endpoints de auditoria do npm andam instaveis: o legado
+        # (security/audits/quick) responde 400 porque esta sendo aposentado, e o
+        # atual (security/advisories/bulk) devolveu 503 em 04/09 com exatamente o
+        # mesmo lockfile que passa na maquina do dev. Um portao que fecha porque
+        # o registry caiu nao mede seguranca, mede sorte -- e o custo real e pior
+        # que o falso vermelho: ensina o time a ignorar vermelho.
+        #
+        # Entao a distincao e explicita. Achou vulnerabilidade high/critical:
+        # fecha. Nao conseguiu perguntar: tenta de novo, e depois avisa alto sem
+        # travar o merge. O Dependabot cobre o mesmo repo por outro caminho e nao
+        # depende deste endpoint.
+        #
+        # As duas travas de tempo importam tanto quanto o retry. Com 400 o npm
+        # desiste em 3 segundos, mas com 503 ele entende "tente de novo" e entra
+        # num backoff interno de CINCO minutos -- que multiplicado por um retry
+        # externo ingenuo estoura o teto do job e volta como "cancelled", que e
+        # pior que vermelho: nao diz nada. --fetch-retries=0 tira o backoff de
+        # dentro, e o timeout de 60s e a rede embaixo, para o caso de a conexao
+        # ficar pendurada sem erro nenhum. Pior caso: 3 x 70s, com folga sobre
+        # os 10 minutos do job mesmo somando o npm ci.
+        run: |
+          set +e
+          for tentativa in 1 2 3; do
+            saida=$(timeout 60 npm audit --omit=dev --audit-level=high --fetch-retries=0 2>&1)
+            codigo=$?
+            if [ "$codigo" -eq 0 ]; then
+              echo "$saida"
+              exit 0
+            fi
+            if [ "$codigo" -eq 124 ] || echo "$saida" | grep -q "audit endpoint returned an error"; then
+              if [ "$codigo" -eq 124 ]; then
+                echo "Tentativa $tentativa de 3: o registry nao respondeu em 60s."
+              else
+                echo "Tentativa $tentativa de 3: o registry de auditoria respondeu erro."
+                echo "$saida" | grep -E "npm warn audit|npm error" | head -3
+              fi
+              sleep 10
+              continue
+            fi
+            # Chegou aqui: o npm conseguiu perguntar e a resposta foi ruim.
+            # Este e o portao, e e agora que ele fecha.
+            echo "$saida"
+            exit 1
+          done
+          echo "::warning::npm audit nao rodou: o registry respondeu erro nas 3 tentativas. Isto NAO e um sinal de que as dependencias estao limpas -- o Dependabot segue cobrindo o repo."
+          exit 0

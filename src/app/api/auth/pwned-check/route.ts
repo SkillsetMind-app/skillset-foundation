@@ -44,9 +44,8 @@ export async function GET(request: Request) {
         signal: controller.signal,
       },
     );
-    // Fail-open: an empty body makes the client treat the password as not-breached.
     if (!upstream.ok) {
-      return new NextResponse("", { status: 200 });
+      return NextResponse.json({ error: "Password safety check unavailable." }, { status: 503 });
     }
     const body = await upstream.text();
     return new NextResponse(body, {
@@ -58,7 +57,7 @@ export async function GET(request: Request) {
       },
     });
   } catch {
-    return new NextResponse("", { status: 200 }); // fail-open on timeout/network
+    return NextResponse.json({ error: "Password safety check unavailable." }, { status: 503 });
   } finally {
     clearTimeout(timer);
   }
