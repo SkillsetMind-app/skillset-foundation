@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
+import type { ClassroomTab } from "@/domain/classroom-tabs";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { teacherCourseToLearningCourse } from "@/lib/data/published-courses";
 import { subscribeToTeacherCourse } from "@/lib/data/teacher-courses";
@@ -11,6 +12,7 @@ import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
 type CoursePreviewShellProps = {
   courseId: string;
+  tab?: ClassroomTab;
   /** Teacher's plan hides our brand: drop the platform links from the preview
    *  too, so it matches what their students actually see. */
   whitelabel?: boolean;
@@ -18,6 +20,7 @@ type CoursePreviewShellProps = {
 
 export function CoursePreviewShell({
   courseId,
+  tab = "lesson",
   whitelabel = false,
 }: CoursePreviewShellProps) {
   const hasBackendConfig = Boolean(getSupabaseClientConfig());
@@ -87,6 +90,7 @@ export function CoursePreviewShell({
   return (
     <EnrolledCourseWorkspace
       course={teacherCourseToLearningCourse(course)}
+      tab={tab}
       enableFirestoreAssets
       previewExitHref={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=members`}
       previewMode
