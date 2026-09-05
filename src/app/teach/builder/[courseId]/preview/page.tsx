@@ -1,20 +1,26 @@
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { MemberAreaShell } from "@/components/learn/member-area-shell";
 import { CoursePreviewShell } from "@/components/teacher/course-preview-shell";
+import { isClassroomTab } from "@/domain/classroom-tabs";
 import { getMemberArea } from "@/lib/learn/server/member-area";
 
 type TeacherBuilderPreviewPageProps = {
   params: Promise<{
     courseId: string;
+    tab?: string;
   }>;
 };
 
 export default async function TeacherBuilderPreviewPage({
   params,
 }: TeacherBuilderPreviewPageProps) {
-  const { courseId } = await params;
+  const { courseId, tab } = await params;
+  if (tab !== undefined && (!isClassroomTab(tab) || tab === "lesson")) {
+    notFound();
+  }
   // Same lookup the student route runs, from the same module — the teacher has
   // to see exactly what a student sees.
   const { brand, theme } = await getMemberArea(courseId);
@@ -34,7 +40,7 @@ export default async function TeacherBuilderPreviewPage({
             </section>
           }
         >
-          <CoursePreviewShell courseId={courseId} whitelabel={Boolean(brand)} />
+          <CoursePreviewShell courseId={courseId} tab={tab ?? "lesson"} whitelabel={Boolean(brand)} />
         </Suspense>
       </MemberAreaShell>
     </ProtectedSurface>
