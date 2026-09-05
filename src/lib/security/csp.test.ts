@@ -13,6 +13,37 @@ function sources(directive: string): string[] {
 
 afterEach(() => vi.unstubAllEnvs());
 
+describe("CSP development compatibility", () => {
+  it("allows Next.js development eval while keeping the nonce trust chain", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const scripts = sources("script-src");
+
+    expect(scripts).toContain("'unsafe-eval'");
+    expect(scripts).toContain("'nonce-nonce-fixture'");
+    expect(scripts).toContain("'strict-dynamic'");
+    expect(scripts).not.toContain("'unsafe-inline'");
+  });
+
+  it.each(["production", "test", undefined])(
+    "keeps eval forbidden when NODE_ENV is %s",
+    (environment) => {
+      vi.stubEnv("NODE_ENV", environment);
+      expect(sources("script-src")).not.toContain("'unsafe-eval'");
+    },
+  );
+
+  it("changes only the eval permission between production and development", () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://storage.example.test");
+    vi.stubEnv("NODE_ENV", "production");
+    const production = buildContentSecurityPolicy("nonce-fixture");
+
+    vi.stubEnv("NODE_ENV", "development");
+    const development = buildContentSecurityPolicy("nonce-fixture");
+
+    expect(development.replace(" 'unsafe-eval'", "")).toBe(production);
+  });
+});
+
 describe("CSP compatibility with embedded course and payment content", () => {
   // Stripe's Checkout CSP contract applies to EmbeddedCheckoutProvider too:
   // https://docs.stripe.com/security/guide#content-security-policy
