@@ -7,7 +7,7 @@ export type SidebarState = "expanded" | "collapsed";
 const STORAGE_KEY = "skillset_sidebar_state";
 
 /** Faixa do tablet: sem barra de baixo, e o rail de 64px é a navegação. */
-const RAIL_QUERY = "(min-width: 768px) and (max-width: 1023px)";
+const RAIL_QUERY = "(min-width: 768px) and (width < 1024px)";
 
 // Sidebar is click-controlled only. No hover expansion — the previous
 // hover-to-peek behavior made the menu jump unexpectedly when the cursor
@@ -41,6 +41,7 @@ export function useSidebarState() {
   }
 
   return {
+    isRail,
     isCollapsed: isRail || state === "collapsed",
     persistentState: state,
     toggle,

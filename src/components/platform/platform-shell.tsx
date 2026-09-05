@@ -40,9 +40,10 @@ export function PlatformShell({
   children,
 }: PlatformShellProps) {
   const { user } = useAuth();
-  const { isCollapsed, persistentState, toggle } = useSidebarState();
+  const { isRail, isCollapsed, persistentState, toggle } = useSidebarState();
   const pathname = usePathname() ?? "";
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [mobileNavSection, setMobileNavSection] = useState<string>();
 
   return (
     <ThemeProvider>
@@ -66,7 +67,14 @@ export function PlatformShell({
                 />
                 <PlatformNav
                   collapsed={isCollapsed}
-                  onRequestExpand={toggle}
+                  onRequestExpand={(section) => {
+                    if (isRail) {
+                      setMobileNavSection(section);
+                      setMobileNavOpen(true);
+                    } else {
+                      toggle();
+                    }
+                  }}
                 />
                 {/* Último item da barra, dentro dela (mt-auto). O círculo
                     flutuante na borda ficava em cima da linha que separa barra
@@ -126,7 +134,11 @@ export function PlatformShell({
         </div>
         <MobileSidebarDrawer
           open={mobileNavOpen}
-          onOpen={() => setMobileNavOpen(true)}
+          initialSection={mobileNavSection}
+          onOpen={() => {
+            setMobileNavSection(undefined);
+            setMobileNavOpen(true);
+          }}
           onClose={() => setMobileNavOpen(false)}
         />
       </main>

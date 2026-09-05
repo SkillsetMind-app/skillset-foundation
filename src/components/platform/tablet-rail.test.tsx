@@ -60,13 +60,13 @@ describe("tablet (768–1023px) usa o rail, não a barra de baixo", () => {
 
     // E não sobrou nenhum bloco de 1023px acendendo a barra de baixo ou
     // apagando a lateral — que era exatamente o bug.
-    const tabletAndBelow = mediaBlocks("(max-width: 1023px)");
+    const tabletAndBelow = mediaBlocks("(width < 1024px)");
     expect(tabletAndBelow).not.toContain(".platform-mobile-nav");
     expect(tabletAndBelow).not.toContain(".platform-sidebar {");
   });
 
   it("de 768 a 1023px a coluna da lateral é o rail de 64px, e o botão de recolher some", () => {
-    const tablet = mediaBlocks("(min-width: 768px) and (max-width: 1023px)");
+    const tablet = mediaBlocks("(min-width: 768px) and (width < 1024px)");
 
     expect(tablet).toContain("--platform-sidebar-width: 64px");
     expect(tablet).toMatch(

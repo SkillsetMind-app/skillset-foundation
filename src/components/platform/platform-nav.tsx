@@ -132,10 +132,11 @@ const sectionIconMap: Record<string, LucideIcon> = {
 
 type PlatformNavProps = {
   collapsed?: boolean;
-  onRequestExpand?: () => void;
+  onRequestExpand?: (section: string) => void;
+  initialSection?: string;
 };
 
-export function PlatformNav({ collapsed = false, onRequestExpand }: PlatformNavProps) {
+export function PlatformNav({ collapsed = false, onRequestExpand, initialSection }: PlatformNavProps) {
   const { user } = useAuth();
   const { t } = useTranslation();
   const pathname = usePathname() ?? "";
@@ -149,7 +150,7 @@ export function PlatformNav({ collapsed = false, onRequestExpand }: PlatformNavP
   const [sectionChoice, setSectionChoice] = useState<{
     pathname: string;
     sections: string[] | null;
-  }>({ pathname: "", sections: null });
+  }>({ pathname, sections: initialSection ? [initialSection] : null });
   const subject: PermissionSubject = { roles: user?.roles ?? ["guest"] };
   const context = resolveContext(pathname, subject);
 
@@ -200,7 +201,7 @@ export function PlatformNav({ collapsed = false, onRequestExpand }: PlatformNavP
   function toggleSection(section: string) {
     if (collapsed) {
       setSectionChoice({ pathname, sections: [section] });
-      onRequestExpand?.();
+      onRequestExpand?.(section);
       return;
     }
 
@@ -253,7 +254,7 @@ export function PlatformNav({ collapsed = false, onRequestExpand }: PlatformNavP
             collapsed ? t("platform.openSectionNav").replace("{section}", sectionLabel) : undefined
           }
           title={collapsed ? sectionLabel : undefined}
-          className={`platform-nav-link platform-nav-section-trigger group relative flex w-full shrink-0 items-center rounded-[10px] border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+          className={`platform-nav-link platform-nav-section-trigger group relative flex w-full shrink-0 items-center rounded-[10px] border text-sm font-semibold transition-colors ${
             collapsed ? "justify-center px-0" : "px-2"
           } ${
             collapsed && isActiveSection
@@ -396,7 +397,7 @@ function PlatformNavLink({
       title={collapsed ? label : undefined}
       target={newTab ? "_blank" : undefined}
       rel={newTab ? "noopener noreferrer" : undefined}
-      className={`platform-nav-link group relative flex h-11 min-h-11 shrink-0 items-center gap-2.5 rounded-[10px] border px-2.5 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+      className={`platform-nav-link group relative flex h-11 min-h-11 shrink-0 items-center gap-2.5 rounded-[10px] border px-2.5 py-1.5 text-sm font-semibold transition-colors ${
         active
           ? "platform-nav-active border-[rgba(24,58,94,0.2)] shadow-[0_10px_22px_rgba(26,54,93,0.16)]"
           : "border-transparent text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]"

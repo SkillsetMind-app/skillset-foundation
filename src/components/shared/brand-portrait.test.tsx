@@ -1,5 +1,8 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ImageConfigContext } from "next/dist/shared/lib/image-config-context.shared-runtime";
+import { imageConfigDefault } from "next/dist/shared/lib/image-config";
+import config from "../../../next.config";
 
 import {
   BRAND_PORTRAITS,
@@ -46,5 +49,17 @@ describe("BrandPortrait", () => {
 
     const [hero, panel] = sources(container);
     expect(panel).toBe(hero);
+  });
+
+  it("optimizes the original PNG once at portrait quality", () => {
+    const { container } = render(
+      <ImageConfigContext.Provider value={{ ...imageConfigDefault, ...config.images }}>
+        <BrandPortrait imageClassName="hero" sizes="100vw" />
+      </ImageConfigContext.Provider>,
+    );
+    const image = container.querySelector("img")!;
+    const url = new URL(image.src, "https://example.test");
+    expect(url.searchParams.get("url")).toMatch(/\.png$/);
+    expect(url.searchParams.get("q")).toBe("90");
   });
 });

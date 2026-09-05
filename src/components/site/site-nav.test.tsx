@@ -6,6 +6,8 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import postcss from "postcss";
 
 import { SiteNav } from "@/components/site/site-nav";
 
@@ -31,6 +33,20 @@ function linkNames(nav: HTMLElement): string[] {
 }
 
 describe("SiteNav", () => {
+  it("keeps every entry action reachable before the full header fits at 1280px", () => {
+    render(<SiteNav />);
+    expect(screen.getByRole("button", { name: "Open menu" }).className).toContain("xl:hidden");
+    const css = postcss.parse(readFileSync("src/app/globals.css", "utf8"));
+    const hiddenLinks: string[] = [];
+    css.walkAtRules("media", (rule) => {
+      if (rule.params !== "(width < 1280px)") return;
+      rule.walkRules(".site-header__links", (links) => {
+        links.walkDecls("display", (decl) => { hiddenLinks.push(decl.value); });
+      });
+    });
+    expect(hiddenLinks).toContain("none");
+  });
+
   it("leads with Courses, the door for people who come to learn", () => {
     render(<SiteNav />);
 

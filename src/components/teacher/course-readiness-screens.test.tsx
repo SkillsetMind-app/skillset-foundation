@@ -1,10 +1,11 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CourseBuilderStudio } from "@/components/teacher/course-builder-studio";
 import { CourseManageHub } from "@/components/teacher/course-manage-hub";
 import { getCourseReadiness } from "@/domain/course-readiness";
 import type { TeacherCourse } from "@/domain/teacher-course";
+import { subscribeToTeacherCourse } from "@/lib/data/teacher-courses";
 
 const mocks = vi.hoisted(() => {
   // Fusivel: um laco de render nao estoura o timeout do vitest, come memoria
@@ -58,13 +59,13 @@ vi.mock("@/components/auth/auth-provider", () => ({
 }));
 
 vi.mock("@/lib/data/teacher-courses", () => ({
-  subscribeToTeacherCourse: mocks.fused(
+  subscribeToTeacherCourse: vi.fn(mocks.fused(
     "subscribeToTeacherCourse",
     (_id: string, onData: (course: TeacherCourse) => void) => {
       onData(mocks.course);
       return () => undefined;
     },
-  ),
+  )),
   subscribeToTeacherCourses: mocks.fused(
     "subscribeToTeacherCourses",
     (_uid: string, onData: (courses: TeacherCourse[]) => void) => {
@@ -117,9 +118,69 @@ vi.mock("@/components/teacher/course-overview-panel", () => ({
 describe("o que falta para publicar: um numero so em todas as telas", () => {
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   const expected = getCourseReadiness(mocks.course);
+
+  it("constrains a menu that mounts after the course recovers from an initial load failure", async () => {
+    let recover: (course: TeacherCourse | null) => void = () => {};
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, onCourse, onError) => {
+      recover = onCourse;
+      onError(new Error("Temporary load failure"));
+      return () => {};
+    });
+    const observe = vi.fn();
+    vi.stubGlobal("ResizeObserver", class {
+      observe = observe;
+      disconnect() {}
+    });
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(600);
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return DOMRect.fromRect({ y: this.classList.contains("platform-content") ? 65 : 269 });
+    });
+    render(
+      <section className="platform-content" style={{ paddingTop: 28, paddingBottom: 48 }}>
+        <CourseManageHub courseId="course-1" />
+      </section>,
+    );
+    expect(screen.queryByRole("navigation", { name: "Course management sections" })).toBeNull();
+
+    await act(async () => recover(mocks.course));
+    const menu = screen.getByRole("navigation", { name: "Course management sections" });
+    expect(menu.style.getPropertyValue("--course-nav-height")).toBe("348px");
+    expect(observe).toHaveBeenCalledWith(menu.closest(".platform-content"));
+  });
+
+  it("keeps the management menu inside its own scrollport when the available height changes", async () => {
+    let resize = () => {};
+    const disconnect = vi.fn();
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(callback: () => void) { resize = callback; }
+      observe() {}
+      disconnect = disconnect;
+    });
+    const height = vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(600);
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return DOMRect.fromRect({ y: this.classList.contains("platform-content") ? 65 : 269 });
+    });
+    const { unmount } = render(
+      <section className="platform-content" style={{ paddingTop: 28, paddingBottom: 48 }}>
+        <CourseManageHub courseId="course-1" />
+      </section>,
+    );
+    const menu = await screen.findByRole("navigation", { name: "Course management sections" });
+    expect(menu.style.getPropertyValue("--course-nav-height")).toBe("348px");
+    expect(menu.className).toContain("lg:overflow-y-auto");
+    expect(menu.className).toContain("lg:max-h-[var(--course-nav-height)]");
+
+    height.mockReturnValue(500);
+    act(() => resize());
+    expect(menu.style.getPropertyValue("--course-nav-height")).toBe("248px");
+    unmount();
+    expect(disconnect).toHaveBeenCalledOnce();
+  });
 
   it("a funcao pura e a referencia: 4 de 6 checks, 67%", () => {
     expect(expected.doneCount).toBe(4);
