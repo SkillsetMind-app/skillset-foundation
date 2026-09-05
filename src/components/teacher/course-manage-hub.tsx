@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
@@ -245,6 +245,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     );
   };
   const [copiedLink, setCopiedLink] = useState(false);
+  const menuRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     return subscribeToTeacherCourse(
@@ -263,6 +264,28 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   }, [courseId]);
 
   const courseLoaded = loadedCourseId === courseId;
+
+  useEffect(() => {
+    const menu = menuRef.current;
+    const viewport = menu?.closest<HTMLElement>(".platform-content");
+    if (!menu || !viewport) return;
+
+    // Both platform and course headers consume space. Measure the menu's
+    // normal-flow row so even its bottom fits before the outer page scrolls.
+    const updateHeight = () => {
+      const style = getComputedStyle(viewport);
+      const rowTop = menu.parentElement!.getBoundingClientRect().top;
+      const offset = rowTop - viewport.getBoundingClientRect().top + viewport.scrollTop;
+      const height = viewport.clientHeight - offset - parseFloat(style.paddingBottom);
+      menu.style.setProperty("--course-nav-height", `${Math.max(0, height)}px`);
+    };
+    updateHeight();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateHeight);
+    observer?.observe(viewport);
+    const courseHeader = menu.parentElement?.previousElementSibling;
+    if (courseHeader) observer?.observe(courseHeader);
+    return () => observer?.disconnect();
+  }, [courseLoaded, course?.id]);
 
   useEffect(() => {
     if (!user) {
@@ -398,8 +421,9 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
 
       <div className="grid gap-5 lg:grid-cols-[240px_1fr] lg:items-start">
         <nav
+          ref={menuRef}
           aria-label="Course management sections"
-          className="min-w-0 border-b border-[var(--color-line)] bg-white pb-2 lg:sticky lg:top-20 lg:rounded-[8px] lg:border lg:p-2"
+          className="min-w-0 border-b border-[var(--color-line)] bg-white pb-2 lg:sticky lg:top-4 lg:max-h-[var(--course-nav-height)] lg:overflow-y-auto lg:overscroll-contain lg:rounded-[8px] lg:border lg:p-2"
         >
           <p className="hidden px-2 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)] lg:block">
             Manage

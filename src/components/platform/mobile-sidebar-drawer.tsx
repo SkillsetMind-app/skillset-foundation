@@ -25,12 +25,20 @@ type MobileSidebarDrawerProps = {
   open: boolean;
   onOpen: () => void;
   onClose: () => void;
+  initialSection?: string;
 };
+
+function visibleNavigationControl() {
+  return Array.from(document.querySelectorAll<HTMLElement>(
+    ".platform-sidebar .platform-nav-link, .platform-mobile-nav button",
+  )).find((element) => element.getClientRects().length > 0) ?? null;
+}
 
 export function MobileSidebarDrawer({
   open,
   onOpen,
   onClose,
+  initialSection,
 }: MobileSidebarDrawerProps) {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -38,7 +46,7 @@ export function MobileSidebarDrawer({
   const touchStartX = useRef<number | null>(null);
   const drawerRef = useRef<HTMLElement>(null);
 
-  useModalFocus(drawerRef, open);
+  useModalFocus(drawerRef, open, visibleNavigationControl);
   const homeHref = getWorkspaceHomeHref(pathname, user);
   const workspaceItem = useMemo(() => {
     const isTeacher = user?.roles.includes("teacher");
@@ -68,10 +76,18 @@ export function MobileSidebarDrawer({
       }
     }
 
+    const desktop = window.matchMedia?.("(min-width: 1024px)");
+    function handleDesktopChange() {
+      if (desktop?.matches) onClose();
+    }
+
     document.addEventListener("keydown", handleKeyDown);
+    desktop?.addEventListener("change", handleDesktopChange);
+    handleDesktopChange();
 
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
+      desktop?.removeEventListener("change", handleDesktopChange);
     };
   }, [onClose, open]);
 
@@ -121,7 +137,12 @@ export function MobileSidebarDrawer({
             role="dialog"
             aria-modal="true"
             aria-label={t("platform.mobile.drawerLabel")}
-            className="relative z-[1] flex h-screen w-[280px] flex-col bg-white shadow-[0_0_60px_rgba(15,39,68,0.25)] outline-none"
+            className="relative z-[1] flex h-svh w-[280px] max-w-full flex-col bg-white shadow-[0_0_60px_rgba(15,39,68,0.25)] outline-none"
+            onClick={(event) => {
+              if (event.target instanceof Element && event.target.closest("a[href]")) {
+                onClose();
+              }
+            }}
             onTouchStart={(event) => {
               touchStartX.current = event.touches[0]?.clientX ?? null;
             }}
@@ -153,7 +174,7 @@ export function MobileSidebarDrawer({
               </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-3">
-              <PlatformNav />
+              <PlatformNav initialSection={initialSection} />
             </div>
             <div className="border-t border-[var(--color-line)] p-3">
               <SessionCard />

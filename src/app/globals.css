@@ -337,20 +337,13 @@ html {
 }
 
 @media (min-width: 1024px) {
-  /* The portrait sits lower on desktop so faces clear the floating header.
-     Nudging the element down leaves the top of the hero uncovered, and the
-     hero is pulled above the viewport by its negative margin, so that strip
-     was visible as a hard horizontal seam across the whole top edge.
-
-     The layer behind the photos is filled with the portraits' own backdrop,
-     so the strip and the photo read as one surface. Measured across all ten
-     files: the top band averages rgb(5, 16, 31) and no file deviates by more
-     than 8/255 on any channel, which is invisible at this darkness.
-
-     These two rules are a pair. Changing the translate without the fill (or
-     removing the fill) brings the seam straight back. */
-  .hero-portrait-image {
-    transform: translateY(clamp(6rem, 10vh, 8rem));
+  /* Size by height: both photo edges meet the hero, without a vertical crop.
+     The wider background remains behind the copy on ultrawide screens. */
+  .hero-portrait-frame {
+    height: 100%;
+    aspect-ratio: 1672 / 941;
+    width: auto;
+    right: 0;
   }
 
   .hero-portrait-layer {
@@ -1981,7 +1974,7 @@ p {
   color: var(--color-primary);
 }
 
-@media (max-width: 1023px) {
+@media (width < 1024px) {
   .payouts-grid {
     grid-template-columns: 1fr;
   }
@@ -2001,7 +1994,7 @@ p {
   }
 }
 
-@media (max-width: 1023px) {
+@media (width < 1024px) {
   .account-settings-grid {
     grid-template-columns: 1fr;
   }
@@ -2258,7 +2251,7 @@ select:focus-visible {
   }
 }
 
-@media (max-width: 1023px) {
+@media (width < 1280px) {
   .site-header__links {
     display: none;
   }
@@ -2519,6 +2512,8 @@ select:focus-visible {
 }
 
 .platform-sidebar-panel {
+  /* This rail stays navy in both themes. */
+  --focus-ring: #ffffff;
   width: var(--platform-sidebar-width, var(--sidebar-width));
   display: flex;
   flex-direction: column;
@@ -2701,7 +2696,16 @@ select:focus-visible {
 }
 
 .platform-grid--collapsed .platform-sidebar-panel {
-  padding-inline: 0.625rem;
+  padding-inline: 0;
+}
+
+.platform-sidebar.sidebar-collapsed .platform-sidebar-nav {
+  /* Two Windows gutters leave only 43px for the 44px targets. */
+  scrollbar-gutter: stable;
+}
+
+.platform-sidebar.sidebar-collapsed .platform-nav-link:focus-visible {
+  outline-offset: 2px;
 }
 
 .platform-grid--collapsed .platform-sidebar-brand {
@@ -2890,6 +2894,7 @@ body:has([aria-label="Course categories"])
 }
 
 .platform-content {
+  flex: 1;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -4000,7 +4005,7 @@ body:has([aria-label="Course categories"])
   }
 }
 
-@media (max-width: 1023px) {
+@media (width < 1024px) {
   .course-builder-hero,
   .course-builder-grid {
     grid-template-columns: 1fr;
@@ -5170,7 +5175,7 @@ body:has([aria-label="Course categories"])
   }
 }
 
-@media (max-width: 1023px) {
+@media (width < 1024px) {
   .member-classroom-hero {
     grid-template-columns: 1fr;
   }
@@ -5784,7 +5789,7 @@ body:has([aria-label="Course categories"])
 }
 
 .platform-sidebar.sidebar-collapsed .platform-nav-link.platform-nav-active svg {
-  color: var(--color-primary, #0f2b47) !important;
+  color: #102a43 !important;
   opacity: 1;
 }
 
@@ -6636,12 +6641,12 @@ button:hover > .dash-card,
    centralizados, marca no meio) vem da classe .sidebar-collapsed, que o
    useSidebarState força nesta faixa. O botão de recolher some porque nela não
    há o que recolher. */
-@media (min-width: 768px) and (max-width: 1023px) {
+@media (min-width: 768px) and (width < 1024px) {
   .platform-grid {
     --platform-sidebar-width: 64px;
   }
 
-  .platform-sidebar-label {
+  .platform-sidebar .platform-sidebar-label {
     width: 0;
     opacity: 0;
     overflow: hidden;
@@ -6687,7 +6692,7 @@ button:hover > .dash-card,
   }
 }
 
-@media (max-width: 1023px) {
+@media (width < 1024px) {
   .advisor-trigger {
     width: 48px;
     height: 48px;

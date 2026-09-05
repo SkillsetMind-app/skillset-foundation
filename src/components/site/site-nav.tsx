@@ -190,7 +190,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
             aria-expanded={mobileOpen}
             aria-controls="site-mobile-menu"
             onClick={() => setMobileOpen((open) => !open)}
-            className="grid size-11 shrink-0 place-items-center rounded-[10px] border border-[var(--color-line)] bg-white text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] lg:hidden"
+            className="grid size-11 shrink-0 place-items-center rounded-[10px] border border-[var(--color-line)] bg-white text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] xl:hidden"
           >
             {mobileOpen ? (
               <X aria-hidden="true" size={18} strokeWidth={1.8} />
@@ -206,11 +206,11 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
               type="button"
               aria-label={t("nav.closeMenu")}
               onClick={() => setMobileOpen(false)}
-              className="fixed inset-0 z-[44] bg-[rgba(15,39,68,0.4)] lg:hidden"
+              className="fixed inset-0 z-[44] bg-[rgba(15,39,68,0.4)] xl:hidden"
             />
             <div
               id="site-mobile-menu"
-              className="absolute inset-x-0 top-[calc(100%+8px)] z-[46] rounded-[14px] border border-[var(--color-line)] bg-white p-3 shadow-[0_24px_48px_rgba(15,39,68,0.16)] lg:hidden"
+              className="absolute inset-x-0 top-[calc(100%+8px)] z-[46] rounded-[14px] border border-[var(--color-line)] bg-white p-3 shadow-[0_24px_48px_rgba(15,39,68,0.16)] xl:hidden"
             >
               <nav aria-label={t("nav.mobileNavLabel")} className="grid gap-1">
                 {resolvedNav.map((item) => {

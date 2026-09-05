@@ -113,6 +113,14 @@ describe("rail recolhido: um quadrado por item, sem chip e sem corte", () => {
     expect(block).toContain("margin-inline: auto");
     expect(block).toContain("padding: 0 !important");
 
+    // A thin Windows scrollbar takes 10px: two gutters left only 43px in
+    // the 63px inner rail. One gutter leaves room for the 44px target and focus.
+    expect(css.includes("scrollbar-gutter: stable both-edges")).toBe(false);
+    expect(css).toMatch(/\.platform-grid--collapsed \.platform-sidebar-panel\s*\{\s*padding-inline: 0;/);
+    expect(css).toMatch(/\.platform-sidebar-panel\s*\{[^}]*--focus-ring: #ffffff;/);
+    expect(css).toMatch(/\.platform-sidebar\.sidebar-collapsed \.platform-nav-link:focus-visible\s*\{\s*outline-offset: 2px;/);
+    expect(css).toMatch(/\.platform-sidebar\.sidebar-collapsed \.platform-nav-link\.platform-nav-active svg\s*\{\s*color: #102a43 !important;/);
+
     // Hover do gatilho e hover do rail empatam em especificidade (0,4,0):
     // o do rail so ganha por vir DEPOIS. Antes disso era a segunda camada.
     const triggerHover = css.indexOf(".platform-sidebar .platform-nav-link.platform-nav-section-trigger:hover");

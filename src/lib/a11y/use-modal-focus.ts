@@ -22,13 +22,15 @@ function visibleFocusable(container: HTMLElement): HTMLElement[] {
  * - on open, remembers the trigger and moves focus onto the dialog container
  *   (container must have tabIndex={-1});
  * - while open, keeps Tab / Shift+Tab cycling inside the container;
- * - on close/unmount, restores focus to the element that opened the dialog.
+ * - on close/unmount, restores focus to the trigger, or a supplied fallback
+ *   when that trigger disappeared at a responsive breakpoint.
  *
  * Escape handling stays with each dialog — close semantics differ per modal.
  */
 export function useModalFocus(
   containerRef: RefObject<HTMLElement | null>,
   active: boolean,
+  fallbackFocus?: () => HTMLElement | null,
 ) {
   const restoreRef = useRef<HTMLElement | null>(null);
 
@@ -66,7 +68,7 @@ export function useModalFocus(
         document.activeElement instanceof HTMLElement
           ? document.activeElement
           : null;
-      const outside = !current || !container.contains(current);
+      const outside = !current || current === container || !container.contains(current);
 
       if (event.shiftKey) {
         if (outside || current === first) {
@@ -83,7 +85,11 @@ export function useModalFocus(
 
     return () => {
       document.removeEventListener("keydown", handleKeyDown, true);
-      restoreRef.current?.focus();
+      const trigger = restoreRef.current;
+      const target = !fallbackFocus || (trigger?.isConnected && trigger.getClientRects().length > 0)
+        ? trigger
+        : fallbackFocus();
+      target?.focus();
     };
-  }, [active, containerRef]);
+  }, [active, containerRef, fallbackFocus]);
 }

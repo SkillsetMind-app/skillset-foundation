@@ -18,20 +18,22 @@ export async function MarketingHero() {
       {/* One still portrait per visit — see BrandPortrait. */}
       <div aria-hidden="true" className="absolute inset-0">
         <div className="hero-portrait-layer absolute inset-0 opacity-65 lg:opacity-100">
-          <BrandPortrait
-            imageClassName="hero-portrait-image object-cover object-[78%_center] sm:object-[74%_center] md:object-[68%_center] lg:object-center"
-            sizes="100vw"
-            priority
-          />
+          <div className="hero-portrait-frame absolute inset-y-0 right-0 w-full">
+            <BrandPortrait
+              imageClassName="hero-portrait-image object-cover object-[78%_center] sm:object-[74%_center] md:object-[68%_center] lg:object-center"
+              sizes="100vw"
+              priority
+            />
+          </div>
         </div>
-          <div className="absolute inset-0 bg-[#071523]/55 lg:bg-transparent" />
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage:
-                "linear-gradient(to right, rgba(7,23,42,0.95) 0%, rgba(7,23,42,0.85) 28%, rgba(7,23,42,0.42) 52%, rgba(7,23,42,0.05) 74%, rgba(7,23,42,0) 100%)",
-            }}
-          />
+        <div className="absolute inset-0 bg-[#071523]/55 lg:bg-transparent" />
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, rgba(7,23,42,0.95) 0%, rgba(7,23,42,0.85) 28%, rgba(7,23,42,0.42) 52%, rgba(7,23,42,0.05) 74%, rgba(7,23,42,0) 100%)",
+          }}
+        />
       </div>
 
       {/* Bottom vignette — melts the photo's waist crop into the accent bar
@@ -46,22 +48,9 @@ export async function MarketingHero() {
         }}
       />
 
-      {/* Film grain — a ~4% fractal-noise overlay (soft-light) that breaks up the
-          flat navy so the large gradient fill doesn't band on wide/OLED screens
-          and the hero reads as textured rather than printed. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-soft-light"
-        style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
-          backgroundSize: "200px 200px",
-        }}
-      />
-
       <div className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-8 sm:py-14 lg:py-16">
         <div className="relative z-10 flex flex-col gap-10 lg:flex-row lg:items-center">
-          <div className="hero-copy-rise mx-auto flex max-w-xl flex-col items-center text-center lg:mx-0 lg:items-start lg:text-left">
+          <div className="hero-copy-rise mx-auto flex max-w-xl flex-col items-center text-center lg:mx-0 lg:max-w-[min(36rem,48%)] lg:items-start lg:text-left">
             <div className="inline-flex w-fit rounded-[8px] border border-white/20 bg-white/10 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
               {t("home.hero.eyebrow")}
             </div>

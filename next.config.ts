@@ -37,6 +37,7 @@ const nextConfig: NextConfig = {
   // scanners straight at the framework version. (Security audit 2026-06-18.)
   poweredByHeader: false,
   images: {
+    qualities: [75, 90],
     // Covers/avatars are served from Supabase Storage public objects
     // (course-assets.ts) or Google account photos — keep the allowlist tight.
     remotePatterns: [
