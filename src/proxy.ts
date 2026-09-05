@@ -125,7 +125,10 @@ function refusedForCountry(request: NextRequest): NextResponse | null {
  * `isPlatformHost()` short-circuits ahead of everything, so ordinary traffic on
  * skillsetmind.com never touches the database.
  */
-async function routedByHost(request: NextRequest): Promise<NextResponse | null> {
+async function routedByHost(
+  request: NextRequest,
+  requestHeaders: Headers,
+): Promise<NextResponse | null> {
   const hostname = normaliseHostHeader(request.headers.get("host"));
   if (!hostname || isPlatformHost(hostname)) {
     return null;
@@ -147,7 +150,7 @@ async function routedByHost(request: NextRequest): Promise<NextResponse | null> 
       const [path, query] = decision.path.split("?");
       url.pathname = path;
       url.search = query ? `?${query}` : "";
-      return NextResponse.rewrite(url);
+      return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
     }
     case "redirect":
       // 308 rather than 302: the move is permanent for this path on this host,
@@ -175,7 +178,7 @@ export async function proxy(request: NextRequest) {
     return secure(refused);
   }
 
-  const routed = await routedByHost(request);
+  const routed = await routedByHost(request, requestHeaders);
   if (routed) {
     return secure(routed);
   }
@@ -193,13 +196,16 @@ export async function proxy(request: NextRequest) {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet, headersToSet) {
         for (const { name, value } of cookiesToSet) {
           request.cookies.set(name, value);
         }
         response = NextResponse.next({ request: { headers: requestHeaders } });
         for (const { name, value, options } of cookiesToSet) {
           response.cookies.set(name, value, options);
+        }
+        for (const [name, value] of Object.entries(headersToSet)) {
+          response.headers.set(name, value);
         }
       },
     },
