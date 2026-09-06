@@ -261,6 +261,10 @@
     "opensNewTab": "(se abre en una pestaña nueva)"
   },
   "home": {
+    "metadata": {
+      "title": "Plataforma de cursos para psicólogos y coaches",
+      "description": "SkillsetMind es donde psicólogos, coaches, facilitadores y otros profesionales verificados del desarrollo personal publican cursos con comunidades privadas, sesiones en vivo y certificados verificables. Nos encargamos del pago y del aula: los compradores pagan directamente a tu propia cuenta de Stripe, así que nunca retenemos tu dinero. Tú enseñas."
+    },
     "hero": {
       "eyebrow": "Para psicólogos, coaches y expertos en desarrollo personal",
       "title1": "Tu conocimiento cambia vidas.",
