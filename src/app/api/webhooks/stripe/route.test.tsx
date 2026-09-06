@@ -56,6 +56,9 @@ type AdminState = {
   enrollmentUpdates: Array<Record<string, unknown>>;
   enrollmentInserts: Array<Record<string, unknown>>;
   planSubscriptions: Array<Record<string, unknown>>;
+  orderRow: Record<string, unknown>;
+  paymentWrites: Array<Record<string, unknown>>;
+  orderWrites: Array<Record<string, unknown>>;
 };
 
 type Filter = { column: string; value: unknown };
@@ -95,6 +98,21 @@ function createAdmin(
     enrollmentUpdates: [],
     enrollmentInserts: [],
     planSubscriptions: [],
+    orderRow: {
+      id: "order_1",
+      user_id: "user_1",
+      course_id: "course_1",
+      teacher_id: "teacher_1",
+      teacher_stripe_connected_account_id: "acct_teacher",
+      checkout_session_id: "cs_1",
+      payout_model: "direct_charge",
+      amount_minor: 10000,
+      currency: "USD",
+      platform_fee_bps: 1000,
+      status: "pending",
+    },
+    paymentWrites: [],
+    orderWrites: [],
   };
 
   class Query {
@@ -212,6 +230,9 @@ function createAdmin(
           state.enrollmentInserts.push({ ...this.values });
         }
 
+        if (this.table === "payments") state.paymentWrites.push({ ...this.values });
+        if (this.table === "orders") state.orderWrites.push({ ...this.values });
+
         if (this.table === "subscriptions" && this.operation === "upsert") {
           const existing = state.planSubscriptions.find((row) => row.id === this.values.id);
           if (existing) Object.assign(existing, this.values);
@@ -250,16 +271,7 @@ function createAdmin(
         };
       }
       if (this.table === "orders") {
-        data = {
-          id: "order_1",
-          user_id: "user_1",
-          course_id: "course_1",
-          teacher_id: "teacher_1",
-          amount_minor: 10000,
-          currency: "USD",
-          platform_fee_bps: 1000,
-          status: "pending",
-        };
+        data = this.filterValue("id") === state.orderRow.id ? { ...state.orderRow } : null;
       } else if (this.table === "courses") {
         data = {
           id: "course_1",
@@ -393,18 +405,22 @@ function checkoutEvent() {
   return {
     id: "evt_checkout",
     type: "checkout.session.completed",
+    account: "acct_teacher",
     data: {
       object: {
         id: "cs_1",
         mode: "payment",
         payment_status: "paid",
         payment_intent: "pi_1",
+        amount_total: 10000,
+        currency: "usd",
         metadata: {
           orderId: "order_1",
           courseId: "course_1",
           userId: "user_1",
           teacherId: "teacher_1",
-        },
+          connectedAccountId: "acct_teacher",
+        } as Record<string, string>,
       },
     },
   };
@@ -529,13 +545,14 @@ async function postEvent(event: Record<string, unknown>) {
     new Request("http://localhost/api/webhooks/stripe", {
       method: "POST",
       headers: { "stripe-signature": "test_signature" },
-      body: JSON.stringify(event),
+      body: JSON.stringify({ livemode: true, ...event }),
     }),
   );
 }
 
 describe("Stripe webhook financial integrity", () => {
   beforeEach(() => {
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_live_fixture");
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
     process.env.STRIPE_CONNECT_WEBHOOK_SECRET = "whsec_connect_test";
     mocks.getAdmin.mockReset();
@@ -572,6 +589,154 @@ describe("Stripe webhook financial integrity", () => {
     delete process.env.STRIPE_WEBHOOK_SECRET;
     delete process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  it.each([
+    ["sk_live_fixture", false],
+    ["rk_live_fixture", false],
+  ] as const)("ignores the opposite event mode with %s before claiming it", async (key, livemode) => {
+    vi.stubEnv("STRIPE_SECRET_KEY", key);
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    const response = await postEvent({ ...checkoutEvent(), livemode });
+    expect(response.status).toBe(200);
+    expect(admin.state.enrollmentInserts).toEqual([]);
+    expect(await response.json()).toMatchObject({ received: true, ignored: true });
+    expect(mocks.getAdmin).not.toHaveBeenCalled();
+  });
+
+  it.each(["sk_test_fixture", "rk_test_fixture"])(
+    "retries a live event after correcting the configured test key %s", async (key) => {
+      vi.stubEnv("STRIPE_SECRET_KEY", key);
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = checkoutEvent();
+      expect((await postEvent(event)).status).toBe(503);
+      expect(mocks.getAdmin).not.toHaveBeenCalled();
+      expect(admin.state.enrollmentInserts).toEqual([]);
+
+      vi.stubEnv("STRIPE_SECRET_KEY", "sk_live_fixture");
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.enrollmentInserts).toHaveLength(1);
+    },
+  );
+
+  it.each([
+    ["sk_live_fixture", true],
+    ["rk_live_fixture", true],
+    ["sk_test_fixture", false],
+    ["rk_test_fixture", false],
+    ["  sk_live_fixture\n", true],
+  ] as const)("accepts a matching event mode with %s", async (key, livemode) => {
+    vi.stubEnv("STRIPE_SECRET_KEY", key);
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    const response = await postEvent({ ...checkoutEvent(), livemode });
+    expect(response.status).toBe(200);
+    expect(admin.state.enrollmentInserts).toHaveLength(1);
+  });
+
+  it.each(["", "unknown_fixture", "sk_live_bad key", "pk_live_fixture", "sk_live_"])(
+    "fails closed when the secret has no usable server mode: %s", async (key) => {
+      vi.stubEnv("STRIPE_SECRET_KEY", key);
+      const response = await postEvent(checkoutEvent());
+      expect(response.status).toBe(503);
+      expect(mocks.getAdmin).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["course", { course_id: "course_other" }],
+    ["buyer", { user_id: "user_other" }],
+    ["session", { checkout_session_id: "cs_other" }],
+    ["missing session", { checkout_session_id: null }],
+    ["connected account", { teacher_stripe_connected_account_id: "acct_other" }],
+    ["missing direct account", { teacher_stripe_connected_account_id: null }],
+    ["teacher metadata", { teacher_id: "teacher_other" }],
+    ["currency", { currency: "EUR" }],
+    ["total", { amount_minor: 20000 }],
+    ["unknown payout model", { payout_model: "unknown" }],
+    ["platform charge with a connected event", { payout_model: "destination_charge" }],
+  ] as const)("rejects a mismatched %s before coupon or financial writes", async (_label, patch) => {
+    const admin = createAdmin("checkout");
+    Object.assign(admin.state.orderRow, patch);
+    mocks.getAdmin.mockReturnValue(admin);
+    const response = await postEvent(checkoutEvent());
+    expect(response.status).toBe(500);
+    expect(admin.state.rpcCalls).not.toContainEqual(expect.objectContaining({
+      name: "finalize_course_coupon_reservation",
+    }));
+    expect(admin.state.paymentWrites).toEqual([]);
+    expect(admin.state.orderWrites).toEqual([]);
+    expect(admin.state.enrollmentInserts).toEqual([]);
+    expect(admin.state.doneEvents).not.toContain("evt_checkout");
+  });
+
+  it("validates asynchronous success through the same order binding", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    const event = checkoutEvent();
+    event.type = "checkout.session.async_payment_succeeded";
+    event.data.object.metadata.connectedAccountId = "acct_forged";
+    const response = await postEvent(event);
+    expect(response.status).toBe(500);
+    expect(admin.state.paymentWrites).toEqual([]);
+    expect(admin.state.rpcCalls).toEqual([]);
+  });
+
+  it("can retry after the server finishes attaching the checkout session", async () => {
+    const admin = createAdmin("checkout");
+    admin.state.orderRow.checkout_session_id = null;
+    mocks.getAdmin.mockReturnValue(admin);
+    expect((await postEvent(checkoutEvent())).status).toBe(500);
+    expect(admin.state.paymentWrites).toEqual([]);
+    admin.state.orderRow.checkout_session_id = "cs_1";
+    expect((await postEvent(checkoutEvent())).status).toBe(200);
+    expect(admin.state.enrollmentInserts).toHaveLength(1);
+  });
+
+  it.each(["separate_charges_and_transfers", "destination_charge"])(
+    "preserves %s without newer optional metadata", async (payoutModel) => {
+      const admin = createAdmin("checkout");
+      admin.state.orderRow.payout_model = payoutModel;
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = checkoutEvent();
+      delete (event as { account?: string }).account;
+      delete event.data.object.metadata.teacherId;
+      delete event.data.object.metadata.connectedAccountId;
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.enrollmentInserts).toHaveLength(1);
+    },
+  );
+
+  it.each([
+    ["JPY", 100050, 1001],
+    ["USD", 7000, 7000],
+  ] as const)("uses the saved discounted price and Stripe units for %s", async (currency, saved, charged) => {
+    const admin = createAdmin("checkout");
+    Object.assign(admin.state.orderRow, { currency, amount_minor: saved, discount_minor: 3000 });
+    mocks.getAdmin.mockReturnValue(admin);
+    const event = checkoutEvent();
+    event.data.object.currency = currency.toLowerCase();
+    event.data.object.amount_total = charged;
+    expect((await postEvent(event)).status).toBe(200);
+    expect(admin.state.paymentWrites[0]).toMatchObject({ amount_minor: saved, currency });
+    expect(admin.state.enrollmentInserts).toHaveLength(1);
+  });
+
+  it("uses the account saved on the order after the creator reconnects", async () => {
+    const admin = createAdmin("checkout");
+    admin.state.orderRow.teacher_stripe_connected_account_id = "acct_original";
+    mocks.getAdmin.mockReturnValue(admin);
+    const event = checkoutEvent();
+    event.account = "acct_original";
+    event.data.object.metadata.connectedAccountId = "acct_original";
+    expect((await postEvent(event)).status).toBe(200);
+    expect(admin.state.enrollmentInserts).toHaveLength(1);
+    expect(mocks.paymentIntentRetrieve).toHaveBeenCalledWith(
+      "pi_1", expect.anything(), { stripeAccount: "acct_original" },
+    );
   });
 
   it.each<FailurePoint>([
