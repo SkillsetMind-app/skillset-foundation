@@ -6,6 +6,7 @@ import { MemberAreaShell } from "@/components/learn/member-area-shell";
 import { CoursePreviewShell } from "@/components/teacher/course-preview-shell";
 import { isClassroomTab } from "@/domain/classroom-tabs";
 import { getMemberArea } from "@/lib/learn/server/member-area";
+import { getServerTranslation } from "@/lib/i18n/server";
 
 type TeacherBuilderPreviewPageProps = {
   params: Promise<{
@@ -24,6 +25,7 @@ export default async function TeacherBuilderPreviewPage({
   // Same lookup the student route runs, from the same module — the teacher has
   // to see exactly what a student sees.
   const { brand, theme } = await getMemberArea(courseId);
+  const { t } = await getServerTranslation();
 
   return (
     <ProtectedSurface permissions={["teacherStudio.manageCourses"]}>
@@ -35,7 +37,7 @@ export default async function TeacherBuilderPreviewPage({
           fallback={
             <section className="rounded-[14px] border border-[var(--ma-line)] bg-[var(--ma-surface)] p-6">
               <p className="text-sm text-[var(--ma-ink-soft)]">
-                Loading course preview...
+                {t("creatorEditor.preview.serverLoading")}
               </p>
             </section>
           }

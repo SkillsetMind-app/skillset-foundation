@@ -32,6 +32,7 @@ import {
 } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import {
   PlanSelectorCards,
   type PlanSelectorOption,
@@ -423,6 +424,7 @@ function builderDraftSignatureFromCourse(course: TeacherCourse): string {
 }
 
 export function CourseBuilderStudio() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const courseId = searchParams.get("courseId");
@@ -1503,10 +1505,13 @@ export function CourseBuilderStudio() {
           </Link>
           <Link
             href={`/teach/builder/${courseId}/preview`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="button-outline px-4 py-2.5 text-sm"
           >
             <ExternalLink aria-hidden="true" size={14} strokeWidth={1.8} />
-            Preview
+            {t("creatorEditor.preview.open")}
+            <span className="sr-only"> {t("account.opensNewTab")}</span>
           </Link>
           <button
             type="button"
@@ -1579,8 +1584,8 @@ export function CourseBuilderStudio() {
                   )}
                 </span>
                 <span className="min-w-0">
-                  <span className="course-builder-step__label">{stage.label}</span>
-                  <span className="course-builder-step__sub">{stage.sub}</span>
+                  <span className="course-builder-step__label">{stage.id === "members" ? t("creatorEditor.members.step") : stage.label}</span>
+                  <span className="course-builder-step__sub">{stage.id === "members" ? t("creatorEditor.members.stepHelp") : stage.sub}</span>
                 </span>
               </button>
             );
@@ -1592,13 +1597,13 @@ export function CourseBuilderStudio() {
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--color-line)] pb-6">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-                {builderTabs[selectedTabIndex]?.label ?? "Builder"}
+                {activeTab === "members" ? t("creatorEditor.members.step") : builderTabs[selectedTabIndex]?.label ?? "Builder"}
               </p>
               <h3 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)]">
                 {activeTab === "details"
                   ? "Set the course foundation."
                   : activeTab === "members"
-                    ? "Customize the members area."
+                    ? t("creatorEditor.members.heading")
                     : activeTab === "content"
                       ? "Build the curriculum."
                       : activeTab === "pricing"
@@ -1609,7 +1614,7 @@ export function CourseBuilderStudio() {
                 {activeTab === "details"
                   ? "This is the information learners use to understand the promise of the course."
                   : activeTab === "members"
-                    ? "Choose the theme, cover, and copy enrolled students see at the top of their course workspace."
+                    ? t("creatorEditor.members.help")
                     : activeTab === "content"
                       ? "Create the modules, lessons, links, text content, and upload targets that power the members area."
                       : activeTab === "pricing"
@@ -2569,7 +2574,9 @@ export function CourseBuilderStudio() {
           >
             <ArrowLeft aria-hidden="true" size={14} strokeWidth={1.9} />
             {selectedTabIndex > 0
-              ? `Back to ${builderTabs[selectedTabIndex - 1].label}`
+              ? builderTabs[selectedTabIndex - 1].value === "members"
+                ? t("creatorEditor.members.backTo")
+                : `Back to ${builderTabs[selectedTabIndex - 1].label}`
               : "Back"}
           </button>
           {selectedTabIndex < builderTabs.length - 1 ? (
@@ -2583,7 +2590,9 @@ export function CourseBuilderStudio() {
               }}
               className="button-solid inline-flex items-center gap-2 px-4 py-2.5 text-sm"
             >
-              Continue to {builderTabs[selectedTabIndex + 1].label}
+              {builderTabs[selectedTabIndex + 1].value === "members"
+                ? t("creatorEditor.members.continueTo")
+                : `Continue to ${builderTabs[selectedTabIndex + 1].label}`}
               <ArrowRight aria-hidden="true" size={14} strokeWidth={1.9} />
             </button>
           ) : (
@@ -3047,17 +3056,32 @@ function MembersAreaTab({
   description: string;
   onDescriptionChange: (value: string) => void;
 }) {
+  const { t } = useTranslation();
   const [assets, setAssets] = useState<CourseAsset[]>([]);
   const previewFrame = useRef<HTMLDivElement>(null);
-  const [previewWidth, setPreviewWidth] = useState(340);
+  const previewStage = useRef<HTMLDivElement>(null);
+  const [previewSize, setPreviewSize] = useState({ width: 340, height: 0 });
 
   useEffect(() => {
     const frame = previewFrame.current;
-    if (!frame || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(([entry]) => {
-      setPreviewWidth(entry.contentRect.width);
+    const stage = previewStage.current;
+    if (!frame || !stage || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      setPreviewSize((current) => {
+        let { width, height } = current;
+        for (const entry of entries) {
+          if (entry.target === frame) width = entry.contentRect.width;
+          // ResizeObserver reports layout height before the CSS transform.
+          // The hero changes height at breakpoints even at the same frame width.
+          if (entry.target === stage) height = entry.contentRect.height;
+        }
+        return width === current.width && height === current.height
+          ? current
+          : { width, height };
+      });
     });
     observer.observe(frame);
+    observer.observe(stage);
     return () => observer.disconnect();
   }, []);
 
@@ -3074,7 +3098,7 @@ function MembersAreaTab({
   // Mirror the student hero's own fallback so the preview matches reality:
   // empty title -> the real course title. The subtitle line shows only what the
   // teacher types here (the student view carries no separate studio name).
-  const previewTitle = title.trim() || course.title || "Untitled course";
+  const previewTitle = title.trim() || course.title || t("creatorEditor.members.untitled");
 
   return (
     <div
@@ -3083,15 +3107,15 @@ function MembersAreaTab({
     >
       <div className="grid gap-4">
         <div className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-          Theme
+          {t("creatorEditor.members.theme")}
           <p className="text-xs font-normal leading-5 text-[var(--color-ink-soft)]">
-            Sets the look of the enrolled-student hero. Light is the default.
+            {t("creatorEditor.members.themeHelp")}
           </p>
           <div className="inline-flex w-fit gap-1 rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
             {(
               [
-                { value: "light", label: "Light", icon: Sun },
-                { value: "dark", label: "Dark", icon: Moon },
+                { value: "light", label: t("creatorEditor.members.light"), icon: Sun },
+                { value: "dark", label: t("creatorEditor.members.dark"), icon: Moon },
               ] as const
             ).map((option) => {
               const Icon = option.icon;
@@ -3104,7 +3128,7 @@ function MembersAreaTab({
                   disabled={!isEditable}
                   aria-pressed={active}
                   onClick={() => onThemeChange(option.value)}
-                  className={`inline-flex items-center gap-1.5 rounded-[8px] px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-60 ${
+                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-[8px] px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-60 ${
                     active
                       ? "bg-white text-[var(--color-primary)] shadow-[var(--shadow-soft)]"
                       : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
@@ -3127,45 +3151,44 @@ function MembersAreaTab({
         />
 
         <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-          Members area title
+          {t("creatorEditor.members.title")}
           <input
             value={title}
             onChange={(event) => onTitleChange(event.target.value)}
             disabled={!isEditable}
             maxLength={80}
-            placeholder={course.title || "Your course title"}
+            placeholder={course.title || t("creatorEditor.members.titlePlaceholder")}
             className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
           />
           <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
-            {title.length}/80 — leave empty to use the course title.
+            {t("creatorEditor.members.titleHelp").replace("{length}", () => String(title.length))}
           </span>
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-          Subtitle
+          {t("creatorEditor.members.subtitle")}
           <input
             value={subtitle}
             onChange={(event) => onSubtitleChange(event.target.value)}
             disabled={!isEditable}
             maxLength={160}
-            placeholder="Your studio name, a tagline, or who it's for"
+            placeholder={t("creatorEditor.members.subtitlePlaceholder")}
             className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
           />
           <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
-            {subtitle.length}/160 — the line under the title. Add your studio
-            name or a tagline, or leave it empty.
+            {t("creatorEditor.members.subtitleHelp").replace("{length}", () => String(subtitle.length))}
           </span>
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-          Description
+          {t("creatorEditor.members.description")}
           <textarea
             value={description}
             onChange={(event) => onDescriptionChange(event.target.value)}
             disabled={!isEditable}
             maxLength={2000}
             rows={4}
-            placeholder="A short welcome shown under the title in the members area."
+            placeholder={t("creatorEditor.members.descriptionPlaceholder")}
             className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
           />
           <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
@@ -3176,15 +3199,16 @@ function MembersAreaTab({
 
       <div className="grid gap-3 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 lg:sticky lg:top-24">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-          Live preview
+          {t("creatorEditor.members.livePreview")}
         </p>
         <div
           ref={previewFrame}
           data-members-theme={theme}
           aria-hidden="true"
+          inert
           style={{
             width: "100%",
-            height: 174 * previewWidth / 340,
+            height: previewSize.height * previewSize.width / 1080,
             overflow: "hidden",
             borderRadius: 10,
             background: "var(--ma-bg)",
@@ -3192,9 +3216,10 @@ function MembersAreaTab({
           }}
         >
           <div
+            ref={previewStage}
             style={{
               width: 1080,
-              transform: `scale(${previewWidth / 1080})`,
+              transform: `scale(${previewSize.width / 1080})`,
               transformOrigin: "top left",
             }}
           >
@@ -3211,13 +3236,15 @@ function MembersAreaTab({
         </div>
         <Link
           href={`/teach/builder/${courseId}/preview`}
+          target="_blank"
+          rel="noopener noreferrer"
           className="button-outline inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm"
         >
-          Open full preview
+          {t("creatorEditor.members.openPreview")}
+          <span className="sr-only"> {t("account.opensNewTab")}</span>
         </Link>
         <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
-          The full preview opens the last saved version in a new tab. Edits
-          autosave, so it stays current within a moment of typing.
+          {t("creatorEditor.members.previewHelp")}
         </p>
       </div>
     </div>
@@ -3241,9 +3268,12 @@ function MembersCoverField({
   onUploaded: (assetId: string) => void;
   onRemove: () => void;
 }) {
+  const { t } = useTranslation();
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState<UploadCourseAssetProgress | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<
+    { kind: "invalid-image" } | { kind: "upload"; cause: unknown } | null
+  >(null);
   const [fileInputKey, setFileInputKey] = useState(0);
 
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
@@ -3253,13 +3283,11 @@ function MembersCoverField({
       return;
     }
 
-    setError("");
+    setError(null);
     setProgress(null);
 
     if (!isAllowedCourseAssetFile(file, "members_cover")) {
-      setError(
-        `Use an image file under ${formatCourseAssetSize(supabaseUploadLimitBytes)}.`,
-      );
+      setError({ kind: "invalid-image" });
       setFileInputKey((current) => current + 1);
       return;
     }
@@ -3277,7 +3305,7 @@ function MembersCoverField({
       });
       onUploaded(assetId);
     } catch (uploadError) {
-      setError(getCourseAssetUploadErrorMessage(uploadError));
+      setError({ kind: "upload", cause: uploadError });
     } finally {
       setIsUploading(false);
       setProgress(null);
@@ -3290,16 +3318,15 @@ function MembersCoverField({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            Members area cover
+            {t("creatorEditor.members.cover")}
           </p>
           <p className="mt-1 max-w-xl text-xs leading-5 text-[var(--color-ink-soft)]">
-            Hero background for the enrolled-student workspace. Recommended 16:9,
-            under {formatCourseAssetSize(supabaseUploadLimitBytes)}.
+            {t("creatorEditor.members.coverHelp").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))}
           </p>
         </div>
         {coverUrl ? (
           <span className="inline-flex items-center gap-1 rounded-[8px] bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
-            <CheckCircle2 size={12} aria-hidden /> Cover set
+            <CheckCircle2 size={12} aria-hidden /> {t("creatorEditor.members.coverSet")}
           </span>
         ) : null}
       </div>
@@ -3310,14 +3337,14 @@ function MembersCoverField({
             // eslint-disable-next-line @next/next/no-img-element -- members cover is an arbitrary CourseAsset URL
             <img
               src={coverUrl}
-              alt={`${course.title || "Course"} members cover`}
+              alt={t("creatorEditor.members.coverAlt").replace("{courseTitle}", () => course.title || t("publicCourses.course"))}
               className="h-full w-full object-cover"
             />
           ) : (
             <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-[var(--color-ink-soft)]">
               <ImageIcon size={22} aria-hidden />
               <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
-                No cover yet
+                {t("creatorEditor.members.noCover")}
               </span>
             </div>
           )}
@@ -3325,7 +3352,7 @@ function MembersCoverField({
 
         <div className="grid content-start gap-2">
           <label
-            className={`inline-flex w-fit items-center gap-2 rounded-[10px] border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] ${
+            className={`inline-flex w-fit items-center gap-2 rounded-[10px] border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
               !isEditable || isUploading
                 ? "pointer-events-none opacity-60"
                 : "cursor-pointer"
@@ -3333,17 +3360,17 @@ function MembersCoverField({
           >
             <UploadCloud size={16} aria-hidden />
             {isUploading
-              ? "Uploading..."
+              ? t("creatorEditor.members.uploading")
               : coverUrl
-                ? "Replace cover"
-                : "Upload cover"}
+                ? t("creatorEditor.members.replaceCover")
+                : t("creatorEditor.members.uploadCover")}
             <input
               key={fileInputKey}
               type="file"
               accept={courseAssetAcceptTypes.members_cover}
               disabled={!isEditable || isUploading}
               onChange={handleFile}
-              className="hidden"
+              className="sr-only"
             />
           </label>
 
@@ -3351,17 +3378,19 @@ function MembersCoverField({
             <button
               type="button"
               onClick={onRemove}
-              className="w-fit text-xs font-semibold text-[var(--color-accent-fg)] underline-offset-2 hover:underline"
+              className="min-h-11 w-fit text-xs font-semibold text-[var(--color-accent-fg)] underline-offset-2 hover:underline"
             >
-              Remove cover
+              {t("creatorEditor.members.removeCover")}
             </button>
           ) : null}
 
           {progress ? <UploadProgressNote progress={progress} /> : null}
 
           {error ? (
-            <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">
-              {error}
+            <p role="alert" className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">
+              {error.kind === "invalid-image"
+                ? t("creatorEditor.members.invalidImage").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))
+                : getCourseAssetUploadErrorMessage(error.cause, supabaseUploadLimitBytes, t)}
             </p>
           ) : null}
         </div>

@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
+import { I18nProvider } from "@/components/i18n/i18n-provider";
 import type { ClassroomTab } from "@/domain/classroom-tabs";
 import type { Course } from "@/domain/learning";
 import type { CourseAsset } from "@/domain/course-asset";
@@ -198,6 +199,27 @@ describe("sala de aula com matricula real", () => {
       cb(0);
       return 0;
     };
+  });
+
+  it("translates all seven shared tab labels without changing routes or authored lesson names", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l2");
+    mocks.pathname = "/learn/courses/demo-course";
+    mocks.completed = [];
+    const authoredTitle = "Lección $$50; código literal $&.";
+    const localizedCourse = {
+      ...course,
+      communityEnabled: true,
+      modules: course.modules.map((module) => ({ ...module, lessons: module.lessons.map((lesson) => lesson.id === "l1" ? { ...lesson, title: authoredTitle } : lesson) })),
+    };
+    render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace course={localizedCourse} enableFirestoreAssets /></I18nProvider>);
+    const tabs = screen.getByRole("navigation", { name: "Secciones del curso" });
+    for (const [tab, label] of [["lesson", "Lección"], ["materials", "Materiales"], ["lives", "En vivo"], ["community", "Comunidad"], ["messages", "Mensajes"], ["review", "Reseña"], ["about", "Acerca del curso"]]) {
+      expect(within(tabs).getByRole("link", { name: label })).toHaveAttribute("href", `/learn/courses/demo-course${tab === "lesson" ? "" : `/${tab}`}?lesson=l2`);
+    }
+    expect(screen.getByRole("button", { name: `Lección anterior: ${authoredTitle}` })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Todas las lecciones (2)" })).toBeInTheDocument();
+    expect(mocks.enrollmentSubscriptions).toBe(1);
+    expect(recordLessonProgress).not.toHaveBeenCalled();
   });
 
   it("primeira visita (sem ?lesson=, sem progresso): a capa inteira, sem cabecalho curto", () => {
