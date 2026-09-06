@@ -85,16 +85,45 @@ describe("SiteNav", () => {
     );
   });
 
-  it("makes Sign in a plain link instead of a learner/teacher menu", () => {
+  it("opens buyer and creator entry in new tabs from the public header", () => {
     render(<SiteNav />);
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(screen.getByRole("link", { name: /My courses/ })).toHaveAttribute("href", "/auth?mode=signin&path=student");
+    expect(screen.getByRole("link", { name: /Manage my business/ })).toHaveAttribute("target", "_blank");
+  });
 
-    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
-      "href",
-      "/auth?mode=signin",
-    );
-    expect(
-      screen.queryByRole("button", { name: /sign in/i }),
-    ).not.toBeInTheDocument();
+  it("keeps mobile entry open after Escape dismisses its nested disclosure", () => {
+    render(<SiteNav />);
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const panel = document.getElementById("site-mobile-menu")!;
+    const trigger = within(panel).getByRole("button", { name: "Sign in" });
+    fireEvent.click(trigger);
+    within(panel).getByRole("link", { name: /My courses/ }).focus();
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    expect(panel).toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(trigger);
+    expect(within(panel).getByRole("link", { name: /Manage my business/ })).toBeInTheDocument();
+    expect(panel.className).toContain("overflow-y-auto");
+    expect(panel.className).toContain("100svh");
+  });
+
+  it("lets Escape close the focused mobile menu while a desktop disclosure remains open", () => {
+    render(<SiteNav />);
+    const desktopEntry = screen.getByRole("button", { name: "Sign in" });
+    fireEvent.click(desktopEntry);
+    const mobileToggle = screen.getByRole("button", { name: "Open menu" });
+    mobileToggle.focus();
+    // Keyboard activation does not dispatch the mousedown that dismisses a disclosure.
+    fireEvent.click(mobileToggle);
+    const mobile = screen.getByRole("navigation", { name: "Mobile navigation" });
+    within(mobile).getAllByRole("link")[0].focus();
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+
+    expect(mobile).not.toBeInTheDocument();
+    expect(mobileToggle).toHaveFocus();
+    expect(desktopEntry).toHaveAttribute("aria-expanded", "true");
   });
 
   it("offers the language switch in the header", () => {
@@ -114,10 +143,12 @@ describe("SiteNav", () => {
       name: "Mobile navigation",
     });
     expect(linkNames(mobile)).toEqual(HEADER_ORDER);
+    within(mobile).getAllByRole("link")[0].focus();
 
     fireEvent.keyDown(document, { key: "Escape" });
     expect(
       screen.queryByRole("navigation", { name: "Mobile navigation" }),
     ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open menu" })).toHaveFocus();
   });
 });

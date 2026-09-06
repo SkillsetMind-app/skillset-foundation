@@ -824,12 +824,19 @@ export function isEmailNotConfirmedError(error: unknown): boolean {
 // um beco sem saida: se o e-mail nao chegava, a unica opcao era "ir para o
 // login" — que devolvia "e-mail nao confirmado". 5 contas reais ficaram
 // paradas assim desde 26/08.
-export async function resendSignupConfirmation(email: string): Promise<void> {
+export async function resendSignupConfirmation(
+  email: string,
+  confirmNext: string = "/welcome",
+): Promise<void> {
   const supabase = getSupabaseBrowserClient();
   const { error } = await supabase.auth.resend({
     type: "signup",
     email,
-    options: { emailRedirectTo: authCallbackUrl("/auth/confirm") },
+    options: {
+      emailRedirectTo: authCallbackUrl(
+        `/auth/confirm?next=${encodeURIComponent(confirmNext)}`,
+      ),
+    },
   });
   if (error) {
     throw error;
