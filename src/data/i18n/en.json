@@ -397,6 +397,24 @@
       "earnings": "Earnings",
       "verification": "Verification"
     },
+    "ops": {
+      "verification": "Creator verification",
+      "catalog": "Published catalog",
+      "payments": "Payments",
+      "community": "Community reports",
+      "support": "Support tickets",
+      "users": "Users",
+      "audit": "Audit log",
+      "access": "Access",
+      "accessLevels": "Access levels",
+      "unavailable": "Your access level does not include this queue.",
+      "back": "Back to Operations"
+    },
+    "queueCount": {
+      "pending": "{count} pending",
+      "loading": "Count loading",
+      "unavailable": "Count unavailable"
+    },
     "navSection": {
       "home": "Home",
       "products": "Products",

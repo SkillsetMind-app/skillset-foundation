@@ -10,6 +10,7 @@ import { PlatformNav } from "@/components/platform/platform-nav";
 import { SidebarToggle } from "@/components/platform/sidebar-toggle";
 import { StatusBanner } from "@/components/platform/status-banner";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
+import type { PlatformNavCounts } from "@/data/site";
 import { getWorkspaceHomeHref } from "@/lib/auth/routing";
 import { ThemeProvider } from "@/lib/theme/theme-provider";
 import { useSidebarState } from "@/lib/ui/sidebar-state";
@@ -28,6 +29,9 @@ type PlatformShellProps = {
   compact?: boolean;
   /** Some surfaces, like Studio and Builder, own their own richer header. */
   hideHeader?: boolean;
+  /** Query-based workspaces resolve their active destination in the page. */
+  currentNavigationHref?: string;
+  navigationCounts?: PlatformNavCounts;
   children: ReactNode;
 };
 
@@ -37,6 +41,8 @@ export function PlatformShell({
   description,
   compact = false,
   hideHeader = false,
+  currentNavigationHref,
+  navigationCounts,
   children,
 }: PlatformShellProps) {
   const { user } = useAuth();
@@ -67,6 +73,8 @@ export function PlatformShell({
                 />
                 <PlatformNav
                   collapsed={isCollapsed}
+                  currentNavigationHref={currentNavigationHref}
+                  navigationCounts={navigationCounts}
                   onRequestExpand={(section) => {
                     if (isRail) {
                       setMobileNavSection(section);
@@ -87,7 +95,7 @@ export function PlatformShell({
               </aside>
 
               <div className="platform-main-column">
-                <PlatformHeader />
+                <PlatformHeader currentNavigationHref={currentNavigationHref} />
                 <section
                   className={`platform-content ${
                     compact ? "space-y-4" : "space-y-6"
@@ -135,6 +143,8 @@ export function PlatformShell({
         <MobileSidebarDrawer
           open={mobileNavOpen}
           initialSection={mobileNavSection}
+          currentNavigationHref={currentNavigationHref}
+          navigationCounts={navigationCounts}
           onOpen={() => {
             setMobileNavSection(undefined);
             setMobileNavOpen(true);

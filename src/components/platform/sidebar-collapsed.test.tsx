@@ -63,14 +63,14 @@ describe("barra lateral recolhida", () => {
     }
   });
 
-  it("'Operations' e um item direto, nao um grupo de um item so com o mesmo nome", () => {
+  it("as filas de Operations sao itens diretos, sem grupo ou link redundante", () => {
     render(<PlatformNav />);
 
-    // Item direto = link para /ops; grupo = botao "Operations" com chevron.
-    expect(screen.getByRole("link", { name: /operations/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "verification" })).toHaveAttribute(
       "href",
-      "/ops",
+      "/ops?tab=verification",
     );
+    expect(screen.queryByRole("link", { name: "operations" })).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /operations/i }),
     ).not.toBeInTheDocument();
