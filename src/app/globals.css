@@ -1905,6 +1905,7 @@ p {
 
 .course-upload-presets {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.75rem;
 }
 
@@ -2906,7 +2907,12 @@ body:has([aria-label="Course categories"])
 
 .course-builder-shell {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.25rem;
+}
+
+.course-builder-shell .grid {
+  grid-auto-columns: minmax(0, 1fr);
 }
 
 .course-builder-hero {
@@ -3316,9 +3322,10 @@ body:has([aria-label="Course categories"])
 
 .lesson-modal {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  width: min(1040px, 96vw);
-  max-height: min(860px, 92dvh);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto max-content minmax(0, 1fr) max-content;
+  width: min(1040px, 100%);
+  max-height: min(860px, calc(100svh - 2.5rem));
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 22px;
@@ -3330,16 +3337,21 @@ body:has([aria-label="Course categories"])
 
 .lesson-modal__header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
   border-bottom: 1px solid var(--color-line);
   background: rgba(255, 255, 255, 0.76);
-  padding: 1.375rem 1.5rem;
+  padding: 0.75rem 1.5rem;
 }
 
-.lesson-modal__crumb,
-.lesson-modal__eyebrow {
+.lesson-modal__context {
+  min-width: 0;
+  margin-bottom: 1.25rem;
+  overflow-wrap: anywhere;
+}
+
+.lesson-modal__crumb {
   color: var(--color-accent-fg);
   font-size: 0.6875rem;
   font-weight: 800;
@@ -3347,8 +3359,7 @@ body:has([aria-label="Course categories"])
   text-transform: uppercase;
 }
 
-.lesson-modal__header h3 {
-  margin-top: 0.45rem;
+.lesson-modal__context h3 {
   color: var(--color-primary);
   font-family: var(--font-display);
   font-size: 2.35rem;
@@ -3356,18 +3367,25 @@ body:has([aria-label="Course categories"])
   line-height: 1.05;
 }
 
-.lesson-modal__header p:not(.lesson-modal__crumb) {
+.lesson-modal__context .lesson-modal__crumb {
   margin-top: 0.55rem;
+}
+
+.lesson-modal__guidance {
   max-width: 44rem;
   color: var(--color-ink-soft);
   font-size: 0.875rem;
   line-height: 1.65;
 }
 
+.lesson-modal__body > .lesson-modal__guidance {
+  margin-top: 1.25rem;
+}
+
 .lesson-modal__close {
   display: grid;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.75rem;
+  height: 2.75rem;
   flex: 0 0 auto;
   place-items: center;
   border: 1px solid var(--color-line);
@@ -3396,6 +3414,7 @@ body:has([aria-label="Course categories"])
 .lesson-modal__tabs button {
   display: inline-flex;
   min-width: max-content;
+  min-height: 2.75rem;
   align-items: center;
   gap: 0.5rem;
   border: 0;
@@ -3429,51 +3448,11 @@ body:has([aria-label="Course categories"])
 }
 
 .lesson-modal__body {
+  min-width: 0;
   min-height: 0;
   overflow-y: auto;
+  scroll-padding-block: 0.75rem;
   padding: 1.5rem;
-}
-
-.lesson-modal-video {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  overflow: hidden;
-  border: 1px solid var(--color-line);
-  border-radius: 16px;
-  background:
-    radial-gradient(circle at 88% 18%, rgba(243, 214, 220, 0.5), transparent 12rem),
-    linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
-  padding: 1.25rem;
-  color: #ffffff;
-}
-
-.lesson-modal-video h4 {
-  margin-top: 0.45rem;
-  font-family: var(--font-display);
-  font-size: 1.75rem;
-  font-weight: 600;
-  line-height: 1.1;
-}
-
-.lesson-modal-video p {
-  margin-top: 0.65rem;
-  max-width: 42rem;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 0.875rem;
-  line-height: 1.65;
-}
-
-.lesson-modal-video > span {
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  padding: 0.45rem 0.7rem;
-  font-size: 0.6875rem;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 .lesson-video-source-picker {
@@ -3935,9 +3914,8 @@ body:has([aria-label="Course categories"])
    (~2.0:1) on white pockets — real AA failures, not just theme drift. Re-theme
    the modal dark so the inverted text tokens read on dark surfaces: body is the
    darkest layer (surface→base) so the surface-strong content cards lift off it;
-   chrome (header/tabs/footer) uses translucent surface over the body; the video
-   card's primary gradient (which inverts light) darkens to surface-strong→surface
-   so its white text holds; the on-toggle knob flips to dark ink so it stays
+   chrome (header/tabs/footer) uses translucent surface over the body;
+   the on-toggle knob flips to dark ink so it stays
    visible on the light-blue on-track. Semantic accent/success foregrounds route
    to -fg inline above. Dark-scoped → light mode is byte-for-byte unchanged. */
 [data-theme="dark"] .lesson-modal {
@@ -3961,12 +3939,6 @@ body:has([aria-label="Course categories"])
 
 [data-theme="dark"] .lesson-modal__close {
   background: var(--color-surface-strong);
-}
-
-[data-theme="dark"] .lesson-modal-video {
-  background:
-    radial-gradient(circle at 88% 18%, rgba(227, 107, 120, 0.16), transparent 12rem),
-    linear-gradient(135deg, var(--color-surface-strong), var(--color-surface));
 }
 
 [data-theme="dark"] .lesson-modal-choice,
@@ -4003,7 +3975,7 @@ body:has([aria-label="Course categories"])
 @media (width < 1024px) {
   .course-builder-hero,
   .course-builder-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .course-builder-rail {
@@ -4014,21 +3986,58 @@ body:has([aria-label="Course categories"])
     justify-content: flex-start;
   }
 
-  .lesson-modal {
-    max-height: 96dvh;
-  }
-
-  .lesson-modal__header,
-  .lesson-modal__footer,
-  .lesson-modal-video,
   .lesson-modal-setting,
   .lesson-modal-assets article {
     align-items: stretch;
     flex-direction: column;
   }
 
+  .lesson-modal__tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.125rem 0.25rem;
+    overflow: visible;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .lesson-modal__tabs button {
+    display: grid;
+    grid-template-columns: 0.875rem minmax(0, 1fr);
+    min-width: 0;
+    gap: 0 0.375rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8125rem;
+    line-height: 1.2;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .lesson-modal__tabs span {
+    grid-column: 2;
+    justify-self: start;
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 680px) {
+  .lesson-modal__header {
+    padding: 0.75rem 1rem;
+  }
+
+  .lesson-modal__body,
   .lesson-modal__footer {
-    align-items: flex-start;
+    padding: 1rem;
+  }
+
+  .lesson-modal__context h3 {
+    font-size: 1.5rem;
+  }
+
+  .lesson-modal__footer p {
+    min-width: 0;
+    font-size: 0.6875rem;
   }
 }
 
@@ -6489,7 +6498,7 @@ button:hover > .dash-card,
   }
 
   .course-builder-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .course-builder-rail {
@@ -6508,11 +6517,7 @@ button:hover > .dash-card,
   }
 
   .course-builder-footer {
-    grid-template-columns: 1fr;
-  }
-
-  .course-builder-steps {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .course-builder-step.is-active::before {
@@ -6589,7 +6594,7 @@ button:hover > .dash-card,
   }
 
   .course-builder-hero {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .course-builder-hero__actions {

@@ -28,9 +28,14 @@ function normalizeFilename(filename: string, extension: "csv" | "json") {
 
 function escapeCsvCell(value: ExportCell) {
   const text = value === null || typeof value === "undefined" ? "" : String(value);
-  const escapedText = text.replace(/"/g, '""');
+  // A quoted tab keeps formula-like user text literal in spreadsheet exports.
+  // Typed numbers stay numeric; the JSON export preserves exact source values.
+  const csvText = typeof value === "string" && /^[\s\u0000-\u001f\u007f-\u009f]*[=+\-@＝＋－＠]/u.test(text)
+    ? `\t${text}`
+    : text;
+  const escapedText = csvText.replace(/"/g, '""');
 
-  return /[",\n\r]/.test(escapedText) ? `"${escapedText}"` : escapedText;
+  return /[",;\t\n\r]/.test(csvText) ? `"${escapedText}"` : escapedText;
 }
 
 function rowsToCsv(rows: ExportRow[]) {
