@@ -1,8 +1,18 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 import { getServerTranslation } from "@/lib/i18n/server";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerTranslation();
+  return {
+    title: `${t("auth.forgot.title")} | SkillsetMind`,
+    description: t("auth.forgot.description"),
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function ForgotPasswordPage() {
   const { t } = await getServerTranslation();
