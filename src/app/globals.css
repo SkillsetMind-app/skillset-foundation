@@ -88,7 +88,7 @@
   --radius-4xl: 22px;
   /* Design V2 net-new tokens (additive — no existing value changed) */
   --color-on-primary: #ffffff;
-  --color-on-accent: #102a43;
+  --color-on-accent: #091d2f;
   --shadow-button: 0 10px 22px rgba(26, 54, 93, 0.14);
   --shadow-button-strong: 0 14px 28px rgba(15, 39, 68, 0.28);
   /* Spacing scale (4px base) */
@@ -195,7 +195,7 @@
      #0a0f1a. success-fg #5fc99a = 5.95:1 on surface-strong, 8.86:1 on surface.
      Base --color-accent/--color-success untouched, so white-on-fill pairs hold. */
   --color-accent-fg: #e2bd72;
-  --color-on-accent: #102a43;
+  --color-on-accent: #091d2f;
   /* #e8808c = 5.17:1 on the worst case (18% danger tint over surface-strong
      #1c2841), 6.88:1 on plain surface. Base #b22234 is only 2.73:1 there. */
   --color-danger-fg: #e8808c;
@@ -638,16 +638,11 @@ p {
   color: var(--color-base) !important;
 }
 
-/* ...but a solid-fill button inside such a card keeps its OWN opaque background
-   (red accent / navy), unchanged in dark mode, so its white label stays correct.
-   The descendant flip above (specificity 0,2,0) would otherwise darken it to
-   dark-ink-on-red (~2.89:1, fails AA) — e.g. the "Create account" CTA in the
-   for-creators aside. Re-assert white with higher specificity (0,3,0). */
-[data-theme="dark"] .primary-fill-card .button-solid,
-[data-theme="dark"] .primary-fill-card .button-solid *,
+/* The opaque gold CTA keeps its own dark label inside the inverted promo card,
+   including descendants and hover. White on this gold fails AA in both states. */
 [data-theme="dark"] .primary-fill-card .button-solid-light,
 [data-theme="dark"] .primary-fill-card .button-solid-light * {
-  color: #ffffff !important;
+  color: var(--color-on-accent) !important;
 }
 
 [data-theme="dark"] input,
@@ -1425,7 +1420,7 @@ p {
   border: none;
   border-radius: 10px;
   background: var(--color-accent);
-  color: #ffffff !important;
+  color: var(--color-on-accent) !important;
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;

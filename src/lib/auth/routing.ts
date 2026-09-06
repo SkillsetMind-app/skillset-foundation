@@ -120,6 +120,25 @@ export function getLoadingRoute(
   return `/loading?${searchParams.toString()}`;
 }
 
+export function getAuthRoute(
+  mode: "signin" | "signup",
+  intent: AuthPathIntent | null = null,
+  returnTo: string | null = null,
+): string {
+  const searchParams = new URLSearchParams({ mode });
+
+  if (intent) {
+    searchParams.set("path", intent);
+  }
+
+  const safeReturnTo = getSafeReturnTo(new URLSearchParams({ returnTo: returnTo ?? "" }));
+  if (safeReturnTo) {
+    searchParams.set("returnTo", safeReturnTo);
+  }
+
+  return `/auth?${searchParams.toString()}`;
+}
+
 /**
  * The single builder for the /welcome (onboarding) entry. It carries the deep
  * link the sign-in wall captured, because onboarding used to be where that link
@@ -153,6 +172,14 @@ export function getPostAuthRoute(
 ): string {
   if (!profile?.onboardingCompleted) {
     return getWelcomeRoute(intent);
+  }
+
+  if (intent === "teacher") {
+    return profile.roles.includes("teacher") ? "/teach" : "/onboarding?path=teacher";
+  }
+
+  if (intent === "student") {
+    return "/learn";
   }
 
   if (profile.onboardingPath === "teacher" && !profile.roles.includes("teacher")) {

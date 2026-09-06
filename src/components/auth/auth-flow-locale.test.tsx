@@ -216,6 +216,36 @@ describe("auth flow follows the selected language without resetting state", () =
     expect(screen.getByText("alex@example.test")).toBeInTheDocument();
   });
 
+  it.each([
+    ["student", "/courses/focus/checkout?offer=LAUNCH&priceId=price-1", "/courses/focus/checkout?offer=LAUNCH&priceId=price-1"],
+    ["teacher", "/courses/focus/checkout?offer=LAUNCH&priceId=price-1", "/courses/focus/checkout?offer=LAUNCH&priceId=price-1"],
+    [null, "/courses/focus/checkout", "/courses/focus/checkout"],
+    ["teacher", null, null],
+    ["teacher", "/\n/outside.example/checkout", null],
+    ["student", "/auth?mode=signup", null],
+    [null, null, null],
+  ] as const)("preserves only safe confirmation context after a language switch: %s / %s", async (intent, returnTo, expectedReturnTo) => {
+    mocks.resendSignupConfirmation.mockResolvedValue(undefined);
+    renderSpanish(<ConfirmEmailGate email="alex@example.test" intent={intent} returnTo={returnTo} />);
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    fireEvent.click(screen.getByRole("button", { name: "Resend the link" }));
+    expect(await screen.findByText("Sent again. Give it a minute.")).toBeInTheDocument();
+
+    expect(mocks.resendSignupConfirmation).toHaveBeenCalledTimes(1);
+    const [email, destination] = mocks.resendSignupConfirmation.mock.calls[0];
+    expect(email).toBe("alex@example.test");
+    expect(destination).toBeTypeOf("string");
+    const next = new URL(destination, "https://skillset.test");
+    expect(next.pathname).toBe("/loading");
+    expect(next.searchParams.get("next")).toBe("welcome");
+    expect(next.searchParams.get("path")).toBe(intent);
+    expect(next.searchParams.get("returnTo")).toBe(expectedReturnTo);
+    const signin = new URL(screen.getByRole("link", { name: "Sign in" }).getAttribute("href")!, "https://skillset.test");
+    expect(signin.searchParams.get("path")).toBe(intent);
+    expect(signin.searchParams.get("returnTo")).toBe(expectedReturnTo);
+    expect(screen.getByRole("button", { name: /Resend in \d+s/ })).toBeDisabled();
+  });
+
   it("translates the sent notice and keeps the resend cooldown after switching language", async () => {
     mocks.resendSignupConfirmation.mockResolvedValue(undefined);
     renderSpanish(<ConfirmEmailGate email="alex@example.test" />);
