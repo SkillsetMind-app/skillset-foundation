@@ -4,6 +4,7 @@ import { useState, type DragEvent } from "react";
 import { HelpCircle, Link2, ShieldAlert, UploadCloud } from "lucide-react";
 
 import { Tooltip } from "@/components/shared/tooltip";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 
 type LessonVideoSource = "youtube" | "upload";
 
@@ -20,6 +21,7 @@ export function LessonVideoSourcePicker(props: {
   onSelectFile: (file: File) => void;
   onExternalUrlChange: (next: string) => void;
 }) {
+  const { t } = useTranslation();
   const [isDragActive, setIsDragActive] = useState(false);
 
   function selectFile(file: File) {
@@ -62,7 +64,7 @@ export function LessonVideoSourcePicker(props: {
 
   return (
     <div className="lesson-video-source-picker">
-      <p className="lesson-video-source-picker__heading">Add the lesson video</p>
+      <p className="lesson-video-source-picker__heading">{t("creatorEditor.videoSource.heading")}</p>
       <div className="lesson-video-source-picker__options">
         <label
           className={`lesson-video-source-picker__dropzone${
@@ -82,7 +84,7 @@ export function LessonVideoSourcePicker(props: {
             type="file"
             accept={props.accept}
             disabled={props.disabled}
-            aria-label="Upload a lesson video"
+            aria-label={t("creatorEditor.videoSource.fileInput")}
             className="lesson-modal-upload__input"
             onChange={(event) => {
               const file = event.target.files?.[0];
@@ -97,10 +99,10 @@ export function LessonVideoSourcePicker(props: {
           <span>
             <strong>
               {isDragActive
-                ? "Drop the video to select it"
-                : "Drag & drop your video here"}
+                ? t("creatorEditor.videoSource.dropActive")
+                : t("creatorEditor.videoSource.dropIdle")}
             </strong>
-            <small>or click to browse — MP4, MOV, WebM and other video files.</small>
+            <small>{t("creatorEditor.videoSource.browseHelp")}</small>
           </span>
         </label>
 
@@ -111,11 +113,11 @@ export function LessonVideoSourcePicker(props: {
         >
           <span className="lesson-video-source-picker__url-label">
             <Link2 aria-hidden="true" size={15} />
-            <strong>YouTube or Vimeo URL</strong>
-            <Tooltip content="Paste the video's page link — e.g. https://www.youtube.com/watch?v=… or a Vimeo URL. We turn it into a privacy-friendly embed that plays inside the classroom, stamped with the student's identity. It stays a link on YouTube or Vimeo, though: anyone who reaches that link can watch it outside your course. Upload instead and playback is signed per student.">
+            <strong>{t("creatorEditor.videoSource.url")}</strong>
+            <Tooltip content={t("creatorEditor.videoSource.help")}>
               <button
                 type="button"
-                aria-label="How the YouTube or Vimeo URL field works"
+                aria-label={t("creatorEditor.videoSource.helpLabel")}
                 className="inline-flex items-center text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
               >
                 <HelpCircle aria-hidden="true" size={13} />
@@ -142,9 +144,7 @@ export function LessonVideoSourcePicker(props: {
           <small className="mt-1 flex items-start gap-1.5 text-[var(--color-ink-muted)]">
             <ShieldAlert aria-hidden="true" size={13} className="mt-px shrink-0" />
             <span>
-              An embedded video stays a link on YouTube or Vimeo — anyone with
-              that link can watch it outside your course. Upload the file
-              instead and each student gets their own signed playback.
+              {t("creatorEditor.videoSource.protectionNote")}
             </span>
           </small>
         </label>

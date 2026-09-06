@@ -2,6 +2,15 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { LessonVideoSourcePicker } from "@/components/teacher/lesson-video-source-picker";
+import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
+
+const router = vi.hoisted(() => ({ refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
+
+function ChangeLanguage() {
+  const { locale, setLocale } = useTranslation();
+  return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
+}
 
 type PickerProps = Parameters<typeof LessonVideoSourcePicker>[0];
 
@@ -26,6 +35,34 @@ function videoFile(name = "lesson.mp4") {
 }
 
 describe("LessonVideoSourcePicker", () => {
+  it("keeps the active drop target and authored URL when the language changes", () => {
+    const onChange = vi.fn();
+    const onSelectFile = vi.fn();
+    const onExternalUrlChange = vi.fn();
+    const url = "https://vimeo.com/123456";
+    render(
+      <I18nProvider initialLocale="en">
+        <ChangeLanguage />
+        <LessonVideoSourcePicker value="youtube" accept="video/*" externalUrl={url}
+          embedStatus="Vimeo" onChange={onChange} onSelectFile={onSelectFile} onExternalUrlChange={onExternalUrlChange} />
+      </I18nProvider>,
+    );
+    const input = screen.getByLabelText("Upload a lesson video");
+    fireEvent.dragOver(input.closest("label")!);
+    expect(screen.getByText("Drop the video to select it")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByText("Suelta el video para seleccionarlo")).toBeInTheDocument();
+    expect(screen.getByLabelText("Subir un video de la lección")).toBe(input);
+    expect(screen.getByDisplayValue(url)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cómo funciona el campo de URL de YouTube o Vimeo" })).toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onExternalUrlChange).not.toHaveBeenCalled();
+    const file = videoFile("Aula $& íntegra.mp4");
+    fireEvent.drop(input.closest("label")!, { dataTransfer: { files: [file] } });
+    expect(onSelectFile).toHaveBeenCalledExactlyOnceWith(file);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it("renders the dropzone and the URL field immediately, with no source-choice step", () => {
     renderPicker();
 

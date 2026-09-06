@@ -1,9 +1,12 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CourseAsset } from "@/domain/course-asset";
 import { ProtectedAssetPreview } from "./protected-asset-preview";
+import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 
 const { sign } = vi.hoisted(() => ({ sign: vi.fn() }));
+const router = vi.hoisted(() => ({ refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("@/lib/data/course-assets", () => ({ getProtectedCourseAssetObjectUrl: sign }));
 vi.mock("@/components/learn/watermarked-video-player", () => ({
   WatermarkedVideoPlayer: ({ src, fileName }: { src: string; fileName: string }) => <video src={src} aria-label={fileName} />,
@@ -13,12 +16,48 @@ const asset = (id: string): CourseAsset => ({
   contentType: "video/mp4", size: 1, storagePath: `private/${id}`, isPreview: false, lessonId: "lesson",
 });
 
+function ChangeLanguage() {
+  const { locale, setLocale } = useTranslation();
+  return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
+}
+
 describe("protected asset preview identity", () => {
   beforeEach(() => {
     sign.mockReset();
     vi.stubGlobal("URL", class extends URL { static revokeObjectURL = vi.fn(); });
   });
   afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+  it.each(["success", "failure"])("translates pending and %s UI without acquiring another protected URL", async (outcome) => {
+    let finish!: (url: string) => void;
+    let fail!: (error: Error) => void;
+    sign.mockImplementationOnce(() => new Promise<string>((resolve, reject) => { finish = resolve; fail = reject; }));
+    const selectedAsset = { ...asset("image"), fileName: "Capa $& íntegra.png", kind: "lesson_thumbnail" as const, contentType: "image/png" };
+    const view = render(
+      <I18nProvider initialLocale="en"><ChangeLanguage /><ProtectedAssetPreview asset={selectedAsset} /></I18nProvider>,
+    );
+    expect(screen.getByText("Preparing protected asset...")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByText("Preparando archivo protegido...")).toBeInTheDocument();
+    expect(sign).toHaveBeenCalledOnce();
+    await act(async () => {
+      if (outcome === "success") finish("blob:protected-image");
+      else fail(new Error("provider detail stays private"));
+    });
+    if (outcome === "success") {
+      expect(screen.getByRole("link", { name: "Abrir archivo" })).toHaveAttribute("href", "blob:protected-image");
+      expect(screen.getByRole("link", { name: "Descargar" })).toHaveAttribute("download", selectedAsset.fileName);
+    } else {
+      expect(screen.getByText("El acceso al archivo está protegido. Actualiza tu sesión e inténtalo de nuevo.")).toBeInTheDocument();
+      expect(screen.queryByText("provider detail stays private")).not.toBeInTheDocument();
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    if (outcome === "success") expect(screen.getByRole("link", { name: "Open file" })).toHaveAttribute("href", "blob:protected-image");
+    else expect(screen.getByText("Asset access is protected. Try again after refreshing your session.")).toBeInTheDocument();
+    expect(sign).toHaveBeenCalledExactlyOnceWith(selectedAsset);
+    view.unmount();
+    if (outcome === "success") expect(URL.revokeObjectURL).toHaveBeenCalledExactlyOnceWith("blob:protected-image");
+  });
 
   it("removes the old video immediately and releases its blob when changing assets", async () => {
     const revoke = vi.mocked(URL.revokeObjectURL);
