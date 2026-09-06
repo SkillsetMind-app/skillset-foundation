@@ -4,6 +4,7 @@ import { Award } from "lucide-react";
 import Link from "next/link";
 
 import { classroomTabHref, type ClassroomTab } from "@/domain/classroom-tabs";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 
 export type ClassroomTabItem = {
   id: ClassroomTab;
@@ -30,8 +31,9 @@ export function ClassroomTabs({
    *  barra, quando o curso esta 100% (e fora do whitelabel). */
   certificateHref?: string | null;
 }) {
+  const { t } = useTranslation();
   return (
-    <nav aria-label="Course sections" className="member-classroom-tabs">
+    <nav aria-label={t("creatorEditor.preview.sections")} className="member-classroom-tabs">
       {tabs.map((tab) => (
         <Link
           key={tab.id}

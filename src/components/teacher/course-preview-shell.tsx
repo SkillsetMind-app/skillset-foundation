@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { ClassroomTab } from "@/domain/classroom-tabs";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { teacherCourseToLearningCourse } from "@/lib/data/published-courses";
@@ -23,11 +24,12 @@ export function CoursePreviewShell({
   tab = "lesson",
   whitelabel = false,
 }: CoursePreviewShellProps) {
+  const { t } = useTranslation();
   const hasBackendConfig = Boolean(getSupabaseClientConfig());
   const shouldLoadCourse = Boolean(courseId && hasBackendConfig);
   const [course, setCourse] = useState<TeacherCourse | null>(null);
   const [isLoading, setIsLoading] = useState(shouldLoadCourse);
-  const [error, setError] = useState("");
+  const [hasLoadError, setHasLoadError] = useState(false);
 
   useEffect(() => {
     if (!shouldLoadCourse) {
@@ -38,10 +40,11 @@ export function CoursePreviewShell({
       courseId,
       (nextCourse) => {
         setCourse(nextCourse);
+        setHasLoadError(false);
         setIsLoading(false);
       },
       () => {
-        setError("We could not load this course preview.");
+        setHasLoadError(true);
         setIsLoading(false);
       },
     );
@@ -50,8 +53,8 @@ export function CoursePreviewShell({
   if (!courseId) {
     return (
       <PreviewState
-        title="Course not selected."
-        detail="Return to the builder and open preview from a specific course."
+        title={t("creatorEditor.preview.notSelected")}
+        detail={t("creatorEditor.preview.notSelectedHelp")}
       />
     );
   }
@@ -59,8 +62,8 @@ export function CoursePreviewShell({
   if (!hasBackendConfig) {
     return (
       <PreviewState
-        title="Preview is not connected."
-        detail="Backend configuration is required before course previews can load."
+        title={t("creatorEditor.preview.disconnected")}
+        detail={t("creatorEditor.preview.disconnectedHelp")}
       />
     );
   }
@@ -68,21 +71,21 @@ export function CoursePreviewShell({
   if (isLoading) {
     return (
       <PreviewState
-        title="Loading preview..."
-        detail="Preparing the student-facing members area."
+        title={t("creatorEditor.preview.loading")}
+        detail={t("creatorEditor.preview.loadingHelp")}
       />
     );
   }
 
-  if (error) {
-    return <PreviewState title="Preview unavailable." detail={error} />;
+  if (hasLoadError) {
+    return <PreviewState title={t("creatorEditor.preview.unavailable")} detail={t("creatorEditor.preview.loadError")} />;
   }
 
   if (!course) {
     return (
       <PreviewState
-        title="Course record not found."
-        detail="The course may have been deleted or your session may need refresh."
+        title={t("creatorEditor.preview.notFound")}
+        detail={t("creatorEditor.preview.notFoundHelp")}
       />
     );
   }
@@ -100,10 +103,11 @@ export function CoursePreviewShell({
 }
 
 function PreviewState({ title, detail }: { title: string; detail: string }) {
+  const { t } = useTranslation();
   return (
     <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-        Preview mode
+        {t("creatorEditor.preview.mode")}
       </p>
       <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
         {title}
@@ -112,7 +116,7 @@ function PreviewState({ title, detail }: { title: string; detail: string }) {
         {detail}
       </p>
       <Link href="/teach" className="button-outline mt-6 px-4 py-2.5 text-sm">
-        Back to Teacher Studio
+        {t("creatorEditor.preview.back")}
       </Link>
     </section>
   );
