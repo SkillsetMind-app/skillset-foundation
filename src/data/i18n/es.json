@@ -722,6 +722,54 @@
           "rejected": "Rechazar"
         }
       },
+      "communityPanel": {
+        "eyebrow": "Moderación de la comunidad",
+        "title": "Denuncias de confianza",
+        "description": "Revisa las denuncias de las comunidades de los cursos y dales seguimiento.",
+        "countOne": "1 abierta",
+        "count": "{count} abiertas",
+        "loadError": "No pudimos cargar las denuncias de la comunidad.",
+        "updateError": "No pudimos actualizar el estado de esta denuncia.",
+        "configurationRequired": "Es necesario configurar el servicio para cargar las denuncias de la comunidad.",
+        "loading": "Cargando denuncias de la comunidad...",
+        "empty": "Todavía no hay denuncias de la comunidad.",
+        "in": "en",
+        "author": "Autor del contenido denunciado:",
+        "reporter": "Denunciante:",
+        "context": "Contexto:",
+        "saving": "Guardando...",
+        "targets": {
+          "post": "Publicación",
+          "comment": "Comentario"
+        },
+        "reasons": {
+          "spam": "Spam o promoción",
+          "harassment": "Acoso o abuso",
+          "unsafe_content": "Contenido peligroso",
+          "off_topic": "Fuera de tema o de baja calidad",
+          "other": "Otro problema de confianza"
+        }
+      },
+      "auditPanel": {
+        "description": "Los reembolsos y las solicitudes de cuenta se registran aquí automáticamente, del más reciente al más antiguo. Este registro es de solo lectura: el sistema crea las entradas y no se pueden editar.",
+        "loading": "Cargando registro de auditoría...",
+        "loadError": "No pudimos cargar el registro de auditoría.",
+        "empty": "Todavía no hay eventos de auditoría registrados.",
+        "pendingTimestamp": "Fecha pendiente",
+        "actor": "Responsable",
+        "target": "Destino",
+        "actions": {
+          "refundRequested": "Reembolso solicitado",
+          "refundIssued": "Reembolso emitido",
+          "deletionRequested": "Eliminación de cuenta solicitada",
+          "exportRequested": "Exportación de datos solicitada"
+        },
+        "targets": {
+          "order": "Pedido",
+          "user": "Usuario",
+          "course": "Curso"
+        }
+      },
       "supportQueue": {
         "title": "Tickets de soporte de usuarios",
         "description": "Revisa los problemas de los usuarios y actualiza el estado de cada ticket.",

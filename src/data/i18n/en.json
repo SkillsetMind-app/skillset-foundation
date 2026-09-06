@@ -722,6 +722,54 @@
           "rejected": "Reject"
         }
       },
+      "communityPanel": {
+        "eyebrow": "Community moderation",
+        "title": "Trust reports",
+        "description": "Review reports from course communities and close the loop.",
+        "countOne": "1 open",
+        "count": "{count} open",
+        "loadError": "We could not load community reports.",
+        "updateError": "We could not update this report status.",
+        "configurationRequired": "Backend configuration is required before community reports can load.",
+        "loading": "Loading community reports...",
+        "empty": "No community reports yet.",
+        "in": "in",
+        "author": "Reported content author:",
+        "reporter": "Reporter:",
+        "context": "Context:",
+        "saving": "Saving...",
+        "targets": {
+          "post": "post",
+          "comment": "comment"
+        },
+        "reasons": {
+          "spam": "Spam or promotion",
+          "harassment": "Harassment or abuse",
+          "unsafe_content": "Unsafe content",
+          "off_topic": "Off-topic or low quality",
+          "other": "Other trust issue"
+        }
+      },
+      "auditPanel": {
+        "description": "Refunds and account requests are recorded here automatically as they happen, newest first. This log is read-only — entries are written by the system and cannot be edited.",
+        "loading": "Loading audit log...",
+        "loadError": "We could not load the audit log.",
+        "empty": "No audit events recorded yet.",
+        "pendingTimestamp": "Pending timestamp",
+        "actor": "Actor",
+        "target": "Target",
+        "actions": {
+          "refundRequested": "Refund requested",
+          "refundIssued": "Refund issued",
+          "deletionRequested": "Account deletion requested",
+          "exportRequested": "Data export requested"
+        },
+        "targets": {
+          "order": "Order",
+          "user": "User",
+          "course": "Course"
+        }
+      },
       "supportQueue": {
         "title": "User support tickets",
         "description": "Read user issues and move tickets through the status workflow.",
