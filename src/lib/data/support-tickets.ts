@@ -111,10 +111,16 @@ export function subscribeToAdminSupportTickets(
   onError: (error: Error) => void,
 ): () => void {
   const supabase = getSupabaseBrowserClient();
+  let active = true;
+  let generation = 0;
 
   const load = async () => {
+    if (!active) return;
+    const currentGeneration = ++generation;
     const { data, error } = await supabase.from("support_tickets").select("*");
 
+    // An older refresh must not revive resolved tickets or replace a newer error.
+    if (!active || currentGeneration !== generation) return;
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -142,6 +148,7 @@ export function subscribeToAdminSupportTickets(
     .subscribe();
 
   return () => {
+    active = false;
     void supabase.removeChannel(channel);
   };
 }

@@ -432,12 +432,18 @@ export function subscribeToCommunityReports(
   onError: (error: Error) => void,
 ): () => void {
   const supabase = getSupabaseBrowserClient();
+  let active = true;
+  let generation = 0;
 
   const load = async () => {
+    if (!active) return;
+    const currentGeneration = ++generation;
     const { data, error } = await supabase
       .from("community_reports")
       .select("*");
 
+    // Only the latest read may update the queue, including its error state.
+    if (!active || currentGeneration !== generation) return;
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -469,6 +475,7 @@ export function subscribeToCommunityReports(
     .subscribe();
 
   return () => {
+    active = false;
     void supabase.removeChannel(channel);
   };
 }
