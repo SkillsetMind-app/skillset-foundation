@@ -172,7 +172,7 @@ export function MobileSidebarDrawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="grid size-9 place-items-center rounded-[10px] text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
+                className="grid size-11 place-items-center rounded-[10px] text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
                 aria-label={t("platform.mobile.close")}
               >
                 <X aria-hidden="true" size={18} strokeWidth={1.8} />
