@@ -1638,8 +1638,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid Stripe webhook signature." }, { status: 400 });
   }
 
-  // A production Connect endpoint can also receive genuine test events.
-  // Match the server key, not NODE_ENV, before claiming or fulfilling anything.
+  // A live payment must remain retryable when the server has a test key.
+  if (event.livemode && stripeMode === "test" && HANDLED_STRIPE_EVENT_TYPES.has(event.type)) {
+    return NextResponse.json(
+      { error: "Live Stripe events require a live API key.", code: "payments_not_configured" },
+      { status: 503 },
+    );
+  }
+
+  // Production Connect endpoints can also receive test events; ignore those
+  // before claiming anything. Match the server key, not NODE_ENV.
   if (event.livemode !== (stripeMode === "live") || !HANDLED_STRIPE_EVENT_TYPES.has(event.type)) {
     return NextResponse.json({ received: true, ignored: true });
   }

@@ -595,8 +595,6 @@ describe("Stripe webhook financial integrity", () => {
   it.each([
     ["sk_live_fixture", false],
     ["rk_live_fixture", false],
-    ["sk_test_fixture", true],
-    ["rk_test_fixture", true],
   ] as const)("ignores the opposite event mode with %s before claiming it", async (key, livemode) => {
     vi.stubEnv("STRIPE_SECRET_KEY", key);
     const admin = createAdmin("checkout");
@@ -607,6 +605,22 @@ describe("Stripe webhook financial integrity", () => {
     expect(await response.json()).toMatchObject({ received: true, ignored: true });
     expect(mocks.getAdmin).not.toHaveBeenCalled();
   });
+
+  it.each(["sk_test_fixture", "rk_test_fixture"])(
+    "retries a live event after correcting the configured test key %s", async (key) => {
+      vi.stubEnv("STRIPE_SECRET_KEY", key);
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = checkoutEvent();
+      expect((await postEvent(event)).status).toBe(503);
+      expect(mocks.getAdmin).not.toHaveBeenCalled();
+      expect(admin.state.enrollmentInserts).toEqual([]);
+
+      vi.stubEnv("STRIPE_SECRET_KEY", "sk_live_fixture");
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.enrollmentInserts).toHaveLength(1);
+    },
+  );
 
   it.each([
     ["sk_live_fixture", true],
