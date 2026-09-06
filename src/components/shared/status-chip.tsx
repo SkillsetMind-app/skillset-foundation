@@ -18,8 +18,10 @@ export type StatusChipStatus =
   | "paid"
   | "partially_refunded"
   | "pending"
+  | "processing"
   | "published"
   | "refunded"
+  | "rejected"
   | "resolved"
   | "reviewed"
   | "revoked"
@@ -48,8 +50,10 @@ const knownStatuses = new Set([
   "paid",
   "partially_refunded",
   "pending",
+  "processing",
   "published",
   "refunded",
+  "rejected",
   "resolved",
   "reviewed",
   "revoked",
@@ -67,6 +71,7 @@ const statusVariants: Record<string, string> = {
   draft: "draft",
   in_review: "warning",
   needs_changes: "danger",
+  rejected: "danger",
   failed: "danger",
   cancelled: "inactive",
   canceled: "inactive",
@@ -77,6 +82,7 @@ const statusVariants: Record<string, string> = {
   open: "info",
   partially_refunded: "info",
   pending: "info",
+  processing: "info",
   past_due: "danger",
   trialing: "info",
   unpaid: "danger",

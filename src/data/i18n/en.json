@@ -411,6 +411,365 @@
       "back": "Back to Operations",
       "searchSupport": "Search tickets in this queue",
       "searchVerification": "Search applications in this queue",
+      "accessPanel": {
+        "people": "People",
+        "matrix": "What each level can do",
+        "canDo": "Can do",
+        "yes": "yes",
+        "no": "no",
+        "searchLabel": "Find someone",
+        "searchPlaceholder": "Name or email",
+        "loading": "Loading the roster…",
+        "empty": "No one matches that search.",
+        "noLevel": "No level yet — sees only the public site.",
+        "levels": {
+          "student": {
+            "label": "Learner",
+            "description": "Buys and takes courses. The classroom, nothing else."
+          },
+          "teacher": {
+            "label": "Instructor",
+            "description": "Builds and sells courses. Opens the teaching studio."
+          },
+          "staff": {
+            "label": "Team",
+            "description": "Verification, reports and learner support — support, moderation and operations together."
+          },
+          "admin": {
+            "label": "Admin",
+            "description": "Everything, including changing these levels."
+          }
+        },
+        "errors": {
+          "loadError": "Could not load the roster.",
+          "saveError": "That change was refused. Nothing was saved.",
+          "adminRequired": "Admin privileges are required.",
+          "targetRequired": "A target user is required.",
+          "invalidRoles": "The selected access levels are invalid. Nothing was saved.",
+          "unknownRole": "Unknown role in the requested set.",
+          "userMissing": "That user does not exist.",
+          "selfAdmin": "You cannot remove your own admin role.",
+          "lastAdmin": "The platform must keep at least one administrator."
+        },
+        "preview": {
+          "title": "Preview the product",
+          "description": "See the platform as a learner or an instructor; your own access is untouched.",
+          "back": "Back to admin",
+          "banner": "Previewing as {role}. Your admin access is unchanged.",
+          "exit": "Exit preview"
+        },
+        "permissions": {
+          "auth": {
+            "signIn": {
+              "label": "Sign in",
+              "description": "Can access sign-in surfaces."
+            },
+            "signUp": {
+              "label": "Sign up",
+              "description": "Can access account creation surfaces."
+            },
+            "signOut": {
+              "label": "Sign out",
+              "description": "Can end an authenticated session."
+            },
+            "manageSessions": {
+              "label": "Manage sessions",
+              "description": "Can review and revoke user sessions."
+            }
+          },
+          "courses": {
+            "readCatalog": {
+              "label": "Read course catalog",
+              "description": "Can view public course catalog content."
+            },
+            "enroll": {
+              "label": "Enroll in courses",
+              "description": "Can enroll in available learning experiences."
+            },
+            "viewLearning": {
+              "label": "View learning",
+              "description": "Can access enrolled learning content."
+            },
+            "create": {
+              "label": "Create courses",
+              "description": "Can create draft course content."
+            },
+            "submitForReview": {
+              "label": "Submit courses for review",
+              "description": "Can send owned course drafts into the review queue."
+            },
+            "publish": {
+              "label": "Publish courses",
+              "description": "Can publish teacher-owned course content."
+            },
+            "manageAll": {
+              "label": "Manage all courses",
+              "description": "Can manage course content across the platform."
+            }
+          },
+          "payments": {
+            "checkout": {
+              "label": "Checkout",
+              "description": "Can purchase paid learning products."
+            },
+            "manageSubscriptions": {
+              "label": "Manage subscriptions",
+              "description": "Can manage billing subscriptions."
+            },
+            "refund": {
+              "label": "Refund payments",
+              "description": "Can issue or request refunds."
+            }
+          },
+          "community": {
+            "read": {
+              "label": "Read community",
+              "description": "Can view community spaces."
+            },
+            "post": {
+              "label": "Post community content",
+              "description": "Can create posts and replies in community spaces."
+            },
+            "moderate": {
+              "label": "Moderate community",
+              "description": "Can moderate community posts and replies."
+            }
+          },
+          "teacherStudio": {
+            "access": {
+              "label": "Access teacher studio",
+              "description": "Can access teacher studio surfaces."
+            },
+            "manageCourses": {
+              "label": "Manage teacher courses",
+              "description": "Can manage courses in teacher studio."
+            },
+            "manageStorefront": {
+              "label": "Manage instructor storefront",
+              "description": "Can edit storefront branding and course showcase ordering."
+            }
+          },
+          "certificates": {
+            "view": {
+              "label": "View certificates",
+              "description": "Can view earned certificates."
+            },
+            "issue": {
+              "label": "Issue certificates",
+              "description": "Can issue completion certificates."
+            },
+            "revoke": {
+              "label": "Revoke certificates",
+              "description": "Can revoke issued certificates."
+            }
+          },
+          "users": {
+            "support": {
+              "label": "Support users",
+              "description": "Can help users with account and learning issues."
+            },
+            "manage": {
+              "label": "Manage users",
+              "description": "Can manage user records and roles."
+            }
+          },
+          "platform": {
+            "viewOps": {
+              "label": "View operations",
+              "description": "Can view operational dashboards."
+            },
+            "accessAdmin": {
+              "label": "Access admin",
+              "description": "Can access administrative surfaces."
+            }
+          }
+        }
+      },
+      "catalogPanel": {
+        "eyebrow": "Published courses",
+        "title": "Manage the live catalog",
+        "description": "Unpublish, republish, or permanently delete a course with no enrollments or orders.",
+        "coursesOne": "1 course",
+        "courses": "{count} courses",
+        "modulesOne": "1 module",
+        "modules": "{count} modules",
+        "lessonsOne": "1 lesson",
+        "lessons": "{count} lessons",
+        "loadError": "We could not load published courses. Please refresh.",
+        "loading": "Loading published courses...",
+        "empty": "No published or inactive courses yet.",
+        "featured": "Featured",
+        "working": "Working...",
+        "feature": "Feature",
+        "unfeature": "Unfeature",
+        "unpublish": "Unpublish",
+        "republish": "Republish",
+        "deleting": "Deleting...",
+        "confirmDelete": "Confirm delete",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "errors": {
+          "unpublish": "We could not unpublish this course. Please try again.",
+          "republish": "We could not republish this course. Please try again.",
+          "delete": "We could not delete this course. Courses with enrollments or orders must be unpublished instead.",
+          "feature": "We could not update the featured status. Please try again."
+        },
+        "success": {
+          "unpublished": "Course unpublished and removed from the marketplace.",
+          "republished": "Course republished to the marketplace.",
+          "deleted": "Course permanently deleted.",
+          "featured": "Course featured. It now leads the marketplace grid.",
+          "unfeatured": "Course unfeatured and back in the regular catalog order."
+        }
+      },
+      "paymentsPanel": {
+        "title": "Stripe order monitor.",
+        "description": "Live Stripe orders; access is granted only after payment is confirmed.",
+        "adminOnly": "Admin only",
+        "paidSample": "Paid in this sample",
+        "grossSample": "Gross (last 12 orders)",
+        "feeSample": "Platform fee est. (same 12)",
+        "loadingValue": "Loading...",
+        "unavailable": "Unavailable",
+        "loadError": "We could not load recent Stripe orders.",
+        "loading": "Loading orders...",
+        "empty": "No Stripe orders yet. After a paid checkout, pending and paid orders will appear here.",
+        "order": "Order",
+        "user": "User",
+        "provider": "Provider"
+      },
+      "enrollmentPanel": {
+        "eyebrow": "Manual enrollment",
+        "title": "Grant beta access without fake checkout.",
+        "description": "Beta, support, or admin-granted access only; paid enrollment still comes from Stripe.",
+        "learner": "Learner",
+        "course": "Published creator course",
+        "loadingUsers": "Loading users...",
+        "chooseUser": "Choose user",
+        "loadingCourses": "Loading courses...",
+        "chooseCourse": "Choose course",
+        "creating": "Creating enrollment...",
+        "create": "Create admin enrollment",
+        "grantedTitle": "Granted enrollments",
+        "activeOne": "1 active",
+        "active": "{count} active",
+        "grantedDescription": "Admin and demo grants only. Revoking removes the learner's access immediately.",
+        "loadingGranted": "Loading granted enrollments...",
+        "empty": "No admin or demo grants yet.",
+        "adminGrant": "Admin grant",
+        "demoGrant": "Demo access",
+        "revoking": "Revoking...",
+        "revoke": "Revoke access",
+        "confirmRevoke": "Revoke access to \"{title}\" for this learner? They lose access immediately.",
+        "readErrors": {
+          "users": "We could not load users for manual enrollment.",
+          "courses": "We could not load published creator courses.",
+          "grants": "We could not load granted enrollments."
+        },
+        "errors": {
+          "choose": "Choose a user and a published creator course.",
+          "create": "We could not create this enrollment. Check admin role and rules.",
+          "revoke": "We could not revoke this enrollment. Check admin role and rules."
+        },
+        "success": {
+          "created": "Admin enrollment created. The learner can now open the creator course workspace.",
+          "revoked": "Enrollment revoked."
+        }
+      },
+      "exportButton": {
+        "export": "Export",
+        "csv": "Export as CSV",
+        "json": "Export as JSON"
+      },
+      "usersPanel": {
+        "eyebrow": "User lookup",
+        "title": "Find learners and educators.",
+        "description": "Read-only lookup for support and trust workflows.",
+        "countOne": "1 user",
+        "count": "{count} users",
+        "search": "Search by email or username...",
+        "loading": "Loading users...",
+        "loadError": "We could not load user records. Confirm your admin access and try again.",
+        "empty": "No users match this search.",
+        "unnamed": "Unnamed user",
+        "noEmail": "No email on profile",
+        "roles": {
+          "guest": "Guest",
+          "moderator": "Moderator"
+        }
+      },
+      "accountRequestsPanel": {
+        "eyebrow": "Account actions",
+        "title": "Export and deletion requests.",
+        "description": "Work each request, then mark it processing, completed, or rejected. Changing the status does not export data or delete an account.",
+        "loading": "Loading account action requests...",
+        "loadError": "We could not load account action requests.",
+        "updateError": "We could not update this account action request.",
+        "empty": "No account action requests yet.",
+        "pendingTimestamp": "Pending timestamp",
+        "user": "User",
+        "requested": "Requested",
+        "requestId": "Request ID",
+        "actioned": "Actioned",
+        "by": "by",
+        "types": {
+          "data_export": "Data export",
+          "account_deletion": "Account deletion"
+        },
+        "actions": {
+          "processing": "Mark processing",
+          "completed": "Mark completed",
+          "rejected": "Reject"
+        }
+      },
+      "communityPanel": {
+        "eyebrow": "Community moderation",
+        "title": "Trust reports",
+        "description": "Review reports from course communities and close the loop.",
+        "countOne": "1 open",
+        "count": "{count} open",
+        "loadError": "We could not load community reports.",
+        "updateError": "We could not update this report status.",
+        "configurationRequired": "Backend configuration is required before community reports can load.",
+        "loading": "Loading community reports...",
+        "empty": "No community reports yet.",
+        "in": "in",
+        "author": "Reported content author:",
+        "reporter": "Reporter:",
+        "context": "Context:",
+        "saving": "Saving...",
+        "targets": {
+          "post": "post",
+          "comment": "comment"
+        },
+        "reasons": {
+          "spam": "Spam or promotion",
+          "harassment": "Harassment or abuse",
+          "unsafe_content": "Unsafe content",
+          "off_topic": "Off-topic or low quality",
+          "other": "Other trust issue"
+        }
+      },
+      "auditPanel": {
+        "description": "Refunds and account requests are recorded here automatically as they happen, newest first. This log is read-only — entries are written by the system and cannot be edited.",
+        "loading": "Loading audit log...",
+        "loadError": "We could not load the audit log.",
+        "empty": "No audit events recorded yet.",
+        "pendingTimestamp": "Pending timestamp",
+        "actor": "Actor",
+        "target": "Target",
+        "actions": {
+          "refundRequested": "Refund requested",
+          "refundIssued": "Refund issued",
+          "deletionRequested": "Account deletion requested",
+          "exportRequested": "Data export requested"
+        },
+        "targets": {
+          "order": "Order",
+          "user": "User",
+          "course": "Course"
+        }
+      },
       "supportQueue": {
         "title": "User support tickets",
         "description": "Read user issues and move tickets through the status workflow.",
@@ -577,7 +936,9 @@
     "resolved": "Resolved",
     "reviewed": "Reviewed",
     "revoked": "Revoked",
-    "succeeded": "Succeeded"
+    "succeeded": "Succeeded",
+    "processing": "Processing",
+    "rejected": "Rejected"
   },
   "learn": {
     "page": {

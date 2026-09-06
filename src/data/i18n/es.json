@@ -411,6 +411,365 @@
       "back": "Volver a Operaciones",
       "searchSupport": "Buscar tickets en esta cola",
       "searchVerification": "Buscar solicitudes en esta cola",
+      "accessPanel": {
+        "people": "Personas",
+        "matrix": "Qué puede hacer cada nivel",
+        "canDo": "Puede hacer",
+        "yes": "sí",
+        "no": "no",
+        "searchLabel": "Buscar a una persona",
+        "searchPlaceholder": "Nombre o correo electrónico",
+        "loading": "Cargando la lista de personas…",
+        "empty": "Nadie coincide con esta búsqueda.",
+        "noLevel": "Aún no tiene un nivel: solo puede ver el sitio público.",
+        "levels": {
+          "student": {
+            "label": "Estudiante",
+            "description": "Compra y realiza cursos. Solo accede al aula."
+          },
+          "teacher": {
+            "label": "Instructor",
+            "description": "Crea y vende cursos. Accede al estudio del instructor."
+          },
+          "staff": {
+            "label": "Equipo",
+            "description": "Verificación, denuncias y ayuda a estudiantes: soporte, moderación y operaciones juntos."
+          },
+          "admin": {
+            "label": "Administrador",
+            "description": "Todo, incluido cambiar estos niveles."
+          }
+        },
+        "errors": {
+          "loadError": "No se pudo cargar la lista de personas.",
+          "saveError": "El cambio fue rechazado. No se guardó nada.",
+          "adminRequired": "Se necesitan permisos de administrador.",
+          "targetRequired": "Debes seleccionar un usuario.",
+          "invalidRoles": "Los niveles de acceso seleccionados no son válidos. No se guardó nada.",
+          "unknownRole": "La selección contiene un rol desconocido.",
+          "userMissing": "Ese usuario no existe.",
+          "selfAdmin": "No puedes quitarte tu propio rol de administrador.",
+          "lastAdmin": "La plataforma debe conservar al menos un administrador."
+        },
+        "preview": {
+          "title": "Vista previa de la plataforma",
+          "description": "Ve la plataforma como estudiante o instructor; tu propio acceso no cambia.",
+          "back": "Volver a administrador",
+          "banner": "Vista previa como {role}. Tu acceso de administrador no cambia.",
+          "exit": "Salir de la vista previa"
+        },
+        "permissions": {
+          "auth": {
+            "signIn": {
+              "label": "Iniciar sesión",
+              "description": "Puede acceder a las pantallas de inicio de sesión."
+            },
+            "signUp": {
+              "label": "Crear una cuenta",
+              "description": "Puede acceder a las pantallas de creación de cuentas."
+            },
+            "signOut": {
+              "label": "Cerrar sesión",
+              "description": "Puede finalizar una sesión autenticada."
+            },
+            "manageSessions": {
+              "label": "Gestionar sesiones",
+              "description": "Puede revisar y revocar sesiones de usuarios."
+            }
+          },
+          "courses": {
+            "readCatalog": {
+              "label": "Ver el catálogo de cursos",
+              "description": "Puede ver el contenido público del catálogo de cursos."
+            },
+            "enroll": {
+              "label": "Inscribirse en cursos",
+              "description": "Puede inscribirse en las experiencias de aprendizaje disponibles."
+            },
+            "viewLearning": {
+              "label": "Acceder al aprendizaje",
+              "description": "Puede acceder al contenido de los cursos en los que está inscrito."
+            },
+            "create": {
+              "label": "Crear cursos",
+              "description": "Puede crear borradores de cursos."
+            },
+            "submitForReview": {
+              "label": "Enviar cursos a revisión",
+              "description": "Puede enviar sus borradores de cursos a la cola de revisión."
+            },
+            "publish": {
+              "label": "Publicar cursos",
+              "description": "Puede publicar contenido de cursos de instructores."
+            },
+            "manageAll": {
+              "label": "Gestionar todos los cursos",
+              "description": "Puede gestionar contenido de cursos en toda la plataforma."
+            }
+          },
+          "payments": {
+            "checkout": {
+              "label": "Realizar compras",
+              "description": "Puede comprar productos de aprendizaje de pago."
+            },
+            "manageSubscriptions": {
+              "label": "Gestionar suscripciones",
+              "description": "Puede gestionar suscripciones de facturación."
+            },
+            "refund": {
+              "label": "Reembolsar pagos",
+              "description": "Puede emitir o solicitar reembolsos."
+            }
+          },
+          "community": {
+            "read": {
+              "label": "Ver la comunidad",
+              "description": "Puede ver los espacios de la comunidad."
+            },
+            "post": {
+              "label": "Publicar en la comunidad",
+              "description": "Puede crear publicaciones y respuestas en los espacios de la comunidad."
+            },
+            "moderate": {
+              "label": "Moderar la comunidad",
+              "description": "Puede moderar publicaciones y respuestas de la comunidad."
+            }
+          },
+          "teacherStudio": {
+            "access": {
+              "label": "Acceder al estudio del instructor",
+              "description": "Puede acceder a las pantallas del estudio del instructor."
+            },
+            "manageCourses": {
+              "label": "Gestionar cursos del instructor",
+              "description": "Puede gestionar cursos en el estudio del instructor."
+            },
+            "manageStorefront": {
+              "label": "Gestionar la tienda del instructor",
+              "description": "Puede editar la identidad de la tienda y el orden de los cursos destacados."
+            }
+          },
+          "certificates": {
+            "view": {
+              "label": "Ver certificados",
+              "description": "Puede ver los certificados obtenidos."
+            },
+            "issue": {
+              "label": "Emitir certificados",
+              "description": "Puede emitir certificados de finalización."
+            },
+            "revoke": {
+              "label": "Revocar certificados",
+              "description": "Puede revocar certificados emitidos."
+            }
+          },
+          "users": {
+            "support": {
+              "label": "Ayudar a los usuarios",
+              "description": "Puede ayudar a los usuarios con problemas de cuenta y aprendizaje."
+            },
+            "manage": {
+              "label": "Gestionar usuarios",
+              "description": "Puede gestionar los registros y roles de los usuarios."
+            }
+          },
+          "platform": {
+            "viewOps": {
+              "label": "Ver Operaciones",
+              "description": "Puede ver los paneles de operaciones."
+            },
+            "accessAdmin": {
+              "label": "Acceder a la administración",
+              "description": "Puede acceder a las pantallas administrativas."
+            }
+          }
+        }
+      },
+      "catalogPanel": {
+        "eyebrow": "Cursos publicados",
+        "title": "Gestiona el catálogo publicado",
+        "description": "Retira de publicación, vuelve a publicar o elimina de forma permanente un curso sin inscripciones ni pedidos.",
+        "coursesOne": "1 curso",
+        "courses": "{count} cursos",
+        "modulesOne": "1 módulo",
+        "modules": "{count} módulos",
+        "lessonsOne": "1 lección",
+        "lessons": "{count} lecciones",
+        "loadError": "No pudimos cargar los cursos publicados. Actualiza la página.",
+        "loading": "Cargando cursos publicados...",
+        "empty": "Todavía no hay cursos publicados o inactivos.",
+        "featured": "Destacado",
+        "working": "Actualizando...",
+        "feature": "Destacar",
+        "unfeature": "Quitar destacado",
+        "unpublish": "Retirar de publicación",
+        "republish": "Volver a publicar",
+        "deleting": "Eliminando...",
+        "confirmDelete": "Confirmar eliminación",
+        "cancel": "Cancelar",
+        "delete": "Eliminar",
+        "errors": {
+          "unpublish": "No pudimos retirar este curso de publicación. Inténtalo de nuevo.",
+          "republish": "No pudimos volver a publicar este curso. Inténtalo de nuevo.",
+          "delete": "No pudimos eliminar este curso. Los cursos con inscripciones o pedidos deben retirarse de publicación.",
+          "feature": "No pudimos actualizar el estado destacado. Inténtalo de nuevo."
+        },
+        "success": {
+          "unpublished": "Curso retirado de publicación y del marketplace.",
+          "republished": "Curso publicado de nuevo en el marketplace.",
+          "deleted": "Curso eliminado de forma permanente.",
+          "featured": "Curso destacado. Ahora aparece al inicio del marketplace.",
+          "unfeatured": "Curso sin destacar; volvió al orden habitual del catálogo."
+        }
+      },
+      "paymentsPanel": {
+        "title": "Seguimiento de pedidos de Stripe.",
+        "description": "Pedidos de Stripe en tiempo real; el acceso se otorga solo después de confirmar el pago.",
+        "adminOnly": "Solo administradores",
+        "paidSample": "Pagados en esta muestra",
+        "grossSample": "Importe bruto (últimos 12 pedidos)",
+        "feeSample": "Comisión estimada (los mismos 12)",
+        "loadingValue": "Cargando...",
+        "unavailable": "No disponible",
+        "loadError": "No pudimos cargar los pedidos recientes de Stripe.",
+        "loading": "Cargando pedidos...",
+        "empty": "Todavía no hay pedidos de Stripe. Después de una compra de pago, aquí aparecerán los pedidos pendientes y pagados.",
+        "order": "Pedido",
+        "user": "Usuario",
+        "provider": "Proveedor"
+      },
+      "enrollmentPanel": {
+        "eyebrow": "Inscripción manual",
+        "title": "Otorga acceso beta sin simular una compra.",
+        "description": "Solo para accesos beta, de soporte o administrativos; las inscripciones de pago siguen llegando desde Stripe.",
+        "learner": "Estudiante",
+        "course": "Curso publicado del creador",
+        "loadingUsers": "Cargando usuarios...",
+        "chooseUser": "Elige un usuario",
+        "loadingCourses": "Cargando cursos...",
+        "chooseCourse": "Elige un curso",
+        "creating": "Creando inscripción...",
+        "create": "Crear inscripción administrativa",
+        "grantedTitle": "Inscripciones otorgadas",
+        "activeOne": "1 activa",
+        "active": "{count} activas",
+        "grantedDescription": "Solo accesos administrativos y de demostración. La revocación quita el acceso del estudiante de inmediato.",
+        "loadingGranted": "Cargando inscripciones otorgadas...",
+        "empty": "Todavía no hay accesos administrativos o de demostración.",
+        "adminGrant": "Acceso administrativo",
+        "demoGrant": "Acceso de demostración",
+        "revoking": "Revocando...",
+        "revoke": "Revocar acceso",
+        "confirmRevoke": "¿Revocar el acceso a \"{title}\" de este estudiante? Perderá el acceso de inmediato.",
+        "readErrors": {
+          "users": "No pudimos cargar los usuarios para la inscripción manual.",
+          "courses": "No pudimos cargar los cursos publicados de los creadores.",
+          "grants": "No pudimos cargar las inscripciones otorgadas."
+        },
+        "errors": {
+          "choose": "Elige un usuario y un curso publicado del creador.",
+          "create": "No pudimos crear esta inscripción. Revisa el rol de administrador y las reglas.",
+          "revoke": "No pudimos revocar esta inscripción. Revisa el rol de administrador y las reglas."
+        },
+        "success": {
+          "created": "Inscripción administrativa creada. El estudiante ya puede abrir el curso del creador.",
+          "revoked": "Inscripción revocada."
+        }
+      },
+      "exportButton": {
+        "export": "Exportar",
+        "csv": "Exportar como CSV",
+        "json": "Exportar como JSON"
+      },
+      "usersPanel": {
+        "eyebrow": "Búsqueda de usuarios",
+        "title": "Encuentra estudiantes e instructores.",
+        "description": "Consulta de solo lectura para tareas de soporte y confianza.",
+        "countOne": "1 usuario",
+        "count": "{count} usuarios",
+        "search": "Buscar por correo o nombre de usuario...",
+        "loading": "Cargando usuarios...",
+        "loadError": "No pudimos cargar los usuarios. Confirma tu acceso de administrador e inténtalo de nuevo.",
+        "empty": "Ningún usuario coincide con esta búsqueda.",
+        "unnamed": "Usuario sin nombre",
+        "noEmail": "El perfil no tiene correo electrónico",
+        "roles": {
+          "guest": "Visitante",
+          "moderator": "Moderador"
+        }
+      },
+      "accountRequestsPanel": {
+        "eyebrow": "Acciones de cuenta",
+        "title": "Solicitudes de exportación y eliminación.",
+        "description": "Gestiona cada solicitud y luego márcala en proceso, completada o rechazada. Cambiar el estado no exporta datos ni elimina una cuenta.",
+        "loading": "Cargando solicitudes de cuenta...",
+        "loadError": "No pudimos cargar las solicitudes de cuenta.",
+        "updateError": "No pudimos actualizar esta solicitud de cuenta.",
+        "empty": "Todavía no hay solicitudes de cuenta.",
+        "pendingTimestamp": "Fecha pendiente",
+        "user": "Usuario",
+        "requested": "Solicitada",
+        "requestId": "ID de solicitud",
+        "actioned": "Gestionada",
+        "by": "por",
+        "types": {
+          "data_export": "Exportación de datos",
+          "account_deletion": "Eliminación de cuenta"
+        },
+        "actions": {
+          "processing": "Marcar en proceso",
+          "completed": "Marcar completada",
+          "rejected": "Rechazar"
+        }
+      },
+      "communityPanel": {
+        "eyebrow": "Moderación de la comunidad",
+        "title": "Denuncias de confianza",
+        "description": "Revisa las denuncias de las comunidades de los cursos y dales seguimiento.",
+        "countOne": "1 abierta",
+        "count": "{count} abiertas",
+        "loadError": "No pudimos cargar las denuncias de la comunidad.",
+        "updateError": "No pudimos actualizar el estado de esta denuncia.",
+        "configurationRequired": "Es necesario configurar el servicio para cargar las denuncias de la comunidad.",
+        "loading": "Cargando denuncias de la comunidad...",
+        "empty": "Todavía no hay denuncias de la comunidad.",
+        "in": "en",
+        "author": "Autor del contenido denunciado:",
+        "reporter": "Denunciante:",
+        "context": "Contexto:",
+        "saving": "Guardando...",
+        "targets": {
+          "post": "Publicación",
+          "comment": "Comentario"
+        },
+        "reasons": {
+          "spam": "Spam o promoción",
+          "harassment": "Acoso o abuso",
+          "unsafe_content": "Contenido peligroso",
+          "off_topic": "Fuera de tema o de baja calidad",
+          "other": "Otro problema de confianza"
+        }
+      },
+      "auditPanel": {
+        "description": "Los reembolsos y las solicitudes de cuenta se registran aquí automáticamente, del más reciente al más antiguo. Este registro es de solo lectura: el sistema crea las entradas y no se pueden editar.",
+        "loading": "Cargando registro de auditoría...",
+        "loadError": "No pudimos cargar el registro de auditoría.",
+        "empty": "Todavía no hay eventos de auditoría registrados.",
+        "pendingTimestamp": "Fecha pendiente",
+        "actor": "Responsable",
+        "target": "Destino",
+        "actions": {
+          "refundRequested": "Reembolso solicitado",
+          "refundIssued": "Reembolso emitido",
+          "deletionRequested": "Eliminación de cuenta solicitada",
+          "exportRequested": "Exportación de datos solicitada"
+        },
+        "targets": {
+          "order": "Pedido",
+          "user": "Usuario",
+          "course": "Curso"
+        }
+      },
       "supportQueue": {
         "title": "Tickets de soporte de usuarios",
         "description": "Revisa los problemas de los usuarios y actualiza el estado de cada ticket.",
@@ -577,7 +936,9 @@
     "resolved": "Resuelto",
     "reviewed": "Revisado",
     "revoked": "Revocado",
-    "succeeded": "Exitoso"
+    "succeeded": "Exitoso",
+    "processing": "En proceso",
+    "rejected": "Rechazado"
   },
   "learn": {
     "page": {

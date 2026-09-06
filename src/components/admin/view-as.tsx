@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { Role } from "@/lib/permissions";
 
 /**
@@ -16,13 +17,15 @@ import type { Role } from "@/lib/permissions";
  * Every write is still gated server-side, which knows nothing about this.
  */
 
-const PREVIEWABLE: ReadonlyArray<{ role: Role; label: string }> = [
-  { role: "student", label: "Learner" },
-  { role: "teacher", label: "Instructor" },
-  { role: "support", label: "Team" },
+const PREVIEWABLE: ReadonlyArray<{ role: Role; level: string }> = [
+  { role: "student", level: "student" },
+  { role: "teacher", level: "teacher" },
+  { role: "support", level: "staff" },
 ];
+const copy = "platform.ops.accessPanel";
 
 export function ViewAsSwitcher() {
+  const { t } = useTranslation();
   const { isRealAdmin, viewAsRole, setViewAsRole } = useAuth();
 
   if (!isRealAdmin) {
@@ -32,10 +35,10 @@ export function ViewAsSwitcher() {
   return (
     <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
       <h3 className="text-base font-semibold text-[var(--color-ink)]">
-        Preview the product
+        {t(`${copy}.preview.title`)}
       </h3>
       <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
-        See the platform as a learner or an instructor; your own access is untouched.
+        {t(`${copy}.preview.description`)}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         {PREVIEWABLE.map((entry) => (
@@ -44,22 +47,22 @@ export function ViewAsSwitcher() {
             type="button"
             onClick={() => setViewAsRole(entry.role)}
             aria-pressed={viewAsRole === entry.role}
-            className={`rounded-[10px] px-4 py-2 text-sm font-bold transition ${
+            className={`min-h-11 rounded-[10px] px-4 py-2 text-sm font-bold transition ${
               viewAsRole === entry.role
                 ? "bg-[var(--color-primary)] text-white"
                 : "border border-[var(--color-line)] text-[var(--color-ink-soft)]"
             }`}
           >
-            {entry.label}
+            {t(`${copy}.levels.${entry.level}.label`)}
           </button>
         ))}
         {viewAsRole ? (
           <button
             type="button"
             onClick={() => setViewAsRole(null)}
-            className="rounded-[10px] border border-[var(--color-line)] px-4 py-2 text-sm font-bold text-[var(--color-ink)]"
+            className="min-h-11 rounded-[10px] border border-[var(--color-line)] px-4 py-2 text-sm font-bold text-[var(--color-ink)]"
           >
-            Back to admin
+            {t(`${copy}.preview.back`)}
           </button>
         ) : null}
       </div>
@@ -75,14 +78,15 @@ export function ViewAsSwitcher() {
  * button from a broken one, and no way back except clearing storage.
  */
 export function ViewAsBanner() {
+  const { t } = useTranslation();
   const { isRealAdmin, viewAsRole, setViewAsRole } = useAuth();
 
   if (!isRealAdmin || !viewAsRole) {
     return null;
   }
 
-  const label =
-    PREVIEWABLE.find((entry) => entry.role === viewAsRole)?.label ?? viewAsRole;
+  const preview = PREVIEWABLE.find((entry) => entry.role === viewAsRole);
+  const label = preview ? t(`${copy}.levels.${preview.level}.label`) : viewAsRole;
 
   return (
     <div
@@ -90,13 +94,13 @@ export function ViewAsBanner() {
       aria-live="polite"
       className="fixed inset-x-0 top-0 z-[60] flex flex-wrap items-center justify-center gap-3 bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white"
     >
-      <span>Previewing as {label}. Your admin access is unchanged.</span>
+      <span>{t(`${copy}.preview.banner`).replace("{role}", () => label)}</span>
       <button
         type="button"
         onClick={() => setViewAsRole(null)}
-        className="rounded-[8px] bg-white/15 px-3 py-1 text-xs font-bold underline-offset-2 hover:underline"
+        className="min-h-11 rounded-[8px] bg-white/15 px-3 py-1 text-xs font-bold underline-offset-2 hover:underline"
       >
-        Exit preview
+        {t(`${copy}.preview.exit`)}
       </button>
     </div>
   );
