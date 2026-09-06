@@ -1,10 +1,11 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import OpsPage from "@/app/ops/page";
-import { I18nProvider } from "@/components/i18n/i18n-provider";
+import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import { PlatformNav } from "@/components/platform/platform-nav";
 import type { AuthStatus, SkillsetUser } from "@/domain/auth";
+import type { AuditLogEntry } from "@/lib/data/audit-log";
 
 const mocks = vi.hoisted(() => ({
   query: "",
@@ -76,6 +77,11 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); });
 
 function sidebar() { return screen.getByRole("navigation", { name: "Workspace" }); }
+
+function ChangeAuditLanguage() {
+  const { locale, setLocale } = useTranslation();
+  return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change audit language</button>;
+}
 
 describe("filas de Operações na barra", () => {
   it.each(["access", "catalog", "payments", "community", "users", "audit"])("does not offer a global search without a consumer in %s", tab => {
@@ -241,5 +247,56 @@ describe("filas de Operações na barra", () => {
     expect(mocks.verification).not.toHaveBeenCalled();
     expect(mocks.support).not.toHaveBeenCalled();
     expect(mocks.reports).not.toHaveBeenCalled();
+  });
+});
+
+describe("audit presentation inside the protected Operations page", () => {
+  it("translates the four known actions while preserving historical summaries and identities", () => {
+    mocks.query = "tab=audit";
+    const actions = [
+      ["refund.requested", "Refund requested", "Reembolso solicitado"],
+      ["refund.issued", "Refund issued", "Reembolso emitido"],
+      ["account.deletion_requested", "Account deletion requested", "Eliminación de cuenta solicitada"],
+      ["account.data_export_requested", "Data export requested", "Exportación de datos solicitada"],
+      ["future.audit_action", "future audit action", "future audit action"],
+    ];
+    const entries: AuditLogEntry[] = actions.map(([action], index) => ({ id: `event-${index}`, action, actorId: "actor-$$-$&", actorEmail: index ? null : "actor@example.test", targetType: index === 4 ? "future_target" : index < 2 ? "order" : "user", targetId: `target-$$-$&-${index}`, summary: `Registro histórico $$50 $& "áéí" ${index}`, metadata: {}, createdAt: index === 4 ? "not-a-date" : "2026-09-04T12:00:00.000Z" }));
+    mocks.audit.mockImplementation((next: (rows: AuditLogEntry[]) => void) => { next(entries); return vi.fn(); });
+    render(<I18nProvider initialLocale="en"><ChangeAuditLanguage /><OpsPage /></I18nProvider>);
+    for (const [, english] of actions) expect(screen.getByText(english)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Change audit language" }));
+    expect(screen.getByRole("heading", { name: "Registro de auditoría" })).toBeInTheDocument();
+    for (const [index, entry] of entries.entries()) {
+      const article = screen.getByText(entry.summary).closest("article")!;
+      expect(within(article).getByText(actions[index][2])).toBeInTheDocument();
+      expect(article).toHaveTextContent(entry.targetId);
+      expect(article).toHaveTextContent(entry.actorEmail ?? entry.actorId);
+    }
+    expect(screen.getByText("future target")).toBeInTheDocument();
+    expect(screen.getByText(/Responsable actor-\$\$-\$& - Fecha pendiente - Destino target-\$\$-\$&-4/)).toBeInTheDocument();
+    const date = new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(entries[0].createdAt!));
+    expect(screen.getByText(`Responsable actor@example.test - ${date} - Destino target-$$-$&-0`)).toBeInTheDocument();
+    const panel = screen.getByRole("heading", { name: "Registro de auditoría" }).closest("section")!;
+    expect(within(panel).queryAllByRole("button")).toHaveLength(0);
+    expect(mocks.audit).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Change audit language" }));
+    expect(screen.getByText(entries[0].summary)).toBeInTheDocument();
+    expect(screen.getByText("Refund requested")).toBeInTheDocument();
+  });
+
+  it("separates a failed audit read from empty and translates recovery", () => {
+    mocks.query = "tab=audit";
+    mocks.audit.mockImplementation(() => vi.fn());
+    render(<I18nProvider initialLocale="en"><ChangeAuditLanguage /><OpsPage /></I18nProvider>);
+    expect(screen.getByRole("status")).toHaveTextContent("Loading audit log");
+    act(() => mocks.audit.mock.calls[0][1](new Error("Private audit detail")));
+    fireEvent.click(screen.getByRole("button", { name: "Change audit language" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar el registro de auditoría.");
+    expect(screen.queryByText("Todavía no hay eventos de auditoría registrados.")).toBeNull();
+    expect(screen.queryByText("Private audit detail")).toBeNull();
+    act(() => mocks.audit.mock.calls[0][0]([]));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText("Todavía no hay eventos de auditoría registrados.")).toBeInTheDocument();
+    expect(mocks.audit).toHaveBeenCalledTimes(1);
   });
 });

@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
+import { InlineAlert } from "@/components/ui";
 import type { CommunityReport, CommunityReportStatus } from "@/domain/community-report";
-import {
-  communityReportReasonLabels,
-  communityReportStatusLabels,
-} from "@/domain/community-report";
+import { communityReportReasonLabels } from "@/domain/community-report";
 import {
   subscribeToCommunityReports,
   updateCommunityReportStatus,
@@ -21,11 +20,14 @@ const reviewStatuses: CommunityReportStatus[] = [
 ];
 
 export function CommunityModerationQueue() {
+  const { t } = useTranslation();
+  const copy = "platform.ops.communityPanel";
   const hasBackendConfig = Boolean(getSupabaseClientConfig());
   const [reports, setReports] = useState<CommunityReport[]>([]);
   const [ready, setReady] = useState(!hasBackendConfig);
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     if (!hasBackendConfig) {
@@ -35,10 +37,11 @@ export function CommunityModerationQueue() {
     return subscribeToCommunityReports(
       (nextReports) => {
         setReports(nextReports);
+        setLoadError(false);
         setReady(true);
       },
       () => {
-        setError("We could not load community reports.");
+        setLoadError(true);
         setReady(true);
       },
     );
@@ -49,12 +52,12 @@ export function CommunityModerationQueue() {
     status: CommunityReportStatus,
   ) {
     setActiveReportId(report.id);
-    setError("");
+    setError(false);
 
     try {
       await updateCommunityReportStatus(report, status);
     } catch {
-      setError("We could not update this report status.");
+      setError(true);
     } finally {
       setActiveReportId(null);
     }
@@ -67,38 +70,31 @@ export function CommunityModerationQueue() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Community moderation
+            {t(`${copy}.eyebrow`)}
           </p>
           <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
-            Trust reports
+            {t(`${copy}.title`)}
           </h3>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-            Review reports from course communities and close the loop.
+            {t(`${copy}.description`)}
           </p>
         </div>
-        <span className="rounded-[10px] bg-[var(--color-surface-soft)] px-4 py-2 text-sm font-semibold text-[var(--color-primary)]">
-          {openReports.length} open
-        </span>
+        {hasBackendConfig && ready && !loadError ? <span className="rounded-[10px] bg-[var(--color-surface-soft)] px-4 py-2 text-sm font-semibold text-[var(--color-primary)]">{t(`${copy}.${openReports.length === 1 ? "countOne" : "count"}`).replace("{count}", () => String(openReports.length))}</span> : null}
       </div>
 
-      {error ? (
-        <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {error}
-        </p>
-      ) : null}
+      {loadError ? <InlineAlert tone="error" className="mt-5">{t(`${copy}.loadError`)}</InlineAlert> : null}
+      {error ? <InlineAlert tone="error" className="mt-5">{t(`${copy}.updateError`)}</InlineAlert> : null}
 
       {!hasBackendConfig ? (
         <p className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-ink-soft)]">
-          Backend configuration is required before community reports can load.
+          {t(`${copy}.configurationRequired`)}
         </p>
       ) : !ready ? (
-        <p className="mt-5 text-sm text-[var(--color-ink-soft)]">
-          Loading community reports...
+        <p role="status" className="mt-5 text-sm text-[var(--color-ink-soft)]">
+          {t(`${copy}.loading`)}
         </p>
       ) : reports.length === 0 ? (
-        <p className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-ink-soft)]">
-          No community reports yet.
-        </p>
+        loadError ? null : <p className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p>
       ) : (
         <div className="mt-5 grid gap-3">
           {reports.slice(0, 12).map((report) => (
@@ -107,33 +103,30 @@ export function CommunityModerationQueue() {
               className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-[var(--color-ink)]">
-                    {communityReportReasonLabels[report.reason]}
+                <div className="min-w-0">
+                  <p className="break-words text-sm font-semibold text-[var(--color-ink)]">
+                    {Object.hasOwn(communityReportReasonLabels, report.reason) ? t(`${copy}.reasons.${report.reason}`) : report.reason.replaceAll("_", " ")}
                   </p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                    {report.targetType} in {report.courseSlug}
+                  <p className="mt-1 break-words text-xs uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
+                    {t(`${copy}.targets.${report.targetType}`)} {t(`${copy}.in`)} {report.courseSlug}
                   </p>
                 </div>
-                <StatusChip
-                  status={report.status}
-                  label={communityReportStatusLabels[report.status]}
-                />
+                <StatusChip status={report.status} />
               </div>
-              <div className="mt-3 grid gap-2 text-sm leading-6 text-[var(--color-ink-soft)]">
+              <div className="mt-3 grid gap-2 break-words text-sm leading-6 text-[var(--color-ink-soft)]">
                 <p>
-                  Reported content author:{" "}
+                  {t(`${copy}.author`)}{" "}
                   <strong className="text-[var(--color-ink)]">
                     {report.targetAuthorName}
                   </strong>
                 </p>
                 <p>
-                  Reporter:{" "}
+                  {t(`${copy}.reporter`)}{" "}
                   <strong className="text-[var(--color-ink)]">
                     {report.reporterName}
                   </strong>
                 </p>
-                {report.detail ? <p>Context: {report.detail}</p> : null}
+                {report.detail ? <p>{t(`${copy}.context`)} {report.detail}</p> : null}
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 {reviewStatuses.map((status) => (
@@ -142,11 +135,11 @@ export function CommunityModerationQueue() {
                     type="button"
                     disabled={activeReportId === report.id}
                     onClick={() => handleStatusChange(report, status)}
-                    className="button-outline px-3 py-2 text-xs disabled:opacity-60"
+                    className="button-outline min-h-11 px-3 py-2 text-xs disabled:opacity-60"
                   >
                     {activeReportId === report.id
-                      ? "Saving..."
-                      : communityReportStatusLabels[status]}
+                      ? t(`${copy}.saving`)
+                      : t(`statusChip.${status}`)}
                   </button>
                 ))}
               </div>
