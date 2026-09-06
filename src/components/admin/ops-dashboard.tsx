@@ -32,12 +32,19 @@ export function OpsDashboard() {
   const activeTab = currentItem.tab;
   const canOpenQueue = canAccessPlatformNavItem(user, currentItem);
   const counts = useOpsQueueCounts();
+  const query = searchParams.get("q") ?? "";
+  const queueSearchParams = new URLSearchParams(searchParams.toString());
+  queueSearchParams.set("tab", activeTab);
+  const searchHref = canOpenQueue && (activeTab === "verification" || activeTab === "support")
+    ? `/ops?${queueSearchParams.toString()}`
+    : null;
 
   return (
     <PlatformShell
       title={t("platform.nav.operations")}
       compact
       currentNavigationHref={currentItem.href}
+      searchHref={searchHref}
       navigationCounts={{
         [getOpsNavItem("verification").href]: counts.pendingVerifications,
         [getOpsNavItem("community").href]: counts.openReports,
@@ -66,7 +73,7 @@ export function OpsDashboard() {
             <RoleManager />
           </section>
         ) : activeTab === "verification" ? (
-          <CreatorVerificationQueue />
+          <CreatorVerificationQueue query={query} />
         ) : activeTab === "catalog" ? (
           <ManagedCoursePanel />
         ) : activeTab === "payments" ? (
@@ -77,7 +84,7 @@ export function OpsDashboard() {
         ) : activeTab === "community" ? (
           <CommunityModerationQueue />
         ) : activeTab === "support" ? (
-          <SupportTicketQueue />
+          <SupportTicketQueue query={query} />
         ) : activeTab === "users" ? (
           <>
             <UserLookupPanel />
