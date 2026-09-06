@@ -10,6 +10,7 @@ import {
   ledgerRefundStatus,
   nextLedgerStatusOnDispute,
   resolveInvoicePaymentIntentId,
+  sanitizeStripeSecret,
   shouldCancelCourseSubscriptionForRefund,
   shouldApplyOrderStatusTransition,
   shouldMarkEnrollmentRefundedAfterChargeRefund,
@@ -18,7 +19,7 @@ import {
   stripeFeeMinorFromBalanceTransaction,
   stripeProcessingFeeMinor,
 } from "@/lib/payments/rules";
-import { fromStripeAmount } from "@/lib/payments/currencies";
+import { fromStripeAmount, toStripeAmount } from "@/lib/payments/currencies";
 import { getStripeClient, isStripeConfigured } from "@/lib/payments/server/stripe";
 import {
   courseSubscriptionInterval,
@@ -283,11 +284,42 @@ async function handleCheckoutCompleted(
 ): Promise<void> {
   if (session.payment_status !== "paid") return;
 
-  const orderId = session.metadata?.orderId;
-  const courseId = session.metadata?.courseId;
-  const userId = session.metadata?.userId;
-  if (!orderId || !courseId || !userId) {
+  const metadata = session.metadata;
+  const orderId = metadata?.orderId;
+  if (!orderId || !metadata?.courseId || !metadata.userId) {
     throw new Error("Missing required Checkout metadata.");
+  }
+
+  const { data: order, error: orderError } = await admin
+    .from("orders")
+    .select("*")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (orderError || !order) throw new Error("Could not verify the saved checkout order.");
+
+  const courseId = order.course_id;
+  const userId = order.user_id;
+  const accountMatches = order.payout_model === "direct_charge"
+    ? Boolean(order.teacher_stripe_connected_account_id)
+      && connectedAccountId === order.teacher_stripe_connected_account_id
+    : ["separate_charges_and_transfers", "destination_charge"].includes(order.payout_model ?? "")
+      && connectedAccountId === null;
+  const amountMinor = Number(order.amount_minor);
+  // The server attaches this session before returning its URL. Metadata is a
+  // reference to that saved sale, never authority to replace its buyer or course.
+  if (
+    !order.checkout_session_id || order.checkout_session_id !== session.id
+    || metadata.courseId !== courseId || metadata.userId !== userId
+    || !accountMatches
+    || typeof order.currency !== "string"
+    || session.currency?.toUpperCase() !== order.currency.toUpperCase()
+    || !Number.isSafeInteger(amountMinor) || amountMinor < 0
+    || session.amount_total !== toStripeAmount(amountMinor, order.currency)
+    || (metadata.teacherId !== undefined && metadata.teacherId !== order.teacher_id)
+    || (metadata.connectedAccountId !== undefined
+      && metadata.connectedAccountId !== order.teacher_stripe_connected_account_id)
+  ) {
+    throw new Error("Checkout does not match its saved order.");
   }
 
   await finalizeCourseCouponReservation(admin, orderId);
@@ -306,13 +338,6 @@ async function handleCheckoutCompleted(
     .eq("id", orderId)
     .maybeSingle();
   if (existingLedger) return;
-
-  const { data: order } = await admin
-    .from("orders")
-    .select("*")
-    .eq("id", orderId)
-    .maybeSingle();
-  if (!order) throw new Error(`Order ${orderId} not found.`);
 
   const { data: course } = await admin
     .from("courses")
@@ -1578,11 +1603,15 @@ function constructStripeWebhookEvent(
 }
 
 export async function POST(request: Request) {
+  const secret = sanitizeStripeSecret(process.env.STRIPE_SECRET_KEY);
+  const stripeMode = secret.ok
+    ? /^(?:sk|rk)_(live|test)_.+$/.exec(secret.key)?.[1]
+    : undefined;
   const webhookSecrets = [
     process.env.STRIPE_WEBHOOK_SECRET,
     process.env.STRIPE_CONNECT_WEBHOOK_SECRET,
   ].filter((secret): secret is string => Boolean(secret));
-  if (!isStripeConfigured() || webhookSecrets.length === 0) {
+  if (!isStripeConfigured() || !stripeMode || webhookSecrets.length === 0) {
     return NextResponse.json(
       { error: "Stripe webhook is not configured.", code: "payments_not_configured" },
       { status: 503 },
@@ -1609,8 +1638,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid Stripe webhook signature." }, { status: 400 });
   }
 
-  // Acknowledge unhandled types without an idempotency round-trip.
-  if (!HANDLED_STRIPE_EVENT_TYPES.has(event.type)) {
+  // A production Connect endpoint can also receive genuine test events.
+  // Match the server key, not NODE_ENV, before claiming or fulfilling anything.
+  if (event.livemode !== (stripeMode === "live") || !HANDLED_STRIPE_EVENT_TYPES.has(event.type)) {
     return NextResponse.json({ received: true, ignored: true });
   }
 
