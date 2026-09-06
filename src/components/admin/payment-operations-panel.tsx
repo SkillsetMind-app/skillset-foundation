@@ -2,31 +2,36 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ExportTableButton } from "@/components/shared/export-table-button";
 import { StatusChip } from "@/components/shared/status-chip";
+import { InlineAlert } from "@/components/ui";
 import type { Order } from "@/domain/order";
 import { subscribeToRecentOrders } from "@/lib/data/orders";
 
-function formatMoney(amountMinor: number, currency: Order["currency"]) {
-  return new Intl.NumberFormat("en", {
+function formatMoney(amountMinor: number, currency: Order["currency"], locale = "en") {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
   }).format(amountMinor / 100);
 }
 
 export function PaymentOperationsPanel() {
+  const { t, locale } = useTranslation();
+  const copy = "platform.ops.paymentsPanel";
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     return subscribeToRecentOrders(
       (nextOrders) => {
         setOrders(nextOrders);
+        setError(false);
         setIsLoading(false);
       },
       () => {
-        setError("We could not load recent Stripe orders.");
+        setError(true);
         setIsLoading(false);
       },
     );
@@ -73,16 +78,17 @@ export function PaymentOperationsPanel() {
       ...summary,
       gross: currencies.length
         ? currencies
-            .map(([currency, v]) => formatMoney(v.grossMinor, currency))
+            .map(([currency, v]) => formatMoney(v.grossMinor, currency, locale))
             .join(" · ")
         : "—",
       fee: currencies.length
         ? currencies
-            .map(([currency, v]) => formatMoney(v.feeMinor, currency))
+            .map(([currency, v]) => formatMoney(v.feeMinor, currency, locale))
             .join(" · ")
         : "—",
     };
-  }, [orders]);
+  }, [orders, locale]);
+  // Exports keep their existing English money representation in every locale.
   const exportRows = useMemo(
     () =>
       orders.map((order) => ({
@@ -103,19 +109,19 @@ export function PaymentOperationsPanel() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Payments
+            {t("platform.ops.payments")}
           </p>
           <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
-            Stripe order monitor.
+            {t(`${copy}.title`)}
           </h3>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-            Live Stripe orders; access is granted only after payment is confirmed.
+            {t(`${copy}.description`)}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <ExportTableButton filename="skillset-orders" rows={exportRows} />
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportTableButton filename="skillset-orders" rows={exportRows} disabled={isLoading || error} />
           <span className="rounded-[8px] bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
-            Admin only
+            {t(`${copy}.adminOnly`)}
           </span>
         </div>
       </div>
@@ -126,9 +132,9 @@ export function PaymentOperationsPanel() {
           // amostra visível, não a plataforma. Rotulados como "Gross paid" eram
           // lidos como receita total — errado por ordem de grandeza assim que
           // houver mais de 12 vendas.
-          ["Paid in this sample", String(totals.paid)],
-          ["Gross (last 12 orders)", totals.gross],
-          ["Platform fee est. (same 12)", totals.fee],
+          [t(`${copy}.paidSample`), String(totals.paid)],
+          [t(`${copy}.grossSample`), totals.gross],
+          [t(`${copy}.feeSample`), totals.fee],
         ].map(([label, value]) => (
           <div
             key={label}
@@ -137,27 +143,22 @@ export function PaymentOperationsPanel() {
             <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
               {label}
             </p>
-            <p className="mt-2 text-lg font-bold text-[var(--color-primary)]">
-              {value}
+            <p className="mt-2 break-words text-lg font-bold text-[var(--color-primary)]">
+              {isLoading ? t(`${copy}.loadingValue`) : error ? t(`${copy}.unavailable`) : value}
             </p>
           </div>
         ))}
       </div>
 
       {error ? (
-        <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {error}
-        </p>
+        <InlineAlert tone="error" className="mt-5">{t(`${copy}.loadError`)}</InlineAlert>
       ) : null}
 
       <div className="mt-6 grid gap-3">
         {isLoading ? (
-          <p className="text-sm text-[var(--color-ink-soft)]">Loading orders...</p>
+          <p role="status" className="text-sm text-[var(--color-ink-soft)]">{t(`${copy}.loading`)}</p>
         ) : orders.length === 0 ? (
-          <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-            No Stripe orders yet. After a paid checkout, pending and paid orders
-            will appear here.
-          </p>
+          error ? null : <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p>
         ) : (
           orders.map((order) => (
             <article
@@ -165,18 +166,18 @@ export function PaymentOperationsPanel() {
               className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <StatusChip status={order.status} />
-                  <h4 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
+                  <h4 className="mt-2 break-words text-base font-semibold text-[var(--color-ink)]">
                     {order.courseTitle}
                   </h4>
                 </div>
                 <span className="rounded-[8px] bg-white px-3 py-1 text-sm font-bold text-[var(--color-primary)]">
-                  {formatMoney(order.amountMinor, order.currency)}
+                  {formatMoney(order.amountMinor, order.currency, locale)}
                 </span>
               </div>
-              <p className="mt-3 text-xs leading-6 text-[var(--color-ink-soft)]">
-                Order {order.id} - User {order.userId} - Provider {order.provider}
+              <p className="mt-3 break-words text-xs leading-6 text-[var(--color-ink-soft)]">
+                {t(`${copy}.order`)} {order.id} - {t(`${copy}.user`)} {order.userId} - {t(`${copy}.provider`)} {order.provider}
               </p>
             </article>
           ))

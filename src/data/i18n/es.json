@@ -585,6 +585,102 @@
           }
         }
       },
+      "catalogPanel": {
+        "eyebrow": "Cursos publicados",
+        "title": "Gestiona el catálogo publicado",
+        "description": "Retira de publicación, vuelve a publicar o elimina de forma permanente un curso sin inscripciones ni pedidos.",
+        "coursesOne": "1 curso",
+        "courses": "{count} cursos",
+        "modulesOne": "1 módulo",
+        "modules": "{count} módulos",
+        "lessonsOne": "1 lección",
+        "lessons": "{count} lecciones",
+        "loadError": "No pudimos cargar los cursos publicados. Actualiza la página.",
+        "loading": "Cargando cursos publicados...",
+        "empty": "Todavía no hay cursos publicados o inactivos.",
+        "featured": "Destacado",
+        "working": "Actualizando...",
+        "feature": "Destacar",
+        "unfeature": "Quitar destacado",
+        "unpublish": "Retirar de publicación",
+        "republish": "Volver a publicar",
+        "deleting": "Eliminando...",
+        "confirmDelete": "Confirmar eliminación",
+        "cancel": "Cancelar",
+        "delete": "Eliminar",
+        "errors": {
+          "unpublish": "No pudimos retirar este curso de publicación. Inténtalo de nuevo.",
+          "republish": "No pudimos volver a publicar este curso. Inténtalo de nuevo.",
+          "delete": "No pudimos eliminar este curso. Los cursos con inscripciones o pedidos deben retirarse de publicación.",
+          "feature": "No pudimos actualizar el estado destacado. Inténtalo de nuevo."
+        },
+        "success": {
+          "unpublished": "Curso retirado de publicación y del marketplace.",
+          "republished": "Curso publicado de nuevo en el marketplace.",
+          "deleted": "Curso eliminado de forma permanente.",
+          "featured": "Curso destacado. Ahora aparece al inicio del marketplace.",
+          "unfeatured": "Curso sin destacar; volvió al orden habitual del catálogo."
+        }
+      },
+      "paymentsPanel": {
+        "title": "Seguimiento de pedidos de Stripe.",
+        "description": "Pedidos de Stripe en tiempo real; el acceso se otorga solo después de confirmar el pago.",
+        "adminOnly": "Solo administradores",
+        "paidSample": "Pagados en esta muestra",
+        "grossSample": "Importe bruto (últimos 12 pedidos)",
+        "feeSample": "Comisión estimada (los mismos 12)",
+        "loadingValue": "Cargando...",
+        "unavailable": "No disponible",
+        "loadError": "No pudimos cargar los pedidos recientes de Stripe.",
+        "loading": "Cargando pedidos...",
+        "empty": "Todavía no hay pedidos de Stripe. Después de una compra de pago, aquí aparecerán los pedidos pendientes y pagados.",
+        "order": "Pedido",
+        "user": "Usuario",
+        "provider": "Proveedor"
+      },
+      "enrollmentPanel": {
+        "eyebrow": "Inscripción manual",
+        "title": "Otorga acceso beta sin simular una compra.",
+        "description": "Solo para accesos beta, de soporte o administrativos; las inscripciones de pago siguen llegando desde Stripe.",
+        "learner": "Estudiante",
+        "course": "Curso publicado del creador",
+        "loadingUsers": "Cargando usuarios...",
+        "chooseUser": "Elige un usuario",
+        "loadingCourses": "Cargando cursos...",
+        "chooseCourse": "Elige un curso",
+        "creating": "Creando inscripción...",
+        "create": "Crear inscripción administrativa",
+        "grantedTitle": "Inscripciones otorgadas",
+        "activeOne": "1 activa",
+        "active": "{count} activas",
+        "grantedDescription": "Solo accesos administrativos y de demostración. La revocación quita el acceso del estudiante de inmediato.",
+        "loadingGranted": "Cargando inscripciones otorgadas...",
+        "empty": "Todavía no hay accesos administrativos o de demostración.",
+        "adminGrant": "Acceso administrativo",
+        "demoGrant": "Acceso de demostración",
+        "revoking": "Revocando...",
+        "revoke": "Revocar acceso",
+        "confirmRevoke": "¿Revocar el acceso a \"{title}\" de este estudiante? Perderá el acceso de inmediato.",
+        "readErrors": {
+          "users": "No pudimos cargar los usuarios para la inscripción manual.",
+          "courses": "No pudimos cargar los cursos publicados de los creadores.",
+          "grants": "No pudimos cargar las inscripciones otorgadas."
+        },
+        "errors": {
+          "choose": "Elige un usuario y un curso publicado del creador.",
+          "create": "No pudimos crear esta inscripción. Revisa el rol de administrador y las reglas.",
+          "revoke": "No pudimos revocar esta inscripción. Revisa el rol de administrador y las reglas."
+        },
+        "success": {
+          "created": "Inscripción administrativa creada. El estudiante ya puede abrir el curso del creador.",
+          "revoked": "Inscripción revocada."
+        }
+      },
+      "exportButton": {
+        "export": "Exportar",
+        "csv": "Exportar como CSV",
+        "json": "Exportar como JSON"
+      },
       "supportQueue": {
         "title": "Tickets de soporte de usuarios",
         "description": "Revisa los problemas de los usuarios y actualiza el estado de cada ticket.",

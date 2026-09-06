@@ -585,6 +585,102 @@
           }
         }
       },
+      "catalogPanel": {
+        "eyebrow": "Published courses",
+        "title": "Manage the live catalog",
+        "description": "Unpublish, republish, or permanently delete a course with no enrollments or orders.",
+        "coursesOne": "1 course",
+        "courses": "{count} courses",
+        "modulesOne": "1 module",
+        "modules": "{count} modules",
+        "lessonsOne": "1 lesson",
+        "lessons": "{count} lessons",
+        "loadError": "We could not load published courses. Please refresh.",
+        "loading": "Loading published courses...",
+        "empty": "No published or inactive courses yet.",
+        "featured": "Featured",
+        "working": "Working...",
+        "feature": "Feature",
+        "unfeature": "Unfeature",
+        "unpublish": "Unpublish",
+        "republish": "Republish",
+        "deleting": "Deleting...",
+        "confirmDelete": "Confirm delete",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "errors": {
+          "unpublish": "We could not unpublish this course. Please try again.",
+          "republish": "We could not republish this course. Please try again.",
+          "delete": "We could not delete this course. Courses with enrollments or orders must be unpublished instead.",
+          "feature": "We could not update the featured status. Please try again."
+        },
+        "success": {
+          "unpublished": "Course unpublished and removed from the marketplace.",
+          "republished": "Course republished to the marketplace.",
+          "deleted": "Course permanently deleted.",
+          "featured": "Course featured. It now leads the marketplace grid.",
+          "unfeatured": "Course unfeatured and back in the regular catalog order."
+        }
+      },
+      "paymentsPanel": {
+        "title": "Stripe order monitor.",
+        "description": "Live Stripe orders; access is granted only after payment is confirmed.",
+        "adminOnly": "Admin only",
+        "paidSample": "Paid in this sample",
+        "grossSample": "Gross (last 12 orders)",
+        "feeSample": "Platform fee est. (same 12)",
+        "loadingValue": "Loading...",
+        "unavailable": "Unavailable",
+        "loadError": "We could not load recent Stripe orders.",
+        "loading": "Loading orders...",
+        "empty": "No Stripe orders yet. After a paid checkout, pending and paid orders will appear here.",
+        "order": "Order",
+        "user": "User",
+        "provider": "Provider"
+      },
+      "enrollmentPanel": {
+        "eyebrow": "Manual enrollment",
+        "title": "Grant beta access without fake checkout.",
+        "description": "Beta, support, or admin-granted access only; paid enrollment still comes from Stripe.",
+        "learner": "Learner",
+        "course": "Published creator course",
+        "loadingUsers": "Loading users...",
+        "chooseUser": "Choose user",
+        "loadingCourses": "Loading courses...",
+        "chooseCourse": "Choose course",
+        "creating": "Creating enrollment...",
+        "create": "Create admin enrollment",
+        "grantedTitle": "Granted enrollments",
+        "activeOne": "1 active",
+        "active": "{count} active",
+        "grantedDescription": "Admin and demo grants only. Revoking removes the learner's access immediately.",
+        "loadingGranted": "Loading granted enrollments...",
+        "empty": "No admin or demo grants yet.",
+        "adminGrant": "Admin grant",
+        "demoGrant": "Demo access",
+        "revoking": "Revoking...",
+        "revoke": "Revoke access",
+        "confirmRevoke": "Revoke access to \"{title}\" for this learner? They lose access immediately.",
+        "readErrors": {
+          "users": "We could not load users for manual enrollment.",
+          "courses": "We could not load published creator courses.",
+          "grants": "We could not load granted enrollments."
+        },
+        "errors": {
+          "choose": "Choose a user and a published creator course.",
+          "create": "We could not create this enrollment. Check admin role and rules.",
+          "revoke": "We could not revoke this enrollment. Check admin role and rules."
+        },
+        "success": {
+          "created": "Admin enrollment created. The learner can now open the creator course workspace.",
+          "revoked": "Enrollment revoked."
+        }
+      },
+      "exportButton": {
+        "export": "Export",
+        "csv": "Export as CSV",
+        "json": "Export as JSON"
+      },
       "supportQueue": {
         "title": "User support tickets",
         "description": "Read user issues and move tickets through the status workflow.",
