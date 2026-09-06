@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
+
 import { reopenCookieConsent } from "@/lib/consent/cookie-consent";
 
 // Footer control that reopens the cookie banner so a visitor can review,
@@ -8,13 +10,14 @@ import { reopenCookieConsent } from "@/lib/consent/cookie-consent";
 // the (server) footer; clicking it clears the stored decision and the banner
 // re-appears via the consent store subscription.
 export function PrivacyChoicesButton() {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
       onClick={reopenCookieConsent}
       className="font-semibold text-[var(--color-ink-soft)] underline-offset-2 transition-colors hover:text-[var(--color-primary)] hover:underline"
     >
-      Your Privacy Choices
+      {t("publicPages.privacy.your_privacy_choices")}
     </button>
   );
 }

@@ -1,32 +1,39 @@
+import { getServerTranslation } from "@/lib/i18n/server";
 import Link from "next/link";
 
 import { PublicPage } from "@/components/site/public-page";
 import { planById } from "@/data/plans";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
-const creatorTools = [
-  "Course builder with modules, lessons, previews, pricing, and drip release.",
-  "Protected student workspace with progress, files, and certificates.",
-  "Course-linked community, events, and future notifications.",
-  "Stripe Connect onboarding, refund controls, and a full earnings ledger — the record lives here, the money lives in your Stripe account.",
-  "Professional verification up front, then automated compliance checks that never block your launch.",
-  "Shareable course links for simple launch campaigns.",
-];
+
 
 const freePlan = planById("free");
 
-export const metadata = buildPageMetadata({
-  title: "Teach on SkillsetMind",
-  description: `Publish professional courses to a global audience. Start free at ${freePlan.commissionPercent}% commission, buyers pay your Stripe account directly, course community and certificates included on every plan.`,
-  path: "/for-creators",
-});
+export async function generateMetadata() {
+  const { t } = await getServerTranslation();
+  return buildPageMetadata({
+    title: t("publicPages.creators.teach_on_skillsetmind"),
+    description: t("publicPages.creators.publish_professional_courses_to_a_global").replace("{value0}", String(freePlan.commissionPercent)),
+    path: "/for-creators",
+  });
+}
 
-export default function ForCreatorsPage() {
+export default async function ForCreatorsPage() {
+  const { t } = await getServerTranslation();
+  const creatorTools = [
+    t("publicPages.creators.course_builder_with_modules_lessons_previews"),
+    t("publicPages.creators.protected_student_workspace_with_progress_files"),
+    t("publicPages.creators.course_linked_community_events_and_future"),
+    t("publicPages.creators.stripe_connect_onboarding_refund_controls_and"),
+    t("publicPages.creators.professional_verification_up_front_then_automated"),
+    t("publicPages.creators.shareable_course_links_for_simple_launch"),
+  ];
+
   return (
     <PublicPage
-      eyebrow="For creators"
-      title="Teach with a real course operating system."
-      description="SkillsetMind is designed for experts who want to publish structured learning products, manage students, build community, and get paid without stitching together disconnected tools."
+      eyebrow={t("publicPages.creators.for_creators")}
+      title={t("publicPages.creators.teach_with_a_real_course_operating")}
+      description={t("publicPages.creators.skillsetmind_is_designed_for_experts_who")}
     >
       <section className="mt-8 rounded-[18px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-6 shadow-[var(--shadow-soft)]">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
@@ -36,7 +43,7 @@ export default function ForCreatorsPage() {
                 {freePlan.commissionPercent}%
               </p>
               <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-                Commission on Free
+                {t("publicPages.creators.commission_on_free")}
               </p>
             </div>
             <div>
@@ -44,29 +51,27 @@ export default function ForCreatorsPage() {
                 $0
               </p>
               <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-                To start
+                {t("publicPages.creators.to_start")}
               </p>
             </div>
             <div>
               <p className="display-title text-3xl text-[var(--color-primary)]">
-                Direct
+                {t("publicPages.creators.direct")}
               </p>
               <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-                Buyer pays you
+                {t("publicPages.creators.buyer_pays_you")}
               </p>
             </div>
           </div>
           <div className="sm:text-right">
             <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
-              Buyers are charged on your own Stripe account — no platform hold
-              on your money. Start free; upgrade to drop commission to 5%, 3%,
-              or 2%.
+              {t("publicPages.creators.buyers_are_charged_on_your_own")}
             </p>
             <Link
               href="/pricing"
               className="mt-2 inline-flex text-sm font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
             >
-              See all four plans
+              {t("publicPages.creators.see_all_four_plans")}
             </Link>
           </div>
         </div>
@@ -85,18 +90,16 @@ export default function ForCreatorsPage() {
         </div>
         <aside className="primary-fill-card rounded-[18px] border border-[var(--color-line)] bg-[var(--color-primary)] p-6 text-white shadow-[var(--shadow-soft)]">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">
-            Creator path
+            {t("publicPages.creators.creator_path")}
           </p>
           <h2 className="display-title mt-3 text-4xl">
-            Start as a creator, publish after verification.
+            {t("publicPages.creators.start_as_a_creator_publish_after")}
           </h2>
           <p className="mt-4 text-sm leading-7 text-white/78">
-            Creators can draft courses immediately. Professional verification
-            and deterministic launch checks protect marketplace quality without
-            making every course wait for manual approval.
+            {t("publicPages.creators.creators_can_draft_courses_immediately_professional")}
           </p>
           <Link href="/auth?mode=signup&path=teacher" className="button-solid-light mt-6 px-4 py-2.5 text-sm">
-            Create account
+            {t("publicPages.creators.create_account")}
           </Link>
         </aside>
       </section>

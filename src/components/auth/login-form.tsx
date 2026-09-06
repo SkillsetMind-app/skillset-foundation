@@ -31,6 +31,8 @@ import {
 } from "@/lib/auth/routing";
 import { getUserProfile } from "@/lib/data/user-profiles";
 
+type LoginError = { key: string } | { cause: unknown } | null;
+
 export function LoginForm() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -52,21 +54,24 @@ export function LoginForm() {
   // ?error= — without seeding it here they failed with no visible message.
   // Distinct reasons get distinct copy: collapsing them all into "expired"
   // sent users re-requesting links to fix a problem a new link can't fix.
-  const callbackError = useMemo(() => {
+  const callbackError = useMemo<LoginError>(() => {
     const reason = searchParams.get("error");
-    if (!reason) return "";
+    if (!reason) return null;
     if (reason === "auth_callback") {
-      return "This link has to be opened in the same browser that requested it. Open it there, or request a new one from this browser.";
+      return { key: "authFlow.callback.sameBrowser" };
     }
     if (reason === "otp_expired" || reason === "access_denied") {
-      return "That link has already been used or has expired. Reset links work once. Request a new one and try again.";
+      return { key: "authFlow.callback.usedOrExpired" };
     }
-    return "That link is invalid or has expired. Request a new one and try again.";
+    return { key: "authFlow.callback.invalidOrExpired" };
   }, [searchParams]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState(callbackError);
+  const [error, setError] = useState<LoginError>(callbackError);
+  const errorMessage = error
+    ? "key" in error ? t(error.key) : getAuthErrorMessage(error.cause, t)
+    : "";
   // Conta criada, e-mail nunca confirmado: em vez de uma frase de erro, a
   // mesma porta do cadastro (com "reenviar o link").
   const [unconfirmedEmail, setUnconfirmedEmail] = useState("");
@@ -112,7 +117,7 @@ export function LoginForm() {
   }
 
   async function handleEmailLogin() {
-    setError("");
+    setError(null);
     setIsLoading(true);
 
     try {
@@ -125,14 +130,14 @@ export function LoginForm() {
       if (isMultiFactorRequiredError(caughtError)) {
         setMfaError(caughtError);
         setMfaCode("");
-        setError("");
+        setError(null);
       } else if (isEmailNotConfirmedError(caughtError)) {
         setUnconfirmedEmail(email);
-        setError("");
+        setError(null);
       } else {
         // Turnstile tokens are single-use — refresh for the retry.
         if (isCaptchaEnabled) setCaptchaResetSignal((n) => n + 1);
-        setError(getAuthErrorMessage(caughtError));
+        setError({ cause: caughtError });
       }
     } finally {
       setIsLoading(false);
@@ -140,7 +145,7 @@ export function LoginForm() {
   }
 
   async function handleGoogleLogin() {
-    setError("");
+    setError(null);
     setIsLoading(true);
 
     try {
@@ -154,9 +159,9 @@ export function LoginForm() {
       if (isMultiFactorRequiredError(caughtError)) {
         setMfaError(caughtError);
         setMfaCode("");
-        setError("");
+        setError(null);
       } else {
-        setError(getAuthErrorMessage(caughtError));
+        setError({ cause: caughtError });
       }
     } finally {
       setIsLoading(false);
@@ -165,24 +170,24 @@ export function LoginForm() {
 
   async function handleMfaSubmit() {
     if (!mfaError || mfaCode.length < 6) {
-      setError(t("auth.mfaCodePrompt"));
+      setError({ key: "auth.mfaCodePrompt" });
       return;
     }
-    setError("");
+    setError(null);
     setIsLoading(true);
     try {
       const user = await completeMfaSignIn(mfaError, mfaCode);
       await finishLogin(user.uid);
     } catch (caughtError) {
       // Stay on the challenge so a mistyped code can be retried.
-      setError(getAuthErrorMessage(caughtError));
+      setError({ cause: caughtError });
     } finally {
       setIsLoading(false);
     }
   }
 
   async function handleUseDifferentAccount() {
-    setError("");
+    setError(null);
     setIsLoading(true);
     try {
       // Sair de verdade. A sessão aal1 está no cookie desde a senha; só
@@ -192,7 +197,7 @@ export function LoginForm() {
       setMfaError(null);
       setMfaCode("");
     } catch (caughtError) {
-      setError(getAuthErrorMessage(caughtError));
+      setError({ cause: caughtError });
     } finally {
       setIsLoading(false);
     }
@@ -250,7 +255,7 @@ export function LoginForm() {
             aria-live="assertive"
             className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
           >
-            {error}
+            {errorMessage}
           </p>
         ) : null}
         <button
@@ -337,7 +342,7 @@ export function LoginForm() {
           aria-live="assertive"
           className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
-          {error}
+          {errorMessage}
         </p>
       ) : null}
       <TurnstileWidget onToken={setCaptchaToken} resetSignal={captchaResetSignal} />

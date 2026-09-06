@@ -16,13 +16,13 @@ export type CourseSortKey =
   | "price-asc"
   | "price-desc";
 
-export const courseSortOptions: { value: CourseSortKey; label: string }[] = [
-  { value: "featured", label: "Featured & top picks" },
-  { value: "trending", label: "Trending now" },
-  { value: "alpha", label: "Alphabetical (A–Z)" },
-  { value: "rating", label: "Top rated" },
-  { value: "price-asc", label: "Price: low to high" },
-  { value: "price-desc", label: "Price: high to low" },
+export const courseSortOptions: { value: CourseSortKey; label: string; labelKey: string }[] = [
+  { value: "featured", label: "Featured & top picks", labelKey: "publicCourses.sortFeatured" },
+  { value: "trending", label: "Trending now", labelKey: "publicCourses.sortTrending" },
+  { value: "alpha", label: "Alphabetical (A–Z)", labelKey: "publicCourses.sortAlpha" },
+  { value: "rating", label: "Top rated", labelKey: "publicCourses.sortRating" },
+  { value: "price-asc", label: "Price: low to high", labelKey: "publicCourses.sortPriceAsc" },
+  { value: "price-desc", label: "Price: high to low", labelKey: "publicCourses.sortPriceDesc" },
 ];
 
 // Deterministic tiebreaker so the grid never reshuffles between renders when the

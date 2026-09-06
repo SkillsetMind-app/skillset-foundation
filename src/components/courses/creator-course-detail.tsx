@@ -1,5 +1,9 @@
 "use client";
 
+import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
+
+import { useTranslation } from "@/components/i18n/i18n-provider";
+
 import Link from "next/link";
 import { Star, Target } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -41,6 +45,7 @@ import {
   enrollInFreeCreatorCourse,
   startCourseCheckout,
 } from "@/lib/payments/checkout";
+import { PaymentRequestError } from "@/lib/payments/client-fetch";
 
 type CreatorCourseDetailProps = {
   courseIdOverride?: string;
@@ -49,11 +54,65 @@ type CreatorCourseDetailProps = {
   checkoutOnly?: boolean;
 };
 
+// The checkout API has public codes for auth/configuration, but its business
+// errors still use exact messages. Keep that allowlist scoped to their status;
+// unknown provider or network details must never become public copy.
+const checkoutMessageKeys: Partial<Record<number, Record<string, string>>> = {
+  400: {
+    "A valid courseId is required.": "publicCourses.paymentErrors.invalidCourse",
+    "The selected offer is invalid.": "publicCourses.selectedOfferUnavailable",
+    "The selected offer code is invalid.": "publicCourses.selectedOfferUnavailable",
+    "This course is not available for purchase right now.": "publicCourses.paymentErrors.courseUnavailable",
+    "You can't purchase your own course.": "publicCourses.paymentErrors.ownCourse",
+    "This course does not have a paid checkout price yet.": "publicCourses.paymentErrors.priceUnavailable",
+    "This teacher has not connected Stripe payouts yet.": "publicCourses.paymentErrors.creatorPaymentsUnavailable",
+    "This teacher must finish Stripe onboarding before paid checkout opens.": "publicCourses.paymentErrors.creatorPaymentsUnavailable",
+    "Coupon not found.": "publicCourses.paymentErrors.couponInvalid",
+    "Invalid coupon code.": "publicCourses.paymentErrors.couponInvalid",
+    "This coupon is not active.": "publicCourses.paymentErrors.couponUnavailable",
+    "This coupon is no longer available.": "publicCourses.paymentErrors.couponUnavailable",
+    "This coupon has expired.": "publicCourses.paymentErrors.couponExpired",
+    "This coupon has reached its redemption limit.": "publicCourses.paymentErrors.couponLimit",
+    "Invalid price for coupon redemption.": "publicCourses.paymentErrors.couponNotApplicable",
+    "Coupon would zero out a paid checkout.": "publicCourses.paymentErrors.couponNotApplicable",
+  },
+  404: {
+    "Course not found.": "publicCourses.notFound",
+  },
+  409: {
+    "This course is already attached to your learning workspace.": "publicCourses.paymentErrors.alreadyEnrolled",
+    "You already have a subscription for this course.": "publicCourses.paymentErrors.alreadySubscribed",
+    "Another offer already has an active checkout. Close it or wait for it to expire before switching offers.": "publicCourses.paymentErrors.checkoutConflict",
+    "A subscription checkout for this course is already starting. Please try again in a moment.": "publicCourses.paymentErrors.checkoutStarting",
+    "A checkout for this course is already starting. Please try again in a moment.": "publicCourses.paymentErrors.checkoutStarting",
+  },
+  429: {
+    "Too many attempts. Please wait before trying again.": "publicCourses.paymentErrors.rateLimit",
+  },
+};
+
+function getCheckoutErrorKey(error: unknown): string {
+  if (error instanceof PaymentRequestError) {
+    if (error.status === 401 && error.code === "unauthenticated") {
+      return "publicCourses.paymentErrors.signInRequired";
+    }
+    if (error.status === 503 && error.code === "payments_not_configured") {
+      return "publicCourses.paymentErrors.paymentsUnavailable";
+    }
+    const messages = checkoutMessageKeys[error.status];
+    if (messages && Object.hasOwn(messages, error.message)) {
+      return messages[error.message];
+    }
+  }
+  return "publicCourses.checkoutError";
+}
+
 export function CreatorCourseDetail({
   courseIdOverride,
   hideHeader = false,
   checkoutOnly = false,
 }: CreatorCourseDetailProps = {}) {
+  const { t, locale } = useTranslation();
   const { status: authStatus, user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -134,7 +193,7 @@ export function CreatorCourseDetail({
         setIsLoading(false);
       },
       () => {
-        setError("We could not load this course right now.");
+        setError("publicCourses.courseLoadError");
         setIsLoading(false);
       },
     );
@@ -190,18 +249,14 @@ export function CreatorCourseDetail({
           error?: string;
         };
         if (!response.ok) {
-          throw new Error(body.error || "Offers are temporarily unavailable.");
+          throw new Error("publicCourses.offersUnavailable");
         }
         setOfferLoadError("");
         setOfferState({ courseId: resolvedCourseId, offers: body.offers ?? [] });
       })
-      .catch((loadError: unknown) => {
+      .catch(() => {
         if (controller.signal.aborted) return;
-        setOfferLoadError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Offers are temporarily unavailable.",
-        );
+        setOfferLoadError("publicCourses.offersUnavailable");
       });
 
     return () => controller.abort();
@@ -210,8 +265,8 @@ export function CreatorCourseDetail({
   if (!courseRef) {
     return (
       <CourseDetailState
-        title="Course not selected."
-        detail="Open the marketplace and choose a creator-published course."
+        title={t("publicCourses.notSelected")}
+        detail={t("publicCourses.chooseCourse")}
       />
     );
   }
@@ -219,8 +274,8 @@ export function CreatorCourseDetail({
   if (!hasBackendConfig) {
     return (
       <CourseDetailState
-        title="Course details are unavailable right now."
-        detail="We could not connect to the course catalog. Refresh the page or try again shortly."
+        title={t("publicCourses.detailsUnavailable")}
+        detail={t("publicCourses.connectionError")}
       />
     );
   }
@@ -228,21 +283,21 @@ export function CreatorCourseDetail({
   if (isLoading) {
     return (
       <CourseDetailState
-        title="Loading course..."
-        detail="We are checking the published course record."
+        title={t("publicCourses.loadingCourse")}
+        detail={t("publicCourses.checkingCourse")}
       />
     );
   }
 
   if (error) {
-    return <CourseDetailState title="Course unavailable." detail={error} />;
+    return <CourseDetailState title={t("publicCourses.unavailable")} detail={t(error)} />;
   }
 
   if (!course) {
     return (
       <CourseDetailState
-        title="Course not found."
-        detail="This course may be unavailable or no longer listed in the marketplace."
+        title={t("publicCourses.notFound")}
+        detail={t("publicCourses.notListed")}
       />
     );
   }
@@ -254,7 +309,7 @@ export function CreatorCourseDetail({
 
     return (
       <CourseDetailState
-        {...getUnpublishedCourseState(course.status, { isOwner, isAdmin })}
+        {...getUnpublishedCourseState(course.status, { isOwner, isAdmin }, t)}
       />
     );
   }
@@ -283,20 +338,20 @@ export function CreatorCourseDetail({
   const priceLabel =
     !pricingReady
       ? offerLoadError
-        ? "Pricing unavailable"
-        : "Loading pricing..."
+        ? t("publicCourses.pricingUnavailable")
+        : t("publicCourses.loadingPricing")
       : !resolvedPrice && hasExplicitOffer
-        ? "Offer unavailable"
+        ? t("publicCourses.offerUnavailable")
         : courseIsFree
-      ? "Free"
+      ? t("publicCourses.free")
       : resolvedPrice
-      ? `${new Intl.NumberFormat("en", {
+      ? `${new Intl.NumberFormat(locale, {
           style: "currency",
           currency: resolvedPrice.currency,
         }).format(resolvedPrice.amountMinor / 100)}${
-          subscriptionInterval ? ` / ${subscriptionInterval}` : ""
+          subscriptionInterval ? ` / ${t(`publicCourses.${subscriptionInterval}`)}` : ""
         }`
-      : "Pricing pending";
+      : t("publicCourses.pricingPending");
   const canCheckout =
     pricingReady
     && checkoutEnabled
@@ -379,11 +434,11 @@ export function CreatorCourseDetail({
   const billingSuffix = !pricingReady
     ? null
     : courseIsFree
-      ? "free enrollment"
+      ? t("publicCourses.freeEnrollment")
       : subscriptionInterval
-        ? `billed ${subscriptionInterval === "month" ? "monthly" : "yearly"}`
+        ? t(subscriptionInterval === "month" ? "publicCourses.billedMonthly" : "publicCourses.billedYearly")
         : hasPaidPrice
-          ? "one-time"
+          ? t("publicCourses.oneTime")
           : null;
   const coursePath = `/courses/${encodeURIComponent(courseRef)}${checkoutOnly ? "/checkout" : ""}`;
   const returnParams = new URLSearchParams();
@@ -392,23 +447,23 @@ export function CreatorCourseDetail({
   if (requestedPriceId) returnParams.set("priceId", requestedPriceId);
   const returnTo = `${coursePath}${returnParams.size ? `?${returnParams}` : ""}`;
   const enrollLabel = courseIsFree
-    ? "Enroll free"
+    ? t("publicCourses.enrollFree")
     : pricingReady && hasPaidPrice
-      ? `${subscriptionInterval ? "Subscribe" : "Enroll"} — ${priceLabel}`
-      : "Enroll";
+      ? `${subscriptionInterval ? t("publicCourses.subscribe") : t("publicCourses.enroll")} — ${priceLabel}`
+      : t("publicCourses.enroll");
   // Secoes que EXISTEM nesta pagina. Um menu que oferece "Reviews" para um
   // curso sem resenha leva a pessoa para lugar nenhum, entao cada item so
   // entra quando a secao correspondente vai ser desenhada.
   const sectionLinks: [string, string][] = [
-    ["Overview", "#overview"],
+    [t("publicCourses.overview"), "#overview"],
     ...(learningOutcomes.length > 0
-      ? ([["What you'll learn", "#what-you-will-learn"]] as [string, string][])
+      ? ([[t("publicCourses.outcomes"), "#what-you-will-learn"]] as [string, string][])
       : []),
-    ["Free preview", "#free-preview"],
-    ["Curriculum", "#curriculum"],
-    ...(hasRating ? ([["Reviews", "#reviews"]] as [string, string][]) : []),
+    [t("publicCourses.preview"), "#free-preview"],
+    [t("publicCourses.curriculum"), "#curriculum"],
+    ...(hasRating ? ([[t("publicCourses.reviews"), "#reviews"]] as [string, string][]) : []),
     ...(instructorProfile
-      ? ([["Instructor", "#instructor"]] as [string, string][])
+      ? ([[t("publicCourses.instructor"), "#instructor"]] as [string, string][])
       : []),
   ];
 
@@ -428,12 +483,8 @@ export function CreatorCourseDetail({
         ...(requestedOfferCode ? { offerCode: requestedOfferCode } : {}),
         ...(resolvedPrice.priceId ? { priceId: resolvedPrice.priceId } : {}),
       });
-    } catch (checkoutError) {
-      setCheckoutError(
-        checkoutError instanceof Error && checkoutError.message
-          ? checkoutError.message
-          : "We could not start secure checkout. Try again or contact support.",
-      );
+    } catch (error) {
+      setCheckoutError(getCheckoutErrorKey(error));
       setIsCheckingOut(false);
     }
   }
@@ -449,12 +500,8 @@ export function CreatorCourseDetail({
     try {
       await enrollInFreeCreatorCourse(course.id);
       router.push(`/learn/courses/${encodeURIComponent(course.id)}`);
-    } catch (enrollmentError) {
-      setCheckoutError(
-        enrollmentError instanceof Error && enrollmentError.message
-          ? enrollmentError.message
-          : "We could not add this free course to your learning workspace. Try again or contact support.",
-      );
+    } catch {
+      setCheckoutError("publicCourses.enrollError");
       setIsEnrollingFree(false);
     }
   }
@@ -482,7 +529,7 @@ export function CreatorCourseDetail({
             className="primary-fill-card scroll-mt-24 rounded-[20px] border border-[var(--color-line)] bg-[var(--color-primary)] p-8 text-white shadow-[var(--shadow-soft)]"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">
-              From an independent educator
+              {t("publicCourses.independent")}
             </p>
             <h1 className="display-title page-title mt-4">
               {course.title}
@@ -525,7 +572,7 @@ export function CreatorCourseDetail({
                   strokeWidth={1.5}
                   className="fill-[var(--color-brand)] text-[var(--color-brand)]"
                 />
-                {course.ratingAverage?.toFixed(1)}
+                {course.ratingAverage?.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                 <span className="font-normal text-[var(--color-ink-soft)]">
                   ({course.ratingCount})
                 </span>
@@ -537,7 +584,7 @@ export function CreatorCourseDetail({
 
         {!checkoutOnly ? <>
         <nav
-          aria-label="Course sections"
+          aria-label={t("publicCourses.sections")}
           className="mt-6 flex flex-wrap gap-1 border-b border-[var(--color-line)]"
         >
           {sectionLinks.map(([label, href]) => (
@@ -569,9 +616,7 @@ export function CreatorCourseDetail({
             id="what-you-will-learn"
             className="mt-8 scroll-mt-24 rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              What you&apos;ll learn
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.outcomes")}</p>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {learningOutcomes.map((item) => (
                 <div
@@ -605,9 +650,7 @@ export function CreatorCourseDetail({
           id="free-preview"
           className="mt-8 scroll-mt-24 rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
         >
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Free preview
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.preview")}</p>
           {previewLesson ? (
             <div className="mt-5 grid gap-4 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-5">
               <div>
@@ -619,7 +662,7 @@ export function CreatorCourseDetail({
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
                   {previewLesson.description
-                    || "This lesson is open so learners can judge the teaching style before enrolling."}
+                    || t("publicCourses.previewDescription")}
                 </p>
               </div>
               {previewLessonContentText ? (
@@ -653,25 +696,17 @@ export function CreatorCourseDetail({
                   target="_blank"
                   rel="noreferrer noopener"
                   className="button-outline w-fit px-3.5 py-2 text-xs"
-                >
-                  Open preview resource
-                </a>
+                >{t("publicCourses.previewResource")}</a>
               ) : null}
               {!previewLessonRawExternalUrl && previewVideoSource !== "upload" ? (
-                <p className="rounded-[12px] bg-white p-4 text-xs leading-6 text-[var(--color-ink-soft)]">
-                  Preview media can be attached by the educator as a video,
-                  external lesson link, or text resource.
-                </p>
+                <p className="rounded-[12px] bg-white p-4 text-xs leading-6 text-[var(--color-ink-soft)]">{t("publicCourses.previewMedia")}</p>
               ) : null}
             </div>
           ) : (
-            <p className="mt-5 rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-              This educator has not selected a public preview lesson yet.
-            </p>
+            <p className="mt-5 rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">{t("publicCourses.noPreview")}</p>
           )}
           <p className="mt-4 text-xs leading-6 text-[var(--color-ink-soft)]">
-            Enroll to open the remaining {lockedLessonCount} lesson
-            {lockedLessonCount === 1 ? "" : "s"} in this course.
+            {t(lockedLessonCount === 1 ? "publicCourses.lockedOne" : "publicCourses.lockedMany").replace("{count}", String(lockedLessonCount))}
           </p>
         </section>
 
@@ -679,15 +714,10 @@ export function CreatorCourseDetail({
           id="curriculum"
           className="mt-8 scroll-mt-24 rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
         >
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Course structure
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.structure")}</p>
           <div className="mt-5 grid gap-4">
             {course.modules.length === 0 ? (
-              <p className="rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-                The course is approved, but the public curriculum preview is
-                still being prepared.
-              </p>
+              <p className="rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">{t("publicCourses.curriculumPending")}</p>
             ) : (
               course.modules.map((module) => (
                 <div
@@ -707,9 +737,9 @@ export function CreatorCourseDetail({
                           {lesson.title}
                         </span>
                         <span className="shrink-0 text-right uppercase tracking-[0.16em]">
-                          {lesson.type.replace("_", " ")}
+                          {t(`publicCourses.lessonTypes.${lesson.type}`)}
                           {lesson.durationMinutes ? ` - ${lesson.durationMinutes} min` : ""}
-                          {course.freePreviewLessonId === lesson.id ? " - preview" : ""}
+                          {course.freePreviewLessonId === lesson.id ? ` - ${t("publicCourses.previewShort")}` : ""}
                         </span>
                       </div>
                     ))}
@@ -742,9 +772,7 @@ export function CreatorCourseDetail({
             entre "Status: Published" e "Access: Secure checkout" — vocabulario
             interno que o comprador nao precisa ler. Agora ele e o numero
             grande no topo do cartao. */}
-        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          Access
-        </p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>
         <p className="display-title mt-1 flex flex-wrap items-baseline gap-2 text-4xl leading-none text-[var(--color-primary)]">
           <span>{priceLabel}</span>
           {billingSuffix ? (
@@ -757,17 +785,15 @@ export function CreatorCourseDetail({
         <div className="mt-5 h-px bg-[var(--color-line)]" />
         {offers.length > 1 ? (
           <fieldset className="mt-5 border-y border-[var(--color-line)] py-4">
-            <legend className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
-              Choose an offer
-            </legend>
+            <legend className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">{t("publicCourses.chooseOffer")}</legend>
             <div className="mt-2 divide-y divide-[var(--color-line)]">
               {offers.map((offer) => {
                 const price = offer.prices.find((entry) => entry.active !== false);
                 const interval =
                   price?.paymentType === "subscription_monthly"
-                    ? " / month"
+                    ? ` / ${t("publicCourses.month")}`
                     : price?.paymentType === "subscription_yearly"
-                      ? " / year"
+                      ? ` / ${t("publicCourses.year")}`
                       : "";
                 return (
                   <label
@@ -788,12 +814,12 @@ export function CreatorCourseDetail({
                       <span className="block text-xs text-[var(--color-ink-soft)]">
                         {price
                           ? price.amountMinor === 0
-                            ? "Free"
-                            : `${new Intl.NumberFormat("en", {
+                            ? t("publicCourses.free")
+                            : `${new Intl.NumberFormat(locale, {
                                 style: "currency",
                                 currency: price.currency,
                               }).format(price.amountMinor / 100)}${interval}`
-                          : "Unavailable"}
+                          : t("publicCourses.unavailableShort")}
                       </span>
                     </span>
                   </label>
@@ -808,9 +834,9 @@ export function CreatorCourseDetail({
             a assinatura do instrutor. */}
         <dl className="mt-5 grid gap-4">
           {[
-            ["Category", course.category],
-            ["Lessons", String(course.lessonCount)],
-            ...(durationLabel ? [["Duration", durationLabel]] : []),
+            [t("publicCourses.category"), getCourseCategoryLabel(course.category, t)],
+            [t("publicCourses.lessons"), String(course.lessonCount)],
+            ...(durationLabel ? [[t("publicCourses.duration"), durationLabel]] : []),
           ].map(([label, value]) => (
             <div
               key={label}
@@ -827,26 +853,22 @@ export function CreatorCourseDetail({
         </dl>
 
         {checkoutStatus === "cancelled" ? (
-          <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            Checkout was cancelled. Your card was not charged.
-          </p>
+          <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">{t("publicCourses.cancelled")}</p>
         ) : null}
 
         {checkoutStatus === "success" ? (
-          <p className="mt-5 info-notice">
-            Payment received. Your course access opens automatically — usually within a few seconds.
-          </p>
+          <p className="mt-5 info-notice">{t("publicCourses.paymentReceived")}</p>
         ) : null}
 
         {checkoutError ? (
           <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {checkoutError}
+            {t(checkoutError)}
           </p>
         ) : null}
 
         {offerLoadError || (pricingReady && hasExplicitOffer && !resolvedPrice) ? (
           <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {offerLoadError || "The selected offer is no longer available."}
+            {offerLoadError ? t(offerLoadError) : t("publicCourses.selectedOfferUnavailable")}
           </p>
         ) : null}
 
@@ -864,9 +886,7 @@ export function CreatorCourseDetail({
             <Link
               href={`/auth?mode=signin&returnTo=${encodeURIComponent(returnTo)}`}
               className="button-outline w-full justify-center px-5 py-2.5 text-sm"
-            >
-              Sign in
-            </Link>
+            >{t("publicCourses.signIn")}</Link>
           </div>
         ) : (
           <>
@@ -877,7 +897,7 @@ export function CreatorCourseDetail({
                 disabled={isEnrollingFree}
                 className="button-solid mt-6 w-full px-5 py-2.5 text-sm disabled:opacity-60"
               >
-                {isEnrollingFree ? "Adding to your workspace..." : "Enroll free"}
+                {isEnrollingFree ? t("publicCourses.addingCourse") : t("publicCourses.enrollFree")}
               </button>
             ) : (
               <button
@@ -887,19 +907,17 @@ export function CreatorCourseDetail({
                 className="button-solid mt-6 w-full px-5 py-2.5 text-sm disabled:opacity-60"
               >
                 {isCheckingOut
-                  ? "Opening secure checkout..."
+                  ? t("publicCourses.openingCheckout")
                   : checkoutEnabled && hasPaidPrice
                     ? enrollLabel
-                    : "Checkout not available yet"}
+                    : t("publicCourses.checkoutUnavailable")}
               </button>
             )}
             {/* Cupom fora do caminho de quem nao tem um. */}
             {canCheckout && !subscriptionInterval ? (
               isCouponOpen ? (
                 <label className="mt-4 block">
-                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
-                    Coupon code
-                  </span>
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">{t("publicCourses.coupon")}</span>
                   <input
                     value={couponCode}
                     autoFocus
@@ -912,7 +930,7 @@ export function CreatorCourseDetail({
                       )
                     }
                     autoComplete="off"
-                    placeholder="Optional"
+                    placeholder={t("publicCourses.optional")}
                     className="mt-2 w-full rounded-[10px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
                   />
                 </label>
@@ -921,24 +939,19 @@ export function CreatorCourseDetail({
                   type="button"
                   onClick={() => setIsCouponOpen(true)}
                   className="mt-3 inline-flex min-h-11 w-full items-center justify-center text-sm font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
-                >
-                  Have a coupon?
-                </button>
+                >{t("publicCourses.haveCoupon")}</button>
               )
             ) : null}
             {!checkoutEnabled ? (
-              <p className="mt-3 rounded-[10px] border border-[rgba(24,58,94,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
-                Checkout is not available yet. You can preview this course now
-                and enroll once purchasing opens on SkillsetMind.
-              </p>
+              <p className="mt-3 rounded-[10px] border border-[rgba(24,58,94,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">{t("publicCourses.checkoutLater")}</p>
             ) : null}
           </>
         )}
 
         <p className="mt-3 text-xs leading-6 text-[var(--color-ink-soft)]">
           {courseIsFree
-            ? "Free enrollment attaches this course to your learning workspace immediately."
-            : "Paid access opens automatically once your payment is confirmed — usually within seconds."}
+            ? t("publicCourses.freeAccess")
+            : t("publicCourses.paidAccess")}
         </p>
 
         {/* Risk reversal at the point of purchase. States the REAL policy
@@ -946,11 +959,8 @@ export function CreatorCourseDetail({
             never an invented "30-day guarantee" the platform doesn't honor. */}
         {!courseIsFree ? (
           <p className="mt-3 rounded-[10px] border border-[rgba(26,54,93,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
-            <strong className="text-[var(--color-ink)]">
-              7-day refund guarantee.
-            </strong>{" "}
-            Not the right fit? Request a refund within 7 days, as long as you
-            have completed less than half the course.
+            <strong className="text-[var(--color-ink)]">{t("publicCourses.refundTitle")}</strong>{" "}
+            {t("publicCourses.refundBody")}
           </p>
         ) : null}
 
@@ -962,22 +972,15 @@ export function CreatorCourseDetail({
             the chargeback lands on the educator's balance. */}
         {!courseIsFree ? (
           <p className="mt-3 rounded-[10px] border border-[rgba(26,54,93,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
-            <strong className="text-[var(--color-ink)]">
-              Sold by your instructor, not by SkillsetMind.
-            </strong>{" "}
-            This course is sold directly by the independent educator who
-            publishes it. Your payment goes to their own Stripe account, so
-            their name or business name — not &ldquo;SkillsetMind&rdquo; — is
-            what may appear on your card statement.
+            <strong className="text-[var(--color-ink)]">{t("publicCourses.sellerTitle")}</strong>{" "}
+            {t("publicCourses.sellerBody")}
           </p>
         ) : null}
 
         <Link
           href="/courses"
           className="mt-4 inline-flex min-h-11 w-full items-center justify-center text-sm font-semibold text-[var(--color-primary)]"
-        >
-          Back to all courses
-        </Link>
+        >{t("publicCourses.backCourses")}</Link>
       </aside>
     </div>
 
@@ -988,9 +991,7 @@ export function CreatorCourseDetail({
     {!checkoutOnly ? <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 lg:hidden">
       <div className="pointer-events-auto flex items-center gap-3 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            Access
-          </p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>
           <p className="display-title truncate text-xl leading-none text-[var(--color-primary)]">
             {priceLabel}
           </p>
@@ -998,9 +999,7 @@ export function CreatorCourseDetail({
         <Link
           href="#enroll-card"
           className="button-solid inline-flex min-h-11 shrink-0 items-center px-3.5 py-2 text-xs"
-        >
-          Enroll
-        </Link>
+        >{t("publicCourses.enroll")}</Link>
       </div>
     </div> : null}
     </>
@@ -1021,13 +1020,12 @@ function CourseDetailState({
   detail: string;
   action?: CourseDetailAction;
 }) {
-  const resolvedAction = action ?? { label: "Open marketplace", href: "/courses" };
+  const { t } = useTranslation();
+  const resolvedAction = action ?? { label: t("publicCourses.openMarketplace"), href: "/courses" };
 
   return (
     <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-        Creator course
-      </p>
+      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.creatorCourse")}</p>
       <h1 className="display-title mt-3 text-4xl text-[var(--color-ink)]">
         {title}
       </h1>
@@ -1053,13 +1051,14 @@ function CourseDetailState({
 function getUnpublishedCourseState(
   status: TeacherCourseStatus,
   viewer: { isOwner: boolean; isAdmin: boolean },
+  t: (key: string) => string,
 ): { title: string; detail: string; action?: CourseDetailAction } {
   const opsAction: CourseDetailAction = {
-    label: "Review in moderation queue",
+    label: t("publicCourses.opsReview"),
     href: "/ops",
   };
   const teachAction: CourseDetailAction = {
-    label: "Open teaching dashboard",
+    label: t("publicCourses.teachDashboard"),
     href: "/teach",
   };
 
@@ -1068,18 +1067,18 @@ function getUnpublishedCourseState(
   if (status === "in_review") {
     if (viewer.isAdmin) {
       return {
-        title: "This course is awaiting approval.",
+        title: t("publicCourses.awaitingApproval"),
         detail:
-          "It was submitted for review but is not public yet. Approve publication from the moderation queue to take it live.",
+          t("publicCourses.approveBody"),
         action: opsAction,
       };
     }
 
     if (viewer.isOwner) {
       return {
-        title: "This course is under review.",
+        title: t("publicCourses.underReview"),
         detail:
-          "You submitted it for approval. SkillsetMind publishes it once review is complete — you'll be notified. Track its status from your teaching dashboard.",
+          t("publicCourses.reviewBody"),
         action: teachAction,
       };
     }
@@ -1089,18 +1088,18 @@ function getUnpublishedCourseState(
   if (status === "inactive") {
     if (viewer.isAdmin) {
       return {
-        title: "This course is unpublished.",
+        title: t("publicCourses.unpublished"),
         detail:
-          "It was published before and is currently inactive. Republish it from the moderation queue to make it public again.",
-        action: { ...opsAction, label: "Open moderation queue" },
+          t("publicCourses.republishBody"),
+        action: { ...opsAction, label: t("publicCourses.opsQueue") },
       };
     }
 
     if (viewer.isOwner) {
       return {
-        title: "This course is currently unpublished.",
+        title: t("publicCourses.currentlyUnpublished"),
         detail:
-          "It is not visible to learners right now. Contact SkillsetMind support if you need it republished.",
+          t("publicCourses.contactRepublish"),
         action: teachAction,
       };
     }
@@ -1112,34 +1111,34 @@ function getUnpublishedCourseState(
   if (viewer.isOwner) {
     if (status === "needs_changes") {
       return {
-        title: "This course needs changes before it goes live.",
+        title: t("publicCourses.needsChanges"),
         detail:
-          "A reviewer asked for updates. Make the requested changes and resubmit it for approval from your teaching dashboard.",
+          t("publicCourses.changesBody"),
         action: teachAction,
       };
     }
 
     return {
-      title: "This course is still a draft.",
+      title: t("publicCourses.draft"),
       detail:
-        "Finish building it and submit it for review from your teaching dashboard. It becomes public once SkillsetMind approves it.",
+        t("publicCourses.draftBody"),
       action: teachAction,
     };
   }
 
   if (viewer.isAdmin) {
     return {
-      title: "This course is not public yet.",
+      title: t("publicCourses.notPublicYet"),
       detail:
-        "The educator has not submitted it for review, so there is nothing in the moderation queue to approve. It will appear here once they submit it.",
-      action: { ...opsAction, label: "Open moderation queue" },
+        t("publicCourses.notSubmitted"),
+      action: { ...opsAction, label: t("publicCourses.opsQueue") },
     };
   }
 
   // Fallback — unreachable for an unpublished course: RLS rejects the read for
   // non-owner/non-admin viewers, which surfaces as the error state.
   return {
-    title: "Course is not public.",
-    detail: "This course may still be in review, inactive, or unavailable.",
+    title: t("publicCourses.notPublic"),
+    detail: t("publicCourses.unpublishedFallback"),
   };
 }

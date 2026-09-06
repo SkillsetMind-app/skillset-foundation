@@ -1,67 +1,74 @@
+import { getServerTranslation } from "@/lib/i18n/server";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteNav } from "@/components/site/site-nav";
 import Link from "next/link";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
-const promises = [
-  {
-    number: "01",
-    // NOTE(fee-lock): the engine has no per-creator rate snapshot yet —
-    // canonicalPlatformFeeBpsForPlan always returns the CURRENT ladder. The
-    // 2026-07 pivot to 10/5/3/2 was applied with zero active creators, so no
-    // published rate was raised on anyone. From launch on, this promise is
-    // binding: any future ladder change requires either a signup-rate snapshot
-    // in the engine or the 90-day notice below. Tracked in PR #18.
-    title: "Fee-lock for 24 months",
-    body: "The commission rate of the plan you sign up on is the rate you keep for the next 24 months — even if SkillsetMind raises plan pricing later. If SkillsetMind ever needs to change it, you get 90 days notice and the right to export everything and leave with no friction.",
-    practice:
-      "If a creator joins on Free at 10%, that creator does not wake up to a surprise commission increase after building a business here.",
-  },
-  {
-    number: "02",
-    title: "No plan ever blocks you from selling",
-    body: "The selling engine is on every plan, Free included: publish courses, take checkout, drip content, run a community and live sessions, issue certificates, create unlimited coupons. Paid plans lower your commission and raise scale limits — students, video storage, featured slots, custom domains, team seats — and add branding controls like removing the SkillsetMind mark or putting your own logo on certificates. What upgrading never buys is permission to sell.",
-    practice:
-      "A creator on Free runs a real business here. Upgrading buys a lower rate and more room, not the right to trade.",
-  },
-  {
-    number: "03",
-    title: "Data portability, one click",
-    body: "At any moment you can export your full business: courses with all videos and materials, your student list with progress, your sales history, your community posts, your event records. ZIP file. No calls. No retention attempts. No questions asked.",
-    practice:
-      "SkillsetMind can host your business, but SkillsetMind does not own the business you built.",
-  },
-  {
-    number: "04",
-    title: "Cancellation in one click",
-    body: "Delete your account in one click. Your existing students keep access for the time they paid for, but no new enrollments will go through. SkillsetMind will not chain you in email loops, hide the cancel button, or send 12 different agents. SkillsetMind will simply do it.",
-    practice:
-      "Leaving should be a product action, not a negotiation.",
-  },
-  {
-    number: "05",
-    title: "We never hold your money",
-    body: "Your buyers pay your Stripe account directly — SkillsetMind is never a middleman for your money and has no balance of yours to freeze. Chargebacks below 1.5% rolling 90 days will never auto-suspend your account; above that threshold, review is human with a 72h SLA, not a black box. Disputes go to documented arbitration.",
-    practice:
-      "Your sale lands in your own Stripe balance, not ours. There is no SkillsetMind clearing period to wait out — Stripe pays it out from that balance on your connected account's payout schedule, and may hold a new account's first payout until verification completes.",
-  },
-  {
-    number: "06",
-    title: "Human support SLA",
-    body: "Financial questions — refunds, payouts, holds, chargebacks — get a human reply within 24 hours. No chatbot wall. No escalation maze. A real person, by email, with the authority to fix it.",
-    practice:
-      "Money issues do not belong behind a bot maze.",
-  },
-];
 
-export const metadata = buildPageMetadata({
-  title: "The SkillsetMind Promise",
-  description:
-    "SkillsetMind commitments to creators and learners: reviewed quality, creator money that never passes through SkillsetMind, refund protection, and verifiable credentials.",
-  path: "/promise",
-});
 
-export default function PromisePage() {
+export async function generateMetadata() {
+  const { t } = await getServerTranslation();
+  return buildPageMetadata({
+    title: t("publicPages.promise.the_skillsetmind_promise"),
+    description:
+      t("publicPages.promise.skillsetmind_commitments_to_creators_and_learners"),
+    path: "/promise",
+  });
+}
+
+export default async function PromisePage() {
+  const { t } = await getServerTranslation();
+  const promises = [
+    {
+      number: "01",
+      // NOTE(fee-lock): the engine has no per-creator rate snapshot yet —
+      // canonicalPlatformFeeBpsForPlan always returns the CURRENT ladder. The
+      // 2026-07 pivot to 10/5/3/2 was applied with zero active creators, so no
+      // published rate was raised on anyone. From launch on, this promise is
+      // binding: any future ladder change requires either a signup-rate snapshot
+      // in the engine or the 90-day notice below. Tracked in PR #18.
+      title: t("publicPages.promise.fee_lock_for_24_months"),
+      body: t("publicPages.promise.the_commission_rate_of_the_plan"),
+      practice:
+        t("publicPages.promise.if_a_creator_joins_on_free"),
+    },
+    {
+      number: "02",
+      title: t("publicPages.promise.no_plan_ever_blocks_you_from"),
+      body: t("publicPages.promise.the_selling_engine_is_on_every"),
+      practice:
+        t("publicPages.promise.a_creator_on_free_runs_a"),
+    },
+    {
+      number: "03",
+      title: t("publicPages.promise.data_portability_one_click"),
+      body: t("publicPages.promise.at_any_moment_you_can_export"),
+      practice:
+        t("publicPages.promise.skillsetmind_can_host_your_business_but"),
+    },
+    {
+      number: "04",
+      title: t("publicPages.promise.cancellation_in_one_click"),
+      body: t("publicPages.promise.delete_your_account_in_one_click"),
+      practice:
+        t("publicPages.promise.leaving_should_be_a_product_action"),
+    },
+    {
+      number: "05",
+      title: t("publicPages.promise.we_never_hold_your_money"),
+      body: t("publicPages.promise.your_buyers_pay_your_stripe_account"),
+      practice:
+        t("publicPages.promise.your_sale_lands_in_your_own"),
+    },
+    {
+      number: "06",
+      title: t("publicPages.promise.human_support_sla"),
+      body: t("publicPages.promise.financial_questions_refunds_payouts_holds_chargebacks"),
+      practice:
+        t("publicPages.promise.money_issues_do_not_belong_behind"),
+    },
+  ];
+
   return (
     <div className="page-shell">
       <SiteNav />
@@ -86,15 +93,13 @@ export default function PromisePage() {
           />
           <div className="relative z-10 mx-auto w-full max-w-7xl px-6 py-16 sm:px-8 lg:py-24">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/78">
-              The SkillsetMind Creator Promise
+              {t("publicPages.promise.the_skillsetmind_creator_promise")}
             </p>
             <h1 className="display-title mt-5 max-w-4xl text-5xl leading-none text-white sm:text-7xl">
-              Six commitments. In writing. Public.
+              {t("publicPages.promise.six_commitments_in_writing_public")}
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-8 text-white/78 sm:text-lg">
-              These promises are contractual product rules for creators building
-              on SkillsetMind: fee-locked, portable, cancellable, protected, and
-              supported by humans when money is involved.
+              {t("publicPages.promise.these_promises_are_contractual_product_rules")}
             </p>
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--color-accent)]" />
@@ -119,7 +124,7 @@ export default function PromisePage() {
                   </p>
                   <div className="mt-5 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                      What this means in practice
+                      {t("publicPages.promise.what_this_means_in_practice")}
                     </p>
                     <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
                       {promise.practice}
@@ -134,12 +139,10 @@ export default function PromisePage() {
         <section className="mx-auto w-full max-w-5xl px-6 pb-16 sm:px-8">
           <div className="rounded-[18px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-6 shadow-[var(--shadow-soft)] sm:p-8">
             <p className="text-sm leading-7 text-[var(--color-ink-soft)]">
-              These are not aspirations. They are the rules SkillsetMind holds itself
-              to. The next page lists every change ever made to them, including
-              the date and reason.
+              {t("publicPages.promise.these_are_not_aspirations_they_are")}
             </p>
             <Link href="/promise/changelog" className="button-solid mt-5 px-4 py-2.5 text-sm">
-              Read the changelog
+              {t("publicPages.promise.read_the_changelog")}
             </Link>
           </div>
         </section>

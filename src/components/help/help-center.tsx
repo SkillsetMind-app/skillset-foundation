@@ -1,7 +1,11 @@
 "use client";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
+
 import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import { LOCALES } from "@/lib/i18n/config";
+import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
 export type HelpItem = { id?: string; q: string; a: string };
 export type HelpCategory = {
@@ -21,23 +25,45 @@ type HelpCenterProps = {
  * search box — the control is now live rather than a dead placeholder.
  */
 export function HelpCenter({ categories }: HelpCenterProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const normalized = query.trim().toLowerCase();
+  const localizedCategories = useMemo(() => {
+    const text = (key: string, fallback: string) => {
+      const value = t(key);
+      return value === key ? fallback : value;
+    };
+    return categories.map((category) => ({
+      ...category,
+      label: text(`publicPages.helpFaq.${category.id}.label`, category.label),
+      items: category.items.map((item, index) => ({
+        ...item,
+        key: item.id ?? item.q,
+        q: text(`publicPages.helpFaq.${category.id}.items.${index}.q`, item.q),
+        a: text(`publicPages.helpFaq.${category.id}.items.${index}.a`, item.a),
+        searchText: [item.q, item.a, ...LOCALES.flatMap((locale) =>
+          ["q", "a"].map((field) => translate(
+            getDictionary(locale), `publicPages.helpFaq.${category.id}.items.${index}.${field}`,
+          )),
+        )].join(" ").toLowerCase(),
+      })),
+    }));
+  }, [categories, t]);
 
   const filteredCategories = useMemo(() => {
     if (!normalized) {
-      return categories;
+      return localizedCategories;
     }
 
-    return categories
+    return localizedCategories
       .map((category) => ({
         ...category,
         items: category.items.filter((item) =>
-          `${item.q} ${item.a}`.toLowerCase().includes(normalized),
+          item.searchText.includes(normalized),
         ),
       }))
       .filter((category) => category.items.length > 0);
-  }, [categories, normalized]);
+  }, [localizedCategories, normalized]);
 
   const isSearching = normalized.length > 0;
   const hasResults = filteredCategories.length > 0;
@@ -55,17 +81,17 @@ export function HelpCenter({ categories }: HelpCenterProps) {
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search help articles"
+          placeholder={t("publicPages.helpSearch.search_help_articles")}
           className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--color-ink-muted)]"
-          aria-label="Search help"
+          aria-label={t("publicPages.helpSearch.search_help")}
         />
       </div>
 
       {/* Category jump nav only makes sense for the full list — when a search
           is active the anchors could point at filtered-out sections. */}
       {!isSearching ? (
-        <nav aria-label="Help categories" className="mt-5 flex flex-wrap gap-2">
-          {categories.map((category) => (
+        <nav aria-label={t("publicPages.helpSearch.help_categories")} className="mt-5 flex flex-wrap gap-2">
+          {localizedCategories.map((category) => (
             <a
               key={category.id}
               href={`#${category.id}`}
@@ -95,7 +121,7 @@ export function HelpCenter({ categories }: HelpCenterProps) {
               <div className="mt-4 grid gap-4">
                 {category.items.map((item) => (
                   <article
-                    key={item.q}
+                    key={item.key}
                     id={item.id}
                     className={`rounded-[16px] border fine-rule bg-white p-5 shadow-[var(--shadow-soft)] ${item.id ? "scroll-mt-28" : ""}`}
                   >
@@ -114,11 +140,10 @@ export function HelpCenter({ categories }: HelpCenterProps) {
       ) : (
         <div className="mt-10 rounded-[16px] border fine-rule bg-white p-8 text-center shadow-[var(--shadow-soft)]">
           <p className="text-sm font-semibold text-[var(--color-ink)]">
-            No help articles match &ldquo;{query.trim()}&rdquo;.
+            {t("publicPages.helpSearch.no_results").replace("{query}", query.trim())}
           </p>
           <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
-            Try a different keyword, or contact support below — a real person
-            reads every message.
+            {t("publicPages.helpSearch.try_a_different_keyword_or_contact")}
           </p>
         </div>
       )}

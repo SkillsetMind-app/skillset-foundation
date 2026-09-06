@@ -1,3 +1,4 @@
+import { getServerTranslation } from "@/lib/i18n/server";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
@@ -9,17 +10,19 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 type PageProps = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { t } = await getServerTranslation();
   const { slug } = await params;
   const course = await getPublicCourseByRef(slug);
   return buildPageMetadata({
-    title: course ? `${course.title} — Checkout` : "Course checkout",
-    description: course?.summary || "Enroll in a course on SkillsetMind.",
+    title: course ? t("publicCourses.checkoutCourseTitle").replace("{title}", course.title) : t("publicCourses.checkoutTitle"),
+    description: course?.summary || t("publicCourses.checkoutDescription"),
     path: `/courses/${encodeURIComponent(slug)}/checkout`,
     image: course?.coverImageUrl,
   });
 }
 
 export default async function CourseCheckoutPage({ params }: PageProps) {
+  const { t } = await getServerTranslation();
   const { slug } = await params;
   const course = await getPublicCourseByRef(slug);
   return (
@@ -32,7 +35,7 @@ export default async function CourseCheckoutPage({ params }: PageProps) {
             <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--color-ink-soft)]">{course.summary}</p>
           </header>
         ) : null}
-        <Suspense fallback={<p role="status">Loading course checkout...</p>}>
+        <Suspense fallback={<p role="status">{t("publicCourses.loadingCheckout")}</p>}>
           <CreatorCourseDetail courseIdOverride={slug} checkoutOnly hideHeader={Boolean(course)} />
         </Suspense>
       </main>

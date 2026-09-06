@@ -1,3 +1,5 @@
+import { buildPageMetadata } from "@/lib/seo/page-metadata";
+import { getServerTranslation } from "@/lib/i18n/server";
 import {
   BadgeCheck,
   Compass,
@@ -14,39 +16,47 @@ type Step = {
   Icon: LucideIcon;
 };
 
-const steps: ReadonlyArray<Step> = [
-  {
-    title: "Discover",
-    detail:
-      "Learners browse the marketplace by category, preview lessons, and read creator profiles.",
-    Icon: Compass,
-  },
-  {
-    title: "Enroll",
-    detail:
-      "Multi-currency checkout, charged straight to the creator's own Stripe account — SkillsetMind is never in the middle of the money. Access activates only after the payment confirms.",
-    Icon: Wallet,
-  },
-  {
-    title: "Learn",
-    detail:
-      "Students progress through lessons, files, live events, and the course-linked community.",
-    Icon: GraduationCap,
-  },
-  {
-    title: "Verify",
-    detail:
-      "Meet the course requirements and earn a SkillsetMind Verified certificate with a public verification link anyone can check.",
-    Icon: BadgeCheck,
-  },
-];
 
-export default function HowItWorksPage() {
+
+export async function generateMetadata() {
+  const { t } = await getServerTranslation();
+  return buildPageMetadata({ title: t("publicPages.how.how_it_works"), description: t("publicPages.how.skillsetmind_keeps_the_main_loop_simple"), path: "/how-it-works" });
+}
+
+export default async function HowItWorksPage() {
+  const { t } = await getServerTranslation();
+  const steps: ReadonlyArray<Step> = [
+    {
+      title: t("publicPages.how.discover"),
+      detail:
+        t("publicPages.how.learners_browse_the_marketplace_by_category"),
+      Icon: Compass,
+    },
+    {
+      title: t("publicPages.how.enroll"),
+      detail:
+        t("publicPages.how.multi_currency_checkout_charged_straight_to"),
+      Icon: Wallet,
+    },
+    {
+      title: t("publicPages.how.learn"),
+      detail:
+        t("publicPages.how.students_progress_through_lessons_files_live"),
+      Icon: GraduationCap,
+    },
+    {
+      title: t("publicPages.how.verify"),
+      detail:
+        t("publicPages.how.meet_the_course_requirements_and_earn"),
+      Icon: BadgeCheck,
+    },
+  ];
+
   return (
     <PublicPage
-      eyebrow="How it works"
-      title="Course-first learning with community built in."
-      description="SkillsetMind keeps the main loop simple: creators publish structured courses, students enroll, learning happens inside a protected workspace, and progress leads toward proof."
+      eyebrow={t("publicPages.how.how_it_works")}
+      title={t("publicPages.how.course_first_learning_with_community_built")}
+      description={t("publicPages.how.skillsetmind_keeps_the_main_loop_simple")}
     >
       <section className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {steps.map((step, index) => {

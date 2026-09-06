@@ -1,3 +1,4 @@
+import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -56,6 +57,7 @@ describe("página do curso de criador", () => {
     expect(title).toHaveClass("page-title");
     expect(title.className).not.toMatch(/text-(4|5|6)xl/);
     expect(screen.getByText("client header hidden")).toBeInTheDocument();
+    expect(screen.getByText("12 lecciones")).toBeInTheDocument();
 
     // A capa que o cartão do marketplace já mostrava.
     expect(screen.getByRole("img", { name: "Deep Focus Systems" })).toHaveAttribute(
@@ -73,3 +75,5 @@ describe("página do curso de criador", () => {
     expect(screen.getByText("client header shown")).toBeInTheDocument();
   });
 });
+
+vi.mock("@/lib/i18n/server", () => ({ getServerTranslation: async () => ({ locale: "es", t: (key: string) => translate(getDictionary("es"), key) }) }));
