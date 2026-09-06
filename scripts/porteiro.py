@@ -95,6 +95,7 @@ def chama(diff: str, modelo: str, max_tokens: int, chave: str) -> tuple[str, dic
             {"role": "system", "content": SISTEMA},
             {"role": "user", "content": "Analise este diff:\n\n" + diff},
         ],
+        "response_format": {"type": "json_object"},
         "max_tokens": max_tokens,
         "temperature": 0.1,
     }).encode()
@@ -109,9 +110,8 @@ def chama(diff: str, modelo: str, max_tokens: int, chave: str) -> tuple[str, dic
                 dados = json.load(r)
             break
         except urllib.error.HTTPError as e:
-            corpo_erro = e.read()[:300].decode("utf-8", "replace")
             if e.code not in (408, 429, 500, 502, 503, 504):
-                raise RuntimeError(f"HTTP {e.code} da API: {corpo_erro}")
+                raise RuntimeError(f"HTTP {e.code} da API")
             ultimo = f"HTTP {e.code}"
         except (OSError, json.JSONDecodeError) as e:
             ultimo = type(e).__name__
@@ -119,7 +119,13 @@ def chama(diff: str, modelo: str, max_tokens: int, chave: str) -> tuple[str, dic
             raise RuntimeError(f"API falhou 6 vezes seguidas ({ultimo})")
         time.sleep(min(2 ** tentativa * 3, 60))
     esc = dados.get("choices") or [{}]
-    return (esc[0].get("message", {}).get("content") or "").strip(), dados.get("usage", {})
+    content = esc[0].get("message", {}).get("content")
+    tokens = (dados.get("usage") or {}).get("total_tokens", 0)
+    finish = esc[0].get("finish_reason")
+    return (content.strip() if isinstance(content, str) else ""), {
+        "total_tokens": tokens if type(tokens) is int and tokens >= 0 else 0,
+        "finish_reason": finish if finish in ("stop", "length", "tool_calls", "content_filter") else "other",
+    }
 
 
 def extrai_json(texto: str) -> dict | None:
@@ -144,8 +150,8 @@ def normaliza(bruto: dict | None) -> dict | None:
         return None
     fora = []
     for a in bruto["achados"]:
-        if not isinstance(a, dict) or not a.get("titulo"):
-            continue
+        if not isinstance(a, dict) or not isinstance(a.get("titulo"), str) or not a["titulo"].strip():
+            return None
         sev = str(a.get("severidade", "media")).lower().strip()
         try:
             conf = max(0.0, min(1.0, float(a.get("confianca", 0.5))))
@@ -172,21 +178,23 @@ def analisa(diff: str, modelo: str, chave: str) -> tuple[dict, dict]:
     tel = {"modelo": modelo, "tentativas": [], "segundos": 0.0, "tokens": 0}
     t0 = time.monotonic()
     teto = MAX_TOKENS_PADRAO
-    for _ in range(3):
+    for tentativa in range(1, 4):
         content, usage = chama(diff, modelo, teto, chave)
-        tel["tokens"] += usage.get("total_tokens", 0)
-        if not content:
-            tel["tentativas"].append("vazio")
-            if teto >= TETO_MAX_TOKENS:
-                break
-            teto = min(teto * 2, TETO_MAX_TOKENS)
-            continue
+        tel["tokens"] += usage["total_tokens"]
         r = normaliza(extrai_json(content))
-        if r is not None:
-            tel["tentativas"].append("ok")
+        estado = ("vazio" if not content else "json_malformado" if r is None
+                  else "truncado" if usage["finish_reason"] == "length"
+                  else "interrompido" if usage["finish_reason"] != "stop" else "ok")
+        tel["tentativas"].append(estado)
+        # Só enums e contagens. Nunca content, reasoning, erro ou achados.
+        print("tentativa: " + json.dumps({
+            "tentativa": tentativa, "teto": teto, "chars": len(content),
+            "tokens": usage["total_tokens"], "finish_reason": usage["finish_reason"],
+            "resultado": estado,
+        }))
+        if estado == "ok":
             tel["segundos"] = round(time.monotonic() - t0, 1)
             return r, tel
-        tel["tentativas"].append("json_malformado")
         teto = min(teto * 2, TETO_MAX_TOKENS)
     tel["segundos"] = round(time.monotonic() - t0, 1)
     tel["falhou"] = True
@@ -455,6 +463,74 @@ def demo() -> None:
     assert "0 achados" in placar(0, 0, "barra", {}, "")
     assert "NÃO ANALISADO" in nao_analisado("x", "avisa")
     assert normaliza(extrai_json("desculpe")) is None and normaliza(extrai_json('```json\n{"achados":[]}\n```')) == VAZIO
+    # Contrato HTTP e fail-closed: nenhuma chamada sai da máquina neste demo.
+    import io
+    from contextlib import redirect_stdout
+    from unittest.mock import patch, mock_open
+
+    def resposta(content, finish="stop", tokens=12):
+        return io.BytesIO(json.dumps({"choices": [{"message": {
+            "content": content, "reasoning_content": "PRIVATE_SENTINEL"},
+            "finish_reason": finish}], "usage": {"total_tokens": tokens}}).encode())
+
+    scenarios = [
+        ([('{"achados":[]}', "stop", 12)], 0, ["ok"]),
+        ([("", "length", 12), ('{"achados":', "length", 12),
+          ('{"achados":[]}', "stop", 12)], 0, ["vazio", "json_malformado", "ok"]),
+        ([('{"achados":[{}]}', "stop", 12)] * 3, 3, ["json_malformado"] * 3),
+        ([("", "length", 12)] * 3, 3, ["vazio"] * 3),
+        ([('{"achados":[]}', "length", 12)] * 3, 3, ["truncado"] * 3),
+        ([('{"achados":[]}', "content_filter", 12)] * 3, 3, ["interrompido"] * 3),
+        ([('{"achados":[]}', "unknown", 12)] * 3, 3, ["interrompido"] * 3),
+        ([("PRIVATE_SENTINEL", "PRIVATE_SENTINEL", "PRIVATE_SENTINEL")] * 3,
+         3, ["json_malformado"] * 3),
+    ]
+    for replies, expected_exit, states in scenarios:
+        output = io.StringIO()
+        with patch.dict(os.environ, {"GLM_API_KEY": "demo", "PORTEIRO_MODO": "barra"}, clear=True), \
+             patch("builtins.open", mock_open(read_data="diff --git a/a b/a\n+x")), \
+             patch(__name__ + ".escreve") as write, \
+             patch("urllib.request.urlopen", side_effect=[resposta(*r) for r in replies]) as request, \
+             redirect_stdout(output):
+            assert main(["--diff", "demo", "--placar", "demo"]) == expected_exit
+        assert request.call_count == len(replies)
+        for i, call in enumerate(request.call_args_list):
+            payload = json.loads(call.args[0].data)
+            assert payload.get("response_format") == {"type": "json_object"}
+            assert payload["max_tokens"] == [4000, 8000, 16000][i]
+        logs = [json.loads(line.removeprefix("tentativa: ")) for line in output.getvalue().splitlines()
+                if line.startswith("tentativa: ")]
+        assert [entry["resultado"] for entry in logs] == states
+        assert all(set(entry) == {"tentativa", "teto", "chars", "tokens", "finish_reason", "resultado"} for entry in logs)
+        for i, (entry, reply) in enumerate(zip(logs, replies)):
+            assert entry["tentativa"] == i + 1 and entry["teto"] == [4000, 8000, 16000][i]
+            assert entry["chars"] == len(reply[0])
+            assert entry["tokens"] == (reply[2] if type(reply[2]) is int else 0)
+            assert entry["finish_reason"] == (reply[1] if reply[1] in ("stop", "length", "tool_calls", "content_filter") else "other")
+        assert "PRIVATE_SENTINEL" not in output.getvalue() + str(write.call_args)
+        if expected_exit == 3:
+            assert "NÃO ANALISADO" in write.call_args.args[1]
+
+    for mode, expected_exit in (("avisa", 0), ("barra", 1)):
+        with patch.dict(os.environ, {"GLM_API_KEY": "demo", "PORTEIRO_MODO": mode}, clear=True), \
+             patch("builtins.open", mock_open(read_data="diff --git a/a b/a\n+x")), \
+             patch(__name__ + ".escreve"), patch(__name__ + ".manda_detalhe", return_value="demo"), \
+             patch("urllib.request.urlopen", return_value=resposta(json.dumps({"achados": [
+                 {"titulo": "demo", "arquivo": "a", "severidade": "alta", "confianca": 0.9}]}))), \
+             redirect_stdout(io.StringIO()):
+            assert main(["--diff", "demo", "--placar", "demo"]) == expected_exit
+
+    # Nem o corpo de erro HTTP pode chegar ao placar público.
+    output = io.StringIO()
+    with patch.dict(os.environ, {"GLM_API_KEY": "demo"}, clear=True), \
+         patch("builtins.open", mock_open(read_data="diff --git a/a b/a\n+x")), \
+         patch(__name__ + ".escreve") as write, \
+         patch("urllib.request.urlopen", side_effect=urllib.error.HTTPError(
+             URL, 400, "PRIVATE_SENTINEL", {}, io.BytesIO(b"PRIVATE_SENTINEL"))), \
+         redirect_stdout(output):
+        assert main(["--diff", "demo", "--placar", "demo"]) == 3
+    assert "PRIVATE_SENTINEL" not in output.getvalue() + str(write.call_args)
+
     print("demo ok")
 
 
