@@ -70,6 +70,7 @@ prova_red() (
   # esperado é um padrão glob: só o agregado de checks aceita um sufixo.
   if [[ "$status" -eq 0 || "$erro" == *$'\n'* || "$erro" != $esperado ]]; then
     echo "RED não comprovado ($descricao): saída ou erro diferente do esperado." >&2
+    printf '  Banco descartável (fixtures sintéticas), ERROR: %s\n' "${erro%%$'\n'*}" >&2
     return 1
   fi
   for testemunha in "${testemunhas[@]}"; do
