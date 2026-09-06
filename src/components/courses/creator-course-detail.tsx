@@ -474,7 +474,7 @@ export function CreatorCourseDetail({
 
   return (
     <>
-    <div className={checkoutOnly ? "grid min-w-0 gap-8 lg:grid-cols-[1fr_1fr]" : "grid gap-8 pb-24 lg:grid-cols-[1.15fr_0.85fr] lg:pb-0"}>
+    <div className={checkoutOnly ? "mx-auto grid w-full min-w-0 max-w-2xl gap-6" : "grid gap-8 pb-24 lg:grid-cols-[1.15fr_0.85fr] lg:pb-0"}>
       <section className="min-w-0">
         {hideHeader ? null : (
           <div

@@ -25,7 +25,7 @@ export default async function CourseCheckoutPage({ params }: PageProps) {
   return (
     <div className="page-shell">
       <SiteNav />
-      <main className="mx-auto w-full max-w-5xl px-6 py-10 sm:px-8 sm:py-14">
+      <main className="mx-auto w-full max-w-2xl px-6 py-10 sm:px-8 sm:py-14">
         {course ? (
           <header className="mb-6">
             <h1 className="display-title page-title break-words text-[var(--color-ink)]">{course.title}</h1>
