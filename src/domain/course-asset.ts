@@ -295,3 +295,17 @@ export function canViewCourseAssetVideo(params: {
   if (enrollmentStatus === "active" || enrollmentStatus === "completed") return true;
   return isAdmin;
 }
+
+/** Select the newest playable lesson upload; equal or invalid dates stay stable. */
+export function getPrimaryLessonVideoAsset(assets: readonly CourseAsset[]): CourseAsset | null {
+  return assets
+    .filter((asset) => isVideoAssetKind(asset.kind) && asset.contentType.startsWith("video/"))
+    .reduce<CourseAsset | null>((newest, asset) => {
+      if (!newest) return asset;
+      const a = Date.parse(String(asset.createdAt ?? ""));
+      const b = Date.parse(String(newest.createdAt ?? ""));
+      if (Number.isNaN(a)) return newest;
+      if (Number.isNaN(b)) return asset;
+      return a > b ? asset : newest;
+    }, null);
+}

@@ -2555,7 +2555,7 @@ export function CourseBuilderStudio() {
           </div>
         ) : null}
 
-        <div className="mt-8 flex items-center justify-between gap-3 border-t border-[var(--color-line)] pt-6">
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] pt-6">
           <button
             type="button"
             onClick={() => {
@@ -3048,6 +3048,18 @@ function MembersAreaTab({
   onDescriptionChange: (value: string) => void;
 }) {
   const [assets, setAssets] = useState<CourseAsset[]>([]);
+  const previewFrame = useRef<HTMLDivElement>(null);
+  const [previewWidth, setPreviewWidth] = useState(340);
+
+  useEffect(() => {
+    const frame = previewFrame.current;
+    if (!frame || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      setPreviewWidth(entry.contentRect.width);
+    });
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     return subscribeToCourseAssets(course.id, setAssets, () => undefined);
@@ -3067,7 +3079,7 @@ function MembersAreaTab({
   return (
     <div
       id="builder-sec-members"
-      className="mt-6 grid scroll-mt-24 gap-4 lg:grid-cols-[1fr_360px] lg:items-start"
+      className="mt-6 grid scroll-mt-24 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)] lg:items-start"
     >
       <div className="grid gap-4">
         <div className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -3166,15 +3178,13 @@ function MembersAreaTab({
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           Live preview
         </p>
-        {/* ponytail: fixed-scale thumbnail (1080px stage scaled to fit the
-            340px card) — a measured/responsive scale isn't worth it for a
-            corner preview; bump STAGE_WIDTH if the hero ever grows wider. */}
         <div
+          ref={previewFrame}
           data-members-theme={theme}
           aria-hidden="true"
           style={{
             width: "100%",
-            height: 174,
+            height: 174 * previewWidth / 340,
             overflow: "hidden",
             borderRadius: 10,
             background: "var(--ma-bg)",
@@ -3184,7 +3194,7 @@ function MembersAreaTab({
           <div
             style={{
               width: 1080,
-              transform: "scale(0.3148)",
+              transform: `scale(${previewWidth / 1080})`,
               transformOrigin: "top left",
             }}
           >
