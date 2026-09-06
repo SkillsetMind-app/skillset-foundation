@@ -10,11 +10,12 @@ import { PlatformHeader } from "@/components/platform/platform-header";
 
 const mocks = vi.hoisted(() => ({
   pathname: "/teach",
+  push: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mocks.pathname,
-  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  useRouter: () => ({ push: mocks.push, refresh: vi.fn() }),
 }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
@@ -37,6 +38,8 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
     t: (key: string) =>
       ({
         "platform.searchTeachPlaceholder": "Search your studio",
+        "platform.ops.searchSupport": "Search tickets in this queue",
+        "platform.ops.searchVerification": "Search applications in this queue",
         "platform.openSearch": "Open search",
         "platform.breadcrumbLabel": "Breadcrumb",
         "platform.crumbs.teach": "Teach",
@@ -67,6 +70,7 @@ function setPlatform(value: string) {
 const realPlatform = window.navigator.platform;
 
 beforeEach(() => {
+  vi.clearAllMocks();
   mocks.pathname = "/teach";
 });
 
@@ -76,6 +80,56 @@ afterEach(() => {
 });
 
 describe("busca na barra do topo", () => {
+  it("omits both the input and mobile trigger when the page has no search consumer", () => {
+    mocks.pathname = "/ops";
+    render(<PlatformHeader searchHref={null} />);
+    expect(screen.queryByRole("searchbox")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open search" })).toBeNull();
+  });
+
+  it.each(["support", "verification"])("keeps the %s queue and existing parameters when submitting", tab => {
+    mocks.pathname = "/ops";
+    render(<PlatformHeader searchHref={`/ops?tab=${tab}&status=open&q=previous`} />);
+    const input = screen.getByRole("searchbox");
+    expect(input).toHaveValue("previous");
+    expect(input).toHaveAccessibleName(tab === "support" ? "Search tickets in this queue" : "Search applications in this queue");
+    fireEvent.change(input, { target: { value: "  Ana & Bruno  " } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    const next = new URL(mocks.push.mock.calls[0][0], "https://skillset.test");
+    expect(next.pathname).toBe("/ops");
+    expect(next.searchParams.get("tab")).toBe(tab);
+    expect(next.searchParams.get("status")).toBe("open");
+    expect(next.searchParams.get("q")).toBe("Ana & Bruno");
+  });
+
+  it("restores the URL query on Back without losing focus, and submits an empty query to clear it", () => {
+    mocks.pathname = "/ops";
+    const { rerender } = render(<PlatformHeader searchHref="/ops?tab=support&q=Ana" />);
+    const input = screen.getByRole("searchbox");
+    input.focus();
+    rerender(<PlatformHeader searchHref="/ops?tab=support&q=Bruno" />);
+    expect(input).toHaveValue("Bruno");
+    rerender(<PlatformHeader searchHref="/ops?tab=support&q=Ana" />);
+    expect(input).toHaveValue("Ana");
+    expect(input).toHaveFocus();
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(mocks.push).toHaveBeenLastCalledWith("/ops?tab=support");
+  });
+
+  it.each([
+    ["/teach", "/teach?query=course%20name"],
+    ["/courses", "/courses?q=course%20name"],
+    ["/learn", "/courses?q=course%20name"],
+  ])("preserves the existing search destination outside Ops: %s", (pathname, expected) => {
+    mocks.pathname = pathname;
+    render(<PlatformHeader />);
+    const input = screen.getByRole("searchbox");
+    fireEvent.change(input, { target: { value: " course name " } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(mocks.push).toHaveBeenLastCalledWith(expected);
+  });
+
   it("desenha o campo de busca na barra do topo, nao na lateral", () => {
     render(<PlatformHeader />);
 
@@ -99,6 +153,7 @@ describe("busca na barra do topo", () => {
 
     expect(toggle).toHaveAttribute("aria-expanded", "true");
     expect(field.closest("label")).toHaveAttribute("data-open", "true");
+    expect(field).toHaveFocus();
   });
 
   it("no Mac a dica e ⌘K", () => {

@@ -408,7 +408,68 @@
       "access": "Access",
       "accessLevels": "Access levels",
       "unavailable": "Your access level does not include this queue.",
-      "back": "Back to Operations"
+      "back": "Back to Operations",
+      "searchSupport": "Search tickets in this queue",
+      "searchVerification": "Search applications in this queue",
+      "supportQueue": {
+        "title": "User support tickets",
+        "description": "Read user issues and move tickets through the status workflow.",
+        "countOne": "1 ticket",
+        "count": "{count} tickets",
+        "loading": "Loading support tickets...",
+        "loadError": "We could not load support tickets.",
+        "empty": "There are no support tickets yet.",
+        "noResults": "No tickets match this search.",
+        "unnamedUser": "Unnamed user",
+        "replySentLabel": "Reply sent to user",
+        "replyLabel": "Reply to user",
+        "replyHint": "Sending a reply also resolves this ticket.",
+        "replyPlaceholder": "Write the reply the user will read.",
+        "sendReply": "Send reply and resolve",
+        "updateReply": "Update reply and resolve",
+        "sending": "Sending...",
+        "updating": "Updating...",
+        "replyError": "We could not send this reply.",
+        "statusError": "We could not update this support ticket.",
+        "replySuccess": "Reply sent and ticket resolved.",
+        "statusSuccess": "Ticket status updated.",
+        "categories": {
+          "account": "Account",
+          "course": "Course",
+          "payment": "Payment",
+          "technical": "Technical",
+          "other": "Other"
+        }
+      },
+      "verificationQueue": {
+        "title": "Professional admission applications",
+        "description": "Check the registration against the official registry, then approve, request changes, or reject.",
+        "countOne": "1 pending",
+        "count": "{count} pending",
+        "loading": "Loading verification queue...",
+        "loadError": "We could not load the verification queue.",
+        "empty": "No verification applications are waiting right now.",
+        "noResults": "No applications match this search.",
+        "pendingTimestamp": "Pending timestamp",
+        "noEvidence": "No evidence links attached.",
+        "applicantNote": "Applicant note: {note}",
+        "reviewLabel": "Review note to creator",
+        "reviewPlaceholder": "Example: The registry lookup link does not show this registration number — attach the official lookup page.",
+        "reviewHint": "Required when requesting changes or rejecting. Optional when approving.",
+        "noteRequired": "Add a clear review note (at least 12 characters) before requesting changes or rejecting.",
+        "reviewError": "We could not record this decision. Please try again.",
+        "updating": "Updating...",
+        "decisions": {
+          "approved": "Approve",
+          "needs_changes": "Request changes",
+          "rejected": "Reject"
+        },
+        "success": {
+          "approved": "Creator approved — their professional badge is active.",
+          "needs_changes": "Application returned to the creator with your note.",
+          "rejected": "Application rejected with your note."
+        }
+      }
     },
     "queueCount": {
       "pending": "{count} pending",

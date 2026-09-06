@@ -31,6 +31,7 @@ type PlatformShellProps = {
   hideHeader?: boolean;
   /** Query-based workspaces resolve their active destination in the page. */
   currentNavigationHref?: string;
+  searchHref?: string | null;
   navigationCounts?: PlatformNavCounts;
   children: ReactNode;
 };
@@ -42,6 +43,7 @@ export function PlatformShell({
   compact = false,
   hideHeader = false,
   currentNavigationHref,
+  searchHref,
   navigationCounts,
   children,
 }: PlatformShellProps) {
@@ -95,7 +97,7 @@ export function PlatformShell({
               </aside>
 
               <div className="platform-main-column">
-                <PlatformHeader currentNavigationHref={currentNavigationHref} />
+                <PlatformHeader currentNavigationHref={currentNavigationHref} searchHref={searchHref} />
                 <section
                   className={`platform-content ${
                     compact ? "space-y-4" : "space-y-6"

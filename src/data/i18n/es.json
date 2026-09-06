@@ -408,7 +408,68 @@
       "access": "Acceso",
       "accessLevels": "Niveles de acceso",
       "unavailable": "Tu nivel de acceso no incluye esta cola.",
-      "back": "Volver a Operaciones"
+      "back": "Volver a Operaciones",
+      "searchSupport": "Buscar tickets en esta cola",
+      "searchVerification": "Buscar solicitudes en esta cola",
+      "supportQueue": {
+        "title": "Tickets de soporte de usuarios",
+        "description": "Revisa los problemas de los usuarios y actualiza el estado de cada ticket.",
+        "countOne": "1 ticket",
+        "count": "{count} tickets",
+        "loading": "Cargando tickets de soporte...",
+        "loadError": "No pudimos cargar los tickets de soporte.",
+        "empty": "Todavía no hay tickets de soporte.",
+        "noResults": "Ningún ticket coincide con esta búsqueda.",
+        "unnamedUser": "Usuario sin nombre",
+        "replySentLabel": "Respuesta enviada al usuario",
+        "replyLabel": "Respuesta al usuario",
+        "replyHint": "Al enviar una respuesta también se resuelve este ticket.",
+        "replyPlaceholder": "Escribe la respuesta que leerá el usuario.",
+        "sendReply": "Enviar respuesta y resolver",
+        "updateReply": "Actualizar respuesta y resolver",
+        "sending": "Enviando...",
+        "updating": "Actualizando...",
+        "replyError": "No pudimos enviar esta respuesta.",
+        "statusError": "No pudimos actualizar este ticket de soporte.",
+        "replySuccess": "Respuesta enviada y ticket resuelto.",
+        "statusSuccess": "Estado del ticket actualizado.",
+        "categories": {
+          "account": "Cuenta",
+          "course": "Curso",
+          "payment": "Pago",
+          "technical": "Técnico",
+          "other": "Otro"
+        }
+      },
+      "verificationQueue": {
+        "title": "Solicitudes de admisión profesional",
+        "description": "Comprueba los datos en el registro oficial y después aprueba, solicita cambios o rechaza la solicitud.",
+        "countOne": "1 pendiente",
+        "count": "{count} pendientes",
+        "loading": "Cargando cola de verificación...",
+        "loadError": "No pudimos cargar la cola de verificación.",
+        "empty": "No hay solicitudes de verificación pendientes.",
+        "noResults": "Ninguna solicitud coincide con esta búsqueda.",
+        "pendingTimestamp": "Fecha pendiente",
+        "noEvidence": "No se adjuntaron enlaces de verificación.",
+        "applicantNote": "Nota del solicitante: {note}",
+        "reviewLabel": "Nota de revisión para el creador",
+        "reviewPlaceholder": "Ejemplo: El enlace al registro no muestra este número de inscripción; adjunta la página de consulta oficial.",
+        "reviewHint": "Obligatoria para solicitar cambios o rechazar. Opcional al aprobar.",
+        "noteRequired": "Añade una nota de revisión clara (al menos 12 caracteres) antes de solicitar cambios o rechazar.",
+        "reviewError": "No pudimos registrar esta decisión. Inténtalo de nuevo.",
+        "updating": "Actualizando...",
+        "decisions": {
+          "approved": "Aprobar",
+          "needs_changes": "Solicitar cambios",
+          "rejected": "Rechazar"
+        },
+        "success": {
+          "approved": "Creador aprobado: su insignia profesional está activa.",
+          "needs_changes": "Solicitud devuelta al creador con tu nota.",
+          "rejected": "Solicitud rechazada con tu nota."
+        }
+      }
     },
     "queueCount": {
       "pending": "{count} pendientes",

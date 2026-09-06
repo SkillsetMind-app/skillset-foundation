@@ -78,6 +78,51 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); });
 function sidebar() { return screen.getByRole("navigation", { name: "Workspace" }); }
 
 describe("filas de Operações na barra", () => {
+  it.each(["access", "catalog", "payments", "community", "users", "audit"])("does not offer a global search without a consumer in %s", tab => {
+    mocks.query = `tab=${tab}&q=old`;
+    const { container } = render(<OpsPage />);
+    const header = container.querySelector(".platform-topbar")! as HTMLElement;
+    expect(within(header).queryByRole("searchbox")).toBeNull();
+    expect(within(header).queryByRole("button", { name: "Open search" })).toBeNull();
+  });
+
+  it.each(["support", "verification"])("connects a %s deep-link search to its loaded records", tab => {
+    mocks.query = `tab=${tab}&q=Ana`;
+    const rows = tab === "support"
+      ? [
+          { id: "a", userId: "a", userName: "Ana", userEmail: "ana@example.test", category: "course", status: "open", subject: "First ticket", message: "Original message" },
+          { id: "b", userId: "b", userName: "Bruno", userEmail: "bruno@example.test", category: "other", status: "open", subject: "Second ticket", message: "Another message" },
+        ]
+      : ["Ana", "Bruno"].map(name => ({ id: name, creatorId: name, applicantName: name, status: "pending", profession: "Mentor", registrationType: "Registry", registrationId: name, registrationRegion: "Florida", evidenceLinks: [], createdAt: "2026-08-20T13:00:00Z" }));
+    (tab === "support" ? mocks.support : mocks.verification).mockImplementation(next => { next(rows); return vi.fn(); });
+    const { rerender } = render(<OpsPage />);
+    const first = tab === "support" ? "First ticket" : "Ana";
+    const second = tab === "support" ? "Second ticket" : "Bruno";
+    expect(screen.getByRole("heading", { name: first })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: second })).toBeNull();
+    const field = screen.getByRole("searchbox");
+    expect(field).toHaveValue("Ana");
+    fireEvent.change(field, { target: { value: "Bruno" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(mocks.push).toHaveBeenLastCalledWith(`/ops?tab=${tab}&q=Bruno`);
+    mocks.query = `tab=${tab}&q=Bruno`;
+    rerender(<OpsPage />);
+    expect(screen.getByRole("heading", { name: second })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: first })).toBeNull();
+    mocks.query = `tab=${tab}&q=Ana`;
+    rerender(<OpsPage />);
+    expect(screen.getByRole("heading", { name: first })).toBeInTheDocument();
+  });
+
+  it("does not turn q into support access for an ops role without permission", () => {
+    mocks.user!.roles = ["ops"];
+    mocks.query = "tab=support&q=private";
+    const { container } = render(<OpsPage />);
+    expect(mocks.support).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Your access level does not include this queue.");
+    expect(within(container.querySelector(".platform-topbar")! as HTMLElement).queryByRole("searchbox")).toBeNull();
+  });
+
   it("exposes all eight existing URLs directly without retaining a second tab menu", () => {
     render(<OpsPage />);
     for (const [id, label] of queues) {
