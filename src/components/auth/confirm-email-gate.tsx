@@ -33,8 +33,8 @@ export function ConfirmEmailGate({
   const { t } = useTranslation();
   const [cooldown, setCooldown] = useState(0);
   const [isSending, setIsSending] = useState(false);
-  const [notice, setNotice] = useState("");
-  const [error, setError] = useState("");
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<{ cause: unknown } | null>(null);
 
   useEffect(() => {
     if (cooldown <= 0) {
@@ -49,14 +49,14 @@ export function ConfirmEmailGate({
       return;
     }
     setIsSending(true);
-    setError("");
-    setNotice("");
+    setError(null);
+    setSent(false);
     try {
       await resendSignupConfirmation(email);
-      setNotice(t("auth.signup.confirmResent"));
+      setSent(true);
       setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (caughtError) {
-      setError(getAuthErrorMessage(caughtError));
+      setError({ cause: caughtError });
     } finally {
       setIsSending(false);
     }
@@ -100,12 +100,12 @@ export function ConfirmEmailGate({
         ) : null}
       </div>
 
-      {notice ? (
-        <p className="text-xs font-semibold text-[var(--color-primary)]">{notice}</p>
+      {sent ? (
+        <p className="text-xs font-semibold text-[var(--color-primary)]">{t("auth.signup.confirmResent")}</p>
       ) : null}
       {error ? (
         <p role="alert" className="text-xs font-semibold text-[var(--color-danger-fg)]">
-          {error}
+          {getAuthErrorMessage(error.cause, t)}
         </p>
       ) : null}
 

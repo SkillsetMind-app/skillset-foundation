@@ -1,3 +1,8 @@
+"use client";
+
+import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
+
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Star } from "lucide-react";
@@ -36,6 +41,7 @@ export function courseCardBadge(card: CourseCard): string | null {
  * - resumo cortado em duas linhas em qualquer tela.
  */
 export type CourseTileProps = {
+  courseData?: Pick<CourseCard, "lessonCount" | "priceAmountMinor" | "currency" | "freePreviewHref" | "ratingCount" | "ownerId">;
   href: string;
   title: string;
   image: string;
@@ -56,6 +62,7 @@ export type CourseTileProps = {
 };
 
 export function CourseTile({
+  courseData,
   href,
   title,
   image,
@@ -66,12 +73,22 @@ export function CourseTile({
   priceLabel,
   rating,
   instructor,
-  actionLabel = "View course",
+  actionLabel,
   overlay,
   imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
   className = "",
 }: CourseTileProps) {
-  const kicker = [category, meta].filter(Boolean).join(" · ");
+  const { t, locale } = useTranslation();
+  const displayMeta = typeof courseData?.lessonCount === "number"
+    ? t(courseData.lessonCount === 1 ? "publicCourses.lessonOne" : "publicCourses.lessonMany").replace("{count}", String(courseData.lessonCount))
+    : meta;
+  const displayPrice = typeof courseData?.priceAmountMinor === "number"
+    ? new Intl.NumberFormat(locale, { style: "currency", currency: courseData.currency ?? "USD" }).format(courseData.priceAmountMinor / 100)
+    : courseData?.ownerId ? t("publicCourses.enrollmentSoon") : priceLabel;
+  const displayBadge = courseData
+    ? courseData.freePreviewHref ? t("publicCourses.preview") : !courseData.ratingCount ? t("publicCourses.new") : null
+    : badge;
+  const kicker = [category ? getCourseCategoryLabel(category, t) : category, displayMeta].filter(Boolean).join(" · ");
   const hasRating = Boolean(rating && rating.count > 0);
 
   return (
@@ -85,9 +102,9 @@ export function CourseTile({
           className="object-cover"
         />
         <div className="marketplace-card__scrim" />
-        {badge ? (
+        {displayBadge ? (
           <div className="marketplace-card__badges">
-            <span className="marketplace-card__tag">{badge}</span>
+            <span className="marketplace-card__tag">{displayBadge}</span>
           </div>
         ) : null}
         {overlay}
@@ -125,7 +142,7 @@ export function CourseTile({
                   strokeWidth={1.5}
                   className="fill-[var(--color-brand)] text-[var(--color-brand)]"
                 />
-                {rating.average.toFixed(1)}
+                {rating.average.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                 <span className="font-normal text-[var(--color-ink-soft)]">
                   ({rating.count})
                 </span>
@@ -134,13 +151,13 @@ export function CourseTile({
           </p>
         ) : null}
         <div className="marketplace-card__footer">
-          {priceLabel ? (
-            <span className="marketplace-card__price">{priceLabel}</span>
+          {displayPrice ? (
+            <span className="marketplace-card__price">{displayPrice}</span>
           ) : (
             <span />
           )}
           <span className="marketplace-card__cta">
-            {actionLabel}
+            {actionLabel ?? t("publicCourses.viewCourse")}
             <ArrowRight
               aria-hidden="true"
               size={14}

@@ -9,6 +9,8 @@ import ContactPage from "@/app/contact/page";
 import HelpPage from "@/app/help/page";
 import NotFound from "@/app/not-found";
 
+vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));
+
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({
     refreshUser: vi.fn(),
@@ -48,8 +50,8 @@ describe("títulos do site público", () => {
     ["Contact", ContactPage],
     ["Help", HelpPage],
     ["404", NotFound],
-  ])("%s: o h1 usa .page-title em vez de text-6xl fixo", (_name, Page) => {
-    render(<Page />);
+  ])("%s: o h1 usa .page-title em vez de text-6xl fixo", async (_name, Page) => {
+    render(Page === NotFound ? <NotFound /> : await Page());
 
     // 60px fixos estouravam a largura de um celular de 360px.
     const title = screen.getByRole("heading", { level: 1 });
@@ -76,8 +78,8 @@ describe("caminho de suporte sem login", () => {
   // /support exige conta: para um visitante, "Contact support" era uma tela
   // de login sem aviso. O e-mail vira o caminho principal e o ticket é
   // anunciado como o que é.
-  it("Help: e-mail como botão principal, ticket só para quem tem conta", () => {
-    render(<HelpPage />);
+  it("Help: e-mail como botão principal, ticket só para quem tem conta", async () => {
+    render(await HelpPage());
 
     expect(screen.getByRole("link", { name: "Email support" })).toHaveAttribute(
       "href",
@@ -91,8 +93,8 @@ describe("caminho de suporte sem login", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("Contact: o cartão de suporte manda e-mail; o ticket fica dito para quem tem conta", () => {
-    render(<ContactPage />);
+  it("Contact: o cartão de suporte manda e-mail; o ticket fica dito para quem tem conta", async () => {
+    render(await ContactPage());
 
     expect(screen.getByRole("link", { name: /Email support/ })).toHaveAttribute(
       "href",

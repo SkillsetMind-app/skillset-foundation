@@ -509,11 +509,11 @@ export function isAccountExistsError(error: unknown): boolean {
   return matches("user_already_exists") || matches("already registered");
 }
 
-export function getAuthErrorMessage(error: unknown): string {
+export function getAuthErrorMessage(error: unknown, t?: (key: string) => string): string {
   const { rawMessage, status, matches } = authErrorMatcher(error);
 
   if (matches("multi-factor") || matches("aal2")) {
-    return "Enter the code from your authenticator app to finish signing in.";
+    return t?.("authFlow.errors.mfaRequired") ?? "Enter the code from your authenticator app to finish signing in.";
   }
 
   if (
@@ -521,85 +521,86 @@ export function getAuthErrorMessage(error: unknown): string {
     matches("invalid login credentials") ||
     matches("invalid-credential")
   ) {
-    return "Incorrect email or password.";
+    return t?.("authFlow.errors.invalidCredentials") ?? "Incorrect email or password.";
   }
 
   if (matches("email_not_confirmed") || matches("email not confirmed")) {
-    return "Verify your email to finish signing in. Check your inbox for the link.";
+    return t?.("authFlow.errors.emailNotConfirmed") ?? "Verify your email to finish signing in. Check your inbox for the link.";
   }
 
   if (isAccountExistsError(error)) {
-    return "An account already exists with this email.";
+    return t?.("authFlow.errors.accountExists") ?? "An account already exists with this email.";
   }
 
   if (matches("pwned_password")) {
-    return "This password appeared in a known data breach. Pick a different one to keep the account secure.";
+    return t?.("authFlow.errors.pwnedPassword") ?? "This password appeared in a known data breach. Pick a different one to keep the account secure.";
   }
 
   if (matches("weak_password") || matches("password should be at least")) {
-    return "Use a stronger password with at least 8 characters.";
+    return t?.("authFlow.errors.weakPassword") ?? "Use a stronger password with at least 8 characters.";
   }
 
   // Supabase refuses every sign-in/signup when CAPTCHA protection is on in the
   // project but the client sends no token. Raw GoTrue text ("captcha protection:
   // request disallowed") leaks config detail and tells the visitor nothing.
   if (matches("captcha")) {
-    return "The security check did not go through. Reload the page and try again.";
+    return t?.("authFlow.errors.captcha") ?? "The security check did not go through. Reload the page and try again.";
   }
 
   // Covers over_email_send_rate_limit, over_request_rate_limit and the
   // human-readable "rate limit" variants GoTrue puts in messages.
   if (matches("rate_limit") || matches("rate limit")) {
-    return "Too many attempts. Wait a moment and try again.";
+    return t?.("authFlow.errors.rateLimit") ?? "Too many attempts. Wait a moment and try again.";
   }
 
   if (matches("otp_expired") || matches("token has expired")) {
-    return "That link or code expired. Request a fresh one and try again.";
+    return t?.("authFlow.errors.otpExpired") ?? "That link or code expired. Request a fresh one and try again.";
   }
 
   if (matches("invalid_otp") || matches("invalid totp") || matches("otp")) {
-    return "That code didn't match. Check your authenticator app and try again.";
+    return t?.("authFlow.errors.invalidOtp") ?? "That code didn't match. Check your authenticator app and try again.";
   }
 
   if (matches("user_not_found")) {
-    return "We couldn't find an account for that email.";
+    return t?.("authFlow.errors.userNotFound") ?? "We couldn't find an account for that email.";
   }
 
   if (matches("provider is not enabled") || matches("validation_failed")) {
-    return "This sign-in method isn't enabled yet.";
+    return t?.("authFlow.errors.providerUnavailable") ?? "This sign-in method isn't enabled yet.";
   }
 
   if (matches("email address") && matches("invalid")) {
-    return "Enter a valid email address.";
+    return t?.("authFlow.errors.invalidEmail") ?? "Enter a valid email address.";
   }
 
   if (matches("same_password") || matches("different from the old")) {
-    return "Your new password must be different from your old password.";
+    return t?.("authFlow.errors.samePassword") ?? "Your new password must be different from your old password.";
   }
 
   if (matches("error sending recovery email")) {
-    return "We could not send the password reset email. Please try again in a few minutes or contact support.";
+    return t?.("authFlow.errors.recoveryEmail") ?? "We could not send the password reset email. Please try again in a few minutes or contact support.";
   }
 
   // GoTrue signals a broken SMTP pipeline with this exact message and rolls
   // the signup back — surface it as a real failure, never a blank error.
   if (matches("error sending confirmation email")) {
-    return "We could not send the confirmation email. Please try again in a few minutes or contact support.";
+    return t?.("authFlow.errors.confirmationEmail") ?? "We could not send the confirmation email. Please try again in a few minutes or contact support.";
   }
 
   // Any other unexpected_failure / HTTP 500 is a generic server-side error
   // (this mapper is shared by sign-in, MFA, password change and recovery), so
   // stay operation-neutral instead of guessing which flow broke.
   if (matches("unexpected_failure") || status === 500) {
-    return "Something went wrong on our end. Please try again in a few minutes.";
+    return t?.("authFlow.errors.server") ?? "Something went wrong on our end. Please try again in a few minutes.";
   }
 
   if (matches("network") || matches("fetch")) {
-    return "Network request failed. Check your connection and try again.";
+    return t?.("authFlow.errors.network") ?? "Network request failed. Check your connection and try again.";
   }
 
-  // rawMessage is a trimmed string, so every path returns non-empty copy.
-  return rawMessage || "Something went wrong. Please try again.";
+  // Localized callers use safe generic copy for unknown provider failures;
+  // preserve the existing message contract for callers without a translator.
+  return t?.("authFlow.errors.unknown") ?? (rawMessage || "Something went wrong. Please try again.");
 }
 
 // ---------------------------------------------------------------------------

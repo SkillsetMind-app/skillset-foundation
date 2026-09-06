@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
+
 import { Circle, CircleCheck } from "lucide-react";
 
 type PasswordRequirement = {
@@ -48,12 +50,13 @@ export function isStrongPassword(password: string) {
 }
 
 export function PasswordStrengthChecklist({ password }: { password: string }) {
+  const { t } = useTranslation();
   const requirements = getPasswordRequirementState(password);
 
   return (
     <div className="rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3.5 py-3">
       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
-        Your password must include:
+        {t("authFlow.passwordRules.title")}
       </p>
       <ul className="mt-2 grid gap-1.5">
         {requirements.map((requirement) => {
@@ -70,7 +73,7 @@ export function PasswordStrengthChecklist({ password }: { password: string }) {
             >
               <Icon aria-hidden="true" size={14} strokeWidth={1.8} />
               <span className={requirement.met ? "line-through decoration-1" : ""}>
-                {requirement.label}
+                {t(`authFlow.passwordRules.${requirement.id}`)}
               </span>
             </li>
           );

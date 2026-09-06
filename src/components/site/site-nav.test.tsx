@@ -52,7 +52,7 @@ describe("SiteNav", () => {
     expect(compactBrand?.closest("a")?.parentElement).toHaveClass("md:hidden");
     expect(document.querySelector(".logo-wordmark__full")?.closest("a")?.parentElement).toHaveClass("hidden", "md:block");
 
-    expect(screen.getByRole("group", { name: "Language" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Language" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
     expect(screen.getByRole("link", { name: "Go to dashboard" })).toHaveAttribute("href", "/teach");
     fireEvent.keyDown(document, { key: "Escape" });
@@ -100,13 +100,10 @@ describe("SiteNav", () => {
   it("offers the language switch in the header", () => {
     render(<SiteNav />);
 
-    const group = screen.getByRole("group", { name: "Language" });
-    expect(
-      within(group).getByRole("button", { name: "English" }),
-    ).toHaveAttribute("aria-pressed", "true");
-    expect(
-      within(group).getByRole("button", { name: "Español" }),
-    ).toBeInTheDocument();
+    const selector = screen.getByRole("combobox", { name: "Language" });
+    expect(selector).toHaveValue("en");
+    expect(within(selector).getByRole("option", { name: "English" })).toHaveValue("en");
+    expect(within(selector).getByRole("option", { name: "Español" })).toHaveValue("es");
   });
 
   it("keeps the mobile menu in the same order and closes on Escape", () => {

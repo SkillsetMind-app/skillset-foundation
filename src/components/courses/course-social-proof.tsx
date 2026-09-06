@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
+
 import Link from "next/link";
 import { Star } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -29,6 +31,7 @@ export function CourseReviewsSection({
   ratingAverage?: number;
   ratingCount?: number;
 }) {
+  const { t, locale } = useTranslation();
   const [reviews, setReviews] = useState<CourseReview[]>([]);
 
   useEffect(() => {
@@ -61,17 +64,15 @@ export function CourseReviewsSection({
       id="reviews"
       className="mt-8 scroll-mt-24 rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
     >
-      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-        Learner reviews
-      </p>
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.reviewsTitle")}</p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <span className="display-title text-4xl leading-none text-[var(--color-primary)]">
-          {average.toFixed(1)}
+          {average.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
         </span>
         <div>
           <StarRow rating={average} />
           <p className="mt-1 text-xs font-semibold text-[var(--color-ink-soft)]">
-            {count} review{count === 1 ? "" : "s"} from enrolled learners
+            {t(count === 1 ? "publicCourses.reviewsOne" : "publicCourses.reviewsMany").replace("{count}", String(count))}
           </p>
         </div>
       </div>
@@ -84,7 +85,7 @@ export function CourseReviewsSection({
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold text-[var(--color-ink)]">
-                {review.authorName || "SkillsetMind learner"}
+                {review.authorName || t("publicCourses.learner")}
               </p>
               <StarRow rating={review.rating} compact />
             </div>
@@ -93,19 +94,16 @@ export function CourseReviewsSection({
                 {review.body}
               </p>
             ) : null}
-            {formatReviewDate(review.updatedAt ?? review.createdAt) ? (
+            {formatReviewDate(review.updatedAt ?? review.createdAt, locale) ? (
               <p className="mt-2 text-xs text-[var(--color-ink-soft)]">
-                {formatReviewDate(review.updatedAt ?? review.createdAt)}
+                {formatReviewDate(review.updatedAt ?? review.createdAt, locale)}
               </p>
             ) : null}
           </article>
         ))}
       </div>
 
-      <p className="mt-4 text-xs leading-6 text-[var(--color-ink-soft)]">
-        Every review here comes from an enrolled learner. SkillsetMind does not
-        accept reviews from anyone else.
-      </p>
+      <p className="mt-4 text-xs leading-6 text-[var(--color-ink-soft)]">{t("publicCourses.reviewsPolicy")}</p>
     </section>
   );
 }
@@ -140,6 +138,7 @@ export function CourseInstructorCard({
   teacherId: string;
   profile: PublicProfile | null;
 }) {
+  const { t } = useTranslation();
   // Teachers without a published public profile simply don't get the card —
   // never fabricate instructor identity. (publicProfiles is projected by a
   // Cloud Function and anonymously readable.)
@@ -147,13 +146,11 @@ export function CourseInstructorCard({
     return null;
   }
 
-  const name = profile.displayName || "SkillsetMind instructor";
+  const name = profile.displayName || t("publicCourses.instructorFallback");
 
   return (
     <div className="rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4">
-      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-        Your instructor
-      </p>
+      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.yourInstructor")}</p>
       <div className="mt-3 flex items-center gap-3">
         <UserAvatar name={name} photoURL={profile.photoURL} size="sm" />
         <div className="min-w-0">
@@ -179,14 +176,13 @@ export function CourseInstructorCard({
       <Link
         href={`/instructors/${encodeURIComponent(teacherId)}`}
         className="mt-3 inline-flex text-xs font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
-      >
-        View full instructor profile
-      </Link>
+      >{t("publicCourses.fullProfile")}</Link>
     </div>
   );
 }
 
 function StarRow({ rating, compact }: { rating: number; compact?: boolean }) {
+  const { t, locale } = useTranslation();
   const size = compact ? 13 : 16;
   const rounded = Math.round(rating);
 
@@ -194,7 +190,7 @@ function StarRow({ rating, compact }: { rating: number; compact?: boolean }) {
     <span
       className="inline-flex items-center gap-0.5"
       role="img"
-      aria-label={`Rated ${rating.toFixed(1)} out of 5`}
+      aria-label={t("publicCourses.rated").replace("{rating}", rating.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }))}
     >
       {[1, 2, 3, 4, 5].map((position) => (
         <Star
@@ -213,14 +209,14 @@ function StarRow({ rating, compact }: { rating: number; compact?: boolean }) {
   );
 }
 
-function formatReviewDate(value: unknown): string | null {
+function formatReviewDate(value: unknown, locale: string): string | null {
   if (
     typeof value === "object"
     && value !== null
     && "toMillis" in value
     && typeof (value as { toMillis?: unknown }).toMillis === "function"
   ) {
-    return new Intl.DateTimeFormat("en", {
+    return new Intl.DateTimeFormat(locale, {
       month: "short",
       year: "numeric",
     }).format((value as { toMillis: () => number }).toMillis());

@@ -4,6 +4,7 @@ import { InstructorProfileView } from "@/components/instructors/instructor-profi
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteNav } from "@/components/site/site-nav";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
+import { getServerTranslation } from "@/lib/i18n/server";
 
 // Per-slug metadata so every instructor profile gets a correct canonical
 // (/instructors/{slug}) instead of all collapsing onto /instructors, which told
@@ -14,10 +15,11 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const { t } = await getServerTranslation();
   return buildPageMetadata({
-    title: "Instructor",
+    title: t("publicPages.profile.metadata_title"),
     description:
-      "An independent expert publishing reviewed professional courses on SkillsetMind.",
+      t("publicPages.profile.metadata_description"),
     path: `/instructors/${slug}`,
   });
 }

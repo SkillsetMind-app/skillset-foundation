@@ -1,3 +1,5 @@
+import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
+import { getServerTranslation } from "@/lib/i18n/server";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -22,6 +24,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
+  const { t } = await getServerTranslation();
   const { slug } = await params;
   const course = getCourseBySlug(slug);
 
@@ -45,7 +48,7 @@ export async function generateMetadata({
       title: published.title,
       description:
         published.summary
-        ?? `${published.title} — curriculum, preview lessons, and enrollment on SkillsetMind.`,
+        ?? t("publicCourses.courseMetaTitle").replace("{title}", published.title),
       path: `/courses/${published.urlSlug}`,
       image: published.coverImageUrl,
     });
@@ -54,9 +57,9 @@ export async function generateMetadata({
   // Rascunho, curso removido ou slug inválido: fallback com escopo de curso, em
   // vez de herdar o título genérico do site.
   return buildPageMetadata({
-    title: "Course",
+    title: t("publicCourses.course"),
     description:
-      "Explore this SkillsetMind course — curriculum, preview lessons, and enrollment.",
+      t("publicCourses.courseMeta"),
     path: `/courses/${slug}`,
   });
 }
@@ -66,6 +69,7 @@ export default async function CourseDetailPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  const { t, locale } = await getServerTranslation();
   const { slug } = await params;
   const course = getCourseBySlug(slug);
 
@@ -105,7 +109,7 @@ export default async function CourseDetailPage({
                 </div>
               ) : null}
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                {published.category ?? "Course"}
+                {published.category ? getCourseCategoryLabel(published.category, t) : t("publicCourses.course")}
               </p>
               <h1 className="display-title page-title mt-3 text-[var(--color-ink)]">
                 {published.title}
@@ -117,8 +121,7 @@ export default async function CourseDetailPage({
               ) : null}
               {published.lessonCount ? (
                 <p className="mt-3 text-sm text-[var(--color-ink-muted)]">
-                  {published.lessonCount}{" "}
-                  {published.lessonCount === 1 ? "lesson" : "lessons"}
+                  {t(published.lessonCount === 1 ? "publicCourses.lessonOne" : "publicCourses.lessonMany").replace("{count}", String(published.lessonCount))}
                 </p>
               ) : null}
             </header>
@@ -128,7 +131,7 @@ export default async function CourseDetailPage({
             fallback={
               <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
                 <p className="text-sm text-[var(--color-ink-soft)]">
-                  Loading creator course...
+                  {t("publicCourses.loadingCourse")}
                 </p>
               </section>
             }
@@ -158,6 +161,9 @@ export default async function CourseDetailPage({
   // the JSON-LD can never claim InStock for a course this page cannot actually
   // sell (Article IV / Google structured-data parity).
   const purchasable = false;
+  const priceLabel = course.priceAmountMinor == null ? t("publicCourses.priceAnnounced")
+    : new Intl.NumberFormat(locale, { style: "currency", currency: course.currency }).format(course.priceAmountMinor / 100);
+  const levelKeys = { Foundation: "foundation", Professional: "professional", Advanced: "advanced" };
 
   return (
     <div className="page-shell">
@@ -181,7 +187,7 @@ export default async function CourseDetailPage({
               <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,39,68,0.8)] via-transparent to-transparent" />
             </div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              {course.category}
+              {getCourseCategoryLabel(course.category, t)}
             </p>
             {/* Title scales smoothly from 380px phones up to desktop — the
                 fixed text-6xl used to overflow narrow viewports. */}
@@ -215,13 +221,13 @@ export default async function CourseDetailPage({
                 no review or instructor-bio data, and fabricating it would
                 violate No-Invention. */}
             <nav
-              aria-label="Course sections"
+              aria-label={t("publicCourses.sections")}
               className="mt-10 flex flex-wrap gap-1 border-b border-[var(--color-line)]"
             >
               {[
-                ["Overview", "#overview"],
-                ["Free preview", "#free-preview"],
-                ["Curriculum", "#curriculum"],
+                [t("publicCourses.overview"), "#overview"],
+                [t("publicCourses.preview"), "#free-preview"],
+                [t("publicCourses.curriculum"), "#curriculum"],
               ].map(([label, href]) => (
                 <Link
                   key={href}
@@ -241,11 +247,9 @@ export default async function CourseDetailPage({
               id="free-preview"
               className="mt-10 scroll-mt-24 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-5 sm:p-6"
             >
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-                Free preview
-              </p>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.preview")}</p>
               <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-                Preview what&apos;s inside.
+                {t("publicCourses.previewInside")}
               </h2>
               <div className="mt-4 grid gap-3">
                 {previewLessons.length > 0 ? (
@@ -269,16 +273,14 @@ export default async function CourseDetailPage({
                   ))
                 ) : (
                   <p className="text-sm leading-7 text-[var(--color-ink-soft)]">
-                    The instructor has not added a public preview lesson yet.
+                    {t("publicCourses.noPreview")}
                   </p>
                 )}
               </div>
             </section>
 
             <section id="curriculum" className="mt-8 scroll-mt-24">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-                Course structure
-              </p>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.structure")}</p>
               <div className="mt-5 grid gap-4">
                 {course.modules.map((module) => (
                   <div key={module.id} className="rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4">
@@ -298,8 +300,8 @@ export default async function CourseDetailPage({
                             {lesson.title}
                           </span>
                           <span className="shrink-0 uppercase tracking-[0.16em]">
-                            {lesson.isPreview ? "Preview" : "Locked"} -{" "}
-                            {lesson.type.replace("_", " ")} - {lesson.duration}
+                            {lesson.isPreview ? t("publicCourses.previewShort") : t("publicCourses.locked")} -{" "}
+                            {t(`publicCourses.lessonTypes.${lesson.type}`)} - {lesson.duration}
                           </span>
                         </div>
                       ))}
@@ -314,24 +316,22 @@ export default async function CourseDetailPage({
                 six-row <dl> alongside Category and Level — buyers had to
                 scan past four neutral rows to find what it costs. Now it
                 anchors the sidebar so the cost is the first thing you see. */}
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              Access
-            </p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>
             <p className="display-title mt-1 text-4xl leading-none text-[var(--color-primary)]">
-              {course.priceLabel}
+              {priceLabel}
             </p>
             <p className="mt-2 text-xs leading-5 text-[var(--color-ink-soft)]">
-              {course.freePreviewLabel}
+              {t(`publicCourses.demoMetadata.${course.id}.preview`)}
             </p>
 
             <div className="mt-5 h-px bg-[var(--color-line)]" />
 
             <dl className="mt-5 grid gap-4">
               {[
-                ["Duration", course.durationLabel],
-                ["Status", course.statusLabel],
-                ["Category", course.category],
-                ["Level", course.level],
+                [t("publicCourses.duration"), t(`publicCourses.demoMetadata.${course.id}.duration`)],
+                [t("publicCourses.status"), t(`publicCourses.demoMetadata.${course.id}.status`)],
+                [t("publicCourses.category"), getCourseCategoryLabel(course.category, t)],
+                [t("publicCourses.level"), t(`publicCourses.${levelKeys[course.level]}`)],
               ].map(([label, value]) => (
                 <div key={label} className="border-b border-[var(--color-line)] pb-4 last:border-b-0 last:pb-0">
                   <dt className="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
@@ -344,15 +344,11 @@ export default async function CourseDetailPage({
               ))}
             </dl>
             <CourseEnrollmentCta course={course} />
-            <Link href="#free-preview" className="button-outline mt-3 w-full px-4 py-2.5 text-sm">
-              See free preview lessons
-            </Link>
+            <Link href="#free-preview" className="button-outline mt-3 w-full px-4 py-2.5 text-sm">{t("publicCourses.seePreview")}</Link>
             <Link
               href="/courses"
               className="mt-4 inline-flex w-full justify-center text-sm font-semibold text-[var(--color-primary)]"
-            >
-              Back to all courses
-            </Link>
+            >{t("publicCourses.backCourses")}</Link>
           </aside>
         </div>
       </main>
@@ -365,19 +361,15 @@ export default async function CourseDetailPage({
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 lg:hidden">
         <div className="pointer-events-auto flex items-center gap-3 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-              Access
-            </p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>
             <p className="display-title truncate text-xl leading-none text-[var(--color-primary)]">
-              {course.priceLabel}
+              {priceLabel}
             </p>
           </div>
           <Link
             href="#enroll-card"
             className="button-solid shrink-0 px-3.5 py-2 text-xs"
-          >
-            Enroll
-          </Link>
+          >{t("publicCourses.enroll")}</Link>
         </div>
       </div>
     </div>

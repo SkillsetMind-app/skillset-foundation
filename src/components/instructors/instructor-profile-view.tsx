@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
+
 import { ArrowRight, BookOpen, GraduationCap, Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -19,15 +21,14 @@ import { subscribeToPublicProfile } from "@/lib/data/user-profiles";
 import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
 export function InstructorProfileView({ uid }: { uid: string }) {
+  const { t } = useTranslation();
   const hasSupabaseConfig = Boolean(getSupabaseClientConfig());
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [isProfileLoading, setIsProfileLoading] = useState(hasSupabaseConfig);
   const [areCoursesLoading, setAreCoursesLoading] = useState(hasSupabaseConfig);
   const [hasProfileError, setHasProfileError] = useState(!hasSupabaseConfig);
-  const [coursesError, setCoursesError] = useState(
-    hasSupabaseConfig ? "" : "Instructor courses could not load right now.",
-  );
+  const [coursesError, setCoursesError] = useState(!hasSupabaseConfig);
 
   useEffect(() => {
     if (!hasSupabaseConfig) {
@@ -51,11 +52,11 @@ export function InstructorProfileView({ uid }: { uid: string }) {
       uid,
       (nextCourses) => {
         setCourses(nextCourses.filter((course) => !isInternalSmokeCourse(course)));
-        setCoursesError("");
+        setCoursesError(false);
         setAreCoursesLoading(false);
       },
       () => {
-        setCoursesError("Instructor courses could not load right now.");
+        setCoursesError(true);
         setAreCoursesLoading(false);
       },
     );
@@ -81,25 +82,24 @@ export function InstructorProfileView({ uid }: { uid: string }) {
     return (
       <section className="rounded-[18px] border border-dashed border-[rgba(26,54,93,0.18)] bg-[var(--color-surface-soft)] p-10 text-center">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          Profile unavailable
+          {t("publicPages.profile.profile_unavailable")}
         </p>
         <h1 className="display-title mt-4 text-3xl leading-tight text-[var(--color-primary)]">
-          This instructor profile isn&apos;t available.
+          {t("publicPages.profile.this_instructor_profile_isn_t_available")}
         </h1>
         <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
-          The instructor may not have published a profile yet. Explore the
-          marketplace to discover available courses.
+          {t("publicPages.profile.the_instructor_may_not_have_published")}
         </p>
         <div className="mt-7">
           <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
-            Browse the marketplace
+            {t("publicPages.profile.browse_the_marketplace")}
           </Link>
         </div>
       </section>
     );
   }
 
-  const name = profile.displayName || profile.username || `${brand.name} instructor`;
+  const name = profile.displayName || profile.username || t("publicPages.profile.fallback_name").replace("{brand}", brand.name);
   const branding = profile.storefront?.branding;
   // The projection already sanitizes these, but the accent lands in a CSS
   // custom property — cheapest possible second gate, reusing the domain rule.
@@ -147,7 +147,7 @@ export function InstructorProfileView({ uid }: { uid: string }) {
                 />
               ) : null}
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-                Instructor storefront
+                {t("publicPages.profile.instructor_storefront")}
               </p>
             </div>
             <div className="mt-5 flex flex-col gap-5 sm:flex-row sm:items-center">
@@ -176,17 +176,17 @@ export function InstructorProfileView({ uid }: { uid: string }) {
               </p>
             ) : (
               <p className="mt-6 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-                This instructor has published a reviewed public profile on{" "}
-                {brand.name}. Their course catalog appears below as it goes live.
+                {t("publicPages.profile.this_instructor_has_published_a_reviewed")}{" "}
+                {brand.name}{t("publicPages.profile.their_course_catalog_appears_below_as")}
               </p>
             )}
 
             <div className="mt-7 flex flex-wrap gap-3">
               <a href="#courses" className="button-solid px-4 py-2.5 text-sm">
-                View courses
+                {t("publicPages.profile.view_courses")}
               </a>
               <Link href="/courses" className="button-outline px-4 py-2.5 text-sm">
-                Browse marketplace
+                {t("publicPages.profile.browse_marketplace")}
               </Link>
             </div>
           </div>
@@ -194,17 +194,17 @@ export function InstructorProfileView({ uid }: { uid: string }) {
           <aside className="instructor-storefront-metrics">
             <InstructorMetric
               icon={BookOpen}
-              label="Published courses"
+              label={t("publicPages.profile.published_courses")}
               value={String(stats.courseCount)}
             />
             <InstructorMetric
               icon={GraduationCap}
-              label="Lessons"
+              label={t("publicPages.profile.lessons")}
               value={String(stats.lessonCount)}
             />
             <InstructorMetric
               icon={Star}
-              label="Categories"
+              label={t("publicPages.profile.categories")}
               value={String(stats.categoryCount)}
             />
           </aside>
@@ -213,7 +213,7 @@ export function InstructorProfileView({ uid }: { uid: string }) {
         {profile.credentials.length > 0 ? (
           <div className="border-t border-[var(--color-line)] p-6 sm:p-8 lg:p-10">
             <p className="text-sm font-bold text-[var(--color-ink)]">
-              Background &amp; credentials
+              {t("publicPages.profile.background_credentials")}
             </p>
             <ul className="mt-4 grid gap-3 sm:grid-cols-2">
               {profile.credentials.map((credential, index) => (
@@ -233,13 +233,13 @@ export function InstructorProfileView({ uid }: { uid: string }) {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              Course catalog
+              {t("publicPages.profile.course_catalog")}
             </p>
             <h2
               id="instructor-courses-heading"
               className="display-title mt-2 text-3xl text-[var(--color-primary)] sm:text-4xl"
             >
-              Courses by {name}
+              {t("publicPages.profile.courses_by")}{name}
             </h2>
           </div>
           {courses.length > 0 ? (
@@ -247,15 +247,14 @@ export function InstructorProfileView({ uid }: { uid: string }) {
               href="/courses"
               className="inline-flex items-center gap-2 text-sm font-bold text-[var(--color-primary)] underline-offset-4 hover:underline"
             >
-              Browse all courses
-              <ArrowRight aria-hidden="true" size={16} strokeWidth={1.9} />
+              {t("publicPages.profile.browse_all_courses")}<ArrowRight aria-hidden="true" size={16} strokeWidth={1.9} />
             </Link>
           ) : null}
         </div>
 
         {coursesError ? (
           <p className="mt-6 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {coursesError}
+            {t("publicPages.profile.courses_error")}
           </p>
         ) : null}
 
@@ -264,18 +263,16 @@ export function InstructorProfileView({ uid }: { uid: string }) {
         ) : courses.length === 0 ? (
           <div className="mt-6 rounded-[18px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-8 text-center">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              No public courses yet
+              {t("publicPages.profile.no_public_courses_yet")}
             </p>
             <h3 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
-              This instructor&apos;s first courses will appear here.
+              {t("publicPages.profile.this_instructor_s_first_courses_will")}
             </h3>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
-              {brand.name} only shows published courses from verified
-              professionals on instructor storefronts. Browse the marketplace
-              to see what is live now.
+              {brand.name} {t("publicPages.profile.only_shows_published_courses_from_verified")}
             </p>
             <Link href="/courses" className="button-solid mt-6 px-4 py-2.5 text-sm">
-              Browse marketplace
+              {t("publicPages.profile.browse_marketplace")}
             </Link>
           </div>
         ) : (
@@ -327,6 +324,7 @@ function InstructorCourseCard({
   course: TeacherCourse;
   instructor: { name: string; photoURL: string | null };
 }) {
+  const { t, locale } = useTranslation();
   return (
     <CourseTile
       href={`/courses/${course.id}`}
@@ -334,11 +332,11 @@ function InstructorCourseCard({
       image={course.coverImageUrl || "/brand/logo-mark.png"}
       summary={course.summary}
       category={course.category}
-      meta={`${course.lessonCount} lesson${course.lessonCount === 1 ? "" : "s"}`}
+      meta={`${course.lessonCount} ${t(course.lessonCount === 1 ? "publicPages.profile.lesson" : "publicPages.profile.lessons_count")}`}
       // O selo de status saiu: nesta vitrine todo curso listado ja e publico,
       // entao "Published" nao separava um cartao do outro.
-      badge={course.freePreviewLessonId ? "Free preview" : null}
-      priceLabel={formatPrice(course)}
+      badge={course.freePreviewLessonId ? t("publicPages.profile.free_preview") : null}
+      priceLabel={formatPrice(course, t, locale)}
       rating={
         course.ratingAverage && course.ratingCount
           ? { average: course.ratingAverage, count: course.ratingCount }
@@ -351,10 +349,11 @@ function InstructorCourseCard({
 }
 
 function InstructorProfileSkeleton() {
+  const { t } = useTranslation();
   return (
     <section aria-busy="true" aria-live="polite">
       <p role="status" className="sr-only">
-        Loading instructor profile...
+        {t("publicPages.profile.loading_instructor_profile")}
       </p>
       <div className="rounded-[22px] border border-[var(--color-line)] bg-white p-8 shadow-[var(--shadow-soft)]">
         <div className="flex animate-pulse flex-col gap-5 sm:flex-row sm:items-center">
@@ -421,17 +420,17 @@ function getInstructorStats(courses: TeacherCourse[]) {
   };
 }
 
-function formatPrice(course: TeacherCourse): string {
+function formatPrice(course: TeacherCourse, t: (key: string) => string, locale: string): string {
   if (course.paymentType === "free") {
-    return "Free enrollment";
+    return t("publicPages.profile.free_enrollment");
   }
 
   if (typeof course.priceAmountMinor === "number") {
-    return new Intl.NumberFormat("en", {
+    return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: course.currency ?? "USD",
     }).format(course.priceAmountMinor / 100);
   }
 
-  return "Enrollment opening soon";
+  return t("publicPages.profile.enrollment_soon");
 }

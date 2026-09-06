@@ -1,3 +1,4 @@
+import { getServerTranslation } from "@/lib/i18n/server";
 import { Suspense } from "react";
 
 import { CourseMarketplace } from "@/components/courses/course-marketplace";
@@ -5,14 +6,18 @@ import { SiteFooter } from "@/components/site/site-footer";
 import { SiteNav } from "@/components/site/site-nav";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
-export const metadata = buildPageMetadata({
-  title: "Browse courses",
+export async function generateMetadata() {
+  const { t } = await getServerTranslation();
+  return buildPageMetadata({
+  title: t("publicCourses.browseTitle"),
   description:
-    "Browse professional courses on SkillsetMind. Every course is reviewed by our team, with course communities, live sessions, and SkillsetMind Verified certificates.",
+    t("publicCourses.browseDescription"),
   path: "/courses",
-});
+  });
+}
 
-export default function CoursesPage() {
+export default async function CoursesPage() {
+  const { t } = await getServerTranslation();
   return (
     <div className="page-shell">
       <SiteNav />
@@ -20,17 +25,10 @@ export default function CoursesPage() {
         <div className="marketplace-page-header mb-8">
           <div className="marketplace-page-header__grid">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-                Marketplace
-              </p>
-              <h1 className="display-title marketplace-page-title">
-                Find the right course.
-              </h1>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.marketplace")}</p>
+              <h1 className="display-title marketplace-page-title">{t("publicCourses.findCourse")}</h1>
             </div>
-            <p className="marketplace-page-copy">
-              Browse professional courses, filter by category, preview free
-              lessons, and enroll when you find the right fit.
-            </p>
+            <p className="marketplace-page-copy">{t("publicCourses.browseBody")}</p>
           </div>
         </div>
 
@@ -45,7 +43,7 @@ export default function CoursesPage() {
 
 // SSR-visible fallback that mirrors the client-side loading state in
 // CourseMarketplace. Without this, search engines and no-JS visitors see
-// "Loading courses..." and bounce — the real page has filters + a card grid.
+// t("publicCourses.loadingCourses") and bounce — the real page has filters + a card grid.
 function MarketplaceSkeleton() {
   return (
     <section aria-hidden="true">

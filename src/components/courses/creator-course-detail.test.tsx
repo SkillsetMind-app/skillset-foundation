@@ -3,12 +3,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CreatorCourseDetail } from "@/components/courses/creator-course-detail";
 import { startCourseCheckout, enrollInFreeCreatorCourse } from "@/lib/payments/checkout";
+import { PaymentRequestError } from "@/lib/payments/client-fetch";
 import { getCourseLanding } from "@/lib/data/course-landings";
+import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
 const fixtures = vi.hoisted(() => ({
   auth: { status: "unauthenticated", user: null as { uid: string } | null },
   query: "",
+  locale: "en" as "en" | "es",
+  subscriptions: 0,
   router: { push: vi.fn(), replace: vi.fn() },
   course: {
     id: "course-1",
@@ -50,6 +54,8 @@ const fixtures = vi.hoisted(() => ({
   },
 }));
 
+vi.mock("@/components/i18n/i18n-provider", () => ({ useTranslation: () => ({ locale: fixtures.locale, t: (key: string) => translate(getDictionary(fixtures.locale), key) }) }));
+
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => fixtures.auth,
 }));
@@ -71,6 +77,7 @@ vi.mock("@/lib/data/published-courses", () => ({
     _ref: string,
     onNext: (course: TeacherCourse) => void,
   ) => {
+    fixtures.subscriptions += 1;
     onNext(fixtures.course);
     return () => {};
   },
@@ -108,6 +115,8 @@ vi.mock("@/components/courses/bunny-video-player", () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   fixtures.query = "";
+  fixtures.locale = "en";
+  fixtures.subscriptions = 0;
   fixtures.auth.status = "unauthenticated";
   fixtures.auth.user = null;
   fixtures.course.paymentType = "one_time";
@@ -318,5 +327,119 @@ describe("permanent checkout", () => {
     await waitFor(() => expect(fixtures.router.push).toHaveBeenCalledWith("/learn/courses/course-1"));
     expect(enrollInFreeCreatorCourse).toHaveBeenCalledWith("course-1");
     expect(startCourseCheckout).not.toHaveBeenCalled();
+  });
+});
+
+it("switches loaded checkout to Spanish without losing the coupon or subscribing again", async () => {
+  fixtures.auth = { status: "authenticated", user: { uid: "buyer" } };
+  const { rerender } = render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+  await screen.findByRole("button", { name: "Have a coupon?" });
+  fireEvent.click(screen.getByRole("button", { name: "Have a coupon?" }));
+  fireEvent.change(screen.getByLabelText("Coupon code"), { target: { value: "SAVE25" } });
+  const calls = fixtures.subscriptions;
+  fixtures.locale = "es";
+  rerender(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+  expect(screen.getByLabelText("Código de cupón")).toHaveValue("SAVE25");
+  expect(screen.getByRole("heading", { name: "Deep Focus Systems" })).toBeInTheDocument();
+  expect(screen.getByText("Build a repeatable focus practice.")).toBeInTheDocument();
+  expect(fixtures.subscriptions).toBe(calls);
+  fireEvent.click(screen.getByRole("button", { name: /Inscribirse —/ }));
+  await waitFor(() => expect(startCourseCheckout).toHaveBeenCalledWith("course-1", { couponCode: "SAVE25" }));
+});
+
+describe("checkout errors in the current locale", () => {
+  beforeEach(() => {
+    fixtures.auth = { status: "authenticated", user: { uid: "buyer" } };
+    fixtures.locale = "es";
+  });
+
+  it.each([
+    ["Coupon not found.", "Este cupón no es válido. Revisa el código o elimínalo para continuar."],
+    ["Invalid coupon code.", "Este cupón no es válido. Revisa el código o elimínalo para continuar."],
+    ["This coupon is not active.", "Este cupón ya no está disponible. Elimínalo o usa otro código."],
+    ["This coupon is no longer available.", "Este cupón ya no está disponible. Elimínalo o usa otro código."],
+    ["This coupon has expired.", "Este cupón ha caducado. Elimínalo o usa otro código."],
+    ["This coupon has reached its redemption limit.", "Este cupón ha alcanzado su límite de usos. Elimínalo o usa otro código."],
+    ["Invalid price for coupon redemption.", "Este cupón no se puede aplicar a este precio. Elimínalo o usa otro código."],
+    ["Coupon would zero out a paid checkout.", "Este cupón no se puede aplicar a este precio. Elimínalo o usa otro código."],
+  ])("shows a safe actionable coupon message for %s", async (message, expected) => {
+    vi.mocked(startCourseCheckout).mockRejectedValueOnce(new PaymentRequestError(message, 400));
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+    fireEvent.click(await screen.findByRole("button", { name: /Inscribirse —/ }));
+    expect(await screen.findByText(expected)).toBeInTheDocument();
+    expect(screen.queryByText(message)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Inscribirse —/ })).toBeEnabled();
+  });
+
+  it.each([
+    [409, "Another offer already has an active checkout. Close it or wait for it to expire before switching offers.", "Ya hay un proceso de pago activo para otra oferta. Vuelve a él o espera a que caduque antes de cambiar de oferta."],
+    [409, "A checkout for this course is already starting. Please try again in a moment.", "Ya se está iniciando el pago de este curso. Vuelve a intentarlo en un momento."],
+    [409, "A subscription checkout for this course is already starting. Please try again in a moment.", "Ya se está iniciando el pago de este curso. Vuelve a intentarlo en un momento."],
+    [409, "This course is already attached to your learning workspace.", "Ya tienes acceso a este curso. Ábrelo desde tu espacio de aprendizaje."],
+    [409, "You already have a subscription for this course.", "Ya tienes una suscripción a este curso. Revisa tus suscripciones antes de volver a intentarlo."],
+    [400, "A valid courseId is required.", "Abre este curso desde el catálogo y vuelve a intentarlo."],
+    [400, "The selected offer is invalid.", "La oferta seleccionada ya no está disponible."],
+    [400, "The selected offer code is invalid.", "La oferta seleccionada ya no está disponible."],
+    [400, "This course is not available for purchase right now.", "Este curso no está disponible para comprar en este momento."],
+    [400, "You can't purchase your own course.", "No puedes comprar tu propio curso."],
+    [400, "This course does not have a paid checkout price yet.", "Este curso todavía no tiene un precio de compra."],
+    [400, "This teacher has not connected Stripe payouts yet.", "Este instructor todavía no está listo para aceptar pagos."],
+    [400, "This teacher must finish Stripe onboarding before paid checkout opens.", "Este instructor todavía no está listo para aceptar pagos."],
+    [404, "Course not found.", "Curso no encontrado."],
+    [429, "Too many attempts. Please wait before trying again.", "Demasiados intentos. Espera antes de volver a intentarlo."],
+  ])("localizes the known checkout response %s: %s", async (status, message, expected) => {
+    vi.mocked(startCourseCheckout).mockRejectedValueOnce(new PaymentRequestError(message, status));
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+    fireEvent.click(await screen.findByRole("button", { name: /Inscribirse —/ }));
+    expect(await screen.findByText(expected)).toBeInTheDocument();
+    expect(screen.queryByText(message)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [401, "unauthenticated", "Vuelve a iniciar sesión para comenzar el pago."],
+    [503, "payments_not_configured", "Los pagos no están disponibles temporalmente. Inténtalo más tarde."],
+  ])("uses the public error code %s/%s without showing provider details", async (status, code, expected) => {
+    vi.mocked(startCourseCheckout).mockRejectedValueOnce(new PaymentRequestError("PRIVATE_INTERNAL_DETAIL", status, code));
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+    fireEvent.click(await screen.findByRole("button", { name: /Inscribirse —/ }));
+    expect(await screen.findByText(expected)).toBeInTheDocument();
+    expect(screen.queryByText(/PRIVATE_INTERNAL_DETAIL/)).not.toBeInTheDocument();
+  });
+
+  it("translates an existing error on toggle without losing coupon, offer, or subscriptions", async () => {
+    fixtures.locale = "en";
+    fixtures.query = "offer=LAUNCH";
+    withOffers();
+    vi.mocked(startCourseCheckout).mockRejectedValueOnce(new PaymentRequestError("This coupon has expired.", 400));
+    const { rerender } = render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+    fireEvent.click(await screen.findByRole("button", { name: "Have a coupon?" }));
+    fireEvent.change(screen.getByLabelText("Coupon code"), { target: { value: "SAVE25" } });
+    fireEvent.click(await screen.findByRole("button", { name: /Enroll — \$49.00/ }));
+    expect(await screen.findByText("This coupon has expired. Remove it or use another code.")).toBeInTheDocument();
+    const calls = fixtures.subscriptions;
+
+    fixtures.locale = "es";
+    rerender(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+
+    expect(screen.getByText("Este cupón ha caducado. Elimínalo o usa otro código.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Código de cupón")).toHaveValue("SAVE25");
+    expect(screen.getByRole("button", { name: /Inscribirse —/ })).toBeEnabled();
+    expect(fixtures.subscriptions).toBe(calls);
+    expect(startCourseCheckout).toHaveBeenCalledTimes(1);
+    expect(startCourseCheckout).toHaveBeenCalledWith("course-1", { couponCode: "SAVE25", offerId: "offer-1", offerCode: "LAUNCH", priceId: "price-1" });
+  });
+
+  it.each([
+    new Error("This coupon has expired."),
+    new PaymentRequestError("PRIVATE_INTERNAL_DETAIL", 400),
+    new PaymentRequestError("This coupon has expired. PRIVATE_INTERNAL_DETAIL", 400),
+    new PaymentRequestError("This coupon has expired.", 500),
+    new PaymentRequestError("PRIVATE_INTERNAL_DETAIL", 500, "payments_not_configured"),
+  ])("keeps an unknown or mismatched response generic: %s", async (error) => {
+    vi.mocked(startCourseCheckout).mockRejectedValueOnce(error);
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+    fireEvent.click(await screen.findByRole("button", { name: /Inscribirse —/ }));
+    expect(await screen.findByText("No pudimos iniciar el pago seguro. Inténtalo de nuevo o contacta con soporte.")).toBeInTheDocument();
+    expect(screen.queryByText(/PRIVATE_INTERNAL_DETAIL|This coupon has expired/)).not.toBeInTheDocument();
   });
 });

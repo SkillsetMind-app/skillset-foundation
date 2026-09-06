@@ -1,3 +1,4 @@
+import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import Page, { generateMetadata } from "./page";
@@ -15,6 +16,9 @@ it("renders public title and compact checkout with the route reference", async (
 it("uses public course metadata and the permanent checkout canonical", async () => {
   const metadata = await generateMetadata({ params: Promise.resolve({ slug: "focus" }) });
   expect(metadata.title).toContain("Focus");
+  expect(metadata.title).toContain("Pago");
   expect(metadata.description).toBe("Build focus");
   expect(metadata.alternates?.canonical).toBe("https://www.skillsetmind.com/courses/focus/checkout");
 });
+
+vi.mock("@/lib/i18n/server", () => ({ getServerTranslation: async () => ({ locale: "es", t: (key: string) => translate(getDictionary("es"), key) }) }));

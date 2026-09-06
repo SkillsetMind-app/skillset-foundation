@@ -3,6 +3,7 @@
 import { LoginForm } from "@/components/auth/login-form";
 import { SignupForm } from "@/components/auth/signup-form";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { BrandPortrait } from "@/components/shared/brand-portrait";
 import { getAuthPathIntentFromSearchParams } from "@/lib/auth/routing";
@@ -101,13 +102,17 @@ export function AuthPage() {
       <div className="auth-form-col">
         <div className="auth-topbar">
           <LogoWordmark nav />
+          <div className="flex items-center gap-2">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 rounded-[10px] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
+            aria-label={t("auth.page.backToHome")}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-[10px] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
           >
             <ArrowLeft aria-hidden="true" size={14} strokeWidth={1.8} />
-            {t("auth.page.backToHome")}
+            <span className="hidden sm:inline">{t("auth.page.backToHome")}</span>
           </Link>
+          <LocaleSwitcher />
+          </div>
         </div>
         <section className="auth-main">
           <div className="auth-card">

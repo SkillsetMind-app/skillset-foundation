@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { OnboardingProgress } from "@/components/auth/onboarding-progress";
 import { OnboardingQuestion } from "@/components/auth/onboarding-question";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { skillsetCourseCategories } from "@/domain/teacher-course";
 import type { OnboardingAnswers } from "@/domain/user-profile";
@@ -16,6 +17,7 @@ import {
 } from "@/lib/auth/routing";
 import { isValidPhoneNumber } from "@/domain/user-profile";
 import { validateDisplayName } from "@/lib/auth/profile-validation";
+import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 import {
   getUserProfile,
   updateOnboardingAnswers,
@@ -79,19 +81,33 @@ const audienceOptions = [
   "I'm building it now",
 ];
 
-// Single source for the two branch answers whose labels are rendered inline in
-// the step JSX (path cards, alreadySold radios). Referenced by both the step
-// renderers and the completion recap so the summary can never drift from what
-// the user actually saw and picked. primaryGoal needs no map: its stored values
-// are the category labels themselves.
+// Persisted values stay unchanged; only their labels follow the current locale.
+const optionKeys: Record<string, string> = {
+  Coach: "coach",
+  Facilitator: "facilitator",
+  "Trainer or educator": "educator",
+  "Mentor or consultant": "mentor",
+  Other: "other",
+  "A friend or colleague": "friend",
+  "Search engine": "search",
+  Podcast: "podcast",
+  "I'd rather not say": "privateRevenue",
+  "Less than 1,000 followers": "audienceSmall",
+  "1,000 - 10,000 followers": "audienceMedium",
+  "10,000 - 100,000 followers": "audienceLarge",
+  "100,000+ followers": "audienceLargest",
+  "I'm building it now": "audienceNew",
+};
+
+// Steps and completion recap use the same keys, never translated answer values.
 const pathLabels: Record<"student" | "teacher", string> = {
-  student: "I want to learn",
-  teacher: "I want to teach",
+  student: "authFlow.onboarding.studentPath",
+  teacher: "authFlow.onboarding.teacherPath",
 };
 
 const alreadySoldLabels: Record<"yes" | "no", string> = {
-  yes: "Yes, I sell on another platform",
-  no: "Not yet, this will be my first",
+  yes: "authFlow.onboarding.alreadySelling",
+  no: "authFlow.onboarding.notSellingYet",
 };
 
 function wait(ms: number) {
@@ -155,8 +171,8 @@ function getFirstIncompleteIndex(questions: QuestionDefinition[], answers: Onboa
 }
 
 function firstName(displayName: string | null | undefined, email: string | null | undefined) {
-  const source = displayName?.trim() || email?.split("@")[0] || "there";
-  return source.split(/\s+/)[0] || "there";
+  const source = displayName?.trim() || email?.split("@")[0] || "";
+  return source.split(/\s+/)[0] || "";
 }
 
 function compactAnswers(input: OnboardingAnswers): OnboardingAnswers {
@@ -202,6 +218,7 @@ function compactAnswers(input: OnboardingAnswers): OnboardingAnswers {
 }
 
 export function OnboardingWizard() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { status, user } = useAuth();
@@ -226,6 +243,12 @@ export function OnboardingWizard() {
 
   const questions = useMemo(() => getVisibleQuestions(answers), [answers]);
   const activeQuestion = questions[Math.min(currentIndex, questions.length - 1)];
+
+  function optionLabel(value: string) {
+    return Object.hasOwn(optionKeys, value)
+      ? t(`authFlow.onboarding.options.${optionKeys[value]}`)
+      : getCourseCategoryLabel(value, t);
+  }
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -260,7 +283,7 @@ export function OnboardingWizard() {
       })
       .catch(() => {
         if (mounted) {
-          setError("Could not load saved onboarding answers. You can continue from here.");
+          setError("authFlow.onboarding.loadError");
         }
       })
       .finally(() => {
@@ -327,7 +350,7 @@ export function OnboardingWizard() {
         advance(cleanedAnswers);
       }
     } catch {
-      setError("Could not save this answer. Check your connection and try again.");
+      setError("authFlow.onboarding.answerSaveError");
     }
   }
 
@@ -342,14 +365,14 @@ export function OnboardingWizard() {
     }
 
     if (!isAnswered(activeQuestion, answers)) {
-      return "Answer this question before continuing.";
+      return "authFlow.onboarding.answerRequired";
     }
 
     if (activeQuestion.id === "instagramHandle" && answers.instagramHandle) {
       const validHandle = /^[a-zA-Z0-9_.]{1,30}$/.test(answers.instagramHandle);
 
       if (!validHandle) {
-        return "Use only letters, numbers, underscores, or periods.";
+        return "authFlow.onboarding.invalidHandle";
       }
     }
 
@@ -371,7 +394,7 @@ export function OnboardingWizard() {
 
     const nameError = validateDisplayName(profileName);
     if (nameError) {
-      setError("Tell us your name — at least 2 letters, so we know what to call you.");
+      setError("authFlow.onboarding.invalidName");
       return;
     }
     // Telefone: obrigatorio para quem vai VENDER (suporte, pagamentos,
@@ -379,7 +402,7 @@ export function OnboardingWizard() {
     // Quando preenchido, tem que ser um numero de verdade.
     const phone = profilePhone.trim();
     if (phone ? !isValidPhoneNumber(phone) : phoneRequired) {
-      setError("Enter a phone number with area code, like +1 555 123 4567.");
+      setError("authFlow.onboarding.invalidPhone");
       return;
     }
 
@@ -392,7 +415,7 @@ export function OnboardingWizard() {
       });
       await updateAnswer({ ...answers, profileConfirmed: true }, true);
     } catch {
-      setError("Could not save your profile. Check your connection and try again.");
+      setError("authFlow.onboarding.profileSaveError");
     } finally {
       setIsSaving(false);
     }
@@ -456,7 +479,7 @@ export function OnboardingWizard() {
           : returnTo ?? "/learn",
       );
     } catch {
-      setError("Could not finish onboarding. Please try again.");
+      setError("authFlow.onboarding.finishError");
       setIsSaving(false);
     }
   }
@@ -476,7 +499,7 @@ export function OnboardingWizard() {
         <div className="text-center">
           <div className="mx-auto mb-5 size-14 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
           <p className="text-sm font-semibold text-[var(--color-primary)]">
-            Preparing onboarding
+            {t("authFlow.onboarding.preparing")}
           </p>
         </div>
       </main>
@@ -484,31 +507,30 @@ export function OnboardingWizard() {
   }
 
   if (isComplete) {
-    // Recap echoes back what the user picked, sourced from the same `answers`
-    // state and the same labels the steps rendered (pathLabels /
-    // alreadySoldLabels; primaryGoal values are their own labels). The
+    // Recap localizes the same answer values shown by the steps. The
     // alreadySold row only shows when the teacher branch was taken.
     const recap: { label: string; value: string }[] = [];
+    const name = firstName(user?.displayName, user?.email);
 
     if (answers.path && answers.path in pathLabels) {
       recap.push({
-        label: "You want to",
-        value: pathLabels[answers.path as "student" | "teacher"],
+        label: t("authFlow.onboarding.recapPath"),
+        value: t(pathLabels[answers.path as "student" | "teacher"]),
       });
     }
 
     if (answers.path === "teacher" && answers.profession) {
-      recap.push({ label: "Your work", value: answers.profession });
+      recap.push({ label: t("authFlow.onboarding.recapWork"), value: optionLabel(answers.profession) });
     }
 
     if (answers.primaryGoal && answers.primaryGoal.length > 0) {
-      recap.push({ label: "Interests", value: answers.primaryGoal.join(", ") });
+      recap.push({ label: t("authFlow.onboarding.recapInterests"), value: answers.primaryGoal.map(optionLabel).join(", ") });
     }
 
     if (answers.path === "teacher" && answers.alreadySold) {
       recap.push({
-        label: "Selling online",
-        value: alreadySoldLabels[answers.alreadySold],
+        label: t("authFlow.onboarding.recapSelling"),
+        value: t(alreadySoldLabels[answers.alreadySold]),
       });
     }
 
@@ -516,18 +538,18 @@ export function OnboardingWizard() {
       <main className="grid min-h-screen place-items-center bg-[var(--color-base)] px-5">
         <section className="text-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Welcome aboard
+            {t("authFlow.onboarding.welcome")}
           </p>
           <h1 className="display-title mt-4 text-[38px] font-semibold leading-[1.1] text-[var(--color-primary)]">
-            You&apos;re all set, {firstName(user?.displayName, user?.email)}.
+            {name ? t("authFlow.onboarding.allSet").replace("{name}", name) : t("authFlow.onboarding.allSetAnonymous")}
           </h1>
           <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
-            SkillsetMind is preparing your workspace. Taking you there now.
+            {t("authFlow.onboarding.completeDescription")}
           </p>
           {recap.length > 0 ? (
             <dl className="mx-auto mt-8 max-w-md space-y-3 rounded-[16px] border-[1.5px] border-[var(--color-line)] bg-white p-6 text-left">
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--color-ink-soft)]">
-                Your answers
+                {t("authFlow.onboarding.yourAnswers")}
               </p>
               {recap.map((row) => (
                 <div
@@ -581,7 +603,7 @@ export function OnboardingWizard() {
           disabled={currentIndex === 0 || isSaving}
           className="rounded-[10px] px-5 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] disabled:pointer-events-none disabled:opacity-40"
         >
-          Back
+          {t("authFlow.onboarding.back")}
         </button>
 
         <div className="flex items-center gap-3">
@@ -592,7 +614,7 @@ export function OnboardingWizard() {
               disabled={isSaving}
               className="px-2 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition hover:text-[var(--color-primary)] disabled:opacity-60"
             >
-              Skip for now
+              {t("authFlow.onboarding.skip")}
             </button>
           ) : null}
           <button
@@ -601,7 +623,7 @@ export function OnboardingWizard() {
             disabled={isSaving}
             className="btn-cta-hero px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSaving ? "Saving..." : "Continue"}
+            {t(isSaving ? "authFlow.onboarding.saving" : "authFlow.onboarding.continue")}
           </button>
         </div>
       </footer>
@@ -614,27 +636,27 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
-            title="First, tell us who you are."
+            title={t("authFlow.onboarding.profileTitle")}
             lead={
               phoneRequired
-                ? "Your name shows on your profile and certificates. Your phone stays private — we use it for payouts, verification and support."
-                : "Your name shows on your profile and certificates. Your phone is optional and stays private — only for account security and support."
+                ? t("authFlow.onboarding.teacherProfileLead")
+                : t("authFlow.onboarding.studentProfileLead")
             }
           >
             <div className="grid gap-4">
               <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-                Full name
+                {t("authFlow.onboarding.fullName")}
                 <input
                   type="text"
                   value={profileName}
                   onChange={(event) => setProfileName(event.target.value)}
                   autoComplete="name"
-                  placeholder="Your name"
+                  placeholder={t("authFlow.onboarding.namePlaceholder")}
                   className="field-input"
                 />
               </label>
               <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-                {phoneRequired ? "Phone" : "Phone (optional)"}
+                {t(phoneRequired ? "authFlow.onboarding.phone" : "authFlow.onboarding.optionalPhone")}
                 <input
                   type="tel"
                   value={profilePhone}
@@ -653,22 +675,22 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
-            title="How will you use SkillsetMind first?"
-            lead="You can do both later. This shapes your first dashboard."
+            title={t("authFlow.onboarding.pathTitle")}
+            lead={t("authFlow.onboarding.pathLead")}
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <PathCard
                 icon="learn"
                 selected={answers.path === "student"}
-                title={pathLabels.student}
-                description="Browse programs, enroll, join communities, earn credentials."
+                title={t(pathLabels.student)}
+                description={t("authFlow.onboarding.studentPathDescription")}
                 onClick={() => void updateAnswer({ ...answers, path: "student" }, true)}
               />
               <PathCard
                 icon="teach"
                 selected={answers.path === "teacher"}
-                title={pathLabels.teacher}
-                description="Build courses, publish to the marketplace, and sell worldwide."
+                title={t(pathLabels.teacher)}
+                description={t("authFlow.onboarding.teacherPathDescription")}
                 onClick={() => void updateAnswer({ ...answers, path: "teacher" }, true)}
               />
             </div>
@@ -679,11 +701,12 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
-            title="What best describes your work?"
-            lead="This helps SkillsetMind review your courses and tailor your studio."
+            title={t("authFlow.onboarding.professionTitle")}
+            lead={t("authFlow.onboarding.professionLead")}
           >
             <OptionGrid
               options={professionOptions}
+              getLabel={optionLabel}
               selected={answers.profession ? [answers.profession] : []}
               onSelect={(option) =>
                 void updateAnswer({ ...answers, profession: option }, true)
@@ -696,10 +719,11 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
-            title="Where did you hear about SkillsetMind?"
+            title={t("authFlow.onboarding.discoveryTitle")}
           >
             <OptionGrid
               options={sourceOptions}
+              getLabel={optionLabel}
               selected={answers.sourceOfDiscovery ? [answers.sourceOfDiscovery] : []}
               onSelect={(option) =>
                 void updateAnswer({ ...answers, sourceOfDiscovery: option }, true)
@@ -712,19 +736,19 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
-            title="Are you already selling online?"
+            title={t("authFlow.onboarding.sellingTitle")}
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <LargeRadio
                 selected={answers.alreadySold === "yes"}
-                title={alreadySoldLabels.yes}
-                description="Hotmart, Kajabi, Teachable, Eduzz, anything."
+                title={t(alreadySoldLabels.yes)}
+                description={t("authFlow.onboarding.alreadySellingDescription")}
                 onClick={() => void updateAnswer({ ...answers, alreadySold: "yes" }, true)}
               />
               <LargeRadio
                 selected={answers.alreadySold === "no"}
-                title={alreadySoldLabels.no}
-                description="SkillsetMind is built for newcomers too."
+                title={t(alreadySoldLabels.no)}
+                description={t("authFlow.onboarding.notSellingYetDescription")}
                 onClick={() =>
                   void updateAnswer(
                     { ...answers, alreadySold: "no", monthlyRevenue: undefined },
@@ -740,8 +764,8 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
-            title="What's your monthly revenue from online sales today?"
-            lead="Honest answers help SkillsetMind calibrate features for your scale."
+            title={t("authFlow.onboarding.revenueTitle")}
+            lead={t("authFlow.onboarding.revenueLead")}
           >
             <div className="grid gap-2">
               {revenueOptions.map((option) => (
@@ -758,7 +782,7 @@ export function OnboardingWizard() {
                       : "border-[var(--color-line)] text-[var(--color-ink)]",
                   ].join(" ")}
                 >
-                  {option}
+                  {optionLabel(option)}
                   <span className="size-5 rounded-full border border-[var(--color-line)]" />
                 </button>
               ))}
@@ -772,18 +796,19 @@ export function OnboardingWizard() {
             number={question.number}
             title={
               answers.path === "teacher"
-                ? "What kind of program will you publish?"
-                : "What do you want to learn first?"
+                ? t("authFlow.onboarding.teacherGoalTitle")
+                : t("authFlow.onboarding.studentGoalTitle")
             }
           >
             <OptionGrid
               multi
               options={categoryOptions}
+              getLabel={optionLabel}
               selected={answers.primaryGoal ?? []}
               onSelect={toggleGoal}
             />
             <p className="mt-3 text-center text-xs font-semibold text-[var(--color-ink-soft)]">
-              Choose up to three.
+              {t("authFlow.onboarding.chooseThree")}
             </p>
             <ErrorMessage error={error} />
           </OnboardingQuestion>
@@ -794,10 +819,10 @@ export function OnboardingWizard() {
             number={question.number}
             title={
               answers.path === "teacher"
-                ? "What's your Instagram handle? SkillsetMind uses it for review and discovery."
-                : "What's your Instagram handle? (optional)"
+                ? t("authFlow.onboarding.teacherInstagramTitle")
+                : t("authFlow.onboarding.studentInstagramTitle")
             }
-            lead="Just the @ - no full URL needed."
+            lead={t("authFlow.onboarding.instagramLead")}
           >
             <div className="flex overflow-hidden rounded-[10px] border-[1.5px] border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]">
               <span className="grid place-items-center border-r border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 text-sm font-semibold text-[var(--color-ink-soft)]">
@@ -809,7 +834,7 @@ export function OnboardingWizard() {
                   setAnswers({ ...answers, instagramHandle: event.target.value })
                 }
                 onBlur={() => void persistAnswers(answers)}
-                placeholder="yourhandle"
+                placeholder={t("authFlow.onboarding.instagramPlaceholder")}
                 className="min-w-0 flex-1 px-4 py-3 text-sm outline-none"
               />
             </div>
@@ -820,7 +845,7 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
-            title="Do you already have an audience?"
+            title={t("authFlow.onboarding.audienceTitle")}
           >
             <div className="grid gap-2">
               {audienceOptions.map((option) => (
@@ -837,7 +862,7 @@ export function OnboardingWizard() {
                       : "border-[var(--color-line)] text-[var(--color-ink)]",
                   ].join(" ")}
                 >
-                  {option}
+                  {optionLabel(option)}
                 </button>
               ))}
             </div>
@@ -927,11 +952,13 @@ function LargeRadio({
 }
 
 function OptionGrid({
+  getLabel,
   multi = false,
   onSelect,
   options,
   selected,
 }: {
+  getLabel: (option: string) => string;
   multi?: boolean;
   onSelect: (option: string) => void;
   options: string[];
@@ -958,7 +985,7 @@ function OptionGrid({
             ].join(" ")}
             disabled={multi && selected.length >= 3 && !isSelected}
           >
-            {option}
+            {getLabel(option)}
           </button>
         );
       })}
@@ -967,13 +994,14 @@ function OptionGrid({
 }
 
 function ErrorMessage({ error }: { error: string }) {
+  const { t } = useTranslation();
   if (!error) {
     return null;
   }
 
   return (
     <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-center text-sm font-semibold text-[var(--color-danger-fg)]">
-      {error}
+      {t(error)}
     </p>
   );
 }
