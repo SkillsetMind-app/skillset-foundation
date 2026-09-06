@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { formatCourseAssetSize } from "@/domain/course-asset";
 import type { UploadCourseAssetProgress } from "@/lib/data/course-assets";
 
@@ -10,6 +13,7 @@ export function UploadProgressNote({
 }: {
   progress: UploadCourseAssetProgress;
 }) {
+  const { t } = useTranslation();
   const { percent } = progress;
   const done = progress.state === "success";
 
@@ -19,7 +23,7 @@ export function UploadProgressNote({
       className="rounded-[10px] border fine-rule bg-white p-3"
     >
       <div className="flex items-center justify-between gap-3 text-xs font-semibold text-[var(--color-primary)]">
-        <span>{done ? "Upload complete" : percent === null ? "Sending..." : "Uploading"}</span>
+        <span>{t(`courseMedia.upload.${done ? "complete" : percent === null ? "sending" : "uploading"}`)}</span>
         <span>
           {percent === null
             ? formatCourseAssetSize(progress.totalBytes)
@@ -35,8 +39,9 @@ export function UploadProgressNote({
             />
           </div>
           <p className="mt-2 text-[11px] text-[var(--color-ink-soft)]">
-            {formatCourseAssetSize(progress.bytesTransferred)} of{" "}
-            {formatCourseAssetSize(progress.totalBytes)}
+            {t("courseMedia.upload.transferred")
+              .replace("{transferred}", () => formatCourseAssetSize(progress.bytesTransferred))
+              .replace("{total}", () => formatCourseAssetSize(progress.totalBytes))}
           </p>
         </>
       ) : null}

@@ -89,8 +89,15 @@ export const supabaseUploadLimitBytes = Math.min(
 
 export function courseAssetUploadLimitMessage(
   limitBytes: number = supabaseUploadLimitBytes,
+  t?: (key: string) => string,
 ): string {
-  return `This file exceeds the current upload limit (~${formatCourseAssetSize(limitBytes)}). Use a YouTube link or a smaller file.`;
+  return uploadLimitMessage(formatCourseAssetSize(limitBytes), t);
+}
+
+function uploadLimitMessage(limit: string, t?: (key: string) => string): string {
+  return t
+    ? t("courseMedia.upload.errors.limit").replace("{limit}", () => limit)
+    : `This file exceeds the current upload limit (~${limit}). Use a YouTube link or a smaller file.`;
 }
 
 function readUploadErrorStatus(error: unknown): number | null {
@@ -121,9 +128,12 @@ function readUploadErrorStatus(error: unknown): number | null {
 export function getCourseAssetUploadErrorMessage(
   error: unknown,
   limitBytes: number = supabaseUploadLimitBytes,
+  t?: (key: string) => string,
 ): string {
   const status = readUploadErrorStatus(error);
   const message = error instanceof Error ? error.message : "";
+  const translated = (key: string, fallback: string) =>
+    t ? t(`courseMedia.upload.errors.${key}`) : fallback;
 
   if (
     status === 413 ||
@@ -131,17 +141,20 @@ export function getCourseAssetUploadErrorMessage(
       message,
     )
   ) {
-    // A pre-flight limit error already carries the right limit in its message.
-    return /exceeds the current upload limit/i.test(message)
-      ? message
-      : courseAssetUploadLimitMessage(limitBytes);
+    // Keep the original preflight limit even if this screen has another default.
+    if (/exceeds the current upload limit/i.test(message)) {
+      if (!t) return message;
+      const capturedLimit = /\(~(\d+(?:\.\d+)? (?:B|KB|MB|GB))\)/.exec(message)?.[1];
+      return uploadLimitMessage(capturedLimit ?? formatCourseAssetSize(limitBytes), t);
+    }
+    return courseAssetUploadLimitMessage(limitBytes, t);
   }
 
   if (
     status === 403 ||
     /row-level security|not authorized|permission/i.test(message)
   ) {
-    return "You do not have permission to upload files to this course.";
+    return translated("permission", "You do not have permission to upload files to this course.");
   }
 
   // Falhas do provedor de vídeo chegavam como `bunny-create-failed:<status>` e
@@ -150,15 +163,15 @@ export function getCourseAssetUploadErrorMessage(
   const bunnyStatus = /bunny-create-failed:(\d{3})/.exec(message)?.[1];
   if (bunnyStatus) {
     if (bunnyStatus === "429") {
-      return "Too many uploads in the last hour. Wait a little and try again — nothing was lost.";
+      return translated("rateLimit", "Too many uploads in the last hour. Wait a little and try again — nothing was lost.");
     }
     if (bunnyStatus === "401" || bunnyStatus === "419") {
-      return "Your session expired. Sign in again and re-send the file.";
+      return translated("session", "Your session expired. Sign in again and re-send the file.");
     }
     if (bunnyStatus === "403") {
-      return "You do not have permission to upload video to this course.";
+      return translated("videoPermission", "You do not have permission to upload video to this course.");
     }
-    return "Our video service did not accept the file just now. Try again in a few minutes.";
+    return translated("videoService", "Our video service did not accept the file just now. Try again in a few minutes.");
   }
 
   // tus (upload retomável) lança DetailedError, cuja mensagem é um parágrafo de
@@ -168,7 +181,21 @@ export function getCourseAssetUploadErrorMessage(
     && typeof error === "object"
     && ("originalRequest" in error || "originalResponse" in error)
   ) {
-    return "The upload was interrupted — usually the connection dropped. Check your internet and send the file again.";
+    return translated("interrupted", "The upload was interrupted — usually the connection dropped. Check your internet and send the file again.");
+  }
+
+  if (t) {
+    // These local transport errors are actionable; unknown provider text stays
+    // out of localized UI. Callers without a translator retain the legacy copy.
+    const localErrors: Record<string, string> = {
+      "Unsupported file type or file too large.": "invalidFile",
+      "Cover image URL is not on an allowed media host.": "coverHost",
+      "Pay the one-time activation fee before uploading course video.": "activation",
+    };
+    const key = Object.hasOwn(localErrors, message.trim())
+      ? localErrors[message.trim()]
+      : "generic";
+    return t(`courseMedia.upload.errors.${key}`);
   }
 
   // Última linha de defesa: nunca devolver texto que só faz sentido para quem

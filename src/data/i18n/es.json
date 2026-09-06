@@ -1495,5 +1495,144 @@
     },
     "pageTitle": "Inicia sesión o crea una cuenta",
     "loadingForm": "Cargando el formulario de inicio de sesión"
+  },
+  "creatorEditor": {
+    "lesson": {
+      "tabs": {
+        "video": "Video",
+        "description": "Descripción",
+        "materials": "Materiales",
+        "settings": "Configuración"
+      },
+      "state": {
+        "uploaded": "Subido",
+        "embedded": "Insertado",
+        "empty": "Vacío",
+        "done": "Listo",
+        "preview": "Vista previa",
+        "private": "Privado"
+      },
+      "number": "Lección {lessonIndex}",
+      "close": "Cerrar el editor de la lección",
+      "untitled": "Lección sin título",
+      "context": "Módulo {moduleIndex} - {moduleTitle} / Lección {lessonIndex}",
+      "setup": "Configuración de la lección",
+      "previewLabel": "Vista previa del video de la lección",
+      "previewTitle": "Vista previa del video",
+      "savedProcessing": "La subida está guardada. Los videos nuevos pueden seguir procesándose antes de poder reproducirse.",
+      "embedDetected": "Video de {provider} detectado.",
+      "embedInvalid": "El enlace está guardado, pero no se reproducirá en el aula. Usa una URL de video estándar de YouTube o Vimeo.",
+      "embedEmpty": "Pega un enlace si el video ya está alojado fuera de SkillsetMind.",
+      "uploadVideo": "Subir video de la lección",
+      "uploadVideoHelp": "MP4, MOV, WebM o cualquier archivo de video compatible con el navegador.",
+      "uploadRecording": "Subir grabación en vivo",
+      "uploadRecordingHelp": "Grabación de clases grupales, mentorías o seminarios web.",
+      "videoHelp": "Sube el video a SkillsetMind o pega una URL de YouTube o Vimeo. Los estudiantes pueden reproducir ambas opciones en el aula.",
+      "noVideo": "Todavía no hay ningún archivo de video subido.",
+      "title": "Título de la lección",
+      "description": "Descripción de la lección",
+      "descriptionHelp": "Se muestra debajo del video en el área de miembros.",
+      "descriptionPlaceholder": "Explica qué aprenderá el estudiante y por qué es útil.",
+      "text": "Contenido de texto, instrucciones o notas",
+      "textHelp": "Úsalo para lecciones de texto, tareas, guiones o puntos clave.",
+      "textPlaceholder": "Añade el esquema de la lección, las instrucciones de la tarea, una lista de pasos o notas de apoyo.",
+      "materialsHelp": "Los archivos complementarios se adjuntan a esta lección y se pueden descargar desde el aula.",
+      "noMaterials": "Todavía no hay materiales complementarios.",
+      "type": "Tipo de lección",
+      "duration": "Duración en minutos",
+      "freePreview": "Vista previa gratuita",
+      "freePreviewHelp": "Muestra esta lección antes de la compra. SkillsetMind recomienda una buena lección de muestra.",
+      "freePreviewLabel": "Usar esta lección como vista previa gratuita",
+      "drip": "Retraso de publicación en días",
+      "dripHelp": "Deja el campo vacío para publicar de inmediato o indica cuántos días después de la inscripción se habilita.",
+      "thumbnailHelp": "Puedes subir una miniatura. Se muestra en el área de miembros cuando los estudiantes exploran las lecciones.",
+      "noThumbnail": "Todavía no hay miniatura de la lección.",
+      "contextHelp": "Configura la lección que los estudiantes verán, leerán, descargarán y comentarán.",
+      "saveHelp": "Los archivos se guardan al subirlos. El texto y la configuración se guardan con el borrador del curso.",
+      "file": {
+        "selectAnother": "Elegir otro archivo",
+        "select": "Elegir archivo",
+        "allowPreview": "Permitir este archivo en la vista previa pública cuando sea seguro.",
+        "cancel": "Cancelar subida",
+        "upload": "Subir archivo",
+        "uploading": "Subiendo..."
+      },
+      "progress": {
+        "sending": "Enviando {total}...",
+        "determinate": "{percent}% - {transferred} de {total}"
+      },
+      "errors": {
+        "load": "No pudimos cargar los archivos de la lección.",
+        "notVideo": "\"{fileName}\" no es un archivo de video. Usa MP4, MOV o WebM.",
+        "videoTooLarge": "Este video ocupa {size}; el límite es {limit}.",
+        "videoLimit": "Usa un archivo de video de menos de {limit}.",
+        "invalidFile": "Usa un archivo válido de {kind} de menos de {limit}.",
+        "delete": "No pudimos eliminar este archivo. Revisa la titularidad del curso y los permisos actuales."
+      },
+      "success": {
+        "uploaded": "Archivo subido a esta lección.",
+        "deleted": "Archivo eliminado."
+      },
+      "deleteConfirm": "¿Eliminar \"{fileName}\"? El archivo se eliminará de forma permanente.",
+      "thumbnailAlt": "Miniatura de la lección: {fileName}",
+      "enrolledOnly": "Solo inscritos",
+      "deleting": "Eliminando...",
+      "delete": "Eliminar"
+    },
+    "videoSource": {
+      "heading": "Añade el video de la lección",
+      "fileInput": "Subir un video de la lección",
+      "dropActive": "Suelta el video para seleccionarlo",
+      "dropIdle": "Arrastra y suelta tu video aquí",
+      "browseHelp": "o haz clic para buscarlo: MP4, MOV, WebM y otros archivos de video.",
+      "url": "URL de YouTube o Vimeo",
+      "helpLabel": "Cómo funciona el campo de URL de YouTube o Vimeo",
+      "help": "Pega el enlace de la página del video, por ejemplo https://www.youtube.com/watch?v=… o una URL de Vimeo. Lo convertimos en un video insertado que protege la privacidad y se reproduce en el aula con la identidad del estudiante como marca de agua. Sigue siendo un enlace de YouTube o Vimeo: quien acceda a él puede verlo fuera de tu curso. Si subes el archivo, la reproducción se firma para cada estudiante.",
+      "protectionNote": "Un video insertado sigue siendo un enlace de YouTube o Vimeo: cualquiera que tenga ese enlace puede verlo fuera de tu curso. Si subes el archivo, cada estudiante obtiene su propia reproducción firmada."
+    }
+  },
+  "courseMedia": {
+    "assetKinds": {
+      "course_cover": "Portada del curso",
+      "members_cover": "Portada del área de miembros",
+      "module_cover": "Portada del módulo",
+      "lesson_thumbnail": "Miniatura de la lección",
+      "lesson_material": "Material de la lección",
+      "lesson_video": "Video de la lección",
+      "live_recording": "Grabación en vivo"
+    },
+    "upload": {
+      "complete": "Subida completada",
+      "sending": "Enviando...",
+      "uploading": "Subiendo",
+      "transferred": "{transferred} de {total}",
+      "errors": {
+        "limit": "Este archivo supera el límite actual de subida (~{limit}). Usa un enlace de YouTube o un archivo más pequeño.",
+        "permission": "No tienes permiso para subir archivos a este curso.",
+        "rateLimit": "Demasiadas subidas en la última hora. Espera un poco e inténtalo de nuevo; no se perdió nada.",
+        "session": "Tu sesión caducó. Inicia sesión de nuevo y vuelve a enviar el archivo.",
+        "videoPermission": "No tienes permiso para subir videos a este curso.",
+        "videoService": "El servicio de video no pudo aceptar el archivo. Inténtalo de nuevo en unos minutos.",
+        "interrupted": "La subida se interrumpió, normalmente por una pérdida de conexión. Revisa tu conexión y vuelve a enviar el archivo.",
+        "generic": "No pudimos subir este archivo. Revisa el tipo de archivo y los permisos del curso.",
+        "invalidFile": "El tipo de archivo no es compatible o el archivo es demasiado grande.",
+        "coverHost": "La URL de la portada no pertenece a un sitio de medios permitido.",
+        "activation": "Paga la tarifa única de activación antes de subir videos del curso."
+      }
+    },
+    "preview": {
+      "assetError": "El acceso al archivo está protegido. Actualiza tu sesión e inténtalo de nuevo.",
+      "preparingAsset": "Preparando archivo protegido...",
+      "openFile": "Abrir archivo",
+      "download": "Descargar",
+      "videoError": "No pudimos cargar este video. Actualiza la página e inténtalo de nuevo.",
+      "unavailable": "Video no disponible",
+      "loading": "Cargando video...",
+      "preparingPlayback": "Preparando la reproducción."
+    },
+    "watermark": {
+      "learner": "Estudiante de {brandName}",
+      "protectedPlayback": "reproducción protegida"
+    }
   }
 }
