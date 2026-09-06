@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   acceptUserTerms: vi.fn(),
   updateUserIdentity: vi.fn(),
   getUserProfile: vi.fn(),
+  googleEnabled: true,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -36,7 +37,9 @@ vi.mock("@/lib/auth/supabase-auth", async (importOriginal) => ({
   signInWithGoogle: mocks.signInWithGoogle,
 }));
 
-vi.mock("@/lib/auth/providers", () => ({ isGoogleAuthEnabled: true }));
+vi.mock("@/lib/auth/providers", () => ({
+  get isGoogleAuthEnabled() { return mocks.googleEnabled; },
+}));
 
 vi.mock("@/lib/data/user-profiles", () => ({
   acceptUserTerms: mocks.acceptUserTerms,
@@ -54,6 +57,46 @@ vi.mock("@/components/auth/turnstile-widget", () => ({
 }));
 
 const strongSecret = "Skillset2026!";
+
+describe("SignupForm presents only the available paths", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.searchParams = new URLSearchParams("path=teacher");
+  });
+  afterEach(() => {
+    cleanup();
+    mocks.googleEnabled = true;
+    mocks.searchParams = new URLSearchParams();
+  });
+
+  it.each([false, true])("shows the alternative separator only when Google is configured: %s", (enabled) => {
+    mocks.googleEnabled = enabled;
+    render(<SignupForm />);
+    expect(Boolean(screen.queryByText("auth.signup.or"))).toBe(enabled);
+    expect(Boolean(screen.queryByRole("button", { name: /auth.continueWithGoogle/ }))).toBe(enabled);
+    expect(mocks.signInWithGoogle).not.toHaveBeenCalled();
+  });
+
+  it("announces both signup steps and keeps identity, terms and intent when returning", () => {
+    render(<SignupForm />);
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1");
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuemax", "2");
+    fireEvent.change(screen.getByLabelText("auth.signup.fullName"), { target: { value: "Alex Rivera" } });
+    fireEvent.change(screen.getByLabelText("auth.email"), { target: { value: "alex@example.test" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "auth.signup.continue" }));
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "2");
+    expect(screen.getByLabelText("auth.password")).toHaveFocus();
+    expect(mocks.signUpWithEmail).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "auth.signup.back" }));
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1");
+    expect(screen.getByLabelText("auth.signup.fullName")).toHaveValue("Alex Rivera");
+    expect(screen.getByLabelText("auth.email")).toHaveValue("alex@example.test");
+    expect(screen.getByRole("checkbox")).toBeChecked();
+    expect(screen.getByRole("radio", { name: "auth.signup.roleTeach" })).toHaveAttribute("aria-checked", "true");
+    expect(mocks.signUpWithEmail).not.toHaveBeenCalled();
+  });
+});
 
 // Walks both wizard steps and presses "Create account".
 function submitSignup() {
