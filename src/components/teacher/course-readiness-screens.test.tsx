@@ -5,6 +5,7 @@ import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import { CourseBuilderStudio } from "@/components/teacher/course-builder-studio";
 import { CourseManageHub } from "@/components/teacher/course-manage-hub";
 import { getCourseReadiness } from "@/domain/course-readiness";
+import type { CourseAsset } from "@/domain/course-asset";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { publishTeacherCourse, subscribeToTeacherCourse, updateTeacherCourseBuilder } from "@/lib/data/teacher-courses";
 import { subscribeToCourseAssets, uploadCourseAsset } from "@/lib/data/course-assets";
@@ -339,6 +340,34 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(screen.getByLabelText("Upload cover")).not.toBeDisabled();
     expect(subscribeToCourseAssets).toHaveBeenCalledTimes(subscriptions);
     expect(uploadCourseAsset).toHaveBeenCalledOnce();
+  });
+
+  it("renders and removes a newly uploaded cover while preserving the author's literal title in both alt texts", async () => {
+    const authorTitle = "Curso $$50; código $&.";
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, title: authorTitle });
+      return () => {};
+    });
+    let emitAssets: (assets: CourseAsset[]) => void = () => {};
+    vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_id, emit) => {
+      emitAssets = emit;
+      return () => {};
+    });
+    vi.mocked(uploadCourseAsset).mockResolvedValueOnce("new-cover");
+    renderMembers();
+    await screen.findByText("Live preview");
+    await act(async () => fireEvent.change(screen.getByLabelText("Upload cover"), { target: { files: [new File(["image"], "cover.png", { type: "image/png" })] } }));
+    act(() => emitAssets([{ id: "new-cover", courseId: "course-1", ownerId: "teacher-1", kind: "members_cover", fileName: "cover.png", contentType: "image/png", size: 5, storagePath: "fixture/cover.png", downloadUrl: "/fixture-cover.png", isPreview: false, lessonId: null }]));
+    expect(screen.getByRole("img", { name: `${authorTitle} members cover` })).toHaveAttribute("src", "/fixture-cover.png");
+    expect(screen.getByText("Cover set")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByRole("img", { name: `Portada del área de miembros de ${authorTitle}` })).toHaveAttribute("src", "/fixture-cover.png");
+    expect(screen.getByText("Portada añadida")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Quitar portada" }));
+    expect(screen.queryByRole("img", { name: `Portada del área de miembros de ${authorTitle}` })).not.toBeInTheDocument();
+    expect(screen.getByText("Aún no hay portada")).toBeInTheDocument();
+    expect(uploadCourseAsset).toHaveBeenCalledOnce();
+    expect(subscribeToCourseAssets).toHaveBeenCalledOnce();
   });
 
   it("a funcao pura e a referencia: 4 de 6 checks, 67%", () => {
