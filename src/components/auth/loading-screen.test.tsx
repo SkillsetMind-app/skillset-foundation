@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   router: { replace: vi.fn(), push: vi.fn() },
   searchParams: new URLSearchParams(),
   getUserProfile: vi.fn(),
+  auth: { status: "authenticated", user: { uid: "u-1" } as { uid: string } | null },
 }));
 
 vi.mock("next/navigation", () => ({
@@ -15,7 +16,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
-  useAuth: () => ({ status: "authenticated", user: { uid: "u-1" } }),
+  useAuth: () => mocks.auth,
 }));
 
 vi.mock("@/lib/data/user-profiles", () => ({
@@ -30,6 +31,7 @@ const GOOGLE_RETURN =
 describe("LoadingScreen after a Google sign-in", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.auth = { status: "authenticated", user: { uid: "u-1" } };
   });
 
   afterEach(cleanup);
@@ -82,5 +84,36 @@ describe("LoadingScreen after a Google sign-in", () => {
       () => expect(mocks.router.replace).toHaveBeenCalledWith("/learn"),
       ROUTED,
     );
+  });
+
+  it.each([
+    ["student", "/onboarding?path=teacher"],
+    ["teacher", "/teach"],
+  ])("routes explicit teacher intent using the real %s role", async (role, expected) => {
+    mocks.searchParams = new URLSearchParams("next=route&path=teacher");
+    const profile = { onboardingCompleted: true, onboardingPath: "student", roles: [role] };
+    mocks.getUserProfile.mockResolvedValue(profile);
+    render(<LoadingScreen />);
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith(expected), ROUTED);
+    expect(profile.roles).toEqual([role]);
+  });
+
+  it("keeps an explicit checkout destination ahead of teacher intent", async () => {
+    const checkout = "/courses/focus/checkout?offer=LAUNCH&priceId=price-1";
+    mocks.searchParams = new URLSearchParams({ next: "route", path: "teacher", returnTo: checkout });
+    mocks.getUserProfile.mockResolvedValue({ onboardingCompleted: true, roles: ["student"] });
+    render(<LoadingScreen />);
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith(checkout), ROUTED);
+  });
+
+  it("takes intent and checkout back to sign-in when the session is gone", async () => {
+    const checkout = "/courses/focus/checkout?offer=LAUNCH&priceId=price-1";
+    mocks.auth = { status: "unauthenticated", user: null };
+    mocks.searchParams = new URLSearchParams({ next: "route", path: "student", returnTo: checkout });
+    render(<LoadingScreen />);
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith(
+      "/auth?mode=signin&path=student&returnTo=%2Fcourses%2Ffocus%2Fcheckout%3Foffer%3DLAUNCH%26priceId%3Dprice-1",
+    ), ROUTED);
+    expect(mocks.getUserProfile).not.toHaveBeenCalled();
   });
 });

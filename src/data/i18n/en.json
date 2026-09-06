@@ -3,6 +3,8 @@
     "label": "Language"
   },
   "nav": {
+    "myCourses": "My courses",
+    "manageBusiness": "Manage my business",
     "courses": "Courses",
     "forCreators": "For creators",
     "pricing": "Pricing",

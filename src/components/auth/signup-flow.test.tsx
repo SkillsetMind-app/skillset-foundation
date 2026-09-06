@@ -79,6 +79,7 @@ function fillStepTwoAndSubmit() {
 describe("SignupForm: o olhinho e a porta de confirmacao", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.searchParams = new URLSearchParams();
     mocks.resendSignupConfirmation.mockResolvedValue(undefined);
     mocks.signUpWithEmail.mockResolvedValue({
       user: { uid: "u-1" },
@@ -122,7 +123,10 @@ describe("SignupForm: o olhinho e a porta de confirmacao", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "auth.signup.confirmResend" }));
     await waitFor(() =>
-      expect(mocks.resendSignupConfirmation).toHaveBeenCalledWith("patrick@example.com"),
+      expect(mocks.resendSignupConfirmation).toHaveBeenCalledWith(
+        "patrick@example.com",
+        "/loading?next=welcome&path=student",
+      ),
     );
     expect(await screen.findByText("auth.signup.confirmResent")).toBeInTheDocument();
     expect(
@@ -141,5 +145,20 @@ describe("SignupForm: o olhinho e a porta de confirmacao", () => {
 
     expect(screen.getByLabelText("auth.email")).toHaveValue("patrick@example.com");
     expect(screen.getByLabelText("auth.signup.fullName")).toHaveValue("Patrick Simon");
+  });
+
+  it("keeps intent and the checkout offer when leaving the confirmation gate for sign-in", async () => {
+    const checkout = "/courses/focus/checkout?offer=LAUNCH&priceId=price-1";
+    mocks.searchParams = new URLSearchParams({ path: "student", returnTo: checkout });
+    render(<SignupForm />);
+    fillStepOne();
+    fillStepTwoAndSubmit();
+    const signin = await screen.findByRole("link", { name: "auth.signup.confirmSignIn" });
+    const destination = new URL(signin.getAttribute("href")!, "https://skillset.test");
+    expect(destination.searchParams.get("mode")).toBe("signin");
+    expect(destination.searchParams.get("path")).toBe("student");
+    expect(destination.searchParams.get("returnTo")).toBe(checkout);
+    expect(mocks.router.push).not.toHaveBeenCalled();
+    expect(mocks.resendSignupConfirmation).not.toHaveBeenCalled();
   });
 });
