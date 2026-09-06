@@ -7,13 +7,16 @@ import { PromisePreviewBand } from "@/components/site/promise-preview-band";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteNav } from "@/components/site/site-nav";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
+import { getServerTranslation } from "@/lib/i18n/server";
 
-export const metadata = buildPageMetadata({
-  title: "Course platform for psychologists & coaches",
-  description:
-    "SkillsetMind is where psychologists, coaches, facilitators, and other verified personal-development professionals publish courses with private communities, live sessions, and verifiable certificates. We run checkout and classroom — buyers pay your own Stripe account directly, so we never hold your money. You teach.",
-  path: "/",
-});
+export async function generateMetadata() {
+  const { t } = await getServerTranslation();
+  return buildPageMetadata({
+    title: t("home.metadata.title"),
+    description: t("home.metadata.description"),
+    path: "/",
+  });
+}
 
 // Single-page landing: header items scroll to these sections, listed in the
 // order the sections appear below so the menu reads as a map of the page.
