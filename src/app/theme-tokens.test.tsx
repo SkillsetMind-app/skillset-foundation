@@ -294,6 +294,32 @@ function liveKey(part: string, courseTheme: string, platformDark: boolean): stri
 }
 
 describe.each(COMBOS)("member area contrast — %s", (_name, vars, courseTheme, platformDark) => {
+  it("keeps review heading and body readable across the tinted panel", () => {
+    // The generic check below skips gradients and cannot pair inherited text
+    // with this panel, which let a white backdrop ship with dark-theme text.
+    const background = /background\s*:\s*([^;]+);/.exec(block(".member-review-panel"))?.[1] ?? "";
+    const flat = background.slice(background.lastIndexOf(",") + 1).trim();
+    const base = parseColor(flat, vars);
+    const tint = parseColor(/rgba?\([^)]+\)/.exec(background)?.[0] ?? "", vars);
+    if (!base || !tint) throw new Error(`Unresolved review panel background: ${background}`);
+
+    expect(base[3], "review panel surface must remain opaque").toBe(1);
+    if (courseTheme === "light") expect(base).toEqual([255, 255, 255, 1]);
+
+    const failures: string[] = [];
+    for (const fg of ["var(--ma-ink)", "var(--ma-ink-soft)"]) {
+      // Test both ends of the existing translucent radial tint.
+      for (const bg of [flat, `rgb(${over(tint, base).join(", ")})`]) {
+        const contrast = ratio(fg, bg, vars, "--ma-bg");
+        if (contrast === null) throw new Error(`Unresolved review contrast: ${fg} on ${bg}`);
+        if (contrast < 4.5) {
+          failures.push(`${fg} on ${bg} — ${contrast.toFixed(2)}:1`);
+        }
+      }
+    }
+    expect(failures, `review panel below AA:\n${failures.join("\n")}`).toEqual([]);
+  });
+
   it("keeps every member color/background pair at or above AA", () => {
     // Merge the cascade rather than skipping overridden selectors: an override
     // can BE the failure (the member-scoped "done" pill re-applied white with
