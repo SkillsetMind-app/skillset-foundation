@@ -5,8 +5,15 @@
 // file runs in node rather than the suite default.
 
 import { NextRequest } from "next/server";
+import {
+  getRedirectUrl,
+  unstable_doesMiddlewareMatch,
+  unstable_getResponseFromNextConfig,
+} from "next/experimental/testing/server";
 import type { CookieMethodsServer } from "@supabase/ssr";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+import nextConfig from "../next.config";
 
 const mocks = vi.hoisted(() => ({
   notifyOps: vi.fn(),
@@ -48,6 +55,165 @@ async function run(
 afterEach(() => {
   delete process.env.GEO_ALLOWED_COUNTRIES;
   vi.resetAllMocks();
+});
+
+describe("navigation-only platform entry aliases", () => {
+  it.each([
+    ["app.skillsetmind.com", "GET", "/", "/teach"],
+    ["consumer.skillsetmind.com", "GET", "/", "/learn"],
+    ["pay.skillsetmind.com", "HEAD", "/courses/fixture/checkout?offer=launch", "/courses/fixture/checkout?offer=launch"],
+    ["APP.SKILLSETMIND.COM.:443", "HEAD", "/", "/teach"],
+    ["CONSUMER.SKILLSETMIND.COM.:443", "GET", "/", "/learn"],
+    ["PAY.SKILLSETMIND.COM.:443", "GET", "/", "/courses"],
+  ])("redirects %s %s without looking up a teacher or refreshing a session", async (host, method, path, destination) => {
+    vi.resetModules();
+    const { proxy } = await import("@/proxy");
+    const response = await proxy(new NextRequest(`https://${host}${path}`, { method, headers: { host } }));
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(`https://skillsetmind.com${destination}`);
+    expect(response.headers.get("content-security-policy")).toContain("script-src 'self' 'nonce-");
+    expect(response.headers.has("set-cookie")).toBe(false);
+    expect(mocks.resolveHostToUid).not.toHaveBeenCalled();
+    expect(mocks.getSupabaseClientConfig).not.toHaveBeenCalled();
+    expect(mocks.createServerClient).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "app.skillsetmind.com", "consumer.skillsetmind.com", "pay.skillsetmind.com",
+    "APP.SKILLSETMIND.COM.:443", "CONSUMER.SKILLSETMIND.COM.:443", "PAY.SKILLSETMIND.COM.:443",
+  ])(
+    "refuses writes and OPTIONS on %s without consuming or forwarding their bodies",
+    async (host) => {
+      vi.resetModules();
+      const { config, proxy } = await import("@/proxy");
+      for (const path of ["/auth", "/api/payments/checkout", "/api/teach/domains/fixture.png", "/favicon.ico", "/lp", "/lp/fixture"]) {
+        const url = `https://${host}${path}`;
+        // The config tester selects redirects independently of HTTP method.
+        // It must let this request reach the proxy before we assert its 405.
+        const configured = await unstable_getResponseFromNextConfig({ url, headers: { host }, nextConfig });
+        expect(getRedirectUrl(configured), path).toBeNull();
+        expect(unstable_doesMiddlewareMatch({ config, nextConfig, url, headers: { host } }), path).toBe(true);
+        for (const method of ["POST", "OPTIONS"]) {
+          const request = new NextRequest(url, { method, headers: { host }, body: "fixture-only" });
+          const response = await proxy(request);
+          expect(response.status, `${method} ${path}`).toBe(405);
+          expect(response.headers.get("allow")).toBe("GET, HEAD");
+          expect(response.headers.has("location")).toBe(false);
+          expect(response.headers.has("set-cookie")).toBe(false);
+          expect(response.headers.get("content-security-policy")).toContain("script-src 'self' 'nonce-");
+          expect(await response.text()).toBe("");
+          expect(request.bodyUsed).toBe(false);
+        }
+      }
+      expect(mocks.resolveHostToUid).not.toHaveBeenCalled();
+      expect(mocks.getSupabaseClientConfig).not.toHaveBeenCalled();
+      expect(mocks.createServerClient).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe("Next routing configuration for platform entry aliases", () => {
+  const excludedPaths = [
+    "/api/teach/domains/fixture.png",
+    "/courses/fixture.jpg",
+    "/_next/static/fixture.js",
+    "/_next/image?url=%2Ffixture.png&w=64&q=90",
+    "/favicon.ico",
+  ];
+
+  it.each(["app", "consumer", "pay"])("matches every path on %s, including a DNS root dot, case and port", async (entry) => {
+    const { config } = await import("@/proxy");
+    for (const host of [`${entry}.skillsetmind.com`, `${entry.toUpperCase()}.SKILLSETMIND.COM.:443`]) {
+      for (const path of ["/", ...excludedPaths, "/lp", "/lp/fixture"]) {
+        expect(unstable_doesMiddlewareMatch({ config, nextConfig, url: `https://${host}${path}`, headers: { host } }), `${host}${path}`).toBe(true);
+      }
+    }
+  });
+
+  it.each([
+    "skillsetmind.com", "www.skillsetmind.com", "lp.skillsetmind.com",
+    "skillset-foundation-qa.vercel.app", "localhost:3000", "[::1]:3000",
+    "teacher.example.test", "myapp.skillsetmind.com", "app.skillsetmind.com.evil.test",
+  ])("preserves the existing matcher exclusions on %s", async (host) => {
+    const { config } = await import("@/proxy");
+    for (const path of excludedPaths) {
+      expect(unstable_doesMiddlewareMatch({ config, nextConfig, url: `https://${host}${path}`, headers: { host } }), path).toBe(false);
+    }
+    expect(unstable_doesMiddlewareMatch({ config, nextConfig, url: `https://${host}/auth`, headers: { host } })).toBe(true);
+  });
+
+  it.each(["app", "consumer", "pay"])("lets /lp reach the proxy on %s instead of the earlier landing redirect", async (entry) => {
+    const { config, proxy } = await import("@/proxy");
+    for (const host of [`${entry}.skillsetmind.com`, `${entry.toUpperCase()}.SKILLSETMIND.COM.:443`]) {
+      for (const path of ["/lp", "/lp/fixture"]) {
+        const url = `https://${host}${path}?offer=fixture`;
+        const configured = await unstable_getResponseFromNextConfig({ url, headers: { host }, nextConfig });
+        expect(getRedirectUrl(configured), url).toBeNull();
+        expect(unstable_doesMiddlewareMatch({ config, nextConfig, url, headers: { host } })).toBe(true);
+        for (const method of ["GET", "HEAD"]) {
+          const response = await proxy(new NextRequest(url, { method, headers: { host } }));
+          expect(response.status).toBe(307);
+          expect(response.headers.get("location")).toBe(`https://skillsetmind.com${path}?offer=fixture`);
+        }
+      }
+    }
+    expect(mocks.resolveHostToUid).not.toHaveBeenCalled();
+    expect(mocks.getSupabaseClientConfig).not.toHaveBeenCalled();
+    expect(mocks.createServerClient).not.toHaveBeenCalled();
+  });
+
+  it.each(["app", "consumer", "pay"])("keeps native trailing-slash normalization on %s before refusing the preserved POST", async (entry) => {
+    const { config, proxy } = await import("@/proxy");
+    for (const host of [`${entry}.skillsetmind.com`, `${entry.toUpperCase()}.SKILLSETMIND.COM.:443`]) {
+      for (const path of ["/auth/", "/lp/", "/lp/fixture/", "/api/teach/domains/fixture.png/"]) {
+        const url = `https://${host}${path}?from=fixture`;
+        const request = new NextRequest(url, { method: "POST", headers: { host }, body: "fixture-only" });
+        const normalized = await unstable_getResponseFromNextConfig({ url, headers: { host }, nextConfig });
+        expect(normalized.status).toBe(308);
+        const destination = new URL(getRedirectUrl(normalized)!);
+        expect(destination.origin).toBe(new URL(url).origin);
+        expect(destination.pathname).toBe(path.slice(0, -1));
+        expect(destination.search).toBe("?from=fixture");
+
+        // The config tester uses GET internally. Simulate the follow-up that
+        // a 308 requires: same origin, with the original method and body.
+        const followedRequest = new NextRequest(destination, {
+          method: request.method,
+          headers: request.headers,
+          body: request.body,
+        });
+        expect(followedRequest.method).toBe("POST");
+        const canonical = await unstable_getResponseFromNextConfig({ url: destination.href, headers: { host }, nextConfig });
+        expect(getRedirectUrl(canonical)).toBeNull();
+        expect(unstable_doesMiddlewareMatch({ config, nextConfig, url: destination.href, headers: { host } })).toBe(true);
+        const response = await proxy(followedRequest);
+        expect(response.status).toBe(405);
+        expect(response.headers.get("allow")).toBe("GET, HEAD");
+        expect(response.headers.has("location")).toBe(false);
+        expect(response.headers.has("set-cookie")).toBe(false);
+        expect(await response.text()).toBe("");
+        expect(request.bodyUsed).toBe(false);
+        expect(followedRequest.bodyUsed).toBe(false);
+      }
+    }
+    expect(mocks.resolveHostToUid).not.toHaveBeenCalled();
+    expect(mocks.getSupabaseClientConfig).not.toHaveBeenCalled();
+    expect(mocks.createServerClient).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "skillsetmind.com", "www.skillsetmind.com", "lp.skillsetmind.com", "teacher.example.test",
+    "skillset-foundation-qa.vercel.app", "localhost:3000", "myapp.skillsetmind.com", "app.skillsetmind.com.evil.test",
+  ])("keeps the existing /lp redirect on %s", async (host) => {
+    for (const path of ["/lp", "/lp/fixture"]) {
+      const response = await unstable_getResponseFromNextConfig({ url: `https://${host}${path}?from=fixture`, headers: { host }, nextConfig });
+      expect(response.status).toBe(307);
+      const destination = new URL(getRedirectUrl(response)!);
+      expect(destination.origin).toBe("https://lp.skillsetmind.com");
+      expect(destination.pathname).toBe(path === "/lp" ? "/" : "/fixture");
+      expect(destination.searchParams.get("from")).toBe("fixture");
+    }
+  });
 });
 
 describe("country filter in the proxy", () => {

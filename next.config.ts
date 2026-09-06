@@ -39,8 +39,20 @@ const nextConfig: NextConfig = {
   // pelo navegador no redirect. ponytail: uma linha em vez de um proxy.
   async redirects() {
     return [
-      { source: "/lp", destination: "https://lp.skillsetmind.com", permanent: false },
-      { source: "/lp/:path*", destination: "https://lp.skillsetmind.com/:path*", permanent: false },
+      // Redirects run before proxy.ts. Let entry aliases reach its method gate
+      // instead of forwarding a POST body to the landing site with this 307.
+      {
+        source: "/lp",
+        destination: "https://lp.skillsetmind.com",
+        permanent: false,
+        missing: [{ type: "host", value: "(app|consumer|pay)\\.skillsetmind\\.com\\.?" }],
+      },
+      {
+        source: "/lp/:path*",
+        destination: "https://lp.skillsetmind.com/:path*",
+        permanent: false,
+        missing: [{ type: "host", value: "(app|consumer|pay)\\.skillsetmind\\.com\\.?" }],
+      },
     ];
   },
   async headers() {
