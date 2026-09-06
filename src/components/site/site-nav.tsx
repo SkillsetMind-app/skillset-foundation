@@ -217,7 +217,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
             />
             <div
               id="site-mobile-menu"
-              className="absolute inset-x-0 top-[calc(100%+8px)] z-[46] max-h-[calc(100svh-88px)] overflow-y-auto rounded-[14px] border border-[var(--color-line)] bg-white p-3 shadow-[0_24px_48px_rgba(15,39,68,0.16)] xl:hidden"
+              className="absolute inset-x-0 top-[calc(100%+8px)] z-[46] max-h-[calc(100svh-88px)] scroll-py-2 overflow-y-auto rounded-[14px] border border-[var(--color-line)] bg-white p-3 shadow-[0_24px_48px_rgba(15,39,68,0.16)] xl:hidden"
             >
               <nav aria-label={t("nav.mobileNavLabel")} className="grid gap-1">
                 {resolvedNav.map((item) => {

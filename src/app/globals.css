@@ -88,7 +88,7 @@
   --radius-4xl: 22px;
   /* Design V2 net-new tokens (additive — no existing value changed) */
   --color-on-primary: #ffffff;
-  --color-on-accent: #102a43;
+  --color-on-accent: #091d2f;
   --shadow-button: 0 10px 22px rgba(26, 54, 93, 0.14);
   --shadow-button-strong: 0 14px 28px rgba(15, 39, 68, 0.28);
   /* Spacing scale (4px base) */
@@ -195,7 +195,7 @@
      #0a0f1a. success-fg #5fc99a = 5.95:1 on surface-strong, 8.86:1 on surface.
      Base --color-accent/--color-success untouched, so white-on-fill pairs hold. */
   --color-accent-fg: #e2bd72;
-  --color-on-accent: #102a43;
+  --color-on-accent: #091d2f;
   /* #e8808c = 5.17:1 on the worst case (18% danger tint over surface-strong
      #1c2841), 6.88:1 on plain surface. Base #b22234 is only 2.73:1 there. */
   --color-danger-fg: #e8808c;
@@ -1425,7 +1425,7 @@ p {
   border: none;
   border-radius: 10px;
   background: var(--color-accent);
-  color: #ffffff !important;
+  color: var(--color-on-accent) !important;
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
