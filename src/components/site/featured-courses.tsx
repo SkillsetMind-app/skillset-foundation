@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { CourseTile, courseCardBadge } from "@/components/courses/course-tile";
+import { CourseTile } from "@/components/courses/course-tile";
 import { useInstructorNames } from "@/components/courses/use-instructor-names";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { RevealSection } from "@/components/shared/reveal-section";
@@ -107,7 +107,14 @@ export function FeaturedCourses() {
                 summary={course.summary}
                 category={course.category}
                 meta={course.duration}
-                badge={courseCardBadge(course)}
+                courseData={{
+                  lessonCount: course.lessonCount,
+                  priceAmountMinor: course.priceAmountMinor,
+                  currency: course.currency,
+                  freePreviewHref: course.freePreviewHref,
+                  ratingCount: course.ratingCount,
+                  ownerId: course.ownerId,
+                }}
                 priceLabel={course.priceLabel}
                 rating={
                   course.ratingAverage && course.ratingCount

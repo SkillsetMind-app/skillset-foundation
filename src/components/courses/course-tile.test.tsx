@@ -1,9 +1,14 @@
 import { readFileSync } from "node:fs";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CourseTile, courseCardBadge } from "@/components/courses/course-tile";
+import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import type { CourseCard } from "@/lib/data/catalog";
+
+const language = vi.hoisted(() => ({ locale: "en" as "en" | "es" }));
+vi.mock("@/components/i18n/i18n-provider", () => ({ useTranslation: () => ({ locale: language.locale, t: (key: string) => translate(getDictionary(language.locale), key) }) }));
+beforeEach(() => { language.locale = "en"; });
 
 afterEach(cleanup);
 
@@ -130,4 +135,17 @@ describe("um cartao de curso, nao tres", () => {
     expect(source).not.toContain("marketplace-card__title");
     expect(source).not.toContain("marketplace-card__body");
   });
+});
+
+it("updates derived card copy after a language switch while preserving authored content and URL", () => {
+  const props = { href: "/courses/focus?offer=SPRING", title: "Deep Focus Systems", summary: "A lesson author's own summary", image: "/brand/logo-mark.png", courseData: { lessonCount: 2, priceAmountMinor: 14900, currency: "USD", freePreviewHref: "/courses/focus#free-preview" } };
+  const { rerender } = render(<CourseTile {...props} />);
+  expect(screen.getByText("2 lessons")).toBeInTheDocument();
+  language.locale = "es";
+  rerender(<CourseTile {...props} />);
+  expect(screen.getByText("2 lecciones")).toBeInTheDocument();
+  expect(screen.getByText("Vista previa gratuita")).toBeInTheDocument();
+  expect(screen.getByText("Ver curso")).toBeInTheDocument();
+  expect(screen.getByText("A lesson author's own summary")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: props.title })).toHaveAttribute("href", props.href);
 });

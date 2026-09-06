@@ -1,3 +1,4 @@
+import { getServerTranslation } from "@/lib/i18n/server";
 import Link from "next/link";
 
 import { PublicPage } from "@/components/site/public-page";
@@ -5,83 +6,88 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 const SUPPORT_EMAIL = "support@skillsetmind.com";
 
-export const metadata = buildPageMetadata({
-  title: "Contact",
-  description:
-    "Reach the SkillsetMind team for support, partnerships, or press.",
-  path: "/contact",
-});
+export async function generateMetadata() {
+  const { t } = await getServerTranslation();
+  return buildPageMetadata({
+    title: t("publicPages.contact.contact"),
+    description:
+      t("publicPages.contact.reach_the_skillsetmind_team_for_support"),
+    path: "/contact",
+  });
+}
 
 // Todo caminho daqui funciona sem login. /support é uma tela protegida: para
 // um visitante, "Open a support ticket" virava um formulário de login sem
 // aviso. O ticket continua existindo, mas anunciado como o que é (só para
 // quem tem conta), no parágrafo de abertura.
-const contactRoutes = [
-  {
-    label: "General inquiries",
-    value:
-      "Questions about programs, access, and the overall SkillsetMind experience.",
-    action: {
-      label: "Email the team",
-      href: `mailto:${SUPPORT_EMAIL}?subject=General%20inquiry`,
-      external: true,
-    },
-  },
-  {
-    label: "Educator applications",
-    value:
-      "For professionals who want to teach, collaborate, or bring expertise to the platform.",
-    action: {
-      label: "Explore teaching on SkillsetMind",
-      href: "/for-creators",
-      external: false,
-    },
-  },
-  {
-    label: "Support and safety",
-    value:
-      "A dedicated route for learner care, account help, and trust-related concerns.",
-    action: {
-      label: "Email support",
-      href: `mailto:${SUPPORT_EMAIL}?subject=Support`,
-      external: true,
-    },
-  },
-  {
-    label: "Partnerships and press",
-    value:
-      "For institutions, regional collaborators, strategic growth, and media conversations.",
-    action: {
-      label: "Email partnerships",
-      href: `mailto:${SUPPORT_EMAIL}?subject=Partnership%20or%20press`,
-      external: true,
-    },
-  },
-] as const;
 
-export default function ContactPage() {
+
+export default async function ContactPage() {
+  const { t } = await getServerTranslation();
+  const contactRoutes = [
+    {
+      label: t("publicPages.contact.general_inquiries"),
+      value:
+        t("publicPages.contact.questions_about_programs_access_and_the"),
+      action: {
+        label: t("publicPages.contact.email_the_team"),
+        href: `mailto:${SUPPORT_EMAIL}?subject=General%20inquiry`,
+        external: true,
+      },
+    },
+    {
+      label: t("publicPages.contact.educator_applications"),
+      value:
+        t("publicPages.contact.for_professionals_who_want_to_teach"),
+      action: {
+        label: t("publicPages.contact.explore_teaching_on_skillsetmind"),
+        href: "/for-creators",
+        external: false,
+      },
+    },
+    {
+      label: t("publicPages.contact.support_and_safety"),
+      value:
+        t("publicPages.contact.a_dedicated_route_for_learner_care"),
+      action: {
+        label: t("publicPages.contact.email_support"),
+        href: `mailto:${SUPPORT_EMAIL}?subject=Support`,
+        external: true,
+      },
+    },
+    {
+      label: t("publicPages.contact.partnerships_and_press"),
+      value:
+        t("publicPages.contact.for_institutions_regional_collaborators_strategic_growth"),
+      action: {
+        label: t("publicPages.contact.email_partnerships"),
+        href: `mailto:${SUPPORT_EMAIL}?subject=Partnership%20or%20press`,
+        external: true,
+      },
+    },
+  ] as const;
+
   return (
     <PublicPage
-      eyebrow="Contact"
-      title="Reach the right team for support, teaching, and partnerships."
+      eyebrow={t("publicPages.contact.contact")}
+      title={t("publicPages.contact.reach_the_right_team_for_support")}
       description={
         <>
-          Prefer email? Write to{" "}
+          {t("publicPages.contact.prefer_email_write_to")}{" "}
           <a
             href={`mailto:${SUPPORT_EMAIL}`}
             className="font-semibold text-[var(--color-primary)] hover:underline"
           >
             {SUPPORT_EMAIL}
           </a>{" "}
-          and we&rsquo;ll route it to the right team. Have an account?{" "}
+          {t("publicPages.contact.and_we_ll_route_it_to")}{" "}
           <Link
             href="/support"
             className="font-semibold text-[var(--color-primary)] hover:underline"
           >
-            Open a tracked ticket
+            {t("publicPages.contact.open_a_tracked_ticket")}
           </Link>{" "}
-          from inside the platform.
-        </>
+          {t("publicPages.contact.from_inside_the_platform")}</>
       }
     >
       <div className="mt-8 grid gap-4 sm:grid-cols-2">

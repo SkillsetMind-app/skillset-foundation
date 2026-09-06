@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 
 type OnboardingQuestionProps = {
   number: number;
@@ -15,10 +16,11 @@ export function OnboardingQuestion({
   number,
   title,
 }: OnboardingQuestionProps) {
+  const { t } = useTranslation();
   return (
     <section className="welcome-question mx-auto w-full max-w-[560px] text-center">
       <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-        Question {String(number).padStart(2, "0")}
+        {t("authFlow.onboarding.question").replace("{number}", String(number).padStart(2, "0"))}
       </p>
       <h1 className="display-title mt-4 text-4xl font-semibold leading-[1.15] text-[var(--color-primary)]">
         {title}

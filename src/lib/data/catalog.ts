@@ -27,6 +27,8 @@ export type CourseCard = {
   // formatted labels. Optional: static/demo cards may omit them, and the sort
   // comparators treat missing values as "lowest" so those cards sink to the end.
   priceAmountMinor?: number | null;
+  currency?: string;
+  lessonCount?: number;
   ratingAverage?: number;
   ratingCount?: number;
   // Editorial curation flags (ops-set). `featured` pins the card to the top of

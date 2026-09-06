@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
+
 type OnboardingProgressProps = {
   activeQuestion: number;
   totalQuestions?: number;
@@ -9,8 +11,9 @@ export function OnboardingProgress({
   activeQuestion,
   totalQuestions = 7,
 }: OnboardingProgressProps) {
+  const { t } = useTranslation();
   return (
-    <div className="flex items-center gap-2" aria-label={`Question ${activeQuestion} of ${totalQuestions}`}>
+    <div className="flex items-center gap-2" aria-label={t("authFlow.onboarding.progress").replace("{current}", String(activeQuestion)).replace("{total}", String(totalQuestions))}>
       {Array.from({ length: totalQuestions }, (_, index) => {
         const questionNumber = index + 1;
         const isActive = questionNumber === activeQuestion;
