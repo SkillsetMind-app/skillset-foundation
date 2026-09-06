@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   listSessions: vi.fn(),
   createSession: vi.fn(),
   searchPaymentIntents: vi.fn(),
+  retrievePaymentIntent: vi.fn(),
+  listDisputes: vi.fn(),
 }));
 
 vi.mock("@/lib/payments/server/auth", async (importOriginal) => ({
@@ -31,7 +33,8 @@ vi.mock("@/lib/payments/server/stripe", async (importOriginal) => ({
   getStripeClient: mocks.getStripe,
 }));
 
-vi.mock("@/lib/payments/server/stripe-helpers", () => ({
+vi.mock("@/lib/payments/server/stripe-helpers", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/payments/server/stripe-helpers")>()),
   getUserRow: mocks.getUserRow,
   getOrCreateBillingStripeCustomer: mocks.getCustomer,
 }));
@@ -98,6 +101,18 @@ function profile(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function activationIntent(charge: Record<string, unknown> = {}, intent: Record<string, unknown> = {}) {
+  return {
+    id: "pi_activation", status: "succeeded", amount: 2500, currency: "usd",
+    metadata: { uid: "teacher-1", purpose: "skillset_activation_fee" },
+    latest_charge: {
+      id: "ch_activation", payment_intent: "pi_activation", currency: "usd", amount_captured: 2500,
+      paid: true, captured: true, refunded: false, disputed: false, ...charge,
+    },
+    ...intent,
+  };
+}
+
 describe("storefront activation checkout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -108,6 +123,8 @@ describe("storefront activation checkout", () => {
     mocks.getCustomer.mockResolvedValue("cus_teacher");
     mocks.listSessions.mockResolvedValue({ data: [] });
     mocks.searchPaymentIntents.mockResolvedValue({ data: [] });
+    mocks.retrievePaymentIntent.mockResolvedValue(activationIntent());
+    mocks.listDisputes.mockResolvedValue({ data: [] });
     mocks.createSession.mockResolvedValue({
       id: "cs_activation",
       client_secret: "secret_activation",
@@ -119,7 +136,8 @@ describe("storefront activation checkout", () => {
           create: mocks.createSession,
         },
       },
-      paymentIntents: { search: mocks.searchPaymentIntents },
+      paymentIntents: { search: mocks.searchPaymentIntents, retrieve: mocks.retrievePaymentIntent },
+      disputes: { list: mocks.listDisputes },
     });
   });
 
@@ -223,6 +241,7 @@ describe("storefront activation checkout", () => {
         id: "cs_paid",
         status: "complete",
         payment_status: "paid",
+        payment_intent: "pi_activation",
         client_secret: null,
         metadata: { uid: "teacher-1", purpose: "skillset_activation_fee" },
       }],
@@ -262,6 +281,112 @@ describe("storefront activation checkout", () => {
       expect.objectContaining({ activation_fee_paid_at: expect.any(String) }),
     ]);
     expect(mocks.createSession).not.toHaveBeenCalled();
+  });
+
+  it.each(["refunded", "lost"])("does not repair activation using a payment already %s", async (outcome) => {
+    const admin = createAdmin();
+    mocks.getAdmin.mockReturnValue(admin);
+    // Both indexes still describe a successful original payment after reversal.
+    mocks.searchPaymentIntents.mockResolvedValue({ data: [{ id: "pi_activation", status: "succeeded" }] });
+    mocks.listSessions.mockResolvedValue({ data: [{
+      id: "cs_paid", status: "complete", payment_status: "paid", payment_intent: "pi_activation",
+      metadata: { uid: "teacher-1", purpose: "skillset_activation_fee" },
+    }] });
+    mocks.retrievePaymentIntent.mockResolvedValue(activationIntent({ refunded: outcome === "refunded", disputed: outcome === "lost" }));
+    mocks.listDisputes.mockResolvedValue({ data: [{ status: "lost" }] });
+
+    const response = await POST();
+
+    expect(response.status).toBe(200);
+    expect(admin.userUpdates).toEqual([]);
+    expect(mocks.createSession).toHaveBeenCalledOnce();
+  });
+
+  it.each(["partial_refund", "won_dispute"])("preserves activation funded by a %s payment", async (outcome) => {
+    const admin = createAdmin();
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.searchPaymentIntents.mockResolvedValue({ data: [{ id: "pi_activation", status: "succeeded" }] });
+    mocks.retrievePaymentIntent.mockResolvedValue(activationIntent({
+      amount_refunded: outcome === "partial_refund" ? 500 : 0, disputed: outcome === "won_dispute",
+    }));
+    mocks.listDisputes.mockResolvedValue({ data: [{ status: "won" }] });
+
+    const response = await POST();
+
+    expect(response.status).toBe(409);
+    expect(admin.userUpdates).toHaveLength(1);
+    expect(mocks.createSession).not.toHaveBeenCalled();
+  });
+
+  it("does not grant or charge again while the original activation is disputed", async () => {
+    const admin = createAdmin();
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.searchPaymentIntents.mockResolvedValue({ data: [{ id: "pi_activation", status: "succeeded" }] });
+    mocks.retrievePaymentIntent.mockResolvedValue(activationIntent({ disputed: true }));
+    mocks.listDisputes.mockResolvedValue({ data: [{ status: "under_review" }] });
+
+    const response = await POST();
+
+    expect(response.status).toBe(409);
+    expect(admin.userUpdates).toEqual([]);
+    expect(mocks.createSession).not.toHaveBeenCalled();
+  });
+
+  it("does not grant or charge again when the original payment cannot be verified", async () => {
+    const admin = createAdmin();
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.searchPaymentIntents.mockResolvedValue({ data: [{ id: "pi_activation", status: "succeeded" }] });
+    mocks.retrievePaymentIntent.mockRejectedValueOnce(new Error("Stripe temporarily unavailable"));
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const response = await POST();
+      expect(response.status).toBe(500);
+      expect(admin.userUpdates).toEqual([]);
+      expect(mocks.createSession).not.toHaveBeenCalled();
+    } finally {
+      errorLog.mockRestore();
+    }
+  });
+
+  it("finds retained activation on the next search page after a newer refunded payment", async () => {
+    const admin = createAdmin();
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.searchPaymentIntents
+      .mockResolvedValueOnce({ data: [{ id: "pi_refunded" }], has_more: true, next_page: "page_2" })
+      .mockResolvedValueOnce({ data: [{ id: "pi_retained" }], has_more: false });
+    mocks.retrievePaymentIntent.mockImplementation(async (id: string) =>
+      activationIntent({ payment_intent: id, refunded: id === "pi_refunded" }, { id }),
+    );
+
+    const response = await POST();
+
+    expect(response.status).toBe(409);
+    expect(admin.userUpdates).toHaveLength(1);
+    expect(mocks.searchPaymentIntents).toHaveBeenNthCalledWith(2, expect.objectContaining({ page: "page_2" }));
+    expect(mocks.createSession).not.toHaveBeenCalled();
+  });
+
+  it.each(["different_creator", "missing_charge", "different_amount", "different_currency", "different_charge"])("fails closed on an unverifiable activation candidate: %s", async (candidate) => {
+    const admin = createAdmin();
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.searchPaymentIntents.mockResolvedValue({ data: [{ id: "pi_activation" }] });
+    mocks.retrievePaymentIntent.mockResolvedValue(activationIntent({
+      payment_intent: candidate === "different_charge" ? "pi_other" : "pi_activation",
+    }, {
+      amount: candidate === "different_amount" ? 100 : 2500,
+      currency: candidate === "different_currency" ? "brl" : "usd",
+      metadata: { uid: candidate === "different_creator" ? "another-creator" : "teacher-1", purpose: "skillset_activation_fee" },
+      ...(candidate === "missing_charge" ? { latest_charge: null } : {}),
+    }));
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const response = await POST();
+      expect(response.status).toBe(500);
+      expect(admin.userUpdates).toEqual([]);
+      expect(mocks.createSession).not.toHaveBeenCalled();
+    } finally {
+      errorLog.mockRestore();
+    }
   });
 
   it("creates one session with a stable creator-and-price idempotency key", async () => {

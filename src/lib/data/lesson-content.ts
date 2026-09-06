@@ -6,9 +6,8 @@ import type { Database } from "@/lib/supabase/database.types";
 /**
  * B1 — paywalled lesson content moved OUT of the world-readable course doc into
  * the enrollment-gated table course_lesson_content (lesson_id PK). The shape is
- * locked by RLS to exactly these two columns; the backfill script and any
- * dual-write both write the identical shape so the table is always a faithful
- * mirror of the inline fields.
+ * locked by RLS. The builder writes this table while the public curriculum
+ * stores only the lesson structure, without text or external URLs.
  */
 export type LessonContent = {
   contentText: string | null;
@@ -83,11 +82,9 @@ export function subscribeToLessonContent(
 
 /**
  * One-shot read of a single lesson's gated content. Used by the public
- * free-preview surface. There is no anonymous branch in course_lesson_content's
- * RLS policy — admin, owner, or an active/completed enrollment — so a signed-out
- * visitor gets null here and the caller falls back to the inline field on the
- * course doc. That fallback is what actually serves the free preview; this read
- * only wins for someone who is already entitled.
+ * free-preview surface. RLS permits an anonymous read only for the designated
+ * preview of a published course. Other lessons require owner/admin access or an
+ * active/completed enrollment. The inline fallback covers unmigrated curricula.
  */
 export async function getLessonContentDoc(
   courseId: string,

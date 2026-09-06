@@ -25,7 +25,7 @@ import { projectsGetProjectDomain } from "@vercel/sdk/funcs/projectsGetProjectDo
 import { projectsRemoveProjectDomain } from "@vercel/sdk/funcs/projectsRemoveProjectDomain.js";
 import { projectsVerifyProjectDomain } from "@vercel/sdk/funcs/projectsVerifyProjectDomain.js";
 
-import type { CustomDomainStatus } from "@/domain/custom-domain";
+import { domainRejectionMessage, parseCustomDomain, type CustomDomainStatus } from "@/domain/custom-domain";
 
 export type VercelDomainsConfig = {
   apiCredential: string;
@@ -121,10 +121,15 @@ export async function addDomainToProject(
   hostname: string,
   config: VercelDomainsConfig,
 ): Promise<DomainSyncResult> {
+  const parsed = parseCustomDomain(hostname);
+  if (!parsed.ok) {
+    return { status: "error", verificationRecord: null, errorReason: domainRejectionMessage[parsed.reason] };
+  }
+
   const result = await projectsAddProjectDomain(client(config), {
     idOrName: config.projectId,
     teamId: config.teamId,
-    requestBody: { name: hostname },
+    requestBody: { name: parsed.hostname },
   });
 
   if (!result.ok) {
@@ -147,13 +152,18 @@ export async function refreshDomainStatus(
   hostname: string,
   config: VercelDomainsConfig,
 ): Promise<DomainSyncResult> {
+  const parsed = parseCustomDomain(hostname);
+  if (!parsed.ok) {
+    return { status: "error", verificationRecord: null, errorReason: domainRejectionMessage[parsed.reason] };
+  }
+
   // Verify first: it is the call that can actually change the answer. Reading
   // without verifying would report `pending` forever for a domain whose TXT
   // record is already in place.
   const verified = await projectsVerifyProjectDomain(client(config), {
     idOrName: config.projectId,
     teamId: config.teamId,
-    domain: hostname,
+    domain: parsed.hostname,
   });
 
   if (verified.ok && verified.value.verified) {
@@ -163,7 +173,7 @@ export async function refreshDomainStatus(
   const current = await projectsGetProjectDomain(client(config), {
     idOrName: config.projectId,
     teamId: config.teamId,
-    domain: hostname,
+    domain: parsed.hostname,
   });
 
   if (!current.ok) {
@@ -187,10 +197,15 @@ export async function removeDomainFromProject(
   hostname: string,
   config: VercelDomainsConfig,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
+  // A row claimed directly through PostgREST has not passed the route's parser.
+  // Owning that row never authorizes detaching one of the platform's domains.
+  const parsed = parseCustomDomain(hostname);
+  if (!parsed.ok) return { ok: false, reason: domainRejectionMessage[parsed.reason] };
+
   const result = await projectsRemoveProjectDomain(client(config), {
     idOrName: config.projectId,
     teamId: config.teamId,
-    domain: hostname,
+    domain: parsed.hostname,
   });
 
   if (!result.ok) {

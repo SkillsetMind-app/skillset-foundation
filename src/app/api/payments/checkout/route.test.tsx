@@ -86,6 +86,7 @@ function createAdmin(input: {
   lockReplies?: LockReply[];
   coupon?: Record<string, unknown> | null;
   checkoutLock?: Record<string, unknown> | null;
+  existingOrder?: Record<string, unknown> | null;
   orderVanished?: boolean;
   lockPublishLost?: boolean;
 }) {
@@ -172,6 +173,11 @@ function createAdmin(input: {
       if (this.table === "checkout_locks") {
         const lockRow = input.checkoutLock ?? null;
         return { data: single ? lockRow : lockRow ? [lockRow] : [], error: null };
+      }
+
+      if (this.table === "orders") {
+        const orderRow = input.existingOrder ?? null;
+        return { data: single ? orderRow : orderRow ? [orderRow] : [], error: null };
       }
 
       const candidate = this.table === "enrollments"
@@ -276,6 +282,80 @@ describe("course checkout subscription exclusivity", () => {
         },
       },
     });
+  });
+
+  it("pins the selected currency instead of accepting a cached Price's other currency options", async () => {
+    const admin = createAdmin({ lockReplies: [{ action: "claim", checkout_url: null }] });
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const response = await POST(request({ courseId: "course" }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.createSession.mock.calls[0][0].currency).toBe("usd");
+  });
+
+  it.each([
+    ["acct_other_creator", 409],
+    [null, 409],
+    ["acct_teacher", 200],
+  ])("checks the frozen account %s before reusing a one-time checkout", async (frozenAccount, expectedStatus) => {
+    const checkoutUrl = "https://checkout.example/existing-one-time";
+    const admin = createAdmin({
+      lockReplies: [{ action: "reuse", checkout_url: checkoutUrl }],
+      checkoutLock: { order_id: "order_previous" },
+      existingOrder: { offer_id: null, price_id: null, teacher_stripe_connected_account_id: frozenAccount },
+    });
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.getCourseRow.mockResolvedValue(course("one_time"));
+    mocks.normalizePrice.mockReturnValue({ amountMinor: 12_000, currency: "usd", paymentType: "one_time", source: "legacy" });
+
+    const response = await POST(request({ courseId: "course" }));
+    const body = await response.json();
+
+    expect(response.status).toBe(expectedStatus);
+    if (expectedStatus === 200) expect(body.url).toBe(checkoutUrl);
+    else expect(body).not.toHaveProperty("url");
+    expect(mocks.createSession).not.toHaveBeenCalled();
+    expect(mocks.expireSession).not.toHaveBeenCalled();
+    expect(mocks.retrieveSession).not.toHaveBeenCalled();
+  });
+
+  it.each(["one_time", "subscription_monthly"])("charges the owner's account despite a foreign account cached on the %s course", async (paymentType) => {
+    const admin = createAdmin({ lockReplies: [{ action: "claim", checkout_url: null }] });
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.getCourseRow.mockResolvedValue({ ...course(paymentType), stripe_connected_account_id: "acct_another_creator" });
+    mocks.normalizePrice.mockReturnValue({ amountMinor: 12_000, currency: "usd", paymentType, source: "legacy" });
+
+    const response = await POST(request({ courseId: "course" }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.createSession.mock.calls[0][1].stripeAccount).toBe("acct_teacher");
+    if (paymentType === "one_time") {
+      expect(admin.orderInserts[0].teacher_stripe_connected_account_id).toBe("acct_teacher");
+    } else {
+      expect(mocks.getSubscriptionPrice.mock.calls[0].at(-1)).toBe("acct_teacher");
+    }
+  });
+
+  it.each(["missing_owner", "missing_account", "charges_disabled", "payouts_disabled"])("refuses a foreign course account bypass when the owner is %s", async (ownerState) => {
+    const admin = createAdmin({ lockReplies: [{ action: "claim", checkout_url: null }] });
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.getCourseRow.mockResolvedValue({ ...course(), stripe_connected_account_id: "acct_another_creator" });
+    mocks.getUserRow.mockImplementation(async (id: string) => id !== "teacher"
+      ? { uid: "buyer", email: "buyer@example.com" }
+      : ownerState === "missing_owner" ? null : {
+        uid: "teacher", current_plan_id: "free",
+        stripe_connected_account_id: ownerState === "missing_account" ? null : "acct_teacher",
+        stripe_connect_charges_enabled: ownerState !== "charges_disabled",
+        stripe_connect_payouts_enabled: ownerState !== "payouts_disabled",
+      });
+
+    const response = await POST(request({ courseId: "course" }));
+
+    expect(response.status).toBe(400);
+    expect(mocks.createSession).not.toHaveBeenCalled();
+    expect(mocks.getSubscriptionPrice).not.toHaveBeenCalled();
+    expect(admin.orderInserts).toEqual([]);
   });
 
   it("blocks a second subscription when a non-terminal subscription already exists", async () => {

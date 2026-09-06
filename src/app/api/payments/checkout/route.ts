@@ -227,10 +227,9 @@ export async function POST(request: Request) {
 
     const owner = await getUserRow(course.owner_id);
     const platformFeeBps = canonicalPlatformFeeBpsForPlan(owner?.current_plan_id);
-    const connectedAccountId =
-      course.stripe_connected_account_id ??
-      owner?.stripe_connected_account_id ??
-      null;
+    // Course fields are caches; only the owner's protected Connect profile
+    // can authorize the account that receives a new payment.
+    const connectedAccountId = owner?.stripe_connected_account_id ?? null;
 
     if (!connectedAccountId) {
       throw new PaymentError(
@@ -239,10 +238,8 @@ export async function POST(request: Request) {
     }
 
     if (
-      owner &&
-      owner.stripe_connected_account_id === connectedAccountId &&
-      (!owner.stripe_connect_charges_enabled ||
-        !owner.stripe_connect_payouts_enabled)
+      !owner?.stripe_connect_charges_enabled ||
+      !owner.stripe_connect_payouts_enabled
     ) {
       throw new PaymentError(
         "This teacher must finish Stripe onboarding before paid checkout opens.",
@@ -380,6 +377,8 @@ export async function POST(request: Request) {
         subscriptionSession = await stripe.checkout.sessions.create(
           {
             mode: "subscription",
+            // Do not select an unvalidated currency option from a cached Price.
+            currency,
             // No platform Customer: under direct charges the Customer belongs to
             // the connected account, so Stripe creates/reuses it there from the
             // buyer's email. Passing our platform customer id would 404.
@@ -530,7 +529,7 @@ export async function POST(request: Request) {
       const { data: existingOrder, error: existingOrderError } = existingLock?.order_id
         ? await admin
             .from("orders")
-            .select("offer_id,price_id")
+            .select("offer_id,price_id,teacher_stripe_connected_account_id")
             .eq("id", existingLock.order_id)
             .maybeSingle()
         : { data: null, error: null };
@@ -542,6 +541,15 @@ export async function POST(request: Request) {
       ) {
         throw new PaymentError(
           "Another offer already has an active checkout. Close it or wait for it to expire before switching offers.",
+          409,
+        );
+      }
+
+      // An older checkout retains the merchant it was created for, even after
+      // the owner reconnects or a previously corrupted course cache is fixed.
+      if (existingOrder.teacher_stripe_connected_account_id !== connectedAccountId) {
+        throw new PaymentError(
+          "Payment setup has changed. Wait for the previous checkout to expire before trying again.",
           409,
         );
       }

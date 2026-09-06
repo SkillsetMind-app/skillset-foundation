@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { canViewCourseAssetVideo } from "@/domain/course-asset";
 import { getLessonUnlockState, type DripStrategy } from "@/domain/drip-policy";
-import { signBunnyEmbedUrl } from "@/lib/bunny/server";
+import { hasValidBunnyAssetPath, signBunnyEmbedUrl } from "@/lib/bunny/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { allowByIp, allowByKey } from "@/lib/supabase/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -19,6 +19,7 @@ const ANON_TOKENS_PER_MINUTE = 60;
 
 type VideoAsset = {
   bunny_video_id: string | null;
+  storage_path: string | null;
   course_id: string;
   owner_id: string;
   is_preview: boolean;
@@ -161,7 +162,7 @@ export async function POST(request: Request) {
 
     const { data: previewAsset, error: assetError } = await admin
       .from("course_assets")
-      .select("bunny_video_id, course_id, owner_id, is_preview, lesson_id")
+      .select("bunny_video_id, storage_path, course_id, owner_id, is_preview, lesson_id")
       .eq("course_id", courseId)
       .eq("lesson_id", lessonId)
       .eq("kind", "lesson_video")
@@ -181,7 +182,7 @@ export async function POST(request: Request) {
 
     const { data: protectedAsset, error: assetError } = await admin
       .from("course_assets")
-      .select("bunny_video_id, course_id, owner_id, is_preview, lesson_id")
+      .select("bunny_video_id, storage_path, course_id, owner_id, is_preview, lesson_id")
       .eq("id", assetId)
       .maybeSingle();
 
@@ -193,6 +194,16 @@ export async function POST(request: Request) {
 
   if (!asset?.bunny_video_id) {
     return NextResponse.json({ error: "Not available." }, { status: 404 });
+  }
+
+  // Applies equally to public previews and to owner/admin playback. Row fields
+  // alone are not proof of the Bunny video's origin, even when RLS allows them.
+  try {
+    if (!hasValidBunnyAssetPath(asset.course_id, asset.owner_id, asset.bunny_video_id, asset.storage_path)) {
+      return NextResponse.json({ error: "Not available." }, { status: 404 });
+    }
+  } catch {
+    return NextResponse.json({ error: "Video host unavailable." }, { status: 503 });
   }
 
   if (!isPublicPreviewRequest) {
