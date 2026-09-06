@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import type { CourseAsset } from "@/domain/course-asset";
 import type { TeacherCourse, TeacherLesson } from "@/domain/teacher-course";
 
@@ -13,6 +15,9 @@ const uploadLessonVideoToBunny = vi.fn<(input: unknown) => Promise<void>>(
 );
 let currentAssets: CourseAsset[] = [];
 let emitAssets: (assets: CourseAsset[]) => void;
+const subscribed = vi.fn();
+const router = vi.hoisted(() => ({ refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
 
 vi.mock("@/components/courses/bunny-video-player", () => ({
   BunnyVideoPlayer: (props: { assetId: string; resume?: unknown }) => (
@@ -48,6 +53,7 @@ vi.mock("@/lib/data/course-assets", () => ({
     _courseId: string,
     onAssets: (assets: CourseAsset[]) => void,
   ) => {
+    subscribed();
     emitAssets = onAssets;
     onAssets(currentAssets);
     return () => {};
@@ -79,7 +85,12 @@ function videoAsset(overrides: Partial<CourseAsset> = {}): CourseAsset {
   };
 }
 
-function renderModal(lessonOverrides: Partial<TeacherLesson> = {}, moduleTitle = "Módulo 1") {
+function ChangeLanguage() {
+  const { locale, setLocale } = useTranslation();
+  return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
+}
+
+function renderModal(lessonOverrides: Partial<TeacherLesson> = {}, moduleTitle = "Módulo 1", localized = false) {
   const lesson: TeacherLesson = {
     id: "lesson-1",
     title: "Primeira aula",
@@ -101,7 +112,7 @@ function renderModal(lessonOverrides: Partial<TeacherLesson> = {}, moduleTitle =
 
   const onUpdateLesson = vi.fn();
 
-  const modal = (nextLesson: TeacherLesson) => (
+  const modal = (nextLesson: TeacherLesson, onChange: (patch: Partial<TeacherLesson>) => void = onUpdateLesson) => (
     <LessonContentModal
       course={course}
       module={course.modules[0]}
@@ -112,16 +123,25 @@ function renderModal(lessonOverrides: Partial<TeacherLesson> = {}, moduleTitle =
       isFreePreview={false}
       onClose={vi.fn()}
       onSetFreePreview={vi.fn()}
-      onUpdateLesson={onUpdateLesson}
+      onUpdateLesson={onChange}
     />
   );
-  const view = render(modal(lesson));
+  function EditableModal() {
+    const [draft, setDraft] = useState(lesson);
+    return modal(draft, (patch: Partial<TeacherLesson>) => {
+      onUpdateLesson(patch);
+      setDraft((current) => ({ ...current, ...patch }));
+    });
+  }
+  const view = render(localized ? (
+    <I18nProvider initialLocale="en"><ChangeLanguage /><EditableModal /></I18nProvider>
+  ) : modal(lesson));
 
   return { onUpdateLesson, lesson, rerenderLesson: (patch: Partial<TeacherLesson>) => view.rerender(modal({ ...lesson, ...patch })) };
 }
 
-function chooseVideoFile() {
-  const file = new File(["video-bytes"], "aula.mp4", { type: "video/mp4" });
+function chooseVideoFile(name = "aula.mp4") {
+  const file = new File(["video-bytes"], name, { type: "video/mp4" });
 
   fireEvent.change(screen.getByLabelText("Upload a lesson video"), {
     target: { files: [file] },
@@ -135,6 +155,119 @@ describe("LessonContentModal — video tab", () => {
     currentAssets = [];
     bunnyConfig.isBunnyConfigured = false;
     vi.clearAllMocks();
+  });
+
+  it.each(["success", "failure", "cancel"] as const)(
+    "changes language during upload without restarting the file or losing its %s outcome",
+    async (outcome) => {
+      bunnyConfig.isBunnyConfigured = true;
+      const { CourseAssetUploadCancelled } = await import("@/lib/data/course-assets");
+      let finish!: () => void;
+      let fail!: (error: Error) => void;
+      const cancel = vi.fn(() => fail(new CourseAssetUploadCancelled()));
+      uploadLessonVideoToBunny.mockImplementationOnce((input) => {
+        const callbacks = input as {
+          onProgress: (progress: { bytesTransferred: number; totalBytes: number; percent: number; state: "running" }) => void;
+          onCancelAvailable: (cancel: () => void) => void;
+        };
+        callbacks.onProgress({ bytesTransferred: 512, totalBytes: 1024, percent: 50, state: "running" });
+        callbacks.onCancelAvailable(cancel);
+        return new Promise<void>((resolve, reject) => { finish = resolve; fail = reject; });
+      });
+      const url = "https://youtu.be/author-link";
+      const { onUpdateLesson } = renderModal({ externalUrl: url }, "Módulo $& integral", true);
+      fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+      fireEvent.change(screen.getByLabelText("Lesson title"), { target: { value: "Título $& íntegro" } });
+      fireEvent.change(screen.getByPlaceholderText("Explain what the student is about to learn and why it matters."), {
+        target: { value: "Descrição autoral — não traduzir" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /^Video/ }));
+      const file = chooseVideoFile("Aula $& — ação.mp4");
+      const fileInput = screen.getByLabelText("Lesson video");
+      fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
+      await screen.findByText("50% - 512 B of 1.0 KB");
+      const updatesBeforeLanguage = onUpdateLesson.mock.calls.length;
+
+      fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+      expect(screen.getByText("50% - 512 B de 1.0 KB")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Cancelar subida" })).toBeEnabled();
+      expect(screen.getByLabelText("Video de la lección")).toBe(fileInput);
+      expect(screen.getByText(/Aula \$& — ação\.mp4/)).toBeInTheDocument();
+      expect(screen.getByDisplayValue(url)).toBeDisabled();
+      for (const name of [/^Video/, /^Descripción/, /^Materiales/, /^Configuración/]) {
+        expect(screen.getByRole("button", { name })).toBeDisabled();
+      }
+      expect(onUpdateLesson).toHaveBeenCalledTimes(updatesBeforeLanguage);
+      expect(subscribed).toHaveBeenCalledOnce();
+      expect(uploadLessonVideoToBunny).toHaveBeenCalledOnce();
+      expect(uploadLessonVideoToBunny.mock.calls[0][0]).toEqual(expect.objectContaining({ file, kind: "lesson_video" }));
+
+      fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+      expect(screen.getByText("50% - 512 B of 1.0 KB")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+      if (outcome === "cancel") {
+        fireEvent.click(screen.getByRole("button", { name: "Cancelar subida" }));
+      } else if (outcome === "failure") {
+        await act(async () => { fail(new Error("bunny-create-failed:429")); });
+      } else {
+        await act(async () => { emitAssets([videoAsset()]); finish(); });
+      }
+      await waitFor(() => expect(screen.getByRole("button", { name: /^Descripción/ })).toBeEnabled());
+      if (outcome === "failure") {
+        expect(screen.getByText(/Demasiadas subidas en la última hora/)).toBeInTheDocument();
+      } else if (outcome === "success") {
+        expect(screen.getByText("Archivo subido a esta lección.")).toBeInTheDocument();
+        expect(onUpdateLesson).toHaveBeenLastCalledWith({ videoSource: "upload" });
+      } else {
+        expect(cancel).toHaveBeenCalledOnce();
+        expect(screen.queryByText(/No pudimos subir|Demasiadas subidas/)).not.toBeInTheDocument();
+      }
+      fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+      if (outcome === "failure") expect(screen.getByText(/Too many uploads in the last hour/)).toBeInTheDocument();
+      if (outcome === "success") expect(screen.getByText("File uploaded to this lesson.")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+      expect(screen.getByLabelText("Lesson title")).toHaveValue("Título $& íntegro");
+      expect(screen.getByDisplayValue("Descrição autoral — não traduzir")).toBeInTheDocument();
+      expect(subscribed).toHaveBeenCalledOnce();
+      expect(uploadLessonVideoToBunny).toHaveBeenCalledOnce();
+      if (outcome !== "success") expect(onUpdateLesson).toHaveBeenCalledTimes(updatesBeforeLanguage);
+    },
+  );
+
+  it("translates a displayed validation error while preserving the literal filename", () => {
+    bunnyConfig.isBunnyConfigured = true;
+    renderModal({}, "Módulo 1", true);
+    const file = new File(["notes"], "Material $& <autoral>.pdf", { type: "application/pdf" });
+    fireEvent.change(screen.getByLabelText("Upload a lesson video"), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
+    expect(screen.getByText('"Material $& <autoral>.pdf" is not a video file. Use MP4, MOV or WebM.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByText('"Material $& <autoral>.pdf" no es un archivo de video. Usa MP4, MOV o WebM.')).toBeInTheDocument();
+    expect(uploadLessonVideoToBunny).not.toHaveBeenCalled();
+    expect(uploadCourseAsset).not.toHaveBeenCalled();
+  });
+
+  it("localizes materials and settings while preserving lesson values, type codes and authored placeholders", () => {
+    currentAssets = [videoAsset({
+      kind: "lesson_thumbnail", contentType: "image/png", fileName: "Miniatura $&.png",
+      downloadUrl: "https://example.supabase.co/storage/v1/object/public/public-media/thumbnail.png",
+    })];
+    const { onUpdateLesson } = renderModal({ type: "external_embed", durationMinutes: 12, dripDelayDays: 7 }, "Módulo $& {lessonIndex}", true);
+    fireEvent.click(screen.getByRole("button", { name: /^Settings/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    const type = screen.getByLabelText("Tipo de lección");
+    expect(type).toHaveValue("external_embed");
+    expect(within(type).getAllByRole("option").map((option) => (option as HTMLOptionElement).value))
+      .toEqual(["video", "text", "live_recording", "download", "external_embed"]);
+    expect(screen.getByLabelText("Duración en minutos")).toHaveValue("12");
+    expect(screen.getByDisplayValue("7")).toBeInTheDocument();
+    expect(screen.getByText("Módulo 1 - Módulo $& {lessonIndex} / Lección 1")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Miniatura de la lección: Miniatura $&.png" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Usar esta lección como vista previa gratuita" })).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(screen.getByRole("button", { name: /^Materiales/ }));
+    expect(screen.getByLabelText("Material de la lección")).toBeInTheDocument();
+    expect(screen.getByText("Todavía no hay materiales complementarios.")).toBeInTheDocument();
+    expect(onUpdateLesson).not.toHaveBeenCalled();
   });
 
   it("keeps full lesson identity in the content scroll and preview ahead of setup guidance", () => {

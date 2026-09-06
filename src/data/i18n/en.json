@@ -1495,5 +1495,144 @@
     },
     "pageTitle": "Sign in or create an account",
     "loadingForm": "Loading sign-in form"
+  },
+  "creatorEditor": {
+    "lesson": {
+      "tabs": {
+        "video": "Video",
+        "description": "Description",
+        "materials": "Materials",
+        "settings": "Settings"
+      },
+      "state": {
+        "uploaded": "Uploaded",
+        "embedded": "Embedded",
+        "empty": "Empty",
+        "done": "Done",
+        "preview": "Preview",
+        "private": "Private"
+      },
+      "number": "Lesson {lessonIndex}",
+      "close": "Close lesson studio",
+      "untitled": "Untitled lesson",
+      "context": "Module {moduleIndex} - {moduleTitle} / Lesson {lessonIndex}",
+      "setup": "Lesson setup",
+      "previewLabel": "Lesson video preview",
+      "previewTitle": "Video preview",
+      "savedProcessing": "Your upload is saved. New videos may still be processing before they can play.",
+      "embedDetected": "{provider} embed detected.",
+      "embedInvalid": "Link saved, but it will not play in the classroom. Use a standard YouTube or Vimeo video URL.",
+      "embedEmpty": "Paste a link when the video already lives outside SkillsetMind.",
+      "uploadVideo": "Upload lesson video",
+      "uploadVideoHelp": "MP4, MOV, WebM or any browser-supported video file.",
+      "uploadRecording": "Upload live recording",
+      "uploadRecordingHelp": "Replay from cohort classes, mentorships or webinars.",
+      "videoHelp": "Upload the video to SkillsetMind or paste a YouTube/Vimeo URL. Learners can play either one in the classroom.",
+      "noVideo": "No uploaded video file yet.",
+      "title": "Lesson title",
+      "description": "Lesson description",
+      "descriptionHelp": "Shown below the video in the members area.",
+      "descriptionPlaceholder": "Explain what the student is about to learn and why it matters.",
+      "text": "Text content, prompt, or notes",
+      "textHelp": "Use this for text lessons, assignments, scripts or key takeaways.",
+      "textPlaceholder": "Add the lesson outline, assignment instructions, checklist, or supporting notes.",
+      "materialsHelp": "Complementary files are attached to this lesson and become downloadable inside the student classroom.",
+      "noMaterials": "No complementary materials yet.",
+      "type": "Lesson type",
+      "duration": "Duration minutes",
+      "freePreview": "Free preview",
+      "freePreviewHelp": "Make this lesson visible before purchase. SkillsetMind recommends one strong preview lesson.",
+      "freePreviewLabel": "Use this lesson as the free preview",
+      "drip": "Drip delay days",
+      "dripHelp": "Leave blank for immediate release, or set D+ days after enrollment.",
+      "thumbnailHelp": "Optional thumbnail upload. It is used by the members area when students browse lessons.",
+      "noThumbnail": "No lesson thumbnail yet.",
+      "contextHelp": "Configure the exact lesson students will watch, read, download, and discuss.",
+      "saveHelp": "Uploads save immediately. Text and settings save with the course draft.",
+      "file": {
+        "selectAnother": "Choose a different file",
+        "select": "Choose file",
+        "allowPreview": "Allow this file in the public preview when it is safe.",
+        "cancel": "Cancel upload",
+        "upload": "Upload file",
+        "uploading": "Uploading..."
+      },
+      "progress": {
+        "sending": "Sending {total}...",
+        "determinate": "{percent}% - {transferred} of {total}"
+      },
+      "errors": {
+        "load": "We could not load lesson assets.",
+        "notVideo": "\"{fileName}\" is not a video file. Use MP4, MOV or WebM.",
+        "videoTooLarge": "This video is {size} — the limit is {limit}.",
+        "videoLimit": "Use a video file under {limit}.",
+        "invalidFile": "Use a valid {kind} file under {limit}.",
+        "delete": "We could not delete this file. Check course ownership and current permissions."
+      },
+      "success": {
+        "uploaded": "File uploaded to this lesson.",
+        "deleted": "Asset deleted."
+      },
+      "deleteConfirm": "Delete \"{fileName}\"? This permanently removes the file.",
+      "thumbnailAlt": "Lesson thumbnail: {fileName}",
+      "enrolledOnly": "Enrolled only",
+      "deleting": "Deleting...",
+      "delete": "Delete"
+    },
+    "videoSource": {
+      "heading": "Add the lesson video",
+      "fileInput": "Upload a lesson video",
+      "dropActive": "Drop the video to select it",
+      "dropIdle": "Drag & drop your video here",
+      "browseHelp": "or click to browse — MP4, MOV, WebM and other video files.",
+      "url": "YouTube or Vimeo URL",
+      "helpLabel": "How the YouTube or Vimeo URL field works",
+      "help": "Paste the video's page link — e.g. https://www.youtube.com/watch?v=… or a Vimeo URL. We turn it into a privacy-friendly embed that plays inside the classroom, stamped with the student's identity. It stays a link on YouTube or Vimeo, though: anyone who reaches that link can watch it outside your course. Upload instead and playback is signed per student.",
+      "protectionNote": "An embedded video stays a link on YouTube or Vimeo — anyone with that link can watch it outside your course. Upload the file instead and each student gets their own signed playback."
+    }
+  },
+  "courseMedia": {
+    "assetKinds": {
+      "course_cover": "Course cover",
+      "members_cover": "Members area cover",
+      "module_cover": "Module cover",
+      "lesson_thumbnail": "Lesson thumbnail",
+      "lesson_material": "Lesson material",
+      "lesson_video": "Lesson video",
+      "live_recording": "Live recording"
+    },
+    "upload": {
+      "complete": "Upload complete",
+      "sending": "Sending...",
+      "uploading": "Uploading",
+      "transferred": "{transferred} of {total}",
+      "errors": {
+        "limit": "This file exceeds the current upload limit (~{limit}). Use a YouTube link or a smaller file.",
+        "permission": "You do not have permission to upload files to this course.",
+        "rateLimit": "Too many uploads in the last hour. Wait a little and try again — nothing was lost.",
+        "session": "Your session expired. Sign in again and re-send the file.",
+        "videoPermission": "You do not have permission to upload video to this course.",
+        "videoService": "Our video service did not accept the file just now. Try again in a few minutes.",
+        "interrupted": "The upload was interrupted — usually the connection dropped. Check your internet and send the file again.",
+        "generic": "We could not upload this file. Check the file type and course permissions.",
+        "invalidFile": "Unsupported file type or file too large.",
+        "coverHost": "Cover image URL is not on an allowed media host.",
+        "activation": "Pay the one-time activation fee before uploading course video."
+      }
+    },
+    "preview": {
+      "assetError": "Asset access is protected. Try again after refreshing your session.",
+      "preparingAsset": "Preparing protected asset...",
+      "openFile": "Open file",
+      "download": "Download",
+      "videoError": "We could not load this video. Refresh and try again.",
+      "unavailable": "Video unavailable",
+      "loading": "Loading video...",
+      "preparingPlayback": "Preparing playback."
+    },
+    "watermark": {
+      "learner": "{brandName} learner",
+      "protectedPlayback": "protected playback"
+    }
   }
 }
