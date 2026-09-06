@@ -1,9 +1,11 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
 import type { ClassroomTab } from "@/domain/classroom-tabs";
 import type { Course } from "@/domain/learning";
+import type { CourseAsset } from "@/domain/course-asset";
+import { subscribeToCourseAssets, getProtectedCourseAssetObjectUrl } from "@/lib/data/course-assets";
 import { countOpenCommunityQuestions } from "@/lib/data/community-posts";
 import { recordLessonProgress } from "@/lib/data/lesson-progress";
 
@@ -203,6 +205,46 @@ describe("sala de aula com matricula real", () => {
 
     expect(document.querySelector(".members-hero")).not.toBeNull();
     expect(document.querySelector(".member-classroom-head")).toBeNull();
+  });
+
+  it("uses subscribed lesson thumbnails in both lists without signing private content", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    vi.mocked(subscribeToCourseAssets).mockClear();
+    vi.mocked(getProtectedCourseAssetObjectUrl).mockClear();
+    let emit!: (assets: CourseAsset[]) => void;
+    vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_id, callback) => {
+      emit = callback;
+      return vi.fn();
+    });
+    const { container, rerender } = render(<EnrolledCourseWorkspace course={course} enableFirestoreAssets />);
+    const thumbnail = (patch: Partial<CourseAsset>): CourseAsset => ({
+      id: "old", courseId: course.id, ownerId: "teacher-1", lessonId: "l1",
+      kind: "lesson_thumbnail", fileName: "z-old.png", contentType: "image/png", size: 123,
+      storagePath: "courses/course-1/assets/old.png", downloadUrl: "/old.png", isPreview: false,
+      createdAt: "2026-09-01", ...patch,
+    });
+    act(() => emit([
+      thumbnail({}),
+      thumbnail({ id: "new", fileName: "a-new.png", createdAt: "2026-09-02", downloadUrl: "/new.png" }),
+      thumbnail({ id: "tracker", createdAt: "2026-09-03", downloadUrl: "https://tracker.invalid/secret.png" }),
+      thumbnail({ id: "private", lessonId: "l2", storagePath: "private.png", downloadUrl: null }),
+      thumbnail({ id: "other-course", courseId: "other", lessonId: "l2", downloadUrl: "/other-course.png" }),
+    ]));
+    expect(container.querySelector('img[src="/new.png"]')).not.toBeNull();
+    expect(container.querySelector('img[src="/old.png"]')).toBeNull();
+    expect(container.querySelector('img[src="/other-course.png"]')).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /All lessons/ }));
+    const overlay = screen.getByRole("dialog", { name: "All lessons" });
+    expect(overlay.querySelector('img[src="/new.png"]')).not.toBeNull();
+    act(() => emit([]));
+    expect(container.querySelector('img[src="/new.png"]')).toBeNull();
+    act(() => emit([thumbnail({})]));
+    expect(container.querySelector('img[src="/old.png"]')).not.toBeNull();
+    expect(subscribeToCourseAssets).toHaveBeenCalledTimes(1);
+    expect(getProtectedCourseAssetObjectUrl).not.toHaveBeenCalled();
+    rerender(<EnrolledCourseWorkspace course={{ ...course, id: "other", slug: "other" }} enableFirestoreAssets />);
+    expect(container.querySelector('img[src="/old.png"]')).toBeNull();
   });
 
   it("em aula (?lesson=): cabecalho curto com '← My courses' no lugar da capa", () => {

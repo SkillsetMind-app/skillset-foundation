@@ -13,6 +13,9 @@ import {
 } from "lucide-react";
 
 import { LessonVideoSourcePicker } from "@/components/teacher/lesson-video-source-picker";
+import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
+import { TrustedEmbedPlayer } from "@/components/learn/trusted-embed-player";
+import { ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
 import type { CourseAsset, CourseAssetKind } from "@/domain/course-asset";
 import {
   bunnyVideoMaxBytes,
@@ -20,12 +23,14 @@ import {
   courseAssetKindLabels,
   formatCourseAssetSize,
   getCourseAssetUploadErrorMessage,
+  getPrimaryLessonVideoAsset,
   isAllowedBunnyVideoFile,
   isAllowedCourseAssetFile,
   isVideoAssetKind,
   supabaseUploadLimitBytes,
 } from "@/domain/course-asset";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
+import { getSafeMediaUrl } from "@/domain/external-url";
 import {
   resolveLessonVideoSource,
   type LessonType,
@@ -58,6 +63,9 @@ type LessonContentModalProps = {
 };
 
 type LessonModalTab = "video" | "description" | "materials" | "settings";
+
+// Author preview never advances or records a student's lesson progress.
+function handlePreviewEnded() {}
 
 const lessonModalTabs: Array<{
   value: LessonModalTab;
@@ -140,9 +148,10 @@ export function LessonContentModal({
   const materialAssets = lessonAssets.filter((asset) => asset.kind === "lesson_material");
   const thumbnailAssets = lessonAssets.filter((asset) => asset.kind === "lesson_thumbnail");
   const trustedEmbed = getTrustedLessonEmbed(lesson.externalUrl);
+  const primaryVideo = getPrimaryLessonVideoAsset(lessonAssets);
   const resolvedSource = resolveLessonVideoSource({
     declared: lesson.videoSource,
-    hasVideoAsset: videoAssets.length > 0,
+    hasVideoAsset: Boolean(primaryVideo),
     hasTrustedEmbed: Boolean(trustedEmbed),
   });
   // O painel de envio abre pela INTENÇÃO do professor (escolheu um arquivo),
@@ -390,15 +399,7 @@ export function LessonContentModal({
         onMouseDown={(event) => event.stopPropagation()}
       >
         <header className="lesson-modal__header">
-          <div className="min-w-0">
-            <p className="lesson-modal__crumb">
-              Module {moduleIndex + 1} - {module.title} / Lesson {lessonIndex + 1}
-            </p>
-            <h3 id="lesson-modal-title">{lesson.title || "Untitled lesson"}</h3>
-            <p>
-              Configure the exact lesson students will watch, read, download, and discuss.
-            </p>
-          </div>
+          <p className="lesson-modal__crumb">Lesson {lessonIndex + 1}</p>
           <button type="button" className="lesson-modal__close" onClick={requestClose}>
             <X aria-hidden="true" size={18} />
             <span className="sr-only">Close lesson studio</span>
@@ -426,7 +427,9 @@ export function LessonContentModal({
               <button
                 key={item.value}
                 type="button"
+                aria-current={active ? "page" : undefined}
                 className={active ? "is-active" : ""}
+                disabled={isUploading}
                 onClick={() => handleTabChange(item.value)}
               >
                 <Icon aria-hidden="true" size={14} />
@@ -438,19 +441,39 @@ export function LessonContentModal({
         </nav>
 
         <div className="lesson-modal__body">
+          <div className="lesson-modal__context">
+            <h3 id="lesson-modal-title">{lesson.title || "Untitled lesson"}</h3>
+            <p className="lesson-modal__crumb">
+              Module {moduleIndex + 1} - {module.title} / Lesson {lessonIndex + 1}
+            </p>
+          </div>
           {tab === "video" ? (
             <div className="grid gap-5">
-              <div className="lesson-modal-video">
-                <div>
-                  <p className="lesson-modal__eyebrow">Primary lesson media</p>
-                  <h4>{videoStatus === "Empty" ? "Add a video or embed." : "Media is connected."}</h4>
-                  <p>
-                    Upload the video to SkillsetMind or paste a YouTube/Vimeo URL.
-                    Learners can play either one in the classroom.
-                  </p>
-                </div>
-                <span>{videoStatus}</span>
-              </div>
+              {resolvedSource ? (
+                <section aria-label="Lesson video preview" className="grid min-w-0 gap-2">
+                  <h4 className="text-sm font-semibold">Video preview</h4>
+                  {resolvedSource === "upload" && primaryVideo ? (
+                    primaryVideo.bunnyVideoId ? (
+                      <>
+                        <BunnyVideoPlayer key={primaryVideo.id} assetId={primaryVideo.id} title={lesson.title} />
+                        <p className="text-sm text-[var(--color-ink-soft)]">
+                          Your upload is saved. New videos may still be processing before they can play.
+                        </p>
+                      </>
+                    ) : (
+                      <ProtectedAssetPreview key={primaryVideo.id} asset={primaryVideo} />
+                    )
+                  ) : resolvedSource === "youtube" && trustedEmbed ? (
+                    <TrustedEmbedPlayer
+                      key={trustedEmbed.embedUrl}
+                      embedUrl={trustedEmbed.embedUrl}
+                      provider={trustedEmbed.provider}
+                      title={lesson.title}
+                      onEnded={handlePreviewEnded}
+                    />
+                  ) : null}
+                </section>
+              ) : null}
 
               <LessonVideoSourcePicker
                 value={isUploadPanelOpen ? "upload" : resolvedSource}
@@ -532,6 +555,10 @@ export function LessonContentModal({
                 </>
               ) : null}
 
+              <p className="lesson-modal__guidance">
+                Upload the video to SkillsetMind or paste a YouTube/Vimeo URL.
+                Learners can play either one in the classroom.
+              </p>
             </div>
           ) : null}
 
@@ -722,6 +749,9 @@ export function LessonContentModal({
               />
             </div>
           ) : null}
+          <p className="lesson-modal__guidance">
+            Configure the exact lesson students will watch, read, download, and discuss.
+          </p>
         </div>
 
         <footer className="lesson-modal__footer">
@@ -859,9 +889,17 @@ function LessonAssetList({
 
   return (
     <div className="lesson-modal-assets">
-      {assets.map((asset) => (
+      {assets.map((asset) => {
+        const thumbnailUrl = asset.kind === "lesson_thumbnail"
+          ? getSafeMediaUrl(asset.downloadUrl)
+          : null;
+        return (
         <article key={asset.id}>
           <div>
+            {thumbnailUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={thumbnailUrl} alt={`Lesson thumbnail: ${asset.fileName}`} className="mb-2 max-h-32 max-w-full rounded-lg object-contain" />
+            ) : null}
             <strong>{asset.fileName}</strong>
             <span>
               {courseAssetKindLabels[asset.kind]} - {formatCourseAssetSize(asset.size)}
@@ -881,7 +919,8 @@ function LessonAssetList({
             ) : null}
           </div>
         </article>
-      ))}
+        );
+      })}
     </div>
   );
 }

@@ -57,6 +57,21 @@ function renderOverlay(overrides: { onSelect?: () => void; onClose?: () => void 
 }
 
 describe("LessonListOverlay", () => {
+  it("keeps thumbnails and locked labels while filtering and selecting a lesson", () => {
+    const onSelect = vi.fn();
+    const { container } = render(<LessonListOverlay
+      modules={modules} selectedLessonId="l1" completedLessonIds={[]}
+      unlockStateById={new Map([["l3", { ...unlocked, unlocked: false }]])}
+      thumbnailUrlByLessonId={new Map([["l3", "/lesson-three.png"]])}
+      onSelect={onSelect} onClose={() => {}}
+    />);
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "First session" } });
+    expect(container.querySelector('img[src="/lesson-three.png"]')).toHaveAttribute("alt", "");
+    const lesson = screen.getByRole("button", { name: /First session/ });
+    expect(lesson).toHaveTextContent("Locked");
+    fireEvent.click(lesson);
+    expect(onSelect).toHaveBeenCalledWith("l3");
+  });
   it("lists every module's lessons, not just the active one", () => {
     renderOverlay();
 

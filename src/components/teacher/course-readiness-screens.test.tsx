@@ -119,6 +119,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
   afterEach(() => {
     cleanup();
     mocks.searchParams.delete("section");
+    mocks.searchParams.delete("tab");
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
@@ -190,6 +191,42 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     height.mockReturnValue(500);
     act(() => resize());
     expect(menu.style.getPropertyValue("--course-nav-height")).toBe("248px");
+    unmount();
+    expect(disconnect).toHaveBeenCalledOnce();
+  });
+
+  it("fits the members preview to each observed width and disconnects on unmount", async () => {
+    let resize: (entries: { contentRect: { width: number } }[]) => void = () => {};
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(callback: typeof resize) { resize = callback; }
+      observe = observe;
+      disconnect = disconnect;
+    });
+    mocks.searchParams.set("tab", "members");
+    const { container, unmount } = render(<CourseBuilderStudio />);
+    await screen.findByText("Live preview");
+
+    const frame = container.querySelector<HTMLDivElement>(
+      "#builder-sec-members [data-members-theme][aria-hidden='true']",
+    );
+    expect(frame).toBeInTheDocument();
+    expect(observe).toHaveBeenCalledWith(frame);
+    const stage = frame?.firstElementChild as HTMLDivElement;
+    const scaledWidth = () =>
+      Number(stage.style.transform.slice(6, -1)) * Number.parseFloat(stage.style.width);
+
+    act(() => resize([{ contentRect: { width: 170 } }]));
+    expect(frame).toHaveStyle({ height: "87px" });
+    expect(scaledWidth()).toBeCloseTo(170);
+
+    act(() => resize([{ contentRect: { width: 340 } }]));
+    expect(frame).toHaveStyle({ height: "174px" });
+    expect(scaledWidth()).toBeCloseTo(340);
+    expect(observe).toHaveBeenCalledOnce();
+    expect(disconnect).not.toHaveBeenCalled();
+
     unmount();
     expect(disconnect).toHaveBeenCalledOnce();
   });
