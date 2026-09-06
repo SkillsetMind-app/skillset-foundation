@@ -165,12 +165,18 @@ AGE_KEY_FILE=~/skillsetmind-backup.key ./scripts/restore-backup.sh backup.tar.gz
 ```bash
 AGE_KEY_FILE=~/skillsetmind-backup.key \
 PROTECTED_PROJECT_REF=<production-ref> \
-./scripts/restore-backup.sh backup.tar.gz.age --target "postgres://..."
+./scripts/restore-backup.sh backup.tar.gz.age --target "postgres://..." \
+  --storage-out ./recovered-storage
 ```
 
 The script refuses the project named in `PROTECTED_PROJECT_REF` and asks you to
 type `RESTORE` before touching anything. The dump is `--clean --if-exists`: it
 drops and recreates every table it contains.
+
+`--storage-out` must name a new directory. The files remain there after the
+temporary decrypted database dump is removed. Inspect mode exports nothing.
+The manifest count is checked before restoration; the VPS drill also checks
+the restored Storage metadata before replacing its previous file copy.
 
 **Real recovery order**, if production is actually lost:
 

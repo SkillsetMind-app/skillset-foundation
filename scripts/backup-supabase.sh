@@ -59,29 +59,9 @@ echo "    ${DUMP_BYTES} bytes"
 # Supabase's own backups keep only the metadata rows in storage.objects, so the
 # files themselves have to be fetched through the API.
 echo "==> storage objects"
-API="${SUPABASE_URL%/}/storage/v1"
-AUTH="Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}"
-OBJ_COUNT=0
-
-BUCKETS=$(curl -fsS -H "$AUTH" "$API/bucket" | jq -r '.[].name') || die "could not list buckets"
-
-for bucket in $BUCKETS; do
-  mkdir -p "$WORK/$NAME/storage/$bucket"
-  # limit is generous for this project; revisit if object counts reach it.
-  paths=$(curl -fsS -H "$AUTH" -H 'Content-Type: application/json' \
-    -d '{"prefix":"","limit":10000,"sortBy":{"column":"name","order":"asc"}}' \
-    "$API/object/list/$bucket" | jq -r '.[] | select(.id != null) | .name') \
-    || die "could not list objects in $bucket"
-
-  for path in $paths; do
-    dest="$WORK/$NAME/storage/$bucket/$path"
-    mkdir -p "$(dirname "$dest")"
-    curl -fsS -H "$AUTH" "$API/object/$bucket/$path" -o "$dest" \
-      || die "could not download $bucket/$path"
-    OBJ_COUNT=$((OBJ_COUNT + 1))
-  done
-  echo "    $bucket: $(echo "$paths" | grep -c . || true) object(s)"
-done
+OBJ_COUNT=$(python3 scripts/backup-storage.py "$WORK/$NAME/storage") \
+  || die "could not back up all Storage objects"
+echo "    $OBJ_COUNT object(s)"
 
 # --- Manifest ---------------------------------------------------------------
 cat > "$WORK/$NAME/MANIFEST.txt" <<MANIFEST
