@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -94,6 +95,42 @@ describe("SignupForm presents only the available paths", () => {
     expect(screen.getByLabelText("auth.email")).toHaveValue("alex@example.test");
     expect(screen.getByRole("checkbox")).toBeChecked();
     expect(screen.getByRole("radio", { name: "auth.signup.roleTeach" })).toHaveAttribute("aria-checked", "true");
+    expect(mocks.signUpWithEmail).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("keeps native Back non-submitting across the step change with a password draft: %s", async (hasPasswordDraft) => {
+    render(<SignupForm />);
+    fireEvent.change(screen.getByLabelText("auth.signup.fullName"), { target: { value: "Alex Rivera" } });
+    fireEvent.change(screen.getByLabelText("auth.email"), { target: { value: "alex@example.test" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "auth.signup.continue" }));
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "2");
+    if (hasPasswordDraft) {
+      fireEvent.change(screen.getByLabelText("auth.password"), { target: { value: strongSecret } });
+      fireEvent.change(screen.getByLabelText("auth.signup.confirmPassword"), { target: { value: strongSecret } });
+    }
+
+    const back = screen.getByRole<HTMLButtonElement>("button", { name: "auth.signup.back" });
+    await act(async () => { back.click(); });
+
+    // Native activation can run after React updates the step. Its original
+    // click target must not become the new Continue submit button.
+    expect(back).toHaveAttribute("type", "button");
+    expect(back).not.toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1");
+    expect(screen.getByLabelText("auth.signup.fullName")).toHaveValue("Alex Rivera");
+    expect(screen.getByLabelText("auth.email")).toHaveValue("alex@example.test");
+    expect(screen.getByRole("checkbox")).toBeChecked();
+    expect(screen.getByRole("radio", { name: "auth.signup.roleTeach" })).toHaveAttribute("aria-checked", "true");
+    expect(mocks.signUpWithEmail).not.toHaveBeenCalled();
+    expect(mocks.signInWithGoogle).not.toHaveBeenCalled();
+    expect(mocks.acceptUserTerms).not.toHaveBeenCalled();
+    expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
+    expect(mocks.router.push).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "auth.signup.continue" }));
+    expect(screen.getByPlaceholderText("auth.signup.passwordPlaceholder")).toHaveValue(hasPasswordDraft ? strongSecret : "");
+    expect(screen.getByPlaceholderText("auth.signup.confirmPasswordPlaceholder")).toHaveValue(hasPasswordDraft ? strongSecret : "");
     expect(mocks.signUpWithEmail).not.toHaveBeenCalled();
   });
 });

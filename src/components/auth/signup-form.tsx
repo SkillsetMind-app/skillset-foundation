@@ -391,6 +391,7 @@ export function SignupForm() {
           {errorNode}
 
           <button
+            key="identity-continue"
             type="submit"
             disabled={isLoading || !legalAccepted}
             className="button-solid mt-1 px-4 py-2.5 text-sm disabled:opacity-60"
@@ -516,6 +517,7 @@ export function SignupForm() {
           </button>
 
           <button
+            key="password-back"
             type="button"
             onClick={() => {
               setError(null);
