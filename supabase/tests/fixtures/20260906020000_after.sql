@@ -55,20 +55,5 @@ END $$;
 
 -- A FK remove o conteúdo privado deste curso. O perfil foi criado pelo
 -- handle_new_user, como no seed existente; limpamos as duas linhas de usuário.
-DELETE FROM public.community_reports WHERE id='upgrade-legacy-report';
-DELETE FROM public.community_posts WHERE id='upgrade-legacy-post';
-DELETE FROM public.courses WHERE id='upgrade-backfill-course';
-DELETE FROM public.users WHERE uid='22222222-2222-4222-8222-222222222222';
-DELETE FROM auth.users WHERE id='22222222-2222-4222-8222-222222222222';
-DO $$ BEGIN
-  IF EXISTS (SELECT FROM public.courses WHERE id='upgrade-backfill-course')
-     OR EXISTS (SELECT FROM public.course_lesson_content WHERE course_id='upgrade-backfill-course')
-     OR EXISTS (SELECT FROM public.community_posts WHERE id='upgrade-legacy-post')
-     OR EXISTS (SELECT FROM public.community_comments WHERE id='upgrade-legacy-comment')
-     OR EXISTS (SELECT FROM public.community_reports WHERE id='upgrade-legacy-report')
-     OR EXISTS (SELECT FROM public.users WHERE uid='22222222-2222-4222-8222-222222222222')
-     OR EXISTS (SELECT FROM auth.users WHERE id='22222222-2222-4222-8222-222222222222') THEN
-    RAISE EXCEPTION 'UPGRADE_FIXTURE_CLEANUP_FAILED';
-  END IF;
-END $$;
+\ir 20260906020000_cleanup.sql
 \echo Upgrade 0200: conteudo privado preservado, comunidade vinculada ao ID e fixtures removidas.

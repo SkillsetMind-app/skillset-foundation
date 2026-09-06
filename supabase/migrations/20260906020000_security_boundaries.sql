@@ -99,8 +99,21 @@ CREATE TRIGGER courses_public_curriculum_biu BEFORE INSERT OR UPDATE OF modules 
 FOR EACH ROW EXECUTE FUNCTION public.protect_public_course_curriculum();
 
 -- Preserve legacy inline-only text before removing it. Existing authoritative
--- content wins; conflicting lesson ownership aborts instead of overwriting it.
+-- content wins. Hold both sources stable until backfill and stripping finish;
+-- a concurrent private INSERT cannot change the checked destination.
+LOCK TABLE public.courses,public.course_lesson_content IN SHARE ROW EXCLUSIVE MODE;
 DO $$ BEGIN
+ IF EXISTS(SELECT FROM public.courses c, jsonb_array_elements(c.modules) m,jsonb_array_elements(coalesce(m->'lessons','[]')) l
+   WHERE (l ? 'contentText' OR l ? 'externalUrl')
+     AND (jsonb_typeof(l->'id') IS DISTINCT FROM 'string' OR l->>'id' ~ '^[[:space:]]*$')) THEN
+   RAISE EXCEPTION 'Unsafe lesson backfill: private inline content requires a nonblank string lesson ID';
+ END IF;
+ -- Count every occurrence, including another public-only reference or two
+ -- lessons in one course. ON CONFLICT must not choose which source survives.
+ IF EXISTS(SELECT l->>'id' FROM public.courses c, jsonb_array_elements(c.modules) m,jsonb_array_elements(coalesce(m->'lessons','[]')) l
+   GROUP BY l->>'id' HAVING count(*)>1 AND bool_or(l ? 'contentText' OR l ? 'externalUrl')) THEN
+   RAISE EXCEPTION 'Unsafe lesson backfill: an inline lesson ID has multiple curriculum references';
+ END IF;
  IF EXISTS(SELECT FROM public.courses c, jsonb_array_elements(c.modules) m,jsonb_array_elements(coalesce(m->'lessons','[]')) l
    JOIN public.course_lesson_content lc ON lc.lesson_id=l->>'id'
    WHERE (l ? 'contentText' OR l ? 'externalUrl') AND lc.course_id<>c.id) THEN

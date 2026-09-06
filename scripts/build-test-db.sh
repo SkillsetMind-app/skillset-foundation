@@ -133,6 +133,28 @@ for arquivo in supabase/migrations/*.sql; do
         psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q --single-transaction \
         -f "supabase/tests/fixtures/20260906020000_before.sql" \
         -f "supabase/tests/fixtures/20260906020000_after.sql"
+      # Dados legados persistem ANTES da tentativa: uma recusa tem de reverter
+      # todo o DDL e manter as copias inline/privadas exatamente como estavam.
+      for caso in duplicate_courses duplicate_same_course duplicate_public_reference missing_id null_id empty_id whitespace_id nonstring_id; do
+        if [[ "$caso" == duplicate_* ]]; then
+          erro_esperado='Unsafe lesson backfill: an inline lesson ID has multiple curriculum references'
+        else
+          erro_esperado='Unsafe lesson backfill: private inline content requires a nonblank string lesson ID'
+        fi
+        psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v backfill_case="$caso" -q --single-transaction \
+          -f "supabase/tests/fixtures/20260906020000_unsafe_backfill_before.sql"
+        estado_antes="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atq -f "supabase/tests/fixtures/20260906020000_backfill_state.sql")"
+        prova_red "preflight recusa $caso" "$erro_esperado" -- \
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q --single-transaction -f "$arquivo"
+        estado_depois="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atq -f "supabase/tests/fixtures/20260906020000_backfill_state.sql")"
+        if [[ ! "$estado_antes" =~ ^[0-9a-f]{32}$ || "$estado_antes" != "$estado_depois" ]]; then
+          echo "Rollback de $caso alterou conteudo legado ou deixou DDL parcial." >&2
+          exit 1
+        fi
+        psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q --single-transaction \
+          -f "supabase/tests/fixtures/20260906020000_cleanup.sql"
+        echo "  Rollback comprovado: $caso (conteudo preservado e fixtures removidas)"
+      done
       # Prova de upgrade com dados anteriores à mudança, no banco descartável.
       # A mesma transação aplica a migration, valida e remove as fixtures.
       echo "  $arquivo (upgrade/backfill com fixtures)"
