@@ -28,7 +28,7 @@ describe("public account entry", () => {
     const trigger = screen.getByRole("button", { name: "Sign in" });
     fireEvent.click(trigger);
     screen.getByRole("link", { name: /My courses/ }).focus();
-    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     expect(trigger).toHaveFocus();
     expect(screen.queryByRole("link", { name: /My courses/ })).not.toBeInTheDocument();

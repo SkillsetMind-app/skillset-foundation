@@ -638,16 +638,11 @@ p {
   color: var(--color-base) !important;
 }
 
-/* ...but a solid-fill button inside such a card keeps its OWN opaque background
-   (red accent / navy), unchanged in dark mode, so its white label stays correct.
-   The descendant flip above (specificity 0,2,0) would otherwise darken it to
-   dark-ink-on-red (~2.89:1, fails AA) — e.g. the "Create account" CTA in the
-   for-creators aside. Re-assert white with higher specificity (0,3,0). */
-[data-theme="dark"] .primary-fill-card .button-solid,
-[data-theme="dark"] .primary-fill-card .button-solid *,
+/* The opaque gold CTA keeps its own dark label inside the inverted promo card,
+   including descendants and hover. White on this gold fails AA in both states. */
 [data-theme="dark"] .primary-fill-card .button-solid-light,
 [data-theme="dark"] .primary-fill-card .button-solid-light * {
-  color: #ffffff !important;
+  color: var(--color-on-accent) !important;
 }
 
 [data-theme="dark"] input,

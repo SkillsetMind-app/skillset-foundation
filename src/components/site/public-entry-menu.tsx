@@ -19,7 +19,7 @@ export function PublicEntryMenu({ mobile = false }: { mobile?: boolean }) {
       if (!wrapper.current?.contains(event.target as Node)) setOpen(false);
     }
     function escape(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
+      if (event.key !== "Escape" || !wrapper.current?.contains(event.target as Node)) return;
       event.stopPropagation();
       setOpen(false);
       trigger.current?.focus();

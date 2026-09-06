@@ -123,7 +123,10 @@ describe("SignupForm: o olhinho e a porta de confirmacao", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "auth.signup.confirmResend" }));
     await waitFor(() =>
-      expect(mocks.resendSignupConfirmation).toHaveBeenCalledWith("patrick@example.com"),
+      expect(mocks.resendSignupConfirmation).toHaveBeenCalledWith(
+        "patrick@example.com",
+        "/loading?next=welcome&path=student",
+      ),
     );
     expect(await screen.findByText("auth.signup.confirmResent")).toBeInTheDocument();
     expect(

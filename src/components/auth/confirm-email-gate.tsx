@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { getAuthRoute, type AuthPathIntent } from "@/lib/auth/routing";
+import { getAuthRoute, getLoadingRoute, getSafeReturnTo, type AuthPathIntent } from "@/lib/auth/routing";
 import {
   getAuthErrorMessage,
   resendSignupConfirmation,
@@ -57,7 +57,8 @@ export function ConfirmEmailGate({
     setError(null);
     setSent(false);
     try {
-      await resendSignupConfirmation(email);
+      const safeReturnTo = getSafeReturnTo(new URLSearchParams({ returnTo: returnTo ?? "" }));
+      await resendSignupConfirmation(email, getLoadingRoute("welcome", intent, safeReturnTo));
       setSent(true);
       setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (caughtError) {

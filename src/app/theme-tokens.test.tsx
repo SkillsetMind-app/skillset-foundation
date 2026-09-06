@@ -217,6 +217,19 @@ describe("dark mode contrast", () => {
     }
   });
 
+  it("keeps the gold CTA readable under the dark promo card's descendant override", () => {
+    const foreground = block('[data-theme="dark"] .primary-fill-card .button-solid-light *')
+      .match(/\scolor:\s*([^;]+);/)?.[1];
+    expect(foreground).toBeTruthy();
+    for (const selector of [".button-solid-light", ".button-solid-light:hover"]) {
+      const background = block(selector).match(/\sbackground:\s*([^;]+);/)?.[1];
+      expect(background).toBeTruthy();
+      const contrast = ratio(foreground!, background!, dark);
+      expect(contrast).not.toBeNull();
+      expect(contrast!, selector).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it("never renders a color/background pair that passes in light but fails in dark", () => {
     const regressions: string[] = [];
 

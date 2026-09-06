@@ -74,7 +74,10 @@ describe("LoginForm: e-mail nunca confirmado", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "auth.signup.confirmResend" }));
     await waitFor(() =>
-      expect(mocks.resendSignupConfirmation).toHaveBeenCalledWith("patrick@example.com"),
+      expect(mocks.resendSignupConfirmation).toHaveBeenCalledWith(
+        "patrick@example.com",
+        "/loading?next=welcome",
+      ),
     );
   });
 

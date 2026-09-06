@@ -99,7 +99,7 @@ describe("SiteNav", () => {
     const trigger = within(panel).getByRole("button", { name: "Sign in" });
     fireEvent.click(trigger);
     within(panel).getByRole("link", { name: /My courses/ }).focus();
-    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
     expect(panel).toBeInTheDocument();
     expect(trigger).toHaveFocus();
     expect(trigger).toHaveAttribute("aria-expanded", "false");
@@ -107,6 +107,23 @@ describe("SiteNav", () => {
     expect(within(panel).getByRole("link", { name: /Manage my business/ })).toBeInTheDocument();
     expect(panel.className).toContain("overflow-y-auto");
     expect(panel.className).toContain("100svh");
+  });
+
+  it("lets Escape close the focused mobile menu while a desktop disclosure remains open", () => {
+    render(<SiteNav />);
+    const desktopEntry = screen.getByRole("button", { name: "Sign in" });
+    fireEvent.click(desktopEntry);
+    const mobileToggle = screen.getByRole("button", { name: "Open menu" });
+    mobileToggle.focus();
+    // Keyboard activation does not dispatch the mousedown that dismisses a disclosure.
+    fireEvent.click(mobileToggle);
+    const mobile = screen.getByRole("navigation", { name: "Mobile navigation" });
+    within(mobile).getAllByRole("link")[0].focus();
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+
+    expect(mobile).not.toBeInTheDocument();
+    expect(mobileToggle).toHaveFocus();
+    expect(desktopEntry).toHaveAttribute("aria-expanded", "true");
   });
 
   it("offers the language switch in the header", () => {
