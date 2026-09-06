@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
+
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import postcss from "postcss";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PlatformHeader } from "@/components/platform/platform-header";
@@ -80,6 +83,23 @@ afterEach(() => {
 });
 
 describe("busca na barra do topo", () => {
+  it("uses the theme focus color for the search field boundary", () => {
+    let borderColor = "";
+    const css = postcss.parse(readFileSync("src/app/globals.css", "utf8"));
+    css.walkRules(".platform-topbar-search:focus-within", rule => {
+      rule.walkDecls("border-color", declaration => { borderColor = declaration.value; });
+    });
+    expect(borderColor).toBe("var(--focus-ring)");
+  });
+
+  it("uses the compact brand mark beside the mobile account and search controls", () => {
+    render(<PlatformHeader />);
+    const logo = screen.getByRole("link", { name: "SkillsetMind" });
+    expect(logo).toHaveAttribute("href", "/teach");
+    expect(logo.querySelector(".logo-wordmark__mark")).not.toBeNull();
+    expect(logo.querySelector(".logo-wordmark__full")).toBeNull();
+  });
+
   it("omits both the input and mobile trigger when the page has no search consumer", () => {
     mocks.pathname = "/ops";
     render(<PlatformHeader searchHref={null} />);

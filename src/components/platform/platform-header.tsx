@@ -35,6 +35,7 @@ export function PlatformHeader({ currentNavigationHref, searchHref }: {
       <div className="platform-topbar__inner">
         <LogoWordmark
           nav
+          variant="mark"
           href={getWorkspaceHomeHref(pathname, user)}
           className="platform-topbar__logo"
         />
