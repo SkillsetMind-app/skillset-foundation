@@ -126,10 +126,12 @@ describe("SiteNav", () => {
       name: "Mobile navigation",
     });
     expect(linkNames(mobile)).toEqual(HEADER_ORDER);
+    within(mobile).getAllByRole("link")[0].focus();
 
     fireEvent.keyDown(document, { key: "Escape" });
     expect(
       screen.queryByRole("navigation", { name: "Mobile navigation" }),
     ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open menu" })).toHaveFocus();
   });
 });

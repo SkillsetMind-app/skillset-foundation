@@ -9,7 +9,7 @@ import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { LayoutDashboard, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { getPrimaryWorkspaceHref } from "@/lib/auth/routing";
 
@@ -81,6 +81,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
   const pathname = usePathname() ?? "";
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileToggleRef = useRef<HTMLButtonElement>(null);
   const resolvedNav = resolveNavItems(t, landingNav);
   const isAuthenticated = status === "authenticated" && user;
 
@@ -112,6 +113,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setMobileOpen(false);
+        mobileToggleRef.current?.focus();
       }
     }
 
@@ -189,6 +191,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
             </div>
           )}
           <button
+            ref={mobileToggleRef}
             type="button"
             aria-label={mobileOpen ? t("nav.closeMenu") : t("nav.openMenu")}
             aria-expanded={mobileOpen}
