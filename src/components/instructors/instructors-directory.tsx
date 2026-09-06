@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
+
 import { ArrowRight, GraduationCap } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -9,6 +11,7 @@ import type { PublicProfile } from "@/domain/user-profile";
 import { listPublicProfiles } from "@/lib/data/user-profiles";
 
 export function InstructorsDirectory() {
+  const { t } = useTranslation();
   const [profiles, setProfiles] = useState<PublicProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -49,7 +52,7 @@ export function InstructorsDirectory() {
         className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
       >
         <p className="sr-only" role="status">
-          Loading instructors...
+          {t("publicPages.directory.loading_instructors")}
         </p>
         {[0, 1, 2].map((item) => (
           <div
@@ -65,11 +68,10 @@ export function InstructorsDirectory() {
     return (
       <section className="mt-12 rounded-[16px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] p-6">
         <p className="text-sm font-semibold text-[var(--color-danger-fg)]">
-          Instructor profiles could not load right now.
+          {t("publicPages.directory.instructor_profiles_could_not_load_right")}
         </p>
         <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
-          Course pages still show verified instructor identity when a public
-          profile is available.
+          {t("publicPages.directory.course_pages_still_show_verified_instructor")}
         </p>
       </section>
     );
@@ -84,28 +86,26 @@ export function InstructorsDirectory() {
           </span>
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              First cohort
+              {t("publicPages.directory.first_cohort")}
             </p>
             <h2 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
-              Public instructor profiles appear after review.
+              {t("publicPages.directory.public_instructor_profiles_appear_after_review")}
             </h2>
             <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-              SkillsetMind only lists real published profiles. New creators can
-              finish onboarding and submit their first reviewed course before
-              they appear here.
+              {t("publicPages.directory.skillsetmind_only_lists_real_published_profiles")}
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href="/auth?mode=signup&path=teacher"
                 className="button-solid px-4 py-2.5 text-sm"
               >
-                Start teaching
+                {t("publicPages.directory.start_teaching")}
               </Link>
               <Link
                 href="/courses"
                 className="button-outline px-4 py-2.5 text-sm"
               >
-                Browse courses
+                {t("publicPages.directory.browse_courses")}
               </Link>
             </div>
           </div>
@@ -119,21 +119,20 @@ export function InstructorsDirectory() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Directory
+            {t("publicPages.directory.directory")}
           </p>
           <h2
             id="instructors-directory-heading"
             className="display-title mt-2 text-3xl text-[var(--color-primary)]"
           >
-            Published instructors
+            {t("publicPages.directory.published_instructors")}
           </h2>
         </div>
         <Link
           href="/courses"
           className="inline-flex items-center gap-2 text-sm font-bold text-[var(--color-primary)] underline-offset-4 hover:underline"
         >
-          Browse their courses
-          <ArrowRight aria-hidden="true" size={16} strokeWidth={1.9} />
+          {t("publicPages.directory.browse_their_courses")}<ArrowRight aria-hidden="true" size={16} strokeWidth={1.9} />
         </Link>
       </div>
 
@@ -147,8 +146,9 @@ export function InstructorsDirectory() {
 }
 
 function InstructorCard({ profile }: { profile: PublicProfile }) {
+  const { t } = useTranslation();
   const name =
-    profile.displayName || profile.username || "SkillsetMind instructor";
+    profile.displayName || profile.username || t("publicPages.directory.fallback_name");
   const credentials = profile.credentials.slice(0, 2);
 
   return (
@@ -173,8 +173,7 @@ function InstructorCard({ profile }: { profile: PublicProfile }) {
         </p>
       ) : (
         <p className="mt-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-          This instructor has published their profile and is preparing reviewed
-          learning experiences on SkillsetMind.
+          {t("publicPages.directory.this_instructor_has_published_their_profile")}
         </p>
       )}
 
@@ -195,8 +194,7 @@ function InstructorCard({ profile }: { profile: PublicProfile }) {
         href={`/instructors/${encodeURIComponent(profile.uid)}`}
         className="mt-auto inline-flex items-center gap-2 pt-5 text-sm font-bold text-[var(--color-primary)] underline-offset-4 hover:underline"
       >
-        View profile
-        <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
+        {t("publicPages.directory.view_profile")}<ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
       </Link>
     </article>
   );

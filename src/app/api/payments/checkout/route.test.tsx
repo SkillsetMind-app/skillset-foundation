@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getAdmin: vi.fn(),
+  getLocale: vi.fn(),
   requireUserId: vi.fn(),
   getCourseRow: vi.fn(),
   getUserRow: vi.fn(),
@@ -15,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   retrieveSession: vi.fn(),
   getPercentOffCoupon: vi.fn(),
 }));
+
+vi.mock("@/lib/i18n/server", () => ({ getServerLocale: mocks.getLocale }));
 
 vi.mock("@/lib/supabase/admin", () => ({
   getSupabaseAdminClient: mocks.getAdmin,
@@ -239,6 +242,7 @@ function course(paymentType = "subscription_monthly") {
 describe("course checkout subscription exclusivity", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getLocale.mockResolvedValue("en");
     mocks.requireUserId.mockResolvedValue("buyer");
     mocks.getCourseRow.mockResolvedValue(course());
     mocks.getUserRow.mockImplementation(async (id: string) => id === "teacher"
@@ -356,6 +360,21 @@ describe("course checkout subscription exclusivity", () => {
     expect(mocks.createSession).not.toHaveBeenCalled();
     expect(mocks.getSubscriptionPrice).not.toHaveBeenCalled();
     expect(admin.orderInserts).toEqual([]);
+  });
+
+  it.each([
+    ["en", "one_time", "payment"], ["es", "one_time", "payment"],
+    ["en", "subscription_monthly", "subscription"], ["es", "subscription_monthly", "subscription"],
+  ])("passes request locale %s to Stripe for %s", async (locale, paymentType, mode) => {
+    mocks.getLocale.mockResolvedValue(locale);
+    mocks.getAdmin.mockReturnValue(createAdmin({ lockReplies: [{ action: "claim", checkout_url: null }] }));
+    mocks.getCourseRow.mockResolvedValue(course(paymentType));
+    mocks.normalizePrice.mockReturnValue({ amountMinor: 12000, currency: "usd", paymentType, source: "legacy" });
+    expect((await POST(request({ courseId: "course" }))).status).toBe(200);
+    expect(mocks.createSession).toHaveBeenCalledWith(
+      expect.objectContaining({ locale, mode }),
+      expect.objectContaining({ stripeAccount: "acct_teacher" }),
+    );
   });
 
   it("blocks a second subscription when a non-terminal subscription already exists", async () => {

@@ -1,5 +1,11 @@
 "use client";
 
+import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
+import { LOCALES } from "@/lib/i18n/config";
+import { getDictionary, translate } from "@/lib/i18n/dictionaries";
+
+import { useTranslation } from "@/components/i18n/i18n-provider";
+
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -7,8 +13,9 @@ import { Bookmark, BookmarkCheck, LayoutGrid, List, Search } from "lucide-react"
 import { startTransition, useDeferredValue, useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
-import { CourseTile, courseCardBadge } from "@/components/courses/course-tile";
+import { CourseTile } from "@/components/courses/course-tile";
 import { useInstructorNames } from "@/components/courses/use-instructor-names";
+import type { TeacherCourse } from "@/domain/teacher-course";
 import type { CourseCard } from "@/lib/data/catalog";
 import { canContinueEnrollment, type Enrollment } from "@/domain/enrollment";
 import { subscribeToUserEnrollments } from "@/lib/data/enrollments";
@@ -35,6 +42,7 @@ type CourseMarketplaceProps = {
 const allCategoriesLabel = "All courses";
 
 export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
+  const { t } = useTranslation();
   const { status, user } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -52,7 +60,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   // Layout preference only (not URL-synced): grid is the long-standing default.
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [activeEnrollments, setActiveEnrollments] = useState<Enrollment[]>([]);
-  const [publishedCourses, setPublishedCourses] = useState<CourseCard[]>([]);
+  const [publishedCourses, setPublishedCourses] = useState<TeacherCourse[]>([]);
   const [publishedCoursesError, setPublishedCoursesError] = useState("");
   const [wishlistError, setWishlistError] = useState("");
   const [wishlistCourseIds, setWishlistCourseIds] = useState<Set<string>>(
@@ -80,7 +88,9 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
       return;
     }
 
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("cat");
+    params.delete("q");
     if (desiredCat) params.set("cat", desiredCat);
     if (desiredQuery) params.set("q", desiredQuery);
     const next = params.toString();
@@ -91,7 +101,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
       });
     });
   }, [activeCategory, query, pathname, router, searchParams]);
-  const marketplaceCourses = [...courses, ...publishedCourses];
+  const marketplaceCourses = [...courses, ...publishedCourses.map((course) => teacherCourseToCourseCard(course))];
   const categories = [
     allCategoriesLabel,
     ...Array.from(new Set(marketplaceCourses.map((course) => course.category))),
@@ -106,14 +116,13 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
       (nextCourses) => {
         setPublishedCourses(
           nextCourses
-            .filter((course) => !isInternalSmokeCourse(course))
-            .map(teacherCourseToCourseCard),
+            .filter((course) => !isInternalSmokeCourse(course)),
         );
         setPublishedCoursesError("");
         setIsLoadingPublishedCourses(false);
       },
       () => {
-        setPublishedCoursesError("Courses could not load right now. Refresh the page to try again.");
+        setPublishedCoursesError("publicCourses.loadCoursesError");
         setIsLoadingPublishedCourses(false);
       },
     );
@@ -131,7 +140,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
         setWishlistError("");
       },
       () => {
-        setWishlistError("Your wishlist could not load right now. Refresh the page to try again.");
+        setWishlistError("publicCourses.loadWishlistError");
       },
     );
   }, [status, user]);
@@ -175,7 +184,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
         courseSlug: course.slug,
       });
     } catch {
-      setWishlistError("Could not update your saved courses. Please try again.");
+      setWishlistError("publicCourses.updateWishlistError");
     } finally {
       setPendingWishlistCourseIds((current) => {
         const next = new Set(current);
@@ -190,7 +199,15 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
       activeCategory === allCategoriesLabel || course.category === activeCategory;
     const matchesQuery =
       !deferredQuery ||
-      `${course.title} ${course.category} ${course.summary}`
+      [
+        course.title,
+        course.category,
+        ...LOCALES.map((locale) => getCourseCategoryLabel(
+          course.category,
+          (key) => translate(getDictionary(locale), key),
+        )),
+        course.summary,
+      ].join(" ")
         .toLowerCase()
         .includes(deferredQuery);
 
@@ -246,7 +263,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                   isActive ? "is-active" : ""
                 }`}
               >
-                <span>{filter}</span>
+                <span>{filter === allCategoriesLabel ? t("publicCourses.all") : getCourseCategoryLabel(filter, t)}</span>
                 <span className="marketplace-filter-button__count">
                   {categoryCount(filter)}
                 </span>
@@ -256,18 +273,18 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
         </div>
         <div className="marketplace-controls">
           <label className="marketplace-field">
-            <span>Search</span>
+            <span>{t("publicCourses.search")}</span>
             <span className="marketplace-searchbox">
               <Search aria-hidden="true" size={15} strokeWidth={2} />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search skill, category, or outcome"
+                placeholder={t("publicCourses.searchHint")}
               />
             </span>
           </label>
           <label className="marketplace-field">
-            <span>Sort by</span>
+            <span>{t("publicCourses.sort")}</span>
             <select
               value={sortKey}
               onChange={(event) => setSortKey(event.target.value as CourseSortKey)}
@@ -275,43 +292,43 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
             >
               {courseSortOptions.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {t(option.labelKey)}
                 </option>
               ))}
             </select>
           </label>
           <div className="marketplace-view">
-            <span className="marketplace-view-label">View</span>
+            <span className="marketplace-view-label">{t("publicCourses.view")}</span>
             <div
               className="marketplace-view-toggle"
               role="group"
-              aria-label="View layout"
+              aria-label={t("publicCourses.viewLayout")}
             >
               <button
                 type="button"
                 aria-pressed={viewMode === "grid"}
-                aria-label="Grid view"
-                title="Grid view"
+                aria-label={t("publicCourses.gridView")}
+                title={t("publicCourses.gridView")}
                 onClick={() => setViewMode("grid")}
                 className={`marketplace-icon-button ${
                   viewMode === "grid" ? "is-active" : ""
                 }`}
               >
                 <LayoutGrid aria-hidden="true" size={16} strokeWidth={2} />
-                <span className="sr-only">Grid</span>
+                <span className="sr-only">{t("publicCourses.grid")}</span>
               </button>
               <button
                 type="button"
                 aria-pressed={viewMode === "list"}
-                aria-label="List view"
-                title="List view"
+                aria-label={t("publicCourses.listView")}
+                title={t("publicCourses.listView")}
                 onClick={() => setViewMode("list")}
                 className={`marketplace-icon-button ${
                   viewMode === "list" ? "is-active" : ""
                 }`}
               >
                 <List aria-hidden="true" size={16} strokeWidth={2} />
-                <span className="sr-only">List</span>
+                <span className="sr-only">{t("publicCourses.list")}</span>
               </button>
             </div>
           </div>
@@ -320,9 +337,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
 
       {status === "authenticated" && continueItems.length > 0 ? (
         <div className="marketplace-continue">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Continue learning
-          </p>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.continueLearning")}</p>
           <div className="marketplace-continue__rail">
             {continueItems.map(({ enrollment, course }) => {
               const progress = Math.max(
@@ -355,14 +370,14 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                       />
                     </div>
                     <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
-                      {progress}% complete
+                      {t("publicCourses.complete").replace("{count}", String(progress))}
                     </p>
                   </div>
                   <Link
                     href={`/learn/courses/${enrollment.courseSlug}`}
                     className="button-solid shrink-0 px-3 py-2 text-xs"
                   >
-                    Resume
+                    {t("publicCourses.resume")}
                   </Link>
                 </div>
               );
@@ -373,21 +388,19 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
 
       {publishedCoursesError ? (
         <p className="mb-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {publishedCoursesError}
+          {t(publishedCoursesError)}
         </p>
       ) : null}
 
       {wishlistError ? (
         <p className="mb-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {wishlistError}
+          {t(wishlistError)}
         </p>
       ) : null}
 
       {isLoadingPublishedCourses ? (
         <>
-          <p role="status" className="sr-only">
-            Loading courses...
-          </p>
+          <p role="status" className="sr-only">{t("publicCourses.loadingCourses")}</p>
           <div className="marketplace-course-grid" aria-hidden="true">
             {[0, 1, 2].map((index) => (
               <div
@@ -407,15 +420,9 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
       ) : visibleCourses.length === 0 ? (
         hasAnyCourses && isFiltering ? (
           <div className="marketplace-empty">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              No matches
-            </p>
-            <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-              No courses match your search.
-            </h2>
-            <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
-              Try a different category or keyword.
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.noMatches")}</p>
+            <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">{t("publicCourses.noSearchMatches")}</h2>
+            <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">{t("publicCourses.trySearch")}</p>
             <button
               type="button"
               onClick={() => {
@@ -423,9 +430,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                 setQuery("");
               }}
               className="button-outline mt-5 px-4 py-2.5 text-sm"
-            >
-              Clear filters
-            </button>
+            >{t("publicCourses.clearFilters")}</button>
           </div>
         ) : (
           <div className="marketplace-empty">
@@ -444,24 +449,12 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                 <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
               </svg>
             </div>
-            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              Marketplace opening soon
-            </p>
-            <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)] sm:text-4xl">
-              The first courses are on the way.
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
-              SkillsetMind reviews every course in the catalog to keep quality
-              high. Want to be among the first educators to publish here?
-              You can start today.
-            </p>
+            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.openingSoon")}</p>
+            <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)] sm:text-4xl">{t("publicCourses.firstCourses")}</h2>
+            <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">{t("publicCourses.openingBody")}</p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Link href="/auth?mode=signup&path=teacher" className="button-solid px-4 py-2.5 text-sm">
-                Start teaching
-              </Link>
-              <Link href="/for-creators" className="button-outline px-4 py-2.5 text-sm">
-                Creator overview
-              </Link>
+              <Link href="/auth?mode=signup&path=teacher" className="button-solid px-4 py-2.5 text-sm">{t("publicCourses.startTeaching")}</Link>
+              <Link href="/for-creators" className="button-outline px-4 py-2.5 text-sm">{t("publicCourses.creatorOverview")}</Link>
             </div>
           </div>
         )
@@ -490,7 +483,14 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                 summary={track.summary}
                 category={track.category}
                 meta={track.duration}
-                badge={courseCardBadge(track)}
+                courseData={{
+                  lessonCount: track.lessonCount,
+                  priceAmountMinor: track.priceAmountMinor,
+                  currency: track.currency,
+                  freePreviewHref: track.freePreviewHref,
+                  ratingCount: track.ratingCount,
+                  ownerId: track.ownerId,
+                }}
                 priceLabel={track.priceLabel}
                 rating={
                   track.ratingAverage && track.ratingCount
@@ -511,15 +511,15 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                     aria-pressed={isWishlisted}
                     aria-label={
                       isWishlisted
-                        ? `Remove ${track.title} from wishlist`
-                        : `Save ${track.title} to wishlist`
+                        ? t("publicCourses.removeTitleWishlist").replace("{title}", track.title)
+                        : t("publicCourses.saveTitleWishlist").replace("{title}", track.title)
                     }
                     title={
                       isWishlisted
-                        ? "Remove from wishlist"
+                        ? t("publicCourses.removeWishlist")
                         : status === "authenticated"
-                          ? "Save to wishlist"
-                          : "Sign in to save"
+                          ? t("publicCourses.saveWishlist")
+                          : t("publicCourses.signInSave")
                     }
                     disabled={isWishlistPending}
                     onClick={() => void handleToggleWishlist(track)}

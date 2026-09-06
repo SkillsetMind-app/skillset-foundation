@@ -4,6 +4,7 @@ import { Check } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
+import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
 import { BrandPortrait } from "@/components/shared/brand-portrait";
 import { brand } from "@/data/brand";
 import { getServerTranslation } from "@/lib/i18n/server";
@@ -94,7 +95,10 @@ export async function AuthShell({
         {/* Form panel — vertically centred; carries the brand mark on mobile
             where the showcase is hidden. */}
         <section className="flex flex-col justify-center rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)] sm:p-7">
-          <LogoWordmark compact className="mb-6 lg:hidden" />
+          <div className="mb-6 flex items-center justify-between">
+            <LogoWordmark compact className="lg:hidden" />
+            <div className="ml-auto"><LocaleSwitcher /></div>
+          </div>
           {children}
           <div className="mt-4 border-t border-[var(--color-line)] pt-4 text-sm text-[var(--color-ink-soft)]">
             {footer}

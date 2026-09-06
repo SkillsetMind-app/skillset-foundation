@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import PricingPage from "@/app/pricing/page";
 import { plans } from "@/data/plans";
 
+vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));
+
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({
     refreshUser: vi.fn(),
@@ -24,8 +26,8 @@ afterEach(() => {
 });
 
 describe("pricing page", () => {
-  it("says in one sentence what a plan changes, with no hint strip", () => {
-    render(<PricingPage />);
+  it("says in one sentence what a plan changes, with no hint strip", async () => {
+    render(await PricingPage());
 
     expect(
       screen.getByText(
@@ -35,8 +37,8 @@ describe("pricing page", () => {
     expect(screen.queryByText("Which plan is for me?")).not.toBeInTheDocument();
   });
 
-  it("leads every card with the commission and keeps the subscription small", () => {
-    render(<PricingPage />);
+  it("leads every card with the commission and keeps the subscription small", async () => {
+    render(await PricingPage());
 
     const grid = within(screen.getByRole("region", { name: "Plan comparison" }));
     for (const plan of plans) {
@@ -50,8 +52,8 @@ describe("pricing page", () => {
     expect(grid.getByText("$19/mo")).toBeInTheDocument();
   });
 
-  it("stretches the cards and pins the button to the bottom", () => {
-    render(<PricingPage />);
+  it("stretches the cards and pins the button to the bottom", async () => {
+    render(await PricingPage());
 
     const grid = within(screen.getByRole("region", { name: "Plan comparison" }));
     const cards = grid.getAllByRole("article");
@@ -64,8 +66,8 @@ describe("pricing page", () => {
     );
   });
 
-  it("keeps the no-JavaScript billing toggle, in 13px sentence case", () => {
-    render(<PricingPage />);
+  it("keeps the no-JavaScript billing toggle, in 13px sentence case", async () => {
+    render(await PricingPage());
 
     const monthly = screen.getByLabelText("Monthly");
     expect(monthly).toBeChecked();

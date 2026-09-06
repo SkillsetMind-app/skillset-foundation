@@ -86,7 +86,10 @@ export function SignupForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [legalAccepted, setLegalAccepted] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<{ key: string } | { cause: unknown } | null>(null);
+  const errorMessage = error
+    ? "key" in error ? formatValidationMessage(error.key, t) : getAuthErrorMessage(error.cause, t)
+    : "";
   // The email already has an account. The way forward is sign-in, so the
   // error grows a link there instead of leaving a "Create account" button that
   // can only fail the same way again.
@@ -113,18 +116,18 @@ export function SignupForm() {
 
   async function handleEmailSignup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
+    setError(null);
     setAccountExists(false);
 
     if (!legalAccepted) {
-      setError(t("auth.signup.acceptTermsToCreate"));
+      setError({ key: "auth.signup.acceptTermsToCreate" });
       return;
     }
 
     const displayNameError = validateDisplayName(displayName);
 
     if (displayNameError) {
-      setError(formatValidationMessage(displayNameError, t));
+      setError({ key: displayNameError });
       return;
     }
 
@@ -136,12 +139,12 @@ export function SignupForm() {
     }
 
     if (!passwordReady) {
-      setError(t("auth.signup.passwordRequirements"));
+      setError({ key: "auth.signup.passwordRequirements" });
       return;
     }
 
     if (!passwordsMatch) {
-      setError(t("auth.signup.passwordsDontMatch"));
+      setError({ key: "auth.signup.passwordsDontMatch" });
       return;
     }
 
@@ -192,17 +195,17 @@ export function SignupForm() {
       // Single-use Turnstile token — refresh for the retry.
       if (isCaptchaEnabled) setCaptchaResetSignal((n) => n + 1);
       setAccountExists(isAccountExistsError(caughtError));
-      setError(getAuthErrorMessage(caughtError));
+      setError({ cause: caughtError });
     } finally {
       setIsLoading(false);
     }
   }
 
   async function handleGoogleSignup() {
-    setError("");
+    setError(null);
 
     if (!legalAccepted) {
-      setError(t("auth.signup.acceptTermsForGoogle"));
+      setError({ key: "auth.signup.acceptTermsForGoogle" });
       return;
     }
 
@@ -234,9 +237,9 @@ export function SignupForm() {
       // A returning user with TOTP enrolled trips an MFA challenge here, but
       // the signup surface has no resolver — steer them to sign-in, which does.
       if (isMultiFactorRequiredError(caughtError)) {
-        setError(t("auth.signup.mfaUseSignIn"));
+        setError({ key: "auth.signup.mfaUseSignIn" });
       } else {
-        setError(getAuthErrorMessage(caughtError));
+        setError({ cause: caughtError });
       }
     } finally {
       setIsLoading(false);
@@ -249,7 +252,7 @@ export function SignupForm() {
       aria-live="assertive"
       className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
     >
-      {error}
+      {errorMessage}
       {accountExists ? (
         <>
           {" "}
@@ -500,7 +503,7 @@ export function SignupForm() {
           <button
             type="button"
             onClick={() => {
-              setError("");
+              setError(null);
               setStep(1);
             }}
             className="mt-1 inline-flex items-center justify-center text-sm font-semibold text-[var(--color-primary)]"

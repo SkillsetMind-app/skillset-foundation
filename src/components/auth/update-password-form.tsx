@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import {
   isStrongPassword,
@@ -27,9 +28,13 @@ export function UpdatePasswordForm({
   recoveryVerified: boolean;
 }) {
   const { status } = useAuth();
+  const { t } = useTranslation();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<{ key: string } | { cause: unknown } | null>(null);
+  const errorMessage = error
+    ? "key" in error ? t(error.key) : getAuthErrorMessage(error.cause, t)
+    : "";
   const [isLoading, setIsLoading] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const passwordReady = isStrongPassword(password);
@@ -38,15 +43,15 @@ export function UpdatePasswordForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
+    setError(null);
 
     if (!passwordReady) {
-      setError("Use a password that meets every requirement.");
+      setError({ key: "auth.signup.passwordRequirements" });
       return;
     }
 
     if (!passwordsMatch) {
-      setError("The passwords don't match.");
+      setError({ key: "auth.signup.passwordsDontMatch" });
       return;
     }
 
@@ -56,7 +61,7 @@ export function UpdatePasswordForm({
       await completePasswordRecovery(password);
       setIsDone(true);
     } catch (caughtError) {
-      setError(getAuthErrorMessage(caughtError));
+      setError({ cause: caughtError });
     } finally {
       setIsLoading(false);
     }
@@ -72,14 +77,13 @@ export function UpdatePasswordForm({
           role="alert"
           className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
-          This password reset link is invalid or has expired. Reset links can
-          only be used once.
+          {t("authFlow.recovery.invalid")}
         </p>
         <Link
           href="/forgot-password"
           className="button-solid justify-self-start px-4 py-2.5 text-sm"
         >
-          Request a new reset link
+          {t("authFlow.recovery.requestNew")}
         </Link>
       </div>
     );
@@ -91,7 +95,7 @@ export function UpdatePasswordForm({
         className="mt-6 text-sm leading-6 text-[var(--color-ink-soft)]"
         aria-busy="true"
       >
-        Checking your reset link...
+        {t("authFlow.recovery.checking")}
       </p>
     );
   }
@@ -104,14 +108,13 @@ export function UpdatePasswordForm({
           aria-live="polite"
           className="rounded-[10px] border border-[rgba(26,54,93,0.14)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]"
         >
-          Your password has been updated. You&apos;re signed in and can use it
-          next time.
+          {t("authFlow.recovery.updated")}
         </p>
         <Link
           href="/account"
           className="button-solid justify-self-start px-4 py-2.5 text-sm"
         >
-          Continue to your account
+          {t("authFlow.recovery.continue")}
         </Link>
       </div>
     );
@@ -120,12 +123,12 @@ export function UpdatePasswordForm({
   return (
     <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
       <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-        New password
+        {t("authFlow.recovery.newPassword")}
         <input
           type="password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          placeholder="Enter a new password"
+          placeholder={t("authFlow.recovery.newPasswordPlaceholder")}
           autoComplete="new-password"
           minLength={8}
           required
@@ -135,12 +138,12 @@ export function UpdatePasswordForm({
         {password ? <PasswordStrengthChecklist password={password} /> : null}
       </label>
       <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-        Confirm new password
+        {t("authFlow.recovery.confirmPassword")}
         <input
           type="password"
           value={confirmPassword}
           onChange={(event) => setConfirmPassword(event.target.value)}
-          placeholder="Repeat the new password"
+          placeholder={t("authFlow.recovery.confirmPasswordPlaceholder")}
           autoComplete="new-password"
           required
           aria-invalid={showMismatch}
@@ -148,7 +151,7 @@ export function UpdatePasswordForm({
         />
         {showMismatch ? (
           <span className="text-xs font-semibold text-[var(--color-accent-fg)]">
-            The passwords don&apos;t match.
+            {t("auth.signup.passwordsDontMatch")}
           </span>
         ) : null}
       </label>
@@ -158,7 +161,7 @@ export function UpdatePasswordForm({
           aria-live="assertive"
           className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
-          {error}
+          {errorMessage}
         </p>
       ) : null}
       <button
@@ -166,7 +169,7 @@ export function UpdatePasswordForm({
         disabled={isLoading || !passwordReady || !passwordsMatch}
         className="button-solid mt-2 px-4 py-2.5 text-sm disabled:opacity-60"
       >
-        {isLoading ? "Updating password..." : "Update password"}
+        {t(isLoading ? "authFlow.recovery.updating" : "authFlow.recovery.update")}
       </button>
     </form>
   );

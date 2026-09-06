@@ -1,3 +1,4 @@
+import { getServerLocale } from "@/lib/i18n/server";
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
 
   try {
     const userId = await requireUserId();
+    const locale = await getServerLocale();
     const admin = getSupabaseAdminClient();
     const body = (await request.json().catch(() => ({}))) as {
       courseId?: unknown;
@@ -379,6 +381,7 @@ export async function POST(request: Request) {
             mode: "subscription",
             // Do not select an unvalidated currency option from a cached Price.
             currency,
+            locale,
             // No platform Customer: under direct charges the Customer belongs to
             // the connected account, so Stripe creates/reuses it there from the
             // buyer's email. Passing our platform customer id would 404.
@@ -735,7 +738,7 @@ export async function POST(request: Request) {
     let session: Stripe.Checkout.Session | null = null;
     try {
       stripeCreateStarted = true;
-      session = await stripe.checkout.sessions.create(sessionParams, {
+      session = await stripe.checkout.sessions.create({ ...sessionParams, locale }, {
         idempotencyKey: `checkout_${orderId}`,
         stripeAccount: connectedAccountId,
       });

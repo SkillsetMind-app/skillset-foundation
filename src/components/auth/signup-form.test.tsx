@@ -28,7 +28,7 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-// Only the network call is faked. The error predicates and copy stay real,
+// Only the network call is faked. The error predicates and message keys stay real,
 // because which branch a GoTrue error takes is what the reported bug was about.
 vi.mock("@/lib/auth/supabase-auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/auth/supabase-auth")>()),
@@ -159,7 +159,7 @@ describe("SignupForm when the account was not created", () => {
     submitSignup();
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("already exists");
+    expect(alert).toHaveTextContent("authFlow.errors.accountExists");
     expect(
       screen.getByRole("link", { name: "auth.signup.existingAccountSignIn" }),
     ).toHaveAttribute("href", "/auth?mode=signin&path=student");

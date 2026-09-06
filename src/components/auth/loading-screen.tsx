@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import {
   getPostAuthRoute,
   getSafeReturnTo,
@@ -19,11 +20,12 @@ function wait(ms: number) {
 }
 
 export function LoadingScreen() {
+  const { t } = useTranslation();
   const { status, user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isLongWait, setIsLongWait] = useState(false);
-  const [error, setError] = useState("");
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     if (status === "loading") {
@@ -86,7 +88,7 @@ export function LoadingScreen() {
 
     void resolveDestination().catch(() => {
       if (!cancelled) {
-        setError("Could not load your workspace. Refresh the page to try again.");
+        setHasError(true);
       }
     });
 
@@ -101,10 +103,10 @@ export function LoadingScreen() {
       <section className="text-center">
         <div className="mx-auto mb-5 size-14 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
         <h1 className="display-title text-[22px] font-semibold text-[var(--color-primary)]">
-          Preparing your workspace
+          {t("authFlow.loading.title")}
         </h1>
         <p className="mt-1 text-[13px] text-[var(--color-ink-soft)]">
-          One moment. SkillsetMind is getting things ready.
+          {t("authFlow.loading.description")}
         </p>
         {isLongWait ? (
           <button
@@ -112,12 +114,12 @@ export function LoadingScreen() {
             onClick={() => window.location.reload()}
             className="button-outline mt-5 px-4 py-2 text-sm"
           >
-            Try again
+            {t("authFlow.loading.retry")}
           </button>
         ) : null}
-        {error ? (
+        {hasError ? (
           <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {error}
+            {t("authFlow.loading.error")}
           </p>
         ) : null}
       </section>

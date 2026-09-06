@@ -11,9 +11,8 @@ export type Dictionary = typeof enDict;
 
 const dictionaries: Record<Locale, Dictionary> = {
   en: enDict,
-  // es mirrors en's shape; the cast tolerates any key still untranslated, and
-  // translate() falls back to English at runtime for those.
-  es: esDict as Dictionary,
+  // Both shipped dictionaries must contain the same keys.
+  es: esDict,
 };
 
 export function getDictionary(locale: Locale): Dictionary {
