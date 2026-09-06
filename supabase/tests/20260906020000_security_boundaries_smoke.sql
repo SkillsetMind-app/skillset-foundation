@@ -66,15 +66,15 @@ INSERT INTO public.community_comments(id,post_id,course_slug,author_id,author_na
 VALUES('audit-legacy-comment','audit-own-legacy-post','audit-boundaries-own-slug',:'student_uid','Test learner','student','Legacy comment.');
 INSERT INTO public.course_events(id,course_id,course_slug,course_title,owner_id,title,description,type,status,starts_at,external_url)
 VALUES
- ('audit-own-event','audit-boundaries-own','audit-boundaries-own','Own course',:'teacher_uid','Own event','Synthetic event.','live','scheduled','2026-10-01T12:00:00Z','https://example.invalid/live'),
- ('audit-old-rsvp-event','audit-boundaries-own','audit-boundaries-own','Own course',:'teacher_uid','Existing event','Synthetic event.','live','scheduled','2026-10-01T12:00:00Z','https://example.invalid/live'),
- ('audit-wrong-label-event','audit-boundaries-other','audit-boundaries-own','Other course',:'admin_uid','Other event','Synthetic event.','live','scheduled','2026-10-01T12:00:00Z','https://example.invalid/live'),
- ('audit-cancelled-event','audit-boundaries-own','audit-boundaries-own','Own course',:'teacher_uid','Cancelled event','Synthetic event.','live','cancelled','2026-10-01T12:00:00Z','https://example.invalid/live'),
- ('audit-retained-event-row','audit-retained-event','audit-retained-event','Retained course',:'teacher_uid','Retained event','Synthetic event.','live','scheduled','2026-10-01T12:00:00Z','https://example.invalid/live');
+ ('audit-own-event','audit-boundaries-own','audit-boundaries-own','Own course',:'teacher_uid','Own event','Synthetic event.','live_class','scheduled','2026-10-01T12:00:00Z','https://example.invalid/live'),
+ ('audit-old-rsvp-event','audit-boundaries-own','audit-boundaries-own','Own course',:'teacher_uid','Existing event','Synthetic event.','live_class','scheduled','2026-10-01T12:00:00Z','https://example.invalid/live'),
+ ('audit-wrong-label-event','audit-boundaries-other','audit-boundaries-own','Other course',:'admin_uid','Other event','Synthetic event.','live_class','scheduled','2026-10-01T12:00:00Z','https://example.invalid/live'),
+ ('audit-cancelled-event','audit-boundaries-own','audit-boundaries-own','Own course',:'teacher_uid','Cancelled event','Synthetic event.','live_class','cancelled','2026-10-01T12:00:00Z','https://example.invalid/live'),
+ ('audit-retained-event-row','audit-retained-event','audit-retained-event','Retained course',:'teacher_uid','Retained event','Synthetic event.','live_class','scheduled','2026-10-01T12:00:00Z','https://example.invalid/live');
 -- A historical RSVP carries another course's label. Its owner can read the
 -- event as its teacher, but their enrollment is in course B, not this event A.
 INSERT INTO public.course_event_rsvps(event_id,uid,course_slug,user_id,attendee_name,status)
-VALUES('audit-old-rsvp-event',:'teacher_uid','audit-boundaries-other',:'teacher_uid','Test creator','going');
+VALUES('audit-old-rsvp-event',:'teacher_uid','audit-boundaries-other',:'teacher_uid','Test creator','attending');
 INSERT INTO public.course_lesson_content(lesson_id,course_id,content_text)
 VALUES('audit-other-private','audit-boundaries-other','OTHER_PRIVATE_LESSON_TEST');
 INSERT INTO storage.objects(bucket_id,name)
@@ -134,8 +134,8 @@ SELECT pg_temp.check_security('teacher retains deletion of an empty draft',
  NOT EXISTS(SELECT FROM public.courses WHERE id='audit-empty-draft'));
 SELECT pg_temp.check_security('RSVP cannot use enrollment in a different course',pg_temp.denied(format(
  'INSERT INTO public.course_event_rsvps(event_id,uid,course_slug,user_id,attendee_name,status) VALUES(%L,%L,%L,%L,%L,%L)',
- 'audit-own-event',:'teacher_uid','audit-boundaries-other',:'teacher_uid','Test creator','going')));
-WITH changed AS (UPDATE public.course_event_rsvps SET status='cancelled' WHERE event_id='audit-old-rsvp-event' AND uid=:'teacher_uid' RETURNING event_id)
+ 'audit-own-event',:'teacher_uid','audit-boundaries-other',:'teacher_uid','Test creator','attending')));
+WITH changed AS (UPDATE public.course_event_rsvps SET status='not_attending' WHERE event_id='audit-old-rsvp-event' AND uid=:'teacher_uid' RETURNING event_id)
 SELECT pg_temp.check_security('existing RSVP cannot be updated using another course enrollment',(SELECT count(*)=0 FROM changed));
 RESET ROLE;
 SELECT pg_temp.assume_session(null,'service_role');
@@ -166,16 +166,16 @@ SELECT pg_temp.check_security('unrelated learner cannot read another course less
 SELECT pg_temp.check_security('event visibility uses its course ID despite a different label',
  NOT EXISTS(SELECT FROM public.course_events WHERE id='audit-wrong-label-event'));
 INSERT INTO public.course_event_rsvps(event_id,uid,course_slug,user_id,attendee_name,status)
-VALUES('audit-own-event',:'student_uid','audit-boundaries-own',:'student_uid','Test learner','going');
-UPDATE public.course_event_rsvps SET status='cancelled' WHERE event_id='audit-own-event' AND uid=:'student_uid';
+VALUES('audit-own-event',:'student_uid','audit-boundaries-own',:'student_uid','Test learner','attending');
+UPDATE public.course_event_rsvps SET status='not_attending' WHERE event_id='audit-own-event' AND uid=:'student_uid';
 SELECT pg_temp.check_security('enrolled learner retains RSVP insert and update',
- EXISTS(SELECT FROM public.course_event_rsvps WHERE event_id='audit-own-event' AND uid=:'student_uid' AND status='cancelled'));
+ EXISTS(SELECT FROM public.course_event_rsvps WHERE event_id='audit-own-event' AND uid=:'student_uid' AND status='not_attending'));
 SELECT pg_temp.check_security('RSVP still rejects a non-scheduled event',pg_temp.denied(format(
  'INSERT INTO public.course_event_rsvps(event_id,uid,course_slug,user_id,attendee_name,status) VALUES(%L,%L,%L,%L,%L,%L)',
- 'audit-cancelled-event',:'student_uid','audit-boundaries-own',:'student_uid','Test learner','going')));
+ 'audit-cancelled-event',:'student_uid','audit-boundaries-own',:'student_uid','Test learner','attending')));
 SELECT pg_temp.check_security('RSVP still rejects another uid',pg_temp.denied(format(
  'INSERT INTO public.course_event_rsvps(event_id,uid,course_slug,user_id,attendee_name,status) VALUES(%L,%L,%L,%L,%L,%L)',
- 'audit-own-event',:'admin_uid','audit-boundaries-own',:'admin_uid','Test learner','going')));
+ 'audit-own-event',:'admin_uid','audit-boundaries-own',:'admin_uid','Test learner','attending')));
 INSERT INTO public.community_posts(id,course_slug,author_id,author_name,author_role,category,body)
 VALUES('audit-forged-role','audit-boundaries-own',:'student_uid','Test learner','admin','question','Learner question.');
 SELECT pg_temp.check_security('post label is derived from the real profile on INSERT',
@@ -192,13 +192,13 @@ SELECT pg_temp.check_security('comment body edit cannot promote its author label
 SELECT pg_temp.check_security('comment body and trusted label survive the edit',
  (SELECT author_role='student' AND body='Edited learner comment.' FROM public.community_comments WHERE id='audit-forged-comment'));
 SELECT pg_temp.check_security('report writer uses the post despite an untrusted course label',pg_temp.write_succeeded(format(
- 'INSERT INTO public.community_reports(id,course_slug,post_id,target_type,reporter_id,reason,status) VALUES(%L,%L,%L,%L,%L,%L,%L)',
- 'audit-course-report','untrusted-course-label','audit-teacher-post','post',:'student_uid','spam','open')));
+ 'INSERT INTO public.community_reports(id,course_slug,post_id,target_type,target_author_id,target_author_name,reporter_id,reporter_name,reporter_email,reason,status) VALUES(%L,%L,%L,%L,%L,%L,%L,%L,%L,%L,%L)',
+ 'audit-course-report','untrusted-course-label','audit-teacher-post','post',:'teacher_uid','Test creator',:'student_uid','Test learner','audit-learner@example.invalid','spam','open')));
 SELECT pg_temp.check_security('report derives its canonical course from the target post',
  EXISTS(SELECT FROM public.community_reports WHERE id='audit-course-report' AND course_slug='audit-boundaries-own'));
 SELECT pg_temp.check_security('report cannot borrow membership from its submitted course label',pg_temp.denied(format(
- 'INSERT INTO public.community_reports(course_slug,post_id,target_type,reporter_id,reason,status) VALUES(%L,%L,%L,%L,%L,%L)',
- 'audit-boundaries-own','audit-boundaries-post','post',:'student_uid','spam','open')));
+ 'INSERT INTO public.community_reports(course_slug,post_id,target_type,target_author_id,target_author_name,reporter_id,reporter_name,reporter_email,reason,status) VALUES(%L,%L,%L,%L,%L,%L,%L,%L,%L,%L)',
+ 'audit-boundaries-own','audit-boundaries-post','post',:'admin_uid','Test creator',:'student_uid','Test learner','audit-learner@example.invalid','spam','open')));
 SELECT pg_temp.check_security('comment cannot borrow membership from its submitted course label',pg_temp.denied(format(
  'INSERT INTO public.community_comments(post_id,course_slug,author_id,author_name,author_role,body) VALUES(%L,%L,%L,%L,%L,%L)',
  'audit-boundaries-post','audit-boundaries-own',:'student_uid','Test learner','student','Forbidden comment.')));

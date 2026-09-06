@@ -47,9 +47,10 @@ VALUES('upgrade-legacy-post','upgrade-backfill-slug','22222222-2222-4222-8222-22
 INSERT INTO public.community_comments(id,post_id,course_slug,author_id,author_name,author_role,body)
 VALUES('upgrade-legacy-comment','upgrade-legacy-post','upgrade-backfill-slug','22222222-2222-4222-8222-222222222222',
   'Synthetic author','admin','Historical comment.');
-INSERT INTO public.community_reports(id,course_slug,post_id,target_type,reporter_id,reason,status)
+INSERT INTO public.community_reports(id,course_slug,post_id,target_type,target_author_id,target_author_name,reporter_id,reporter_name,reporter_email,reason,status)
 VALUES('upgrade-legacy-report','upgrade-backfill-slug','upgrade-legacy-post','post',
-  '22222222-2222-4222-8222-222222222222','spam','open');
+  '22222222-2222-4222-8222-222222222222','Synthetic author',
+  '22222222-2222-4222-8222-222222222222','Synthetic reporter','upgrade-backfill@example.invalid','spam','open');
 
 DO $$ BEGIN
   IF NOT EXISTS (
