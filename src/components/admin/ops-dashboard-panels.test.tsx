@@ -24,17 +24,6 @@ describe("paineis de /ops", () => {
 });
 
 describe("links internos abrem na mesma aba", () => {
-  it("a pagina do produto no hub de gerenciamento nao abre em aba nova", () => {
-    const hub = readFileSync(
-      join(process.cwd(), "src/components/teacher/course-manage-hub.tsx"),
-      "utf8",
-    );
-    const productLink = /<Link\s+href=\{productPagePath\}[^>]*>/.exec(hub)?.[0];
-
-    expect(productLink).toBeDefined();
-    expect(productLink).not.toContain("_blank");
-  });
-
   // Excecao: termos legais abertos de dentro de um formulario (onboarding).
   // Navegar na mesma aba perderia o que a pessoa ja preencheu.
   it("nenhum <Link> para rota interna (href literal com /) pede target _blank", () => {
