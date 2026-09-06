@@ -13,6 +13,7 @@ import {
   PanelCard,
   TaxPanel,
 } from "@/components/teacher/course-commerce-panels";
+import { CourseShareLink } from "@/components/teacher/course-share-link";
 import { CourseOffersPanel } from "@/components/teacher/course-offers-panel";
 import { CourseOverviewPanel } from "@/components/teacher/course-overview-panel";
 import { CourseStudentRoster } from "@/components/teacher/course-student-roster";
@@ -244,7 +245,6 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
       { scroll: false }
     );
   };
-  const [copiedLink, setCopiedLink] = useState(false);
   const menuRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -299,20 +299,6 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   // Server-enforced by the commerce RPCs; surfaced here so the panels can
   // explain the gate instead of failing on click.
   const activationBlocked = account.verificationRequired && !account.verificationApproved;
-
-  const productPagePath = `/courses/${courseId}`;
-
-  // Absolute URL built at click time — window isn't available during SSR.
-  const handleCopyProductLink = async () => {
-    try {
-      await navigator.clipboard.writeText(`${window.location.origin}${productPagePath}`);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
-    } catch {
-      // Clipboard can be blocked (permissions/http) — the path stays visible
-      // in the panel for manual copy, so no error state needed.
-    }
-  };
 
   if (!courseLoaded) {
     return (
@@ -564,33 +550,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   : "Links you'll share once the course is published. Until then the product page opens only for you."
               }
             >
-              <div className="mt-4 rounded-[10px] border fine-rule bg-white px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                  Product page
-                </p>
-                <p className="mt-1 break-all font-mono text-sm text-[var(--color-ink)]">
-                  {productPagePath}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => void handleCopyProductLink()}
-                    className="button-solid px-4 py-2 text-xs"
-                  >
-                    {copiedLink ? "Copied!" : "Copy link"}
-                  </button>
-                  <Link
-                    href={productPagePath}
-                    className="button-outline px-4 py-2 text-xs"
-                  >
-                    Open page
-                  </Link>
-                </div>
-              </div>
-              <p className="mt-3 text-xs leading-5 text-[var(--color-ink-muted)]">
-                Direct checkout links and embeddable buy widgets ship together with the discount
-                engine — the product page is the shareable surface today.
-              </p>
+              <CourseShareLink label="Checkout" path={`/courses/${encodeURIComponent(courseId)}/checkout`} />
+              <CourseShareLink label="Product page" path={`/courses/${encodeURIComponent(courseId)}`} />
             </PanelCard>
           ) : null}
 

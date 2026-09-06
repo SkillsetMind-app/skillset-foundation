@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
+import { CourseShareLink } from "@/components/teacher/course-share-link";
 import { CurrencySelect } from "@/components/teacher/currency-select";
 import type { TeacherCoursePaymentType } from "@/domain/teacher-course";
 
@@ -274,18 +275,14 @@ export function CourseOffersPanel({
                   {offer.active ? "" : " · inactive"}
                 </p>
                 {offer.active && price ? (
-                  <a
-                    href={`/courses/${encodeURIComponent(courseId)}?${
+                  <CourseShareLink
+                    label={`${offer.name} checkout`}
+                    path={`/courses/${encodeURIComponent(courseId)}/checkout?${
                       offer.publicCode
                         ? `offer=${encodeURIComponent(offer.publicCode)}`
                         : `offerId=${encodeURIComponent(offer.id)}`
                     }`}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="mt-2 inline-flex text-xs font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
-                  >
-                    Open buyer link
-                  </a>
+                  />
                 ) : null}
               </li>
             );
