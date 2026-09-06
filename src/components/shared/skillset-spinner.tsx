@@ -15,12 +15,13 @@ export function SkillsetSpinner({
   description = "One moment. SkillsetMind is getting things ready.",
   fullscreen = true,
 }: SkillsetSpinnerProps) {
+  const Title = fullscreen ? "h1" : "p";
   const content = (
     <section className="text-center">
       <div className="mx-auto mb-5 size-14 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
-      <h1 className="display-title text-[22px] font-semibold text-[var(--color-primary)]">
+      <Title className="display-title text-[22px] font-semibold text-[var(--color-primary)]">
         {title}
-      </h1>
+      </Title>
       <p className="mt-1 text-[13px] text-[var(--color-ink-soft)]">
         {description}
       </p>

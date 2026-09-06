@@ -12,7 +12,6 @@ export default async function OnboardingPage() {
 
   return (
     <AuthShell
-      eyebrow={t("auth.onboardingShell.eyebrow")}
       title={t("auth.onboardingShell.title")}
       description={t("auth.onboardingShell.description")}
       footer={
@@ -24,25 +23,17 @@ export default async function OnboardingPage() {
         </>
       }
     >
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          {t("auth.onboardingShell.kicker")}
-        </p>
-        <h2 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
-          {t("auth.onboardingShell.heading")}
-        </h2>
-        <Suspense
-          fallback={
-            <SkillsetSpinner
-              fullscreen={false}
-              title="Preparing onboarding"
-              description="One moment. SkillsetMind is getting things ready."
-            />
-          }
-        >
-          <OnboardingChoice />
-        </Suspense>
-      </div>
+      <Suspense
+        fallback={
+          <SkillsetSpinner
+            fullscreen={false}
+            title="Preparing onboarding"
+            description="One moment. SkillsetMind is getting things ready."
+          />
+        }
+      >
+        <OnboardingChoice />
+      </Suspense>
     </AuthShell>
   );
 }

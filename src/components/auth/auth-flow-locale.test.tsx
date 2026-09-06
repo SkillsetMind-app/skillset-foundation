@@ -184,9 +184,11 @@ describe("auth flow follows the selected language without resetting state", () =
     }
     fireEvent.submit(container.querySelector("form")!);
     expect(await screen.findByRole("alert")).toHaveTextContent("Ya existe una cuenta con este correo electrónico.");
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuetext", "Paso 2 de 2");
 
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByRole("alert")).toHaveTextContent("An account already exists with this email.");
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuetext", "Step 2 of 2");
     expect(screen.getAllByDisplayValue("UnchangedPassword42!")).toHaveLength(2);
     expect(mocks.signUpWithEmail).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Back" }));

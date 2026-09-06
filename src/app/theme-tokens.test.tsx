@@ -159,6 +159,19 @@ function ratio(
   return (hi + 0.05) / (lo + 0.05);
 }
 
+describe.each([["light", light], ["dark", dark]] as const)("semantic success contrast — %s", (_theme, vars) => {
+  it.each(["--color-base", "--color-surface", "--color-surface-soft", "--color-surface-strong"])(
+    "keeps success text at AA on %s and its success tint",
+    (surface) => {
+      for (const background of [surface, "--color-success-soft"]) {
+        const contrast = ratio("var(--color-success-fg)", `var(${background})`, vars, surface);
+        expect(contrast, `${background} over ${surface} must resolve`).not.toBeNull();
+        expect(contrast!, `${background} over ${surface}`).toBeGreaterThanOrEqual(4.5);
+      }
+    },
+  );
+});
+
 /**
  * First top-level token of a background shorthand (`#fff url(...) no-repeat`).
  *

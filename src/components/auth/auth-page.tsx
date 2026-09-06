@@ -1,19 +1,15 @@
 "use client";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { AuthFrame } from "@/components/auth/auth-frame";
 import { LoginForm } from "@/components/auth/login-form";
 import { SignupForm } from "@/components/auth/signup-form";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
-import { LogoWordmark } from "@/components/shared/logo-wordmark";
-import { BrandPortrait } from "@/components/shared/brand-portrait";
 import {
   getAuthPathIntentFromSearchParams,
   getLoadingRoute,
   getSafeReturnTo,
 } from "@/lib/auth/routing";
-import { ArrowLeft, Check } from "lucide-react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef } from "react";
 
@@ -31,9 +27,7 @@ export function AuthPage() {
   const entrySessionHandled = useRef(false);
   const mode = getMode(searchParams.get("mode"));
   const isSignup = mode === "signup";
-  // The brand panel mirrors the form's path intent: teacher CTAs land on the
-  // expert pitch, everything else (default) speaks to learners. One account;
-  // intent also chooses the destination, without granting a role.
+  // The entry intent chooses the destination without granting a role.
   const pathIntent = useMemo(
     () => getAuthPathIntentFromSearchParams(searchParams),
     [searchParams],
@@ -52,126 +46,12 @@ export function AuthPage() {
     }
   }, [pathIntent, router, searchParams, status, user]);
 
-  const asideKey =
-    pathIntent === "teacher" ? "auth.page.aside.teacher" : "auth.page.aside.learner";
-  const asideProof: ReadonlyArray<readonly [string, string]> = [
-    [t(`${asideKey}.point1Title`), t(`${asideKey}.point1Desc`)],
-    [t(`${asideKey}.point2Title`), t(`${asideKey}.point2Desc`)],
-    [t(`${asideKey}.point3Title`), t(`${asideKey}.point3Desc`)],
-  ];
-
-  function switchMode(nextMode: AuthMode) {
-    if (nextMode === mode) {
-      return;
-    }
-
-    const nextParams = new URLSearchParams(searchParams.toString());
-    nextParams.set("mode", nextMode);
-    router.replace(`/auth?${nextParams.toString()}`, { scroll: false });
-  }
-
   return (
-    <main className="auth-split">
-      {/* Brand panel — desktop only, decorative (form carries all functional UI). */}
-      <aside className="auth-aside" aria-hidden="true">
-        {/* Portrait crop (1300x1272 from the 3000px master) so the tall panel
-            downscales instead of blowing up a low-res landscape frame. */}
-        {/* The same face the homepage hero drew for this visit, held still, so
-            signing up reads as walking further into the same building rather
-            than landing on a different brand.
-            Cover is height-driven in this tall panel, so the served width tracks
-            viewport height, not the 44% column width.
-            ponytail: 75% keeps the subject in the panel crop (the hero needs 78%
-            at its narrowest); nudge the x% if a portrait ever crops off-centre. */}
-        <BrandPortrait
-          imageClassName="pointer-events-none object-cover object-[75%_center]"
-          sizes="(min-width: 1024px) 60vw, 0px"
-          priority
-        />
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage:
-              "linear-gradient(160deg, rgba(7,9,13,0.32), rgba(7,9,13,0.82))",
-          }}
-        />
-        <p className="relative text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">
-          {t(`${asideKey}.eyebrow`)}
-        </p>
-        {/* Title + description removed so the portrait's face stays uncovered;
-            the adaptive eyebrow and proof points frame it top and bottom. */}
-        <ul className="relative space-y-4">
-          {asideProof.map(([title, detail]) => (
-            <li key={title} className="flex gap-3">
-              <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-white/12 text-white">
-                <Check size={13} strokeWidth={2.6} />
-              </span>
-              <span>
-                <span className="block text-sm font-bold text-white">
-                  {title}
-                </span>
-                <span className="block text-[13px] leading-5 text-white/65">
-                  {detail}
-                </span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      </aside>
-
-      {/* Form column */}
-      <div className="auth-form-col">
-        <div className="auth-topbar">
-          <LogoWordmark nav />
-          <div className="flex items-center gap-2">
-          <Link
-            href="/"
-            aria-label={t("auth.page.backToHome")}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-[10px] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
-          >
-            <ArrowLeft aria-hidden="true" size={14} strokeWidth={1.8} />
-            <span className="hidden sm:inline">{t("auth.page.backToHome")}</span>
-          </Link>
-          <LocaleSwitcher />
-          </div>
-        </div>
-        <section className="auth-main">
-          <div className="auth-card">
-          <div className="auth-tabs" role="tablist" aria-label={t("auth.page.modeAria")}>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={isSignup}
-              className={isSignup ? "active" : ""}
-              onClick={() => switchMode("signup")}
-            >
-              {t("auth.page.tabCreate")}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={!isSignup}
-              className={!isSignup ? "active" : ""}
-              onClick={() => switchMode("signin")}
-            >
-              {t("auth.page.tabSignIn")}
-            </button>
-          </div>
-
-          <p className="text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {isSignup ? t("auth.page.kickerSignup") : t("auth.page.kickerSignin")}
-          </p>
-          <h1 className="display-title mt-2 text-center text-[26px] leading-[1.15] text-[var(--color-primary)]">
-            {isSignup ? t("auth.page.titleSignup") : t("auth.page.titleSignin")}
-          </h1>
-          <p className="mx-auto mt-1.5 max-w-xs text-center text-[13px] leading-5 text-[var(--color-ink-soft)]">
-            {isSignup ? t("auth.page.subSignup") : t("auth.page.subSignin")}
-          </p>
-
-          {isSignup ? <SignupForm /> : <LoginForm />}
-          </div>
-        </section>
-      </div>
-    </main>
+    <AuthFrame homeLabel={t("auth.page.backToHome")}>
+      <h1 className="auth-title display-title">
+        {isSignup ? t("auth.page.titleSignup") : t("auth.page.titleSignin")}
+      </h1>
+      {isSignup ? <SignupForm /> : <LoginForm />}
+    </AuthFrame>
   );
 }

@@ -69,6 +69,33 @@ describe("AuthPage continues an existing verified session", () => {
   });
   afterEach(cleanup);
 
+  it.each(["signin", "signup"])("puts the %s form before the decorative portrait with one entry switch", async (mode) => {
+    mocks.auth = { status: "unauthenticated", user: null };
+    mocks.searchParams = new URLSearchParams({ mode, path: "teacher", returnTo: checkout });
+    const view = renderAuth();
+
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    const formColumn = view.container.querySelector(".auth-form-col")!;
+    const portrait = view.container.querySelector(".auth-aside")!;
+    expect(formColumn.querySelector("form")).toBeInTheDocument();
+    expect(portrait).toHaveAttribute("aria-hidden", "true");
+    expect(formColumn.compareDocumentPosition(portrait) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    const switchLinks = screen.getAllByRole("link", {
+      name: mode === "signin" ? /New to SkillsetMind/ : /Already have an account/,
+    });
+    expect(switchLinks).toHaveLength(1);
+    const destination = new URL(switchLinks[0].getAttribute("href")!, "https://skillset.test");
+    expect(destination.pathname).toBe("/auth");
+    expect(destination.searchParams.get("mode")).toBe(mode === "signin" ? "signup" : "signin");
+    expect(destination.searchParams.get("path")).toBe("teacher");
+    expect(destination.searchParams.get("returnTo")).toBe(checkout);
+    expect(mocks.signInWithEmail).not.toHaveBeenCalled();
+    if (mode === "signin") await waitFor(() => expect(mocks.getPendingSecondFactor).toHaveBeenCalledTimes(1));
+    expect(mocks.router.replace).not.toHaveBeenCalled();
+  });
+
   it.each([
     { intent: "student", roles: ["student"], expected: "/learn" },
     { intent: "teacher", roles: ["teacher"], expected: "/teach" },

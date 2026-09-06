@@ -56,8 +56,7 @@ export function SignupForm() {
     [searchParams],
   );
   // Visible learn/teach choice on the form itself. URL ?path (marketing CTAs)
-  // seeds it; toggling re-writes the URL so the aside panel — keyed by ?path —
-  // and any refresh stay in sync with the pick.
+  // seeds it; toggling re-writes the URL so any refresh stays in sync.
   const [intent, setIntent] = useState<"student" | "teacher">(
     pathIntent ?? "student",
   );
@@ -105,6 +104,7 @@ export function SignupForm() {
   // market-standard signup shape. The rest of the profile is collected later at
   // /welcome onboarding.
   const [step, setStep] = useState<1 | 2>(1);
+  const [focusIdentityOnReturn, setFocusIdentityOnReturn] = useState(false);
   const [confirmSent, setConfirmSent] = useState(false);
   // O olhinho, um por campo: quem cria senha quer conferir o que digitou nos
   // DOIS campos — o login ja tinha o seu; o cadastro, onde ele mais importa,
@@ -114,6 +114,9 @@ export function SignupForm() {
   const passwordReady = isStrongPassword(password);
   const passwordsMatch = password === confirmPassword;
   const showMismatch = confirmPassword.length > 0 && !passwordsMatch;
+  const stepLabel = t("auth.signup.progress")
+    .replace("{current}", String(step))
+    .replace("{total}", "2");
 
   async function handleEmailSignup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -285,18 +288,27 @@ export function SignupForm() {
 
   return (
     <form className="mt-5 grid gap-3" onSubmit={handleEmailSignup}>
-      {/* Progress dots — the active step widens. Signals "there's a next screen"
-          so the short step 1 doesn't read as the whole signup. */}
-      <div className="flex items-center justify-center gap-2" aria-hidden="true">
-        {[1, 2].map((n) => (
-          <span
-            key={n}
-            className={[
-              "h-1.5 rounded-full transition-all",
-              step === n ? "w-6 bg-[var(--color-primary)]" : "w-2 bg-[var(--color-line)]",
-            ].join(" ")}
-          />
-        ))}
+      <div
+        role="progressbar"
+        aria-label={stepLabel}
+        aria-valuemin={1}
+        aria-valuemax={2}
+        aria-valuenow={step}
+        aria-valuetext={stepLabel}
+        className="flex items-center gap-3 text-xs font-semibold text-[var(--color-ink-soft)]"
+      >
+        <span>{stepLabel}</span>
+        <div className="flex items-center gap-2" aria-hidden="true">
+          {[1, 2].map((n) => (
+            <span
+              key={n}
+              className={[
+                "h-1.5 rounded-full transition-all",
+                step === n ? "w-6 bg-[var(--color-primary)]" : "w-2 bg-[var(--color-line)]",
+              ].join(" ")}
+            />
+          ))}
+        </div>
       </div>
 
       {step === 1 ? (
@@ -328,7 +340,7 @@ export function SignupForm() {
 
           <p className="text-xs leading-5 text-[var(--color-ink-soft)]">{intro}</p>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3">
             <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
               {t("auth.signup.fullName")}
               <input
@@ -337,6 +349,7 @@ export function SignupForm() {
                 onChange={(event) => setDisplayName(event.target.value)}
                 placeholder={t("auth.signup.fullNamePlaceholder")}
                 autoComplete="name"
+                autoFocus={focusIdentityOnReturn}
                 required
                 className="field-input"
               />
@@ -380,6 +393,7 @@ export function SignupForm() {
           {errorNode}
 
           <button
+            key="identity-continue"
             type="submit"
             disabled={isLoading || !legalAccepted}
             className="button-solid mt-1 px-4 py-2.5 text-sm disabled:opacity-60"
@@ -387,26 +401,27 @@ export function SignupForm() {
             {t("auth.signup.continue")}
           </button>
 
-          <div className="flex items-center gap-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
-            <span className="h-px flex-1 bg-[var(--color-line)]" />
-            {t("auth.signup.or")}
-            <span className="h-px flex-1 bg-[var(--color-line)]" />
-          </div>
-
           {isGoogleAuthEnabled ? (
-            <button
-              type="button"
-              disabled={isLoading || !legalAccepted}
-              onClick={handleGoogleSignup}
-              className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
-            >
-              <GoogleMark />
-              {t("auth.continueWithGoogle")}
-            </button>
+            <>
+              <div className="flex items-center gap-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
+                <span className="h-px flex-1 bg-[var(--color-line)]" />
+                {t("auth.signup.or")}
+                <span className="h-px flex-1 bg-[var(--color-line)]" />
+              </div>
+              <button
+                type="button"
+                disabled={isLoading || !legalAccepted}
+                onClick={handleGoogleSignup}
+                className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
+              >
+                <GoogleMark />
+                {t("auth.continueWithGoogle")}
+              </button>
+            </>
           ) : null}
           <Link
             href={signinHref}
-            className="mt-1 inline-flex text-sm font-semibold text-[var(--color-primary)]"
+            className="auth-text-link mt-1 text-sm font-semibold text-[var(--color-primary)]"
           >
             {t("auth.signup.alreadyHaveAccount")}
           </Link>
@@ -504,9 +519,11 @@ export function SignupForm() {
           </button>
 
           <button
+            key="password-back"
             type="button"
             onClick={() => {
               setError(null);
+              setFocusIdentityOnReturn(true);
               setStep(1);
             }}
             className="mt-1 inline-flex items-center justify-center text-sm font-semibold text-[var(--color-primary)]"

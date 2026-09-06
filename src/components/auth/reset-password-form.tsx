@@ -74,8 +74,9 @@ export function ResetPasswordForm() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           placeholder={t("auth.emailPlaceholder")}
+          autoComplete="email"
           required
-          className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+          className="field-input"
         />
       </label>
       {error ? (
