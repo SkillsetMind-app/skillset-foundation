@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextRequest, type ProxyConfig } from "next/server";
 
 import { createServerClient } from "@supabase/ssr";
 
@@ -130,19 +130,22 @@ async function routedByHost(
   requestHeaders: Headers,
 ): Promise<NextResponse | null> {
   const hostname = normaliseHostHeader(request.headers.get("host"));
-  if (!hostname || isPlatformHost(hostname)) {
+  if (!hostname) {
     return null;
   }
 
-  const resolvedUid = await resolveHostToUid(hostname);
+  const resolvedUid = isPlatformHost(hostname) ? null : await resolveHostToUid(hostname);
   const decision = decideHostRoute({
     hostname,
     pathname: request.nextUrl.pathname,
     search: request.nextUrl.search,
+    method: request.method,
     resolvedUid,
   });
 
   switch (decision.kind) {
+    case "method-not-allowed":
+      return new NextResponse(null, { status: 405, headers: { Allow: "GET, HEAD" } });
     case "pass":
       return null;
     case "rewrite": {
@@ -156,7 +159,7 @@ async function routedByHost(
       // 308 rather than 302: the move is permanent for this path on this host,
       // and 308 preserves the method so a POST to a form that moved does not
       // silently become a GET.
-      return NextResponse.redirect(decision.url, 308);
+      return NextResponse.redirect(decision.url, decision.status ?? 308);
   }
 }
 
@@ -220,9 +223,15 @@ export async function proxy(request: NextRequest) {
   return secure(response);
 }
 
-export const config = {
+export const config: ProxyConfig = {
   matcher: [
-    // Everything except Next internals and static assets.
+    // Entry aliases must reach the redirect/405 gate even for an API id ending
+    // in .png, Next internals or assets. Keep literal values for Next's analyzer.
+    {
+      source: "/:path*",
+      has: [{ type: "host", value: "(app|consumer|pay)\\.skillsetmind\\.com\\.?" }],
+    },
+    // Preserve the existing exclusions on all other hosts.
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
