@@ -1,10 +1,15 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CreatorCourseDetail } from "@/components/courses/creator-course-detail";
+import { startCourseCheckout, enrollInFreeCreatorCourse } from "@/lib/payments/checkout";
+import { getCourseLanding } from "@/lib/data/course-landings";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
 const fixtures = vi.hoisted(() => ({
+  auth: { status: "unauthenticated", user: null as { uid: string } | null },
+  query: "",
+  router: { push: vi.fn(), replace: vi.fn() },
   course: {
     id: "course-1",
     ownerId: "teacher-1",
@@ -46,18 +51,15 @@ const fixtures = vi.hoisted(() => ({
 }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
-  useAuth: () => ({
-    refreshUser: vi.fn(),
-    status: "unauthenticated",
-    user: null,
-    signOut: vi.fn(),
-  }),
+  useAuth: () => fixtures.auth,
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => fixtures.router,
+  useSearchParams: () => new URLSearchParams(fixtures.query),
 }));
+
+vi.mock("@/lib/feature-flags", () => ({ isPublicFeatureEnabled: () => true }));
 
 vi.mock("@/lib/supabase/config", () => ({
   getSupabaseClientConfig: () => ({}),
@@ -76,7 +78,7 @@ vi.mock("@/lib/data/published-courses", () => ({
 
 vi.mock("@/lib/data/course-landings", () => ({
   emptyCourseLanding: { template: "classic", blocks: [] },
-  getCourseLanding: async () => ({ template: "classic", blocks: [] }),
+  getCourseLanding: vi.fn(async () => ({ template: "classic", blocks: [] })),
 }));
 
 vi.mock("@/lib/data/lesson-content", () => ({
@@ -104,6 +106,10 @@ vi.mock("@/components/courses/bunny-video-player", () => ({
 }));
 
 beforeEach(() => {
+  vi.clearAllMocks();
+  fixtures.query = "";
+  fixtures.auth.status = "unauthenticated";
+  fixtures.auth.user = null;
   // Sem oferta cadastrada o preço cai no campo do próprio curso: US$ 149.
   vi.stubGlobal(
     "fetch",
@@ -117,20 +123,22 @@ afterEach(() => {
 });
 
 describe("CreatorCourseDetail", () => {
-  it("por padrão desenha o próprio cabeçalho com o título do curso", () => {
+  it("por padrão desenha o próprio cabeçalho com o título do curso", async () => {
     render(<CreatorCourseDetail courseIdOverride="course-1" />);
 
+    await screen.findAllByText("$149.00");
     const title = screen.getByRole("heading", { level: 1, name: "Deep Focus Systems" });
     // Clamp, não 60px fixos.
     expect(title).toHaveClass("page-title");
     expect(title.className).not.toMatch(/text-6xl/);
   });
 
-  it("com hideHeader não repete o título que a página já renderizou no servidor", () => {
+  it("com hideHeader não repete o título que a página já renderizou no servidor", async () => {
     const { container } = render(
       <CreatorCourseDetail courseIdOverride="course-1" hideHeader />,
     );
 
+    await screen.findAllByText("$149.00");
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
     expect(screen.queryByText("Deep Focus Systems")).not.toBeInTheDocument();
     // O resto do conteúdo interativo continua no lugar.
@@ -235,5 +243,77 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
       "Reviews",
       "Instructor",
     ]);
+  });
+});
+
+const launchOffer = {
+  id: "offer-1", courseId: "course-1", name: "Launch", publicCode: "LAUNCH", active: true,
+  prices: [{ id: "price-1", offerId: "offer-1", amountMinor: 4900, currency: "USD", paymentType: "one_time", active: true }],
+};
+function withOffers(offers = [launchOffer]) {
+  vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers }) })));
+}
+
+describe("permanent checkout", () => {
+  it("shows identity and one purchase card without loading sales content", async () => {
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+    expect(await screen.findByText("$149.00")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Deep Focus Systems" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Ana Prado/ })).toBeInTheDocument();
+    expect(container.querySelector("#enroll-card")).not.toBeNull();
+    expect(container.querySelector("#curriculum, #free-preview, .fixed")).toBeNull();
+    expect(screen.queryByRole("navigation", { name: "Course sections" })).not.toBeInTheDocument();
+    expect(getCourseLanding).not.toHaveBeenCalled();
+    expect(startCourseCheckout).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("keeps offer and price through signup and signin (checkout %s)", async (checkoutOnly) => {
+    fixtures.query = "offer=LAUNCH&priceId=price-1&checkout=cancelled&returnTo=https://evil.example";
+    withOffers();
+    render(<CreatorCourseDetail courseIdOverride="focus-slug" checkoutOnly={checkoutOnly} />);
+    const enroll = await screen.findByRole("link", { name: /Enroll — \$49.00/ });
+    const destination = `/courses/focus-slug${checkoutOnly ? "/checkout" : ""}?offer=LAUNCH&priceId=price-1`;
+    expect(new URL(enroll.getAttribute("href")!, "https://test.local").searchParams.get("returnTo")).toBe(destination);
+    const signin = screen.getByRole("link", { name: /Sign in/ });
+    expect(new URL(signin.getAttribute("href")!, "https://test.local").searchParams.get("returnTo")).toBe(destination);
+  });
+
+  it("keeps offer selection on the checkout surface", async () => {
+    fixtures.query = "offer=LAUNCH&checkout=cancelled";
+    withOffers([launchOffer, { ...launchOffer, id: "offer-2", name: "Standard" }]);
+    render(<CreatorCourseDetail courseIdOverride="focus-slug" checkoutOnly />);
+    fireEvent.click(await screen.findByRole("radio", { name: /Standard/ }));
+    expect(fixtures.router.replace).toHaveBeenCalledWith("/courses/focus-slug/checkout?offerId=offer-2", { scroll: false });
+  });
+
+  it("charges the resolved offer only after an explicit click", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    fixtures.query = "offer=LAUNCH";
+    withOffers();
+    render(<CreatorCourseDetail courseIdOverride="focus-slug" checkoutOnly />);
+    const button = await screen.findByRole("button", { name: /Enroll — \$49.00/ });
+    expect(startCourseCheckout).not.toHaveBeenCalled();
+    fireEvent.click(button);
+    expect(startCourseCheckout).toHaveBeenCalledWith("course-1", { offerId: "offer-1", offerCode: "LAUNCH", priceId: "price-1" });
+  });
+
+  it("does not charge for an unavailable offer", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    fixtures.query = "offer=MISSING";
+    withOffers();
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+    expect(await screen.findByText("The selected offer is no longer available.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Checkout not available yet" })).toBeDisabled();
+    expect(startCourseCheckout).not.toHaveBeenCalled();
+  });
+
+  it("reuses free enrollment without opening Stripe", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    withOffers([{ ...launchOffer, prices: [{ ...launchOffer.prices[0], amountMinor: 0, paymentType: "free" }] }]);
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+    fireEvent.click(await screen.findByRole("button", { name: "Enroll free" }));
+    await waitFor(() => expect(fixtures.router.push).toHaveBeenCalledWith("/learn/courses/course-1"));
+    expect(enrollInFreeCreatorCourse).toHaveBeenCalledWith("course-1");
+    expect(startCourseCheckout).not.toHaveBeenCalled();
   });
 });

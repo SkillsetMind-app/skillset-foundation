@@ -14,6 +14,9 @@ const course = {
 };
 
 describe("resolveCoursePrice", () => {
+  it("never charges the legacy price for a missing explicit price ID", () => {
+    expect(resolveCoursePrice(course, [], { priceId: "removed-price" })).toBeNull();
+  });
   it("uses legacy course columns when no offers exist", () => {
     const resolved = resolveCoursePrice(course, []);
     expect(resolved).toEqual({

@@ -90,7 +90,7 @@ export function resolveCoursePrice(
     }
   }
 
-  if (hasExplicitOffer) {
+  if (hasExplicitOffer || selection.priceId) {
     return null;
   }
 

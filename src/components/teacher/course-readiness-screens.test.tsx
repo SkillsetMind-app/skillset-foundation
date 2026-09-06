@@ -118,8 +118,18 @@ vi.mock("@/components/teacher/course-overview-panel", () => ({
 describe("o que falta para publicar: um numero so em todas as telas", () => {
   afterEach(() => {
     cleanup();
+    mocks.searchParams.delete("section");
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it("offers permanent checkout and product page links in Promo links", async () => {
+    mocks.searchParams.set("section", "links");
+    render(<CourseManageHub courseId="course-1" />);
+    await screen.findByRole("button", { name: "Copy Checkout link" });
+    expect(screen.getByRole("link", { name: "Open Checkout" })).toHaveAttribute("href", "https://www.skillsetmind.com/courses/course-1/checkout");
+    expect(screen.getByRole("link", { name: "Open Product page" })).toHaveAttribute("href", "https://www.skillsetmind.com/courses/course-1");
+    expect(screen.getByRole("button", { name: "Copy Checkout link" })).toBeInTheDocument();
   });
 
   const expected = getCourseReadiness(mocks.course);

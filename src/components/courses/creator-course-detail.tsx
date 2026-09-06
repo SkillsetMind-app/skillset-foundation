@@ -46,11 +46,13 @@ type CreatorCourseDetailProps = {
   courseIdOverride?: string;
   /** A página já renderizou título e resumo no servidor (mesmo padrão de PlatformShell). */
   hideHeader?: boolean;
+  checkoutOnly?: boolean;
 };
 
 export function CreatorCourseDetail({
   courseIdOverride,
   hideHeader = false,
+  checkoutOnly = false,
 }: CreatorCourseDetailProps = {}) {
   const { status: authStatus, user } = useAuth();
   const router = useRouter();
@@ -82,7 +84,7 @@ export function CreatorCourseDetail({
     // landing, and writing it back here would be a synchronous setState inside
     // an effect body. This surface mounts one course and keeps it, so there is
     // no path where a previous course's page could linger.
-    if (!landingCourseId) return;
+    if (checkoutOnly || !landingCourseId) return;
     let cancelled = false;
     const timer = window.setTimeout(() => {
       void getCourseLanding(landingCourseId).then((next) => {
@@ -93,7 +95,7 @@ export function CreatorCourseDetail({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [landingCourseId]);
+  }, [checkoutOnly, landingCourseId]);
   // Uma assinatura so do perfil do professor, usada pela assinatura embaixo do
   // titulo E pelo cartao do instrutor.
   const instructorProfile = useInstructorProfile(course?.ownerId ?? "");
@@ -145,7 +147,7 @@ export function CreatorCourseDetail({
   // preview lesson id so it re-runs if the educator changes the preview.
   const freePreviewLessonId = course?.freePreviewLessonId ?? null;
   useEffect(() => {
-    if (!resolvedCourseId || !hasBackendConfig || !freePreviewLessonId) {
+    if (checkoutOnly || !resolvedCourseId || !hasBackendConfig || !freePreviewLessonId) {
       // No reset here: render resolves preview content only when
       // previewContent.key matches the current course+preview lesson, so a stale
       // value is ignored and falls back to inline — avoids a setState-in-effect.
@@ -171,7 +173,7 @@ export function CreatorCourseDetail({
     return () => {
       cancelled = true;
     };
-  }, [resolvedCourseId, hasBackendConfig, freePreviewLessonId]);
+  }, [checkoutOnly, resolvedCourseId, hasBackendConfig, freePreviewLessonId]);
 
   useEffect(() => {
     if (!resolvedCourseId || !isCoursePubliclySellable(course?.status)) {
@@ -383,7 +385,12 @@ export function CreatorCourseDetail({
         : hasPaidPrice
           ? "one-time"
           : null;
-  const coursePath = `/courses/${encodeURIComponent(courseRef)}`;
+  const coursePath = `/courses/${encodeURIComponent(courseRef)}${checkoutOnly ? "/checkout" : ""}`;
+  const returnParams = new URLSearchParams();
+  if (requestedOfferId) returnParams.set("offerId", requestedOfferId);
+  if (requestedOfferCode) returnParams.set("offer", requestedOfferCode);
+  if (requestedPriceId) returnParams.set("priceId", requestedPriceId);
+  const returnTo = `${coursePath}${returnParams.size ? `?${returnParams}` : ""}`;
   const enrollLabel = courseIsFree
     ? "Enroll free"
     : pricingReady && hasPaidPrice
@@ -460,15 +467,15 @@ export function CreatorCourseDetail({
     params.set("offerId", offerId);
     const query = params.toString();
     router.replace(
-      `/courses/${encodeURIComponent(courseRef)}${query ? `?${query}` : ""}`,
+      `${coursePath}${query ? `?${query}` : ""}`,
       { scroll: false },
     );
   }
 
   return (
     <>
-    <div className="grid gap-8 pb-24 lg:grid-cols-[1.15fr_0.85fr] lg:pb-0">
-      <section>
+    <div className={checkoutOnly ? "grid min-w-0 gap-8 lg:grid-cols-[1fr_1fr]" : "grid gap-8 pb-24 lg:grid-cols-[1.15fr_0.85fr] lg:pb-0"}>
+      <section className="min-w-0">
         {hideHeader ? null : (
           <div
             id="overview"
@@ -528,6 +535,7 @@ export function CreatorCourseDetail({
           </div>
         ) : null}
 
+        {!checkoutOnly ? <>
         <nav
           aria-label="Course sections"
           className="mt-6 flex flex-wrap gap-1 border-b border-[var(--color-line)]"
@@ -720,6 +728,7 @@ export function CreatorCourseDetail({
           ratingAverage={course.ratingAverage}
           ratingCount={course.ratingCount}
         />
+        </> : null}
       </section>
 
       {/* Cartao de compra fixo: no desktop ele acompanha a rolagem, entao o
@@ -727,7 +736,7 @@ export function CreatorCourseDetail({
           Antes o cartao subia com a pagina e sumia na primeira rolagem. */}
       <aside
         id="enroll-card"
-        className="h-fit scroll-mt-24 self-start rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] lg:sticky lg:top-24"
+        className="min-w-0 h-fit scroll-mt-24 self-start rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] lg:sticky lg:top-24"
       >
         {/* O preco era a quarta de seis linhas de uma lista "At a glance",
             entre "Status: Published" e "Access: Secure checkout" — vocabulario
@@ -847,13 +856,13 @@ export function CreatorCourseDetail({
           // depois de entrar, em vez de deixa-la na home.
           <div className="mt-6 grid gap-3">
             <Link
-              href={`/auth?mode=signup&returnTo=${encodeURIComponent(coursePath)}`}
+              href={`/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`}
               className="button-solid w-full justify-center px-5 py-2.5 text-sm"
             >
               {enrollLabel}
             </Link>
             <Link
-              href={`/auth?mode=signin&returnTo=${encodeURIComponent(coursePath)}`}
+              href={`/auth?mode=signin&returnTo=${encodeURIComponent(returnTo)}`}
               className="button-outline w-full justify-center px-5 py-2.5 text-sm"
             >
               Sign in
@@ -976,7 +985,7 @@ export function CreatorCourseDetail({
         preco e o botao era preciso rolar por todo o curriculo. Esta barra
         mantem os dois a mao e leva ao cartao. Escondida a partir de lg, onde
         o cartao ja acompanha a rolagem na coluna lateral. */}
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 lg:hidden">
+    {!checkoutOnly ? <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 lg:hidden">
       <div className="pointer-events-auto flex items-center gap-3 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
@@ -993,7 +1002,7 @@ export function CreatorCourseDetail({
           Enroll
         </Link>
       </div>
-    </div>
+    </div> : null}
     </>
   );
 }
