@@ -24,7 +24,7 @@ import { ACTIVATION_FEE_CHECKOUT_PURPOSE } from "@/data/plans";
 type FailurePoint =
   | "payments.upsert"
   | "orders.update"
-  | "enrollments.insert"
+  | "fulfill_paid_course_access"
   | "payout_ledger.insert"
   | "course_subscriptions.update";
 
@@ -190,10 +190,10 @@ function createAdmin(
         }
 
         if (this.table === "enrollments" && this.operation === "update") {
-          state.enrollmentUpdates.push({
-            ...this.values,
-            id: this.filterValue("id"),
-          });
+          const matches = this.filters
+            .filter(({ column }) => column === "source" || column === "subscription_id")
+            .every(({ column, value }) => state.enrollmentRow?.[column] === value);
+          if (matches) state.enrollmentUpdates.push({ ...this.values, id: this.filterValue("id") });
         }
 
         if (this.table === "users" && this.operation === "update") {
@@ -271,6 +271,9 @@ function createAdmin(
     from: vi.fn((table: string) => new Query(table)),
     rpc: vi.fn(async (name: string, args: Record<string, unknown>) => {
       state.rpcCalls.push({ name, args });
+      if (name === "fulfill_paid_course_access" && state.failAt === name) {
+        return { data: null, error: { message: "enrollment RPC unavailable" } };
+      }
       if (name === "claim_payout_transfer_reversal") {
         const claimKey = String(args.p_claim_key);
         const existing = state.refundClaims[claimKey];
@@ -542,7 +545,7 @@ describe("Stripe webhook financial integrity", () => {
   it.each<FailurePoint>([
     "payments.upsert",
     "orders.update",
-    "enrollments.insert",
+    "fulfill_paid_course_access",
     "payout_ledger.insert",
   ])("returns 500 and leaves the event retryable when %s fails", async (failAt) => {
     const admin = createAdmin("checkout", failAt);
@@ -697,6 +700,28 @@ describe("Stripe webhook financial integrity", () => {
       { stripeAccount: "acct_teacher" },
     );
     expect(admin.state.doneEvents).toContain("evt_invoice_paid");
+  });
+
+  it("a purchase uses atomic fulfillment instead of a stale enrollment snapshot", async () => {
+    const admin = createAdmin("checkout");
+    admin.state.enrollmentRow = { status: "completed", source: "creator", creator_grant_id: "grant-1", progress_percent: 100 };
+    mocks.getAdmin.mockReturnValue(admin);
+    expect((await postEvent(checkoutEvent())).status).toBe(200);
+    expect(admin.state.rpcCalls).toContainEqual({ name: "fulfill_paid_course_access", args: { p_user_id: "user_1", p_course_id: "course_1", p_source: "payment" } });
+    expect(admin.from).not.toHaveBeenCalledWith("enrollments");
+  });
+
+  it("a paid invoice uses the same atomic fulfillment with its subscription", async () => {
+    const admin = createAdmin("checkout");
+    admin.state.enrollmentRow = { status: "active", source: "creator", creator_grant_id: "grant-1", progress_percent: 100 };
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.subscriptionRetrieve.mockResolvedValueOnce({
+      metadata: { purpose: "course_subscription", courseId: "course_1", userId: "user_1", teacherId: "teacher_1" },
+      items: { data: [{ current_period_end: 1_800_000_000 }] }, customer: "cus_1", status: "active", cancel_at_period_end: false,
+    });
+    expect((await postEvent(paidInvoiceEvent())).status).toBe(200);
+    expect(admin.state.rpcCalls).toContainEqual({ name: "fulfill_paid_course_access", args: { p_user_id: "user_1", p_course_id: "course_1", p_source: "subscription", p_subscription_id: "sub_1" } });
+    expect(admin.from).not.toHaveBeenCalledWith("enrollments");
   });
 
   it("syncs connected-account readiness from a Connect webhook", async () => {
@@ -876,7 +901,7 @@ describe("Stripe webhook financial integrity", () => {
     // e ficar com o curso para sempre.
     it("revoga o curso de quem cancela a assinatura DEPOIS de concluir", async () => {
       const admin = createAdmin("refund");
-      admin.state.enrollmentRow = { status: "completed", progress_percent: 100 };
+      admin.state.enrollmentRow = { status: "completed", progress_percent: 100, source: "subscription", subscription_id: "sub_1" };
       mocks.getAdmin.mockReturnValue(admin);
 
       const response = await postEvent(subscriptionEvent("evt_sub_done", "canceled"));
@@ -889,7 +914,7 @@ describe("Stripe webhook financial integrity", () => {
 
     it("segue revogando quem cancela sem ter concluido", async () => {
       const admin = createAdmin("refund");
-      admin.state.enrollmentRow = { status: "active", progress_percent: 40 };
+      admin.state.enrollmentRow = { status: "active", progress_percent: 40, source: "subscription", subscription_id: "sub_1" };
       mocks.getAdmin.mockReturnValue(admin);
 
       const response = await postEvent(subscriptionEvent("evt_sub_active", "canceled"));
@@ -903,7 +928,7 @@ describe("Stripe webhook financial integrity", () => {
     // Controle: assinatura viva nao pode revogar nada.
     it("nao mexe na matricula enquanto a assinatura esta ativa", async () => {
       const admin = createAdmin("refund");
-      admin.state.enrollmentRow = { status: "completed", progress_percent: 100 };
+      admin.state.enrollmentRow = { status: "completed", progress_percent: 100, source: "subscription", subscription_id: "sub_1" };
       mocks.getAdmin.mockReturnValue(admin);
 
       const response = await postEvent(subscriptionEvent("evt_sub_live", "active"));
@@ -915,7 +940,7 @@ describe("Stripe webhook financial integrity", () => {
     // Quem reassina nao deve perder a conclusao que ja tinha.
     it("restaura como 'completed' quem ja tinha terminado", async () => {
       const admin = createAdmin("refund");
-      admin.state.enrollmentRow = { status: "revoked", progress_percent: 100 };
+      admin.state.enrollmentRow = { status: "revoked", progress_percent: 100, source: "subscription", subscription_id: "sub_1" };
       mocks.getAdmin.mockReturnValue(admin);
 
       const response = await postEvent(subscriptionEvent("evt_sub_back", "active"));
@@ -924,6 +949,19 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.enrollmentUpdates).toContainEqual(
         expect.objectContaining({ id: "user_1__course_1", status: "completed" }),
       );
+    });
+
+    it.each([
+      ["creator", null, "active", "incomplete_expired"],
+      ["creator", null, "revoked", "active"],
+      ["subscription", "sub_other", "active", "canceled"],
+      ["subscription", "sub_other", "revoked", "active"],
+    ])("does not change %s / %s access (%s) for a foreign lifecycle %s", async (source, subscriptionId, status, eventStatus) => {
+      const admin = createAdmin("refund");
+      admin.state.enrollmentRow = { status, source, subscription_id: subscriptionId, progress_percent: 100 };
+      mocks.getAdmin.mockReturnValue(admin);
+      expect((await postEvent(subscriptionEvent("evt_foreign_sub", eventStatus as string))).status).toBe(200);
+      expect(admin.state.enrollmentUpdates).toEqual([]);
     });
 
     // Uma compra AVULSA cai no ramo de assinatura enquanto a linha de `payments`

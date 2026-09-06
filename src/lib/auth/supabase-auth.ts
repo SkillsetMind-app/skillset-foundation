@@ -21,6 +21,16 @@ function authCallbackUrl(path: string): string | undefined {
   return `${window.location.origin}${path}`;
 }
 
+// A failed claim must not break sign-in. The next auth event/snapshot retries;
+// the RPC reads confirmed Auth email and is idempotent, including after MFA.
+async function claimCourseAccess(supabase: SupabaseClient<Database>): Promise<void> {
+  try {
+    await supabase.rpc("claim_my_course_grants");
+  } catch {
+    // No access is asserted here; enrollment reads remain the authority.
+  }
+}
+
 export function mapSupabaseUser(
   user: User,
   profile?: UserProfile | null,
@@ -117,7 +127,8 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
         return;
       }
 
-      // Read-only hot path. The on_auth_user_created trigger provisions the row
+      await claimCourseAccess(supabase);
+      // The on_auth_user_created trigger provisions the profile row
       // at signup, so this only repairs a MISSING row (defensive).
       let profile = await getUserProfile(currentUser.id);
 
@@ -172,6 +183,8 @@ export async function getCurrentAuthSession(): Promise<AuthSession> {
     return { status: "mfa_required", user: null };
   }
 
+  await claimCourseAccess(supabase);
+
   return {
     status: "authenticated",
     user: mapSupabaseUser(user, await getUserProfile(user.id)),
@@ -196,6 +209,8 @@ export async function signInWithEmail(
   }
 
   await requireSecondFactorIfNeeded(supabase);
+
+  await claimCourseAccess(supabase);
 
   return mapSupabaseUser(data.user, await getUserProfile(data.user.id));
 }
@@ -717,6 +732,8 @@ export async function completeMfaSignIn(
   if (!user) {
     throw new Error("No authenticated user after MFA.");
   }
+
+  await claimCourseAccess(supabase);
 
   return mapSupabaseUser(user, await getUserProfile(user.id));
 }
