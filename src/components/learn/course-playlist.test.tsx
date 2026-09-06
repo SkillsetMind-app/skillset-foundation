@@ -49,6 +49,17 @@ describe("CoursePlaylist", () => {
     Element.prototype.scrollIntoView = vi.fn();
   });
 
+  it("shows a decorative thumbnail without changing locked lesson navigation", () => {
+    const onSelect = vi.fn();
+    const { container } = renderPlaylist({ onSelect, thumbnailUrlByLessonId: new Map([["l3", "/lesson-three.png"]]) });
+    fireEvent.click(screen.getByRole("button", { name: /Advanced/ }));
+    expect(container.querySelector('img[src="/lesson-three.png"]')).toHaveAttribute("alt", "");
+    const lesson = screen.getByRole("button", { name: /Deep dive/ });
+    expect(lesson).toHaveTextContent("Locked");
+    fireEvent.click(lesson);
+    expect(onSelect).toHaveBeenCalledWith("l3");
+  });
+
   it("destaca a aula atual, abre so o modulo dela e fecha os outros", () => {
     renderPlaylist();
 

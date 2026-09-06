@@ -5,8 +5,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { LessonUnlockState } from "@/domain/drip-policy";
 import type { CourseModule } from "@/domain/learning";
+import { LessonThumbnail } from "@/components/learn/lesson-thumbnail";
 
 type CoursePlaylistProps = {
+  thumbnailUrlByLessonId?: ReadonlyMap<string, string>;
   modules: CourseModule[];
   selectedLessonId: string | null;
   completedLessonIds: string[];
@@ -27,6 +29,7 @@ type CoursePlaylistProps = {
 // ("Aula 3/12 · Arquivos 2"). O que o aluno quer ali é a lista: módulos em
 // acordeão, aula atual destacada, check e cadeado por aula, busca no topo.
 export function CoursePlaylist({
+  thumbnailUrlByLessonId,
   modules,
   selectedLessonId,
   completedLessonIds,
@@ -186,11 +189,16 @@ export function CoursePlaylist({
                           aria-current={isSelected ? "true" : undefined}
                           className="member-playlist__lesson-button"
                         >
-                          <span className="member-playlist__lesson-title">{lesson.title}</span>
-                          <span className="member-playlist__lesson-meta">
-                            {lesson.duration}
-                            {isCompleted ? " · Completed" : ""}
-                            {!unlocked ? " · Locked" : ""}
+                          <span className="flex min-w-0 items-center gap-2">
+                            <LessonThumbnail src={thumbnailUrlByLessonId?.get(lesson.id)} />
+                            <span className="min-w-0">
+                              <span className="member-playlist__lesson-title">{lesson.title}</span>
+                              <span className="member-playlist__lesson-meta">
+                                {lesson.duration}
+                                {isCompleted ? " · Completed" : ""}
+                                {!unlocked ? " · Locked" : ""}
+                              </span>
+                            </span>
                           </span>
                         </button>
                       </li>
