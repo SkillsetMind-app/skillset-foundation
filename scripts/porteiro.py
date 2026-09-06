@@ -183,7 +183,8 @@ def analisa(diff: str, modelo: str, chave: str) -> tuple[dict, dict]:
         tel["tokens"] += usage["total_tokens"]
         r = normaliza(extrai_json(content))
         estado = ("vazio" if not content else "json_malformado" if r is None
-                  else "truncado" if usage["finish_reason"] == "length" else "ok")
+                  else "truncado" if usage["finish_reason"] == "length"
+                  else "interrompido" if usage["finish_reason"] != "stop" else "ok")
         tel["tentativas"].append(estado)
         # Só enums e contagens. Nunca content, reasoning, erro ou achados.
         print("tentativa: " + json.dumps({
@@ -479,6 +480,8 @@ def demo() -> None:
         ([('{"achados":[{}]}', "stop", 12)] * 3, 3, ["json_malformado"] * 3),
         ([("", "length", 12)] * 3, 3, ["vazio"] * 3),
         ([('{"achados":[]}', "length", 12)] * 3, 3, ["truncado"] * 3),
+        ([('{"achados":[]}', "content_filter", 12)] * 3, 3, ["interrompido"] * 3),
+        ([('{"achados":[]}', "unknown", 12)] * 3, 3, ["interrompido"] * 3),
         ([("PRIVATE_SENTINEL", "PRIVATE_SENTINEL", "PRIVATE_SENTINEL")] * 3,
          3, ["json_malformado"] * 3),
     ]
@@ -503,7 +506,7 @@ def demo() -> None:
             assert entry["tentativa"] == i + 1 and entry["teto"] == [4000, 8000, 16000][i]
             assert entry["chars"] == len(reply[0])
             assert entry["tokens"] == (reply[2] if type(reply[2]) is int else 0)
-            assert entry["finish_reason"] == (reply[1] if reply[1] in ("stop", "length") else "other")
+            assert entry["finish_reason"] == (reply[1] if reply[1] in ("stop", "length", "tool_calls", "content_filter") else "other")
         assert "PRIVATE_SENTINEL" not in output.getvalue() + str(write.call_args)
         if expected_exit == 3:
             assert "NÃO ANALISADO" in write.call_args.args[1]
