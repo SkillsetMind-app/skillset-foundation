@@ -25,3 +25,24 @@ it("requires inline confirmation before revoking", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Confirm revocation" }));
   await waitFor(() => expect(mocks.act).toHaveBeenCalledWith({ action: "revoke", grantId: grant.id }));
 });
+
+it("keeps keyboard focus through confirmation, Escape, Cancel and revocation", async () => {
+  mocks.list.mockResolvedValue([grant]);
+  render(<CourseAccessPanel courseId="course-1" />);
+  const trigger = await screen.findByRole("button", { name: `Revoke access for ${grant.learner_email}` });
+  trigger.focus();
+  fireEvent.click(trigger);
+  expect(trigger).toHaveFocus();
+  fireEvent.keyDown(trigger, { key: "Escape" });
+  expect(screen.queryByRole("button", { name: "Confirm revocation" })).not.toBeInTheDocument();
+  expect(trigger).toHaveFocus();
+  fireEvent.click(trigger);
+  const cancel = screen.getByRole("button", { name: "Cancel" });
+  cancel.focus();
+  fireEvent.click(cancel);
+  expect(trigger).toHaveFocus();
+  fireEvent.click(trigger);
+  mocks.act.mockResolvedValue({ grant: { ...grant, access_status: "revoked", revoked_at: "2026-09-05" }, accessStatus: "revoked" });
+  fireEvent.click(screen.getByRole("button", { name: "Confirm revocation" }));
+  await waitFor(() => expect(screen.getByRole("status")).toHaveFocus());
+});

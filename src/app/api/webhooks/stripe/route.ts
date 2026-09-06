@@ -779,7 +779,9 @@ async function handleCourseSubscriptionLifecycle(
       admin
         .from("enrollments")
         .update({ status: "revoked", updated_at: ts })
-        .eq("id", enrollmentId),
+        .eq("id", enrollmentId)
+        .eq("source", "subscription")
+        .eq("subscription_id", subscription.id),
       "Revoke course subscription enrollment",
     );
   } else if (entitled && enrollmentStatus === "revoked") {
@@ -797,7 +799,9 @@ async function handleCourseSubscriptionLifecycle(
           subscription_id: subscription.id,
           updated_at: ts,
         })
-        .eq("id", enrollmentId),
+        .eq("id", enrollmentId)
+        .eq("source", "subscription")
+        .eq("subscription_id", subscription.id),
       "Restore course subscription enrollment",
     );
   }

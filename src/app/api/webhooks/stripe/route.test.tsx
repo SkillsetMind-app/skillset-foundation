@@ -190,10 +190,10 @@ function createAdmin(
         }
 
         if (this.table === "enrollments" && this.operation === "update") {
-          state.enrollmentUpdates.push({
-            ...this.values,
-            id: this.filterValue("id"),
-          });
+          const matches = this.filters
+            .filter(({ column }) => column === "source" || column === "subscription_id")
+            .every(({ column, value }) => state.enrollmentRow?.[column] === value);
+          if (matches) state.enrollmentUpdates.push({ ...this.values, id: this.filterValue("id") });
         }
 
         if (this.table === "users" && this.operation === "update") {
@@ -901,7 +901,7 @@ describe("Stripe webhook financial integrity", () => {
     // e ficar com o curso para sempre.
     it("revoga o curso de quem cancela a assinatura DEPOIS de concluir", async () => {
       const admin = createAdmin("refund");
-      admin.state.enrollmentRow = { status: "completed", progress_percent: 100 };
+      admin.state.enrollmentRow = { status: "completed", progress_percent: 100, source: "subscription", subscription_id: "sub_1" };
       mocks.getAdmin.mockReturnValue(admin);
 
       const response = await postEvent(subscriptionEvent("evt_sub_done", "canceled"));
@@ -914,7 +914,7 @@ describe("Stripe webhook financial integrity", () => {
 
     it("segue revogando quem cancela sem ter concluido", async () => {
       const admin = createAdmin("refund");
-      admin.state.enrollmentRow = { status: "active", progress_percent: 40 };
+      admin.state.enrollmentRow = { status: "active", progress_percent: 40, source: "subscription", subscription_id: "sub_1" };
       mocks.getAdmin.mockReturnValue(admin);
 
       const response = await postEvent(subscriptionEvent("evt_sub_active", "canceled"));
@@ -928,7 +928,7 @@ describe("Stripe webhook financial integrity", () => {
     // Controle: assinatura viva nao pode revogar nada.
     it("nao mexe na matricula enquanto a assinatura esta ativa", async () => {
       const admin = createAdmin("refund");
-      admin.state.enrollmentRow = { status: "completed", progress_percent: 100 };
+      admin.state.enrollmentRow = { status: "completed", progress_percent: 100, source: "subscription", subscription_id: "sub_1" };
       mocks.getAdmin.mockReturnValue(admin);
 
       const response = await postEvent(subscriptionEvent("evt_sub_live", "active"));
@@ -940,7 +940,7 @@ describe("Stripe webhook financial integrity", () => {
     // Quem reassina nao deve perder a conclusao que ja tinha.
     it("restaura como 'completed' quem ja tinha terminado", async () => {
       const admin = createAdmin("refund");
-      admin.state.enrollmentRow = { status: "revoked", progress_percent: 100 };
+      admin.state.enrollmentRow = { status: "revoked", progress_percent: 100, source: "subscription", subscription_id: "sub_1" };
       mocks.getAdmin.mockReturnValue(admin);
 
       const response = await postEvent(subscriptionEvent("evt_sub_back", "active"));
@@ -949,6 +949,19 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.enrollmentUpdates).toContainEqual(
         expect.objectContaining({ id: "user_1__course_1", status: "completed" }),
       );
+    });
+
+    it.each([
+      ["creator", null, "active", "incomplete_expired"],
+      ["creator", null, "revoked", "active"],
+      ["subscription", "sub_other", "active", "canceled"],
+      ["subscription", "sub_other", "revoked", "active"],
+    ])("does not change %s / %s access (%s) for a foreign lifecycle %s", async (source, subscriptionId, status, eventStatus) => {
+      const admin = createAdmin("refund");
+      admin.state.enrollmentRow = { status, source, subscription_id: subscriptionId, progress_percent: 100 };
+      mocks.getAdmin.mockReturnValue(admin);
+      expect((await postEvent(subscriptionEvent("evt_foreign_sub", eventStatus as string))).status).toBe(200);
+      expect(admin.state.enrollmentUpdates).toEqual([]);
     });
 
     // Uma compra AVULSA cai no ramo de assinatura enquanto a linha de `payments`

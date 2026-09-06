@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
 import { Button } from "@/components/ui";
 import { changeCourseAccess, listCourseAccess, type CourseAccessAction, type CourseAccessGrant } from "@/lib/data/course-access";
@@ -15,6 +15,12 @@ const statusLabels = {
 
 export function CourseAccessPanel({ courseId, onChange }: { courseId: string; onChange?: () => void }) {
   const inputId = useId();
+  const revokeTrigger = useRef<HTMLButtonElement | null>(null);
+  const statusRef = useRef<HTMLParagraphElement>(null);
+  function closeConfirmation() {
+    setConfirmId(null);
+    revokeTrigger.current?.focus();
+  }
   const [email, setEmail] = useState("");
   const [grants, setGrants] = useState<CourseAccessGrant[]>([]);
   const [busy, setBusy] = useState(false);
@@ -47,6 +53,7 @@ export function CourseAccessPanel({ courseId, onChange }: { courseId: string; on
           : result.emailStatus === "failed"
             ? "Access recorded, but the email could not be sent. Use Resend link to try again (up to 3 attempts per hour)."
             : `${statusLabels[result.accessStatus]}. Sign-in link sent.`);
+      if (result.accessStatus === "revoked") statusRef.current?.focus();
       onChange?.();
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Could not update course access.");
@@ -55,7 +62,7 @@ export function CourseAccessPanel({ courseId, onChange }: { courseId: string; on
 
   return <PanelCard title="Grant course access" description="Give someone this published course without a Stripe charge.">
     <p className="mt-4 text-sm text-[var(--color-ink-soft)]">
-      Enter their email. If they are new, the invitation creates an unconfirmed account; they confirm the email and sign in with the link. No password or paid plan is required.
+      They receive a secure sign-in link to confirm their email and access the course. No password or paid plan is required.
     </p>
     <form className="mt-4 flex min-w-0 flex-wrap items-end gap-3" onSubmit={(event) => { event.preventDefault(); void act({ courseId, email }); }}>
       <div className="min-w-0 flex-1 basis-60">
@@ -66,18 +73,23 @@ export function CourseAccessPanel({ courseId, onChange }: { courseId: string; on
       <Button type="submit" disabled={busy || !loaded || !email.trim()}>Grant access and send link</Button>
     </form>
     {error ? <p role="alert" className="mt-3 text-sm text-[var(--color-danger-fg)]">{error}</p> : null}
-    <p role="status" aria-live="polite" className="mt-3 text-sm text-[var(--color-ink-soft)]">{message}</p>
+    <p ref={statusRef} tabIndex={-1} role="status" aria-live="polite" className="mt-3 text-sm text-[var(--color-ink-soft)]">{message}</p>
     <ul className="mt-4 grid min-w-0 gap-3">
       {grants.map((grant) => <li key={grant.id} className="min-w-0 rounded-[8px] border border-[var(--color-line)] p-3">
         <p className="break-all text-sm font-semibold text-[var(--color-ink)]">{grant.learner_email}</p>
         <p className="mt-1 text-sm text-[var(--color-ink-soft)]">{statusLabels[grant.access_status]}</p>
-        {!grant.revoked_at ? <div className="mt-3 flex flex-wrap gap-2">
+        {!grant.revoked_at ? <div className="mt-3 flex flex-wrap gap-2" onKeyDown={(event) => {
+          if (event.key === "Escape" && confirmId === grant.id && !busy) { event.preventDefault(); closeConfirmation(); }
+        }}>
           {grant.access_status !== "conflict" ? <Button variant="outline" disabled={busy} aria-label={`Resend link to ${grant.learner_email}`} onClick={() => void act({ action: "resend", grantId: grant.id })}>Resend link</Button> : null}
-          {confirmId === grant.id ? <>
+          <Button variant="outline" disabled={busy} aria-label={`Revoke access for ${grant.learner_email}`}
+            aria-expanded={confirmId === grant.id} aria-controls={confirmId === grant.id ? `${inputId}-${grant.id}-confirm` : undefined}
+            onClick={(event) => { revokeTrigger.current = event.currentTarget; setConfirmId(grant.id); }}>Revoke access</Button>
+          {confirmId === grant.id ? <div id={`${inputId}-${grant.id}-confirm`} className="flex basis-full flex-wrap gap-2">
             <p className="basis-full text-sm text-[var(--color-ink-soft)]">Revoke this creator grant? Purchased access and learning history will stay intact.</p>
             <Button disabled={busy} onClick={() => void act({ action: "revoke", grantId: grant.id })}>Confirm revocation</Button>
-            <Button variant="outline" disabled={busy} onClick={() => setConfirmId(null)}>Cancel</Button>
-          </> : <Button variant="outline" disabled={busy} aria-label={`Revoke access for ${grant.learner_email}`} onClick={() => setConfirmId(grant.id)}>Revoke access</Button>}
+            <Button variant="outline" disabled={busy} onClick={closeConfirmation}>Cancel</Button>
+          </div> : null}
         </div> : null}
       </li>)}
     </ul>
