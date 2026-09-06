@@ -681,6 +681,47 @@
         "csv": "Export as CSV",
         "json": "Export as JSON"
       },
+      "usersPanel": {
+        "eyebrow": "User lookup",
+        "title": "Find learners and educators.",
+        "description": "Read-only lookup for support and trust workflows.",
+        "countOne": "1 user",
+        "count": "{count} users",
+        "search": "Search by email or username...",
+        "loading": "Loading users...",
+        "loadError": "We could not load user records. Confirm your admin access and try again.",
+        "empty": "No users match this search.",
+        "unnamed": "Unnamed user",
+        "noEmail": "No email on profile",
+        "roles": {
+          "guest": "Guest",
+          "moderator": "Moderator"
+        }
+      },
+      "accountRequestsPanel": {
+        "eyebrow": "Account actions",
+        "title": "Export and deletion requests.",
+        "description": "Work each request, then mark it processing, completed, or rejected. Changing the status does not export data or delete an account.",
+        "loading": "Loading account action requests...",
+        "loadError": "We could not load account action requests.",
+        "updateError": "We could not update this account action request.",
+        "empty": "No account action requests yet.",
+        "pendingTimestamp": "Pending timestamp",
+        "user": "User",
+        "requested": "Requested",
+        "requestId": "Request ID",
+        "actioned": "Actioned",
+        "by": "by",
+        "types": {
+          "data_export": "Data export",
+          "account_deletion": "Account deletion"
+        },
+        "actions": {
+          "processing": "Mark processing",
+          "completed": "Mark completed",
+          "rejected": "Reject"
+        }
+      },
       "supportQueue": {
         "title": "User support tickets",
         "description": "Read user issues and move tickets through the status workflow.",
@@ -847,7 +888,9 @@
     "resolved": "Resolved",
     "reviewed": "Reviewed",
     "revoked": "Revoked",
-    "succeeded": "Succeeded"
+    "succeeded": "Succeeded",
+    "processing": "Processing",
+    "rejected": "Rejected"
   },
   "learn": {
     "page": {

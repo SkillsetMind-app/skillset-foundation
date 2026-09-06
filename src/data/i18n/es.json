@@ -681,6 +681,47 @@
         "csv": "Exportar como CSV",
         "json": "Exportar como JSON"
       },
+      "usersPanel": {
+        "eyebrow": "Búsqueda de usuarios",
+        "title": "Encuentra estudiantes e instructores.",
+        "description": "Consulta de solo lectura para tareas de soporte y confianza.",
+        "countOne": "1 usuario",
+        "count": "{count} usuarios",
+        "search": "Buscar por correo o nombre de usuario...",
+        "loading": "Cargando usuarios...",
+        "loadError": "No pudimos cargar los usuarios. Confirma tu acceso de administrador e inténtalo de nuevo.",
+        "empty": "Ningún usuario coincide con esta búsqueda.",
+        "unnamed": "Usuario sin nombre",
+        "noEmail": "El perfil no tiene correo electrónico",
+        "roles": {
+          "guest": "Visitante",
+          "moderator": "Moderador"
+        }
+      },
+      "accountRequestsPanel": {
+        "eyebrow": "Acciones de cuenta",
+        "title": "Solicitudes de exportación y eliminación.",
+        "description": "Gestiona cada solicitud y luego márcala en proceso, completada o rechazada. Cambiar el estado no exporta datos ni elimina una cuenta.",
+        "loading": "Cargando solicitudes de cuenta...",
+        "loadError": "No pudimos cargar las solicitudes de cuenta.",
+        "updateError": "No pudimos actualizar esta solicitud de cuenta.",
+        "empty": "Todavía no hay solicitudes de cuenta.",
+        "pendingTimestamp": "Fecha pendiente",
+        "user": "Usuario",
+        "requested": "Solicitada",
+        "requestId": "ID de solicitud",
+        "actioned": "Gestionada",
+        "by": "por",
+        "types": {
+          "data_export": "Exportación de datos",
+          "account_deletion": "Eliminación de cuenta"
+        },
+        "actions": {
+          "processing": "Marcar en proceso",
+          "completed": "Marcar completada",
+          "rejected": "Rechazar"
+        }
+      },
       "supportQueue": {
         "title": "Tickets de soporte de usuarios",
         "description": "Revisa los problemas de los usuarios y actualiza el estado de cada ticket.",
@@ -847,7 +888,9 @@
     "resolved": "Resuelto",
     "reviewed": "Revisado",
     "revoked": "Revocado",
-    "succeeded": "Exitoso"
+    "succeeded": "Exitoso",
+    "processing": "En proceso",
+    "rejected": "Rechazado"
   },
   "learn": {
     "page": {
