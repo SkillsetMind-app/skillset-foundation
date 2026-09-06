@@ -32,8 +32,8 @@ export function AuthPage() {
   const mode = getMode(searchParams.get("mode"));
   const isSignup = mode === "signup";
   // The brand panel mirrors the form's path intent: teacher CTAs land on the
-  // expert pitch, everything else (default) speaks to learners. Same flow —
-  // one account, role picked at onboarding — only the pitch changes.
+  // expert pitch, everything else (default) speaks to learners. One account;
+  // intent also chooses the destination, without granting a role.
   const pathIntent = useMemo(
     () => getAuthPathIntentFromSearchParams(searchParams),
     [searchParams],
