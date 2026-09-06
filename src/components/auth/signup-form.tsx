@@ -30,6 +30,7 @@ import {
   validateDisplayName,
 } from "@/lib/auth/profile-validation";
 import {
+  getAuthRoute,
   getAuthPathIntentFromSearchParams,
   getLoadingRoute,
   getSafeReturnTo,
@@ -80,7 +81,7 @@ export function SignupForm() {
       ? "auth.signup.introEducator"
       : "auth.signup.introLearner",
   );
-  const signinHref = `/auth?mode=signin&path=${intent}`;
+  const signinHref = getAuthRoute("signin", intent, returnTo);
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -272,6 +273,8 @@ export function SignupForm() {
     return (
       <ConfirmEmailGate
         email={email}
+        intent={intent}
+        returnTo={returnTo}
         onChangeEmail={() => {
           setConfirmSent(false);
           setStep(1);

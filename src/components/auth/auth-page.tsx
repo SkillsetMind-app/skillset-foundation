@@ -1,16 +1,21 @@
 "use client";
 
+import { useAuth } from "@/components/auth/auth-provider";
 import { LoginForm } from "@/components/auth/login-form";
 import { SignupForm } from "@/components/auth/signup-form";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { BrandPortrait } from "@/components/shared/brand-portrait";
-import { getAuthPathIntentFromSearchParams } from "@/lib/auth/routing";
+import {
+  getAuthPathIntentFromSearchParams,
+  getLoadingRoute,
+  getSafeReturnTo,
+} from "@/lib/auth/routing";
 import { ArrowLeft, Check } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 type AuthMode = "signup" | "signin";
 
@@ -20,8 +25,10 @@ function getMode(value: string | null): AuthMode {
 
 export function AuthPage() {
   const router = useRouter();
+  const { status, user } = useAuth();
   const { t } = useTranslation();
   const searchParams = useSearchParams();
+  const entrySessionHandled = useRef(false);
   const mode = getMode(searchParams.get("mode"));
   const isSignup = mode === "signup";
   // The brand panel mirrors the form's path intent: teacher CTAs land on the
@@ -31,6 +38,20 @@ export function AuthPage() {
     () => getAuthPathIntentFromSearchParams(searchParams),
     [searchParams],
   );
+
+  useEffect(() => {
+    if (status === "loading" || entrySessionHandled.current) {
+      return;
+    }
+
+    // Only resume the session present on entry. A sign-in, signup or MFA
+    // completed inside the form already owns its confirmation and navigation.
+    entrySessionHandled.current = true;
+    if (status === "authenticated" && user?.emailVerified && !searchParams.has("error")) {
+      router.replace(getLoadingRoute("welcome", pathIntent, getSafeReturnTo(searchParams)));
+    }
+  }, [pathIntent, router, searchParams, status, user]);
+
   const asideKey =
     pathIntent === "teacher" ? "auth.page.aside.teacher" : "auth.page.aside.learner";
   const asideProof: ReadonlyArray<readonly [string, string]> = [

@@ -25,6 +25,7 @@ import {
   signOutOfSkillsetMind,
 } from "@/lib/auth/supabase-auth";
 import {
+  getAuthRoute,
   getAuthPathIntentFromSearchParams,
   getLoadingRoute,
   getSafeReturnTo,
@@ -47,9 +48,7 @@ export function LoginForm() {
   const accessLabel = t(
     pathIntent === "teacher" ? "auth.educatorAccess" : "auth.learnerAccess",
   );
-  const signupHref = pathIntent
-    ? `/auth?mode=signup&path=${pathIntent}`
-    : "/auth?mode=signup";
+  const signupHref = getAuthRoute("signup", pathIntent, returnTo);
   // Auth callback failures (expired/invalid recovery or OAuth links) arrive as
   // ?error= — without seeding it here they failed with no visible message.
   // Distinct reasons get distinct copy: collapsing them all into "expired"
@@ -216,6 +215,8 @@ export function LoginForm() {
     return (
       <ConfirmEmailGate
         email={unconfirmedEmail}
+        intent={pathIntent}
+        returnTo={returnTo}
         onChangeEmail={() => setUnconfirmedEmail("")}
       />
     );

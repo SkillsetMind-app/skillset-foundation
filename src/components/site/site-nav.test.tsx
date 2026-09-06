@@ -85,16 +85,28 @@ describe("SiteNav", () => {
     );
   });
 
-  it("makes Sign in a plain link instead of a learner/teacher menu", () => {
+  it("opens buyer and creator entry in new tabs from the public header", () => {
     render(<SiteNav />);
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(screen.getByRole("link", { name: /My courses/ })).toHaveAttribute("href", "/auth?mode=signin&path=student");
+    expect(screen.getByRole("link", { name: /Manage my business/ })).toHaveAttribute("target", "_blank");
+  });
 
-    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
-      "href",
-      "/auth?mode=signin",
-    );
-    expect(
-      screen.queryByRole("button", { name: /sign in/i }),
-    ).not.toBeInTheDocument();
+  it("keeps mobile entry open after Escape dismisses its nested disclosure", () => {
+    render(<SiteNav />);
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const panel = document.getElementById("site-mobile-menu")!;
+    const trigger = within(panel).getByRole("button", { name: "Sign in" });
+    fireEvent.click(trigger);
+    within(panel).getByRole("link", { name: /My courses/ }).focus();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(panel).toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(trigger);
+    expect(within(panel).getByRole("link", { name: /Manage my business/ })).toBeInTheDocument();
+    expect(panel.className).toContain("overflow-y-auto");
+    expect(panel.className).toContain("100svh");
   });
 
   it("offers the language switch in the header", () => {

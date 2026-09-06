@@ -289,4 +289,32 @@ describe("SignupForm leva o curso junto para o cadastro", () => {
       "/loading?next=welcome&path=student&returnTo=%2Fcourses%2Ffocus",
     );
   });
+
+  it.each([
+    ["/courses/focus/checkout?offer=LAUNCH&priceId=price-1", "/courses/focus/checkout?offer=LAUNCH&priceId=price-1"],
+    ["//outside.example/checkout", null],
+    ["/loading?next=route", null],
+  ])("preserves only the safe checkout destination in the sign-in link: %s", (returnTo, expected) => {
+    mocks.searchParams = new URLSearchParams({ path: "student", returnTo: returnTo!, external: "discard" });
+    render(<SignupForm />);
+    const destination = new URL(screen.getByRole("link", { name: "auth.signup.alreadyHaveAccount" }).getAttribute("href")!, "https://skillset.test");
+    expect(destination.pathname).toBe("/auth");
+    expect(destination.searchParams.get("mode")).toBe("signin");
+    expect(destination.searchParams.get("path")).toBe("student");
+    expect(destination.searchParams.get("returnTo")).toBe(expected);
+    expect(destination.searchParams.has("external")).toBe(false);
+    expect(mocks.signUpWithEmail).not.toHaveBeenCalled();
+  });
+
+  it("keeps the selected checkout offer when an existing account chooses sign-in", async () => {
+    const checkout = "/courses/focus/checkout?offer=LAUNCH&priceId=price-1";
+    mocks.searchParams = new URLSearchParams({ path: "student", returnTo: checkout });
+    mocks.signUpWithEmail.mockRejectedValueOnce({ code: "user_already_exists", status: 422 });
+    render(<SignupForm />);
+    submitSignup();
+    const signin = await screen.findByRole("link", { name: "auth.signup.existingAccountSignIn" });
+    expect(new URL(signin.getAttribute("href")!, "https://skillset.test").searchParams.get("returnTo")).toBe(checkout);
+    expect(mocks.acceptUserTerms).not.toHaveBeenCalled();
+    expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
+  });
 });

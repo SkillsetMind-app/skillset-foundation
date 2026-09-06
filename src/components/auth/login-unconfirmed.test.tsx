@@ -48,6 +48,7 @@ vi.mock("@/lib/data/user-profiles", () => ({ getUserProfile: vi.fn() }));
 describe("LoginForm: e-mail nunca confirmado", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.searchParams = new URLSearchParams();
     mocks.getPendingSecondFactor.mockResolvedValue(null);
     mocks.resendSignupConfirmation.mockResolvedValue(undefined);
     mocks.signInWithEmail.mockRejectedValue(
@@ -92,5 +93,21 @@ describe("LoginForm: e-mail nunca confirmado", () => {
     );
 
     expect(screen.getByRole("button", { name: "auth.signIn" })).toBeInTheDocument();
+  });
+
+  it.each([
+    ["/courses/focus/checkout?offer=LAUNCH&priceId=price-1", "/courses/focus/checkout?offer=LAUNCH&priceId=price-1"],
+    ["/\\outside.example/checkout", null],
+  ])("keeps only a safe checkout destination after an unconfirmed login: %s", async (returnTo, expected) => {
+    mocks.searchParams = new URLSearchParams({ path: "teacher", returnTo: returnTo! });
+    render(<LoginForm />);
+    fireEvent.change(screen.getByLabelText("auth.email"), { target: { value: "learner@example.test" } });
+    fireEvent.change(screen.getByPlaceholderText("auth.passwordPlaceholder"), { target: { value: "test-password" } });
+    fireEvent.click(screen.getByRole("button", { name: "auth.signIn" }));
+    const signin = await screen.findByRole("link", { name: "auth.signup.confirmSignIn" });
+    const destination = new URL(signin.getAttribute("href")!, "https://skillset.test");
+    expect(destination.searchParams.get("path")).toBe("teacher");
+    expect(destination.searchParams.get("returnTo")).toBe(expected);
+    expect(mocks.resendSignupConfirmation).not.toHaveBeenCalled();
   });
 });
