@@ -41,6 +41,9 @@ describe("explicit workspace intent after sign-in", () => {
     uid: "student-1", email: "learner@example.test", displayName: "Learner",
     photoURL: null, roles: ["student"], onboardingCompleted: true,
     onboardingPath: "student",
+    createdAt: "2026-09-06T00:00:00Z",
+    updatedAt: "2026-09-06T00:00:00Z",
+    lastLoginAt: "2026-09-06T00:00:00Z",
   };
 
   it("sends an onboarded learner asking to teach to teacher onboarding without changing roles", () => {
