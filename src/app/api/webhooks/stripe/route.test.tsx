@@ -24,7 +24,7 @@ import { ACTIVATION_FEE_CHECKOUT_PURPOSE } from "@/data/plans";
 type FailurePoint =
   | "payments.upsert"
   | "orders.update"
-  | "enrollments.insert"
+  | "fulfill_paid_course_access"
   | "payout_ledger.insert"
   | "course_subscriptions.update";
 
@@ -271,6 +271,9 @@ function createAdmin(
     from: vi.fn((table: string) => new Query(table)),
     rpc: vi.fn(async (name: string, args: Record<string, unknown>) => {
       state.rpcCalls.push({ name, args });
+      if (name === "fulfill_paid_course_access" && state.failAt === name) {
+        return { data: null, error: { message: "enrollment RPC unavailable" } };
+      }
       if (name === "claim_payout_transfer_reversal") {
         const claimKey = String(args.p_claim_key);
         const existing = state.refundClaims[claimKey];
@@ -542,7 +545,7 @@ describe("Stripe webhook financial integrity", () => {
   it.each<FailurePoint>([
     "payments.upsert",
     "orders.update",
-    "enrollments.insert",
+    "fulfill_paid_course_access",
     "payout_ledger.insert",
   ])("returns 500 and leaves the event retryable when %s fails", async (failAt) => {
     const admin = createAdmin("checkout", failAt);
@@ -697,6 +700,28 @@ describe("Stripe webhook financial integrity", () => {
       { stripeAccount: "acct_teacher" },
     );
     expect(admin.state.doneEvents).toContain("evt_invoice_paid");
+  });
+
+  it("a purchase uses atomic fulfillment instead of a stale enrollment snapshot", async () => {
+    const admin = createAdmin("checkout");
+    admin.state.enrollmentRow = { status: "completed", source: "creator", creator_grant_id: "grant-1", progress_percent: 100 };
+    mocks.getAdmin.mockReturnValue(admin);
+    expect((await postEvent(checkoutEvent())).status).toBe(200);
+    expect(admin.state.rpcCalls).toContainEqual({ name: "fulfill_paid_course_access", args: { p_user_id: "user_1", p_course_id: "course_1", p_source: "payment" } });
+    expect(admin.from).not.toHaveBeenCalledWith("enrollments");
+  });
+
+  it("a paid invoice uses the same atomic fulfillment with its subscription", async () => {
+    const admin = createAdmin("checkout");
+    admin.state.enrollmentRow = { status: "active", source: "creator", creator_grant_id: "grant-1", progress_percent: 100 };
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.subscriptionRetrieve.mockResolvedValueOnce({
+      metadata: { purpose: "course_subscription", courseId: "course_1", userId: "user_1", teacherId: "teacher_1" },
+      items: { data: [{ current_period_end: 1_800_000_000 }] }, customer: "cus_1", status: "active", cancel_at_period_end: false,
+    });
+    expect((await postEvent(paidInvoiceEvent())).status).toBe(200);
+    expect(admin.state.rpcCalls).toContainEqual({ name: "fulfill_paid_course_access", args: { p_user_id: "user_1", p_course_id: "course_1", p_source: "subscription", p_subscription_id: "sub_1" } });
+    expect(admin.from).not.toHaveBeenCalledWith("enrollments");
   });
 
   it("syncs connected-account readiness from a Connect webhook", async () => {

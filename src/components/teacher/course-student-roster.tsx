@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ExportTableButton } from "@/components/shared/export-table-button";
 import { StatusChip } from "@/components/shared/status-chip";
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
+import { CourseAccessPanel } from "@/components/teacher/course-access-panel";
 import { Button, InlineAlert } from "@/components/ui";
 import { isCourseStudentComplete } from "@/domain/course-overview";
 import { sendCourseMessage } from "@/lib/data/course-messages";
@@ -28,6 +29,7 @@ const sourceLabels: Record<string, string> = {
   subscription: "Subscription",
   free_course: "Free enrollment",
   admin: "Granted by support",
+  creator: "Granted by creator",
   manual_demo: "Demo",
 };
 
@@ -420,6 +422,7 @@ export function CourseStudentRosterView({
 }
 
 export function CourseStudentRoster({ courseId }: { courseId: string }) {
+  const [revision, setRevision] = useState(0);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [students, setStudents] = useState<CourseStudent[]>([]);
 
@@ -441,7 +444,10 @@ export function CourseStudentRoster({ courseId }: { courseId: string }) {
     return () => {
       current = false;
     };
-  }, [courseId]);
+  }, [courseId, revision]);
 
-  return <CourseStudentRosterView state={state} students={students} courseId={courseId} />;
+  return <div className="grid min-w-0 gap-5">
+    <CourseAccessPanel key={courseId} courseId={courseId} onChange={() => setRevision((value) => value + 1)} />
+    <CourseStudentRosterView state={state} students={students} courseId={courseId} />
+  </div>;
 }

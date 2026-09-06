@@ -13,7 +13,6 @@ import {
   shouldCancelCourseSubscriptionForRefund,
   shouldApplyOrderStatusTransition,
   shouldMarkEnrollmentRefundedAfterChargeRefund,
-  shouldReactivateEnrollment,
   shouldReleaseCheckoutLock,
   stripeFeeMinorFromBalanceTransaction,
   stripeProcessingFeeMinor,
@@ -410,44 +409,11 @@ async function handleCheckoutCompleted(
     "Mark checkout order paid",
   );
 
-  // Grant on first purchase; re-activate on repurchase after a refund/lapse;
-  // never downgrade or reset progress on an already active/completed enrollment.
-  // (ignoreDuplicates upsert used to skip existing rows entirely, so a learner
-  // who repurchased after a refund was charged but stayed enrollment=refunded.)
-  const enrollmentId = `${userId}__${courseId}`;
-  const { data: existingEnrollment } = await admin
-    .from("enrollments")
-    .select("status")
-    .eq("id", enrollmentId)
-    .maybeSingle();
-  if (!existingEnrollment) {
-    await requireSupabaseWrite(
-      admin.from("enrollments").insert({
-        id: enrollmentId,
-        user_id: userId,
-        course_id: courseId,
-        course_slug: courseId,
-        course_title: course.title,
-        course_category: course.category,
-        course_image: course.cover_image_url || "/brand/logo-mark.png",
-        status: "active",
-        source: "payment",
-        progress_percent: 0,
-        created_at: ts,
-        updated_at: ts,
-      }),
-      "Create checkout enrollment",
-    );
-  } else if (shouldReactivateEnrollment(existingEnrollment.status)) {
-    await requireSupabaseWrite(
-      admin
-        .from("enrollments")
-        .update({ status: "active", source: "payment", updated_at: ts })
-        .eq("id", enrollmentId),
-      "Reactivate checkout enrollment",
-    );
-  }
-
+  // The UPSERT serializes with creator revocation and preserves progress.
+  await requireSupabaseWrite(
+    admin.rpc("fulfill_paid_course_access", { p_user_id: userId, p_course_id: courseId, p_source: "payment" }),
+    "Fulfill checkout enrollment",
+  );
   // Earnings record LAST (the re-arm gate). Written `settled` with no release
   // date: the teacher was already paid by Stripe at capture. Legacy
   // amount_minor/platform_fee_minor are mirrored (gross / skillset fee) so the
@@ -693,48 +659,10 @@ async function handleCourseSubscriptionInvoicePaid(
     }
   }
 
-  // Grant on first paid invoice; re-activate on renewal after a lapse; never
-  // downgrade an already active/completed enrollment.
-  const enrollmentId = `${userId}__${courseId}`;
-  const { data: enrollment } = await admin
-    .from("enrollments")
-    .select("status")
-    .eq("id", enrollmentId)
-    .maybeSingle();
-  if (!enrollment) {
-    await requireSupabaseWrite(
-      admin.from("enrollments").insert({
-        id: enrollmentId,
-        user_id: userId,
-        course_id: courseId,
-        course_slug: courseId,
-        course_title: course.title,
-        course_category: course.category,
-        course_image: course.cover_image_url || "/brand/logo-mark.png",
-        status: "active",
-        source: "subscription",
-        subscription_id: subscriptionId,
-        progress_percent: 0,
-        created_at: ts,
-        updated_at: ts,
-      }),
-      "Create subscription enrollment",
-    );
-  } else if (shouldReactivateEnrollment(enrollment.status)) {
-    await requireSupabaseWrite(
-      admin
-        .from("enrollments")
-        .update({
-          status: "active",
-          source: "subscription",
-          subscription_id: subscriptionId,
-          updated_at: ts,
-        })
-        .eq("id", enrollmentId),
-      "Reactivate subscription enrollment",
-    );
-  }
-
+  await requireSupabaseWrite(
+    admin.rpc("fulfill_paid_course_access", { p_user_id: userId, p_course_id: courseId, p_source: "subscription", p_subscription_id: subscriptionId }),
+    "Fulfill subscription enrollment",
+  );
   // Mirror the subscription for the learner's cancel UI + lifecycle handler.
   await requireSupabaseWrite(
     admin.from("course_subscriptions").upsert(
