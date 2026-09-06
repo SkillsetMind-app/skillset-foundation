@@ -15,18 +15,30 @@ FILES = {
     'course-content/courses/c1/lesson 1.pdf': b'lesson fixture',
     'public-media/users/u1/avatar.png': b'image fixture',
 }
+INDEXED_FILES = {
+    'objects/00000000': b'root object',
+    'objects/00000001': b'nested object',
+    'INDEX.json': json.dumps({'format': 'skillsetmind-storage', 'version': 2, 'objects': [
+        {'bucket': 'course-content', 'key': 'foo', 'path': 'objects/00000000'},
+        {'bucket': 'course-content', 'key': 'foo/bar', 'path': 'objects/00000001'},
+    ]}).encode(),
+}
 
 # Only the external boundaries are replaced: decryption, R2, Postgres and rsync.
 # The scripts still parse the real manifest, unpack a real tar and count/copy
 # actual files. All mutations are confined to this test's TemporaryDirectory.
 HARNESS = r'''
 set -Eeuo pipefail
+umask 022
 TEST_WORK="$(cd "$TEST_WORK" && pwd -P)"
 export TMPDIR="$TEST_WORK/temp"
 export AGE_KEY_FILE="$TEST_WORK/test-key"
 export ENV_FILE="$TEST_WORK/dr.env"
 export DR_DIR="$TEST_WORK/dr"
 TRACE="$TEST_WORK/commands"
+python3() {
+  if [[ "${OS:-}" == Windows_NT ]]; then py "$@"; else command python3 "$@"; fi
+}
 safe_path() {
   local candidate="$1" resolved
   if command -v cygpath >/dev/null 2>&1; then candidate="$(cygpath -u "$candidate")"; fi
@@ -75,6 +87,11 @@ rclone() {
 }
 psql() {
   printf 'PSQL\n' >> "$TRACE"
+  if [[ " $* " == *' -f - '* ]]; then
+    # The actual dump bytes must arrive on stdin, already opened by the caller.
+    [[ "$(cat)" == 'CREATE TABLE fixture(id int);' ]] || return 97
+    printf 'DUMP_STDIN\n' >> "$TRACE"
+  fi
   if [[ " $* " == *' -f '* && "${TEST_RESTORE_FAIL:-0}" == 1 ]]; then
     printf 'SYNTHETIC_COPY_STDOUT_ROW\n'
     printf 'ERROR: synthetic COPY failed: SYNTHETIC_COPY_STDERR_ROW\n' >&2
@@ -93,6 +110,8 @@ psql() {
 sudo() {
   [[ "$1" == -u && "$2" == postgres && "$3" == psql ]] || return 97
   shift 3
+  # postgres cannot traverse the operator's private mktemp directory.
+  [[ " $* " != *' -f '* || " $* " == *' -f - '* ]] || return 97
   psql "$@"
 }
 rsync() {
@@ -119,7 +138,7 @@ class RestoreBackupTest(unittest.TestCase):
             'PGDATABASE_DR=test_only_dr\n', encoding='utf-8')
         self.sequence = 0
 
-    def archive(self, files=None, manifest_count='2'):
+    def archive(self, files=None, manifest_count='2', layout=None):
         files = FILES if files is None else files
         self.sequence += 1
         directory = self.work / f'fixture-{self.sequence}'
@@ -127,6 +146,7 @@ class RestoreBackupTest(unittest.TestCase):
         name = f'skillsetmind-{stamp}'
         package = directory / name
         (package / 'storage').mkdir(parents=True)
+        (package / 'storage').chmod(0o755)
         for key, content in files.items():
             destination = package / 'storage' / key
             destination.parent.mkdir(parents=True, exist_ok=True)
@@ -134,6 +154,8 @@ class RestoreBackupTest(unittest.TestCase):
         manifest = f'created_utc {stamp}\n'
         if manifest_count is not None:
             manifest += f'storage_objects {manifest_count}\n'
+        if layout is not None:
+            manifest += f'storage_layout {layout}\n'
         (package / 'MANIFEST.txt').write_text(manifest, encoding='utf-8')
         (package / 'database.sql').write_text('CREATE TABLE fixture(id int);\n', encoding='utf-8')
         archive = directory / f'{name}.tar.gz.age'
@@ -162,7 +184,7 @@ class RestoreBackupTest(unittest.TestCase):
 
     def seed_standby(self):
         existing = self.work / 'dr' / 'storage' / 'previous-good-file'
-        existing.parent.mkdir(parents=True)
+        existing.parent.mkdir(parents=True, exist_ok=True)
         existing.write_bytes(b'previous verified backup')
         return existing
 
@@ -204,6 +226,58 @@ class RestoreBackupTest(unittest.TestCase):
         self.assertEqual({file.relative_to(destination).as_posix(): file.read_bytes()
                           for file in destination.rglob('*') if file.is_file()}, FILES)
 
+    def test_restore_preserves_index_and_colliding_object_blobs_after_cleanup(self):
+        destination = self.work / 'indexed export'
+        result = self.run_script('restore-backup.sh', self.archive(files=INDEXED_FILES, layout='indexed-v2'),
+                                 '--target', 'postgres://scratch', '--storage-out', destination.as_posix())
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual({file.relative_to(destination).as_posix(): file.read_bytes()
+                          for file in destination.rglob('*') if file.is_file()}, INDEXED_FILES)
+
+    @unittest.skipUnless(os.name == 'posix', 'POSIX directory modes are verified in Linux CI')
+    def test_export_directory_stays_private_despite_open_umask_and_source_mode(self):
+        destination = self.work / 'private export'
+        result = self.run_script('restore-backup.sh', self.archive(), '--target', 'postgres://scratch',
+                                 '--storage-out', destination.as_posix())
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(destination.stat().st_mode & 0o777, 0o700)
+
+    def test_invalid_index_is_rejected_before_database_or_sync_even_when_file_count_matches(self):
+        files = dict(INDEXED_FILES, **{'INDEX.json': b'{"format":"skillsetmind-storage","version":99,"objects":[]}'})
+        for name in ('restore-backup.sh', 'vps-restore-drill.sh'):
+            with self.subTest(script=name):
+                previous = self.seed_standby()
+                trace = self.work / 'commands'
+                if trace.exists():
+                    trace.unlink()
+                args = ('--target', 'postgres://scratch', '--storage-out', (self.work / 'bad-index-export').as_posix())
+                result = self.run_script(name, self.archive(files=files, manifest_count='3'), *args, db_count='3')
+                self.assertNotEqual(result.returncode, 0, 'Invalid index was accepted as ordinary files')
+                self.assertNotIn('PSQL', self.commands(), 'Invalid index reached database restore')
+                self.assertNotIn('RSYNC', self.commands(), 'Invalid index reached destructive rsync')
+                self.assertEqual(previous.read_bytes(), b'previous verified backup')
+
+    def test_missing_index_is_rejected_before_database_or_sync(self):
+        files = {path: data for path, data in INDEXED_FILES.items() if path != 'INDEX.json'}
+        for name in ('restore-backup.sh', 'vps-restore-drill.sh'):
+            with self.subTest(script=name):
+                self.seed_standby()
+                trace = self.work / 'commands'
+                if trace.exists():
+                    trace.unlink()
+                args = ('--target', 'postgres://scratch', '--storage-out', (self.work / 'missing-index-export').as_posix())
+                result = self.run_script(name, self.archive(files=files, layout='indexed-v2'), *args)
+                self.assertNotEqual(result.returncode, 0, 'Indexed blobs were mistaken for legacy paths')
+                self.assertNotIn('PSQL', self.commands(), 'Missing index reached database restore')
+                self.assertNotIn('RSYNC', self.commands(), 'Missing index reached destructive rsync')
+
+    def test_unknown_or_duplicate_layout_is_rejected_before_database(self):
+        for layout in ('indexed-v99', 'paths-v1\nstorage_layout paths-v1'):
+            with self.subTest(layout=layout):
+                result = self.run_script('restore-backup.sh', self.archive(layout=layout))
+                self.assertNotEqual(result.returncode, 0, 'Unrecognized layout was accepted')
+                self.assertNotIn('PSQL', self.commands())
+
     def test_restore_does_not_overwrite_existing_destination(self):
         destination = self.work / 'export'
         destination.mkdir()
@@ -229,6 +303,7 @@ class RestoreBackupTest(unittest.TestCase):
     def test_drill_restore_failure_does_not_relay_dump_contents_to_logs(self):
         previous = self.seed_standby()
         result = self.run_script('vps-restore-drill.sh', self.archive(), restore_fail=True)
+        self.assertIn('DUMP_STDIN', self.commands(), 'Restore failure must happen after reading dump stdin')
         self.assert_rejected_before_sync(result, previous)
         self.assertNotIn('SYNTHETIC_COPY_STDOUT_ROW', result.stdout + result.stderr)
         self.assertNotIn('SYNTHETIC_COPY_STDERR_ROW', result.stdout + result.stderr)
@@ -258,12 +333,34 @@ class RestoreBackupTest(unittest.TestCase):
         result = self.run_script('vps-restore-drill.sh', self.archive())
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         commands = self.commands()
+        self.assertIn('DUMP_STDIN', commands, 'postgres must receive the dump without traversing mktemp')
         self.assertLess(commands.index('DB_STORAGE'), commands.index('RSYNC'))
         destination = self.work / 'dr' / 'storage'
         self.assertEqual({file.relative_to(destination).as_posix(): file.read_bytes()
                           for file in destination.rglob('*') if file.is_file()}, FILES)
         status = json.loads((self.work / 'dr' / 'last-drill.json').read_text(encoding='utf-8'))
         self.assertIs(status['ok'], True)
+        self.assertEqual(status['files'], 2)
+
+    @unittest.skipUnless(os.name == 'posix', 'POSIX directory modes are verified in Linux CI')
+    def test_drill_protects_new_and_preexisting_retained_directory(self):
+        directory = self.work / 'dr'
+        for preexisting in (False, True):
+            with self.subTest(preexisting=preexisting):
+                if preexisting:
+                    directory.chmod(0o755)
+                result = self.run_script('vps-restore-drill.sh', self.archive())
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(directory.stat().st_mode & 0o777, 0o700)
+
+    def test_drill_preserves_index_without_counting_it_as_a_storage_object(self):
+        result = self.run_script('vps-restore-drill.sh', self.archive(files=INDEXED_FILES, layout='indexed-v2'))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertLess(self.commands().index('DB_STORAGE'), self.commands().index('RSYNC'))
+        destination = self.work / 'dr' / 'storage'
+        self.assertEqual({file.relative_to(destination).as_posix(): file.read_bytes()
+                          for file in destination.rglob('*') if file.is_file()}, INDEXED_FILES)
+        status = json.loads((self.work / 'dr' / 'last-drill.json').read_text(encoding='utf-8'))
         self.assertEqual(status['files'], 2)
 
     def test_drill_accepts_zero_files_only_when_database_agrees(self):

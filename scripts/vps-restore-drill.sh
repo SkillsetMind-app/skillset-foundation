@@ -17,6 +17,7 @@
 # Optional DR_DIR overrides /var/lib/skillsetmind-dr for the retained copy.
 
 set -Eeuo pipefail
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 ENV_FILE="${ENV_FILE:-/etc/skillsetmind-backup.env}"
 [ -r "$ENV_FILE" ] || { echo "ERROR: cannot read $ENV_FILE" >&2; exit 1; }
@@ -25,11 +26,16 @@ set -a; . "$ENV_FILE"; set +a
 
 DR_DB="${PGDATABASE_DR:-skillsetmind_dr}"
 DR_DIR="${DR_DIR:-/var/lib/skillsetmind-dr}"
+umask 077
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 log() { echo "[$(date -u +%FT%TZ)] $*"; }
 die() { echo "[$(date -u +%FT%TZ)] ERROR: $*" >&2; exit 1; }
+
+# Protect the retained parent before writing, including a pre-existing copy.
+mkdir -p -- "$DR_DIR"
+chmod 0700 -- "$DR_DIR"
 
 export RCLONE_CONFIG_R2_TYPE=s3
 export RCLONE_CONFIG_R2_PROVIDER=Cloudflare
@@ -62,7 +68,10 @@ ROOT="$(find "$WORK" -maxdepth 1 -type d -name 'skillsetmind-*' | head -1)"
 EXPECTED_FILES="$(awk '$1 == "storage_objects" { if (NF != 2) exit 1; print $2 }' "$ROOT/MANIFEST.txt")" \
   || die "invalid storage count in manifest"
 [[ "$EXPECTED_FILES" =~ ^(0|[1-9][0-9]*)$ ]] || die "manifest must contain one valid storage_objects count"
-FILES="$(find "$ROOT/storage" -type f -printf '.' | wc -c | tr -d '[:space:]')"
+STORAGE_LAYOUT="$(awk '$1 == "storage_layout" { if (NF != 2) exit 1; print $2 }' "$ROOT/MANIFEST.txt")" \
+  || die "invalid storage layout in manifest"
+FILES="$(python3 "$SCRIPT_DIR/backup-storage.py" --validate "$ROOT/storage" "$STORAGE_LAYOUT")" \
+  || die "invalid Storage layout or index; refusing incomplete backup"
 [ "$FILES" = "$EXPECTED_FILES" ] || die "storage file count does not match manifest; refusing incomplete backup"
 
 log "restoring into $DR_DB"
@@ -72,8 +81,9 @@ sudo -u postgres psql -q -c "DROP DATABASE IF EXISTS \"$DR_DB\";"
 sudo -u postgres psql -q -c "CREATE DATABASE \"$DR_DB\";"
 # COPY errors can contain private row values. Do not persist or relay the raw
 # replay output to the drill logs, including on failure.
-sudo -u postgres psql -X -q -d "$DR_DB" -v ON_ERROR_STOP=1 -f "$ROOT/database.sql" \
-  > /dev/null 2>&1 || die "database restore failed"
+# The operator opens the dump; postgres cannot traverse the private mktemp tree.
+sudo -u postgres psql -X -q -d "$DR_DB" -v ON_ERROR_STOP=1 -f - \
+  > /dev/null 2>&1 < "$ROOT/database.sql" || die "database restore failed"
 
 # --- Prove the restore actually produced data -------------------------------
 TABLES=$(sudo -u postgres psql -tAq -d "$DR_DB" -c \
@@ -96,7 +106,8 @@ STORAGE_ROWS=$(sudo -u postgres psql -tAq -d "$DR_DB" -v ON_ERROR_STOP=1 -c \
 STORAGE_DEST="$DR_DIR/storage"
 mkdir -p "$STORAGE_DEST"
 rsync -a --delete "$ROOT/storage/" "$STORAGE_DEST/"
-SYNCED_FILES="$(find "$STORAGE_DEST" -type f -printf '.' | wc -c | tr -d '[:space:]')"
+SYNCED_FILES="$(python3 "$SCRIPT_DIR/backup-storage.py" --validate "$STORAGE_DEST" "$STORAGE_LAYOUT")" \
+  || die "synced Storage layout or index is invalid"
 [ "$SYNCED_FILES" = "$FILES" ] || die "synced Storage count differs from verified backup"
 
 log "storage: ${FILES} file(s) synced to $STORAGE_DEST"

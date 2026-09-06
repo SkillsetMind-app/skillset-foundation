@@ -61,6 +61,8 @@ echo "    ${DUMP_BYTES} bytes"
 echo "==> storage objects"
 OBJ_COUNT=$(python3 scripts/backup-storage.py "$WORK/$NAME/storage") \
   || die "could not back up all Storage objects"
+STORAGE_LAYOUT=paths-v1
+[ ! -f "$WORK/$NAME/storage/INDEX.json" ] || STORAGE_LAYOUT=indexed-v2
 echo "    $OBJ_COUNT object(s)"
 
 # --- Manifest ---------------------------------------------------------------
@@ -68,6 +70,7 @@ cat > "$WORK/$NAME/MANIFEST.txt" <<MANIFEST
 created_utc      ${STAMP}
 database_bytes   ${DUMP_BYTES}
 storage_objects  ${OBJ_COUNT}
+storage_layout   ${STORAGE_LAYOUT}
 pg_dump_version  $(pg_dump --version)
 source_host      $(echo "$DATABASE_URL" | sed -E 's#.*@([^:/?]+).*#\1#')
 restore          see docs/BACKUP.md

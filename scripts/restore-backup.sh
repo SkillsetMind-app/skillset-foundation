@@ -13,6 +13,8 @@
 # PROTECTED_PROJECT_REF, when set, blocks restoring onto that project.
 
 set -Eeuo pipefail
+umask 077
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 ARCHIVE="${1:-}"
 TARGET=""
@@ -56,7 +58,10 @@ ROOT="$(find "$WORK" -maxdepth 1 -type d -name 'skillsetmind-*' | head -1)"
 EXPECTED_FILES="$(awk '$1 == "storage_objects" { if (NF != 2) exit 1; print $2 }' "$ROOT/MANIFEST.txt")" \
   || die "invalid storage count in manifest"
 [[ "$EXPECTED_FILES" =~ ^(0|[1-9][0-9]*)$ ]] || die "manifest must contain one valid storage_objects count"
-FILES="$(find "$ROOT/storage" -type f -printf '.' | wc -c | tr -d '[:space:]')"
+STORAGE_LAYOUT="$(awk '$1 == "storage_layout" { if (NF != 2) exit 1; print $2 }' "$ROOT/MANIFEST.txt")" \
+  || die "invalid storage layout in manifest"
+FILES="$(python3 "$SCRIPT_DIR/backup-storage.py" --validate "$ROOT/storage" "$STORAGE_LAYOUT")" \
+  || die "invalid Storage layout or index; refusing incomplete backup"
 [ "$FILES" = "$EXPECTED_FILES" ] || die "storage file count does not match manifest; refusing incomplete backup"
 
 echo
@@ -64,6 +69,7 @@ cat "$ROOT/MANIFEST.txt"
 echo
 echo "tables in dump:  $(grep -c '^CREATE TABLE' "$ROOT/database.sql" || true)"
 echo "storage files:   $FILES (verified against manifest)"
+[ ! -f "$ROOT/storage/INDEX.json" ] || echo "storage layout:  indexed; use INDEX.json for the original bucket and object key"
 echo "dump size:       $(wc -c < "$ROOT/database.sql" | tr -d ' ') bytes"
 
 if [ -z "$TARGET" ]; then
@@ -88,8 +94,9 @@ read -r -p "This DROPS and recreates every table in the dump. Type RESTORE to co
 # Export before mutating the database: a copy failure must not leave a restored
 # database with no usable blobs. Only the temporary decrypt/unpack tree is erased.
 mkdir -p -- "$(dirname -- "$STORAGE_OUT")"
-mkdir -- "$STORAGE_OUT" || die "could not create a new storage output directory"
-cp -a -- "$ROOT/storage/." "$STORAGE_OUT/" || die "storage export failed"
+mkdir -m700 -- "$STORAGE_OUT" || die "could not create a new storage output directory"
+# Do not copy source permissions/ownership onto this private output directory.
+cp -R -- "$ROOT/storage/." "$STORAGE_OUT/" || die "storage export failed"
 # COPY errors can contain private row values. Neither a console nor a raw log
 # may receive the dump's output; keep a failure status and fixed error only.
 psql "$TARGET" -X -v ON_ERROR_STOP=1 -f "$ROOT/database.sql" > /dev/null 2>&1 \
