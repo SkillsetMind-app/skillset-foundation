@@ -48,9 +48,7 @@ import urllib.request
 URL = "https://api.z.ai/api/paas/v4/chat/completions"
 MODELO_PADRAO = "glm-5"
 # glm-5 é modelo de RACIOCÍNIO: gasta centenas de reasoning_tokens antes do
-# content. Teto baixo => content vazio (não é erro). Piso alto + retry dobrando.
-MAX_TOKENS_PADRAO = 4000
-TETO_MAX_TOKENS = 16000
+# content. Teto baixo pode esgotar no raciocínio antes de produzir o JSON.
 
 # Quando o diff passa do teto, só o que toca auth, dinheiro e política entra.
 CAMINHOS_DE_RISCO = (
@@ -174,11 +172,10 @@ def normaliza(bruto: dict | None) -> dict | None:
 
 
 def analisa(diff: str, modelo: str, chave: str) -> tuple[dict, dict]:
-    """Até 3 tentativas. Content vazio => dobra o teto. Esgotou => falhou=True."""
+    """Três tetos para raciocínio + JSON final. Esgotou => falhou=True."""
     tel = {"modelo": modelo, "tentativas": [], "segundos": 0.0, "tokens": 0}
     t0 = time.monotonic()
-    teto = MAX_TOKENS_PADRAO
-    for tentativa in range(1, 4):
+    for tentativa, teto in enumerate((4000, 16000, 32000), start=1):
         content, usage = chama(diff, modelo, teto, chave)
         tel["tokens"] += usage["total_tokens"]
         r = normaliza(extrai_json(content))
@@ -191,11 +188,10 @@ def analisa(diff: str, modelo: str, chave: str) -> tuple[dict, dict]:
             "tentativa": tentativa, "teto": teto, "chars": len(content),
             "tokens": usage["total_tokens"], "finish_reason": usage["finish_reason"],
             "resultado": estado,
-        }))
+        }), flush=True)
         if estado == "ok":
             tel["segundos"] = round(time.monotonic() - t0, 1)
             return r, tel
-        teto = min(teto * 2, TETO_MAX_TOKENS)
     tel["segundos"] = round(time.monotonic() - t0, 1)
     tel["falhou"] = True
     return dict(VAZIO), tel
@@ -473,6 +469,18 @@ def demo() -> None:
             "content": content, "reasoning_content": "PRIVATE_SENTINEL"},
             "finish_reason": finish}], "usage": {"total_tokens": tokens}}).encode())
 
+    # Reproduz o diff cujo raciocínio consome mais de 16k antes do JSON final.
+    def resposta_longa(req, **kwargs):
+        if json.loads(req.data)["max_tokens"] < 20000:
+            return resposta("", "length")
+        return resposta('{"achados":[]}')
+
+    with patch("urllib.request.urlopen", side_effect=resposta_longa) as request, \
+         redirect_stdout(io.StringIO()):
+        result, telemetry = analisa("diff demo", MODELO_PADRAO, "demo")
+    assert result == VAZIO and not telemetry.get("falhou"), "raciocínio esgotou os três tetos"
+    assert request.call_count == 3 and telemetry["tentativas"] == ["vazio", "vazio", "ok"]
+
     scenarios = [
         ([('{"achados":[]}', "stop", 12)], 0, ["ok"]),
         ([("", "length", 12), ('{"achados":', "length", 12),
@@ -495,15 +503,16 @@ def demo() -> None:
             assert main(["--diff", "demo", "--placar", "demo"]) == expected_exit
         assert request.call_count == len(replies)
         for i, call in enumerate(request.call_args_list):
+            assert call.kwargs["timeout"] == 300
             payload = json.loads(call.args[0].data)
             assert payload.get("response_format") == {"type": "json_object"}
-            assert payload["max_tokens"] == [4000, 8000, 16000][i]
+            assert payload["max_tokens"] == [4000, 16000, 32000][i]
         logs = [json.loads(line.removeprefix("tentativa: ")) for line in output.getvalue().splitlines()
                 if line.startswith("tentativa: ")]
         assert [entry["resultado"] for entry in logs] == states
         assert all(set(entry) == {"tentativa", "teto", "chars", "tokens", "finish_reason", "resultado"} for entry in logs)
         for i, (entry, reply) in enumerate(zip(logs, replies)):
-            assert entry["tentativa"] == i + 1 and entry["teto"] == [4000, 8000, 16000][i]
+            assert entry["tentativa"] == i + 1 and entry["teto"] == [4000, 16000, 32000][i]
             assert entry["chars"] == len(reply[0])
             assert entry["tokens"] == (reply[2] if type(reply[2]) is int else 0)
             assert entry["finish_reason"] == (reply[1] if reply[1] in ("stop", "length", "tool_calls", "content_filter") else "other")
