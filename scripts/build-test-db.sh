@@ -88,7 +88,17 @@ aplicadas=0
 for arquivo in supabase/migrations/*.sql; do
   nome="$(basename "$arquivo")"
   if [[ "$nome" > "$CORTE" ]]; then
-    aplica "$arquivo"
+    if [[ "$nome" == "20260906020000_security_boundaries.sql" ]]; then
+      # Prova de upgrade com dados anteriores à mudança, no banco descartável.
+      # A mesma transação aplica a migration, valida e remove as fixtures.
+      echo "  $arquivo (upgrade/backfill com fixtures)"
+      psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q --single-transaction \
+        -f "supabase/tests/fixtures/20260906020000_before.sql" \
+        -f "$arquivo" \
+        -f "supabase/tests/fixtures/20260906020000_after.sql"
+    else
+      aplica "$arquivo"
+    fi
     aplicadas=$((aplicadas + 1))
   fi
 done
