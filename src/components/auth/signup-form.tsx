@@ -104,6 +104,7 @@ export function SignupForm() {
   // market-standard signup shape. The rest of the profile is collected later at
   // /welcome onboarding.
   const [step, setStep] = useState<1 | 2>(1);
+  const [focusIdentityOnReturn, setFocusIdentityOnReturn] = useState(false);
   const [confirmSent, setConfirmSent] = useState(false);
   // O olhinho, um por campo: quem cria senha quer conferir o que digitou nos
   // DOIS campos — o login ja tinha o seu; o cadastro, onde ele mais importa,
@@ -348,6 +349,7 @@ export function SignupForm() {
                 onChange={(event) => setDisplayName(event.target.value)}
                 placeholder={t("auth.signup.fullNamePlaceholder")}
                 autoComplete="name"
+                autoFocus={focusIdentityOnReturn}
                 required
                 className="field-input"
               />
@@ -521,6 +523,7 @@ export function SignupForm() {
             type="button"
             onClick={() => {
               setError(null);
+              setFocusIdentityOnReturn(true);
               setStep(1);
             }}
             className="mt-1 inline-flex items-center justify-center text-sm font-semibold text-[var(--color-primary)]"

@@ -100,11 +100,13 @@ describe("SignupForm presents only the available paths", () => {
 
   it.each([false, true])("keeps native Back non-submitting across the step change with a password draft: %s", async (hasPasswordDraft) => {
     render(<SignupForm />);
+    expect(screen.getByLabelText("auth.signup.fullName")).not.toHaveFocus();
     fireEvent.change(screen.getByLabelText("auth.signup.fullName"), { target: { value: "Alex Rivera" } });
     fireEvent.change(screen.getByLabelText("auth.email"), { target: { value: "alex@example.test" } });
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "auth.signup.continue" }));
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "2");
+    expect(screen.getByLabelText("auth.password")).toHaveFocus();
     if (hasPasswordDraft) {
       fireEvent.change(screen.getByLabelText("auth.password"), { target: { value: strongSecret } });
       fireEvent.change(screen.getByLabelText("auth.signup.confirmPassword"), { target: { value: strongSecret } });
@@ -118,6 +120,7 @@ describe("SignupForm presents only the available paths", () => {
     expect(back).toHaveAttribute("type", "button");
     expect(back).not.toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1");
+    expect(screen.getByLabelText("auth.signup.fullName")).toHaveFocus();
     expect(screen.getByLabelText("auth.signup.fullName")).toHaveValue("Alex Rivera");
     expect(screen.getByLabelText("auth.email")).toHaveValue("alex@example.test");
     expect(screen.getByRole("checkbox")).toBeChecked();
@@ -129,6 +132,7 @@ describe("SignupForm presents only the available paths", () => {
     expect(mocks.router.push).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "auth.signup.continue" }));
+    expect(screen.getByPlaceholderText("auth.signup.passwordPlaceholder")).toHaveFocus();
     expect(screen.getByPlaceholderText("auth.signup.passwordPlaceholder")).toHaveValue(hasPasswordDraft ? strongSecret : "");
     expect(screen.getByPlaceholderText("auth.signup.confirmPasswordPlaceholder")).toHaveValue(hasPasswordDraft ? strongSecret : "");
     expect(mocks.signUpWithEmail).not.toHaveBeenCalled();
