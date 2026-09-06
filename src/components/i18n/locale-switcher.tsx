@@ -16,7 +16,7 @@ export function LocaleSwitcher() {
         aria-label={t("footer.language")}
         value={locale}
         onChange={(event) => { if (isLocale(event.target.value)) setLocale(event.target.value); }}
-        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        className="absolute inset-0 h-full min-h-11 w-full min-w-11 cursor-pointer opacity-0"
       >
         {LOCALES.map((code) => <option key={code} value={code} lang={code}>{LOCALE_LABELS[code]}</option>)}
       </select>
