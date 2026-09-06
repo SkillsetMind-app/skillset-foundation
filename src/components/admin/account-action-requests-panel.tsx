@@ -3,33 +3,27 @@
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
+import { InlineAlert } from "@/components/ui";
 import {
   resolveAccountActionRequest,
   subscribeToAccountActionRequests,
   type AccountActionRequest,
   type AccountActionResolution,
 } from "@/lib/data/account-actions";
+import { toDate } from "@/lib/format-date";
 
-const resolutionActions: Array<{ status: AccountActionResolution; label: string }> = [
-  { status: "processing", label: "Mark processing" },
-  { status: "completed", label: "Mark completed" },
-  { status: "rejected", label: "Reject" },
-];
+const resolutionActions: AccountActionResolution[] = ["processing", "completed", "rejected"];
 
-function formatType(type: AccountActionRequest["type"]) {
-  return type === "data_export" ? "Data export" : "Account deletion";
-}
+function formatTimestamp(value: AccountActionRequest["requestedAt"], locale: string, pending: string) {
+  const date = toDate(value);
 
-function formatTimestamp(value: AccountActionRequest["requestedAt"]) {
-  // Postgres timestamptz arrives as an ISO string, not a Firestore Timestamp.
-  const date = value ? new Date(value) : null;
-
-  if (!date || Number.isNaN(date.getTime())) {
-    return "Pending timestamp";
+  if (!date) {
+    return pending;
   }
 
-  return new Intl.DateTimeFormat("en", {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
@@ -37,19 +31,23 @@ function formatTimestamp(value: AccountActionRequest["requestedAt"]) {
 
 export function AccountActionRequestsPanel() {
   const { user } = useAuth();
+  const { t, locale } = useTranslation();
+  const copy = "platform.ops.accountRequestsPanel";
   const [requests, setRequests] = useState<AccountActionRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     return subscribeToAccountActionRequests(
       (nextRequests) => {
         setRequests(nextRequests);
+        setLoadError(false);
         setIsLoading(false);
       },
       () => {
-        setError("We could not load account action requests.");
+        setLoadError(true);
         setIsLoading(false);
       },
     );
@@ -60,13 +58,13 @@ export function AccountActionRequestsPanel() {
       return;
     }
 
-    setError("");
+    setError(false);
     setActiveRequestId(requestId);
 
     try {
       await resolveAccountActionRequest(requestId, status, user.uid);
     } catch {
-      setError("We could not update this account action request.");
+      setError(true);
     } finally {
       setActiveRequestId(null);
     }
@@ -75,30 +73,25 @@ export function AccountActionRequestsPanel() {
   return (
     <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-        Account actions
+        {t(`${copy}.eyebrow`)}
       </p>
       <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
-        Export and deletion requests.
+        {t(`${copy}.title`)}
       </h3>
       <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-        Work each request, then mark it processing, completed, or rejected.
+        {t(`${copy}.description`)}
       </p>
 
-      {error ? (
-        <p className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {error}
-        </p>
-      ) : null}
+      {loadError ? <InlineAlert tone="error" className="mt-5">{t(`${copy}.loadError`)}</InlineAlert> : null}
+      {error ? <InlineAlert tone="error" className="mt-5">{t(`${copy}.updateError`)}</InlineAlert> : null}
 
       <div className="mt-5 grid gap-3">
         {isLoading ? (
-          <p className="text-sm text-[var(--color-ink-soft)]">
-            Loading account action requests...
+          <p role="status" className="text-sm text-[var(--color-ink-soft)]">
+            {t(`${copy}.loading`)}
           </p>
         ) : requests.length === 0 ? (
-          <div className="rounded-[14px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-5 text-sm leading-7 text-[var(--color-ink-soft)]">
-            No account action requests yet.
-          </div>
+          loadError ? null : <div className="rounded-[14px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-5 text-sm leading-7 text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</div>
         ) : (
           requests.map((request) => (
             <article
@@ -106,38 +99,38 @@ export function AccountActionRequestsPanel() {
               className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-bold text-[var(--color-ink)]">
-                    {formatType(request.type)}
+                    {t(`${copy}.types.${request.type === "data_export" ? "data_export" : "account_deletion"}`)}
                   </p>
-                  <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
-                    User {request.requestedBy}
+                  <p className="mt-1 break-words text-xs leading-5 text-[var(--color-ink-soft)]">
+                    {t(`${copy}.user`)} {request.requestedBy}
                     {request.email ? ` - ${request.email}` : ""}
                   </p>
                 </div>
                 <StatusChip status={request.status} />
               </div>
-              <p className="mt-3 text-xs leading-5 text-[var(--color-ink-soft)]">
-                Requested {formatTimestamp(request.requestedAt)} - Request ID {request.id}
+              <p className="mt-3 break-words text-xs leading-5 text-[var(--color-ink-soft)]">
+                {t(`${copy}.requested`)} {formatTimestamp(request.requestedAt, locale, t(`${copy}.pendingTimestamp`))} - {t(`${copy}.requestId`)} {request.id}
               </p>
               {request.resolvedAt ? (
-                <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
-                  Actioned {formatTimestamp(request.resolvedAt)}
-                  {request.resolvedBy ? ` by ${request.resolvedBy}` : ""}
+                <p className="mt-1 break-words text-xs leading-5 text-[var(--color-ink-soft)]">
+                  {t(`${copy}.actioned`)} {formatTimestamp(request.resolvedAt, locale, t(`${copy}.pendingTimestamp`))}
+                  {request.resolvedBy ? <> {t(`${copy}.by`)} {request.resolvedBy}</> : null}
                 </p>
               ) : null}
               <div className="mt-4 flex flex-wrap gap-2">
-                {resolutionActions.map((action) => (
+                {resolutionActions.map((status) => (
                   <button
-                    key={action.status}
+                    key={status}
                     type="button"
-                    onClick={() => handleResolve(request.id, action.status)}
+                    onClick={() => handleResolve(request.id, status)}
                     disabled={
-                      activeRequestId === request.id || request.status === action.status
+                      activeRequestId === request.id || request.status === status
                     }
-                    className="button-outline px-4 py-2 text-xs disabled:opacity-60"
+                    className="button-outline min-h-11 px-4 py-2 text-xs disabled:opacity-60"
                   >
-                    {action.label}
+                    {t(`${copy}.actions.${status}`)}
                   </button>
                 ))}
               </div>
