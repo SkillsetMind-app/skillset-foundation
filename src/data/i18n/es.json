@@ -411,6 +411,180 @@
       "back": "Volver a Operaciones",
       "searchSupport": "Buscar tickets en esta cola",
       "searchVerification": "Buscar solicitudes en esta cola",
+      "accessPanel": {
+        "people": "Personas",
+        "matrix": "Qué puede hacer cada nivel",
+        "canDo": "Puede hacer",
+        "yes": "sí",
+        "no": "no",
+        "searchLabel": "Buscar a una persona",
+        "searchPlaceholder": "Nombre o correo electrónico",
+        "loading": "Cargando la lista de personas…",
+        "empty": "Nadie coincide con esta búsqueda.",
+        "noLevel": "Aún no tiene un nivel: solo puede ver el sitio público.",
+        "levels": {
+          "student": {
+            "label": "Estudiante",
+            "description": "Compra y realiza cursos. Solo accede al aula."
+          },
+          "teacher": {
+            "label": "Instructor",
+            "description": "Crea y vende cursos. Accede al estudio del instructor."
+          },
+          "staff": {
+            "label": "Equipo",
+            "description": "Verificación, denuncias y ayuda a estudiantes: soporte, moderación y operaciones juntos."
+          },
+          "admin": {
+            "label": "Administrador",
+            "description": "Todo, incluido cambiar estos niveles."
+          }
+        },
+        "errors": {
+          "loadError": "No se pudo cargar la lista de personas.",
+          "saveError": "El cambio fue rechazado. No se guardó nada.",
+          "adminRequired": "Se necesitan permisos de administrador.",
+          "targetRequired": "Debes seleccionar un usuario.",
+          "invalidRoles": "Los niveles de acceso seleccionados no son válidos. No se guardó nada.",
+          "unknownRole": "La selección contiene un rol desconocido.",
+          "userMissing": "Ese usuario no existe.",
+          "selfAdmin": "No puedes quitarte tu propio rol de administrador.",
+          "lastAdmin": "La plataforma debe conservar al menos un administrador."
+        },
+        "preview": {
+          "title": "Vista previa de la plataforma",
+          "description": "Ve la plataforma como estudiante o instructor; tu propio acceso no cambia.",
+          "back": "Volver a administrador",
+          "banner": "Vista previa como {role}. Tu acceso de administrador no cambia.",
+          "exit": "Salir de la vista previa"
+        },
+        "permissions": {
+          "auth": {
+            "signIn": {
+              "label": "Iniciar sesión",
+              "description": "Puede acceder a las pantallas de inicio de sesión."
+            },
+            "signUp": {
+              "label": "Crear una cuenta",
+              "description": "Puede acceder a las pantallas de creación de cuentas."
+            },
+            "signOut": {
+              "label": "Cerrar sesión",
+              "description": "Puede finalizar una sesión autenticada."
+            },
+            "manageSessions": {
+              "label": "Gestionar sesiones",
+              "description": "Puede revisar y revocar sesiones de usuarios."
+            }
+          },
+          "courses": {
+            "readCatalog": {
+              "label": "Ver el catálogo de cursos",
+              "description": "Puede ver el contenido público del catálogo de cursos."
+            },
+            "enroll": {
+              "label": "Inscribirse en cursos",
+              "description": "Puede inscribirse en las experiencias de aprendizaje disponibles."
+            },
+            "viewLearning": {
+              "label": "Acceder al aprendizaje",
+              "description": "Puede acceder al contenido de los cursos en los que está inscrito."
+            },
+            "create": {
+              "label": "Crear cursos",
+              "description": "Puede crear borradores de cursos."
+            },
+            "submitForReview": {
+              "label": "Enviar cursos a revisión",
+              "description": "Puede enviar sus borradores de cursos a la cola de revisión."
+            },
+            "publish": {
+              "label": "Publicar cursos",
+              "description": "Puede publicar contenido de cursos de instructores."
+            },
+            "manageAll": {
+              "label": "Gestionar todos los cursos",
+              "description": "Puede gestionar contenido de cursos en toda la plataforma."
+            }
+          },
+          "payments": {
+            "checkout": {
+              "label": "Realizar compras",
+              "description": "Puede comprar productos de aprendizaje de pago."
+            },
+            "manageSubscriptions": {
+              "label": "Gestionar suscripciones",
+              "description": "Puede gestionar suscripciones de facturación."
+            },
+            "refund": {
+              "label": "Reembolsar pagos",
+              "description": "Puede emitir o solicitar reembolsos."
+            }
+          },
+          "community": {
+            "read": {
+              "label": "Ver la comunidad",
+              "description": "Puede ver los espacios de la comunidad."
+            },
+            "post": {
+              "label": "Publicar en la comunidad",
+              "description": "Puede crear publicaciones y respuestas en los espacios de la comunidad."
+            },
+            "moderate": {
+              "label": "Moderar la comunidad",
+              "description": "Puede moderar publicaciones y respuestas de la comunidad."
+            }
+          },
+          "teacherStudio": {
+            "access": {
+              "label": "Acceder al estudio del instructor",
+              "description": "Puede acceder a las pantallas del estudio del instructor."
+            },
+            "manageCourses": {
+              "label": "Gestionar cursos del instructor",
+              "description": "Puede gestionar cursos en el estudio del instructor."
+            },
+            "manageStorefront": {
+              "label": "Gestionar la tienda del instructor",
+              "description": "Puede editar la identidad de la tienda y el orden de los cursos destacados."
+            }
+          },
+          "certificates": {
+            "view": {
+              "label": "Ver certificados",
+              "description": "Puede ver los certificados obtenidos."
+            },
+            "issue": {
+              "label": "Emitir certificados",
+              "description": "Puede emitir certificados de finalización."
+            },
+            "revoke": {
+              "label": "Revocar certificados",
+              "description": "Puede revocar certificados emitidos."
+            }
+          },
+          "users": {
+            "support": {
+              "label": "Ayudar a los usuarios",
+              "description": "Puede ayudar a los usuarios con problemas de cuenta y aprendizaje."
+            },
+            "manage": {
+              "label": "Gestionar usuarios",
+              "description": "Puede gestionar los registros y roles de los usuarios."
+            }
+          },
+          "platform": {
+            "viewOps": {
+              "label": "Ver Operaciones",
+              "description": "Puede ver los paneles de operaciones."
+            },
+            "accessAdmin": {
+              "label": "Acceder a la administración",
+              "description": "Puede acceder a las pantallas administrativas."
+            }
+          }
+        }
+      },
       "supportQueue": {
         "title": "Tickets de soporte de usuarios",
         "description": "Revisa los problemas de los usuarios y actualiza el estado de cada ticket.",

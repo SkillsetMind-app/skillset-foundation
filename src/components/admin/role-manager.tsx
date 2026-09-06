@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
+import { Field, InlineAlert } from "@/components/ui";
 import {
   listPlatformUsers,
   setUserRoles,
@@ -26,8 +28,6 @@ import {
 
 type Level = {
   id: string;
-  label: string;
-  description: string;
   /** A level is ON when every role it maps to is present. */
   roles: readonly Role[];
 };
@@ -35,30 +35,41 @@ type Level = {
 const LEVELS: readonly Level[] = [
   {
     id: "student",
-    label: "Learner",
-    description: "Buys and takes courses. The classroom, nothing else.",
     roles: ["student"],
   },
   {
     id: "teacher",
-    label: "Instructor",
-    description: "Builds and sells courses. Opens the teaching studio.",
     roles: ["teacher"],
   },
   {
     id: "staff",
-    label: "Team",
-    description:
-      "Verification, reports and learner support — support, moderation and operations together.",
     roles: ["support", "moderator", "ops"],
   },
   {
     id: "admin",
-    label: "Admin",
-    description: "Everything, including changing these levels.",
     roles: ["admin"],
   },
 ];
+
+const copy = "platform.ops.accessPanel";
+const refusalKeys = new Map([
+  ["Admin privileges are required.", "adminRequired"],
+  ["A target user is required.", "targetRequired"],
+  ["Roles must be a JSON array.", "invalidRoles"],
+  ["Unknown role in the requested set.", "unknownRole"],
+  ["That user does not exist.", "userMissing"],
+  ["You cannot remove your own admin role.", "selfAdmin"],
+  ["The platform must keep at least one administrator.", "lastAdmin"],
+]);
+
+function refusalKey(caught: unknown, fallback: "loadError" | "saveError") {
+  // RPC errors may be plain objects. Only known public refusals are shown;
+  // unknown provider diagnostics never become interface copy.
+  const message = typeof caught === "object" && caught !== null && "message" in caught
+    ? caught.message
+    : undefined;
+  return typeof message === "string" ? refusalKeys.get(message) ?? fallback : fallback;
+}
 
 function hasLevel(roles: readonly Role[], level: Level): boolean {
   return level.roles.every((role) => roles.includes(role));
@@ -85,22 +96,21 @@ function personLabel(user: PlatformUser): string {
 }
 
 export function RoleManager() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<"people" | "matrix">("people");
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState<PlatformUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<{ scope: "load" | "save"; key: string } | null>(null);
   const [savingUid, setSavingUid] = useState("");
 
   const load = useCallback(async (term: string) => {
     setIsLoading(true);
-    setError("");
+    setError(null);
     try {
       setUsers(await listPlatformUsers(term));
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Could not load the roster.",
-      );
+      setError({ scope: "load", key: refusalKey(caught, "loadError") });
     } finally {
       setIsLoading(false);
     }
@@ -115,7 +125,7 @@ export function RoleManager() {
   async function applyLevel(user: PlatformUser, level: Level, next: boolean) {
     const nextRoles = toggleLevel(user.roles, level, next);
     setSavingUid(user.uid);
-    setError("");
+    setError(null);
     try {
       const saved = await setUserRoles(user.uid, nextRoles);
       setUsers((current) =>
@@ -124,14 +134,7 @@ export function RoleManager() {
         ),
       );
     } catch (caught) {
-      // The database refuses to strip your own admin role or to empty the admin
-      // set. Surface its sentence rather than a generic failure — it names the
-      // exact rule that stopped the change.
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "That change was refused. Nothing was saved.",
-      );
+      setError({ scope: "save", key: refusalKey(caught, "saveError") });
     } finally {
       setSavingUid("");
     }
@@ -149,8 +152,8 @@ export function RoleManager() {
   );
 
   const tabs = [
-    { id: "people" as const, label: "People" },
-    { id: "matrix" as const, label: "What each level can do" },
+    { id: "people" as const, label: t(`${copy}.people`) },
+    { id: "matrix" as const, label: t(`${copy}.matrix`) },
   ];
 
   return (
@@ -162,7 +165,7 @@ export function RoleManager() {
             type="button"
             onClick={() => setTab(entry.id)}
             aria-pressed={tab === entry.id}
-            className={`rounded-[10px] px-4 py-2 text-sm font-bold transition ${
+            className={`min-h-11 rounded-[10px] px-4 py-2 text-sm font-bold transition ${
               tab === entry.id
                 ? "bg-[var(--color-primary)] text-white"
                 : "border border-[var(--color-line)] text-[var(--color-ink-soft)]"
@@ -174,36 +177,28 @@ export function RoleManager() {
       </div>
 
       {error ? (
-        <p
-          role="alert"
-          aria-live="assertive"
-          className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-        >
-          {error}
-        </p>
+        <InlineAlert tone="error" className="mt-5">{t(`${copy}.errors.${error.key}`)}</InlineAlert>
       ) : null}
 
       {tab === "people" ? (
         <div className="mt-6">
-          <label className="block text-sm font-semibold text-[var(--color-ink)]">
-            Find someone
-            <input
+          <Field id="ops-role-search" label={t(`${copy}.searchLabel`)}>
+            {a11y => <input
+              {...a11y}
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Name or email"
-              className="mt-2 w-full rounded-[10px] border border-[var(--color-line)] px-4 py-2.5 text-sm font-normal"
-            />
-          </label>
+              placeholder={t(`${copy}.searchPlaceholder`)}
+              className="min-h-11 w-full rounded-[10px] border border-[var(--color-line)] px-4 py-2.5 text-sm font-normal"
+            />}
+          </Field>
 
           {isLoading ? (
-            <p className="mt-6 text-sm text-[var(--color-ink-soft)]">
-              Loading the roster…
+            <p role="status" className="mt-6 text-sm text-[var(--color-ink-soft)]">
+              {t(`${copy}.loading`)}
             </p>
           ) : users.length === 0 ? (
-            <p className="mt-6 text-sm text-[var(--color-ink-soft)]">
-              No one matches that search.
-            </p>
+            error?.scope === "load" ? null : <p className="mt-6 text-sm text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p>
           ) : (
             <ul className="mt-6 space-y-3">
               {users.map((user) => (
@@ -212,11 +207,11 @@ export function RoleManager() {
                   className="rounded-[12px] border border-[var(--color-line)] p-4"
                 >
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="text-sm font-bold text-[var(--color-ink)]">
+                    <p className="min-w-0 break-words text-sm font-bold text-[var(--color-ink)]">
                       {personLabel(user)}
                     </p>
                     {user.email ? (
-                      <p className="text-xs text-[var(--color-ink-soft)]">
+                      <p className="min-w-0 break-all text-xs text-[var(--color-ink-soft)]">
                         {user.email}
                       </p>
                     ) : null}
@@ -224,7 +219,7 @@ export function RoleManager() {
 
                   {user.roles.length === 0 ? (
                     <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
-                      No level yet — sees only the public site.
+                      {t(`${copy}.noLevel`)}
                     </p>
                   ) : null}
 
@@ -232,8 +227,8 @@ export function RoleManager() {
                     {LEVELS.map((level) => (
                       <label
                         key={level.id}
-                        title={level.description}
-                        className="inline-flex items-center gap-2 text-sm text-[var(--color-ink)]"
+                        title={t(`${copy}.levels.${level.id}.description`)}
+                        className="inline-flex min-h-11 items-center gap-2 text-sm text-[var(--color-ink)]"
                       >
                         <input
                           type="checkbox"
@@ -243,7 +238,7 @@ export function RoleManager() {
                             void applyLevel(user, level, event.target.checked)
                           }
                         />
-                        {level.label}
+                        {t(`${copy}.levels.${level.id}.label`)}
                       </label>
                     ))}
                   </div>
@@ -253,19 +248,19 @@ export function RoleManager() {
           )}
         </div>
       ) : (
-        <div className="mt-6 overflow-x-auto">
+        <div role="region" aria-label={t(`${copy}.matrix`)} tabIndex={0} className="mt-6 overflow-x-auto">
           <table className="w-full min-w-[640px] border-collapse text-left text-sm">
             <thead>
               <tr>
                 <th className="border-b border-[var(--color-line)] py-2 pr-4 font-bold">
-                  Can do
+                  {t(`${copy}.canDo`)}
                 </th>
                 {LEVELS.map((level) => (
                   <th
                     key={level.id}
                     className="border-b border-[var(--color-line)] py-2 pr-4 font-bold"
                   >
-                    {level.label}
+                    {t(`${copy}.levels.${level.id}.label`)}
                   </th>
                 ))}
               </tr>
@@ -275,9 +270,9 @@ export function RoleManager() {
                 <tr key={definition.key}>
                   <td
                     className="border-b border-[var(--color-line)] py-2 pr-4 text-[var(--color-ink-soft)]"
-                    title={definition.description}
+                    title={t(`${copy}.permissions.${definition.key}.description`)}
                   >
-                    {definition.label}
+                    {t(`${copy}.permissions.${definition.key}.label`)}
                   </td>
                   {LEVELS.map((level, levelIndex) => {
                     // A level grants a permission when ANY role behind it does.
@@ -290,7 +285,7 @@ export function RoleManager() {
                         key={level.id}
                         className="border-b border-[var(--color-line)] py-2 pr-4"
                       >
-                        <span aria-label={allowed ? "yes" : "no"}>
+                        <span aria-label={t(`${copy}.${allowed ? "yes" : "no"}`)}>
                           {allowed ? "✓" : "—"}
                         </span>
                       </td>
