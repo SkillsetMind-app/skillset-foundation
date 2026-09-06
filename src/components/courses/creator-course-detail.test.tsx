@@ -110,6 +110,8 @@ beforeEach(() => {
   fixtures.query = "";
   fixtures.auth.status = "unauthenticated";
   fixtures.auth.user = null;
+  fixtures.course.paymentType = "one_time";
+  fixtures.course.priceAmountMinor = 14900;
   // Sem oferta cadastrada o preço cai no campo do próprio curso: US$ 149.
   vi.stubGlobal(
     "fetch",
@@ -309,7 +311,8 @@ describe("permanent checkout", () => {
 
   it("reuses free enrollment without opening Stripe", async () => {
     fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
-    withOffers([{ ...launchOffer, prices: [{ ...launchOffer.prices[0], amountMinor: 0, paymentType: "free" }] }]);
+    Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
+    withOffers([]);
     render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
     fireEvent.click(await screen.findByRole("button", { name: "Enroll free" }));
     await waitFor(() => expect(fixtures.router.push).toHaveBeenCalledWith("/learn/courses/course-1"));

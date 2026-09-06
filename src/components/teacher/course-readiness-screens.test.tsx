@@ -129,6 +129,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     await screen.findByRole("button", { name: "Copy Checkout link" });
     expect(screen.getByRole("link", { name: "Open Checkout" })).toHaveAttribute("href", "https://www.skillsetmind.com/courses/course-1/checkout");
     expect(screen.getByRole("link", { name: "Open Product page" })).toHaveAttribute("href", "https://www.skillsetmind.com/courses/course-1");
+    expect(screen.getByRole("link", { name: "Open Checkout" })).not.toHaveAttribute("target", "_blank");
+    expect(screen.getByRole("link", { name: "Open Product page" })).not.toHaveAttribute("target", "_blank");
     expect(screen.getByRole("button", { name: "Copy Checkout link" })).toBeInTheDocument();
   });
 

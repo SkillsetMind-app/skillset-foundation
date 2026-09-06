@@ -25,7 +25,7 @@ export function CourseShareLink({ label, path }: { label: string; path: string }
         <button type="button" onClick={() => void copyLink()} aria-label={`Copy ${label} link`} className="button-solid min-h-11 px-4 py-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
           Copy link
         </button>
-        <a href={url} target="_blank" rel="noopener noreferrer" aria-label={`Open ${label}`} className="button-outline inline-flex min-h-11 items-center px-4 py-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+        <a href={url} aria-label={`Open ${label}`} className="button-outline inline-flex min-h-11 items-center px-4 py-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
           Open page
         </a>
       </div>
