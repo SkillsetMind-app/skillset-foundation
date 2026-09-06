@@ -34,6 +34,8 @@ const PLAN_SUBSCRIPTION_CHECKOUT_PURPOSE = "skillset_plan_subscription";
 // subscription. Firebase-free; getStripeClient()/resolvePriceId() surface a
 // clean 503 when payments are not configured.
 export async function POST(request: Request) {
+  let releaseClaim: (() => Promise<void>) | null = null;
+  let retainClaimOnError = false;
   try {
     const uid = await requireUserId();
 
@@ -68,8 +70,9 @@ export async function POST(request: Request) {
     // This table is maintained by the webhook, which can lag the actual payment
     // by seconds, so it is the cheap first pass — Stripe itself is asked below
     // before any session is created.
+    const admin = getSupabaseAdminClient();
     const { data: existingPlanSubscription, error: existingPlanError } =
-      await getSupabaseAdminClient()
+      await admin
         .from("subscriptions")
         .select("id")
         .eq("user_id", uid)
@@ -84,6 +87,34 @@ export async function POST(request: Request) {
       );
     }
 
+    // Serialize every plan/cycle for this user, not just identical creates.
+    // The verified service-only RPC uses INSERT ... ON CONFLICT + a row lock.
+    // Prefixing the user namespace cannot collide with real Auth UUIDs used
+    // by course checkout, even if a course happens to be named "plan".
+    const lockUserId = `billing:${uid}`;
+    const lockKey = `${lockUserId}__plan`;
+    const attemptId = crypto.randomUUID();
+    const startedAt = Date.now();
+    const lockTtlMs = 35 * 60 * 1000;
+    const { data: lockRows, error: lockError } = await admin.rpc("claim_checkout_lock", {
+      p_user_id: lockUserId,
+      p_course_id: "plan",
+      p_order_id: attemptId,
+      p_now: new Date(startedAt).toISOString(),
+      p_session_ttl_ms: lockTtlMs,
+      p_claim_grace_ms: lockTtlMs,
+    });
+    if (lockError) throw new Error(lockError.message);
+    if (["wait", "reuse"].includes(lockRows?.[0]?.action ?? "")) {
+      throw new PaymentError("Another plan checkout is in progress. Please wait before trying again.", 409);
+    }
+    if (lockRows?.[0]?.action !== "claim") throw new Error("Invalid billing checkout claim.");
+    releaseClaim = async () => {
+      const { error } = await admin.from("checkout_locks").delete()
+        .eq("lock_key", lockKey).eq("order_id", attemptId);
+      if (error) throw new Error("Could not release the billing checkout claim.");
+    };
+
     const stripe = getStripeClient();
     const profile = await getUserRow(uid);
     const customerId = await getOrCreateBillingStripeCustomer(
@@ -92,38 +123,9 @@ export async function POST(request: Request) {
       profile?.email ?? null,
     );
 
-    // Second pass, against Stripe rather than our mirror of it. The window the
-    // table cannot cover is real money: a creator finishes checkout, the
-    // `checkout.session.completed` webhook is still in flight, they open a
-    // second tab and subscribe again. Stripe Checkout never replaces an
-    // existing subscription, so that leaves two live plans on one card and a
-    // refund conversation.
-    //
-    // This customer only ever exists on the platform account — course
-    // subscriptions are direct charges and live on the creator's own connected
-    // account — so nothing here can block a legitimate course purchase.
-    const stripeSubscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "all",
-      limit: 100,
-    });
-    const liveStripeSubscription = stripeSubscriptions.data.find((subscription) =>
-      PLAN_CHECKOUT_BLOCKING_STATUSES.includes(subscription.status),
-    );
-    if (liveStripeSubscription) {
-      throw new PaymentError(
-        "You already have a plan subscription. Change or cancel it from billing instead.",
-        409,
-      );
-    }
-
-    // Third pass: the sessions themselves. The two checks above only see
-    // subscriptions that already exist, and the idempotency bucket below only
-    // collapses requests landing inside the same hour — two tabs spanning the
-    // boundary still minted two live sessions, and Checkout never replaces a
-    // subscription, so paying both opens two plans on one card. Asking Stripe
-    // which sessions are open removes the boundary instead of narrowing it.
-    // Same shape as the activation checkout, which guards the identical window.
+    // Inspect and replace open sessions while holding the claim.
+    // A completed operation releases immediately, so changing plans does not
+    // require waiting for an old session or idempotency bucket to expire.
     const sessions = await stripe.checkout.sessions.list({
       customer: customerId,
       limit: 100,
@@ -147,10 +149,43 @@ export async function POST(request: Request) {
       }
     }
 
+    // Read subscriptions after inspecting/expiring earlier sessions: an old
+    // tab can complete payment while those requests are in flight. The claim
+    // serializes our POSTs, but cannot serialize payment inside Stripe.
+    // Delayed payment methods also create active subscriptions, even while
+    // the completed Checkout Session still has payment_status "unpaid".
+    // Course subscriptions live on connected accounts, not this customer.
+    const stripeSubscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: "all",
+      limit: 100,
+    });
+    const liveStripeSubscription = stripeSubscriptions.data.find((subscription) =>
+      PLAN_CHECKOUT_BLOCKING_STATUSES.includes(subscription.status),
+    );
+    if (liveStripeSubscription) {
+      throw new PaymentError(
+        "You already have a plan subscription. Change or cancel it from billing instead.",
+        409,
+      );
+    }
+
     const appUrl = getAppUrl();
 
     // Reuse before create: the response shape below is identical either way, so
     // the returning user gets the session they already have instead of a second.
+    // An unknown create outcome keeps the claim until after this session's
+    // deadline: a second plan cannot race an object Stripe may still create.
+    const sessionExpiresAt = Math.floor(Date.now() / 1000) + 31 * 60;
+    if (!reusableSession) {
+      // Stripe requires >=30 minutes from creation, not from claim acquisition.
+      // Keep the new deadline covered by the claim, with a minute of margin.
+      // Slow preparation can retry immediately because create has not run.
+      if (sessionExpiresAt * 1000 > startedAt + lockTtlMs - 60_000) {
+        throw new PaymentError("Plan checkout preparation timed out. Please try again.", 409);
+      }
+      retainClaimOnError = true;
+    }
     const session = reusableSession ?? await stripe.checkout.sessions.create(
       {
         mode: "subscription",
@@ -173,19 +208,13 @@ export async function POST(request: Request) {
           cycle,
           purpose: PLAN_SUBSCRIPTION_CHECKOUT_PURPOSE,
         },
+        expires_at: sessionExpiresAt,
         return_url: `${appUrl}/account/billing/return?session_id={CHECKOUT_SESSION_ID}`,
       },
       {
-        // Idempotency on (uid, plan, cycle). The bucket is hourly, not
-        // per-minute: a minute bucket only collapsed a double-click, so two
-        // tabs 2s apart across a minute boundary minted two live sessions and
-        // paying both opened two subscriptions. An hour still sits inside the
-        // 24h life of both a Checkout Session and a Stripe idempotency record,
-        // so a returning user gets the same usable session instead of a second
-        // charge.
-        idempotencyKey: `billing_checkout_${uid}_${planId}_${cycle}_${Math.floor(
-          Date.now() / 3600000,
-        )}`,
+        // Per claim, so returning to a previously expired plan creates a fresh
+        // session. Stripe's retries inside this attempt still share one key.
+        idempotencyKey: `billing_checkout_${attemptId}`,
       },
     );
 
@@ -195,11 +224,22 @@ export async function POST(request: Request) {
       );
     }
 
+    retainClaimOnError = false;
+    await releaseClaim();
+    releaseClaim = null;
+
     return NextResponse.json({
       clientSecret: session.client_secret,
       sessionId: session.id,
     });
   } catch (error) {
+    if (releaseClaim && !retainClaimOnError) {
+      try {
+        await releaseClaim();
+      } catch {
+        return paymentErrorResponse(new Error("Could not release the billing checkout claim."));
+      }
+    }
     return paymentErrorResponse(error);
   }
 }

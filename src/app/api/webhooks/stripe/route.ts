@@ -23,6 +23,7 @@ import { getStripeClient, isStripeConfigured } from "@/lib/payments/server/strip
 import {
   courseSubscriptionInterval,
   ensureCourseSubscriptionCanceled,
+  hasRetainedActivationPayment,
 } from "@/lib/payments/server/stripe-helpers";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
@@ -243,6 +244,11 @@ async function handleActivationFeePaid(
     throw new Error("Activation fee checkout session is missing uid metadata.");
   }
 
+  const paymentIntentId = typeof session.payment_intent === "string"
+    ? session.payment_intent : session.payment_intent?.id;
+  if (!paymentIntentId) throw new Error("Activation fee session is missing its payment identity.");
+  if (!await hasRetainedActivationPayment(getStripeClient(), paymentIntentId, uid)) return;
+
   const ts = nowIso();
   await requireSupabaseWrite(
     admin
@@ -253,10 +259,6 @@ async function handleActivationFeePaid(
     "Stamp storefront activation fee",
   );
 
-  const paymentIntentId =
-    typeof session.payment_intent === "string"
-      ? session.payment_intent
-      : session.payment_intent?.id ?? null;
   const { error: auditError } = await admin.rpc("log_audit_event", {
     p_action: "STOREFRONT_ACTIVATION_FEE_PAID",
     p_actor_id: uid,
@@ -701,7 +703,10 @@ async function handleCourseSubscriptionInvoicePaid(
     .select("status")
     .eq("id", enrollmentId)
     .maybeSingle();
-  if (!enrollment) {
+  // An old paid invoice can arrive after cancellation/refund. Book the sale
+  // above, but only the subscription's CURRENT entitlement may restore access.
+  const entitled = subscription.status === "active" || subscription.status === "trialing";
+  if (entitled && !enrollment) {
     await requireSupabaseWrite(
       admin.from("enrollments").insert({
         id: enrollmentId,
@@ -720,7 +725,7 @@ async function handleCourseSubscriptionInvoicePaid(
       }),
       "Create subscription enrollment",
     );
-  } else if (shouldReactivateEnrollment(enrollment.status)) {
+  } else if (entitled && enrollment && shouldReactivateEnrollment(enrollment.status)) {
     await requireSupabaseWrite(
       admin
         .from("enrollments")
@@ -1143,6 +1148,7 @@ type DisputeLedger = {
   status: string;
   kind: string | null;
   order_id: string | null;
+  subscription_id: string | null;
 };
 
 async function resolveLedgerForDispute(
@@ -1158,7 +1164,7 @@ async function resolveLedgerForDispute(
     .from("payout_ledger")
     // kind + order_id are only needed by the lost branch below, but the row is
     // already being fetched — a second round trip to widen it would be waste.
-    .select("id,status,kind,order_id")
+    .select("id,status,kind,order_id,subscription_id")
     .eq("payment_id", paymentIntentId)
     .limit(1)
     .maybeSingle();
@@ -1299,10 +1305,15 @@ async function handleDisputeClosed(
       );
     }
   }
-  // ponytail: course SUBSCRIPTION chargebacks still fall through. Stripe cancels
-  // the subscription itself on a lost dispute and the lifecycle handler revokes
-  // from there; add ensureCourseSubscriptionCanceled here if that ever proves
-  // unreliable.
+  // Stripe keeps subscriptions running after disputes unless optional account
+  // settings cancel them. A lost payment must stop billing regardless of those
+  // settings; the subscription lifecycle event revokes its course access.
+  if (event === "lost" && ledger.kind === "course_subscription") {
+    if (!ledger.subscription_id) throw new Error("Disputed subscription has no subscription identity.");
+    await ensureCourseSubscriptionCanceled(
+      getStripeClient(), ledger.subscription_id, connectedAccountId,
+    );
+  }
 }
 
 // --- terminal order status (expired / failed) with lock release + B2 guard --
@@ -1655,7 +1666,13 @@ export async function POST(request: Request) {
       case "customer.subscription.created":
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
-        const subscriptionObject = event.data.object;
+        // Delivery order is not guaranteed. An older active snapshot must not
+        // resurrect a subscription that Stripe has already canceled.
+        const subscriptionObject = await getStripeClient().subscriptions.retrieve(
+          event.data.object.id,
+          undefined,
+          eventAccountId ? { stripeAccount: eventAccountId } : undefined,
+        );
         const handledAsCourse = await handleCourseSubscriptionLifecycle(
           admin,
           subscriptionObject,

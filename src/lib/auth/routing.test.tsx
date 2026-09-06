@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { SkillsetUser } from "@/domain/auth";
 import {
   getPrimaryWorkspaceHref,
+  getSafeReturnTo,
   getWorkspaceHomeHref,
 } from "@/lib/auth/routing";
 
@@ -30,5 +31,21 @@ describe("workspace routing", () => {
     expect(getWorkspaceHomeHref("/learn/courses/example", teacher)).toBe("/learn");
     expect(getWorkspaceHomeHref("/account/profile", teacher)).toBe("/teach");
     expect(getWorkspaceHomeHref("/account/payments", null)).toBe("/teach");
+  });
+});
+
+describe("post-login return paths", () => {
+  it.each(["\t", "\n", "\r"])("rejects a browser-normalized external destination (%j)", (control) => {
+    const raw = `/${control}/attacker.example`;
+    const params = new URLSearchParams(`returnTo=${encodeURIComponent(raw)}`);
+
+    // Next's client router resolves with URL too: these bytes become //host.
+    expect(new URL(raw, "https://skillsetmind.com").origin).toBe("https://attacker.example");
+    expect(getSafeReturnTo(params)).toBeNull();
+  });
+
+  it("preserves a local course link with its query and fragment", () => {
+    const path = "/courses/example?offer=annual#checkout";
+    expect(getSafeReturnTo(new URLSearchParams({ returnTo: path }))).toBe(path);
   });
 });

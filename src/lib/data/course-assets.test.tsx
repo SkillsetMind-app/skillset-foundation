@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { supabaseUploadLimitBytes } from "@/domain/course-asset";
 import {
   uploadCourseAsset,
+  uploadLessonVideoToBunny,
   type UploadCourseAssetProgress,
 } from "@/lib/data/course-assets";
 
@@ -12,6 +13,12 @@ const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
   upload: vi.fn(),
 }));
+
+vi.mock("tus-js-client", () => ({ Upload: class {
+  onSuccess: () => void;
+  constructor(_file: File, options: { onSuccess: () => void }) { this.onSuccess = options.onSuccess; }
+  start() { this.onSuccess(); }
+} }));
 
 vi.mock("@/lib/supabase/client", () => ({
   getSupabaseBrowserClient: () => ({
@@ -49,6 +56,7 @@ function input(
 }
 
 describe("uploadCourseAsset — progresso honesto", () => {
+  afterEach(() => vi.unstubAllGlobals());
   beforeEach(() => {
     mocks.upload.mockReset();
     mocks.upload.mockResolvedValue({ error: null });
@@ -60,6 +68,21 @@ describe("uploadCourseAsset — progresso honesto", () => {
     mocks.getPublicUrl.mockReturnValue({
       data: { publicUrl: "https://project.supabase.co/storage/v1/object/public/public-media/capa.png" },
     });
+  });
+
+  it("persists the server's Bunny receipt without manufacturing a video identity", async () => {
+    const storagePath = "bunny/new-video/server-receipt";
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      videoId: "new-video", storagePath, libraryId: "test-library", signature: "upload-proof",
+      expires: 100, endpoint: "https://video.example/tus",
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const file = new File(["video"], "lesson.mp4", { type: "video/mp4" });
+    await uploadLessonVideoToBunny({ courseId: "course-1", ownerId: "owner-1", kind: "lesson_video",
+      file, isPreview: false, lessonId: "lesson-1" });
+    expect(mocks.insert).toHaveBeenCalledWith(expect.objectContaining({
+      bunny_video_id: "new-video", storage_path: storagePath, owner_id: "owner-1", course_id: "course-1",
+    }));
   });
 
   // supabase-js upload() não informa progresso. Emitir 0% e ficar parado ali
