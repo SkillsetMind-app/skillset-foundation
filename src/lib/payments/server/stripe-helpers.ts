@@ -1,6 +1,7 @@
+import { createHash } from "node:crypto";
 import type Stripe from "stripe";
 
-import { planById, hasRealStripePriceIds } from "@/data/plans";
+import { ACTIVATION_FEE_CHECKOUT_PURPOSE, activationFeeUsd, planById, hasRealStripePriceIds } from "@/data/plans";
 import type { PlanBillingCycle, PlanId } from "@/data/plans";
 import type {
   ProductOffer,
@@ -297,15 +298,6 @@ export async function createFreshConnectedAccount(params: {
 }
 
 /**
- * Returns a recurring Stripe Price id for a course subscription, creating and
- * caching one on the course row on first use. Prices are immutable in Stripe, so
- * a change to the course price/cadence mints a fresh Price and re-caches it (a
- * stale cache that no longer matches amount/currency/interval is ignored). The
- * Price lives on the PLATFORM account: the subscription charges the platform
- * Customer and the teacher payout is a held Transfer released by the cron —
- * identical economics to the one-time rail.
- */
-/**
  * Get (or create) the recurring Price backing a subscription course.
  *
  * Under DIRECT CHARGES the Price must live on the TEACHER's connected account —
@@ -327,34 +319,70 @@ export async function getOrCreateCourseSubscriptionPrice(
 ): Promise<string> {
   const cached = (course.stripe_subscription_price ??
     null) as CourseSubscriptionPriceCache | null;
+  // Convert before comparing: our amounts use hundredths even for JPY.
+  const unitAmount = toStripeAmount(amountMinor, currency);
   if (
     cached
-    && cached.priceId
+    && typeof cached.priceId === "string" && cached.priceId
     && cached.amountMinor === amountMinor
     && cached.currency === currency
     && cached.interval === interval
     && cached.accountId === connectedAccountId
   ) {
-    return cached.priceId;
+    try {
+      // A previously writable cache cannot establish the Stripe object's
+      // owner or terms. Verify it on the current owner's connected account.
+      const price = await stripe.prices.retrieve(
+        cached.priceId,
+        { expand: ["product"] },
+        { stripeAccount: connectedAccountId },
+      );
+      const product = price.product;
+      if (
+        price.active && price.type === "recurring" && price.billing_scheme === "per_unit"
+        && price.unit_amount === unitAmount && Number(price.unit_amount_decimal) === unitAmount
+        && price.currency === currency
+        && price.recurring?.interval === interval && price.recurring.interval_count === 1
+        && price.recurring.usage_type === "licensed"
+        && !price.transform_quantity && !price.custom_unit_amount
+        && price.metadata.courseId === courseId && price.metadata.ownerId === course.owner_id
+        && price.metadata.kind === "course_subscription"
+        && typeof product !== "string" && !product.deleted && product.active
+        && product.metadata.courseId === courseId && product.metadata.ownerId === course.owner_id
+      ) {
+        return price.id;
+      }
+    } catch (error) {
+      // A missing object can be replaced; an unavailable provider must retry
+      // rather than silently turn a read failure into a new payment object.
+      if ((error as { code?: string }).code !== "resource_missing") throw error;
+    }
   }
 
-  const price = await stripe.prices.create(
-    {
-      currency,
-      // Stripe's smallest unit, not ours: zero-decimal currencies divide by 100.
-      unit_amount: toStripeAmount(amountMinor, currency),
-      recurring: { interval },
-      product_data: {
-        name: course.title,
-        metadata: { courseId, ownerId: course.owner_id },
-      },
-      metadata: {
-        courseId,
-        ownerId: course.owner_id,
-        kind: "course_subscription",
-      },
+  const priceParams: Stripe.PriceCreateParams = {
+    currency,
+    unit_amount: unitAmount,
+    recurring: { interval },
+    product_data: {
+      name: course.title,
+      metadata: { courseId, ownerId: course.owner_id },
     },
-    { stripeAccount: connectedAccountId },
+    metadata: {
+      courseId,
+      ownerId: course.owner_id,
+      kind: "course_subscription",
+    },
+  };
+  const price = await stripe.prices.create(
+    priceParams,
+    {
+      stripeAccount: connectedAccountId,
+      // Retry/concurrent creates reuse a Price. Replacing an archived or bad
+      // cached object needs a different key from the original creation.
+      idempotencyKey: `course_price_${createHash("sha256")
+        .update(JSON.stringify([connectedAccountId, cached?.priceId ?? null, priceParams]))
+        .digest("hex")}`,
+    },
   );
 
   const supabase = getSupabaseAdminClient();
@@ -514,4 +542,42 @@ export function resolvePriceId(
   return cycle === "monthly"
     ? plan.stripePriceIds.monthlyId
     : plan.stripePriceIds.yearlyId;
+}
+
+/** A succeeded PaymentIntent stays succeeded after its money is returned. */
+export async function hasRetainedActivationPayment(
+  stripe: Stripe,
+  paymentIntentId: string,
+  uid: string,
+): Promise<boolean> {
+  const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+    expand: ["latest_charge"],
+  });
+  const charge = intent.latest_charge;
+  if (
+    intent.metadata.uid !== uid
+    || intent.metadata.purpose !== ACTIVATION_FEE_CHECKOUT_PURPOSE
+    || intent.status !== "succeeded"
+    || intent.currency !== "usd" || intent.amount !== activationFeeUsd * 100
+    || !charge || typeof charge === "string" || !charge.paid || !charge.captured
+    || charge.currency !== intent.currency || charge.amount_captured !== intent.amount
+    || (typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id) !== paymentIntentId
+  ) {
+    throw new Error("The activation payment could not be verified.");
+  }
+  if (charge.refunded) return false;
+  if (!charge.disputed) return true;
+
+  // `disputed` also stays true after a win. Check the outcome so a creator who
+  // kept the payment is not charged again; an unresolved dispute cannot grant
+  // access or open another charge while the first payment is still contested.
+  const disputes = await stripe.disputes.list({ charge: charge.id, limit: 100 });
+  if (disputes.data.some((dispute) => dispute.status === "lost")) return false;
+  if (
+    disputes.has_more || !disputes.data.length
+    || disputes.data.some((dispute) => !["won", "warning_closed"].includes(dispute.status))
+  ) {
+    throw new PaymentError("Your activation payment is under review. Contact support before trying again.", 409);
+  }
+  return true;
 }

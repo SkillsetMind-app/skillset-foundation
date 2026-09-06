@@ -85,8 +85,8 @@ export function getSafeReturnTo(
     return null;
   }
 
-  // "//host" and "/\host" are protocol-relative escapes browsers honor.
-  if (raw.startsWith("//") || raw.startsWith("/\\")) {
+  // URL parsing removes TAB/LF/CR: /\n/host would become //host in the router.
+  if (raw.startsWith("//") || raw.startsWith("/\\") || /[\t\n\r]/.test(raw)) {
     return null;
   }
 

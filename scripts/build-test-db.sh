@@ -49,6 +49,39 @@ aplica() {
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$1"
 }
 
+# Uma falha de setup/SQL não prova regressão. Confira somente a linha ERROR,
+# nunca nomes de checks que também aparecem no stdout quando passam.
+# O subshell remove a captura temporária em qualquer saída, sem publicar log cru.
+prova_red() (
+  local descricao="$1" esperado="$2"
+  shift 2
+  local -a testemunhas=()
+  while [[ "${1:-}" != "--" ]]; do
+    if [[ "$#" -eq 0 ]]; then return 2; fi
+    testemunhas+=("$1")
+    shift
+  done
+  shift
+  local saida erro testemunha status=0
+  saida="$(mktemp)"
+  trap 'rm -f -- "$saida"' EXIT
+  "$@" >"$saida" 2>&1 || status=$?
+  erro="$(sed -n 's/^.*ERROR:[[:space:]]*//p' "$saida")"
+  # esperado é um padrão glob: só o agregado de checks aceita um sufixo.
+  if [[ "$status" -eq 0 || "$erro" == *$'\n'* || "$erro" != $esperado ]]; then
+    echo "RED não comprovado ($descricao): saída ou erro diferente do esperado." >&2
+    printf '  Banco descartável (fixtures sintéticas), ERROR: %s\n' "${erro%%$'\n'*}" >&2
+    return 1
+  fi
+  for testemunha in "${testemunhas[@]}"; do
+    if [[ "$erro" != *"$testemunha"* ]]; then
+      echo "RED não comprovado ($descricao): testemunha ausente no erro agregado." >&2
+      return 1
+    fi
+  done
+  echo "  RED comprovado: $descricao"
+)
+
 # Duas diferenças entre um Postgres do Supabase recém-criado e produção. Elas
 # não são detalhe de setup: sem corrigir, dois smoke tests reprovam sem que haja
 # regressão nenhuma no repositório — e um portão que reprova por motivo errado
@@ -88,7 +121,50 @@ aplicadas=0
 for arquivo in supabase/migrations/*.sql; do
   nome="$(basename "$arquivo")"
   if [[ "$nome" > "$CORTE" ]]; then
-    aplica "$arquivo"
+    if [[ "$nome" == "20260906020000_security_boundaries.sql" ]]; then
+      # Mesmos testes com a correção removida, antes de aplicar o SQL real.
+      # Cada conexão falha e reverte sua transação/fixtures por completo.
+      prova_red "smoke sem 0200 (currículo público, Stripe e MFA)" 'SECURITY_BOUNDARY_REGRESSION: *' \
+        'public curriculum contains no lesson text or URLs' \
+        'teacher cannot change the connected account' \
+        'aal1 admin cannot grant platform roles' -- \
+        psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "supabase/tests/20260906020000_security_boundaries_smoke.sql"
+      prova_red "upgrade sem 0200" 'UPGRADE_BACKFILL_REGRESSION: legacy private content was not migrated' -- \
+        psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q --single-transaction \
+        -f "supabase/tests/fixtures/20260906020000_before.sql" \
+        -f "supabase/tests/fixtures/20260906020000_after.sql"
+      # Dados legados persistem ANTES da tentativa: uma recusa tem de reverter
+      # todo o DDL e manter as copias inline/privadas exatamente como estavam.
+      for caso in duplicate_courses duplicate_same_course duplicate_public_reference missing_id null_id empty_id whitespace_id nonstring_id; do
+        if [[ "$caso" == duplicate_* ]]; then
+          erro_esperado='Unsafe lesson backfill: an inline lesson ID has multiple curriculum references'
+        else
+          erro_esperado='Unsafe lesson backfill: private inline content requires a nonblank string lesson ID'
+        fi
+        psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v backfill_case="$caso" -q --single-transaction \
+          -f "supabase/tests/fixtures/20260906020000_unsafe_backfill_before.sql"
+        estado_antes="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atq -f "supabase/tests/fixtures/20260906020000_backfill_state.sql")"
+        prova_red "preflight recusa $caso" "$erro_esperado" -- \
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q --single-transaction -f "$arquivo"
+        estado_depois="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atq -f "supabase/tests/fixtures/20260906020000_backfill_state.sql")"
+        if [[ ! "$estado_antes" =~ ^[0-9a-f]{32}$ || "$estado_antes" != "$estado_depois" ]]; then
+          echo "Rollback de $caso alterou conteudo legado ou deixou DDL parcial." >&2
+          exit 1
+        fi
+        psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q --single-transaction \
+          -f "supabase/tests/fixtures/20260906020000_cleanup.sql"
+        echo "  Rollback comprovado: $caso (conteudo preservado e fixtures removidas)"
+      done
+      # Prova de upgrade com dados anteriores à mudança, no banco descartável.
+      # A mesma transação aplica a migration, valida e remove as fixtures.
+      echo "  $arquivo (upgrade/backfill com fixtures)"
+      psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q --single-transaction \
+        -f "supabase/tests/fixtures/20260906020000_before.sql" \
+        -f "$arquivo" \
+        -f "supabase/tests/fixtures/20260906020000_after.sql"
+    else
+      aplica "$arquivo"
+    fi
     aplicadas=$((aplicadas + 1))
   fi
 done

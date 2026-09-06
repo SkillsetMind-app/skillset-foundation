@@ -18,12 +18,11 @@ import {
   normalizeTeacherCourseModules,
 } from "@/domain/teacher-course";
 import { rowToTeacherCourse } from "@/lib/data/published-courses";
+import { resolveLessonContent } from "@/lib/data/lesson-content";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import type { Database, Json } from "@/lib/supabase/database.types";
+import type { Json } from "@/lib/supabase/database.types";
 
 const coursesTable = "courses";
-
-type CourseRow = Database["public"]["Tables"]["courses"]["Row"];
 
 // createTeacherCourseDraft callable → create_teacher_course_draft RPC
 // (SECURITY DEFINER): enforces the teacher/terms gate, rate limit, and title-key
@@ -225,20 +224,51 @@ export function subscribeToTeacherCourse(
   onError: (error: Error) => void
 ): () => void {
   const supabase = getSupabaseBrowserClient();
+  let cancelled = false;
+  let generation = 0;
 
   const load = async () => {
+    const current = ++generation;
     const { data, error } = await supabase
       .from(coursesTable)
       .select("*")
       .eq("id", courseId)
       .maybeSingle();
 
+    if (cancelled || current !== generation) return;
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
     }
 
-    callback(data ? rowToTeacherCourse(data) : null);
+    if (!data) {
+      callback(null);
+      return;
+    }
+
+    // The public curriculum no longer carries paywalled content. Do not emit a
+    // writable draft until this read succeeds: autosave would erase its text.
+    const { data: content, error: contentError } = await supabase
+      .from("course_lesson_content")
+      .select("lesson_id,content_text,external_url")
+      .eq("course_id", courseId);
+    if (cancelled || current !== generation) return;
+    if (contentError) {
+      onError(new Error(contentError.message));
+      return;
+    }
+    const byLesson = new Map((content ?? []).map((row) => [row.lesson_id, {
+      contentText: row.content_text,
+      externalUrl: row.external_url,
+    }]));
+    const course = rowToTeacherCourse(data);
+    callback({ ...course, modules: course.modules.map((module) => ({
+      ...module,
+      lessons: module.lessons.map((lesson) => ({
+        ...lesson,
+        ...resolveLessonContent(byLesson.get(lesson.id), lesson),
+      })),
+    })) });
   };
 
   void load();
@@ -253,17 +283,17 @@ export function subscribeToTeacherCourse(
         table: coursesTable,
         filter: `id=eq.${courseId}`,
       },
-      (payload) => {
-        if (payload.eventType === "DELETE") {
-          callback(null);
-          return;
-        }
-        callback(rowToTeacherCourse(payload.new as unknown as CourseRow));
-      }
+      () => { void load(); }
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "course_lesson_content", filter: `course_id=eq.${courseId}` },
+      () => { void load(); }
     )
     .subscribe();
 
   return () => {
+    cancelled = true;
     void supabase.removeChannel(channel);
   };
 }
