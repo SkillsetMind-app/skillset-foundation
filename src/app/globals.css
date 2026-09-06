@@ -2374,7 +2374,7 @@ select:focus-visible {
 }
 
 .platform-topbar-search:focus-within {
-  border-color: var(--color-line-strong);
+  border-color: var(--focus-ring);
   background: var(--color-surface);
   box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.12);
 }
