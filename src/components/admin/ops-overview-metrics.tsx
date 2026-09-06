@@ -2,83 +2,92 @@
 
 import { useEffect, useState } from "react";
 
-import type { CommunityReport } from "@/domain/community-report";
-import type { CreatorVerificationCase } from "@/domain/creator-verification";
-import type { SupportTicket } from "@/domain/support-ticket";
+import { useAuth } from "@/components/auth/auth-provider";
+import {
+  canAccessPlatformNavItem,
+  getOpsNavItem,
+  type PlatformNavCount,
+} from "@/data/site";
 import { subscribeToCommunityReports } from "@/lib/data/community-posts";
 import { subscribeToVerificationQueue } from "@/lib/data/creator-verification";
 import { subscribeToAdminSupportTickets } from "@/lib/data/support-tickets";
 
 export type OpsQueueCounts = {
-  isLoading: boolean;
-  pendingVerifications: number;
-  openTickets: number;
-  openReports: number;
+  pendingVerifications: PlatformNavCount;
+  openTickets: PlatformNavCount;
+  openReports: PlatformNavCount;
 };
 
-// Os três números que eram três cartões de métrica entre as abas e o conteúdo.
-// Eles não mudavam com a aba, então interrompiam o caminho entre a aba escolhida
-// e a fila dela. Viraram contadores ao lado do nome de cada fila — mesma fonte,
-// mesmas regras (pendente = na fila; ticket aberto = não resolvido; report
-// aberto = status "open").
+// One owner in OpsDashboard supplies both navigation surfaces. Each queue has
+// its own loading/error state; a successful read is the only source of zero.
 export function useOpsQueueCounts(): OpsQueueCounts {
-  const [verificationCases, setVerificationCases] = useState<CreatorVerificationCase[]>([]);
-  const [tickets, setTickets] = useState<SupportTicket[]>([]);
-  const [reports, setReports] = useState<CommunityReport[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
+  const canReadVerification = canAccessPlatformNavItem(user, getOpsNavItem("verification"));
+  const canReadSupport = canAccessPlatformNavItem(user, getOpsNavItem("support"));
+  const canReadReports = canAccessPlatformNavItem(user, getOpsNavItem("community"));
+  const scope = `${user?.uid ?? ""}:${canReadVerification}:${canReadSupport}:${canReadReports}`;
+  const [snapshot, setSnapshot] = useState<{
+    scope: string;
+    values: Partial<OpsQueueCounts>;
+  }>({ scope, values: {} });
+
+  // Clear on every committed transition, including A -> B -> A before any
+  // queue responds. Comparing an old snapshot with A again would revive it.
+  if (snapshot.scope !== scope) {
+    setSnapshot({ scope, values: {} });
+  }
 
   useEffect(() => {
-    try {
-      return subscribeToVerificationQueue(
-        (nextCases) => {
-          setVerificationCases(nextCases);
-          setIsLoading(false);
-        },
-        () => setIsLoading(false),
-      );
-    } catch (error) {
-      // Data layer unavailable (e.g. Supabase client not configured): degrade to an
-      // empty state instead of crashing the whole ops surface. Deliberate
-      // one-shot recovery reset.
-      console.warn(
-        "useOpsQueueCounts: creator-verification subscription unavailable",
-        error,
-      );
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsLoading(false);
-    }
-  }, []);
+    let active = true;
+    const stops: Array<() => void> = [];
 
-  useEffect(() => {
-    try {
-      return subscribeToAdminSupportTickets(setTickets, () => {});
-    } catch (error) {
-      // Non-blocking metric: degrade silently in the UI but keep the failure
-      // visible in logs.
-      console.warn(
-        "useOpsQueueCounts: support tickets subscription unavailable",
-        error,
-      );
+    function updateCount(key: keyof OpsQueueCounts, value: PlatformNavCount) {
+      if (!active) return;
+      setSnapshot((previous) => ({
+        scope,
+        values: { ...(previous.scope === scope ? previous.values : {}), [key]: value },
+      }));
     }
-  }, []);
 
-  useEffect(() => {
-    try {
-      return subscribeToCommunityReports(setReports, () => {});
-    } catch (error) {
-      // Non-blocking metric: degrade silently in the UI but keep the failure
-      // visible in logs.
-      console.warn(
-        "useOpsQueueCounts: community reports subscription unavailable",
-        error,
-      );
+    function watch<T>(
+      enabled: boolean,
+      key: keyof OpsQueueCounts,
+      subscribe: (next: (rows: T[]) => void, error: (error: Error) => void) => () => void,
+      count: (rows: T[]) => number,
+    ) {
+      if (!enabled) return;
+      try {
+        stops.push(
+          subscribe(
+            (rows) => updateCount(key, count(rows)),
+            () => updateCount(key, "unavailable"),
+          ),
+        );
+      } catch {
+        // A missing data client must not crash navigation or expose raw errors.
+        updateCount(key, "unavailable");
+      }
     }
-  }, []);
+
+    watch(canReadVerification, "pendingVerifications", subscribeToVerificationQueue,
+      (rows) => rows.length);
+    watch(canReadSupport, "openTickets", subscribeToAdminSupportTickets,
+      (rows) => rows.filter((ticket) => ticket.status !== "resolved").length);
+    watch(canReadReports, "openReports", subscribeToCommunityReports,
+      (rows) => rows.filter((report) => report.status === "open").length);
+
+    return () => {
+      active = false;
+      stops.forEach((stop) => stop());
+    };
+  }, [scope, canReadVerification, canReadSupport, canReadReports]);
+
+  // Role/account changes cannot briefly expose an earlier session's counts.
+  const counts = snapshot.scope === scope ? snapshot.values : {};
 
   return {
-    isLoading,
-    pendingVerifications: verificationCases.length,
-    openTickets: tickets.filter((ticket) => ticket.status !== "resolved").length,
-    openReports: reports.filter((report) => report.status === "open").length,
+    pendingVerifications: canReadVerification ? counts.pendingVerifications ?? "loading" : "unavailable",
+    openTickets: canReadSupport ? counts.openTickets ?? "loading" : "unavailable",
+    openReports: canReadReports ? counts.openReports ?? "loading" : "unavailable",
   };
 }

@@ -90,7 +90,6 @@ vi.mock("@/components/admin/payment-operations-panel", () => ({
 
 vi.mock("@/components/admin/ops-overview-metrics", () => ({
   useOpsQueueCounts: () => ({
-    isLoading: false,
     pendingVerifications: 3,
     openTickets: 2,
     openReports: 1,
@@ -153,8 +152,8 @@ describe("platform shells", () => {
     expect(screen.queryByText("Period:")).not.toBeInTheDocument();
     expect(screen.queryByText("Status:")).not.toBeInTheDocument();
 
-    // As três métricas viraram contadores na aba da fila correspondente.
-    const queues = screen.getByRole("group", { name: "Operations queues" });
+    // As filas e seus contadores ficam na navegação principal, sem duas barras.
+    const queues = screen.getByRole("navigation", { name: "Workspace" });
     expect(queues).toHaveTextContent(/Creator verification\s*3/);
     expect(queues).toHaveTextContent(/Support tickets\s*2/);
     expect(queues).toHaveTextContent(/Community reports\s*1/);
@@ -162,8 +161,8 @@ describe("platform shells", () => {
     // "Access levels" deixou de ser um bloco solto no fim da página: é a
     // oitava fila, com endereço próprio (?tab=access).
     expect(
-      screen.getByRole("button", { name: /^Access$/ }),
-    ).toBeInTheDocument();
+      screen.getByRole("link", { name: /^Access$/ }),
+    ).toHaveAttribute("href", "/ops?tab=access");
     expect(
       screen.queryByRole("heading", { name: "Access levels" }),
     ).not.toBeInTheDocument();

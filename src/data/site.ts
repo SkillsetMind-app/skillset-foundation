@@ -1,6 +1,14 @@
-import type { Permission } from "@/lib/permissions";
+import {
+  hasPermission,
+  hasRole,
+  type Permission,
+  type PermissionSubject,
+  type Role,
+} from "@/lib/permissions";
 
 export type PlatformNavContext = "learner" | "teacher" | "ops";
+export type PlatformNavCount = number | "loading" | "unavailable";
+export type PlatformNavCounts = Partial<Record<string, PlatformNavCount>>;
 
 export type PlatformNavItem = {
   href: string;
@@ -13,6 +21,8 @@ export type PlatformNavItem = {
   /** Group of the sidebar; the label is `platform.navSection.<sectionKey>`. */
   sectionKey: string;
   permission?: Permission;
+  /** Additional role scope when the backing queue has narrower RLS policies. */
+  roles?: readonly Role[];
   /**
    * Opens in a new browser tab with an external-link affordance. Used for
    * cross-surface jumps (e.g. a teacher hopping into the student classroom)
@@ -20,6 +30,46 @@ export type PlatformNavItem = {
    */
   newTab?: boolean;
 };
+
+// These are the existing ?tab= destinations. Navigation, panels and counters
+// share the workspace gate AND the roles that can read each complete queue.
+const opsQueues = [
+  { tab: "verification", icon: "UserCheck", roles: ["admin", "ops"] },
+  { tab: "catalog", icon: "BookOpen", roles: ["admin", "ops"] },
+  { tab: "payments", icon: "CreditCard", roles: ["admin"] },
+  { tab: "community", icon: "Flag", roles: ["admin", "support", "moderator"] },
+  { tab: "support", icon: "LifeBuoy", roles: ["admin", "support"] },
+  { tab: "users", icon: "Users", roles: ["admin"] },
+  { tab: "audit", icon: "ClipboardList", roles: ["admin"] },
+  { tab: "access", icon: "ShieldCheck", roles: ["admin"] },
+] as const satisfies readonly { tab: string; icon: string; roles: readonly Role[] }[];
+
+export type OpsQueue = (typeof opsQueues)[number]["tab"];
+
+export const opsNavItems: readonly (PlatformNavItem & { tab: OpsQueue })[] = opsQueues.map(
+  (queue) => ({
+    ...queue,
+    href: `/ops?tab=${queue.tab}`,
+    labelKey: `platform.ops.${queue.tab}`,
+    contexts: ["ops"],
+    sectionKey: "operations",
+    permission: "platform.accessAdmin",
+  }),
+);
+
+export function canAccessPlatformNavItem(
+  subject: PermissionSubject | null | undefined,
+  item: PlatformNavItem,
+): boolean {
+  return (
+    (!item.permission || hasPermission(subject, item.permission)) &&
+    (!item.roles || item.roles.some((role) => hasRole(subject, role)))
+  );
+}
+
+export function getOpsNavItem(tab: string | null) {
+  return opsNavItems.find((item) => item.tab === tab) ?? opsNavItems[0];
+}
 
 export const platformNav: PlatformNavItem[] = [
   // --- Learner workspace ---
@@ -235,11 +285,14 @@ export const platformNav: PlatformNavItem[] = [
     permission: "teacherStudio.access",
   },
   // --- Operations workspace ---
+  ...opsNavItems,
   {
+    // Title source for /ops outside its dashboard; the eight queues are the
+    // actual sidebar destinations, so a second Operations link is redundant.
     href: "/ops",
     labelKey: "platform.nav.operations",
     icon: "Settings",
-    contexts: ["ops"],
+    contexts: [],
     sectionKey: "operations",
     permission: "platform.accessAdmin",
   },
