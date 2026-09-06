@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
+
 import { NextResponse } from "next/server";
 
-import { allowByIp } from "@/lib/supabase/rate-limit";
+import { allowByIp, allowByKey } from "@/lib/supabase/rate-limit";
 import { notifyOps } from "@/lib/ops/alert";
 
 // Sink for enforcing Content-Security-Policy violations (security/csp.ts points
@@ -15,6 +17,46 @@ export const runtime = "nodejs";
 // burn invocations or drown the real signal.
 const REPORTS_PER_MINUTE = 60;
 const MAX_REPORT_BYTES = 32 * 1024;
+
+// Only these directives can mean "someone is running code or moving data the
+// page did not ask for": injected scripts, exfiltration channels, hostile
+// frames, clickjacking. A blocked font, stylesheet or image is a broken page
+// at worst — the platform log keeps it, the phone does not need to buzz.
+// Twelve identical messages for a font a browser extension tried to load is
+// how a security channel gets muted, and a muted channel is the real risk.
+const ALERT_DIRECTIVES = new Set([
+  "script-src",
+  "script-src-elem",
+  "script-src-attr",
+  "connect-src",
+  "frame-src",
+  "child-src",
+  "worker-src",
+  "object-src",
+  "base-uri",
+  "form-action",
+  "frame-ancestors",
+]);
+
+// One alert per (directive, blocked origin) per hour, counted in the database
+// rather than in this instance's memory: a page load fans four reports over
+// four serverless instances, and an in-process throttle lets all four through
+// because each instance is seeing its "first" one.
+const ALERT_WINDOW_MS = 60 * 60_000;
+
+/** The directive name alone: "script-src 'self' https://x" -> "script-src". */
+function directiveOf(report: Record<string, unknown>): string {
+  const raw = report["effective-directive"] ?? report["violated-directive"];
+  if (typeof raw !== "string") return "unknown";
+  const first = raw.trim().split(/\s+/)[0]?.toLowerCase() ?? "";
+  return first ? first.slice(0, 40) : "unknown";
+}
+
+/** Fixed-width key so a flood of invented origins cannot grow the limiter table's key space. */
+function alertKey(directive: string, blocked: string): string {
+  const digest = createHash("sha256").update(`${directive}\n${blocked}`).digest("hex");
+  return `csp_alert_${digest.slice(0, 24)}`;
+}
 
 async function readBoundedBody(request: Request): Promise<string | null> {
   const declared = Number(request.headers.get("content-length") ?? 0);
@@ -99,28 +141,34 @@ export async function POST(request: Request) {
     // report-uri wraps the payload in { "csp-report": {...} }; report-to sends the
     // fields at top level. Accept either.
     const report = (parsed["csp-report"] as Record<string, unknown> | undefined) ?? parsed;
-    const safe = (value: unknown) =>
-      typeof value === "string" ? value.replace(/[\r\n]/g, " ").slice(0, 500) : undefined;
+    const directive = directiveOf(report);
+    // Origin only, never the raw value. "Which host got blocked" is the whole
+    // question a CSP alert has to answer, and a blocked-uri can be a signed
+    // URL, a one-time token or a private path — none of which belong in an
+    // alert that fans out to chat.
+    const blocked = originOf(report["blocked-uri"]) ?? "unknown";
     console.warn("[csp-report]", {
-      directive: safe(report["violated-directive"] ?? report["effective-directive"]),
-      blocked: originOf(report["blocked-uri"]),
+      directive,
+      blocked,
       // Route only. A full document-uri carries the customer's ids and one-time
       // query parameters straight into the platform log, which is retained and
       // read by more people than the ops channel is.
       document: routeOf(report["document-uri"]),
     });
+    // Noise stops here: the log above is the record, the channel is for signal.
+    if (!ALERT_DIRECTIVES.has(directive)) {
+      return new NextResponse(null, { status: 204 });
+    }
+    // allowByKey fails open. If the limiter is unreachable the alert still goes
+    // out — a duplicate message is cheap, a swallowed injection report is not.
+    if (!(await allowByKey(alertKey(directive, blocked), 1, ALERT_WINDOW_MS))) {
+      return new NextResponse(null, { status: 204 });
+    }
     notifyOps({
       event: "security.csp_violation",
       severity: "warn",
       summary: "The browser blocked a resource that violated the enforced CSP.",
-      context: {
-        directive: safe(report["violated-directive"] ?? report["effective-directive"]) ?? "unknown",
-        // Origin only, never the raw value. "Which host got blocked" is the whole
-        // question a CSP alert has to answer, and a blocked-uri can be a signed
-        // URL, a one-time token or a private path — none of which belong in an
-        // alert that fans out to chat.
-        blocked: originOf(report["blocked-uri"]) ?? "unknown",
-      },
+      context: { directive, blocked },
     });
   } catch {
     // Malformed or empty beacon — ignore, never error a violation report.
