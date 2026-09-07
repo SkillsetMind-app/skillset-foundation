@@ -685,6 +685,21 @@
       "drafts": "Borradores",
       "needsAttention": "Requiere atención"
     },
+    "shareLink": {
+      "copy": "Copiar enlace",
+      "copyAria": "Copiar enlace de {label}",
+      "open": "Abrir página",
+      "openAria": "Abrir {label}",
+      "copied": "Enlace copiado.",
+      "copyError": "No se pudo copiar. Copia el enlace de arriba manualmente.",
+      "share": "Compartir",
+      "shareAria": "Compartir {label}",
+      "menuAria": "Opciones para compartir {label}",
+      "whatsapp": "WhatsApp",
+      "x": "X",
+      "linkedin": "LinkedIn",
+      "email": "Correo"
+    },
     "hub": {
       "sections": {
         "overview": "Panel",

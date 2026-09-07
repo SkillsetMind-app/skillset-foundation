@@ -350,6 +350,9 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   // the two subscriptions land the same toggle a beat apart.
   const featuredSlotsUsed =
     switchableCourses.filter((candidate) => candidate.featured).length + (course.featured ? 1 : 0);
+  // What travels with a promo link when the creator shares it; an untitled
+  // draft still needs a readable line in the WhatsApp message.
+  const courseTitle = course.title || t("creatorPanel.hub.header.courseFallback");
   const modulesLabel = countLabel(
     t,
     "creatorPanel.modulesOne",
@@ -587,10 +590,12 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               <CourseShareLink
                 label={t("creatorPanel.hub.links.checkout")}
                 path={`/courses/${encodeURIComponent(courseId)}/checkout`}
+                title={courseTitle}
               />
               <CourseShareLink
                 label={t("creatorPanel.hub.sections.page")}
                 path={`/courses/${encodeURIComponent(courseId)}`}
+                title={courseTitle}
               />
             </PanelCard>
           ) : null}
@@ -701,7 +706,11 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   ) : null}
                 </div>
               </PanelCard>
-              <CourseOffersPanel courseId={course.id} defaultCurrency={course.currency ?? "USD"} />
+              <CourseOffersPanel
+                courseId={course.id}
+                courseTitle={courseTitle}
+                defaultCurrency={course.currency ?? "USD"}
+              />
             </div>
           ) : null}
 

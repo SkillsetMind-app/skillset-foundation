@@ -685,6 +685,21 @@
       "drafts": "Drafts",
       "needsAttention": "Needs attention"
     },
+    "shareLink": {
+      "copy": "Copy link",
+      "copyAria": "Copy {label} link",
+      "open": "Open page",
+      "openAria": "Open {label}",
+      "copied": "Link copied.",
+      "copyError": "Could not copy. Copy the link above manually.",
+      "share": "Share",
+      "shareAria": "Share {label}",
+      "menuAria": "{label} share options",
+      "whatsapp": "WhatsApp",
+      "x": "X",
+      "linkedin": "LinkedIn",
+      "email": "Email"
+    },
     "hub": {
       "sections": {
         "overview": "Panel",
