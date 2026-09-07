@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { createBunnyVideo, signBunnyUpload } from "@/lib/bunny/server";
+import { createBunnyVideo, signBunnyAssetPath, signBunnyUpload } from "@/lib/bunny/server";
 import {
   assertCreatorActivated,
   enforceRateLimit,
@@ -73,7 +73,8 @@ export async function POST(request: Request) {
   try {
     const videoId = await createBunnyVideo(title);
     const upload = signBunnyUpload(videoId);
-    return NextResponse.json({ videoId, ...upload });
+    const storagePath = signBunnyAssetPath(courseId, auth.user.id, videoId);
+    return NextResponse.json({ videoId, storagePath, ...upload });
   } catch {
     // Bunny env missing or upstream error → 503 so the client can fall back to
     // a Supabase Storage upload and authoring never hard-blocks.

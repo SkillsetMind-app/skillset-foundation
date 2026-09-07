@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   defaultSkillsetCurrency,
+  getCurrencyLabel,
   fromStripeAmount,
   isSupportedStripeCurrency,
   normalizeSkillsetCurrency,
@@ -9,6 +10,17 @@ import {
   toStripeAmount,
   topSkillsetCurrencies,
 } from "@/lib/payments/currencies";
+
+describe("getCurrencyLabel", () => {
+  it("localizes the name while preserving the English default and currency contracts", () => {
+    expect(getCurrencyLabel("BRL")).toBe("Brazilian Real");
+    expect(getCurrencyLabel("BRL", "en")).toBe(getCurrencyLabel("BRL"));
+    expect(getCurrencyLabel("BRL", "es")).toBe("real brasileño");
+    expect(getCurrencyLabel("JPY", "es")).toBe("yen japonés");
+    expect(toStripeAmount(100000, "JPY")).toBe(1000);
+    expect(fromStripeAmount(1000, "JPY")).toBe(100000);
+  });
+});
 
 describe("isSupportedStripeCurrency", () => {
   it("is case-insensitive", () => {

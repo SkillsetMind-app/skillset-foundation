@@ -3,12 +3,13 @@
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
+import { PublicEntryMenu } from "@/components/site/public-entry-menu";
 import { AccountMenu } from "@/components/site/account-menu";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { LayoutDashboard, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { getPrimaryWorkspaceHref } from "@/lib/auth/routing";
 
@@ -80,6 +81,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
   const pathname = usePathname() ?? "";
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileToggleRef = useRef<HTMLButtonElement>(null);
   const resolvedNav = resolveNavItems(t, landingNav);
   const isAuthenticated = status === "authenticated" && user;
 
@@ -111,6 +113,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setMobileOpen(false);
+        mobileToggleRef.current?.focus();
       }
     }
 
@@ -181,17 +184,14 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
             </>
           ) : (
             <div className="hidden items-center gap-2 sm:flex">
-              {/* A plain link: the old learner/teacher menu only changed the
-                  panel copy on the same sign-in screen, so it was a detour. */}
-              <Link href="/auth?mode=signin" className="btn-signin">
-                {t("nav.signIn")}
-              </Link>
+              <PublicEntryMenu />
               <Link href="/auth?mode=signup" className="btn-cta-hero">
                 {t("nav.getStarted")}
               </Link>
             </div>
           )}
           <button
+            ref={mobileToggleRef}
             type="button"
             aria-label={mobileOpen ? t("nav.closeMenu") : t("nav.openMenu")}
             aria-expanded={mobileOpen}
@@ -217,7 +217,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
             />
             <div
               id="site-mobile-menu"
-              className="absolute inset-x-0 top-[calc(100%+8px)] z-[46] rounded-[14px] border border-[var(--color-line)] bg-white p-3 shadow-[0_24px_48px_rgba(15,39,68,0.16)] xl:hidden"
+              className="absolute inset-x-0 top-[calc(100%+8px)] z-[46] max-h-[calc(100svh-88px)] scroll-py-2 overflow-y-auto rounded-[14px] border border-[var(--color-line)] bg-white p-3 shadow-[0_24px_48px_rgba(15,39,68,0.16)] xl:hidden"
             >
               <nav aria-label={t("nav.mobileNavLabel")} className="grid gap-1">
                 {resolvedNav.map((item) => {
@@ -275,12 +275,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
                 </div>
               ) : (
                 <div className="mt-3 grid gap-2 border-t border-[var(--color-line)] pt-3">
-                  <Link
-                    href="/auth?mode=signin"
-                    className="button-outline w-full px-4 py-2.5 text-sm"
-                  >
-                    {t("nav.signIn")}
-                  </Link>
+                  <PublicEntryMenu mobile />
                   <Link
                     href="/auth?mode=signup"
                     className="button-solid w-full px-4 py-2.5 text-sm"

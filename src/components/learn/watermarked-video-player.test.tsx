@@ -1,13 +1,60 @@
-import { act, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { VideoWatermark } from "@/components/learn/watermarked-video-player";
+import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 
-vi.mock("@/components/auth/auth-provider", () => ({
-  useAuth: () => ({ user: { email: "student@example.com" } }),
+const mocks = vi.hoisted(() => ({
+  auth: { user: { email: "student@example.com" } as { email: string } | null },
+  router: { refresh: vi.fn() },
 }));
+vi.mock("@/components/auth/auth-provider", () => ({
+  useAuth: () => mocks.auth,
+}));
+vi.mock("next/navigation", () => ({ useRouter: () => mocks.router }));
+
+function ChangeLanguage() {
+  const { locale, setLocale } = useTranslation();
+  return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
+}
 
 describe("VideoWatermark", () => {
+  beforeEach(() => { mocks.auth.user = { email: "student@example.com" }; });
+
+  it("translates the fallback and timestamp without remounting the player or restarting watermark timers", () => {
+    vi.useFakeTimers();
+    const instant = new Date("2026-09-06T10:12:00Z");
+    vi.setSystemTime(instant);
+    mocks.auth.user = null;
+    const view = render(
+      <I18nProvider initialLocale="en">
+        <ChangeLanguage />
+        <VideoWatermark brandName="Ateliê $&"><video aria-label="Aula íntegra" /></VideoWatermark>
+      </I18nProvider>,
+    );
+    try {
+      const player = screen.getByLabelText("Aula íntegra");
+      const label = view.container.querySelector("[data-watermark-corner]")!;
+      expect(label).toHaveTextContent("Ateliê $& learner");
+      expect(vi.getTimerCount()).toBe(2);
+      act(() => { vi.advanceTimersByTime(15_000); });
+      fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+      expect(label).toHaveTextContent("Estudiante de Ateliê $&");
+      expect(label).toHaveTextContent(new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(instant));
+      expect(screen.getByLabelText("Aula íntegra")).toBe(player);
+      expect(vi.getTimerCount()).toBe(2);
+      act(() => { vi.advanceTimersByTime(15_000); });
+      expect(label).toHaveAttribute("data-watermark-corner", "1");
+      act(() => { vi.advanceTimersByTime(30_000); });
+      expect(label).toHaveTextContent(new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(instant.getTime() + 60_000)));
+      view.unmount();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      view.unmount();
+      vi.useRealTimers();
+    }
+  });
+
   it("stamps the viewer over whatever player it wraps", () => {
     render(
       <VideoWatermark>

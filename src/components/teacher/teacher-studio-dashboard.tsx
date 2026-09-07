@@ -92,21 +92,20 @@ export function TeacherStudioDashboard() {
               : t("teach.dashboard.welcomeBack")}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-            Continue setup, manage products, and follow the work that moves them toward publication
-            and sales.
+            {t("creatorPanel.home.description")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/teach/storefront" className="button-outline px-4 text-sm">
             <Store aria-hidden="true" size={16} strokeWidth={1.9} />
-            Storefront
+            {t("creatorPanel.home.storefront")}
           </Link>
           <Link
             href="/teach/builder?newCourse=1&format=course"
             className="button-solid px-4 text-sm"
           >
             <Plus aria-hidden="true" size={16} strokeWidth={2} />
-            New product
+            {t("creatorPanel.newProduct")}
           </Link>
         </div>
       </header>
@@ -164,37 +163,37 @@ function StudioNextSteps({
   const preparedProduct = courses.some(isProductPrepared);
   const steps = [
     {
-      label: "Create a product",
-      detail: "Choose the delivery and access model.",
+      label: t("creatorPanel.home.steps.create"),
+      detail: t("creatorPanel.home.steps.createDetail"),
       href: "/teach/builder?newCourse=1&format=course",
       done: courses.length > 0,
-      action: "Create product",
+      action: t("creatorPanel.createProduct"),
     },
     {
-      label: "Complete creator data",
+      label: t("creatorPanel.home.steps.creatorData"),
       // Este passo herdou o texto da faixa amarela fixa que vivia no topo de
       // todo o /teach. A frase e a mesma, ja traduzida, e diz o que importa:
       // o comprador paga NA conta do professor, a plataforma nao segura o
       // dinheiro. Enquanto o Stripe nao conectar, o passo mostra isso; depois
       // volta a falar da verificacao, que e o que sobra.
       detail: payoutsReady
-        ? "Finish professional verification and paid-product payouts."
+        ? t("creatorPanel.home.steps.creatorDataDetail")
         : t("platform.banner.connectPayouts"),
       href:
         verificationStatus === "approved"
           ? "/account/payments#stripe-connect"
           : "/teach/verification",
       done: creatorDataComplete,
-      action: "Complete setup",
+      action: t("creatorPanel.home.steps.creatorDataAction"),
     },
     {
-      label: "Prepare product to sell",
-      detail: "Add content, pricing, members experience, and review the draft.",
+      label: t("creatorPanel.home.steps.prepare"),
+      detail: t("creatorPanel.home.steps.prepareDetail"),
       href: courses[0]
         ? `/teach/courses/${encodeURIComponent(courses[0].id)}/manage`
         : "/teach/builder?newCourse=1&format=course",
       done: preparedProduct,
-      action: "Prepare product",
+      action: t("creatorPanel.home.steps.prepareAction"),
     },
   ];
   const completeCount = steps.filter((step) => step.done).length;
@@ -211,13 +210,13 @@ function StudioNextSteps({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                Next steps
+                {t("creatorPanel.home.nextSteps.eyebrow")}
               </p>
               <h2
                 id="next-steps-title"
                 className="mt-1 text-xl font-semibold text-[var(--color-primary)]"
               >
-                Get ready for your first sale
+                {t("creatorPanel.home.nextSteps.title")}
               </h2>
             </div>
             <div className="text-right">
@@ -225,7 +224,9 @@ function StudioNextSteps({
                 {coursesLoaded ? `${progress}%` : "-"}
               </p>
               <p className="text-xs text-[var(--color-ink-muted)]">
-                {completeCount} of {steps.length} complete
+                {t("creatorPanel.home.nextSteps.progress")
+                  .replace("{done}", () => String(completeCount))
+                  .replace("{total}", () => String(steps.length))}
               </p>
             </div>
           </div>
@@ -237,7 +238,10 @@ function StudioNextSteps({
             />
           </div>
 
-          <ol className="mt-4 grid gap-2 sm:grid-cols-3" aria-label="Creator next steps">
+          <ol
+            className="mt-4 grid gap-2 sm:grid-cols-3"
+            aria-label={t("creatorPanel.home.nextSteps.listLabel")}
+          >
             {steps.map((step, index) => (
               <li key={step.label}>
                 <Link
@@ -264,7 +268,7 @@ function StudioNextSteps({
 
         <aside className="border-t border-[var(--color-line)] bg-[var(--color-surface-soft)] px-5 py-6 lg:border-l lg:border-t-0">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
-            Recommended now
+            {t("creatorPanel.home.nextSteps.recommended")}
           </p>
           <h3 className="mt-2 text-lg font-semibold text-[var(--color-primary)]">
             {nextStep.label}
@@ -287,13 +291,14 @@ function StudioProductsSection({
   courses: TeacherCourse[];
   coursesLoaded: boolean;
 }) {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState<ProductFilter>("all");
   const filters: Array<{ id: ProductFilter; label: string }> = [
-    { id: "all", label: "All" },
-    { id: "draft", label: "Drafts" },
-    { id: "published", label: "Live sales" },
-    { id: "in_review", label: "In review" },
-    { id: "other", label: "Needs attention" },
+    { id: "all", label: t("creatorPanel.filters.all") },
+    { id: "draft", label: t("creatorPanel.filters.drafts") },
+    { id: "published", label: t("creatorPanel.home.products.filterLiveSales") },
+    { id: "in_review", label: t("statusChip.in_review") },
+    { id: "other", label: t("creatorPanel.filters.needsAttention") },
   ];
   const filtered = courses.filter((course) => {
     if (filter === "all") return true;
@@ -308,17 +313,17 @@ function StudioProductsSection({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            My products
+            {t("platform.nav.courseBuilder")}
           </p>
           <h2
             id="studio-products-title"
             className="mt-1 text-2xl font-semibold text-[var(--color-primary)]"
           >
-            Products in your workspace
+            {t("creatorPanel.home.products.title")}
           </h2>
         </div>
         <Link href="/teach/builder" className="button-outline px-4 text-sm">
-          Show all
+          {t("creatorPanel.home.products.showAll")}
           <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
         </Link>
       </div>
@@ -326,7 +331,7 @@ function StudioProductsSection({
       <div
         className="mt-4 flex gap-1 overflow-x-auto border-b border-[var(--color-line)]"
         role="tablist"
-        aria-label="Product filters"
+        aria-label={t("creatorPanel.home.products.filtersLabel")}
       >
         {filters.map((item) => (
           <button
@@ -358,13 +363,13 @@ function StudioProductsSection({
       ) : filtered.length === 0 ? (
         <div className="mt-3 border-y border-dashed border-[var(--color-line-strong)] px-5 py-10 text-center">
           <p className="text-sm font-semibold text-[var(--color-ink)]">
-            No products in this view yet.
+            {t("creatorPanel.home.products.empty")}
           </p>
           <Link
             href="/teach/builder?newCourse=1&format=course"
             className="button-solid mt-4 px-4 text-sm"
           >
-            Create product
+            {t("creatorPanel.createProduct")}
           </Link>
         </div>
       ) : (
@@ -377,21 +382,25 @@ function StudioProductsSection({
               >
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                    {productTypeLabel(course)}
+                    {t(productTypeKey(course))}
                   </span>
                   <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-accent-fg)]">
-                    {(course.status || "draft").replaceAll("_", " ")}
+                    {t(`statusChip.${course.status || "draft"}`)}
                   </span>
                 </div>
                 <h3 className="mt-3 line-clamp-2 text-sm font-semibold leading-5 text-[var(--color-ink)]">
-                  {course.title || "Untitled product"}
+                  {course.title || t("creatorPanel.untitledProduct")}
                 </h3>
                 <p className="mt-2 text-xs text-[var(--color-ink-soft)]">
-                  {course.lessonCount} lessons
-                  {course.communityEnabled ? " · Community on" : ""}
+                  {t(
+                    course.lessonCount === 1
+                      ? "publicCourses.lessonOne"
+                      : "publicCourses.lessonMany"
+                  ).replace("{count}", () => String(course.lessonCount))}
+                  {course.communityEnabled ? ` · ${t("creatorPanel.communityOn")}` : ""}
                 </p>
                 <span className="mt-auto pt-4 text-xs font-semibold text-[var(--color-primary)]">
-                  Manage product
+                  {t("creatorPanel.home.products.manage")}
                 </span>
               </Link>
             </li>
@@ -403,6 +412,7 @@ function StudioProductsSection({
 }
 
 function StudioSellFormatsSection() {
+  const { t } = useTranslation();
   const formats: Array<{
     title: string;
     detail: string;
@@ -410,38 +420,38 @@ function StudioSellFormatsSection() {
     icon: LucideIcon;
   }> = [
     {
-      title: "Online course",
-      detail: "Video, text, downloads, certificates, and structured lessons.",
+      title: t("creatorPanel.home.formats.course"),
+      detail: t("creatorPanel.home.formats.courseDetail"),
       href: "/teach/builder?newCourse=1&format=course",
       icon: BookOpenCheck,
     },
     {
-      title: "Guided program",
-      detail: "A sequenced pathway of learning, practice, and optional live touchpoints.",
+      title: t("creatorPanel.home.formats.program"),
+      detail: t("creatorPanel.home.formats.programDetail"),
       href: "/teach/builder?newCourse=1&format=program",
       icon: Route,
     },
     {
-      title: "Subscription",
-      detail: "Recurring access billed monthly or yearly.",
+      title: t("creatorPanel.home.formats.subscription"),
+      detail: t("creatorPanel.home.formats.subscriptionDetail"),
       href: "/teach/builder?newCourse=1&format=subscription",
       icon: Repeat2,
     },
     {
-      title: "Community",
-      detail: "A recurring members space for posts and practitioner-led exchange.",
+      title: t("creatorPanel.home.formats.community"),
+      detail: t("creatorPanel.home.formats.communityDetail"),
       href: "/teach/builder?newCourse=1&format=community",
       icon: UsersRound,
     },
     {
-      title: "Online event",
-      detail: "Live workshops, cohorts, and scheduled group sessions.",
+      title: t("creatorPanel.home.formats.event"),
+      detail: t("creatorPanel.home.formats.eventDetail"),
       href: "/teach/builder?newCourse=1&format=event",
       icon: CalendarDays,
     },
     {
-      title: "Free program",
-      detail: "Open enrollment without checkout or payment.",
+      title: t("creatorPanel.home.formats.free"),
+      detail: t("creatorPanel.home.formats.freeDetail"),
       href: "/teach/builder?newCourse=1&format=free",
       icon: Gift,
     },
@@ -453,13 +463,13 @@ function StudioSellFormatsSection() {
       className="border-y border-[var(--color-line)] py-6"
     >
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-        What do you want to sell?
+        {t("creatorPanel.home.formats.eyebrow")}
       </p>
       <h2
         id="sell-formats-title"
         className="mt-1 text-2xl font-semibold text-[var(--color-primary)]"
       >
-        Choose a product format
+        {t("creatorPanel.home.formats.title")}
       </h2>
       <ul className="mt-5 grid gap-px overflow-hidden rounded-[8px] border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2 lg:grid-cols-3">
         {formats.map((format) => {
@@ -506,24 +516,25 @@ function StudioEvolution({
   payoutsReady: boolean;
   verificationStatus: string;
 }) {
+  const { t } = useTranslation();
   const milestones = [
     {
-      label: "First product",
+      label: t("creatorPanel.home.milestones.firstProduct"),
       done: courses.length > 0,
       icon: BookOpenCheck,
     },
     {
-      label: "Professional verified",
+      label: t("creatorPanel.home.milestones.verified"),
       done: verificationStatus === "approved",
       icon: BadgeCheck,
     },
     {
-      label: "Payouts ready",
+      label: t("creatorPanel.home.milestones.payouts"),
       done: payoutsReady,
       icon: Wallet,
     },
     {
-      label: "First live product",
+      label: t("creatorPanel.home.milestones.firstLive"),
       done: courses.some((course) => course.status === "published"),
       icon: Store,
     },
@@ -535,13 +546,13 @@ function StudioEvolution({
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            My evolution
+            {t("creatorPanel.home.milestones.eyebrow")}
           </p>
           <h2
             id="evolution-title"
             className="mt-1 text-xl font-semibold text-[var(--color-primary)]"
           >
-            Creator milestones
+            {t("creatorPanel.home.milestones.title")}
           </h2>
         </div>
         <span className="text-sm font-semibold tabular-nums text-[var(--color-ink-soft)]">
@@ -568,7 +579,7 @@ function StudioEvolution({
               </span>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                  Milestone 0{index + 1}
+                  {t("creatorPanel.home.milestones.item").replace("{number}", () => `0${index + 1}`)}
                 </p>
                 <p className="mt-1 text-sm font-semibold text-[var(--color-ink)]">
                   {milestone.label}
@@ -595,10 +606,11 @@ function isProductPrepared(course: TeacherCourse) {
   );
 }
 
-function productTypeLabel(course: TeacherCourse) {
-  if (course.communityEnabled) return "Community";
-  if (course.paymentType === "subscription_monthly") return "Subscription";
-  if (course.paymentType === "subscription_yearly") return "Subscription";
-  if (course.paymentType === "free") return "Free program";
-  return "Online course";
+// Data code -> dictionary key; the card shares the format names above.
+function productTypeKey(course: TeacherCourse) {
+  if (course.communityEnabled) return "creatorPanel.home.formats.community";
+  if (course.paymentType === "subscription_monthly") return "creatorPanel.home.formats.subscription";
+  if (course.paymentType === "subscription_yearly") return "creatorPanel.home.formats.subscription";
+  if (course.paymentType === "free") return "creatorPanel.home.formats.free";
+  return "creatorPanel.home.formats.course";
 }

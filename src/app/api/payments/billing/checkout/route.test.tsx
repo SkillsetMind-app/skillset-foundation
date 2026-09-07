@@ -41,11 +41,9 @@ vi.mock("@/lib/payments/server/stripe-helpers", () => ({
 
 import { POST } from "@/app/api/payments/billing/checkout/route";
 
-/**
- * Admin client stub. The route makes exactly one query — the `subscriptions`
- * pre-check — so the chain only has to survive select/eq/in/limit/maybeSingle.
- */
+/** Model only the DB boundary: the existing RPC atomically claims one key. */
 function adminReturning(row: { id: string } | null) {
+  const locks = new Map<string, { owner: string; expiresAt: number }>();
   const query = {
     select: () => query,
     eq: () => query,
@@ -53,7 +51,30 @@ function adminReturning(row: { id: string } | null) {
     limit: () => query,
     maybeSingle: async () => ({ data: row, error: null }),
   };
-  return () => ({ from: () => query });
+  const admin = {
+    locks,
+    rpc: vi.fn(async (_name: string, params: Record<string, string | number>) => {
+      const key = `${params.p_user_id}__${params.p_course_id}`;
+      const previous = locks.get(key);
+      if (previous && previous.expiresAt > Date.now()) return { data: [{ action: "wait", checkout_url: null }], error: null };
+      locks.set(key, { owner: String(params.p_order_id), expiresAt: Date.now() + Number(params.p_session_ttl_ms) });
+      return { data: [{ action: "claim", checkout_url: null }], error: null };
+    }),
+    from: (table: string) => {
+      if (table !== "checkout_locks") return query;
+      const filters = new Map<string, string>();
+      const deletion = {
+        eq: (column: string, value: string) => { filters.set(column, value); return deletion; },
+        then: (resolve: (result: { error: null }) => unknown) => {
+          const key = filters.get("lock_key")!;
+          if (locks.get(key)?.owner === filters.get("order_id")) locks.delete(key);
+          return Promise.resolve({ error: null }).then(resolve);
+        },
+      };
+      return { delete: () => deletion };
+    },
+  };
+  return () => admin;
 }
 
 function request(body: Record<string, unknown>) {
@@ -108,6 +129,243 @@ describe("POST /api/payments/billing/checkout", () => {
       },
     };
   }
+
+  function stripeSessionStore() {
+    const sessions = new Map<string, ReturnType<typeof openPlanSession>>();
+    const byIdempotencyKey = new Map<string, ReturnType<typeof openPlanSession>>();
+    mocks.resolvePriceId.mockImplementation((planId, cycle) => `price_${planId}_${cycle}`);
+    mocks.listSessions.mockImplementation(async () => ({ data: [...sessions.values()].map((session) => ({ ...session })) }));
+    mocks.createSession.mockImplementation(async (params, options) => {
+      const previous = byIdempotencyKey.get(options.idempotencyKey);
+      if (previous) return { ...previous };
+      const session = openPlanSession(`cs_local_${sessions.size + 1}`, params.metadata.planId, params.metadata.cycle);
+      sessions.set(session.id, session);
+      // Stripe replays the original response for a key, even after the object
+      // itself has been expired by a later request.
+      byIdempotencyKey.set(options.idempotencyKey, { ...session });
+      return { ...session };
+    });
+    mocks.expireSession.mockImplementation(async (id) => {
+      const session = sessions.get(id);
+      if (!session || session.status !== "open") throw new Error("Session is not open");
+      session.status = "expired";
+      return { ...session };
+    });
+    return sessions;
+  }
+
+  it.each(["pro", "starter"])("keeps one payable session when pro and %s checkouts race", async (otherPlan) => {
+    mocks.getAdmin.mockImplementation(adminReturning(null));
+    mocks.listSubscriptions.mockResolvedValue({ data: [] });
+    const sessions = stripeSessionStore();
+    const now = vi.spyOn(Date, "now").mockReturnValue(Date.UTC(2026, 8, 6, 3, 30));
+    let firstReadStarted!: () => void;
+    const firstReading = new Promise<void>((resolve) => { firstReadStarted = resolve; });
+    let finishFirstRead!: () => void;
+    const firstReadGate = new Promise<void>((resolve) => { finishFirstRead = resolve; });
+    mocks.listSessions.mockImplementationOnce(async () => {
+      const snapshot = [...sessions.values()];
+      firstReadStarted();
+      await firstReadGate;
+      return { data: snapshot };
+    });
+
+    try {
+      const first = POST(request({ planId: "pro", cycle: "monthly" }));
+      await firstReading;
+      const second = POST(request({ planId: otherPlan, cycle: "monthly" }));
+      // Let the second request finish its already-resolved reads while the
+      // first still holds an empty snapshot. A real mutex may reject/queue it.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      finishFirstRead();
+      const responses = await Promise.all([first, second]);
+      expect(responses.some((response) => response.status === 200)).toBe(true);
+      expect(responses.every((response) => [200, 409].includes(response.status))).toBe(true);
+      expect([...sessions.values()].filter((session) => session.status === "open")).toHaveLength(1);
+    } finally {
+      finishFirstRead();
+      now.mockRestore();
+    }
+  });
+
+  it("can switch pro to starter and back in the same hour without reviving an expired checkout", async () => {
+    mocks.getAdmin.mockImplementation(adminReturning(null));
+    mocks.listSubscriptions.mockResolvedValue({ data: [] });
+    const sessions = stripeSessionStore();
+    const now = vi.spyOn(Date, "now").mockReturnValue(Date.UTC(2026, 8, 6, 3, 30));
+    try {
+      for (const planId of ["pro", "starter", "pro"]) {
+        const response = await POST(request({ planId, cycle: "monthly" }));
+        const body = await response.json();
+        expect(response.status).toBe(200);
+        expect(sessions.get(body.sessionId)?.status).toBe("open");
+      }
+      expect([...sessions.values()].filter((session) => session.status === "open")).toHaveLength(1);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it("refuses before Stripe when the common billing claim is busy", async () => {
+    const factory = adminReturning(null);
+    factory().rpc.mockResolvedValueOnce({ data: [{ action: "wait", checkout_url: null }], error: null });
+    mocks.getAdmin.mockImplementation(factory);
+    mocks.listSubscriptions.mockResolvedValue({ data: [] });
+
+    expect((await POST(request({ planId: "pro", cycle: "monthly" }))).status).toBe(409);
+    expect(mocks.getCustomer).not.toHaveBeenCalled();
+    expect(mocks.createSession).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the atomic claim cannot be acquired", async () => {
+    const factory = adminReturning(null);
+    factory().rpc.mockRejectedValueOnce(new Error("Claim unavailable"));
+    mocks.getAdmin.mockImplementation(factory);
+    mocks.listSubscriptions.mockResolvedValue({ data: [] });
+    expect((await POST(request({ planId: "pro", cycle: "monthly" }))).status).toBe(500);
+    expect(mocks.createSession).not.toHaveBeenCalled();
+  });
+
+  it("retains the claim when Stripe created an unusable embedded session", async () => {
+    const factory = adminReturning(null);
+    mocks.getAdmin.mockImplementation(factory);
+    mocks.listSubscriptions.mockResolvedValue({ data: [] });
+    mocks.createSession.mockResolvedValue({ id: "cs_no_embedded_response" });
+    expect((await POST(request({ planId: "pro", cycle: "monthly" }))).status).toBe(500);
+    expect((await POST(request({ planId: "starter", cycle: "monthly" }))).status).toBe(409);
+    expect(mocks.createSession).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the claim after an uncertain Stripe create so another plan cannot race its result", async () => {
+    const factory = adminReturning(null);
+    mocks.getAdmin.mockImplementation(factory);
+    mocks.listSubscriptions.mockResolvedValue({ data: [] });
+    mocks.createSession.mockRejectedValue(new Error("Connection lost after request"));
+
+    expect((await POST(request({ planId: "pro", cycle: "monthly" }))).status).toBe(500);
+    expect((await POST(request({ planId: "starter", cycle: "monthly" }))).status).toBe(409);
+    expect(mocks.createSession).toHaveBeenCalledOnce();
+    expect(factory().locks.size).toBe(1);
+    const params = mocks.createSession.mock.calls[0][0];
+    expect(params.expires_at).toBeLessThanOrEqual(Math.floor([...factory().locks.values()][0].expiresAt / 1000));
+  });
+
+  it("releases a claim after a read failure so a retry can proceed immediately", async () => {
+    const factory = adminReturning(null);
+    mocks.getAdmin.mockImplementation(factory);
+    mocks.listSubscriptions.mockResolvedValue({ data: [] });
+    mocks.listSessions.mockRejectedValueOnce(new Error("Read unavailable"));
+
+    expect((await POST(request({ planId: "pro", cycle: "monthly" }))).status).toBe(500);
+    expect(factory().locks.size).toBe(0);
+    expect((await POST(request({ planId: "starter", cycle: "monthly" }))).status).toBe(200);
+    expect(mocks.createSession).toHaveBeenCalledOnce();
+    expect(factory().locks.size).toBe(0);
+  });
+
+  it("does not create a replacement when expiring the previous plan fails", async () => {
+    const factory = adminReturning(null);
+    mocks.getAdmin.mockImplementation(factory);
+    mocks.listSubscriptions.mockResolvedValue({ data: [] });
+    mocks.listSessions.mockResolvedValue({ data: [openPlanSession("cs_previous", "starter", "monthly")] });
+    mocks.expireSession.mockRejectedValueOnce(new Error("Expire unavailable"));
+
+    expect((await POST(request({ planId: "pro", cycle: "monthly" }))).status).toBe(500);
+    expect(mocks.createSession).not.toHaveBeenCalled();
+    expect(factory().locks.size).toBe(0);
+    expect((await POST(request({ planId: "pro", cycle: "monthly" }))).status).toBe(200);
+    expect(mocks.createSession).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["paid", "active"],
+    ["unpaid", "active"],
+    ["no_payment_required", "trialing"],
+  ])("refuses a new plan when an earlier checkout completes as %s/%s during inspection", async (paymentStatus, subscriptionStatus) => {
+    mocks.getAdmin.mockImplementation(adminReturning(null));
+    let completed = false;
+    mocks.listSubscriptions.mockImplementation(async () => ({
+      data: completed ? [{ id: "sub_previous", status: subscriptionStatus }] : [],
+    }));
+    mocks.listSessions.mockImplementation(async () => {
+      completed = true;
+      return { data: [{
+        ...openPlanSession("cs_previous", "starter", "monthly"),
+        status: "complete",
+        payment_status: paymentStatus,
+        subscription: "sub_previous",
+      }] };
+    });
+
+    expect((await POST(request({ planId: "pro", cycle: "monthly" }))).status).toBe(409);
+    expect(mocks.createSession).not.toHaveBeenCalled();
+    expect(mocks.listSubscriptions).toHaveBeenCalledOnce();
+  });
+
+  it("allows a new plan after the subscription from an old completed checkout was canceled", async () => {
+    mocks.getAdmin.mockImplementation(adminReturning(null));
+    mocks.listSubscriptions.mockResolvedValue({ data: [{ id: "sub_previous", status: "canceled" }] });
+    mocks.listSessions.mockResolvedValue({ data: [{
+      ...openPlanSession("cs_previous", "starter", "monthly"),
+      status: "complete",
+      payment_status: "paid",
+      subscription: "sub_previous",
+    }] });
+
+    expect((await POST(request({ planId: "pro", cycle: "monthly" }))).status).toBe(200);
+    expect(mocks.createSession).toHaveBeenCalledOnce();
+  });
+
+  it("keeps Stripe's minimum session lifetime after slow preparation without outliving the claim", async () => {
+    const factory = adminReturning(null);
+    mocks.getAdmin.mockImplementation(factory);
+    mocks.listSubscriptions.mockResolvedValue({ data: [] });
+    const startedAt = Date.UTC(2026, 8, 6, 3, 30);
+    let currentTime = startedAt;
+    const now = vi.spyOn(Date, "now").mockImplementation(() => currentTime);
+    mocks.listSessions.mockImplementationOnce(async () => {
+      currentTime += 61_000;
+      return { data: [] };
+    });
+    mocks.createSession.mockImplementation(async (params) => {
+      if (params.expires_at < Math.floor(currentTime / 1000) + 30 * 60) {
+        throw new Error("Stripe requires at least 30 minutes until session expiry");
+      }
+      return { id: "cs_after_slow_read", [fieldName]: "embedded-response" };
+    });
+
+    try {
+      expect((await POST(request({ planId: "pro", cycle: "monthly" }))).status).toBe(200);
+      const params = mocks.createSession.mock.calls[0][0];
+      const ttl = Number(factory().rpc.mock.calls[0][1].p_session_ttl_ms);
+      expect(params.expires_at * 1000).toBeLessThan(startedAt + ttl);
+      expect(factory().locks.size).toBe(0);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it("releases an exhausted preparation claim before creating so the user can retry immediately", async () => {
+    const factory = adminReturning(null);
+    mocks.getAdmin.mockImplementation(factory);
+    mocks.listSubscriptions.mockResolvedValue({ data: [] });
+    let currentTime = Date.UTC(2026, 8, 6, 3, 30);
+    const now = vi.spyOn(Date, "now").mockImplementation(() => currentTime);
+    mocks.listSessions.mockImplementationOnce(async () => {
+      currentTime += 4 * 60 * 1000;
+      return { data: [] };
+    });
+
+    try {
+      expect((await POST(request({ planId: "pro", cycle: "monthly" }))).status).toBe(409);
+      expect(mocks.createSession).not.toHaveBeenCalled();
+      expect(factory().locks.size).toBe(0);
+      expect((await POST(request({ planId: "pro", cycle: "monthly" }))).status).toBe(200);
+      expect(mocks.createSession).toHaveBeenCalledOnce();
+    } finally {
+      now.mockRestore();
+    }
+  });
 
   it("creates a session when neither our table nor Stripe knows of a plan", async () => {
     mocks.getAdmin.mockImplementation(adminReturning(null));

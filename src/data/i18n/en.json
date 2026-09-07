@@ -3,6 +3,8 @@
     "label": "Language"
   },
   "nav": {
+    "myCourses": "My courses",
+    "manageBusiness": "Manage my business",
     "courses": "Courses",
     "forCreators": "For creators",
     "pricing": "Pricing",
@@ -125,6 +127,7 @@
       "heading": "Complete your profile"
     },
     "signup": {
+      "progress": "Step {current} of {total}",
       "introLearner": "This starts you as a learner. You can add the educator side later from your profile.",
       "introEducator": "This starts you as an educator. You can add the learner side later from your profile.",
       "roleQuestion": "What brings you to SkillsetMind?",
@@ -395,6 +398,444 @@
       "earnings": "Earnings",
       "verification": "Verification"
     },
+    "ops": {
+      "verification": "Creator verification",
+      "catalog": "Published catalog",
+      "payments": "Payments",
+      "community": "Community reports",
+      "support": "Support tickets",
+      "users": "Users",
+      "audit": "Audit log",
+      "access": "Access",
+      "accessLevels": "Access levels",
+      "unavailable": "Your access level does not include this queue.",
+      "back": "Back to Operations",
+      "searchSupport": "Search tickets in this queue",
+      "searchVerification": "Search applications in this queue",
+      "accessPanel": {
+        "people": "People",
+        "matrix": "What each level can do",
+        "canDo": "Can do",
+        "yes": "yes",
+        "no": "no",
+        "searchLabel": "Find someone",
+        "searchPlaceholder": "Name or email",
+        "loading": "Loading the roster…",
+        "empty": "No one matches that search.",
+        "noLevel": "No level yet — sees only the public site.",
+        "levels": {
+          "student": {
+            "label": "Learner",
+            "description": "Buys and takes courses. The classroom, nothing else."
+          },
+          "teacher": {
+            "label": "Instructor",
+            "description": "Builds and sells courses. Opens the teaching studio."
+          },
+          "staff": {
+            "label": "Team",
+            "description": "Verification, reports and learner support — support, moderation and operations together."
+          },
+          "admin": {
+            "label": "Admin",
+            "description": "Everything, including changing these levels."
+          }
+        },
+        "errors": {
+          "loadError": "Could not load the roster.",
+          "saveError": "That change was refused. Nothing was saved.",
+          "adminRequired": "Admin privileges are required.",
+          "targetRequired": "A target user is required.",
+          "invalidRoles": "The selected access levels are invalid. Nothing was saved.",
+          "unknownRole": "Unknown role in the requested set.",
+          "userMissing": "That user does not exist.",
+          "selfAdmin": "You cannot remove your own admin role.",
+          "lastAdmin": "The platform must keep at least one administrator."
+        },
+        "preview": {
+          "title": "Preview the product",
+          "description": "See the platform as a learner or an instructor; your own access is untouched.",
+          "back": "Back to admin",
+          "banner": "Previewing as {role}. Your admin access is unchanged.",
+          "exit": "Exit preview"
+        },
+        "permissions": {
+          "auth": {
+            "signIn": {
+              "label": "Sign in",
+              "description": "Can access sign-in surfaces."
+            },
+            "signUp": {
+              "label": "Sign up",
+              "description": "Can access account creation surfaces."
+            },
+            "signOut": {
+              "label": "Sign out",
+              "description": "Can end an authenticated session."
+            },
+            "manageSessions": {
+              "label": "Manage sessions",
+              "description": "Can review and revoke user sessions."
+            }
+          },
+          "courses": {
+            "readCatalog": {
+              "label": "Read course catalog",
+              "description": "Can view public course catalog content."
+            },
+            "enroll": {
+              "label": "Enroll in courses",
+              "description": "Can enroll in available learning experiences."
+            },
+            "viewLearning": {
+              "label": "View learning",
+              "description": "Can access enrolled learning content."
+            },
+            "create": {
+              "label": "Create courses",
+              "description": "Can create draft course content."
+            },
+            "submitForReview": {
+              "label": "Submit courses for review",
+              "description": "Can send owned course drafts into the review queue."
+            },
+            "publish": {
+              "label": "Publish courses",
+              "description": "Can publish teacher-owned course content."
+            },
+            "manageAll": {
+              "label": "Manage all courses",
+              "description": "Can manage course content across the platform."
+            }
+          },
+          "payments": {
+            "checkout": {
+              "label": "Checkout",
+              "description": "Can purchase paid learning products."
+            },
+            "manageSubscriptions": {
+              "label": "Manage subscriptions",
+              "description": "Can manage billing subscriptions."
+            },
+            "refund": {
+              "label": "Refund payments",
+              "description": "Can issue or request refunds."
+            }
+          },
+          "community": {
+            "read": {
+              "label": "Read community",
+              "description": "Can view community spaces."
+            },
+            "post": {
+              "label": "Post community content",
+              "description": "Can create posts and replies in community spaces."
+            },
+            "moderate": {
+              "label": "Moderate community",
+              "description": "Can moderate community posts and replies."
+            }
+          },
+          "teacherStudio": {
+            "access": {
+              "label": "Access teacher studio",
+              "description": "Can access teacher studio surfaces."
+            },
+            "manageCourses": {
+              "label": "Manage teacher courses",
+              "description": "Can manage courses in teacher studio."
+            },
+            "manageStorefront": {
+              "label": "Manage instructor storefront",
+              "description": "Can edit storefront branding and course showcase ordering."
+            }
+          },
+          "certificates": {
+            "view": {
+              "label": "View certificates",
+              "description": "Can view earned certificates."
+            },
+            "issue": {
+              "label": "Issue certificates",
+              "description": "Can issue completion certificates."
+            },
+            "revoke": {
+              "label": "Revoke certificates",
+              "description": "Can revoke issued certificates."
+            }
+          },
+          "users": {
+            "support": {
+              "label": "Support users",
+              "description": "Can help users with account and learning issues."
+            },
+            "manage": {
+              "label": "Manage users",
+              "description": "Can manage user records and roles."
+            }
+          },
+          "platform": {
+            "viewOps": {
+              "label": "View operations",
+              "description": "Can view operational dashboards."
+            },
+            "accessAdmin": {
+              "label": "Access admin",
+              "description": "Can access administrative surfaces."
+            }
+          }
+        }
+      },
+      "catalogPanel": {
+        "eyebrow": "Published courses",
+        "title": "Manage the live catalog",
+        "description": "Unpublish, republish, or permanently delete a course with no enrollments or orders.",
+        "coursesOne": "1 course",
+        "courses": "{count} courses",
+        "modulesOne": "1 module",
+        "modules": "{count} modules",
+        "lessonsOne": "1 lesson",
+        "lessons": "{count} lessons",
+        "loadError": "We could not load published courses. Please refresh.",
+        "loading": "Loading published courses...",
+        "empty": "No published or inactive courses yet.",
+        "featured": "Featured",
+        "working": "Working...",
+        "feature": "Feature",
+        "unfeature": "Unfeature",
+        "unpublish": "Unpublish",
+        "republish": "Republish",
+        "deleting": "Deleting...",
+        "confirmDelete": "Confirm delete",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "errors": {
+          "unpublish": "We could not unpublish this course. Please try again.",
+          "republish": "We could not republish this course. Please try again.",
+          "delete": "We could not delete this course. Courses with enrollments or orders must be unpublished instead.",
+          "feature": "We could not update the featured status. Please try again."
+        },
+        "success": {
+          "unpublished": "Course unpublished and removed from the marketplace.",
+          "republished": "Course republished to the marketplace.",
+          "deleted": "Course permanently deleted.",
+          "featured": "Course featured. It now leads the marketplace grid.",
+          "unfeatured": "Course unfeatured and back in the regular catalog order."
+        }
+      },
+      "paymentsPanel": {
+        "title": "Stripe order monitor.",
+        "description": "Live Stripe orders; access is granted only after payment is confirmed.",
+        "adminOnly": "Admin only",
+        "paidSample": "Paid in this sample",
+        "grossSample": "Gross (last 12 orders)",
+        "feeSample": "Platform fee est. (same 12)",
+        "loadingValue": "Loading...",
+        "unavailable": "Unavailable",
+        "loadError": "We could not load recent Stripe orders.",
+        "loading": "Loading orders...",
+        "empty": "No Stripe orders yet. After a paid checkout, pending and paid orders will appear here.",
+        "order": "Order",
+        "user": "User",
+        "provider": "Provider"
+      },
+      "enrollmentPanel": {
+        "eyebrow": "Manual enrollment",
+        "title": "Grant beta access without fake checkout.",
+        "description": "Beta, support, or admin-granted access only; paid enrollment still comes from Stripe.",
+        "learner": "Learner",
+        "course": "Published creator course",
+        "loadingUsers": "Loading users...",
+        "chooseUser": "Choose user",
+        "loadingCourses": "Loading courses...",
+        "chooseCourse": "Choose course",
+        "creating": "Creating enrollment...",
+        "create": "Create admin enrollment",
+        "grantedTitle": "Granted enrollments",
+        "activeOne": "1 active",
+        "active": "{count} active",
+        "grantedDescription": "Admin and demo grants only. Revoking removes the learner's access immediately.",
+        "loadingGranted": "Loading granted enrollments...",
+        "empty": "No admin or demo grants yet.",
+        "adminGrant": "Admin grant",
+        "demoGrant": "Demo access",
+        "revoking": "Revoking...",
+        "revoke": "Revoke access",
+        "confirmRevoke": "Revoke access to \"{title}\" for this learner? They lose access immediately.",
+        "readErrors": {
+          "users": "We could not load users for manual enrollment.",
+          "courses": "We could not load published creator courses.",
+          "grants": "We could not load granted enrollments."
+        },
+        "errors": {
+          "choose": "Choose a user and a published creator course.",
+          "create": "We could not create this enrollment. Check admin role and rules.",
+          "revoke": "We could not revoke this enrollment. Check admin role and rules."
+        },
+        "success": {
+          "created": "Admin enrollment created. The learner can now open the creator course workspace.",
+          "revoked": "Enrollment revoked."
+        }
+      },
+      "exportButton": {
+        "export": "Export",
+        "csv": "Export as CSV",
+        "json": "Export as JSON"
+      },
+      "usersPanel": {
+        "eyebrow": "User lookup",
+        "title": "Find learners and educators.",
+        "description": "Read-only lookup for support and trust workflows.",
+        "countOne": "1 user",
+        "count": "{count} users",
+        "search": "Search by email or username...",
+        "loading": "Loading users...",
+        "loadError": "We could not load user records. Confirm your admin access and try again.",
+        "empty": "No users match this search.",
+        "unnamed": "Unnamed user",
+        "noEmail": "No email on profile",
+        "roles": {
+          "guest": "Guest",
+          "moderator": "Moderator"
+        }
+      },
+      "accountRequestsPanel": {
+        "eyebrow": "Account actions",
+        "title": "Export and deletion requests.",
+        "description": "Work each request, then mark it processing, completed, or rejected. Changing the status does not export data or delete an account.",
+        "loading": "Loading account action requests...",
+        "loadError": "We could not load account action requests.",
+        "updateError": "We could not update this account action request.",
+        "empty": "No account action requests yet.",
+        "pendingTimestamp": "Pending timestamp",
+        "user": "User",
+        "requested": "Requested",
+        "requestId": "Request ID",
+        "actioned": "Actioned",
+        "by": "by",
+        "types": {
+          "data_export": "Data export",
+          "account_deletion": "Account deletion"
+        },
+        "actions": {
+          "processing": "Mark processing",
+          "completed": "Mark completed",
+          "rejected": "Reject"
+        }
+      },
+      "communityPanel": {
+        "eyebrow": "Community moderation",
+        "title": "Trust reports",
+        "description": "Review reports from course communities and close the loop.",
+        "countOne": "1 open",
+        "count": "{count} open",
+        "loadError": "We could not load community reports.",
+        "updateError": "We could not update this report status.",
+        "configurationRequired": "Backend configuration is required before community reports can load.",
+        "loading": "Loading community reports...",
+        "empty": "No community reports yet.",
+        "in": "in",
+        "author": "Reported content author:",
+        "reporter": "Reporter:",
+        "context": "Context:",
+        "saving": "Saving...",
+        "targets": {
+          "post": "post",
+          "comment": "comment"
+        },
+        "reasons": {
+          "spam": "Spam or promotion",
+          "harassment": "Harassment or abuse",
+          "unsafe_content": "Unsafe content",
+          "off_topic": "Off-topic or low quality",
+          "other": "Other trust issue"
+        }
+      },
+      "auditPanel": {
+        "description": "Refunds and account requests are recorded here automatically as they happen, newest first. This log is read-only — entries are written by the system and cannot be edited.",
+        "loading": "Loading audit log...",
+        "loadError": "We could not load the audit log.",
+        "empty": "No audit events recorded yet.",
+        "pendingTimestamp": "Pending timestamp",
+        "actor": "Actor",
+        "target": "Target",
+        "actions": {
+          "refundRequested": "Refund requested",
+          "refundIssued": "Refund issued",
+          "deletionRequested": "Account deletion requested",
+          "exportRequested": "Data export requested"
+        },
+        "targets": {
+          "order": "Order",
+          "user": "User",
+          "course": "Course"
+        }
+      },
+      "supportQueue": {
+        "title": "User support tickets",
+        "description": "Read user issues and move tickets through the status workflow.",
+        "countOne": "1 ticket",
+        "count": "{count} tickets",
+        "loading": "Loading support tickets...",
+        "loadError": "We could not load support tickets.",
+        "empty": "There are no support tickets yet.",
+        "noResults": "No tickets match this search.",
+        "unnamedUser": "Unnamed user",
+        "replySentLabel": "Reply sent to user",
+        "replyLabel": "Reply to user",
+        "replyHint": "Sending a reply also resolves this ticket.",
+        "replyPlaceholder": "Write the reply the user will read.",
+        "sendReply": "Send reply and resolve",
+        "updateReply": "Update reply and resolve",
+        "sending": "Sending...",
+        "updating": "Updating...",
+        "replyError": "We could not send this reply.",
+        "statusError": "We could not update this support ticket.",
+        "replySuccess": "Reply sent and ticket resolved.",
+        "statusSuccess": "Ticket status updated.",
+        "categories": {
+          "account": "Account",
+          "course": "Course",
+          "payment": "Payment",
+          "technical": "Technical",
+          "other": "Other"
+        }
+      },
+      "verificationQueue": {
+        "title": "Professional admission applications",
+        "description": "Check the registration against the official registry, then approve, request changes, or reject.",
+        "countOne": "1 pending",
+        "count": "{count} pending",
+        "loading": "Loading verification queue...",
+        "loadError": "We could not load the verification queue.",
+        "empty": "No verification applications are waiting right now.",
+        "noResults": "No applications match this search.",
+        "pendingTimestamp": "Pending timestamp",
+        "noEvidence": "No evidence links attached.",
+        "applicantNote": "Applicant note: {note}",
+        "reviewLabel": "Review note to creator",
+        "reviewPlaceholder": "Example: The registry lookup link does not show this registration number — attach the official lookup page.",
+        "reviewHint": "Required when requesting changes or rejecting. Optional when approving.",
+        "noteRequired": "Add a clear review note (at least 12 characters) before requesting changes or rejecting.",
+        "reviewError": "We could not record this decision. Please try again.",
+        "updating": "Updating...",
+        "decisions": {
+          "approved": "Approve",
+          "needs_changes": "Request changes",
+          "rejected": "Reject"
+        },
+        "success": {
+          "approved": "Creator approved — their professional badge is active.",
+          "needs_changes": "Application returned to the creator with your note.",
+          "rejected": "Application rejected with your note."
+        }
+      }
+    },
+    "queueCount": {
+      "pending": "{count} pending",
+      "loading": "Count loading",
+      "unavailable": "Count unavailable"
+    },
     "navSection": {
       "home": "Home",
       "products": "Products",
@@ -445,7 +886,13 @@
       "openTicket": "Open a support ticket",
       "emailSupport": "Email support",
       "replyTime": "We aim to reply within 24 hours.",
-      "openMenu": "Open help menu"
+      "openMenu": "Open help menu",
+      "contextual": {
+        "about": "Help about {topic}",
+        "heading": "Contextual help",
+        "close": "Close contextual help",
+        "related": "Open related help"
+      }
     },
     "notifications": {
       "open": "Open notifications",
@@ -458,7 +905,13 @@
       "unread": "Unread",
       "caughtUp": "You're all caught up",
       "caughtUpDetail": "SkillsetMind will let you know when something needs your attention.",
-      "viewAll": "View all"
+      "viewAll": "View all",
+      "time": {
+        "justNow": "Just now",
+        "minutes": "{count}m ago",
+        "hours": "{count}h ago",
+        "days": "{count}d ago"
+      }
     },
     "session": {
       "checking": "Checking session...",
@@ -496,9 +949,193 @@
     "resolved": "Resolved",
     "reviewed": "Reviewed",
     "revoked": "Revoked",
-    "succeeded": "Succeeded"
+    "succeeded": "Succeeded",
+    "processing": "Processing",
+    "rejected": "Rejected"
   },
   "learn": {
+    "classroom": {
+      "workspace": {
+        "loading": "Loading course workspace...",
+        "enrollmentError": "We could not confirm your enrollment for this course.",
+        "progressLoadError": "We could not load lesson progress for this course.",
+        "assetsError": "We could not load lesson assets for this course.",
+        "lessonLockedError": "This lesson is still locked by the course release schedule.",
+        "progressSaveError": "We could not update lesson progress. Please try again.",
+        "backToLearning": "Back to my learning",
+        "backToLearningTitle": "Back to My Learning",
+        "openCourse": "Open course page",
+        "paymentReceived": "Payment received",
+        "enrollmentDelayed": "Almost there — enrollment is taking longer than usual.",
+        "openingCourse": "Opening your course...",
+        "delayedDetails": "Your payment went through and is safe in your instructor's Stripe account — they sold you this course directly, so their name may be what appears on your card statement. Keep this page open: it opens automatically the moment your enrollment is confirmed. If nothing happens in a few minutes, contact support with your payment receipt.",
+        "openingDetails": "Your payment is confirmed. Your instructor sold you this course directly, so their name — not \"SkillsetMind\" — may be what appears on your card statement. We are setting up your course access right now; this page opens automatically in a few seconds.",
+        "enrollmentRequired": "Enrollment required",
+        "enrollmentHeading": "This private workspace opens after enrollment.",
+        "enrollmentDetails": "Open the public course page first, then add the course to your learning workspace.",
+        "saving": "Saving...",
+        "completeAndNext": "Mark complete & next",
+        "complete": "Mark complete",
+        "certificate": "Get certificate"
+      },
+      "lesson": {
+        "types": {
+          "video": "Video lesson",
+          "text": "Text lesson",
+          "quiz": "Quiz",
+          "assignment": "Assignment",
+          "live_recording": "Live recording",
+          "download": "Download",
+          "external_embed": "External embed"
+        },
+        "available": "Available",
+        "previousRequired": "Complete the previous lesson to unlock",
+        "unlocks": "Unlocks {date}",
+        "locked": "Lesson locked",
+        "closeMiniPlayer": "Close mini player",
+        "loading": "Loading lesson content...",
+        "loadingDetails": "Fetching this lesson's media and notes.",
+        "textFirst": "Text-first lesson",
+        "mediaMissing": "Media not attached yet",
+        "textDetails": "Read the lesson notes below and use the discussion area if you need context.",
+        "mediaDetails": "When the instructor uploads a video or connects an embed, it plays here.",
+        "content": "Lesson content",
+        "freePreview": "Free preview",
+        "openResource": "Open instructor resource"
+      },
+      "curriculum": {
+        "lessons": "Lessons",
+        "title": "Curriculum",
+        "all": "All lessons",
+        "close": "Close lesson list",
+        "search": "Search lessons",
+        "matchOne": "{count} lesson match \"{query}\"",
+        "matchMany": "{count} lessons match \"{query}\"",
+        "countOne": "{count} lesson in this course",
+        "countMany": "{count} lessons in this course",
+        "emptySearch": "No lesson matches that search.",
+        "module": "Module {number}",
+        "markLessonIncomplete": "Mark \"{title}\" incomplete",
+        "markIncomplete": "Mark incomplete",
+        "completed": "Completed",
+        "locked": "Locked",
+        "playingNow": "Playing now"
+      },
+      "resources": {
+        "title": "Course resources",
+        "heading": "General files and visuals attached to this course",
+        "fileOne": "{count} file",
+        "fileMany": "{count} files",
+        "loading": "Loading course resources...",
+        "empty": "No general course resources are attached yet.",
+        "loadingLesson": "Loading lesson assets...",
+        "emptyLesson": "No files are attached to this lesson yet.",
+        "preview": "Preview",
+        "enrolled": "Enrolled"
+      },
+      "discussion": {
+        "title": "Lesson discussion",
+        "description": "Ask questions or leave context tied to this specific lesson.",
+        "commentOne": "{count} comment",
+        "commentMany": "{count} comments",
+        "loading": "Loading comments...",
+        "empty": "No comments yet. Start the discussion for this lesson.",
+        "delete": "Delete",
+        "bodyLabel": "Write a comment for this lesson",
+        "preview": "Preview mode does not publish comments.",
+        "placeholder": "Write a question, note, or useful comment...",
+        "publishing": "Publishing...",
+        "publish": "Publish comment",
+        "loadError": "We could not load this lesson discussion.",
+        "publishError": "We could not publish your comment.",
+        "deleteError": "We could not delete that comment."
+      },
+      "nextLesson": {
+        "title": "Next lesson",
+        "countdown": "Next lesson in {seconds}s",
+        "watch": "Watch now",
+        "cancel": "Cancel"
+      },
+      "navigation": {
+        "previous": "Previous lesson",
+        "previousTitled": "Previous lesson: {title}",
+        "next": "Next lesson",
+        "nextTitled": "Next lesson: {title}"
+      },
+      "lessonInfo": {
+        "toggle": "Lesson information",
+        "type": "Type",
+        "duration": "Duration",
+        "module": "Module",
+        "materials": "Materials",
+        "availableFrom": "Available from"
+      },
+      "lessonComments": {
+        "title": "Lesson comments",
+        "prompt": "Comment on the lesson.",
+        "form": "Comment on the lesson",
+        "bodyLabel": "Your comment on this lesson",
+        "publish": "Comment",
+        "loading": "Loading lesson comments...",
+        "empty": "No comments on this lesson yet.",
+        "replyOne": "{count} reply",
+        "replyMany": "{count} replies",
+        "viewInCommunity": "View in community"
+      },
+      "review": {
+        "title": "Course review",
+        "heading": "Rate the learning experience.",
+        "description": "Reviews become part of the public course record after you have real learning progress. One review is allowed per enrolled account.",
+        "rating": "Course rating",
+        "starOne": "{count} star",
+        "starMany": "{count} stars",
+        "bodyLabel": "Your review",
+        "placeholder": "What should future learners know about this course?",
+        "preview": "Preview mode cannot publish course reviews.",
+        "progressRequired": "Reviews open after you complete 50% of the course.",
+        "signIn": "Sign in to review this course.",
+        "saving": "Saving...",
+        "update": "Update review",
+        "submit": "Submit review",
+        "loadError": "We could not load your course review.",
+        "saved": "Review saved. Thank you for rating this course.",
+        "saveError": "We could not save your review. Try again.",
+        "invalidCourse": "A valid course is required to leave a review.",
+        "invalidRating": "Rating must be between 1 and 5.",
+        "shortBody": "Write at least 3 characters or leave the review text empty.",
+        "courseMissing": "Course not found.",
+        "courseNotPublished": "Only published courses can receive reviews.",
+        "enrollFirst": "Enroll in this course before leaving a review.",
+        "wrongAccount": "You can only review courses attached to your account.",
+        "inactiveEnrollment": "This enrollment cannot leave a review.",
+        "rateLimit": "Too many attempts. Wait before trying again."
+      },
+      "messages": {
+        "title": "Message your teacher",
+        "heading": "Ask a private question about this course",
+        "description": "Only you and the course teacher can read this thread. Replies also land in your notification bell.",
+        "you": "You",
+        "teacher": "Teacher",
+        "bodyLabel": "Your private message",
+        "placeholder": "Write a private message to your teacher...",
+        "preview": "Preview mode cannot send messages.",
+        "signIn": "Sign in to message your teacher.",
+        "sending": "Sending...",
+        "send": "Send message",
+        "loadError": "We could not load your messages.",
+        "sendError": "We could not send your message. Try again.",
+        "emptyBody": "Write a message before sending it.",
+        "invalidCourse": "Select a valid course to send messages.",
+        "invalidStudent": "A valid student account is required.",
+        "courseMissing": "Course not found.",
+        "wrongThread": "You can only send messages in your own thread.",
+        "selfMessage": "You cannot message yourself.",
+        "enrollFirst": "Enroll in this course to use messages.",
+        "threadMismatch": "This enrollment does not match the thread.",
+        "inactiveEnrollment": "This enrollment cannot send messages.",
+        "rateLimit": "Too many attempts. Wait before trying again."
+      }
+    },
     "page": {
       "eyebrow": "Student experience",
       "title": "Your learning, in one place.",
@@ -546,7 +1183,9 @@
       "showLess": "Show less",
       "complete": "complete",
       "back": "My courses",
-      "backToLesson": "Lesson"
+      "backToLesson": "Lesson",
+      "progress": "{completed} of {total} lessons · {percent}%",
+      "certificate": "View certificate"
     },
     "paths": {
       "eyebrow": "Learning path",
@@ -577,6 +1216,111 @@
       "back": "Back",
       "next": "Next",
       "startLearning": "Start learning"
+    },
+    "community": {
+      "loading": "Loading community...",
+      "accessRequired": "Access required",
+      "gateHeading": "This community is linked to course enrollment.",
+      "gateDetails": "Open the course page first and add it to your learning workspace.",
+      "accessError": "We could not confirm your community access.",
+      "postsError": "We could not load community posts.",
+      "eyebrow": "Community",
+      "filters": "Filter posts",
+      "all": "All",
+      "questions": "Questions",
+      "questionsOpenOne": "Questions · {count} open",
+      "questionsOpenMany": "Questions · {count} open",
+      "fromInstructor": "From {name}",
+      "instructorFallback": "the instructor",
+      "search": "Search posts",
+      "searchPlaceholder": "Search",
+      "newPostOne": "{count} new post",
+      "newPostMany": "{count} new posts",
+      "feedLoading": "Loading community feed...",
+      "empty": "No posts yet. Ask the first question or share what you're working on.",
+      "emptyFilter": "Nothing matches this filter.",
+      "online": "{count} online",
+      "memberOne": "{count} member",
+      "memberMany": "{count} members",
+      "sayHi": "New here? Say hi 👋",
+      "sayHiDetails": "{name} replies to every intro.",
+      "sections": "Community sections",
+      "members": "Members ({count})",
+      "rules": "Rules",
+      "recordings": "Recordings",
+      "noMembers": "No one has posted yet.",
+      "rule1": "Ask about the course; share what you tried.",
+      "rule2": "Be specific — say which lesson you mean.",
+      "rule3": "No selling, no spam. Report anything off.",
+      "composer": {
+        "shortQuestion": "Write your question in one line first — at least a few words.",
+        "shortPost": "Write a little more before posting.",
+        "publishError": "We could not publish your post.",
+        "prompt": "Ask the cohort or share something…",
+        "ask": "Ask a question",
+        "share": "Share",
+        "update": "Post an update",
+        "asks": "asks a question",
+        "posts": "posts an update",
+        "shares": "shares",
+        "answersHere": "{name} answers questions here.",
+        "questionLabel": "Your question",
+        "questionPlaceholder": "What do you want to ask?",
+        "detailsLabel": "Details (optional)",
+        "postLabel": "Your post",
+        "detailsPlaceholder": "Add details (optional) — what you tried, what you expected…",
+        "updatePlaceholder": "What should the cohort know this week?",
+        "sharePlaceholder": "What are you working on? A win, a doubt, a before/after…",
+        "aboutLesson": "About lesson {number}",
+        "removeLesson": "Remove lesson {number}",
+        "similar": "Already answered · similar",
+        "similarItem": "“{title}” — answered {time}",
+        "cancel": "Cancel",
+        "posting": "Posting…",
+        "postQuestion": "Post question",
+        "postUpdate": "Post update",
+        "post": "Post",
+        "you": "You"
+      },
+      "card": {
+        "instructor": "Instructor",
+        "pinned": "pinned",
+        "fromLesson": "from {lesson}",
+        "answered": "Answered",
+        "question": "Question",
+        "unpin": "Unpin",
+        "pin": "Pin",
+        "clap": "Clap · {count}",
+        "reply": "Reply",
+        "viewReplies": "View {count} replies",
+        "answer": "answer",
+        "replyLabel": "Your reply",
+        "replyPlaceholder": "Add your reply…",
+        "shortReply": "Write a short reply first.",
+        "replyError": "We could not publish your reply.",
+        "postReply": "Post reply"
+      },
+      "live": {
+        "none": "No live scheduled yet.",
+        "next": "Next live",
+        "now": "Live now",
+        "inMinutes": "Live in {count} min",
+        "inHours": "Live in {count} h",
+        "join": "Join",
+        "joinLater": "Join when it starts"
+      },
+      "drawer": {
+        "back": "Back to feed",
+        "close": "Close",
+        "replies": "Replies",
+        "noReplies": "No replies yet. Be the first.",
+        "unmark": "Unmark as the answer",
+        "mark": "Mark as the answer",
+        "markError": "We could not save the answer mark. Try again.",
+        "replyLabel": "Add your reply",
+        "replyPlaceholder": "Add your reply…",
+        "send": "Reply"
+      }
     }
   },
   "teach": {
@@ -661,6 +1405,322 @@
       "empty": "The page exists, but nothing is published on it yet.",
       "open": "Open storefront",
       "edit": "Edit storefront"
+    }
+  },
+  "creatorPanel": {
+    "newProduct": "New product",
+    "createProduct": "Create product",
+    "untitledProduct": "Untitled product",
+    "communityOn": "Community on",
+    "modulesOne": "{count} module",
+    "modulesMany": "{count} modules",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "paymentType": {
+      "free": "Free",
+      "one_time": "One-time purchase",
+      "subscription_monthly": "Monthly subscription",
+      "subscription_yearly": "Yearly subscription"
+    },
+    "filters": {
+      "all": "All",
+      "drafts": "Drafts",
+      "needsAttention": "Needs attention"
+    },
+    "shareLink": {
+      "copy": "Copy link",
+      "copyAria": "Copy {label} link",
+      "open": "Open page",
+      "openAria": "Open {label}",
+      "copied": "Link copied.",
+      "copyError": "Could not copy. Copy the link above manually.",
+      "share": "Share",
+      "shareAria": "Share {label}",
+      "menuAria": "{label} share options",
+      "whatsapp": "WhatsApp",
+      "x": "X",
+      "linkedin": "LinkedIn",
+      "email": "Email"
+    },
+    "hub": {
+      "sections": {
+        "overview": "Panel",
+        "links": "Promo links",
+        "basic": "Basic info",
+        "pricing": "Pricing & offers",
+        "members": "Members area",
+        "students": "Students",
+        "page": "Product page",
+        "content": "Content",
+        "tax": "Tax collection",
+        "tools": "Tools"
+      },
+      "nav": {
+        "label": "Course management sections",
+        "manage": "Manage",
+        "roadmap": "On the roadmap"
+      },
+      "roadmap": {
+        "assistantLabel": "Sales assistant",
+        "assistantTitle": "The sales assistant is on the roadmap.",
+        "assistantDescription": "An AI assistant trained on this course's content that answers buyer questions on the product page. It isn't live yet — we'd rather tell you that than show a mock. Pricing is announced when it ships.",
+        "notify": "Notify me when it ships",
+        "notifySubject": "Notify me: {feature}"
+      },
+      "status": {
+        "draft": "Private draft — only you can see this course. Complete the checklist, then publish when ready.",
+        "in_review": "Legacy review status — open the builder to complete the checks and publish directly.",
+        "needs_changes": "Changes were previously requested. Address the note, update the course, and publish when ready.",
+        "published": "Live on the marketplace. Students can enroll right now.",
+        "inactive": "Hidden from the marketplace. An approved professional can republish it directly."
+      },
+      "price": {
+        "perMonth": "{amount} / month",
+        "perYear": "{amount} / year"
+      },
+      "highlight": {
+        "title": "Marketplace highlight",
+        "description": "Highlighted courses are pinned above the rest of the catalog. Your plan includes a set number of highlights at a time.",
+        "on": "Highlighted in the marketplace",
+        "off": "Not highlighted",
+        "usage": "{used} of {limit} highlights used on the {plan} plan",
+        "saving": "Saving...",
+        "remove": "Remove highlight",
+        "add": "Highlight this course",
+        "seePlans": "See plans",
+        "gatePublish": "Publish the course first — only live courses can be highlighted.",
+        "gatePlan": "Marketplace highlights start on the {plan} plan.",
+        "paidPlan": "paid",
+        "gateQuota": "You're using all {limit} highlights on your plan. Remove one from another course first.",
+        "updateError": "Could not update the marketplace highlight."
+      },
+      "loading": "Loading course...",
+      "notFound": {
+        "title": "This course isn't in your studio.",
+        "description": "It may have been deleted, or it belongs to another creator.",
+        "back": "Back to my courses"
+      },
+      "header": {
+        "eyebrow": "Course management",
+        "coverAlt": "{title} cover",
+        "courseFallback": "Course",
+        "noCover": "No cover",
+        "switchCourse": "Switch course"
+      },
+      "editInBuilder": "Edit in Builder",
+      "checklist": {
+        "title": "Publish checklist",
+        "progress": "{done} of {total} required steps done · {percent}% ready",
+        "optional": "Optional",
+        "openVerification": "Open verification",
+        "reviewNote": "SkillsetMind review note",
+        "reviewPublish": "Review & publish"
+      },
+      "links": {
+        "descriptionLive": "Share these anywhere you promote the course.",
+        "descriptionDraft": "Links you'll share once the course is published. Until then the product page opens only for you.",
+        "checkout": "Checkout"
+      },
+      "basic": {
+        "description": "Identity shown across the marketplace and product page. Edit these fields in the Builder.",
+        "title": "Title",
+        "category": "Category",
+        "allCategories": "All categories",
+        "summary": "Summary",
+        "outcomes": "Learning outcomes",
+        "noneYet": "None yet",
+        "cover": "Cover image",
+        "uploaded": "Uploaded",
+        "missing": "Missing",
+        "edit": "Edit basics in Builder"
+      },
+      "pricing": {
+        "title": "Pricing & checkout",
+        "description": "Set the access model and base commercial terms, then create targeted offers for distinct buyer links.",
+        "price": "Price",
+        "paymentType": "Payment type",
+        "installments": "Installments",
+        "installmentsUpTo": "Up to {max}x",
+        "stripeCheckout": "Secure Stripe checkout",
+        "payouts": "Stripe payouts",
+        "payoutsReady": "Ready",
+        "payoutsIncomplete": "Onboarding incomplete",
+        "edit": "Edit pricing in Builder",
+        "finishOnboarding": "Finish payout onboarding"
+      },
+      "content": {
+        "description": "{modules} and {lessons} in the curriculum.",
+        "empty": "No modules yet — build the curriculum in the Builder.",
+        "edit": "Edit content in Builder"
+      },
+      "members": {
+        "description": "The workspace enrolled students land in after purchase.",
+        "theme": "Theme",
+        "themeLight": "Light",
+        "themeDark": "Dark",
+        "welcomeTitle": "Welcome title",
+        "subtitle": "Subtitle",
+        "default": "Default",
+        "community": "Community",
+        "preview": "Preview members area"
+      },
+      "page": {
+        "title": "Public product page",
+        "description": "The buyer-facing URL. Until published, only you can open it.",
+        "open": "Open product page"
+      },
+      "sales": {
+        "description": "Orders, refunds, and revenue live in the studio-wide sales dashboard.",
+        "open": "Open sales dashboard",
+        "messages": "Student messages"
+      },
+      "tools": {
+        "title": "Product tools",
+        "description": "Open the supporting workspaces used to prepare, promote, and operate this product.",
+        "marketing": "Marketing workspace",
+        "marketingDetail": "Pages, media, buyer messages, and promotions",
+        "mediaDetail": "Course covers and delivery assets",
+        "integrationsDetail": "Connected delivery and business services",
+        "verification": "Professional verification",
+        "verificationDetail": "Credentials and marketplace admission"
+      }
+    },
+    "overview": {
+      "title": "How this product is doing",
+      "scope": "Everything below counts only {title}, never your other products.",
+      "viewPublic": "View public page",
+      "previewStudent": "Preview as a student",
+      "students": "Students enrolled",
+      "studentsHintJoined": "{count} joined in the last 7 days",
+      "studentsHintEmpty": "Buyers land here the moment a purchase clears.",
+      "revenueHintOne": "{count} paid order, net of refunds",
+      "revenueHintMany": "{count} paid orders, net of refunds",
+      "revenueHintEmpty": "No paid order on this product yet.",
+      "completionHint": "{done} of {total} finished the course",
+      "completionHintEmpty": "Measured once someone is enrolled.",
+      "rating": "Average rating",
+      "reviewsOne": "{count} review",
+      "reviewsMany": "{count} reviews",
+      "ratingHintEmpty": "No review yet — students rate after they enroll.",
+      "emptyTitle": "No one has bought this product yet.",
+      "emptyLive": "Enrollments, revenue, completion and rating appear here after the first sale. Share the product page to get the first one.",
+      "emptyDraft": "Publish the course first — the numbers start the moment the first buyer clears checkout.",
+      "openPage": "Open the product page",
+      "attentionTitle": "Needs your attention",
+      "attentionOne": "One thing on this product is worth fixing.",
+      "attentionMany": "{count} things on this product are worth fixing."
+    },
+    "products": {
+      "eyebrow": "Products",
+      "description": "Create private drafts, complete the product checks, and publish directly once your professional verification is approved.",
+      "productWorkspace": "Product workspace",
+      "communityWorkspace": "Community workspace",
+      "loading": "Loading products...",
+      "loadingAria": "Loading products",
+      "productOne": "{count} product",
+      "productMany": "{count} products",
+      "communityOne": "{count} community",
+      "communityMany": "{count} communities",
+      "searchProducts": "Search products...",
+      "searchCommunities": "Search communities...",
+      "typeLabel": "Type",
+      "typeAria": "Product type",
+      "status": "Status",
+      "statusAria": "Product status",
+      "filterLegacyReview": "Legacy review",
+      "filterLive": "Live",
+      "emptyProductsTitle": "No products yet",
+      "emptyProductsDescription": "Start a course, subscription, community, event, or free program. The draft stays private until you publish it.",
+      "emptyCommunitiesTitle": "No communities yet",
+      "emptyCommunitiesDescription": "Create a recurring members space for posts, discussion, and practitioner-led exchange.",
+      "createCommunity": "Create community",
+      "noMatch": "No products match this search and status filter.",
+      "columns": {
+        "product": "Product",
+        "access": "Access",
+        "actions": "Actions"
+      },
+      "uncategorized": "Uncategorized",
+      "signIn": "Sign in as a creator to start a product.",
+      "loadError": "We could not load your products. Please refresh or contact SkillsetMind support.",
+      "deleteError": "We could not delete this draft. Please try again or contact SkillsetMind support.",
+      "actions": {
+        "more": "More actions for {title}",
+        "menu": "Actions for {title}",
+        "edit": "Edit",
+        "viewAsStudent": "View as student",
+        "delete": "Delete"
+      },
+      "delete": {
+        "aria": "Delete {title}",
+        "eyebrow": "Delete product",
+        "title": "Delete {title}?",
+        "description": "This permanently removes the draft and its course content. This action cannot be undone.",
+        "cancel": "Cancel",
+        "busy": "Deleting...",
+        "confirm": "Confirm delete"
+      },
+      "shortcuts": {
+        "label": "Product workspace shortcuts",
+        "membersDetail": "Customize delivery and learner spaces",
+        "eventsDetail": "Schedule workshops and live sessions",
+        "marketingDetail": "Pages, media, messages, and promotions",
+        "couponsDetail": "Create discount codes for your products"
+      }
+    },
+    "home": {
+      "description": "Continue setup, manage products, and follow the work that moves them toward publication and sales.",
+      "storefront": "Storefront",
+      "nextSteps": {
+        "eyebrow": "Next steps",
+        "title": "Get ready for your first sale",
+        "progress": "{done} of {total} complete",
+        "listLabel": "Creator next steps",
+        "recommended": "Recommended now"
+      },
+      "steps": {
+        "create": "Create a product",
+        "createDetail": "Choose the delivery and access model.",
+        "creatorData": "Complete creator data",
+        "creatorDataDetail": "Finish professional verification and paid-product payouts.",
+        "creatorDataAction": "Complete setup",
+        "prepare": "Prepare product to sell",
+        "prepareDetail": "Add content, pricing, members experience, and review the draft.",
+        "prepareAction": "Prepare product"
+      },
+      "products": {
+        "title": "Products in your workspace",
+        "showAll": "Show all",
+        "filtersLabel": "Product filters",
+        "filterLiveSales": "Live sales",
+        "empty": "No products in this view yet.",
+        "manage": "Manage product"
+      },
+      "formats": {
+        "eyebrow": "What do you want to sell?",
+        "title": "Choose a product format",
+        "course": "Online course",
+        "courseDetail": "Video, text, downloads, certificates, and structured lessons.",
+        "program": "Guided program",
+        "programDetail": "A sequenced pathway of learning, practice, and optional live touchpoints.",
+        "subscription": "Subscription",
+        "subscriptionDetail": "Recurring access billed monthly or yearly.",
+        "community": "Community",
+        "communityDetail": "A recurring members space for posts and practitioner-led exchange.",
+        "event": "Online event",
+        "eventDetail": "Live workshops, cohorts, and scheduled group sessions.",
+        "free": "Free program",
+        "freeDetail": "Open enrollment without checkout or payment."
+      },
+      "milestones": {
+        "eyebrow": "My evolution",
+        "title": "Creator milestones",
+        "item": "Milestone {number}",
+        "firstProduct": "First product",
+        "verified": "Professional verified",
+        "payouts": "Payouts ready",
+        "firstLive": "First live product"
+      }
     }
   },
   "profileValidation": {
@@ -1493,5 +2553,607 @@
     },
     "pageTitle": "Sign in or create an account",
     "loadingForm": "Loading sign-in form"
+  },
+  "creatorEditor": {
+    "lesson": {
+      "tabs": {
+        "video": "Video",
+        "description": "Description",
+        "materials": "Materials",
+        "settings": "Settings"
+      },
+      "state": {
+        "uploaded": "Uploaded",
+        "embedded": "Embedded",
+        "empty": "Empty",
+        "done": "Done",
+        "preview": "Preview",
+        "private": "Private"
+      },
+      "number": "Lesson {lessonIndex}",
+      "close": "Close lesson studio",
+      "untitled": "Untitled lesson",
+      "context": "Module {moduleIndex} - {moduleTitle} / Lesson {lessonIndex}",
+      "setup": "Lesson setup",
+      "previewLabel": "Lesson video preview",
+      "previewTitle": "Video preview",
+      "savedProcessing": "Your upload is saved. New videos may still be processing before they can play.",
+      "embedDetected": "{provider} embed detected.",
+      "embedInvalid": "Link saved, but it will not play in the classroom. Use a standard YouTube or Vimeo video URL.",
+      "embedEmpty": "Paste a link when the video already lives outside SkillsetMind.",
+      "uploadVideo": "Upload lesson video",
+      "uploadVideoHelp": "MP4, MOV, WebM or any browser-supported video file.",
+      "uploadRecording": "Upload live recording",
+      "uploadRecordingHelp": "Replay from cohort classes, mentorships or webinars.",
+      "videoHelp": "Upload the video to SkillsetMind or paste a YouTube/Vimeo URL. Learners can play either one in the classroom.",
+      "noVideo": "No uploaded video file yet.",
+      "title": "Lesson title",
+      "description": "Lesson description",
+      "descriptionHelp": "Shown below the video in the members area.",
+      "descriptionPlaceholder": "Explain what the student is about to learn and why it matters.",
+      "text": "Text content, prompt, or notes",
+      "textHelp": "Use this for text lessons, assignments, scripts or key takeaways.",
+      "textPlaceholder": "Add the lesson outline, assignment instructions, checklist, or supporting notes.",
+      "materialsHelp": "Complementary files are attached to this lesson and become downloadable inside the student classroom.",
+      "noMaterials": "No complementary materials yet.",
+      "type": "Lesson type",
+      "duration": "Duration minutes",
+      "freePreview": "Free preview",
+      "freePreviewHelp": "Make this lesson visible before purchase. SkillsetMind recommends one strong preview lesson.",
+      "freePreviewLabel": "Use this lesson as the free preview",
+      "drip": "Drip delay days",
+      "dripHelp": "Leave blank for immediate release, or set D+ days after enrollment.",
+      "thumbnailHelp": "Optional thumbnail upload. It is used by the members area when students browse lessons.",
+      "noThumbnail": "No lesson thumbnail yet.",
+      "contextHelp": "Configure the exact lesson students will watch, read, download, and discuss.",
+      "saveHelp": "Uploads save immediately. Text and settings save with the course draft.",
+      "file": {
+        "selectAnother": "Choose a different file",
+        "select": "Choose file",
+        "allowPreview": "Allow this file in the public preview when it is safe.",
+        "cancel": "Cancel upload",
+        "upload": "Upload file",
+        "uploading": "Uploading..."
+      },
+      "progress": {
+        "sending": "Sending {total}...",
+        "determinate": "{percent}% - {transferred} of {total}"
+      },
+      "errors": {
+        "load": "We could not load lesson assets.",
+        "notVideo": "\"{fileName}\" is not a video file. Use MP4, MOV or WebM.",
+        "videoTooLarge": "This video is {size} — the limit is {limit}.",
+        "videoLimit": "Use a video file under {limit}.",
+        "invalidFile": "Use a valid {kind} file under {limit}.",
+        "delete": "We could not delete this file. Check course ownership and current permissions."
+      },
+      "success": {
+        "uploaded": "File uploaded to this lesson.",
+        "deleted": "Asset deleted."
+      },
+      "deleteConfirm": "Delete \"{fileName}\"? This permanently removes the file.",
+      "thumbnailAlt": "Lesson thumbnail: {fileName}",
+      "enrolledOnly": "Enrolled only",
+      "deleting": "Deleting...",
+      "delete": "Delete"
+    },
+    "videoSource": {
+      "heading": "Add the lesson video",
+      "fileInput": "Upload a lesson video",
+      "dropActive": "Drop the video to select it",
+      "dropIdle": "Drag & drop your video here",
+      "browseHelp": "or click to browse — MP4, MOV, WebM and other video files.",
+      "url": "YouTube or Vimeo URL",
+      "helpLabel": "How the YouTube or Vimeo URL field works",
+      "help": "Paste the video's page link — e.g. https://www.youtube.com/watch?v=… or a Vimeo URL. We turn it into a privacy-friendly embed that plays inside the classroom, stamped with the student's identity. It stays a link on YouTube or Vimeo, though: anyone who reaches that link can watch it outside your course. Upload instead and playback is signed per student.",
+      "protectionNote": "An embedded video stays a link on YouTube or Vimeo — anyone with that link can watch it outside your course. Upload the file instead and each student gets their own signed playback."
+    },
+    "members": {
+      "step": "Members Area",
+      "stepHelp": "Theme, cover, title",
+      "heading": "Customize the members area.",
+      "help": "Choose the theme, cover, and copy enrolled students see at the top of their course workspace.",
+      "backTo": "Back to Members Area",
+      "continueTo": "Continue to Members Area",
+      "untitled": "Untitled course",
+      "theme": "Theme",
+      "themeHelp": "Sets the look of the enrolled-student hero. Light is the default.",
+      "light": "Light",
+      "dark": "Dark",
+      "title": "Members area title",
+      "titlePlaceholder": "Your course title",
+      "titleHelp": "{length}/80 — leave empty to use the course title.",
+      "subtitle": "Subtitle",
+      "subtitlePlaceholder": "Your studio name, a tagline, or who it's for",
+      "subtitleHelp": "{length}/160 — the line under the title. Add your studio name or a tagline, or leave it empty.",
+      "description": "Description",
+      "descriptionPlaceholder": "A short welcome shown under the title in the members area.",
+      "livePreview": "Live preview",
+      "openPreview": "Open full preview",
+      "previewHelp": "The full preview opens the last saved version in a new tab. Wait for autosave to finish before opening it.",
+      "cover": "Members area cover",
+      "coverHelp": "Hero background for the enrolled-student workspace. Recommended 16:9, under {limit}.",
+      "coverSet": "Cover set",
+      "coverAlt": "{courseTitle} members cover",
+      "noCover": "No cover yet",
+      "uploading": "Uploading...",
+      "replaceCover": "Replace cover",
+      "uploadCover": "Upload cover",
+      "removeCover": "Remove cover",
+      "invalidImage": "Use an image file under {limit}."
+    },
+    "preview": {
+      "open": "Preview",
+      "loadError": "We could not load this course preview.",
+      "notSelected": "Course not selected.",
+      "notSelectedHelp": "Return to the builder and open preview from a specific course.",
+      "disconnected": "Preview is not connected.",
+      "disconnectedHelp": "The platform connection must be available to load the preview.",
+      "loading": "Loading preview...",
+      "loadingHelp": "Preparing the student-facing members area.",
+      "unavailable": "Preview unavailable.",
+      "notFound": "Course record not found.",
+      "notFoundHelp": "The course may have been deleted or your session may need refresh.",
+      "mode": "Preview mode",
+      "back": "Back to Teacher Studio",
+      "serverLoading": "Loading course preview...",
+      "banner": "Preview mode - this is how students will see your course.",
+      "exit": "Exit preview",
+      "only": "Preview only",
+      "readOnly": "Preview mode is read-only. Student progress is not saved here.",
+      "tabs": {
+        "lesson": "Lesson",
+        "materials": "Materials",
+        "lives": "Lives",
+        "community": "Community",
+        "messages": "Messages",
+        "review": "Review",
+        "about": "About"
+      },
+      "sections": "Course sections",
+      "lessonNavigation": "Lesson navigation",
+      "previousLesson": "Previous lesson: {title}",
+      "allLessons": "All lessons ({count})"
+    },
+    "builder": {
+      "steps": {
+        "details": {
+          "tab": "Details",
+          "tabHelp": "Title, categories, promise",
+          "stage": "Course basics",
+          "stageHelp": "Info, cover, promise",
+          "heading": "Set the course foundation.",
+          "help": "This is the information learners use to understand the promise of the course."
+        },
+        "pricing": {
+          "tab": "Pricing",
+          "tabHelp": "Payment, drip, preview",
+          "stageHelp": "Access model",
+          "heading": "Package the offer.",
+          "help": "Set access, price, release timing, and the free preview lesson before publishing."
+        },
+        "content": {
+          "tab": "Curriculum",
+          "tabHelp": "Modules, lessons, uploads",
+          "stageHelp": "Modules and lessons",
+          "heading": "Build the curriculum.",
+          "help": "Create the modules, lessons, links, text content, and upload targets that power the members area."
+        },
+        "review": {
+          "tab": "Publish",
+          "tabHelp": "Readiness and launch",
+          "stageHelp": "Final checks",
+          "heading": "Publish to the marketplace.",
+          "help": "Your professional credential is the gate. Once the product checks pass, publishing opens sales and the public link immediately."
+        }
+      },
+      "drip": {
+        "instant": {
+          "label": "Instant access",
+          "detail": "Every lesson is available immediately after enrollment."
+        },
+        "sequential_progress": {
+          "label": "Sequential progress",
+          "detail": "The next lesson opens after the previous lesson is completed."
+        },
+        "time_drip_lesson": {
+          "label": "One lesson per interval",
+          "detail": "Release lessons gradually based on enrollment date."
+        },
+        "time_drip_module": {
+          "label": "One module per interval",
+          "detail": "Release modules gradually based on enrollment date."
+        },
+        "time_drip_custom": {
+          "label": "Custom lesson schedule",
+          "detail": "Use each lesson's delay field for precise release timing."
+        }
+      },
+      "paymentModels": {
+        "one_time": {
+          "title": "One-time payment",
+          "description": "Learners pay once and get lifetime access.",
+          "feature1": "Best for complete courses",
+          "feature2": "Lifetime access for learners"
+        },
+        "free": {
+          "title": "Free",
+          "description": "No payment required. Useful for lead-gen or trial cohorts.",
+          "feature1": "Opens enrollment without checkout",
+          "feature2": "Useful for previews or pilots"
+        },
+        "subscription_monthly": {
+          "title": "Monthly subscription",
+          "description": "Recurring monthly billing.",
+          "feature1": "Recurring access",
+          "feature2": "Cancellation controls"
+        },
+        "subscription_yearly": {
+          "title": "Yearly subscription",
+          "description": "Recurring yearly billing.",
+          "feature1": "Annual access",
+          "feature2": "Renewal reminders"
+        }
+      },
+      "errors": {
+        "notFound": "We could not find this course.",
+        "load": "We could not load this course. Please return to Teacher Studio and try again.",
+        "chooseModule": "Create or choose a module before adding a lesson.",
+        "moduleTitle": "Add a module title before creating the module.",
+        "lessonTitle": "Add a lesson title before creating the lesson.",
+        "moduleTitleMissing": "Module {module} needs a title before saving.",
+        "lessonTitleMissing": "Lesson {lesson} in module {module} needs a title before saving.",
+        "price": "Use a valid non-negative price, or leave the field empty.",
+        "installmentsSave": "Set a valid installment limit before saving.",
+        "category": "Choose at least one marketplace category before publishing.",
+        "paidPrice": "Set a paid price greater than $0, or choose Free as the payment model before publishing.",
+        "installmentsPublish": "Set a valid installment limit before publishing.",
+        "duplicateTitle": "A course with this title already exists. Choose a different name.",
+        "activation": "Activate your storefront to unlock publishing — it is a one-time fee, charged once.",
+        "save": "We could not save this course. Please try again.",
+        "preview": "Clear the invalid free preview or choose a lesson from this course.",
+        "setup": "Teacher setup must be complete before publishing courses.",
+        "verification": "Professional verification must be approved before publishing.",
+        "payouts": "Finish Stripe payout onboarding before publishing a paid course — open the Payouts panel in your studio.",
+        "payment": "Set a valid payment model before publishing.",
+        "publish": "We could not publish this course. Please try again."
+      },
+      "success": {
+        "lessonAdded": "Lesson added — opening the lesson studio once it autosaves…",
+        "draftSaved": "Draft saved.",
+        "published": "Course published. Its product page is now live."
+      },
+      "confirm": {
+        "leave": "This course has unsaved changes. Leave and lose them?",
+        "deleteModuleEmpty": "Delete module \"{title}\"? This cannot be undone after autosave.",
+        "deleteModuleOne": "Delete module \"{title}\" and its {count} lesson? This cannot be undone after autosave.",
+        "deleteModuleMany": "Delete module \"{title}\" and its {count} lessons? This cannot be undone after autosave.",
+        "deleteLesson": "Delete lesson \"{title}\"? This cannot be undone after autosave."
+      },
+      "curriculum": {
+        "untitledModule": "Untitled module",
+        "untitledLesson": "Untitled lesson",
+        "addModule": "Add module",
+        "addLesson": "Add lesson",
+        "moduleTitle": "Module title",
+        "moduleTitlePlaceholder": "Example: Foundations",
+        "moduleDescription": "Module description",
+        "moduleDescriptionExample": "Optional module description. Example: Set up the concepts students need before the practical lessons.",
+        "helpTopic": "Lesson access and drip release",
+        "help": "Use lesson delays to pace access after enrollment. A free preview is optional and must point to a lesson in this course; it helps buyers inspect the teaching style before enrolling.",
+        "moduleForLesson": "Module for this lesson",
+        "chooseModule": "Choose module",
+        "lessonType": "Lesson type",
+        "lessonTitle": "Lesson title",
+        "lessonDuration": "Lesson duration in minutes",
+        "minutes": "Minutes",
+        "delayLabel": "Drip delay in days",
+        "delayPlaceholder": "Drip delay days",
+        "externalLabel": "Lesson external link or replay URL",
+        "externalPlaceholder": "Optional external link or replay URL",
+        "noteLabel": "Lesson note or outcome",
+        "notePlaceholder": "Optional lesson note or outcome",
+        "textLabel": "Lesson text content",
+        "textPlaceholder": "Optional text content, instructions, assignment prompt, or lesson outline.",
+        "moduleDescriptionPlaceholder": "Optional module description",
+        "editNotePlaceholder": "Lesson note or learner outcome",
+        "editTextPlaceholder": "Text content, assignment prompt, or lesson outline",
+        "editExternalPlaceholder": "Optional external link, live replay, or embed URL",
+        "saveErrorTitle": "Autosave failed — use Save draft to enable uploads",
+        "makePreview": "Make this lesson the public free preview.",
+        "editor": "Curriculum editor",
+        "editorHelp": "Edit, reorder, and clean up modules and lessons",
+        "lessonOne": "{count} lesson",
+        "lessonMany": "{count} lessons",
+        "empty": "Add your first module above. Once it exists, you can edit, reorder, and organize its lessons here.",
+        "moduleNumber": "Module {index}",
+        "moduleDescriptionNumber": "Module {index} description",
+        "noteNumber": "Lesson {index} note or outcome",
+        "textNumber": "Lesson {index} text content",
+        "externalNumber": "Lesson {index} external link",
+        "up": "Up",
+        "down": "Down",
+        "delete": "Delete",
+        "moduleEmpty": "This module has no lessons yet.",
+        "type": "Type",
+        "delayDays": "Delay days",
+        "addVideo": "Add video",
+        "saveToUpload": "Save draft to upload",
+        "savingLesson": "Saving lesson…",
+        "deleteLesson": "Delete lesson",
+        "editTitle": "Edit the lesson video, materials, and settings",
+        "addVideoTitle": "Add the lesson video",
+        "editContent": "Edit content",
+        "previewSelected": "Free preview selected",
+        "markPreview": "Mark free preview"
+      },
+      "summary": {
+        "month": " / month",
+        "year": " / year",
+        "setPrice": "Set price",
+        "checks": "{done} of {total} checks ready",
+        "publishPercent": "Publish readiness {percent}%",
+        "percent": "{percent}% ready",
+        "modules": "{count} modules",
+        "lessons": "{count} lessons",
+        "duration": "{duration} total",
+        "structure": "Course structure",
+        "empty": "Start with one module, then add the lessons learners should complete.",
+        "noLessons": "No lessons yet.",
+        "preview": " - preview",
+        "structureCount": "{modules} modules, {lessons} lessons"
+      },
+      "shell": {
+        "chooseCourse": "Choose a course from Teacher Studio before opening the builder.",
+        "loading": "Loading course builder...",
+        "title": "Course builder",
+        "help": "Build the course learners will actually experience: details, modules, lessons, media, pricing, drip rules, and publication checks in one guided workspace.",
+        "shortTitle": "Builder",
+        "legacy": "This course carries a legacy review status. Complete the checks and publish it directly from this workspace.",
+        "published": "This course is live. You can keep improving its content and learner experience without creating a new review cycle.",
+        "reviewNote": "SkillsetMind review note",
+        "unpublished": "This product is not published yet. Students only see it after you publish.",
+        "unpublishedLink": "Open the product panel"
+      },
+      "navigation": {
+        "studio": "Back to Teacher Studio",
+        "manage": "Manage product",
+        "saving": "Saving...",
+        "save": "Save draft",
+        "steps": "Course creation steps",
+        "creation": "Course creation",
+        "next": "Next:",
+        "backTo": "Back to {step}",
+        "continueTo": "Continue to {step}",
+        "back": "Back"
+      },
+      "publish": {
+        "ready": "Course is ready to publish.",
+        "title": "Publish readiness",
+        "heading": "Ready the product for launch",
+        "helpTopic": "Course publishing",
+        "help": "SkillsetMind verifies the professional rather than manually approving every course. Once these product checks pass, an approved creator publishes directly and the marketplace link opens immediately.",
+        "optional": "Optional",
+        "checksHelp": "SkillsetMind gates the professional, not each course. Product, pricing, and payout checks run before the marketplace link opens.",
+        "finish": "Finish the publication checks to go live.",
+        "passed": "Every publish check passed.",
+        "activate": "Activate storefront",
+        "publishing": "Publishing...",
+        "submit": "Publish product"
+      },
+      "details": {
+        "title": "Course title",
+        "categories": "Categories",
+        "categoriesHelp": "Required. Select up to five. The first selected category becomes the primary marketplace category.",
+        "summary": "Course summary",
+        "characters": "{count} characters",
+        "minimumCharacters": "{count}/20 characters minimum for publication",
+        "outcomes": "What learners will learn",
+        "outcomesHelp": "Concrete outcomes shown as the “What you’ll learn” list on the marketplace page. Aim for 4–6.",
+        "outcomeLabel": "Learning outcome {index}",
+        "removeOutcome": "Remove learning outcome {index}",
+        "outcomePlaceholder": "Example: Launch a paid cohort course end to end",
+        "noOutcomes": "No outcomes yet. Add the concrete results a student walks away with.",
+        "addOutcome": "Add learning outcome",
+        "help": "Keep the title specific, the category clear, and the summary focused on learner outcomes. This copy will influence the marketplace page."
+      },
+      "community": {
+        "title": "Course community",
+        "help": "Adds a private discussion space inside the members area where enrolled students can post, comment, and connect. You can turn this on or off at any time, even after publishing.",
+        "enable": "Enable course community",
+        "on": "Community is on. Students see a Community section in this course.",
+        "off": "Community is off. Students only see lessons and resources."
+      },
+      "pricing": {
+        "setup": "Marketplace setup",
+        "model": "Payment model",
+        "helpTopic": "Course pricing",
+        "help": "Choose free access, a one-time purchase, or recurring monthly or yearly access. Paid products require a positive price and payout-ready Stripe Connect account before they can be published.",
+        "price": "Price",
+        "currency": "Currency",
+        "freePlaceholder": "Free course",
+        "pricePlaceholder": "Example: 149",
+        "installments": "Card installments",
+        "installmentsOneTime": "Installments apply only to one-time payments.",
+        "installmentsUnavailable": "Unavailable with the current Stripe account. Stripe requires a Mexico platform account and MXN pricing.",
+        "installmentsCurrency": "Select MXN to configure installments for eligible Mexican cards.",
+        "installmentsEligible": "Eligible cards choose from the plans configured in Stripe. Card issuer and minimum amount rules apply.",
+        "enableInstallments": "Enable card installments",
+        "release": "Content release",
+        "interval": "Interval days",
+        "customHelp": " Set each lesson delay in the curriculum editor.",
+        "preview": "Free preview lesson",
+        "noPreview": "No preview selected yet",
+        "listingHelp": "These fields prepare the public listing. Paid access still requires Stripe checkout before enrollment opens."
+      },
+      "save": {
+        "blocked": "Not saving — {reason}",
+        "reasons": {
+          "price": "fix the price",
+          "installments": "fix the installment limit",
+          "structure": "fix the course structure",
+          "field": "fix the highlighted field"
+        },
+        "saving": "Saving",
+        "pending": "Unsaved changes",
+        "error": "Save failed — use Save draft",
+        "saved": "All changes saved"
+      },
+      "cover": {
+        "help": "Public artwork for the marketplace, the course page, and the student classroom hero. Recommended 16:9, under {limit}.",
+        "alt": "{title} cover",
+        "course": "Course",
+        "emptyHelp": "Add a cover — it appears on the marketplace card, the course page, and the classroom."
+      }
+    },
+    "assets": {
+      "presets": {
+        "module": "Visual cover for one module in the student members area. Shown at 16:10.",
+        "course": "Public artwork for marketplace, course detail, and previews."
+      },
+      "errors": {
+        "load": "We could not load course assets.",
+        "invalidFile": "Use a valid {kind} file under {limit}.",
+        "module": "Choose the module this cover belongs to.",
+        "delete": "We could not delete this asset. Check course ownership and current permissions."
+      },
+      "uploaded": "Asset uploaded.",
+      "label": "Course media library",
+      "title": "Upload covers and manage course media.",
+      "help": "Upload covers for this course and its modules. For per-lesson videos, materials, and thumbnails, open the Lesson Studio from the Curriculum tab.",
+      "count": "{count} uploaded",
+      "coverSet": "Course cover is set. Upload another course cover to replace it.",
+      "uploadType": "Upload type",
+      "uploadingLabel": "Uploading",
+      "targetHelp": "Choose the target and file before uploading.",
+      "imageLimit": "Image up to {limit}.",
+      "assetType": "Asset type",
+      "attachModule": "Attach to module",
+      "addModules": "Add modules first",
+      "chooseModule": "Choose module",
+      "chooseFile": "Choose a {kind} file",
+      "previewHelp": "Mark as free preview asset when it is safe to expose before purchase.",
+      "previewAlt": "Preview of {fileName}",
+      "selected": "Selected: {fileName} ({size})",
+      "upload": "Upload asset",
+      "empty": "No uploaded assets yet. Start with a course or module cover.",
+      "courseGroup": "Course-level assets",
+      "moduleGroup": "Module assets",
+      "lessonGroup": "Lesson assets",
+      "groupEmpty": "Nothing uploaded here yet.",
+      "lesson": "Lesson:",
+      "module": "Module:"
+    },
+    "categorySelect": {
+      "select": "Select up to {max} categories",
+      "primary": "Primary",
+      "label": "Course categories",
+      "keepOne": "Pick the new category first — a course needs at least one.",
+      "maximum": "Maximum categories selected. Remove one to add another.",
+      "swapHelp": "To swap the category, pick the new one first — a course needs at least one."
+    },
+    "currencySelect": {
+      "mostUsed": "Most used",
+      "other": "Other supported currencies"
+    },
+    "readiness": {
+      "items": {
+        "title": {
+          "label": "Course title",
+          "hint": "Give the course a title (3+ characters)."
+        },
+        "summary": {
+          "label": "Summary",
+          "hint": "Write a summary with at least 20 characters."
+        },
+        "category": {
+          "label": "Marketplace category",
+          "hint": "Choose at least one marketplace category."
+        },
+        "cover": {
+          "label": "Cover image",
+          "hint": "Upload a cover — it fronts the product page and marketplace cards."
+        },
+        "module": {
+          "label": "Module",
+          "hint": "Add at least one module."
+        },
+        "lesson": {
+          "label": "Lesson",
+          "hint": "Add at least one lesson."
+        },
+        "pricing": {
+          "label": "Pricing",
+          "hint": "Set a paid price greater than $0, or choose Free."
+        },
+        "outcomes": {
+          "label": "Learning outcomes",
+          "hint": "Add learning outcomes — they lift conversion on the product page."
+        },
+        "installments": {
+          "label": "Installments",
+          "hint": "Set a valid installment limit."
+        },
+        "payouts": {
+          "label": "Stripe payouts",
+          "hint": "Finish Stripe payout onboarding before publishing a paid course."
+        },
+        "verification": {
+          "label": "Professional verification",
+          "hint": "Complete professional verification before publishing.",
+          "optionalHint": "Optional today — becomes required when professional admission opens."
+        }
+      },
+      "groups": {
+        "content": "Content saved",
+        "page": "Page prepared",
+        "sale": "Sale available"
+      },
+      "groupCount": "{done} of {total}"
+    }
+  },
+  "courseMedia": {
+    "assetKinds": {
+      "course_cover": "Course cover",
+      "members_cover": "Members area cover",
+      "module_cover": "Module cover",
+      "lesson_thumbnail": "Lesson thumbnail",
+      "lesson_material": "Lesson material",
+      "lesson_video": "Lesson video",
+      "live_recording": "Live recording"
+    },
+    "upload": {
+      "complete": "Upload complete",
+      "sending": "Sending...",
+      "uploading": "Uploading",
+      "transferred": "{transferred} of {total}",
+      "errors": {
+        "limit": "This file exceeds the current upload limit (~{limit}). Use a YouTube link or a smaller file.",
+        "permission": "You do not have permission to upload files to this course.",
+        "rateLimit": "Too many uploads in the last hour. Wait a little and try again — nothing was lost.",
+        "session": "Your session expired. Sign in again and re-send the file.",
+        "videoPermission": "You do not have permission to upload video to this course.",
+        "videoService": "Our video service did not accept the file just now. Try again in a few minutes.",
+        "interrupted": "The upload was interrupted — usually the connection dropped. Check your internet and send the file again.",
+        "generic": "We could not upload this file. Check the file type and course permissions.",
+        "invalidFile": "Unsupported file type or file too large.",
+        "coverHost": "Cover image URL is not on an allowed media host.",
+        "activation": "Pay the one-time activation fee before uploading course video."
+      }
+    },
+    "preview": {
+      "assetError": "Asset access is protected. Try again after refreshing your session.",
+      "preparingAsset": "Preparing protected asset...",
+      "openFile": "Open file",
+      "download": "Download",
+      "videoError": "We could not load this video. Refresh and try again.",
+      "unavailable": "Video unavailable",
+      "loading": "Loading video...",
+      "preparingPlayback": "Preparing playback."
+    },
+    "watermark": {
+      "learner": "{brandName} learner",
+      "protectedPlayback": "protected playback"
+    }
   }
 }

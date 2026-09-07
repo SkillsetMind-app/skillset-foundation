@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { getAuthRoute, getLoadingRoute, getSafeReturnTo, type AuthPathIntent } from "@/lib/auth/routing";
 import {
   getAuthErrorMessage,
   resendSignupConfirmation,
@@ -24,9 +25,13 @@ const RESEND_COOLDOWN_SECONDS = 60;
 // vem depois (o perfil), para a pessoa saber que vale a pena clicar.
 export function ConfirmEmailGate({
   email,
+  intent = null,
+  returnTo = null,
   onChangeEmail,
 }: {
   email: string;
+  intent?: AuthPathIntent | null;
+  returnTo?: string | null;
   /** Volta ao formulario com o e-mail preenchido, para corrigir. */
   onChangeEmail?: () => void;
 }) {
@@ -52,7 +57,8 @@ export function ConfirmEmailGate({
     setError(null);
     setSent(false);
     try {
-      await resendSignupConfirmation(email);
+      const safeReturnTo = getSafeReturnTo(new URLSearchParams({ returnTo: returnTo ?? "" }));
+      await resendSignupConfirmation(email, getLoadingRoute("welcome", intent, safeReturnTo));
       setSent(true);
       setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (caughtError) {
@@ -111,7 +117,7 @@ export function ConfirmEmailGate({
 
       <p className="text-xs leading-5 text-[var(--color-ink-muted)]">
         {t("auth.signup.confirmAlreadyDone")}{" "}
-        <Link href="/auth?mode=signin" className="font-semibold text-[var(--color-primary)]">
+        <Link href={getAuthRoute("signin", intent, returnTo)} className="font-semibold text-[var(--color-primary)]">
           {t("auth.signup.confirmSignIn")}
         </Link>
       </p>

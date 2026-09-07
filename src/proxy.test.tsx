@@ -4,9 +4,24 @@
 // is not the runtime's own class — jsdom supplies a different one, so this
 // file runs in node rather than the suite default.
 
+import { IncomingMessage } from "node:http";
+import { Socket } from "node:net";
+
 import { NextRequest } from "next/server";
+import { NodeNextRequest } from "next/dist/server/base-http/node";
+import {
+  createRequestStoreForAPI,
+  createRequestStoreForRender,
+} from "next/dist/server/async-storage/request-store";
+import {
+  getRedirectUrl,
+  unstable_doesMiddlewareMatch,
+  unstable_getResponseFromNextConfig,
+} from "next/experimental/testing/server";
 import type { CookieMethodsServer } from "@supabase/ssr";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+import nextConfig from "../next.config";
 
 const mocks = vi.hoisted(() => ({
   notifyOps: vi.fn(),
@@ -48,6 +63,165 @@ async function run(
 afterEach(() => {
   delete process.env.GEO_ALLOWED_COUNTRIES;
   vi.resetAllMocks();
+});
+
+describe("navigation-only platform entry aliases", () => {
+  it.each([
+    ["app.skillsetmind.com", "GET", "/", "/teach"],
+    ["consumer.skillsetmind.com", "GET", "/", "/learn"],
+    ["pay.skillsetmind.com", "HEAD", "/courses/fixture/checkout?offer=launch", "/courses/fixture/checkout?offer=launch"],
+    ["APP.SKILLSETMIND.COM.:443", "HEAD", "/", "/teach"],
+    ["CONSUMER.SKILLSETMIND.COM.:443", "GET", "/", "/learn"],
+    ["PAY.SKILLSETMIND.COM.:443", "GET", "/", "/courses"],
+  ])("redirects %s %s without looking up a teacher or refreshing a session", async (host, method, path, destination) => {
+    vi.resetModules();
+    const { proxy } = await import("@/proxy");
+    const response = await proxy(new NextRequest(`https://${host}${path}`, { method, headers: { host } }));
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(`https://skillsetmind.com${destination}`);
+    expect(response.headers.get("content-security-policy")).toContain("script-src 'self' 'nonce-");
+    expect(response.headers.has("set-cookie")).toBe(false);
+    expect(mocks.resolveHostToUid).not.toHaveBeenCalled();
+    expect(mocks.getSupabaseClientConfig).not.toHaveBeenCalled();
+    expect(mocks.createServerClient).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "app.skillsetmind.com", "consumer.skillsetmind.com", "pay.skillsetmind.com",
+    "APP.SKILLSETMIND.COM.:443", "CONSUMER.SKILLSETMIND.COM.:443", "PAY.SKILLSETMIND.COM.:443",
+  ])(
+    "refuses writes and OPTIONS on %s without consuming or forwarding their bodies",
+    async (host) => {
+      vi.resetModules();
+      const { config, proxy } = await import("@/proxy");
+      for (const path of ["/auth", "/api/payments/checkout", "/api/teach/domains/fixture.png", "/favicon.ico", "/lp", "/lp/fixture"]) {
+        const url = `https://${host}${path}`;
+        // The config tester selects redirects independently of HTTP method.
+        // It must let this request reach the proxy before we assert its 405.
+        const configured = await unstable_getResponseFromNextConfig({ url, headers: { host }, nextConfig });
+        expect(getRedirectUrl(configured), path).toBeNull();
+        expect(unstable_doesMiddlewareMatch({ config, nextConfig, url, headers: { host } }), path).toBe(true);
+        for (const method of ["POST", "OPTIONS"]) {
+          const request = new NextRequest(url, { method, headers: { host }, body: "fixture-only" });
+          const response = await proxy(request);
+          expect(response.status, `${method} ${path}`).toBe(405);
+          expect(response.headers.get("allow")).toBe("GET, HEAD");
+          expect(response.headers.has("location")).toBe(false);
+          expect(response.headers.has("set-cookie")).toBe(false);
+          expect(response.headers.get("content-security-policy")).toContain("script-src 'self' 'nonce-");
+          expect(await response.text()).toBe("");
+          expect(request.bodyUsed).toBe(false);
+        }
+      }
+      expect(mocks.resolveHostToUid).not.toHaveBeenCalled();
+      expect(mocks.getSupabaseClientConfig).not.toHaveBeenCalled();
+      expect(mocks.createServerClient).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe("Next routing configuration for platform entry aliases", () => {
+  const excludedPaths = [
+    "/api/teach/domains/fixture.png",
+    "/courses/fixture.jpg",
+    "/_next/static/fixture.js",
+    "/_next/image?url=%2Ffixture.png&w=64&q=90",
+    "/favicon.ico",
+  ];
+
+  it.each(["app", "consumer", "pay"])("matches every path on %s, including a DNS root dot, case and port", async (entry) => {
+    const { config } = await import("@/proxy");
+    for (const host of [`${entry}.skillsetmind.com`, `${entry.toUpperCase()}.SKILLSETMIND.COM.:443`]) {
+      for (const path of ["/", ...excludedPaths, "/lp", "/lp/fixture"]) {
+        expect(unstable_doesMiddlewareMatch({ config, nextConfig, url: `https://${host}${path}`, headers: { host } }), `${host}${path}`).toBe(true);
+      }
+    }
+  });
+
+  it.each([
+    "skillsetmind.com", "www.skillsetmind.com", "lp.skillsetmind.com",
+    "skillset-foundation-qa.vercel.app", "localhost:3000", "[::1]:3000",
+    "teacher.example.test", "myapp.skillsetmind.com", "app.skillsetmind.com.evil.test",
+  ])("preserves the existing matcher exclusions on %s", async (host) => {
+    const { config } = await import("@/proxy");
+    for (const path of excludedPaths) {
+      expect(unstable_doesMiddlewareMatch({ config, nextConfig, url: `https://${host}${path}`, headers: { host } }), path).toBe(false);
+    }
+    expect(unstable_doesMiddlewareMatch({ config, nextConfig, url: `https://${host}/auth`, headers: { host } })).toBe(true);
+  });
+
+  it.each(["app", "consumer", "pay"])("lets /lp reach the proxy on %s instead of the earlier landing redirect", async (entry) => {
+    const { config, proxy } = await import("@/proxy");
+    for (const host of [`${entry}.skillsetmind.com`, `${entry.toUpperCase()}.SKILLSETMIND.COM.:443`]) {
+      for (const path of ["/lp", "/lp/fixture"]) {
+        const url = `https://${host}${path}?offer=fixture`;
+        const configured = await unstable_getResponseFromNextConfig({ url, headers: { host }, nextConfig });
+        expect(getRedirectUrl(configured), url).toBeNull();
+        expect(unstable_doesMiddlewareMatch({ config, nextConfig, url, headers: { host } })).toBe(true);
+        for (const method of ["GET", "HEAD"]) {
+          const response = await proxy(new NextRequest(url, { method, headers: { host } }));
+          expect(response.status).toBe(307);
+          expect(response.headers.get("location")).toBe(`https://skillsetmind.com${path}?offer=fixture`);
+        }
+      }
+    }
+    expect(mocks.resolveHostToUid).not.toHaveBeenCalled();
+    expect(mocks.getSupabaseClientConfig).not.toHaveBeenCalled();
+    expect(mocks.createServerClient).not.toHaveBeenCalled();
+  });
+
+  it.each(["app", "consumer", "pay"])("keeps native trailing-slash normalization on %s before refusing the preserved POST", async (entry) => {
+    const { config, proxy } = await import("@/proxy");
+    for (const host of [`${entry}.skillsetmind.com`, `${entry.toUpperCase()}.SKILLSETMIND.COM.:443`]) {
+      for (const path of ["/auth/", "/lp/", "/lp/fixture/", "/api/teach/domains/fixture.png/"]) {
+        const url = `https://${host}${path}?from=fixture`;
+        const request = new NextRequest(url, { method: "POST", headers: { host }, body: "fixture-only" });
+        const normalized = await unstable_getResponseFromNextConfig({ url, headers: { host }, nextConfig });
+        expect(normalized.status).toBe(308);
+        const destination = new URL(getRedirectUrl(normalized)!);
+        expect(destination.origin).toBe(new URL(url).origin);
+        expect(destination.pathname).toBe(path.slice(0, -1));
+        expect(destination.search).toBe("?from=fixture");
+
+        // The config tester uses GET internally. Simulate the follow-up that
+        // a 308 requires: same origin, with the original method and body.
+        const followedRequest = new NextRequest(destination, {
+          method: request.method,
+          headers: request.headers,
+          body: request.body,
+        });
+        expect(followedRequest.method).toBe("POST");
+        const canonical = await unstable_getResponseFromNextConfig({ url: destination.href, headers: { host }, nextConfig });
+        expect(getRedirectUrl(canonical)).toBeNull();
+        expect(unstable_doesMiddlewareMatch({ config, nextConfig, url: destination.href, headers: { host } })).toBe(true);
+        const response = await proxy(followedRequest);
+        expect(response.status).toBe(405);
+        expect(response.headers.get("allow")).toBe("GET, HEAD");
+        expect(response.headers.has("location")).toBe(false);
+        expect(response.headers.has("set-cookie")).toBe(false);
+        expect(await response.text()).toBe("");
+        expect(request.bodyUsed).toBe(false);
+        expect(followedRequest.bodyUsed).toBe(false);
+      }
+    }
+    expect(mocks.resolveHostToUid).not.toHaveBeenCalled();
+    expect(mocks.getSupabaseClientConfig).not.toHaveBeenCalled();
+    expect(mocks.createServerClient).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "skillsetmind.com", "www.skillsetmind.com", "lp.skillsetmind.com", "teacher.example.test",
+    "skillset-foundation-qa.vercel.app", "localhost:3000", "myapp.skillsetmind.com", "app.skillsetmind.com.evil.test",
+  ])("keeps the existing /lp redirect on %s", async (host) => {
+    for (const path of ["/lp", "/lp/fixture"]) {
+      const response = await unstable_getResponseFromNextConfig({ url: `https://${host}${path}?from=fixture`, headers: { host }, nextConfig });
+      expect(response.status).toBe(307);
+      const destination = new URL(getRedirectUrl(response)!);
+      expect(destination.origin).toBe("https://lp.skillsetmind.com");
+      expect(destination.pathname).toBe(path === "/lp" ? "/" : "/fixture");
+      expect(destination.searchParams.get("from")).toBe("fixture");
+    }
+  });
 });
 
 describe("country filter in the proxy", () => {
@@ -163,7 +337,7 @@ describe("security headers across proxy response paths", () => {
     expect(mocks.createServerClient).not.toHaveBeenCalled();
   });
 
-  it("preserves refreshed cookies and forwards the SDK anti-cache headers", async () => {
+  it.each(["renewed-fixture", ""])("forwards session value %j to the native API cookie store and preserves security headers", async (sessionValue) => {
     vi.resetModules();
     mocks.getSupabaseClientConfig.mockReturnValue({
       url: "https://project.example.test",
@@ -177,11 +351,15 @@ describe("security headers across proxy response paths", () => {
     const getUser = vi.fn();
     mocks.createServerClient.mockImplementation((_url: string, _key: string, options: { cookies: CookieMethodsServer }) => {
       getUser.mockImplementation(async () => {
-        expect(await options.cookies.getAll!()).toEqual([{ name: "audit-session", value: "old-fixture" }]);
+        expect(await options.cookies.getAll!()).toEqual([
+          { name: "audit-session", value: "old-fixture" },
+          { name: "audit-session.1", value: "old-chunk-fixture" },
+          { name: "skillset.locale", value: "es" },
+        ]);
         await options.cookies.setAll!([
           {
             name: "audit-session",
-            value: "renewed-fixture",
+            value: sessionValue,
             options: { path: "/", httpOnly: true, secure: true, sameSite: "lax" },
           },
           { name: "audit-session.1", value: "", options: { path: "/", maxAge: 0 } },
@@ -192,22 +370,64 @@ describe("security headers across proxy response paths", () => {
     });
     const { proxy } = await import("@/proxy");
     const request = new NextRequest("https://www.skillsetmind.com/api/auth/pwned-check?prefix=ABCDE", {
-      headers: { host: "www.skillsetmind.com", cookie: "audit-session=old-fixture" },
+      headers: {
+        host: "www.skillsetmind.com",
+        cookie: "audit-session=old-fixture; audit-session.1=old-chunk-fixture; skillset.locale=es",
+      },
     });
     const response = await proxy(request);
 
     expect(getUser).toHaveBeenCalledOnce();
-    expect(request.cookies.get("audit-session")?.value).toBe("renewed-fixture");
+    expect(request.cookies.get("audit-session")?.value).toBe(sessionValue);
     expect(response.cookies.get("audit-session")).toMatchObject({
-      value: "renewed-fixture", path: "/", httpOnly: true, secure: true, sameSite: "lax",
+      value: sessionValue, path: "/", httpOnly: true, secure: true, sameSite: "lax",
     });
     expect(response.cookies.get("audit-session.1")).toMatchObject({ value: "", maxAge: 0 });
-    // This is how Next makes middleware cookies visible to cookies() in RSC/API.
-    expect(response.headers.get("x-middleware-set-cookie")).toContain("audit-session=renewed-fixture");
+    expect(response.headers.get("x-middleware-set-cookie")).toContain(`audit-session=${sessionValue}`);
     for (const [name, value] of Object.entries(antiCacheHeaders)) {
       expect(response.headers.get(name), name).toBe(value);
     }
     const nonce = response.headers.get("x-middleware-request-x-nonce");
     expect(response.headers.get("content-security-policy")).toContain(`'nonce-${nonce}'`);
+
+    // Compose the request headers exactly as the Next router protocol carries
+    // them, then exercise its real stores instead of mocking cookies().
+    const forwardedHeaders: Record<string, string> = {};
+    for (const name of response.headers.get("x-middleware-override-headers")!.split(",")) {
+      forwardedHeaders[name] = response.headers.get(`x-middleware-request-${name}`)!;
+    }
+    forwardedHeaders["x-middleware-set-cookie"] = response.headers.get("x-middleware-set-cookie")!;
+    const implicitTags = { tags: [], expirationsByCacheKind: new Map() };
+
+    // Node RSC already merges middleware Set-Cookie into its cookie store.
+    // Keep this input separate: reading that store may update its headers.
+    const socket = new Socket();
+    try {
+      const incoming = new IncomingMessage(socket);
+      incoming.method = "GET";
+      incoming.url = request.url;
+      incoming.headers = { ...forwardedHeaders };
+      const renderStore = createRequestStoreForRender(
+        new NodeNextRequest(incoming), undefined, request.nextUrl, {}, implicitTags,
+        undefined, undefined, false, undefined, null, null,
+      );
+      expect(renderStore.cookies.get("audit-session")?.value ?? "").toBe(sessionValue);
+    } finally {
+      socket.destroy();
+    }
+
+    // App Route uses a NextRequest, not Node's headers object. Its cookies()
+    // reader must receive the renewed/cleared session in this same request.
+    const routeRequest = new NextRequest(request.url, { headers: forwardedHeaders });
+    const routeStore = createRequestStoreForAPI(routeRequest, routeRequest.nextUrl, implicitTags, undefined, undefined);
+    const routeCookies = routeStore.userspaceMutableCookies.getAll();
+    expect(routeCookies.find(({ name }) => name === "audit-session")?.value).toBe(sessionValue);
+    expect(routeCookies).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "audit-session", value: sessionValue }),
+      expect.objectContaining({ name: "audit-session.1", value: "" }),
+      expect.objectContaining({ name: "skillset.locale", value: "es" }),
+    ]));
+    expect(routeRequest.headers.get("x-nonce")).toBe(nonce);
+    expect(routeRequest.headers.get("content-security-policy")).toBe(response.headers.get("content-security-policy"));
   });
 });

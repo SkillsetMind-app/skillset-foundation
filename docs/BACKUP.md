@@ -26,28 +26,32 @@ GitHub Action (daily 04:10 UTC)
   ├── Storage objects ───┤──> tar.gz ──> age encrypt ──> Cloudflare R2 (30d)
   └── manifest ──────────┘                                      │
                                                                 v
-                                          Contabo VPS (nightly) ─── restores it
+                                     Configured VPS (nightly) ─── restores it
                                                                     into local
                                                                     Postgres
 ```
 
-The archive is encrypted **before it leaves the runner**. Neither R2 nor the VPS
-ever holds readable user data — only the age private key opens it, and that key
-is never in CI.
+The archive is encrypted **before it leaves the runner**, so R2 receives an
+encrypted file. The VPS decrypts it and keeps a restricted, readable database
+and file copy for recovery. The age private key opens the archive and is never
+in CI; this does not imply that the VPS disks are encrypted.
 
 The CI half only ever writes. It cannot list the bucket and it cannot delete
 from it, so the workflow contains no step that does either — verification and
 retention happen outside CI on purpose.
 
-The VPS half is the part that matters most: it restores the backup **every
-night**. A backup nobody has restored is a guess. This one gets proven daily, so
-a broken backup shows up the next morning rather than during an outage.
+When installed, configured and scheduled, the VPS drill restores the newest
+backup each night and records whether verification passed. The read-only
+preflight on 2026-09-06 found no drill, helper, environment file, age key or
+matching cron on the checked VPS. These are tested scripts; an operational
+standby has not been verified. Confirm a recent successful drill and its
+`last-drill.json` before relying on a retained recovery copy.
 
 | Layer | Covers | Recovery time |
 |---|---|---|
 | Supabase daily (7d) | dropped table, bad migration | minutes |
 | R2 archive (30d) | lost account, damage found late, deleted files | ~1 hour |
-| VPS standby | Supabase itself unavailable | already restored |
+| Configured VPS standby | Supabase itself unavailable | depends on the last successful drill |
 
 ## One-time setup
 
@@ -112,7 +116,7 @@ Ubuntu 22.04/24.04:
 
 ```bash
 # Postgres 17 to match the server
-sudo apt update && sudo apt install -y postgresql-17 age rclone rsync
+sudo apt update && sudo apt install -y postgresql-17 age rclone rsync python3
 
 # Bind to localhost only. This box holds student data; it must not answer
 # from the internet.
@@ -145,12 +149,17 @@ Install the drill and schedule it two hours after the backup job:
 
 ```bash
 sudo install -m 700 scripts/vps-restore-drill.sh /opt/skillsetmind/vps-restore-drill.sh
+sudo install -m 700 scripts/backup-storage.py /opt/skillsetmind/backup-storage.py
 sudo crontab -e
 # 10 6 * * * /opt/skillsetmind/vps-restore-drill.sh >> /var/log/skillsetmind-drill.log 2>&1
 ```
 
 Run it once manually first. It fails loudly if the newest backup is more than
 48 hours old — that is the alarm for "the GitHub Action quietly stopped".
+Install the current drill and `backup-storage.py` together. Both restore scripts
+require this Python standard-library helper beside them to validate Storage
+before database restoration or replacing the retained files. Validation needs
+no Supabase credentials and makes no network request.
 
 ## Restoring for real
 
@@ -165,17 +174,49 @@ AGE_KEY_FILE=~/skillsetmind-backup.key ./scripts/restore-backup.sh backup.tar.gz
 ```bash
 AGE_KEY_FILE=~/skillsetmind-backup.key \
 PROTECTED_PROJECT_REF=<production-ref> \
-./scripts/restore-backup.sh backup.tar.gz.age --target "postgres://..."
+./scripts/restore-backup.sh backup.tar.gz.age --target "postgres://..." \
+  --storage-out ./recovered-storage
 ```
 
 The script refuses the project named in `PROTECTED_PROJECT_REF` and asks you to
 type `RESTORE` before touching anything. The dump is `--clean --if-exists`: it
 drops and recreates every table it contains.
 
+`--storage-out` must name a new directory. The files remain there after the
+temporary decrypted database dump is removed. Inspect mode exports nothing.
+On POSIX systems the export directory and the retained `DR_DIR` are protected
+with mode `0700`; an existing `DR_DIR` is restricted before the drill writes.
+The export copies bytes without importing the source directory's permissions.
+The drill opens the dump as the operator and passes it to postgres on stdin,
+so postgres does not need access through the private temporary directory.
+The manifest count is checked before restoration; the VPS drill also checks
+the restored Storage metadata before replacing its previous file copy.
+
+Storage normally retains the existing `storage/<bucket>/<object-key>` layout.
+Storage folders are key prefixes, so an object named `foo` can coexist with
+`foo/bar`. If object paths collide on disk, the archive instead contains
+`storage/objects/<number>` blobs and a version 2 `storage/INDEX.json`. Each index
+entry records the original `bucket`, `key`, and relative blob `path`. The index
+is retained by `--storage-out` and the VPS drill, and is excluded from the
+object count after its version, unique mappings, paths and file inventory pass
+validation. Symlinks and missing or unindexed blobs are refused.
+The manifest declares `storage_layout` as `paths-v1` or `indexed-v2`, so a
+missing index cannot be mistaken for an ordinary directory. Old manifests
+without this field remain supported; unknown or conflicting formats are refused.
+
+Current readers accept both layouts. Older readers count the index as an extra
+file and reject indexed archives before restoring the database or replacing
+Storage, so update the readers before enabling the new exporter. To re-upload
+an indexed export, read each entry's `path` for its bytes and use its original
+`bucket` and `key` in the Storage API; do not upload the index or use the numbered
+blob filenames as object keys. The drill preserves recovery material beside
+the database; it does not run or restore a functioning Storage API.
+
 **Real recovery order**, if production is actually lost:
 
 1. Restore the database into a **new** Supabase project.
-2. Re-upload `storage/` through the Storage API — the dump does not carry files.
+2. Re-upload the exported blobs through the Storage API, using `INDEX.json` when
+   present to recover their original bucket and key — the dump does not carry files.
 3. Point `NEXT_PUBLIC_SUPABASE_URL` and the keys at the new project.
 4. Redo Authentication → URL Configuration and the six email templates. They are
    dashboard config, not database rows, so **no backup contains them**. The

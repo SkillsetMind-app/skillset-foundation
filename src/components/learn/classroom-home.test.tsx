@@ -1,11 +1,16 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
+import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import type { ClassroomTab } from "@/domain/classroom-tabs";
 import type { Course } from "@/domain/learning";
+import type { CourseAsset } from "@/domain/course-asset";
+import { subscribeToCourseAssets, getProtectedCourseAssetObjectUrl } from "@/lib/data/course-assets";
 import { countOpenCommunityQuestions } from "@/lib/data/community-posts";
 import { recordLessonProgress } from "@/lib/data/lesson-progress";
+import { addLessonComment, deleteLessonComment, subscribeToLessonComments } from "@/lib/data/lesson-comments";
+import { subscribeToEnrollment } from "@/lib/data/enrollments";
 
 /**
  * Reanalise item 8, renderizado de verdade (matricula real, nao preview):
@@ -36,7 +41,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("next/navigation", () => ({
   useSearchParams: () => mocks.searchParams,
   usePathname: () => mocks.pathname,
-  useRouter: () => ({ push: vi.fn(), replace: mocks.replace }),
+  useRouter: () => ({ push: vi.fn(), replace: mocks.replace, refresh: vi.fn() }),
 }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
@@ -113,6 +118,12 @@ vi.mock("@/lib/data/course-assets", () => ({
 // do contador dizem o que a leitura devolve.
 vi.mock("@/lib/data/community-posts", () => ({
   countOpenCommunityQuestions: vi.fn(() => new Promise<number>(() => {})),
+  // Comentarios da aula sob o player (P3) abrem as mesmas inscricoes do feed.
+  // Aqui nunca respondem: a sala renderiza antes do feed chegar, e o alvo
+  // deste arquivo e a sala, nao a lista (lesson-comments.test.tsx).
+  subscribeToCommunityPosts: vi.fn(() => vi.fn()),
+  subscribeToCourseCommunityComments: vi.fn(() => vi.fn()),
+  createCommunityPost: vi.fn(),
 }));
 
 vi.mock("@/lib/data/course-events", () => ({
@@ -174,6 +185,11 @@ const course = {
   ],
 } as unknown as Course;
 
+function ChangeLanguage() {
+  const { locale, setLocale } = useTranslation();
+  return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
+}
+
 function renderClassroom(
   search: string,
   completed: string[] = [],
@@ -191,6 +207,9 @@ describe("sala de aula com matricula real", () => {
     mocks.replace.mockReset();
     mocks.enrollmentSubscriptions = 0;
     vi.mocked(recordLessonProgress).mockClear();
+    vi.mocked(addLessonComment).mockReset();
+    vi.mocked(deleteLessonComment).mockClear();
+    vi.mocked(subscribeToLessonComments).mockClear();
     Element.prototype.scrollIntoView = vi.fn();
     window.requestAnimationFrame = (cb: FrameRequestCallback) => {
       cb(0);
@@ -198,11 +217,261 @@ describe("sala de aula com matricula real", () => {
     };
   });
 
+  it("translates the lesson body, completion controls and compact header without changing the lesson or progress", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1&campaign=literal");
+    mocks.pathname = "/learn/courses/demo-course";
+    mocks.completed = [];
+    render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace course={course} /></I18nProvider>);
+    expect(screen.getByRole("link", { name: "← Mis cursos" })).toHaveAttribute("href", "/learn");
+    expect(screen.getByRole("progressbar", { name: "0% completado" })).toBeInTheDocument();
+    expect(screen.getByText("Lección de texto")).toBeInTheDocument();
+    expect(screen.getByText("Contenido de la lección")).toBeInTheDocument();
+    expect(screen.getByText("Vista previa gratuita")).toBeInTheDocument();
+    expect(screen.getByText("Debate de la lección")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Marcar como completada y continuar" })).toBeInTheDocument();
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(mocks.searchParams.toString()).toBe("lesson=l1&campaign=literal");
+    expect(recordLessonProgress).not.toHaveBeenCalled();
+  });
+
+  it("translates loading and a later enrollment failure without reconnecting on locale change", () => {
+    mocks.searchParams = new URLSearchParams();
+    mocks.completed = [];
+    let fail!: (error: Error) => void;
+    vi.mocked(subscribeToEnrollment).mockClear();
+    vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, _next, onError) => {
+      fail = onError;
+      return vi.fn();
+    });
+    render(<I18nProvider initialLocale="en"><ChangeLanguage /><EnrolledCourseWorkspace course={course} /></I18nProvider>);
+    expect(screen.getByRole("status")).toHaveTextContent("Loading course workspace...");
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando el espacio del curso...");
+    act(() => fail(new Error("private enrollment detail")));
+    expect(screen.getByText("No pudimos confirmar tu inscripción en este curso.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Abrir página del curso" })).toHaveAttribute("href", "/courses/demo-course");
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByText("We could not confirm your enrollment for this course.")).toBeInTheDocument();
+    expect(subscribeToEnrollment).toHaveBeenCalledTimes(1);
+    expect(recordLessonProgress).not.toHaveBeenCalled();
+  });
+
+  it("localizes course resource loading, kind, count and empty state with the existing asset contract", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    let emit!: (assets: CourseAsset[]) => void;
+    vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_id, callback) => {
+      emit = callback;
+      return vi.fn();
+    });
+    render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace course={course} tab="materials" enableFirestoreAssets /></I18nProvider>);
+    expect(screen.getByText("Cargando recursos del curso...")).toBeInTheDocument();
+    act(() => emit([{ id: "file-test", courseId: course.id, ownerId: "teacher-1", lessonId: null,
+      kind: "lesson_material", fileName: "Worksheet $$50 $&.pdf", contentType: "application/pdf",
+      size: 512, storagePath: "courses/course-1/assets/file-test.pdf", isPreview: false }]));
+    expect(screen.getByText("1 archivo")).toBeInTheDocument();
+    expect(screen.getByText("Worksheet $$50 $&.pdf")).toBeInTheDocument();
+    expect(screen.getByText(/Material de la lección/)).toBeInTheDocument();
+    expect(screen.getByText("Solo inscritos")).toBeInTheDocument();
+    act(() => emit([]));
+    expect(screen.getByText("0 archivos")).toBeInTheDocument();
+    expect(screen.getByText("Este curso todavía no tiene recursos generales adjuntos.")).toBeInTheDocument();
+  });
+
+  it("keeps the discussion draft and focused field through locale changes and the original pending publish", async () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    vi.mocked(subscribeToLessonComments).mockImplementationOnce((_courseId, _lessonId, onNext) => {
+      onNext([]);
+      return vi.fn();
+    });
+    let resolve!: () => void;
+    vi.mocked(addLessonComment).mockReturnValue(new Promise<void>((done) => { resolve = done; }));
+    render(<I18nProvider initialLocale="en"><ChangeLanguage /><EnrolledCourseWorkspace course={course} /></I18nProvider>);
+    const body = "Question $$50 $& — sin traducir";
+    const field = screen.getByRole("textbox", { name: "Write a comment for this lesson" });
+    fireEvent.change(field, { target: { value: body } });
+    field.focus();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByRole("textbox", { name: "Escribe un comentario para esta lección" })).toBe(field);
+    expect(field).toHaveFocus();
+    expect(field).toHaveValue(body);
+    expect(screen.getByText("0 comentarios")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Publicar comentario" }));
+    expect(screen.getByRole("button", { name: "Publicando..." })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByRole("button", { name: "Publishing..." })).toBeDisabled();
+    expect(field).toHaveValue(body);
+    expect(addLessonComment).toHaveBeenCalledExactlyOnceWith({ courseId: course.id, lessonId: "l1",
+      authorId: "student-1", authorName: "SkillsetMind learner", body });
+    expect(subscribeToLessonComments).toHaveBeenCalledTimes(1);
+    expect(mocks.enrollmentSubscriptions).toBe(1);
+    await act(async () => resolve());
+    expect(field).toHaveValue("");
+    expect(recordLessonProgress).not.toHaveBeenCalled();
+  });
+
+  it("localizes a stored discussion error without reloading or publishing and keeps the draft", async () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    vi.mocked(subscribeToLessonComments).mockImplementationOnce((_courseId, _lessonId, _onNext, onError) => {
+      onError(new Error("private internal detail"));
+      return vi.fn();
+    });
+    render(<I18nProvider initialLocale="en"><ChangeLanguage /><EnrolledCourseWorkspace course={course} /></I18nProvider>);
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Draft $$ $&" } });
+    expect(screen.getByText("We could not load this lesson discussion.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByText("No pudimos cargar el debate de esta lección.")).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toHaveValue("Draft $$ $&");
+    expect(subscribeToLessonComments).toHaveBeenCalledTimes(1);
+    expect(addLessonComment).not.toHaveBeenCalled();
+    vi.mocked(addLessonComment).mockRejectedValueOnce(new Error("private internal detail"));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Publicar comentario" })); });
+    expect(screen.getByText("No pudimos publicar tu comentario.")).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toHaveValue("Draft $$ $&");
+    expect(screen.queryByText("private internal detail")).not.toBeInTheDocument();
+  });
+
+  it("keeps the preview discussion read-only in Spanish", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace course={course} previewMode /></I18nProvider>);
+    const field = screen.getByRole("textbox", { name: "Escribe un comentario para esta lección" });
+    expect(field).toBeDisabled();
+    expect(field).toHaveAttribute("placeholder", "La vista previa no permite publicar comentarios.");
+    expect(screen.getByRole("button", { name: "Publicar comentario" })).toBeDisabled();
+    expect(subscribeToLessonComments).not.toHaveBeenCalled();
+    expect(addLessonComment).not.toHaveBeenCalled();
+    expect(deleteLessonComment).not.toHaveBeenCalled();
+    expect(recordLessonProgress).not.toHaveBeenCalled();
+  });
+
+  it("localizes the certificate link without changing its destination", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l2");
+    mocks.completed = ["l1", "l2"];
+    render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace course={course} /></I18nProvider>);
+    expect(screen.getByRole("link", { name: "Obtener certificado" })).toHaveAttribute("href", "/learn/credentials");
+    expect(recordLessonProgress).not.toHaveBeenCalled();
+  });
+
+  it("translates the sequential lock reason while keeping protected content and completion unavailable", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l2");
+    mocks.completed = [];
+    render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace
+      course={{ ...course, dripStrategy: "sequential_progress" }} /></I18nProvider>);
+    expect(screen.getByRole("heading", { name: "Lección bloqueada" })).toBeInTheDocument();
+    expect(screen.getByText("Completa la lección anterior para desbloquearla")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Lección bloqueada" })).toBeDisabled();
+    expect(screen.queryByText("Two")).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(recordLessonProgress).not.toHaveBeenCalled();
+  });
+
+  it("passes the translated mini-player label without replacing the real iframe or resetting dismissal", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    let observe!: IntersectionObserverCallback;
+    const disconnect = vi.fn();
+    vi.stubGlobal("IntersectionObserver", class {
+      constructor(callback: IntersectionObserverCallback) { observe = callback; }
+      observe() {}
+      disconnect() { disconnect(); }
+    });
+    try {
+      const videoCourse = { ...course, modules: course.modules.map((module) => ({ ...module,
+        lessons: module.lessons.map((lesson) => lesson.id === "l1" ? {
+          ...lesson, type: "video" as const, videoSource: "youtube" as const,
+          externalUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        } : lesson),
+      })) };
+      const { container, unmount } = render(<I18nProvider initialLocale="en"><ChangeLanguage />
+        <EnrolledCourseWorkspace course={videoCourse} />
+      </I18nProvider>);
+      const iframe = container.querySelector("iframe");
+      expect(iframe).not.toBeNull();
+      act(() => observe([{ isIntersecting: false, boundingClientRect: { top: -400, height: 200 } } as IntersectionObserverEntry], {} as IntersectionObserver));
+      fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+      const close = screen.getByRole("button", { name: "Cerrar mini reproductor" });
+      expect(container.querySelector("iframe")).toBe(iframe);
+      expect(container.querySelector(".member-video-dock")).toHaveAttribute("data-mini", "true");
+      fireEvent.click(close);
+      fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+      expect(container.querySelector(".member-video-dock")).toHaveAttribute("data-mini", "false");
+      expect(container.querySelector("iframe")).toBe(iframe);
+      expect(disconnect).not.toHaveBeenCalled();
+      expect(recordLessonProgress).not.toHaveBeenCalled();
+      unmount();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("translates all seven shared tab labels without changing routes or authored lesson names", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l2");
+    mocks.pathname = "/learn/courses/demo-course";
+    mocks.completed = [];
+    const authoredTitle = "Lección $$50; código literal $&.";
+    const localizedCourse = {
+      ...course,
+      communityEnabled: true,
+      modules: course.modules.map((module) => ({ ...module, lessons: module.lessons.map((lesson) => lesson.id === "l1" ? { ...lesson, title: authoredTitle } : lesson) })),
+    };
+    render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace course={localizedCourse} enableFirestoreAssets /></I18nProvider>);
+    const tabs = screen.getByRole("navigation", { name: "Secciones del curso" });
+    for (const [tab, label] of [["lesson", "Lección"], ["materials", "Materiales"], ["lives", "En vivo"], ["community", "Comunidad"], ["messages", "Mensajes"], ["review", "Reseña"], ["about", "Acerca del curso"]]) {
+      expect(within(tabs).getByRole("link", { name: label })).toHaveAttribute("href", `/learn/courses/demo-course${tab === "lesson" ? "" : `/${tab}`}?lesson=l2`);
+    }
+    expect(screen.getByRole("button", { name: `Lección anterior: ${authoredTitle}` })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Todas las lecciones (2)" })).toBeInTheDocument();
+    expect(mocks.enrollmentSubscriptions).toBe(1);
+    expect(recordLessonProgress).not.toHaveBeenCalled();
+  });
+
   it("primeira visita (sem ?lesson=, sem progresso): a capa inteira, sem cabecalho curto", () => {
     renderClassroom("");
 
     expect(document.querySelector(".members-hero")).not.toBeNull();
     expect(document.querySelector(".member-classroom-head")).toBeNull();
+  });
+
+  it("uses subscribed lesson thumbnails in both lists without signing private content", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    vi.mocked(subscribeToCourseAssets).mockClear();
+    vi.mocked(getProtectedCourseAssetObjectUrl).mockClear();
+    let emit!: (assets: CourseAsset[]) => void;
+    vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_id, callback) => {
+      emit = callback;
+      return vi.fn();
+    });
+    const { container, rerender } = render(<EnrolledCourseWorkspace course={course} enableFirestoreAssets />);
+    const thumbnail = (patch: Partial<CourseAsset>): CourseAsset => ({
+      id: "old", courseId: course.id, ownerId: "teacher-1", lessonId: "l1",
+      kind: "lesson_thumbnail", fileName: "z-old.png", contentType: "image/png", size: 123,
+      storagePath: "courses/course-1/assets/old.png", downloadUrl: "/old.png", isPreview: false,
+      createdAt: "2026-09-01", ...patch,
+    });
+    act(() => emit([
+      thumbnail({}),
+      thumbnail({ id: "new", fileName: "a-new.png", createdAt: "2026-09-02", downloadUrl: "/new.png" }),
+      thumbnail({ id: "tracker", createdAt: "2026-09-03", downloadUrl: "https://tracker.invalid/secret.png" }),
+      thumbnail({ id: "private", lessonId: "l2", storagePath: "private.png", downloadUrl: null }),
+      thumbnail({ id: "other-course", courseId: "other", lessonId: "l2", downloadUrl: "/other-course.png" }),
+    ]));
+    expect(container.querySelector('img[src="/new.png"]')).not.toBeNull();
+    expect(container.querySelector('img[src="/old.png"]')).toBeNull();
+    expect(container.querySelector('img[src="/other-course.png"]')).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /All lessons/ }));
+    const overlay = screen.getByRole("dialog", { name: "All lessons" });
+    expect(overlay.querySelector('img[src="/new.png"]')).not.toBeNull();
+    act(() => emit([]));
+    expect(container.querySelector('img[src="/new.png"]')).toBeNull();
+    act(() => emit([thumbnail({})]));
+    expect(container.querySelector('img[src="/old.png"]')).not.toBeNull();
+    expect(subscribeToCourseAssets).toHaveBeenCalledTimes(1);
+    expect(getProtectedCourseAssetObjectUrl).not.toHaveBeenCalled();
+    rerender(<EnrolledCourseWorkspace course={{ ...course, id: "other", slug: "other" }} enableFirestoreAssets />);
+    expect(container.querySelector('img[src="/old.png"]')).toBeNull();
   });
 
   it("em aula (?lesson=): cabecalho curto com '← My courses' no lugar da capa", () => {

@@ -77,7 +77,7 @@ export function getSafeMediaUrl(
   if (!value) return null;
   const trimmed = value.trim();
   const maxLength = opts?.maxLength ?? 2048;
-  if (!trimmed || trimmed.length > maxLength) return null;
+  if (!trimmed || trimmed.length > maxLength || /[\t\r\n]/.test(trimmed)) return null;
 
   // Same-origin relative asset
   if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {

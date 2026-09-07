@@ -38,6 +38,14 @@ describe("isValidExternalEventUrl", () => {
 });
 
 describe("formatEventDateTime", () => {
+  it("accepts the classroom locale and fallback while keeping existing defaults", () => {
+    const value = "2026-03-14T15:30:00.000Z";
+    expect(formatEventDateTime(value, "es", "Fecha pendiente")).toBe(
+      new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)),
+    );
+    expect(formatEventDateTime("invalid", "es", "Fecha pendiente")).toBe("Fecha pendiente");
+    expect(formatEventDateTime("invalid")).toBe("Date pending");
+  });
   it("degrades to a placeholder instead of printing Invalid Date", () => {
     expect(formatEventDateTime("")).toBe("Date pending");
     expect(formatEventDateTime("not a date")).toBe("Date pending");

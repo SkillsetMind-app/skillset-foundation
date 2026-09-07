@@ -51,6 +51,7 @@ describe("LoginForm with Google", () => {
     // The real call navigates the browser away and never resolves.
     mocks.signInWithGoogle.mockReturnValue(new Promise(() => {}));
     mocks.getPendingSecondFactor.mockResolvedValue(null);
+    mocks.searchParams = new URLSearchParams();
   });
 
   afterEach(cleanup);
@@ -79,6 +80,27 @@ describe("LoginForm with Google", () => {
     expect(mocks.signInWithGoogle).toHaveBeenCalledWith(
       "/loading?next=welcome&path=teacher",
     );
+  });
+
+  it.each([
+    ["/courses/focus/checkout?offer=LAUNCH&priceId=price-1", "/courses/focus/checkout?offer=LAUNCH&priceId=price-1"],
+    ["https://outside.example/checkout", null],
+    ["//outside.example/checkout", null],
+    ["/\\outside.example/checkout", null],
+    ["/auth?mode=signup", null],
+  ])("keeps only a safe destination in the create-account link: %s", (returnTo, expected) => {
+    mocks.searchParams = new URLSearchParams({
+      path: "teacher", returnTo: returnTo!, next: "https://outside.example", external: "discard",
+    });
+    render(<LoginForm />);
+    const destination = new URL(screen.getByRole("link", { name: "auth.createAccount" }).getAttribute("href")!, "https://skillset.test");
+    expect(destination.pathname).toBe("/auth");
+    expect(destination.searchParams.get("mode")).toBe("signup");
+    expect(destination.searchParams.get("path")).toBe("teacher");
+    expect(destination.searchParams.get("returnTo")).toBe(expected);
+    expect(destination.searchParams.has("next")).toBe(false);
+    expect(destination.searchParams.has("external")).toBe(false);
+    expect(mocks.signInWithGoogle).not.toHaveBeenCalled();
   });
 });
 

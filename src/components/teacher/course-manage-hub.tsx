@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
 import {
   CouponsPanel,
@@ -16,6 +17,7 @@ import {
 import { CourseShareLink } from "@/components/teacher/course-share-link";
 import { CourseOffersPanel } from "@/components/teacher/course-offers-panel";
 import { CourseOverviewPanel } from "@/components/teacher/course-overview-panel";
+import { ReadinessGroups } from "@/components/teacher/readiness-groups";
 import { CourseStudentRoster } from "@/components/teacher/course-student-roster";
 import { CourseLandingEditor } from "@/components/teacher/course-landing-editor";
 import { SalesPageEditor } from "@/components/teacher/sales-page-editor";
@@ -31,6 +33,7 @@ import { usePublishGates } from "@/components/teacher/use-publish-gates";
 import { getCourseReadiness } from "@/domain/course-readiness";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { teacherCanPublishCourse } from "@/domain/teacher-course";
+import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 import {
   setOwnCourseFeatured,
   subscribeToTeacherCourse,
@@ -42,63 +45,60 @@ import {
 // Sections that aren't built yet render as honest roadmap cards — never as
 // fake-active features (platform "no fake data" rule).
 
-// Hotmart product hub tab order (macro IA) — labels in Skillset voice.
+type Translate = (key: string) => string;
+
+// Hotmart product hub tab order (macro IA) — labels resolved at render so they
+// follow the active locale. Tabs that mirror a sidebar entry reuse its key.
 const manageSections = [
-  { id: "overview", label: "Panel" },
-  { id: "links", label: "Promo links" },
-  { id: "basic", label: "Basic info" },
-  { id: "pricing", label: "Pricing & offers" },
-  { id: "members", label: "Members area" },
-  { id: "students", label: "Students" },
-  { id: "page", label: "Product page" },
-  { id: "content", label: "Content" },
-  { id: "coupons", label: "Coupons" },
-  { id: "tax", label: "Tax collection" },
-  { id: "tools", label: "Tools" },
-  { id: "sales", label: "Sales" },
+  { id: "overview", labelKey: "creatorPanel.hub.sections.overview" },
+  { id: "links", labelKey: "creatorPanel.hub.sections.links" },
+  { id: "basic", labelKey: "creatorPanel.hub.sections.basic" },
+  { id: "pricing", labelKey: "creatorPanel.hub.sections.pricing" },
+  { id: "members", labelKey: "creatorPanel.hub.sections.members" },
+  { id: "students", labelKey: "creatorPanel.hub.sections.students" },
+  { id: "page", labelKey: "creatorPanel.hub.sections.page" },
+  { id: "content", labelKey: "creatorPanel.hub.sections.content" },
+  { id: "coupons", labelKey: "platform.nav.coupons" },
+  { id: "tax", labelKey: "creatorPanel.hub.sections.tax" },
+  { id: "tools", labelKey: "creatorPanel.hub.sections.tools" },
+  { id: "sales", labelKey: "platform.nav.sales" },
 ] as const;
 
 const roadmapSections = [
   {
     id: "assistant",
-    label: "Sales assistant",
-    title: "The sales assistant is on the roadmap.",
-    description:
-      "An AI assistant trained on this course's content that answers buyer questions on the product page. It isn't live yet — we'd rather tell you that than show a mock. Pricing is announced when it ships.",
+    labelKey: "creatorPanel.hub.roadmap.assistantLabel",
+    titleKey: "creatorPanel.hub.roadmap.assistantTitle",
+    descriptionKey: "creatorPanel.hub.roadmap.assistantDescription",
   },
 ] as const;
 
 type SectionId = (typeof manageSections)[number]["id"] | (typeof roadmapSections)[number]["id"];
 
-const statusCopy: Record<TeacherCourse["status"], string> = {
-  draft:
-    "Private draft — only you can see this course. Complete the checklist, then publish when ready.",
-  in_review: "Legacy review status — open the builder to complete the checks and publish directly.",
-  needs_changes:
-    "Changes were previously requested. Address the note, update the course, and publish when ready.",
-  published: "Live on the marketplace. Students can enroll right now.",
-  inactive: "Hidden from the marketplace. An approved professional can republish it directly.",
-};
-
 function isPaidCourse(course: TeacherCourse): boolean {
   return course.paymentType !== "free" && (course.priceAmountMinor ?? 0) > 0;
 }
 
-function priceLabel(course: TeacherCourse): string {
+function priceLabel(course: TeacherCourse, t: Translate): string {
   if (!isPaidCourse(course)) {
-    return "Free";
+    return t("publicCourses.free");
   }
   const amount = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: (course.currency ?? "USD").toUpperCase(),
   }).format((course.priceAmountMinor ?? 0) / 100);
   if (course.paymentType === "subscription_monthly") {
-    return `${amount} / month`;
+    return t("creatorPanel.hub.price.perMonth").replace("{amount}", () => amount);
   }
   if (course.paymentType === "subscription_yearly") {
-    return `${amount} / year`;
+    return t("creatorPanel.hub.price.perYear").replace("{amount}", () => amount);
   }
   return amount;
+}
+
+// Plural pairs live in the dictionary; the number is data, never translated.
+function countLabel(t: Translate, oneKey: string, manyKey: string, count: number): string {
+  return t(count === 1 ? oneKey : manyKey).replace("{count}", () => String(count));
 }
 
 function DetailRow({ label, value }: { label: string; value: ReactNode }) {
@@ -135,8 +135,11 @@ function MarketplaceHighlightPanel({
   planId: PlanId;
   usedSlots: number;
 }) {
+  const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  // The RPC's refusal is data and is shown verbatim; our own fallback is kept
+  // as a dictionary key so it follows a locale switch while the card is open.
+  const [error, setError] = useState<{ message: string } | { key: string } | null>(null);
 
   const featured = course.featured === true;
   const limit = effectiveLimit(planId, "featuredSlots");
@@ -149,23 +152,25 @@ function MarketplaceHighlightPanel({
   const canToggle = published && (featured || quota.canConsume);
 
   const gateReason = !published
-    ? "Publish the course first — only live courses can be highlighted."
+    ? t("creatorPanel.hub.highlight.gatePublish")
     : quota.lockedOnPlan
-      ? `Marketplace highlights start on the ${upgradeTo ? planById(upgradeTo).name : "paid"} plan.`
+      ? t("creatorPanel.hub.highlight.gatePlan").replace("{plan}", () =>
+          upgradeTo ? planById(upgradeTo).name : t("creatorPanel.hub.highlight.paidPlan")
+        )
       : !quota.canConsume
-        ? `You're using all ${formatLimit(limit)} highlights on your plan. Remove one from another course first.`
+        ? t("creatorPanel.hub.highlight.gateQuota").replace("{limit}", () => formatLimit(limit))
         : "";
 
   const handleToggle = async () => {
     setSaving(true);
-    setError("");
+    setError(null);
     try {
       await setOwnCourseFeatured(course.id, !featured);
     } catch (toggleError) {
       setError(
         toggleError instanceof Error && toggleError.message
-          ? toggleError.message
-          : "Could not update the marketplace highlight."
+          ? { message: toggleError.message }
+          : { key: "creatorPanel.hub.highlight.updateError" }
       );
     } finally {
       setSaving(false);
@@ -174,16 +179,19 @@ function MarketplaceHighlightPanel({
 
   return (
     <PanelCard
-      title="Marketplace highlight"
-      description="Highlighted courses are pinned above the rest of the catalog. Your plan includes a set number of highlights at a time."
+      title={t("creatorPanel.hub.highlight.title")}
+      description={t("creatorPanel.hub.highlight.description")}
     >
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border fine-rule bg-white px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-[var(--color-ink)]">
-            {featured ? "Highlighted in the marketplace" : "Not highlighted"}
+            {featured ? t("creatorPanel.hub.highlight.on") : t("creatorPanel.hub.highlight.off")}
           </p>
           <p className="mt-0.5 text-xs text-[var(--color-ink-muted)]">
-            {quota.used} of {formatLimit(limit)} highlights used on the {planById(planId).name} plan
+            {t("creatorPanel.hub.highlight.usage")
+              .replace("{used}", () => String(quota.used))
+              .replace("{limit}", () => formatLimit(limit))
+              .replace("{plan}", () => planById(planId).name)}
           </p>
         </div>
         <button
@@ -192,7 +200,11 @@ function MarketplaceHighlightPanel({
           disabled={saving || !canToggle}
           className={`${featured ? "button-outline" : "button-solid"} px-4 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50`}
         >
-          {saving ? "Saving..." : featured ? "Remove highlight" : "Highlight this course"}
+          {saving
+            ? t("creatorPanel.hub.highlight.saving")
+            : featured
+              ? t("creatorPanel.hub.highlight.remove")
+              : t("creatorPanel.hub.highlight.add")}
         </button>
       </div>
       {gateReason ? (
@@ -202,14 +214,16 @@ function MarketplaceHighlightPanel({
             <>
               {" "}
               <Link href="/account/plans" className="font-semibold text-[var(--color-primary)] underline">
-                See plans
+                {t("creatorPanel.hub.highlight.seePlans")}
               </Link>
             </>
           ) : null}
         </p>
       ) : null}
       {error ? (
-        <p className="mt-3 text-xs font-semibold text-[var(--color-accent-fg)]">{error}</p>
+        <p className="mt-3 text-xs font-semibold text-[var(--color-accent-fg)]">
+          {"message" in error ? error.message : t(error.key)}
+        </p>
       ) : null}
     </PanelCard>
   );
@@ -217,6 +231,7 @@ function MarketplaceHighlightPanel({
 
 export function CourseManageHub({ courseId }: { courseId: string }) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   // Deep-link from studio checklist (?section=pricing) — read during render
@@ -303,7 +318,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   if (!courseLoaded) {
     return (
       <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-sm text-[var(--color-ink-soft)]">Loading course...</p>
+        <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorPanel.hub.loading")}</p>
       </section>
     );
   }
@@ -314,13 +329,13 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     return (
       <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
         <h2 className="text-lg font-semibold text-[var(--color-ink)]">
-          This course isn&apos;t in your studio.
+          {t("creatorPanel.hub.notFound.title")}
         </h2>
         <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
-          It may have been deleted, or it belongs to another creator.
+          {t("creatorPanel.hub.notFound.description")}
         </p>
         <Link href="/teach/builder" className="button-outline mt-4 inline-flex px-4 py-2 text-xs">
-          Back to my courses
+          {t("creatorPanel.hub.notFound.back")}
         </Link>
       </section>
     );
@@ -336,6 +351,21 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   // the two subscriptions land the same toggle a beat apart.
   const featuredSlotsUsed =
     switchableCourses.filter((candidate) => candidate.featured).length + (course.featured ? 1 : 0);
+  // What travels with a promo link when the creator shares it; an untitled
+  // draft still needs a readable line in the WhatsApp message.
+  const courseTitle = course.title || t("creatorPanel.hub.header.courseFallback");
+  const modulesLabel = countLabel(
+    t,
+    "creatorPanel.modulesOne",
+    "creatorPanel.modulesMany",
+    course.modules.length
+  );
+  const lessonsLabel = countLabel(
+    t,
+    "publicCourses.lessonOne",
+    "publicCourses.lessonMany",
+    course.lessonCount
+  );
 
   return (
     <div className="grid gap-5">
@@ -345,7 +375,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
           className="mb-4 inline-flex min-h-11 items-center gap-2 text-xs font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"
         >
           <ArrowLeft aria-hidden="true" size={14} strokeWidth={1.9} />
-          My products
+          {t("platform.nav.courseBuilder")}
         </Link>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-4">
@@ -354,18 +384,21 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={course.coverImageUrl}
-                  alt={`${course.title || "Course"} cover`}
+                  alt={t("creatorPanel.hub.header.coverAlt").replace(
+                    "{title}",
+                    () => course.title || t("creatorPanel.hub.header.courseFallback")
+                  )}
                   className="h-full w-full object-cover"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                  No cover
+                  {t("creatorPanel.hub.header.noCover")}
                 </div>
               )}
             </div>
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                Course management
+                {t("creatorPanel.hub.header.eyebrow")}
               </p>
               <h1 className="mt-1 truncate text-xl font-semibold text-[var(--color-ink)]">
                 {course.title}
@@ -373,8 +406,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <StatusChip status={course.status} />
                 <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                  {course.modules.length} modules - {course.lessonCount} lessons -{" "}
-                  {priceLabel(course)}
+                  {modulesLabel} - {lessonsLabel} - {priceLabel(course, t)}
                 </span>
               </div>
             </div>
@@ -382,7 +414,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
           <div className="flex flex-wrap items-center gap-2">
             {switchableCourses.length > 0 ? (
               <select
-                aria-label="Switch course"
+                aria-label={t("creatorPanel.hub.header.switchCourse")}
                 value={course.id}
                 onChange={(event) => router.push(`/teach/courses/${event.target.value}/manage`)}
                 className="min-h-11 rounded-[6px] border fine-rule bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink)]"
@@ -399,7 +431,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=details`}
               className="button-solid px-4 text-xs"
             >
-              Edit in Builder
+              {t("creatorPanel.hub.editInBuilder")}
             </Link>
           </div>
         </div>
@@ -408,11 +440,11 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
       <div className="grid gap-5 lg:grid-cols-[240px_1fr] lg:items-start">
         <nav
           ref={menuRef}
-          aria-label="Course management sections"
+          aria-label={t("creatorPanel.hub.nav.label")}
           className="min-w-0 border-b border-[var(--color-line)] bg-white pb-2 lg:sticky lg:top-4 lg:max-h-[var(--course-nav-height)] lg:overflow-y-auto lg:overscroll-contain lg:rounded-[8px] lg:border lg:p-2"
         >
           <p className="hidden px-2 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)] lg:block">
-            Manage
+            {t("creatorPanel.hub.nav.manage")}
           </p>
           <div className="flex gap-1 overflow-x-auto lg:grid">
             {manageSections.map((item) => (
@@ -426,12 +458,12 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                     : "border-transparent text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)]"
                 }`}
               >
-                {item.label}
+                {t(item.labelKey)}
               </button>
             ))}
           </div>
           <p className="hidden px-2 pb-2 pt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)] lg:block">
-            On the roadmap
+            {t("creatorPanel.hub.nav.roadmap")}
           </p>
           <div className="hidden gap-1 lg:grid">
             {roadmapSections.map((item) => (
@@ -445,7 +477,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                     : "text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-hover)]"
                 }`}
               >
-                {item.label}
+                {t(item.labelKey)}
               </button>
             ))}
           </div>
@@ -461,7 +493,10 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
           ) : null}
 
           {section === "overview" ? (
-            <PanelCard title="Publish checklist" description={statusCopy[course.status]}>
+            <PanelCard
+              title={t("creatorPanel.hub.checklist.title")}
+              description={t(`creatorPanel.hub.status.${course.status}`)}
+            >
               <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--color-surface-hover)]">
                 <div
                   data-testid="publish-readiness-bar"
@@ -470,10 +505,15 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 />
               </div>
               <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                {readiness.doneCount} of {readiness.total} required steps done · {readiness.percent}% ready
+                {t("creatorPanel.hub.checklist.progress")
+                  .replace("{done}", () => String(readiness.doneCount))
+                  .replace("{total}", () => String(readiness.total))
+                  .replace("{percent}", () => String(readiness.percent))}
               </p>
-              <ul className="mt-4 grid gap-3">
-                {readiness.items.map((item) => (
+              <ReadinessGroups
+                readiness={readiness}
+                className="mt-4 grid gap-5"
+                renderItem={(item) => (
                   <li key={item.id} className="flex items-start gap-3">
                     <span
                       aria-hidden
@@ -490,7 +530,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                         {item.label}
                         {item.optional ? (
                           <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                            Optional
+                            {t("creatorPanel.hub.checklist.optional")}
                           </span>
                         ) : null}
                       </p>
@@ -503,19 +543,19 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                               href="/teach/verification"
                               className="font-semibold text-[var(--color-primary)] underline"
                             >
-                              Open verification
+                              {t("creatorPanel.hub.checklist.openVerification")}
                             </Link>
                           </>
                         ) : null}
                       </p>
                     </div>
                   </li>
-                ))}
-              </ul>
+                )}
+              />
               {course.reviewNote ? (
                 <div className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.18)] bg-white px-4 py-3">
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
-                    SkillsetMind review note
+                    {t("creatorPanel.hub.checklist.reviewNote")}
                   </p>
                   <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
                     {course.reviewNote}
@@ -527,7 +567,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=review`}
                   className="button-solid mt-5 inline-flex px-5 py-2.5 text-xs"
                 >
-                  Review & publish
+                  {t("creatorPanel.hub.checklist.reviewPublish")}
                 </Link>
               ) : null}
             </PanelCard>
@@ -543,32 +583,48 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
 
           {section === "links" ? (
             <PanelCard
-              title="Promo links"
+              title={t("creatorPanel.hub.sections.links")}
               description={
                 course.status === "published"
-                  ? "Share these anywhere you promote the course."
-                  : "Links you'll share once the course is published. Until then the product page opens only for you."
+                  ? t("creatorPanel.hub.links.descriptionLive")
+                  : t("creatorPanel.hub.links.descriptionDraft")
               }
             >
-              <CourseShareLink label="Checkout" path={`/courses/${encodeURIComponent(courseId)}/checkout`} />
-              <CourseShareLink label="Product page" path={`/courses/${encodeURIComponent(courseId)}`} />
+              <CourseShareLink
+                label={t("creatorPanel.hub.links.checkout")}
+                path={`/courses/${encodeURIComponent(courseId)}/checkout`}
+                title={courseTitle}
+              />
+              <CourseShareLink
+                label={t("creatorPanel.hub.sections.page")}
+                path={`/courses/${encodeURIComponent(courseId)}`}
+                title={courseTitle}
+              />
             </PanelCard>
           ) : null}
 
           {section === "basic" ? (
             <PanelCard
-              title="Basic info"
-              description="Identity shown across the marketplace and product page. Edit these fields in the Builder."
+              title={t("creatorPanel.hub.sections.basic")}
+              description={t("creatorPanel.hub.basic.description")}
             >
               <div className="mt-4">
-                <DetailRow label="Title" value={course.title} />
-                <DetailRow label="Category" value={course.category} />
-                {course.categories && course.categories.length > 1 ? (
-                  <DetailRow label="All categories" value={course.categories.join(", ")} />
-                ) : null}
-                <DetailRow label="Summary" value={course.summary || "—"} />
+                <DetailRow label={t("creatorPanel.hub.basic.title")} value={course.title} />
                 <DetailRow
-                  label="Learning outcomes"
+                  label={t("creatorPanel.hub.basic.category")}
+                  value={getCourseCategoryLabel(course.category, t)}
+                />
+                {course.categories && course.categories.length > 1 ? (
+                  <DetailRow
+                    label={t("creatorPanel.hub.basic.allCategories")}
+                    value={course.categories
+                      .map((category) => getCourseCategoryLabel(category, t))
+                      .join(", ")}
+                  />
+                ) : null}
+                <DetailRow label={t("creatorPanel.hub.basic.summary")} value={course.summary || "—"} />
+                <DetailRow
+                  label={t("creatorPanel.hub.basic.outcomes")}
                   value={
                     course.learningOutcomes?.length ? (
                       <ul className="list-disc pl-4">
@@ -577,20 +633,24 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                         ))}
                       </ul>
                     ) : (
-                      "None yet"
+                      t("creatorPanel.hub.basic.noneYet")
                     )
                   }
                 />
                 <DetailRow
-                  label="Cover image"
-                  value={course.coverImageUrl ? "Uploaded" : "Missing"}
+                  label={t("creatorPanel.hub.basic.cover")}
+                  value={
+                    course.coverImageUrl
+                      ? t("creatorPanel.hub.basic.uploaded")
+                      : t("creatorPanel.hub.basic.missing")
+                  }
                 />
               </div>
               <Link
                 href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=details`}
                 className="button-outline mt-5 inline-flex px-4 py-2 text-xs"
               >
-                Edit basics in Builder
+                {t("creatorPanel.hub.basic.edit")}
               </Link>
             </PanelCard>
           ) : null}
@@ -598,28 +658,37 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
           {section === "pricing" ? (
             <div className="grid gap-4">
               <PanelCard
-                title="Pricing & checkout"
-                description="Set the access model and base commercial terms, then create targeted offers for distinct buyer links."
+                title={t("creatorPanel.hub.pricing.title")}
+                description={t("creatorPanel.hub.pricing.description")}
               >
                 <div className="mt-4">
-                  <DetailRow label="Price" value={priceLabel(course)} />
+                  <DetailRow label={t("creatorPanel.hub.pricing.price")} value={priceLabel(course, t)} />
                   <DetailRow
-                    label="Payment type"
-                    value={(course.paymentType ?? "one_time").replaceAll("_", " ")}
+                    label={t("creatorPanel.hub.pricing.paymentType")}
+                    value={t(`creatorPanel.paymentType.${course.paymentType ?? "one_time"}`)}
                   />
                   <DetailRow
-                    label="Installments"
+                    label={t("creatorPanel.hub.pricing.installments")}
                     value={
                       course.installmentsEnabled
-                        ? `Up to ${course.installmentsMax ?? 1}x`
-                        : "Disabled"
+                        ? t("creatorPanel.hub.pricing.installmentsUpTo").replace("{max}", () =>
+                            String(course.installmentsMax ?? 1)
+                          )
+                        : t("creatorPanel.disabled")
                     }
                   />
-                  <DetailRow label="Checkout" value="Secure Stripe checkout" />
+                  <DetailRow
+                    label={t("creatorPanel.hub.links.checkout")}
+                    value={t("creatorPanel.hub.pricing.stripeCheckout")}
+                  />
                   {paid ? (
                     <DetailRow
-                      label="Stripe payouts"
-                      value={account.payoutsReady ? "Ready" : "Onboarding incomplete"}
+                      label={t("creatorPanel.hub.pricing.payouts")}
+                      value={
+                        account.payoutsReady
+                          ? t("creatorPanel.hub.pricing.payoutsReady")
+                          : t("creatorPanel.hub.pricing.payoutsIncomplete")
+                      }
                     />
                   ) : null}
                 </div>
@@ -628,26 +697,32 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                     href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=pricing`}
                     className="button-outline px-4 py-2 text-xs"
                   >
-                    Edit pricing in Builder
+                    {t("creatorPanel.hub.pricing.edit")}
                   </Link>
                   {paid && !account.payoutsReady ? (
                     <Link
                       href="/account/payments#stripe-connect"
                       className="button-solid px-4 py-2 text-xs"
                     >
-                      Finish payout onboarding
+                      {t("creatorPanel.hub.pricing.finishOnboarding")}
                     </Link>
                   ) : null}
                 </div>
               </PanelCard>
-              <CourseOffersPanel courseId={course.id} defaultCurrency={course.currency ?? "USD"} />
+              <CourseOffersPanel
+                courseId={course.id}
+                courseTitle={courseTitle}
+                defaultCurrency={course.currency ?? "USD"}
+              />
             </div>
           ) : null}
 
           {section === "content" ? (
             <PanelCard
-              title="Content"
-              description={`${course.modules.length} modules and ${course.lessonCount} lessons in the curriculum.`}
+              title={t("creatorPanel.hub.sections.content")}
+              description={t("creatorPanel.hub.content.description")
+                .replace("{modules}", () => modulesLabel)
+                .replace("{lessons}", () => lessonsLabel)}
             >
               {course.modules.length ? (
                 <ol className="mt-4 grid gap-2">
@@ -660,37 +735,57 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                         {index + 1}. {courseModule.title}
                       </p>
                       <p className="text-xs text-[var(--color-ink-muted)]">
-                        {courseModule.lessons.length} lessons
+                        {countLabel(
+                          t,
+                          "publicCourses.lessonOne",
+                          "publicCourses.lessonMany",
+                          courseModule.lessons.length
+                        )}
                       </p>
                     </li>
                   ))}
                 </ol>
               ) : (
                 <p className="mt-4 text-sm text-[var(--color-ink-soft)]">
-                  No modules yet — build the curriculum in the Builder.
+                  {t("creatorPanel.hub.content.empty")}
                 </p>
               )}
               <Link
                 href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=content`}
                 className="button-outline mt-5 inline-flex px-4 py-2 text-xs"
               >
-                Edit content in Builder
+                {t("creatorPanel.hub.content.edit")}
               </Link>
             </PanelCard>
           ) : null}
 
           {section === "members" ? (
             <PanelCard
-              title="Members area"
-              description="The workspace enrolled students land in after purchase."
+              title={t("creatorPanel.hub.sections.members")}
+              description={t("creatorPanel.hub.members.description")}
             >
               <div className="mt-4">
-                <DetailRow label="Theme" value={course.membersTheme ?? "light"} />
-                <DetailRow label="Welcome title" value={course.membersTitle || "Default"} />
-                <DetailRow label="Subtitle" value={course.membersSubtitle || "Default"} />
                 <DetailRow
-                  label="Community"
-                  value={course.communityEnabled ? "Enabled" : "Disabled"}
+                  label={t("creatorPanel.hub.members.theme")}
+                  value={
+                    course.membersTheme === "dark"
+                      ? t("creatorPanel.hub.members.themeDark")
+                      : t("creatorPanel.hub.members.themeLight")
+                  }
+                />
+                <DetailRow
+                  label={t("creatorPanel.hub.members.welcomeTitle")}
+                  value={course.membersTitle || t("creatorPanel.hub.members.default")}
+                />
+                <DetailRow
+                  label={t("creatorPanel.hub.members.subtitle")}
+                  value={course.membersSubtitle || t("creatorPanel.hub.members.default")}
+                />
+                <DetailRow
+                  label={t("creatorPanel.hub.members.community")}
+                  value={
+                    course.communityEnabled ? t("creatorPanel.enabled") : t("creatorPanel.disabled")
+                  }
                 />
               </div>
               <div className="mt-5 flex flex-wrap gap-2">
@@ -698,13 +793,13 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   href={`/teach/builder/${course.id}/preview`}
                   className="button-solid px-4 py-2 text-xs"
                 >
-                  Preview members area
+                  {t("creatorPanel.hub.members.preview")}
                 </Link>
                 <Link
                   href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=members`}
                   className="button-outline px-4 py-2 text-xs"
                 >
-                  Edit in Builder
+                  {t("creatorPanel.hub.editInBuilder")}
                 </Link>
               </div>
             </PanelCard>
@@ -720,14 +815,14 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   the course header, so they are not page-only copy. */}
               <CourseLandingEditor course={course} />
               <PanelCard
-                title="Public product page"
-                description="The buyer-facing URL. Until published, only you can open it."
+                title={t("creatorPanel.hub.page.title")}
+                description={t("creatorPanel.hub.page.description")}
               >
                 <Link
                   href={`/courses/${course.id}`}
                   className="button-solid mt-5 inline-flex px-4 py-2 text-xs"
                 >
-                  Open product page
+                  {t("creatorPanel.hub.page.open")}
                 </Link>
               </PanelCard>
             </div>
@@ -735,15 +830,15 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
 
           {section === "sales" ? (
             <PanelCard
-              title="Sales"
-              description="Orders, refunds, and revenue live in the studio-wide sales dashboard."
+              title={t("platform.nav.sales")}
+              description={t("creatorPanel.hub.sales.description")}
             >
               <div className="mt-5 flex flex-wrap gap-2">
                 <Link href="/teach/sales" className="button-solid px-4 py-2 text-xs">
-                  Open sales dashboard
+                  {t("creatorPanel.hub.sales.open")}
                 </Link>
                 <Link href="/teach/messages" className="button-outline px-4 py-2 text-xs">
-                  Student messages
+                  {t("creatorPanel.hub.sales.messages")}
                 </Link>
               </div>
             </PanelCard>
@@ -751,29 +846,29 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
 
           {section === "tools" ? (
             <PanelCard
-              title="Product tools"
-              description="Open the supporting workspaces used to prepare, promote, and operate this product."
+              title={t("creatorPanel.hub.tools.title")}
+              description={t("creatorPanel.hub.tools.description")}
             >
               <div className="mt-5 grid gap-2 sm:grid-cols-2">
                 {[
                   {
-                    label: "Marketing workspace",
-                    detail: "Pages, media, buyer messages, and promotions",
+                    label: t("creatorPanel.hub.tools.marketing"),
+                    detail: t("creatorPanel.hub.tools.marketingDetail"),
                     href: "/teach/marketing",
                   },
                   {
-                    label: "Media library",
-                    detail: "Course covers and delivery assets",
+                    label: t("platform.nav.mediaLibrary"),
+                    detail: t("creatorPanel.hub.tools.mediaDetail"),
                     href: "/teach/media",
                   },
                   {
-                    label: "Integrations",
-                    detail: "Connected delivery and business services",
+                    label: t("platform.nav.integrations"),
+                    detail: t("creatorPanel.hub.tools.integrationsDetail"),
                     href: "/teach/integrations",
                   },
                   {
-                    label: "Professional verification",
-                    detail: "Credentials and marketplace admission",
+                    label: t("creatorPanel.hub.tools.verification"),
+                    detail: t("creatorPanel.hub.tools.verificationDetail"),
                     href: "/teach/verification",
                   },
                 ].map((tool) => (
@@ -800,15 +895,17 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
 
           {roadmapSections.map((item) =>
             section === item.id ? (
-              <PanelCard key={item.id} title={item.title} description={item.description}>
+              <PanelCard key={item.id} title={t(item.titleKey)} description={t(item.descriptionKey)}>
                 <div className="mt-5 flex flex-wrap gap-2">
                   <a
                     href={`mailto:support@skillsetmind.com?subject=${encodeURIComponent(
-                      `Notify me: ${item.label}`
+                      t("creatorPanel.hub.roadmap.notifySubject").replace("{feature}", () =>
+                        t(item.labelKey)
+                      )
                     )}`}
                     className="button-outline px-4 py-2 text-xs"
                   >
-                    Notify me when it ships
+                    {t("creatorPanel.hub.roadmap.notify")}
                   </a>
                 </div>
               </PanelCard>

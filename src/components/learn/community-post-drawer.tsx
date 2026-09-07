@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle2, HelpCircle, X } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { formatNotificationTime } from "@/components/account/notification-row";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { SkillsetUser } from "@/domain/auth";
 import { isAnswered, isInstructor, postKind, toMillis } from "@/domain/community-feed";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
@@ -39,9 +40,11 @@ export function CommunityPostDrawer({
   canModerate: boolean;
   onClose: () => void;
 }) {
+  const { t, locale } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
   const [body, setBody] = useState("");
   const [isSending, setIsSending] = useState(false);
+  // Chave do dicionario, nao texto: o idioma pode trocar com o erro na tela.
   const [error, setError] = useState("");
 
   useModalFocus(panelRef, true);
@@ -79,7 +82,7 @@ export function CommunityPostDrawer({
     try {
       await setCommunityPostAcceptedAnswer(post.id, commentId);
     } catch {
-      setError("We could not save the answer mark. Try again.");
+      setError("learn.community.drawer.markError");
     }
   }
 
@@ -88,7 +91,7 @@ export function CommunityPostDrawer({
     if (!currentUser) return;
     const next = body.trim();
     if (next.length < 3) {
-      setError("Write a short reply first.");
+      setError("learn.community.card.shortReply");
       return;
     }
     setError("");
@@ -102,7 +105,7 @@ export function CommunityPostDrawer({
       });
       setBody("");
     } catch {
-      setError("We could not publish your reply.");
+      setError("learn.community.card.replyError");
     } finally {
       setIsSending(false);
     }
@@ -125,12 +128,12 @@ export function CommunityPostDrawer({
             className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[var(--color-primary)]"
           >
             <ArrowLeft size={16} aria-hidden="true" />
-            Back to feed
+            {t("learn.community.drawer.back")}
           </button>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("learn.community.drawer.close")}
             className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-soft)]"
           >
             <X size={18} aria-hidden="true" />
@@ -140,10 +143,12 @@ export function CommunityPostDrawer({
         <div className="community-drawer__body">
           <p className="text-xs text-[var(--color-ink-muted)]">
             <span className="text-sm font-semibold text-[var(--color-ink)]">{post.authorName}</span>
-            {isInstructor(post, instructorIds) ? " · Instructor" : ""}
+            {isInstructor(post, instructorIds) ? ` · ${t("learn.community.card.instructor")}` : ""}
             {" · "}
-            {formatNotificationTime(post.createdAt)}
-            {post.lessonTitle ? ` · from ${post.lessonTitle}` : ""}
+            {formatNotificationTime(post.createdAt, t, locale)}
+            {post.lessonTitle
+              ? ` · ${t("learn.community.card.fromLesson").replace("{lesson}", () => post.lessonTitle ?? "")}`
+              : ""}
           </p>
           {kind === "question" ? (
             <span
@@ -154,7 +159,7 @@ export function CommunityPostDrawer({
               }`}
             >
               {answered ? <CheckCircle2 size={12} aria-hidden /> : <HelpCircle size={12} aria-hidden />}
-              {answered ? "Answered" : "Question"}
+              {t(answered ? "learn.community.card.answered" : "learn.community.card.question")}
             </span>
           ) : null}
           {post.title ? (
@@ -164,9 +169,9 @@ export function CommunityPostDrawer({
             <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--color-ink-soft)]">{post.body}</p>
           ) : null}
 
-          <ul className="mt-5 grid gap-2" aria-label="Replies">
+          <ul className="mt-5 grid gap-2" aria-label={t("learn.community.drawer.replies")}>
             {ordered.length === 0 ? (
-              <li className="text-sm text-[var(--color-ink-soft)]">No replies yet. Be the first.</li>
+              <li className="text-sm text-[var(--color-ink-soft)]">{t("learn.community.drawer.noReplies")}</li>
             ) : (
               ordered.map((reply) => {
                 const isAnswer = reply.id === accepted?.id;
@@ -181,14 +186,14 @@ export function CommunityPostDrawer({
                   >
                     <p className="text-xs text-[var(--color-ink-muted)]">
                       <span className="font-semibold text-[var(--color-ink)]">{reply.authorName}</span>
-                      {isInstructor(reply, instructorIds) ? " · Instructor" : ""}
+                      {isInstructor(reply, instructorIds) ? ` · ${t("learn.community.card.instructor")}` : ""}
                       {isAnswer ? (
                         <span className="ml-1 inline-flex items-center gap-0.5 font-bold text-[rgb(21,128,61)]">
-                          <CheckCircle2 size={11} aria-hidden /> answer
+                          <CheckCircle2 size={11} aria-hidden /> {t("learn.community.card.answer")}
                         </span>
                       ) : null}
                       {" · "}
-                      {formatNotificationTime(reply.createdAt)}
+                      {formatNotificationTime(reply.createdAt, t, locale)}
                     </p>
                     <p className="mt-1 whitespace-pre-wrap leading-6 text-[var(--color-ink)]">{reply.body}</p>
                     {canMark ? (
@@ -197,7 +202,7 @@ export function CommunityPostDrawer({
                         onClick={() => void markAnswer(isAnswer ? null : reply.id)}
                         className="mt-2 min-h-11 text-xs font-semibold text-[var(--color-primary)] hover:underline"
                       >
-                        {isAnswer ? "Unmark as the answer" : "Mark as the answer"}
+                        {t(isAnswer ? "learn.community.drawer.unmark" : "learn.community.drawer.mark")}
                       </button>
                     ) : null}
                   </li>
@@ -210,11 +215,11 @@ export function CommunityPostDrawer({
         {currentUser ? (
           <form onSubmit={submitReply} className="community-drawer__reply">
             <label className="flex-1">
-              <span className="sr-only">Add your reply</span>
+              <span className="sr-only">{t("learn.community.drawer.replyLabel")}</span>
               <input
                 value={body}
                 onChange={(event) => setBody(event.target.value)}
-                placeholder="Add your reply…"
+                placeholder={t("learn.community.drawer.replyPlaceholder")}
                 className="field-input min-h-11 w-full"
               />
             </label>
@@ -223,11 +228,11 @@ export function CommunityPostDrawer({
               disabled={isSending}
               className="button-solid min-h-11 px-4 text-sm disabled:opacity-60"
             >
-              {isSending ? "…" : "Reply"}
+              {isSending ? "…" : t("learn.community.drawer.send")}
             </button>
             {error ? (
               <p role="alert" className="basis-full text-xs font-semibold text-[var(--color-danger-fg)]">
-                {error}
+                {t(error)}
               </p>
             ) : null}
           </form>

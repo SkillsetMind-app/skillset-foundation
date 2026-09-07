@@ -27,16 +27,25 @@
 /** The platform's own hostname, used as the redirect target. */
 export const PLATFORM_ORIGIN = "https://skillsetmind.com";
 
+// Entry links use the existing session host; they never start a second login.
+const PLATFORM_ENTRIES = new Map([
+  ["app.skillsetmind.com", "/teach"],
+  ["consumer.skillsetmind.com", "/learn"],
+  ["pay.skillsetmind.com", "/courses"],
+]);
+
 export type HostRouteDecision =
   /** Not a custom domain, or nothing to do — hand the request on untouched. */
   | { kind: "pass" }
   /** Serve this internal path instead, without changing the visible URL. */
   | { kind: "rewrite"; path: string }
   /** Send the visitor to the platform's own hostname. */
-  | { kind: "redirect"; url: string };
+  | { kind: "redirect"; url: string; status?: 307 | 308 }
+  /** Entry aliases do not forward request bodies to another origin. */
+  | { kind: "method-not-allowed" };
 
 /**
- * Paths that must never be touched, on any host. Next internals and the API
+ * Paths left untouched on platform and teacher hosts. Next internals and the API
  * both break in confusing ways if rewritten, and the API is already
  * origin-agnostic.
  */
@@ -62,16 +71,27 @@ const NEVER_TOUCH = [
 const TEACHER_PUBLIC_PREFIXES = ["/courses/", "/instructors/"];
 
 export function decideHostRoute(input: {
-  /** Hostname from the Host header, already lowercased and port-stripped. */
+  /** Hostname normalized by normaliseHostHeader before classification/lookup. */
   hostname: string;
   pathname: string;
   search: string;
+  method?: string;
   /** uid resolved from public_domains, or null when this host is not ours. */
   resolvedUid: string | null;
 }): HostRouteDecision {
-  const { hostname, pathname, search, resolvedUid } = input;
+  const { hostname, pathname, search, resolvedUid, method = "GET" } = input;
 
-  // Assets e API nunca são tocados, em host nenhum: reescrever quebra o Next, e
+  const entryPath = PLATFORM_ENTRIES.get(hostname);
+  if (entryPath) {
+    if (method !== "GET" && method !== "HEAD") return { kind: "method-not-allowed" };
+    return {
+      kind: "redirect",
+      status: 307,
+      url: `${PLATFORM_ORIGIN}${pathname === "/" || pathname === "" ? entryPath : pathname}${search}`,
+    };
+  }
+
+  // Fora dos aliases de entrada, assets e API nunca são tocados: reescrever quebra o Next, e
   // a API já é agnóstica de origem. Vem antes de tudo porque um domínio não
   // resolvido ainda precisa servir os próprios assets enquanto o visitante é
   // mandado embora.
@@ -89,8 +109,8 @@ export function decideHostRoute(input: {
   // O comentário antigo aqui dizia "pode ser o próprio host da plataforma, uma
   // URL de preview ou localhost — em qualquer caso a requisição já está onde
   // deveria" e devolvia `pass`. Essa premissa ficou falsa quando a feature de
-  // domínio próprio entrou: `src/proxy.ts` já descarta isPlatformHost ANTES de
-  // chamar esta função, então o que sobra aqui é justamente o caso perigoso —
+  // domínio próprio entrou: isPlatformHost já passou pela guarda ACIMA,
+  // então o que sobra aqui é justamente o caso perigoso —
   // um hostname anexado ao projeto da Vercel mas ainda NÃO verificado (a rota
   // anexa antes de provar posse), ou um cuja linha sumiu quando o professor
   // desanexou. Nos dois, servir `pass` publicava /login e /signup reais sob um
@@ -122,9 +142,9 @@ export function decideHostRoute(input: {
 }
 
 /**
- * Strips the port and lowercases, which is what a Host header needs before it
- * can be compared with a stored hostname. `example.com:3000` in development and
- * `Example.COM` from a hand-written client both have to match `example.com`.
+ * Strips the port and one DNS root dot, then lowercases for host comparison.
+ * `Example.COM.:3000` and `example.com` must select the same route before any
+ * custom-domain lookup. Bracketed IPv6 follows its existing branch below.
  *
  * IPv6 literals arrive bracketed (`[::1]:3000`), so the port split has to happen
  * after the bracket, not at the first colon.
@@ -140,7 +160,8 @@ export function normaliseHostHeader(header: string | null): string | null {
   }
 
   const colon = trimmed.indexOf(":");
-  return colon === -1 ? trimmed : trimmed.slice(0, colon);
+  const hostname = colon === -1 ? trimmed : trimmed.slice(0, colon);
+  return hostname.replace(/\.$/, "");
 }
 
 /**

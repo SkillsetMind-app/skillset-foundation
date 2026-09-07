@@ -11,6 +11,7 @@ import { getAppUrl } from "@/lib/payments/server/app-url";
 import {
   getOrCreateBillingStripeCustomer,
   getUserRow,
+  hasRetainedActivationPayment,
 } from "@/lib/payments/server/stripe-helpers";
 import { isPlatformFlagOn } from "@/domain/platform-settings";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -111,21 +112,38 @@ export async function POST() {
         && session.metadata?.purpose === ACTIVATION_FEE_CHECKOUT_PURPOSE,
     );
 
-    // The already-paid check cannot rely on that 100-session page: a creator with
-    // 100 newer course-checkout sessions would push their old activation session
-    // off it and get charged twice. Search the PaymentIntents instead — the
-    // create call below mirrors {uid, purpose} onto every activation intent, so
-    // this is authoritative and unpaginated. Search lags ~1min behind writes, so
-    // the session scan above still covers a payment made seconds ago.
-    const paidIntents = await stripe.paymentIntents.search({
-      query: `metadata['uid']:'${uid}' AND metadata['purpose']:'${ACTIVATION_FEE_CHECKOUT_PURPOSE}' AND status:'succeeded'`,
-      limit: 1,
-    });
-    const paidSession = paidIntents.data.length > 0
-      || activationSessions.some(
-        (session) => session.status === "complete" && session.payment_status === "paid",
-      );
-    if (paidSession) {
+    // A paid session/intent still says paid after refund or chargeback. Search
+    // only discovers candidates; the current Charge decides whether any money
+    // was retained. Session candidates also cover the search index's lag.
+    const paymentIntentIds = new Set<string>();
+    for (const session of activationSessions) {
+      if (session.status !== "complete" || session.payment_status !== "paid") continue;
+      const id = typeof session.payment_intent === "string"
+        ? session.payment_intent : session.payment_intent?.id;
+      if (!id) throw new Error("Paid activation session has no payment identity.");
+      paymentIntentIds.add(id);
+    }
+    let page: string | undefined;
+    do {
+      const paidIntents = await stripe.paymentIntents.search({
+        query: `metadata['uid']:'${uid}' AND metadata['purpose']:'${ACTIVATION_FEE_CHECKOUT_PURPOSE}' AND status:'succeeded'`,
+        limit: 100,
+        ...(page ? { page } : {}),
+      });
+      for (const intent of paidIntents.data) paymentIntentIds.add(intent.id);
+      if (paidIntents.has_more && !paidIntents.next_page) {
+        throw new Error("Activation payment search returned an incomplete page.");
+      }
+      page = paidIntents.has_more ? paidIntents.next_page ?? undefined : undefined;
+    } while (page);
+    let paid = false;
+    for (const id of paymentIntentIds) {
+      if (await hasRetainedActivationPayment(stripe, id, uid)) {
+        paid = true;
+        break;
+      }
+    }
+    if (paid) {
       const timestamp = new Date().toISOString();
       const { error } = await admin
         .from("users")

@@ -5,9 +5,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { LessonUnlockState } from "@/domain/drip-policy";
 import type { CourseModule } from "@/domain/learning";
+import { LessonThumbnail } from "@/components/learn/lesson-thumbnail";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 
 type LessonListOverlayProps = {
+  thumbnailUrlByLessonId?: ReadonlyMap<string, string>;
   modules: CourseModule[];
   selectedLessonId: string | null;
   completedLessonIds: string[];
@@ -23,6 +26,7 @@ type LessonListOverlayProps = {
 // ponytail: the parent mounts this only while open, so closing throws the
 // search away for free — no reset effect.
 export function LessonListOverlay({
+  thumbnailUrlByLessonId,
   modules,
   selectedLessonId,
   completedLessonIds,
@@ -30,6 +34,7 @@ export function LessonListOverlay({
   onSelect,
   onClose,
 }: LessonListOverlayProps) {
+  const { t } = useTranslation();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
 
@@ -92,70 +97,73 @@ export function LessonListOverlay({
       <button
         type="button"
         className="absolute inset-0 bg-[rgba(15,39,68,0.62)] backdrop-blur-[2px]"
-        aria-label="Close lesson list"
+        aria-label={t("learn.classroom.curriculum.close")}
         onClick={onClose}
       />
       <div className="relative z-[75] flex w-full max-w-3xl flex-col overflow-hidden bg-white shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:max-h-[86vh] sm:rounded-[8px]">
         <header className="flex items-start justify-between gap-3 border-b border-[var(--color-line)] px-5 py-4 sm:px-6">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-              Curriculum
+              {t("learn.classroom.curriculum.title")}
             </p>
             <h2
               id="lesson-list-overlay-title"
               className="display-title mt-1 text-xl text-[var(--color-primary)] sm:text-2xl"
             >
-              All lessons
+              {t("learn.classroom.curriculum.all")}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="grid size-9 shrink-0 place-items-center rounded-[8px] text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
-            aria-label="Close lesson list"
+            className="grid size-11 shrink-0 place-items-center rounded-[8px] text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
+            aria-label={t("learn.classroom.curriculum.close")}
           >
             <X aria-hidden="true" size={18} strokeWidth={1.8} />
           </button>
         </header>
 
         <div className="border-b border-[var(--color-line)] px-5 py-3 sm:px-6">
-          <label className="flex items-center gap-2 rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3 py-2">
+          <label className="flex min-h-11 items-center gap-2 rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3 py-2">
             <Search
               aria-hidden="true"
               className="text-[var(--color-ink-soft)]"
               size={16}
               strokeWidth={1.8}
             />
-            <span className="sr-only">Search lessons</span>
+            <span className="sr-only">{t("learn.classroom.curriculum.search")}</span>
             <input
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search lessons"
-              className="w-full bg-transparent text-sm text-[var(--color-primary)] outline-none placeholder:text-[var(--color-ink-soft)]"
+              placeholder={t("learn.classroom.curriculum.search")}
+              className="min-w-0 w-full bg-transparent text-sm text-[var(--color-primary)] outline-none placeholder:text-[var(--color-ink-soft)]"
             />
           </label>
-          <p aria-live="polite" className="mt-2 text-xs text-[var(--color-ink-soft)]">
+          <p aria-live="polite" className="mt-2 break-words text-xs text-[var(--color-ink-soft)]">
             {normalizedQuery
-              ? `${matchCount} lesson${matchCount === 1 ? "" : "s"} match "${query.trim()}"`
-              : `${matchCount} lesson${matchCount === 1 ? "" : "s"} in this course`}
+              ? t(`learn.classroom.curriculum.${matchCount === 1 ? "matchOne" : "matchMany"}`)
+                .replace("{count}", () => String(matchCount))
+                .replace("{query}", () => query.trim())
+              : t(`learn.classroom.curriculum.${matchCount === 1 ? "countOne" : "countMany"}`)
+                .replace("{count}", () => String(matchCount))}
           </p>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--color-surface-soft)] px-4 py-4 sm:px-6">
           {matchCount === 0 ? (
             <p className="py-8 text-center text-sm text-[var(--color-ink-soft)]">
-              No lesson matches that search.
+              {t("learn.classroom.curriculum.emptySearch")}
             </p>
           ) : (
-            <ol className="grid gap-5">
+            <ol className="grid grid-cols-1 gap-5">
               {groups.map((group, moduleIndex) =>
                 group.lessons.length === 0 ? null : (
                   <li key={group.module.id}>
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-                      Module {moduleIndex + 1} &middot; {group.module.title}
+                    <p className="break-words text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
+                      {t("learn.classroom.curriculum.module").replace("{number}", () => String(moduleIndex + 1))} &middot; {group.module.title}
                     </p>
-                    <ul className="mt-2 grid gap-2">
+                    <ul className="mt-2 grid grid-cols-1 gap-2">
                       {group.lessons.map(({ lesson, position }) => {
                         const isCompleted = completedLessonIds.includes(lesson.id);
                         const isSelected = selectedLessonId === lesson.id;
@@ -188,14 +196,17 @@ export function LessonListOverlay({
                                   <LockKeyhole aria-hidden size={14} />
                                 )}
                               </span>
-                              <span className="min-w-0">
-                                <span className="block truncate text-sm font-semibold text-[var(--color-primary)]">
-                                  {lesson.title}
-                                </span>
-                                <span className="mt-0.5 block text-xs text-[var(--color-ink-soft)]">
-                                  {lesson.duration}
-                                  {isCompleted ? " · Completed" : ""}
-                                  {!unlocked ? " · Locked" : ""}
+                              <span className="flex min-w-0 items-center gap-2">
+                                <LessonThumbnail src={thumbnailUrlByLessonId?.get(lesson.id)} />
+                                <span className="min-w-0">
+                                  <span className="block truncate text-sm font-semibold text-[var(--color-primary)]">
+                                    {lesson.title}
+                                  </span>
+                                  <span className="mt-0.5 block text-xs text-[var(--color-ink-soft)]">
+                                    {lesson.duration}
+                                    {isCompleted ? ` · ${t("learn.classroom.curriculum.completed")}` : ""}
+                                    {!unlocked ? ` · ${t("learn.classroom.curriculum.locked")}` : ""}
+                                  </span>
                                 </span>
                               </span>
                             </button>

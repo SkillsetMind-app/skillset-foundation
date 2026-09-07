@@ -3,6 +3,8 @@
     "label": "Idioma"
   },
   "nav": {
+    "myCourses": "Mis cursos",
+    "manageBusiness": "Gestionar mi negocio",
     "courses": "Cursos",
     "forCreators": "Para creadores",
     "pricing": "Precios",
@@ -125,6 +127,7 @@
       "heading": "Completa tu perfil"
     },
     "signup": {
+      "progress": "Paso {current} de {total}",
       "introLearner": "Empiezas como estudiante. Puedes activar el lado de educador más tarde desde tu perfil.",
       "introEducator": "Empiezas como educador. Puedes activar el lado de estudiante más tarde desde tu perfil.",
       "roleQuestion": "¿Qué te trae a SkillsetMind?",
@@ -395,6 +398,444 @@
       "earnings": "Ingresos",
       "verification": "Verificación"
     },
+    "ops": {
+      "verification": "Verificación de creadores",
+      "catalog": "Catálogo publicado",
+      "payments": "Pagos",
+      "community": "Denuncias de la comunidad",
+      "support": "Tickets de soporte",
+      "users": "Usuarios",
+      "audit": "Registro de auditoría",
+      "access": "Acceso",
+      "accessLevels": "Niveles de acceso",
+      "unavailable": "Tu nivel de acceso no incluye esta cola.",
+      "back": "Volver a Operaciones",
+      "searchSupport": "Buscar tickets en esta cola",
+      "searchVerification": "Buscar solicitudes en esta cola",
+      "accessPanel": {
+        "people": "Personas",
+        "matrix": "Qué puede hacer cada nivel",
+        "canDo": "Puede hacer",
+        "yes": "sí",
+        "no": "no",
+        "searchLabel": "Buscar a una persona",
+        "searchPlaceholder": "Nombre o correo electrónico",
+        "loading": "Cargando la lista de personas…",
+        "empty": "Nadie coincide con esta búsqueda.",
+        "noLevel": "Aún no tiene un nivel: solo puede ver el sitio público.",
+        "levels": {
+          "student": {
+            "label": "Estudiante",
+            "description": "Compra y realiza cursos. Solo accede al aula."
+          },
+          "teacher": {
+            "label": "Instructor",
+            "description": "Crea y vende cursos. Accede al estudio del instructor."
+          },
+          "staff": {
+            "label": "Equipo",
+            "description": "Verificación, denuncias y ayuda a estudiantes: soporte, moderación y operaciones juntos."
+          },
+          "admin": {
+            "label": "Administrador",
+            "description": "Todo, incluido cambiar estos niveles."
+          }
+        },
+        "errors": {
+          "loadError": "No se pudo cargar la lista de personas.",
+          "saveError": "El cambio fue rechazado. No se guardó nada.",
+          "adminRequired": "Se necesitan permisos de administrador.",
+          "targetRequired": "Debes seleccionar un usuario.",
+          "invalidRoles": "Los niveles de acceso seleccionados no son válidos. No se guardó nada.",
+          "unknownRole": "La selección contiene un rol desconocido.",
+          "userMissing": "Ese usuario no existe.",
+          "selfAdmin": "No puedes quitarte tu propio rol de administrador.",
+          "lastAdmin": "La plataforma debe conservar al menos un administrador."
+        },
+        "preview": {
+          "title": "Vista previa de la plataforma",
+          "description": "Ve la plataforma como estudiante o instructor; tu propio acceso no cambia.",
+          "back": "Volver a administrador",
+          "banner": "Vista previa como {role}. Tu acceso de administrador no cambia.",
+          "exit": "Salir de la vista previa"
+        },
+        "permissions": {
+          "auth": {
+            "signIn": {
+              "label": "Iniciar sesión",
+              "description": "Puede acceder a las pantallas de inicio de sesión."
+            },
+            "signUp": {
+              "label": "Crear una cuenta",
+              "description": "Puede acceder a las pantallas de creación de cuentas."
+            },
+            "signOut": {
+              "label": "Cerrar sesión",
+              "description": "Puede finalizar una sesión autenticada."
+            },
+            "manageSessions": {
+              "label": "Gestionar sesiones",
+              "description": "Puede revisar y revocar sesiones de usuarios."
+            }
+          },
+          "courses": {
+            "readCatalog": {
+              "label": "Ver el catálogo de cursos",
+              "description": "Puede ver el contenido público del catálogo de cursos."
+            },
+            "enroll": {
+              "label": "Inscribirse en cursos",
+              "description": "Puede inscribirse en las experiencias de aprendizaje disponibles."
+            },
+            "viewLearning": {
+              "label": "Acceder al aprendizaje",
+              "description": "Puede acceder al contenido de los cursos en los que está inscrito."
+            },
+            "create": {
+              "label": "Crear cursos",
+              "description": "Puede crear borradores de cursos."
+            },
+            "submitForReview": {
+              "label": "Enviar cursos a revisión",
+              "description": "Puede enviar sus borradores de cursos a la cola de revisión."
+            },
+            "publish": {
+              "label": "Publicar cursos",
+              "description": "Puede publicar contenido de cursos de instructores."
+            },
+            "manageAll": {
+              "label": "Gestionar todos los cursos",
+              "description": "Puede gestionar contenido de cursos en toda la plataforma."
+            }
+          },
+          "payments": {
+            "checkout": {
+              "label": "Realizar compras",
+              "description": "Puede comprar productos de aprendizaje de pago."
+            },
+            "manageSubscriptions": {
+              "label": "Gestionar suscripciones",
+              "description": "Puede gestionar suscripciones de facturación."
+            },
+            "refund": {
+              "label": "Reembolsar pagos",
+              "description": "Puede emitir o solicitar reembolsos."
+            }
+          },
+          "community": {
+            "read": {
+              "label": "Ver la comunidad",
+              "description": "Puede ver los espacios de la comunidad."
+            },
+            "post": {
+              "label": "Publicar en la comunidad",
+              "description": "Puede crear publicaciones y respuestas en los espacios de la comunidad."
+            },
+            "moderate": {
+              "label": "Moderar la comunidad",
+              "description": "Puede moderar publicaciones y respuestas de la comunidad."
+            }
+          },
+          "teacherStudio": {
+            "access": {
+              "label": "Acceder al estudio del instructor",
+              "description": "Puede acceder a las pantallas del estudio del instructor."
+            },
+            "manageCourses": {
+              "label": "Gestionar cursos del instructor",
+              "description": "Puede gestionar cursos en el estudio del instructor."
+            },
+            "manageStorefront": {
+              "label": "Gestionar la tienda del instructor",
+              "description": "Puede editar la identidad de la tienda y el orden de los cursos destacados."
+            }
+          },
+          "certificates": {
+            "view": {
+              "label": "Ver certificados",
+              "description": "Puede ver los certificados obtenidos."
+            },
+            "issue": {
+              "label": "Emitir certificados",
+              "description": "Puede emitir certificados de finalización."
+            },
+            "revoke": {
+              "label": "Revocar certificados",
+              "description": "Puede revocar certificados emitidos."
+            }
+          },
+          "users": {
+            "support": {
+              "label": "Ayudar a los usuarios",
+              "description": "Puede ayudar a los usuarios con problemas de cuenta y aprendizaje."
+            },
+            "manage": {
+              "label": "Gestionar usuarios",
+              "description": "Puede gestionar los registros y roles de los usuarios."
+            }
+          },
+          "platform": {
+            "viewOps": {
+              "label": "Ver Operaciones",
+              "description": "Puede ver los paneles de operaciones."
+            },
+            "accessAdmin": {
+              "label": "Acceder a la administración",
+              "description": "Puede acceder a las pantallas administrativas."
+            }
+          }
+        }
+      },
+      "catalogPanel": {
+        "eyebrow": "Cursos publicados",
+        "title": "Gestiona el catálogo publicado",
+        "description": "Retira de publicación, vuelve a publicar o elimina de forma permanente un curso sin inscripciones ni pedidos.",
+        "coursesOne": "1 curso",
+        "courses": "{count} cursos",
+        "modulesOne": "1 módulo",
+        "modules": "{count} módulos",
+        "lessonsOne": "1 lección",
+        "lessons": "{count} lecciones",
+        "loadError": "No pudimos cargar los cursos publicados. Actualiza la página.",
+        "loading": "Cargando cursos publicados...",
+        "empty": "Todavía no hay cursos publicados o inactivos.",
+        "featured": "Destacado",
+        "working": "Actualizando...",
+        "feature": "Destacar",
+        "unfeature": "Quitar destacado",
+        "unpublish": "Retirar de publicación",
+        "republish": "Volver a publicar",
+        "deleting": "Eliminando...",
+        "confirmDelete": "Confirmar eliminación",
+        "cancel": "Cancelar",
+        "delete": "Eliminar",
+        "errors": {
+          "unpublish": "No pudimos retirar este curso de publicación. Inténtalo de nuevo.",
+          "republish": "No pudimos volver a publicar este curso. Inténtalo de nuevo.",
+          "delete": "No pudimos eliminar este curso. Los cursos con inscripciones o pedidos deben retirarse de publicación.",
+          "feature": "No pudimos actualizar el estado destacado. Inténtalo de nuevo."
+        },
+        "success": {
+          "unpublished": "Curso retirado de publicación y del marketplace.",
+          "republished": "Curso publicado de nuevo en el marketplace.",
+          "deleted": "Curso eliminado de forma permanente.",
+          "featured": "Curso destacado. Ahora aparece al inicio del marketplace.",
+          "unfeatured": "Curso sin destacar; volvió al orden habitual del catálogo."
+        }
+      },
+      "paymentsPanel": {
+        "title": "Seguimiento de pedidos de Stripe.",
+        "description": "Pedidos de Stripe en tiempo real; el acceso se otorga solo después de confirmar el pago.",
+        "adminOnly": "Solo administradores",
+        "paidSample": "Pagados en esta muestra",
+        "grossSample": "Importe bruto (últimos 12 pedidos)",
+        "feeSample": "Comisión estimada (los mismos 12)",
+        "loadingValue": "Cargando...",
+        "unavailable": "No disponible",
+        "loadError": "No pudimos cargar los pedidos recientes de Stripe.",
+        "loading": "Cargando pedidos...",
+        "empty": "Todavía no hay pedidos de Stripe. Después de una compra de pago, aquí aparecerán los pedidos pendientes y pagados.",
+        "order": "Pedido",
+        "user": "Usuario",
+        "provider": "Proveedor"
+      },
+      "enrollmentPanel": {
+        "eyebrow": "Inscripción manual",
+        "title": "Otorga acceso beta sin simular una compra.",
+        "description": "Solo para accesos beta, de soporte o administrativos; las inscripciones de pago siguen llegando desde Stripe.",
+        "learner": "Estudiante",
+        "course": "Curso publicado del creador",
+        "loadingUsers": "Cargando usuarios...",
+        "chooseUser": "Elige un usuario",
+        "loadingCourses": "Cargando cursos...",
+        "chooseCourse": "Elige un curso",
+        "creating": "Creando inscripción...",
+        "create": "Crear inscripción administrativa",
+        "grantedTitle": "Inscripciones otorgadas",
+        "activeOne": "1 activa",
+        "active": "{count} activas",
+        "grantedDescription": "Solo accesos administrativos y de demostración. La revocación quita el acceso del estudiante de inmediato.",
+        "loadingGranted": "Cargando inscripciones otorgadas...",
+        "empty": "Todavía no hay accesos administrativos o de demostración.",
+        "adminGrant": "Acceso administrativo",
+        "demoGrant": "Acceso de demostración",
+        "revoking": "Revocando...",
+        "revoke": "Revocar acceso",
+        "confirmRevoke": "¿Revocar el acceso a \"{title}\" de este estudiante? Perderá el acceso de inmediato.",
+        "readErrors": {
+          "users": "No pudimos cargar los usuarios para la inscripción manual.",
+          "courses": "No pudimos cargar los cursos publicados de los creadores.",
+          "grants": "No pudimos cargar las inscripciones otorgadas."
+        },
+        "errors": {
+          "choose": "Elige un usuario y un curso publicado del creador.",
+          "create": "No pudimos crear esta inscripción. Revisa el rol de administrador y las reglas.",
+          "revoke": "No pudimos revocar esta inscripción. Revisa el rol de administrador y las reglas."
+        },
+        "success": {
+          "created": "Inscripción administrativa creada. El estudiante ya puede abrir el curso del creador.",
+          "revoked": "Inscripción revocada."
+        }
+      },
+      "exportButton": {
+        "export": "Exportar",
+        "csv": "Exportar como CSV",
+        "json": "Exportar como JSON"
+      },
+      "usersPanel": {
+        "eyebrow": "Búsqueda de usuarios",
+        "title": "Encuentra estudiantes e instructores.",
+        "description": "Consulta de solo lectura para tareas de soporte y confianza.",
+        "countOne": "1 usuario",
+        "count": "{count} usuarios",
+        "search": "Buscar por correo o nombre de usuario...",
+        "loading": "Cargando usuarios...",
+        "loadError": "No pudimos cargar los usuarios. Confirma tu acceso de administrador e inténtalo de nuevo.",
+        "empty": "Ningún usuario coincide con esta búsqueda.",
+        "unnamed": "Usuario sin nombre",
+        "noEmail": "El perfil no tiene correo electrónico",
+        "roles": {
+          "guest": "Visitante",
+          "moderator": "Moderador"
+        }
+      },
+      "accountRequestsPanel": {
+        "eyebrow": "Acciones de cuenta",
+        "title": "Solicitudes de exportación y eliminación.",
+        "description": "Gestiona cada solicitud y luego márcala en proceso, completada o rechazada. Cambiar el estado no exporta datos ni elimina una cuenta.",
+        "loading": "Cargando solicitudes de cuenta...",
+        "loadError": "No pudimos cargar las solicitudes de cuenta.",
+        "updateError": "No pudimos actualizar esta solicitud de cuenta.",
+        "empty": "Todavía no hay solicitudes de cuenta.",
+        "pendingTimestamp": "Fecha pendiente",
+        "user": "Usuario",
+        "requested": "Solicitada",
+        "requestId": "ID de solicitud",
+        "actioned": "Gestionada",
+        "by": "por",
+        "types": {
+          "data_export": "Exportación de datos",
+          "account_deletion": "Eliminación de cuenta"
+        },
+        "actions": {
+          "processing": "Marcar en proceso",
+          "completed": "Marcar completada",
+          "rejected": "Rechazar"
+        }
+      },
+      "communityPanel": {
+        "eyebrow": "Moderación de la comunidad",
+        "title": "Denuncias de confianza",
+        "description": "Revisa las denuncias de las comunidades de los cursos y dales seguimiento.",
+        "countOne": "1 abierta",
+        "count": "{count} abiertas",
+        "loadError": "No pudimos cargar las denuncias de la comunidad.",
+        "updateError": "No pudimos actualizar el estado de esta denuncia.",
+        "configurationRequired": "Es necesario configurar el servicio para cargar las denuncias de la comunidad.",
+        "loading": "Cargando denuncias de la comunidad...",
+        "empty": "Todavía no hay denuncias de la comunidad.",
+        "in": "en",
+        "author": "Autor del contenido denunciado:",
+        "reporter": "Denunciante:",
+        "context": "Contexto:",
+        "saving": "Guardando...",
+        "targets": {
+          "post": "Publicación",
+          "comment": "Comentario"
+        },
+        "reasons": {
+          "spam": "Spam o promoción",
+          "harassment": "Acoso o abuso",
+          "unsafe_content": "Contenido peligroso",
+          "off_topic": "Fuera de tema o de baja calidad",
+          "other": "Otro problema de confianza"
+        }
+      },
+      "auditPanel": {
+        "description": "Los reembolsos y las solicitudes de cuenta se registran aquí automáticamente, del más reciente al más antiguo. Este registro es de solo lectura: el sistema crea las entradas y no se pueden editar.",
+        "loading": "Cargando registro de auditoría...",
+        "loadError": "No pudimos cargar el registro de auditoría.",
+        "empty": "Todavía no hay eventos de auditoría registrados.",
+        "pendingTimestamp": "Fecha pendiente",
+        "actor": "Responsable",
+        "target": "Destino",
+        "actions": {
+          "refundRequested": "Reembolso solicitado",
+          "refundIssued": "Reembolso emitido",
+          "deletionRequested": "Eliminación de cuenta solicitada",
+          "exportRequested": "Exportación de datos solicitada"
+        },
+        "targets": {
+          "order": "Pedido",
+          "user": "Usuario",
+          "course": "Curso"
+        }
+      },
+      "supportQueue": {
+        "title": "Tickets de soporte de usuarios",
+        "description": "Revisa los problemas de los usuarios y actualiza el estado de cada ticket.",
+        "countOne": "1 ticket",
+        "count": "{count} tickets",
+        "loading": "Cargando tickets de soporte...",
+        "loadError": "No pudimos cargar los tickets de soporte.",
+        "empty": "Todavía no hay tickets de soporte.",
+        "noResults": "Ningún ticket coincide con esta búsqueda.",
+        "unnamedUser": "Usuario sin nombre",
+        "replySentLabel": "Respuesta enviada al usuario",
+        "replyLabel": "Respuesta al usuario",
+        "replyHint": "Al enviar una respuesta también se resuelve este ticket.",
+        "replyPlaceholder": "Escribe la respuesta que leerá el usuario.",
+        "sendReply": "Enviar respuesta y resolver",
+        "updateReply": "Actualizar respuesta y resolver",
+        "sending": "Enviando...",
+        "updating": "Actualizando...",
+        "replyError": "No pudimos enviar esta respuesta.",
+        "statusError": "No pudimos actualizar este ticket de soporte.",
+        "replySuccess": "Respuesta enviada y ticket resuelto.",
+        "statusSuccess": "Estado del ticket actualizado.",
+        "categories": {
+          "account": "Cuenta",
+          "course": "Curso",
+          "payment": "Pago",
+          "technical": "Técnico",
+          "other": "Otro"
+        }
+      },
+      "verificationQueue": {
+        "title": "Solicitudes de admisión profesional",
+        "description": "Comprueba los datos en el registro oficial y después aprueba, solicita cambios o rechaza la solicitud.",
+        "countOne": "1 pendiente",
+        "count": "{count} pendientes",
+        "loading": "Cargando cola de verificación...",
+        "loadError": "No pudimos cargar la cola de verificación.",
+        "empty": "No hay solicitudes de verificación pendientes.",
+        "noResults": "Ninguna solicitud coincide con esta búsqueda.",
+        "pendingTimestamp": "Fecha pendiente",
+        "noEvidence": "No se adjuntaron enlaces de verificación.",
+        "applicantNote": "Nota del solicitante: {note}",
+        "reviewLabel": "Nota de revisión para el creador",
+        "reviewPlaceholder": "Ejemplo: El enlace al registro no muestra este número de inscripción; adjunta la página de consulta oficial.",
+        "reviewHint": "Obligatoria para solicitar cambios o rechazar. Opcional al aprobar.",
+        "noteRequired": "Añade una nota de revisión clara (al menos 12 caracteres) antes de solicitar cambios o rechazar.",
+        "reviewError": "No pudimos registrar esta decisión. Inténtalo de nuevo.",
+        "updating": "Actualizando...",
+        "decisions": {
+          "approved": "Aprobar",
+          "needs_changes": "Solicitar cambios",
+          "rejected": "Rechazar"
+        },
+        "success": {
+          "approved": "Creador aprobado: su insignia profesional está activa.",
+          "needs_changes": "Solicitud devuelta al creador con tu nota.",
+          "rejected": "Solicitud rechazada con tu nota."
+        }
+      }
+    },
+    "queueCount": {
+      "pending": "{count} pendientes",
+      "loading": "Cargando contador",
+      "unavailable": "Contador no disponible"
+    },
     "navSection": {
       "home": "Inicio",
       "products": "Productos",
@@ -445,7 +886,13 @@
       "openTicket": "Abrir un ticket de soporte",
       "emailSupport": "Escribir al soporte por correo",
       "replyTime": "Respondemos en un plazo de 24 horas.",
-      "openMenu": "Abrir menú de ayuda"
+      "openMenu": "Abrir menú de ayuda",
+      "contextual": {
+        "about": "Ayuda sobre {topic}",
+        "heading": "Ayuda contextual",
+        "close": "Cerrar la ayuda contextual",
+        "related": "Abrir la ayuda relacionada"
+      }
     },
     "notifications": {
       "open": "Abrir notificaciones",
@@ -458,7 +905,13 @@
       "unread": "Sin leer",
       "caughtUp": "Estás al día",
       "caughtUpDetail": "SkillsetMind te avisará cuando algo necesite tu atención.",
-      "viewAll": "Ver todas"
+      "viewAll": "Ver todas",
+      "time": {
+        "justNow": "Ahora mismo",
+        "minutes": "Hace {count} min",
+        "hours": "Hace {count} h",
+        "days": "Hace {count} d"
+      }
     },
     "session": {
       "checking": "Comprobando sesión...",
@@ -496,9 +949,193 @@
     "resolved": "Resuelto",
     "reviewed": "Revisado",
     "revoked": "Revocado",
-    "succeeded": "Exitoso"
+    "succeeded": "Exitoso",
+    "processing": "En proceso",
+    "rejected": "Rechazado"
   },
   "learn": {
+    "classroom": {
+      "workspace": {
+        "loading": "Cargando el espacio del curso...",
+        "enrollmentError": "No pudimos confirmar tu inscripción en este curso.",
+        "progressLoadError": "No pudimos cargar el progreso de las lecciones de este curso.",
+        "assetsError": "No pudimos cargar los archivos de las lecciones de este curso.",
+        "lessonLockedError": "Esta lección sigue bloqueada por el calendario de acceso del curso.",
+        "progressSaveError": "No pudimos actualizar el progreso de la lección. Inténtalo de nuevo.",
+        "backToLearning": "Volver a mi aprendizaje",
+        "backToLearningTitle": "Volver a Mi aprendizaje",
+        "openCourse": "Abrir página del curso",
+        "paymentReceived": "Pago recibido",
+        "enrollmentDelayed": "Ya casi está: la inscripción está tardando más de lo habitual.",
+        "openingCourse": "Abriendo tu curso...",
+        "delayedDetails": "Tu pago se completó y está seguro en la cuenta de Stripe de tu instructor. Te vendió este curso directamente, por lo que su nombre puede aparecer en el extracto de tu tarjeta. Mantén esta página abierta: se abrirá automáticamente cuando se confirme tu inscripción. Si no ocurre nada en unos minutos, contacta con soporte y adjunta el recibo del pago.",
+        "openingDetails": "Tu pago está confirmado. Tu instructor te vendió este curso directamente, por lo que su nombre, en lugar de \"SkillsetMind\", puede aparecer en el extracto de tu tarjeta. Estamos preparando tu acceso al curso; esta página se abrirá automáticamente en unos segundos.",
+        "enrollmentRequired": "Inscripción necesaria",
+        "enrollmentHeading": "Este espacio privado se abre después de la inscripción.",
+        "enrollmentDetails": "Abre primero la página pública del curso y después añádelo a tu espacio de aprendizaje.",
+        "saving": "Guardando...",
+        "completeAndNext": "Marcar como completada y continuar",
+        "complete": "Marcar como completada",
+        "certificate": "Obtener certificado"
+      },
+      "lesson": {
+        "types": {
+          "video": "Lección en video",
+          "text": "Lección de texto",
+          "quiz": "Cuestionario",
+          "assignment": "Tarea",
+          "live_recording": "Grabación de una sesión en vivo",
+          "download": "Descarga",
+          "external_embed": "Contenido externo integrado"
+        },
+        "available": "Disponible",
+        "previousRequired": "Completa la lección anterior para desbloquearla",
+        "unlocks": "Disponible el {date}",
+        "locked": "Lección bloqueada",
+        "closeMiniPlayer": "Cerrar mini reproductor",
+        "loading": "Cargando contenido de la lección...",
+        "loadingDetails": "Cargando los medios y las notas de esta lección.",
+        "textFirst": "Lección basada en texto",
+        "mediaMissing": "Todavía no hay medios adjuntos",
+        "textDetails": "Lee las notas de la lección a continuación y usa el debate si necesitas más contexto.",
+        "mediaDetails": "El video se reproduce aquí cuando el instructor lo sube o conecta un contenido externo.",
+        "content": "Contenido de la lección",
+        "freePreview": "Vista previa gratuita",
+        "openResource": "Abrir recurso del instructor"
+      },
+      "curriculum": {
+        "lessons": "Lecciones",
+        "title": "Temario",
+        "all": "Todas las lecciones",
+        "close": "Cerrar lista de lecciones",
+        "search": "Buscar lecciones",
+        "matchOne": "{count} lección coincide con \"{query}\"",
+        "matchMany": "{count} lecciones coinciden con \"{query}\"",
+        "countOne": "{count} lección en este curso",
+        "countMany": "{count} lecciones en este curso",
+        "emptySearch": "Ninguna lección coincide con la búsqueda.",
+        "module": "Módulo {number}",
+        "markLessonIncomplete": "Marcar \"{title}\" como incompleta",
+        "markIncomplete": "Marcar como incompleta",
+        "completed": "Completada",
+        "locked": "Bloqueada",
+        "playingNow": "Reproduciendo ahora"
+      },
+      "resources": {
+        "title": "Recursos del curso",
+        "heading": "Archivos e imágenes generales adjuntos a este curso",
+        "fileOne": "{count} archivo",
+        "fileMany": "{count} archivos",
+        "loading": "Cargando recursos del curso...",
+        "empty": "Este curso todavía no tiene recursos generales adjuntos.",
+        "loadingLesson": "Cargando archivos de la lección...",
+        "emptyLesson": "Esta lección todavía no tiene archivos adjuntos.",
+        "preview": "Vista previa",
+        "enrolled": "Solo inscritos"
+      },
+      "discussion": {
+        "title": "Debate de la lección",
+        "description": "Haz preguntas o aporta contexto sobre esta lección.",
+        "commentOne": "{count} comentario",
+        "commentMany": "{count} comentarios",
+        "loading": "Cargando comentarios...",
+        "empty": "Todavía no hay comentarios. Inicia el debate de esta lección.",
+        "delete": "Eliminar",
+        "bodyLabel": "Escribe un comentario para esta lección",
+        "preview": "La vista previa no permite publicar comentarios.",
+        "placeholder": "Escribe una pregunta, nota o comentario útil...",
+        "publishing": "Publicando...",
+        "publish": "Publicar comentario",
+        "loadError": "No pudimos cargar el debate de esta lección.",
+        "publishError": "No pudimos publicar tu comentario.",
+        "deleteError": "No pudimos eliminar ese comentario."
+      },
+      "nextLesson": {
+        "title": "Siguiente lección",
+        "countdown": "Siguiente lección en {seconds} s",
+        "watch": "Ver ahora",
+        "cancel": "Cancelar"
+      },
+      "navigation": {
+        "previous": "Lección anterior",
+        "previousTitled": "Lección anterior: {title}",
+        "next": "Siguiente lección",
+        "nextTitled": "Siguiente lección: {title}"
+      },
+      "lessonInfo": {
+        "toggle": "Información de la lección",
+        "type": "Tipo",
+        "duration": "Duración",
+        "module": "Módulo",
+        "materials": "Materiales",
+        "availableFrom": "Disponible desde"
+      },
+      "lessonComments": {
+        "title": "Comentarios de la lección",
+        "prompt": "Comenta algo sobre la lección.",
+        "form": "Comentar la lección",
+        "bodyLabel": "Tu comentario sobre esta lección",
+        "publish": "Comentar",
+        "loading": "Cargando los comentarios de la lección...",
+        "empty": "Todavía no hay comentarios en esta lección.",
+        "replyOne": "{count} respuesta",
+        "replyMany": "{count} respuestas",
+        "viewInCommunity": "Ver en la comunidad"
+      },
+      "review": {
+        "title": "Reseña del curso",
+        "heading": "Valora la experiencia de aprendizaje.",
+        "description": "Las reseñas pasan a formar parte de la información pública del curso cuando tienes progreso de aprendizaje. Se permite una reseña por cuenta inscrita.",
+        "rating": "Valoración del curso",
+        "starOne": "{count} estrella",
+        "starMany": "{count} estrellas",
+        "bodyLabel": "Tu reseña",
+        "placeholder": "¿Qué deberían saber los futuros alumnos sobre este curso?",
+        "preview": "La vista previa no permite publicar reseñas del curso.",
+        "progressRequired": "Las reseñas se habilitan al completar el 50% del curso.",
+        "signIn": "Inicia sesión para reseñar este curso.",
+        "saving": "Guardando...",
+        "update": "Actualizar reseña",
+        "submit": "Enviar reseña",
+        "loadError": "No pudimos cargar tu reseña del curso.",
+        "saved": "Reseña guardada. Gracias por valorar este curso.",
+        "saveError": "No pudimos guardar tu reseña. Inténtalo de nuevo.",
+        "invalidCourse": "Selecciona un curso válido para publicar una reseña.",
+        "invalidRating": "La valoración debe estar entre 1 y 5.",
+        "shortBody": "Escribe al menos 3 caracteres o deja la reseña sin texto.",
+        "courseMissing": "No se encontró el curso.",
+        "courseNotPublished": "Solo los cursos publicados pueden recibir reseñas.",
+        "enrollFirst": "Inscríbete en este curso antes de publicar una reseña.",
+        "wrongAccount": "Solo puedes reseñar cursos vinculados a tu cuenta.",
+        "inactiveEnrollment": "Esta inscripción no permite publicar reseñas.",
+        "rateLimit": "Demasiados intentos. Espera antes de volver a intentarlo."
+      },
+      "messages": {
+        "title": "Escribe a tu instructor",
+        "heading": "Haz una pregunta privada sobre este curso",
+        "description": "Solo tú y el instructor del curso pueden leer esta conversación. Las respuestas también llegan a tu campana de notificaciones.",
+        "you": "Tú",
+        "teacher": "Instructor",
+        "bodyLabel": "Tu mensaje privado",
+        "placeholder": "Escribe un mensaje privado a tu instructor...",
+        "preview": "La vista previa no permite enviar mensajes.",
+        "signIn": "Inicia sesión para escribir a tu instructor.",
+        "sending": "Enviando...",
+        "send": "Enviar mensaje",
+        "loadError": "No pudimos cargar tus mensajes.",
+        "sendError": "No pudimos enviar tu mensaje. Inténtalo de nuevo.",
+        "emptyBody": "Escribe un mensaje antes de enviarlo.",
+        "invalidCourse": "Selecciona un curso válido para enviar mensajes.",
+        "invalidStudent": "Se necesita una cuenta de alumno válida.",
+        "courseMissing": "No se encontró el curso.",
+        "wrongThread": "Solo puedes enviar mensajes en tu propia conversación.",
+        "selfMessage": "No puedes enviarte mensajes a ti mismo.",
+        "enrollFirst": "Inscríbete en este curso para usar los mensajes.",
+        "threadMismatch": "Esta inscripción no corresponde a la conversación.",
+        "inactiveEnrollment": "Esta inscripción no permite enviar mensajes.",
+        "rateLimit": "Demasiados intentos. Espera antes de volver a intentarlo."
+      }
+    },
     "page": {
       "eyebrow": "Experiencia del estudiante",
       "title": "Tu aprendizaje, en un solo lugar.",
@@ -546,7 +1183,9 @@
       "showLess": "Ver menos",
       "complete": "completado",
       "back": "Mis cursos",
-      "backToLesson": "Lección"
+      "backToLesson": "Lección",
+      "progress": "{completed} de {total} lecciones · {percent}%",
+      "certificate": "Ver certificado"
     },
     "paths": {
       "eyebrow": "Ruta de aprendizaje",
@@ -577,6 +1216,111 @@
       "back": "Atrás",
       "next": "Siguiente",
       "startLearning": "Empezar a aprender"
+    },
+    "community": {
+      "loading": "Cargando la comunidad...",
+      "accessRequired": "Acceso necesario",
+      "gateHeading": "Esta comunidad está vinculada a la inscripción en el curso.",
+      "gateDetails": "Abre primero la página del curso y añádelo a tu espacio de aprendizaje.",
+      "accessError": "No pudimos confirmar tu acceso a la comunidad.",
+      "postsError": "No pudimos cargar las publicaciones de la comunidad.",
+      "eyebrow": "Comunidad",
+      "filters": "Filtrar publicaciones",
+      "all": "Todas",
+      "questions": "Preguntas",
+      "questionsOpenOne": "Preguntas · {count} abierta",
+      "questionsOpenMany": "Preguntas · {count} abiertas",
+      "fromInstructor": "De {name}",
+      "instructorFallback": "el instructor",
+      "search": "Buscar publicaciones",
+      "searchPlaceholder": "Buscar",
+      "newPostOne": "{count} publicación nueva",
+      "newPostMany": "{count} publicaciones nuevas",
+      "feedLoading": "Cargando el feed de la comunidad...",
+      "empty": "Todavía no hay publicaciones. Haz la primera pregunta o comparte en qué estás trabajando.",
+      "emptyFilter": "Nada coincide con este filtro.",
+      "online": "{count} en línea",
+      "memberOne": "{count} miembro",
+      "memberMany": "{count} miembros",
+      "sayHi": "¿Eres nuevo aquí? Saluda 👋",
+      "sayHiDetails": "{name} responde a cada presentación.",
+      "sections": "Secciones de la comunidad",
+      "members": "Miembros ({count})",
+      "rules": "Reglas",
+      "recordings": "Grabaciones",
+      "noMembers": "Todavía nadie ha publicado.",
+      "rule1": "Pregunta sobre el curso y comparte lo que has probado.",
+      "rule2": "Sé específico: di a qué lección te refieres.",
+      "rule3": "Nada de ventas ni spam. Reporta cualquier cosa fuera de lugar.",
+      "composer": {
+        "shortQuestion": "Escribe primero tu pregunta en una línea, con al menos unas palabras.",
+        "shortPost": "Escribe un poco más antes de publicar.",
+        "publishError": "No pudimos publicar tu publicación.",
+        "prompt": "Pregunta al grupo o comparte algo…",
+        "ask": "Hacer una pregunta",
+        "share": "Compartir",
+        "update": "Publicar un aviso",
+        "asks": "hace una pregunta",
+        "posts": "publica un aviso",
+        "shares": "comparte",
+        "answersHere": "{name} responde a las preguntas aquí.",
+        "questionLabel": "Tu pregunta",
+        "questionPlaceholder": "¿Qué quieres preguntar?",
+        "detailsLabel": "Detalles (opcional)",
+        "postLabel": "Tu publicación",
+        "detailsPlaceholder": "Añade detalles (opcional): qué probaste, qué esperabas…",
+        "updatePlaceholder": "¿Qué debería saber el grupo esta semana?",
+        "sharePlaceholder": "¿En qué estás trabajando? Un logro, una duda, un antes y después…",
+        "aboutLesson": "Sobre la lección {number}",
+        "removeLesson": "Quitar la lección {number}",
+        "similar": "Ya respondida · similar",
+        "similarItem": "“{title}”: respondida {time}",
+        "cancel": "Cancelar",
+        "posting": "Publicando…",
+        "postQuestion": "Publicar pregunta",
+        "postUpdate": "Publicar aviso",
+        "post": "Publicar",
+        "you": "Tú"
+      },
+      "card": {
+        "instructor": "Instructor",
+        "pinned": "fijado",
+        "fromLesson": "de {lesson}",
+        "answered": "Respondida",
+        "question": "Pregunta",
+        "unpin": "Desfijar",
+        "pin": "Fijar",
+        "clap": "Aplaudir · {count}",
+        "reply": "Responder",
+        "viewReplies": "Ver {count} respuestas",
+        "answer": "respuesta",
+        "replyLabel": "Tu respuesta",
+        "replyPlaceholder": "Añade tu respuesta…",
+        "shortReply": "Escribe primero una respuesta corta.",
+        "replyError": "No pudimos publicar tu respuesta.",
+        "postReply": "Publicar respuesta"
+      },
+      "live": {
+        "none": "Todavía no hay sesiones en vivo programadas.",
+        "next": "Próxima sesión en vivo",
+        "now": "En vivo ahora",
+        "inMinutes": "En vivo en {count} min",
+        "inHours": "En vivo en {count} h",
+        "join": "Unirse",
+        "joinLater": "Únete cuando empiece"
+      },
+      "drawer": {
+        "back": "Volver al feed",
+        "close": "Cerrar",
+        "replies": "Respuestas",
+        "noReplies": "Todavía no hay respuestas. Sé el primero.",
+        "unmark": "Quitar marca de respuesta",
+        "mark": "Marcar como respuesta",
+        "markError": "No pudimos guardar la respuesta marcada. Inténtalo de nuevo.",
+        "replyLabel": "Añade tu respuesta",
+        "replyPlaceholder": "Añade tu respuesta…",
+        "send": "Responder"
+      }
     }
   },
   "teach": {
@@ -661,6 +1405,322 @@
       "empty": "La página existe, pero todavía no hay nada publicado en ella.",
       "open": "Abrir tienda",
       "edit": "Editar tienda"
+    }
+  },
+  "creatorPanel": {
+    "newProduct": "Nuevo producto",
+    "createProduct": "Crear producto",
+    "untitledProduct": "Producto sin título",
+    "communityOn": "Comunidad activa",
+    "modulesOne": "{count} módulo",
+    "modulesMany": "{count} módulos",
+    "enabled": "Activado",
+    "disabled": "Desactivado",
+    "paymentType": {
+      "free": "Gratis",
+      "one_time": "Pago único",
+      "subscription_monthly": "Suscripción mensual",
+      "subscription_yearly": "Suscripción anual"
+    },
+    "filters": {
+      "all": "Todos",
+      "drafts": "Borradores",
+      "needsAttention": "Requiere atención"
+    },
+    "shareLink": {
+      "copy": "Copiar enlace",
+      "copyAria": "Copiar enlace de {label}",
+      "open": "Abrir página",
+      "openAria": "Abrir {label}",
+      "copied": "Enlace copiado.",
+      "copyError": "No se pudo copiar. Copia el enlace de arriba manualmente.",
+      "share": "Compartir",
+      "shareAria": "Compartir {label}",
+      "menuAria": "Opciones para compartir {label}",
+      "whatsapp": "WhatsApp",
+      "x": "X",
+      "linkedin": "LinkedIn",
+      "email": "Correo"
+    },
+    "hub": {
+      "sections": {
+        "overview": "Panel",
+        "links": "Enlaces de promoción",
+        "basic": "Información básica",
+        "pricing": "Precios y ofertas",
+        "members": "Área de miembros",
+        "students": "Alumnos",
+        "page": "Página del producto",
+        "content": "Contenido",
+        "tax": "Cobro de impuestos",
+        "tools": "Herramientas"
+      },
+      "nav": {
+        "label": "Secciones de gestión del curso",
+        "manage": "Gestionar",
+        "roadmap": "En el roadmap"
+      },
+      "roadmap": {
+        "assistantLabel": "Asistente de ventas",
+        "assistantTitle": "El asistente de ventas está en el roadmap.",
+        "assistantDescription": "Un asistente de IA entrenado con el contenido de este curso que responde las preguntas de los compradores en la página del producto. Todavía no está disponible: preferimos decírtelo antes que mostrarte una simulación. El precio se anunciará cuando se lance.",
+        "notify": "Avísame cuando esté listo",
+        "notifySubject": "Avísame: {feature}"
+      },
+      "status": {
+        "draft": "Borrador privado: solo tú puedes ver este curso. Completa la lista y publícalo cuando esté listo.",
+        "in_review": "Estado de revisión heredado: abre el creador para completar las verificaciones y publicar directamente.",
+        "needs_changes": "Se pidieron cambios anteriormente. Atiende la nota, actualiza el curso y publícalo cuando esté listo.",
+        "published": "Publicado en el marketplace. Los alumnos ya pueden inscribirse.",
+        "inactive": "Oculto del marketplace. Un profesional aprobado puede volver a publicarlo directamente."
+      },
+      "price": {
+        "perMonth": "{amount} / mes",
+        "perYear": "{amount} / año"
+      },
+      "highlight": {
+        "title": "Destacado en el marketplace",
+        "description": "Los cursos destacados se fijan por encima del resto del catálogo. Tu plan incluye un número fijo de destacados a la vez.",
+        "on": "Destacado en el marketplace",
+        "off": "No destacado",
+        "usage": "{used} de {limit} destacados usados en el plan {plan}",
+        "saving": "Guardando...",
+        "remove": "Quitar destacado",
+        "add": "Destacar este curso",
+        "seePlans": "Ver planes",
+        "gatePublish": "Publica el curso primero: solo los cursos publicados pueden destacarse.",
+        "gatePlan": "Los destacados del marketplace empiezan en el plan {plan}.",
+        "paidPlan": "de pago",
+        "gateQuota": "Estás usando los {limit} destacados de tu plan. Quita uno de otro curso primero.",
+        "updateError": "No se pudo actualizar el destacado del marketplace."
+      },
+      "loading": "Cargando curso...",
+      "notFound": {
+        "title": "Este curso no está en tu estudio.",
+        "description": "Puede que se haya eliminado o que pertenezca a otro creador.",
+        "back": "Volver a mis cursos"
+      },
+      "header": {
+        "eyebrow": "Gestión del curso",
+        "coverAlt": "Portada de {title}",
+        "courseFallback": "Curso",
+        "noCover": "Sin portada",
+        "switchCourse": "Cambiar de curso"
+      },
+      "editInBuilder": "Editar en el Creador",
+      "checklist": {
+        "title": "Lista de publicación",
+        "progress": "{done} de {total} pasos obligatorios listos · {percent}% listo",
+        "optional": "Opcional",
+        "openVerification": "Abrir verificación",
+        "reviewNote": "Nota de revisión de SkillsetMind",
+        "reviewPublish": "Revisar y publicar"
+      },
+      "links": {
+        "descriptionLive": "Compártelos donde promociones el curso.",
+        "descriptionDraft": "Enlaces que compartirás cuando el curso esté publicado. Hasta entonces, la página del producto solo se abre para ti.",
+        "checkout": "Checkout"
+      },
+      "basic": {
+        "description": "Identidad que se muestra en el marketplace y en la página del producto. Edita estos campos en el Creador.",
+        "title": "Título",
+        "category": "Categoría",
+        "allCategories": "Todas las categorías",
+        "summary": "Resumen",
+        "outcomes": "Resultados de aprendizaje",
+        "noneYet": "Todavía ninguno",
+        "cover": "Imagen de portada",
+        "uploaded": "Subida",
+        "missing": "Falta",
+        "edit": "Editar datos básicos en el Creador"
+      },
+      "pricing": {
+        "title": "Precios y checkout",
+        "description": "Define el modelo de acceso y las condiciones comerciales base, y luego crea ofertas específicas con enlaces distintos para cada comprador.",
+        "price": "Precio",
+        "paymentType": "Tipo de pago",
+        "installments": "Cuotas",
+        "installmentsUpTo": "Hasta {max} cuotas",
+        "stripeCheckout": "Checkout seguro de Stripe",
+        "payouts": "Pagos de Stripe",
+        "payoutsReady": "Listo",
+        "payoutsIncomplete": "Configuración incompleta",
+        "edit": "Editar precios en el Creador",
+        "finishOnboarding": "Completar la configuración de pagos"
+      },
+      "content": {
+        "description": "{modules} y {lessons} en el plan de estudios.",
+        "empty": "Todavía no hay módulos: arma el plan de estudios en el Creador.",
+        "edit": "Editar contenido en el Creador"
+      },
+      "members": {
+        "description": "El espacio al que llegan los alumnos inscritos después de comprar.",
+        "theme": "Tema",
+        "themeLight": "Claro",
+        "themeDark": "Oscuro",
+        "welcomeTitle": "Título de bienvenida",
+        "subtitle": "Subtítulo",
+        "default": "Predeterminado",
+        "community": "Comunidad",
+        "preview": "Vista previa del área de miembros"
+      },
+      "page": {
+        "title": "Página pública del producto",
+        "description": "La URL que ve el comprador. Hasta que publiques, solo tú puedes abrirla.",
+        "open": "Abrir página del producto"
+      },
+      "sales": {
+        "description": "Los pedidos, reembolsos e ingresos están en el panel de ventas de todo el estudio.",
+        "open": "Abrir panel de ventas",
+        "messages": "Mensajes de alumnos"
+      },
+      "tools": {
+        "title": "Herramientas del producto",
+        "description": "Abre los espacios de apoyo para preparar, promocionar y operar este producto.",
+        "marketing": "Espacio de marketing",
+        "marketingDetail": "Páginas, multimedia, mensajes de compradores y promociones",
+        "mediaDetail": "Portadas de cursos y archivos de entrega",
+        "integrationsDetail": "Servicios de entrega y de negocio conectados",
+        "verification": "Verificación profesional",
+        "verificationDetail": "Credenciales y admisión en el marketplace"
+      }
+    },
+    "overview": {
+      "title": "Cómo va este producto",
+      "scope": "Todo lo de abajo cuenta solo {title}, nunca tus otros productos.",
+      "viewPublic": "Ver página pública",
+      "previewStudent": "Ver como alumno",
+      "students": "Alumnos inscritos",
+      "studentsHintJoined": "{count} se unieron en los últimos 7 días",
+      "studentsHintEmpty": "Los compradores aparecen aquí en cuanto se confirma la compra.",
+      "revenueHintOne": "{count} pedido pagado, sin contar reembolsos",
+      "revenueHintMany": "{count} pedidos pagados, sin contar reembolsos",
+      "revenueHintEmpty": "Todavía no hay pedidos pagados en este producto.",
+      "completionHint": "{done} de {total} terminaron el curso",
+      "completionHintEmpty": "Se mide cuando alguien se inscribe.",
+      "rating": "Valoración media",
+      "reviewsOne": "{count} reseña",
+      "reviewsMany": "{count} reseñas",
+      "ratingHintEmpty": "Todavía no hay reseñas: los alumnos valoran después de inscribirse.",
+      "emptyTitle": "Todavía nadie ha comprado este producto.",
+      "emptyLive": "Las inscripciones, los ingresos, la finalización y la valoración aparecen aquí después de la primera venta. Comparte la página del producto para conseguirla.",
+      "emptyDraft": "Publica el curso primero: los números empiezan en cuanto el primer comprador complete el checkout.",
+      "openPage": "Abrir la página del producto",
+      "attentionTitle": "Requiere tu atención",
+      "attentionOne": "Hay una cosa en este producto que conviene arreglar.",
+      "attentionMany": "Hay {count} cosas en este producto que conviene arreglar."
+    },
+    "products": {
+      "eyebrow": "Productos",
+      "description": "Crea borradores privados, completa las verificaciones del producto y publica directamente cuando tu verificación profesional esté aprobada.",
+      "productWorkspace": "Espacio de productos",
+      "communityWorkspace": "Espacio de comunidades",
+      "loading": "Cargando productos...",
+      "loadingAria": "Cargando productos",
+      "productOne": "{count} producto",
+      "productMany": "{count} productos",
+      "communityOne": "{count} comunidad",
+      "communityMany": "{count} comunidades",
+      "searchProducts": "Buscar productos...",
+      "searchCommunities": "Buscar comunidades...",
+      "typeLabel": "Tipo",
+      "typeAria": "Tipo de producto",
+      "status": "Estado",
+      "statusAria": "Estado del producto",
+      "filterLegacyReview": "Revisión heredada",
+      "filterLive": "Publicados",
+      "emptyProductsTitle": "Todavía no hay productos",
+      "emptyProductsDescription": "Empieza un curso, una suscripción, una comunidad, un evento o un programa gratuito. El borrador se mantiene privado hasta que lo publiques.",
+      "emptyCommunitiesTitle": "Todavía no hay comunidades",
+      "emptyCommunitiesDescription": "Crea un espacio recurrente para miembros con publicaciones, debate e intercambio entre profesionales.",
+      "createCommunity": "Crear comunidad",
+      "noMatch": "Ningún producto coincide con esta búsqueda y este filtro de estado.",
+      "columns": {
+        "product": "Producto",
+        "access": "Acceso",
+        "actions": "Acciones"
+      },
+      "uncategorized": "Sin categoría",
+      "signIn": "Inicia sesión como creador para empezar un producto.",
+      "loadError": "No pudimos cargar tus productos. Actualiza la página o contacta con el soporte de SkillsetMind.",
+      "deleteError": "No pudimos eliminar este borrador. Inténtalo de nuevo o contacta con el soporte de SkillsetMind.",
+      "actions": {
+        "more": "Más acciones para {title}",
+        "menu": "Acciones para {title}",
+        "edit": "Editar",
+        "viewAsStudent": "Ver como alumno",
+        "delete": "Eliminar"
+      },
+      "delete": {
+        "aria": "Eliminar {title}",
+        "eyebrow": "Eliminar producto",
+        "title": "¿Eliminar {title}?",
+        "description": "Esto elimina de forma permanente el borrador y el contenido del curso. Esta acción no se puede deshacer.",
+        "cancel": "Cancelar",
+        "busy": "Eliminando...",
+        "confirm": "Confirmar eliminación"
+      },
+      "shortcuts": {
+        "label": "Atajos del espacio de productos",
+        "membersDetail": "Personaliza la entrega y los espacios de los alumnos",
+        "eventsDetail": "Programa talleres y sesiones en vivo",
+        "marketingDetail": "Páginas, multimedia, mensajes y promociones",
+        "couponsDetail": "Crea códigos de descuento para tus productos"
+      }
+    },
+    "home": {
+      "description": "Continúa la configuración, gestiona tus productos y sigue el trabajo que los acerca a la publicación y a las ventas.",
+      "storefront": "Tienda",
+      "nextSteps": {
+        "eyebrow": "Próximos pasos",
+        "title": "Prepárate para tu primera venta",
+        "progress": "{done} de {total} completados",
+        "listLabel": "Próximos pasos del creador",
+        "recommended": "Recomendado ahora"
+      },
+      "steps": {
+        "create": "Crea un producto",
+        "createDetail": "Elige el modelo de entrega y de acceso.",
+        "creatorData": "Completa tus datos de creador",
+        "creatorDataDetail": "Termina la verificación profesional y los pagos de productos de pago.",
+        "creatorDataAction": "Completar configuración",
+        "prepare": "Prepara el producto para vender",
+        "prepareDetail": "Añade contenido, precios, la experiencia de miembros y revisa el borrador.",
+        "prepareAction": "Preparar producto"
+      },
+      "products": {
+        "title": "Productos en tu espacio",
+        "showAll": "Ver todos",
+        "filtersLabel": "Filtros de productos",
+        "filterLiveSales": "En venta",
+        "empty": "Todavía no hay productos en esta vista.",
+        "manage": "Gestionar producto"
+      },
+      "formats": {
+        "eyebrow": "¿Qué quieres vender?",
+        "title": "Elige un formato de producto",
+        "course": "Curso online",
+        "courseDetail": "Video, texto, descargas, certificados y lecciones estructuradas.",
+        "program": "Programa guiado",
+        "programDetail": "Un recorrido secuenciado de aprendizaje, práctica y encuentros en vivo opcionales.",
+        "subscription": "Suscripción",
+        "subscriptionDetail": "Acceso recurrente con cobro mensual o anual.",
+        "community": "Comunidad",
+        "communityDetail": "Un espacio recurrente para miembros con publicaciones e intercambio entre profesionales.",
+        "event": "Evento online",
+        "eventDetail": "Talleres en vivo, cohortes y sesiones grupales programadas.",
+        "free": "Programa gratuito",
+        "freeDetail": "Inscripción abierta sin checkout ni pago."
+      },
+      "milestones": {
+        "eyebrow": "Mi evolución",
+        "title": "Hitos del creador",
+        "item": "Hito {number}",
+        "firstProduct": "Primer producto",
+        "verified": "Profesional verificado",
+        "payouts": "Pagos listos",
+        "firstLive": "Primer producto publicado"
+      }
     }
   },
   "profileValidation": {
@@ -1493,5 +2553,607 @@
     },
     "pageTitle": "Inicia sesión o crea una cuenta",
     "loadingForm": "Cargando el formulario de inicio de sesión"
+  },
+  "creatorEditor": {
+    "lesson": {
+      "tabs": {
+        "video": "Video",
+        "description": "Descripción",
+        "materials": "Materiales",
+        "settings": "Ajustes"
+      },
+      "state": {
+        "uploaded": "Subido",
+        "embedded": "Insertado",
+        "empty": "Vacío",
+        "done": "Listo",
+        "preview": "Vista previa",
+        "private": "Privado"
+      },
+      "number": "Lección {lessonIndex}",
+      "close": "Cerrar el editor de la lección",
+      "untitled": "Lección sin título",
+      "context": "Módulo {moduleIndex} - {moduleTitle} / Lección {lessonIndex}",
+      "setup": "Configuración de la lección",
+      "previewLabel": "Vista previa del video de la lección",
+      "previewTitle": "Vista previa del video",
+      "savedProcessing": "La subida está guardada. Los videos nuevos pueden seguir procesándose antes de poder reproducirse.",
+      "embedDetected": "Video de {provider} detectado.",
+      "embedInvalid": "El enlace está guardado, pero no se reproducirá en el aula. Usa una URL de video estándar de YouTube o Vimeo.",
+      "embedEmpty": "Pega un enlace si el video ya está alojado fuera de SkillsetMind.",
+      "uploadVideo": "Subir video de la lección",
+      "uploadVideoHelp": "MP4, MOV, WebM o cualquier archivo de video compatible con el navegador.",
+      "uploadRecording": "Subir grabación en vivo",
+      "uploadRecordingHelp": "Grabación de clases grupales, mentorías o seminarios web.",
+      "videoHelp": "Sube el video a SkillsetMind o pega una URL de YouTube o Vimeo. Los estudiantes pueden reproducir ambas opciones en el aula.",
+      "noVideo": "Todavía no hay ningún archivo de video subido.",
+      "title": "Título de la lección",
+      "description": "Descripción de la lección",
+      "descriptionHelp": "Se muestra debajo del video en el área de miembros.",
+      "descriptionPlaceholder": "Explica qué aprenderá el estudiante y por qué es útil.",
+      "text": "Contenido de texto, instrucciones o notas",
+      "textHelp": "Úsalo para lecciones de texto, tareas, guiones o puntos clave.",
+      "textPlaceholder": "Añade el esquema de la lección, las instrucciones de la tarea, una lista de pasos o notas de apoyo.",
+      "materialsHelp": "Los archivos complementarios se adjuntan a esta lección y se pueden descargar desde el aula.",
+      "noMaterials": "Todavía no hay materiales complementarios.",
+      "type": "Tipo de lección",
+      "duration": "Duración en minutos",
+      "freePreview": "Vista previa gratuita",
+      "freePreviewHelp": "Muestra esta lección antes de la compra. SkillsetMind recomienda una buena lección de muestra.",
+      "freePreviewLabel": "Usar esta lección como vista previa gratuita",
+      "drip": "Retraso de publicación en días",
+      "dripHelp": "Deja el campo vacío para publicar de inmediato o indica cuántos días después de la inscripción se habilita.",
+      "thumbnailHelp": "Puedes subir una miniatura. Se muestra en el área de miembros cuando los estudiantes exploran las lecciones.",
+      "noThumbnail": "Todavía no hay miniatura de la lección.",
+      "contextHelp": "Configura la lección que los estudiantes verán, leerán, descargarán y comentarán.",
+      "saveHelp": "Los archivos se guardan al subirlos. El texto y la configuración se guardan con el borrador del curso.",
+      "file": {
+        "selectAnother": "Elegir otro archivo",
+        "select": "Elegir archivo",
+        "allowPreview": "Permitir este archivo en la vista previa pública cuando sea seguro.",
+        "cancel": "Cancelar subida",
+        "upload": "Subir archivo",
+        "uploading": "Subiendo..."
+      },
+      "progress": {
+        "sending": "Enviando {total}...",
+        "determinate": "{percent}% - {transferred} de {total}"
+      },
+      "errors": {
+        "load": "No pudimos cargar los archivos de la lección.",
+        "notVideo": "\"{fileName}\" no es un archivo de video. Usa MP4, MOV o WebM.",
+        "videoTooLarge": "Este video ocupa {size}; el límite es {limit}.",
+        "videoLimit": "Usa un archivo de video de menos de {limit}.",
+        "invalidFile": "Usa un archivo válido de {kind} de menos de {limit}.",
+        "delete": "No pudimos eliminar este archivo. Revisa la titularidad del curso y los permisos actuales."
+      },
+      "success": {
+        "uploaded": "Archivo subido a esta lección.",
+        "deleted": "Archivo eliminado."
+      },
+      "deleteConfirm": "¿Eliminar \"{fileName}\"? El archivo se eliminará de forma permanente.",
+      "thumbnailAlt": "Miniatura de la lección: {fileName}",
+      "enrolledOnly": "Solo inscritos",
+      "deleting": "Eliminando...",
+      "delete": "Eliminar"
+    },
+    "videoSource": {
+      "heading": "Añade el video de la lección",
+      "fileInput": "Subir un video de la lección",
+      "dropActive": "Suelta el video para seleccionarlo",
+      "dropIdle": "Arrastra y suelta tu video aquí",
+      "browseHelp": "o haz clic para buscarlo: MP4, MOV, WebM y otros archivos de video.",
+      "url": "URL de YouTube o Vimeo",
+      "helpLabel": "Cómo funciona el campo de URL de YouTube o Vimeo",
+      "help": "Pega el enlace de la página del video, por ejemplo https://www.youtube.com/watch?v=… o una URL de Vimeo. Lo convertimos en un video insertado que protege la privacidad y se reproduce en el aula con la identidad del estudiante como marca de agua. Sigue siendo un enlace de YouTube o Vimeo: quien acceda a él puede verlo fuera de tu curso. Si subes el archivo, la reproducción se firma para cada estudiante.",
+      "protectionNote": "Un video insertado sigue siendo un enlace de YouTube o Vimeo: cualquiera que tenga ese enlace puede verlo fuera de tu curso. Si subes el archivo, cada estudiante obtiene su propia reproducción firmada."
+    },
+    "members": {
+      "step": "Área de miembros",
+      "stepHelp": "Tema, portada, título",
+      "heading": "Personaliza el área de miembros.",
+      "help": "Elige el tema, la portada y los textos que verán tus alumnos al entrar al curso.",
+      "backTo": "Volver al área de miembros",
+      "continueTo": "Continuar al área de miembros",
+      "untitled": "Curso sin título",
+      "theme": "Tema",
+      "themeHelp": "Define el aspecto de la portada del curso para tus alumnos. El tema claro es el predeterminado.",
+      "light": "Claro",
+      "dark": "Oscuro",
+      "title": "Título del área de miembros",
+      "titlePlaceholder": "El título de tu curso",
+      "titleHelp": "{length}/80 — déjalo vacío para usar el título del curso.",
+      "subtitle": "Subtítulo",
+      "subtitlePlaceholder": "El nombre de tu estudio, una frase o a quién va dirigido",
+      "subtitleHelp": "{length}/160 — la línea debajo del título. Añade el nombre de tu estudio o una frase, o déjalo vacío.",
+      "description": "Descripción",
+      "descriptionPlaceholder": "Una breve bienvenida debajo del título en el área de miembros.",
+      "livePreview": "Vista previa en vivo",
+      "openPreview": "Abrir vista previa completa",
+      "previewHelp": "La vista previa completa abre la última versión guardada en una pestaña nueva. Espera a que termine el guardado automático antes de abrirla.",
+      "cover": "Portada del área de miembros",
+      "coverHelp": "Imagen de fondo del curso para tus alumnos. Recomendamos 16:9 y menos de {limit}.",
+      "coverSet": "Portada añadida",
+      "coverAlt": "Portada del área de miembros de {courseTitle}",
+      "noCover": "Aún no hay portada",
+      "uploading": "Subiendo...",
+      "replaceCover": "Cambiar portada",
+      "uploadCover": "Subir portada",
+      "removeCover": "Quitar portada",
+      "invalidImage": "Usa una imagen de menos de {limit}."
+    },
+    "preview": {
+      "open": "Vista previa",
+      "loadError": "No pudimos cargar la vista previa de este curso.",
+      "notSelected": "Curso no seleccionado.",
+      "notSelectedHelp": "Vuelve al editor y abre la vista previa de un curso específico.",
+      "disconnected": "La vista previa no está conectada.",
+      "disconnectedHelp": "La conexión con la plataforma debe estar disponible para cargar la vista previa.",
+      "loading": "Cargando vista previa...",
+      "loadingHelp": "Preparando el área de miembros que verán tus alumnos.",
+      "unavailable": "Vista previa no disponible.",
+      "notFound": "No se encontró el curso.",
+      "notFoundHelp": "Es posible que el curso se haya eliminado o que debas actualizar la sesión.",
+      "mode": "Modo de vista previa",
+      "back": "Volver al estudio del creador",
+      "serverLoading": "Cargando vista previa del curso...",
+      "banner": "Modo de vista previa: así verán tus alumnos el curso.",
+      "exit": "Salir de la vista previa",
+      "only": "Solo vista previa",
+      "readOnly": "La vista previa es de solo lectura. Aquí no se guarda el progreso del alumno.",
+      "tabs": {
+        "lesson": "Lección",
+        "materials": "Materiales",
+        "lives": "En vivo",
+        "community": "Comunidad",
+        "messages": "Mensajes",
+        "review": "Reseña",
+        "about": "Acerca del curso"
+      },
+      "sections": "Secciones del curso",
+      "lessonNavigation": "Navegación de lecciones",
+      "previousLesson": "Lección anterior: {title}",
+      "allLessons": "Todas las lecciones ({count})"
+    },
+    "builder": {
+      "steps": {
+        "details": {
+          "tab": "Datos",
+          "tabHelp": "Título, categorías y propuesta",
+          "stage": "Datos del curso",
+          "stageHelp": "Información, portada y propuesta",
+          "heading": "Define las bases del curso.",
+          "help": "Esta información ayuda al estudiante a entender lo que ofrece el curso."
+        },
+        "pricing": {
+          "tab": "Precios",
+          "tabHelp": "Pago, acceso gradual y vista previa",
+          "stageHelp": "Modelo de acceso",
+          "heading": "Presenta la oferta.",
+          "help": "Define el acceso, el precio, el calendario y la lección de vista previa gratuita antes de publicar."
+        },
+        "content": {
+          "tab": "Contenido",
+          "tabHelp": "Módulos, lecciones y archivos",
+          "stageHelp": "Módulos y lecciones",
+          "heading": "Organiza el contenido.",
+          "help": "Crea los módulos, lecciones, enlaces, textos y espacios de archivos del área de miembros."
+        },
+        "review": {
+          "tab": "Publicar",
+          "tabHelp": "Revisión y lanzamiento",
+          "stageHelp": "Revisión final",
+          "heading": "Publica en el marketplace.",
+          "help": "La credencial profesional permite publicar. Al completar los requisitos del producto, la publicación abre las ventas y el enlace público de inmediato."
+        }
+      },
+      "drip": {
+        "instant": {
+          "label": "Acceso inmediato",
+          "detail": "Todas las lecciones están disponibles al inscribirse."
+        },
+        "sequential_progress": {
+          "label": "Avance secuencial",
+          "detail": "La siguiente lección se abre al completar la anterior."
+        },
+        "time_drip_lesson": {
+          "label": "Una lección por intervalo",
+          "detail": "Libera las lecciones de forma gradual según la fecha de inscripción."
+        },
+        "time_drip_module": {
+          "label": "Un módulo por intervalo",
+          "detail": "Libera los módulos de forma gradual según la fecha de inscripción."
+        },
+        "time_drip_custom": {
+          "label": "Calendario por lección",
+          "detail": "Usa el campo de días de espera de cada lección para definir cuándo se abre."
+        }
+      },
+      "paymentModels": {
+        "one_time": {
+          "title": "Pago único",
+          "description": "El estudiante paga una vez y obtiene acceso de por vida.",
+          "feature1": "Ideal para cursos completos",
+          "feature2": "Acceso de por vida para estudiantes"
+        },
+        "free": {
+          "title": "Gratis",
+          "description": "Sin pago. Útil para captar contactos o probar un grupo piloto.",
+          "feature1": "Inscripción sin pasar por el pago",
+          "feature2": "Útil para muestras o pruebas piloto"
+        },
+        "subscription_monthly": {
+          "title": "Suscripción mensual",
+          "description": "Cobro recurrente cada mes.",
+          "feature1": "Acceso recurrente",
+          "feature2": "Controles de cancelación"
+        },
+        "subscription_yearly": {
+          "title": "Suscripción anual",
+          "description": "Cobro recurrente cada año.",
+          "feature1": "Acceso anual",
+          "feature2": "Recordatorios de renovación"
+        }
+      },
+      "errors": {
+        "notFound": "No pudimos encontrar este curso.",
+        "load": "No pudimos cargar este curso. Vuelve al estudio del creador e inténtalo de nuevo.",
+        "chooseModule": "Crea o elige un módulo antes de añadir una lección.",
+        "moduleTitle": "Escribe un título antes de crear el módulo.",
+        "lessonTitle": "Escribe un título antes de crear la lección.",
+        "moduleTitleMissing": "El módulo {module} necesita un título antes de guardar.",
+        "lessonTitleMissing": "La lección {lesson} del módulo {module} necesita un título antes de guardar.",
+        "price": "Usa un precio válido igual o mayor que cero, o deja el campo vacío.",
+        "installmentsSave": "Define un límite de cuotas válido antes de guardar.",
+        "category": "Elige al menos una categoría del marketplace antes de publicar.",
+        "paidPrice": "Define un precio mayor que $0 o elige Gratis como modelo de pago antes de publicar.",
+        "installmentsPublish": "Define un límite de cuotas válido antes de publicar.",
+        "duplicateTitle": "Ya existe un curso con este título. Elige otro nombre.",
+        "activation": "Activa tu tienda para habilitar la publicación: es un pago único.",
+        "save": "No pudimos guardar este curso. Inténtalo de nuevo.",
+        "preview": "Quita la vista previa gratuita no válida o elige una lección de este curso.",
+        "setup": "Completa la configuración del creador antes de publicar cursos.",
+        "verification": "La verificación profesional debe estar aprobada antes de publicar.",
+        "payouts": "Completa la configuración de cobros de Stripe antes de publicar un curso de pago. Abre el panel Cobros en tu estudio.",
+        "payment": "Define un modelo de pago válido antes de publicar.",
+        "publish": "No pudimos publicar este curso. Inténtalo de nuevo."
+      },
+      "success": {
+        "lessonAdded": "Lección añadida. El editor se abrirá cuando termine el guardado automático…",
+        "draftSaved": "Borrador guardado.",
+        "published": "Curso publicado. Su página de producto ya está disponible."
+      },
+      "confirm": {
+        "leave": "Este curso tiene cambios sin guardar. ¿Quieres salir y perderlos?",
+        "deleteModuleEmpty": "¿Eliminar el módulo \"{title}\"? No se podrá deshacer después del guardado automático.",
+        "deleteModuleOne": "¿Eliminar el módulo \"{title}\" y su {count} lección? No se podrá deshacer después del guardado automático.",
+        "deleteModuleMany": "¿Eliminar el módulo \"{title}\" y sus {count} lecciones? No se podrá deshacer después del guardado automático.",
+        "deleteLesson": "¿Eliminar la lección \"{title}\"? No se podrá deshacer después del guardado automático."
+      },
+      "curriculum": {
+        "untitledModule": "Módulo sin título",
+        "untitledLesson": "Lección sin título",
+        "addModule": "Añadir módulo",
+        "addLesson": "Añadir lección",
+        "moduleTitle": "Título del módulo",
+        "moduleTitlePlaceholder": "Ejemplo: Fundamentos",
+        "moduleDescription": "Descripción del módulo",
+        "moduleDescriptionExample": "Descripción opcional del módulo. Ejemplo: Presenta los conceptos necesarios antes de las lecciones prácticas.",
+        "helpTopic": "Acceso a las lecciones y disponibilidad gradual",
+        "help": "Usa los días de espera para dosificar el acceso tras la inscripción. La vista previa gratuita es opcional y debe ser una lección de este curso; permite conocer el estilo de enseñanza antes de inscribirse.",
+        "moduleForLesson": "Módulo de esta lección",
+        "chooseModule": "Elegir módulo",
+        "lessonType": "Tipo de lección",
+        "lessonTitle": "Título de la lección",
+        "lessonDuration": "Duración de la lección en minutos",
+        "minutes": "Minutos",
+        "delayLabel": "Días de espera para acceder",
+        "delayPlaceholder": "Días de espera",
+        "externalLabel": "Enlace externo o URL de la grabación de la lección",
+        "externalPlaceholder": "Enlace externo o URL de la grabación, opcional",
+        "noteLabel": "Nota o resultado de la lección",
+        "notePlaceholder": "Nota o resultado de la lección, opcional",
+        "textLabel": "Texto de la lección",
+        "textPlaceholder": "Texto, instrucciones, enunciado de la actividad o esquema de la lección, opcional.",
+        "moduleDescriptionPlaceholder": "Descripción opcional del módulo",
+        "editNotePlaceholder": "Nota de la lección o resultado para el estudiante",
+        "editTextPlaceholder": "Texto, enunciado de la actividad o esquema de la lección",
+        "editExternalPlaceholder": "Enlace externo, grabación en directo o URL para insertar, opcional",
+        "saveErrorTitle": "Falló el guardado automático. Usa Guardar borrador para habilitar las subidas",
+        "makePreview": "Usar esta lección como vista previa gratuita pública.",
+        "editor": "Editor de contenido",
+        "editorHelp": "Edita, reordena y organiza los módulos y las lecciones",
+        "lessonOne": "{count} lección",
+        "lessonMany": "{count} lecciones",
+        "empty": "Añade el primer módulo arriba. Después podrás editar, reordenar y organizar sus lecciones aquí.",
+        "moduleNumber": "Módulo {index}",
+        "moduleDescriptionNumber": "Descripción del módulo {index}",
+        "noteNumber": "Nota o resultado de la lección {index}",
+        "textNumber": "Texto de la lección {index}",
+        "externalNumber": "Enlace externo de la lección {index}",
+        "up": "Subir",
+        "down": "Bajar",
+        "delete": "Eliminar",
+        "moduleEmpty": "Este módulo aún no tiene lecciones.",
+        "type": "Tipo",
+        "delayDays": "Días de espera",
+        "addVideo": "Añadir vídeo",
+        "saveToUpload": "Guarda el borrador para subir archivos",
+        "savingLesson": "Guardando lección…",
+        "deleteLesson": "Eliminar lección",
+        "editTitle": "Editar el vídeo, los materiales y la configuración de la lección",
+        "addVideoTitle": "Añadir el vídeo de la lección",
+        "editContent": "Editar contenido",
+        "previewSelected": "Vista previa gratuita seleccionada",
+        "markPreview": "Marcar como vista previa gratuita"
+      },
+      "summary": {
+        "month": " / mes",
+        "year": " / año",
+        "setPrice": "Definir precio",
+        "checks": "{done} de {total} requisitos completos",
+        "publishPercent": "Preparación para publicar: {percent}%",
+        "percent": "{percent}% listo",
+        "modules": "{count} módulos",
+        "lessons": "{count} lecciones",
+        "duration": "{duration} en total",
+        "structure": "Estructura del curso",
+        "empty": "Empieza con un módulo y añade las lecciones que deben completar los estudiantes.",
+        "noLessons": "Aún no hay lecciones.",
+        "preview": " - vista previa",
+        "structureCount": "{modules} módulos, {lessons} lecciones"
+      },
+      "shell": {
+        "chooseCourse": "Elige un curso en el estudio del creador antes de abrir el constructor.",
+        "loading": "Cargando el constructor del curso...",
+        "title": "Constructor de cursos",
+        "help": "Prepara la experiencia del estudiante: datos, módulos, lecciones, archivos, precios, acceso gradual y revisión para publicar, en un solo espacio guiado.",
+        "shortTitle": "Constructor",
+        "legacy": "Este curso conserva un estado de revisión anterior. Completa los requisitos y publícalo directamente desde este espacio.",
+        "published": "Este curso está publicado. Puedes seguir mejorando su contenido y la experiencia del estudiante sin iniciar otra revisión.",
+        "reviewNote": "Nota de revisión de SkillsetMind",
+        "unpublished": "Este producto todavía no está publicado. Los estudiantes solo lo verán después de publicarlo.",
+        "unpublishedLink": "Abrir el panel del producto"
+      },
+      "navigation": {
+        "studio": "Volver al estudio del creador",
+        "manage": "Gestionar producto",
+        "saving": "Guardando...",
+        "save": "Guardar borrador",
+        "steps": "Pasos para crear el curso",
+        "creation": "Creación del curso",
+        "next": "Siguiente:",
+        "backTo": "Volver a {step}",
+        "continueTo": "Continuar a {step}",
+        "back": "Volver"
+      },
+      "publish": {
+        "ready": "El curso está listo para publicar.",
+        "title": "Preparación para publicar",
+        "heading": "Prepara el producto para el lanzamiento",
+        "helpTopic": "Publicación del curso",
+        "help": "SkillsetMind verifica al profesional en lugar de aprobar manualmente cada curso. Al completar estos requisitos, el creador aprobado publica directamente y el enlace del marketplace se abre de inmediato.",
+        "optional": "Opcional",
+        "checksHelp": "SkillsetMind verifica al profesional. Los requisitos del producto, del precio y de los cobros se comprueban antes de abrir el enlace del marketplace.",
+        "finish": "Completa los requisitos de publicación para lanzar el curso.",
+        "passed": "Todos los requisitos de publicación están completos.",
+        "activate": "Activar tienda",
+        "publishing": "Publicando...",
+        "submit": "Publicar producto"
+      },
+      "details": {
+        "title": "Título del curso",
+        "categories": "Categorías",
+        "categoriesHelp": "Obligatorio. Elige hasta cinco. La primera será la categoría principal en el marketplace.",
+        "summary": "Resumen del curso",
+        "characters": "{count} caracteres",
+        "minimumCharacters": "{count}/20 caracteres mínimos para publicar",
+        "outcomes": "Lo que aprenderán los estudiantes",
+        "outcomesHelp": "Resultados concretos de la lista «Lo que aprenderás» en el marketplace. Intenta incluir entre 4 y 6.",
+        "outcomeLabel": "Resultado de aprendizaje {index}",
+        "removeOutcome": "Eliminar resultado de aprendizaje {index}",
+        "outcomePlaceholder": "Ejemplo: Crear y lanzar un curso de pago por grupos",
+        "noOutcomes": "Aún no hay resultados de aprendizaje. Añade los logros concretos que alcanzará el estudiante.",
+        "addOutcome": "Añadir resultado de aprendizaje",
+        "help": "Usa un título específico, una categoría clara y un resumen centrado en lo que aprenderá el estudiante. Este texto aparecerá en el marketplace."
+      },
+      "community": {
+        "title": "Comunidad del curso",
+        "help": "Añade un espacio privado en el área de miembros donde los estudiantes inscritos pueden publicar, comentar y conectar. Puedes activarlo o desactivarlo en cualquier momento, incluso después de publicar.",
+        "enable": "Activar la comunidad del curso",
+        "on": "La comunidad está activada. Los estudiantes ven la sección Comunidad en este curso.",
+        "off": "La comunidad está desactivada. Los estudiantes solo ven lecciones y recursos."
+      },
+      "pricing": {
+        "setup": "Configuración del marketplace",
+        "model": "Modelo de pago",
+        "helpTopic": "Precios del curso",
+        "help": "Elige acceso gratuito, pago único o una suscripción mensual o anual. Para publicar productos de pago, necesitas un precio mayor que cero y una cuenta de Stripe Connect lista para recibir cobros.",
+        "price": "Precio",
+        "currency": "Moneda",
+        "freePlaceholder": "Curso gratuito",
+        "pricePlaceholder": "Ejemplo: 149",
+        "installments": "Cuotas con tarjeta",
+        "installmentsOneTime": "Las cuotas solo se aplican a pagos únicos.",
+        "installmentsUnavailable": "No está disponible con la cuenta actual de Stripe. Stripe requiere una cuenta de plataforma de México y precios en MXN.",
+        "installmentsCurrency": "Elige MXN para configurar cuotas con tarjetas mexicanas compatibles.",
+        "installmentsEligible": "Las tarjetas compatibles pueden elegir entre los planes configurados en Stripe. Se aplican las reglas del emisor de la tarjeta y de importe mínimo.",
+        "enableInstallments": "Activar cuotas con tarjeta",
+        "release": "Disponibilidad del contenido",
+        "interval": "Días por intervalo",
+        "customHelp": " Define los días de espera de cada lección en el editor de contenido.",
+        "preview": "Lección de vista previa gratuita",
+        "noPreview": "Aún no hay una vista previa seleccionada",
+        "listingHelp": "Estos campos preparan la página pública. Para inscribirse en un curso de pago, el estudiante debe completar el pago en Stripe."
+      },
+      "save": {
+        "blocked": "No se guarda: {reason}",
+        "reasons": {
+          "price": "corrige el precio",
+          "installments": "corrige el límite de cuotas",
+          "structure": "corrige la estructura del curso",
+          "field": "corrige el campo señalado"
+        },
+        "saving": "Guardando",
+        "pending": "Cambios sin guardar",
+        "error": "Falló el guardado. Usa Guardar borrador",
+        "saved": "Todos los cambios guardados"
+      },
+      "cover": {
+        "help": "Imagen pública para el marketplace, la página del curso y la cabecera del aula. Proporción recomendada: 16:9. Menos de {limit}.",
+        "alt": "Portada de {title}",
+        "course": "Curso",
+        "emptyHelp": "Añade una portada. Aparecerá en la tarjeta del marketplace, en la página del curso y en el aula."
+      }
+    },
+    "assets": {
+      "presets": {
+        "module": "Portada de un módulo en el área de miembros. Se muestra en proporción 16:10.",
+        "course": "Imagen pública para el marketplace, la página del curso y las vistas previas."
+      },
+      "errors": {
+        "load": "No pudimos cargar los archivos del curso.",
+        "invalidFile": "Usa un archivo válido de {kind} de menos de {limit}.",
+        "module": "Elige el módulo al que pertenece esta portada.",
+        "delete": "No pudimos eliminar este archivo. Comprueba la propiedad del curso y los permisos actuales."
+      },
+      "uploaded": "Archivo subido.",
+      "label": "Biblioteca de archivos del curso",
+      "title": "Sube portadas y gestiona los archivos del curso.",
+      "help": "Sube las portadas de este curso y sus módulos. Para los vídeos, materiales y miniaturas de cada lección, abre el editor de lecciones desde la pestaña Contenido.",
+      "count": "{count} archivos subidos",
+      "coverSet": "La portada del curso ya está añadida. Sube otra para cambiarla.",
+      "uploadType": "Tipo de subida",
+      "uploadingLabel": "Archivo que vas a subir",
+      "targetHelp": "Elige el destino y el archivo antes de subirlo.",
+      "imageLimit": "Imagen de hasta {limit}.",
+      "assetType": "Tipo de archivo",
+      "attachModule": "Adjuntar al módulo",
+      "addModules": "Primero añade módulos",
+      "chooseModule": "Elegir módulo",
+      "chooseFile": "Elige un archivo para {kind}",
+      "previewHelp": "Márcalo como archivo de vista previa gratuita si puede mostrarse antes de la compra.",
+      "previewAlt": "Vista previa de {fileName}",
+      "selected": "Seleccionado: {fileName} ({size})",
+      "upload": "Subir archivo",
+      "empty": "Aún no hay archivos. Empieza por la portada de un curso o módulo.",
+      "courseGroup": "Archivos del curso",
+      "moduleGroup": "Archivos de módulos",
+      "lessonGroup": "Archivos de lecciones",
+      "groupEmpty": "Aún no hay archivos aquí.",
+      "lesson": "Lección:",
+      "module": "Módulo:"
+    },
+    "categorySelect": {
+      "select": "Selecciona hasta {max} categorías",
+      "primary": "Principal",
+      "label": "Categorías del curso",
+      "keepOne": "Elige primero la nueva categoría. El curso necesita al menos una.",
+      "maximum": "Has seleccionado el máximo de categorías. Quita una para añadir otra.",
+      "swapHelp": "Para cambiar de categoría, elige primero la nueva. El curso necesita al menos una."
+    },
+    "currencySelect": {
+      "mostUsed": "Más usadas",
+      "other": "Otras monedas admitidas"
+    },
+    "readiness": {
+      "items": {
+        "title": {
+          "label": "Título del curso",
+          "hint": "Dale al curso un título de al menos 3 caracteres."
+        },
+        "summary": {
+          "label": "Resumen",
+          "hint": "Escribe un resumen de al menos 20 caracteres."
+        },
+        "category": {
+          "label": "Categoría del marketplace",
+          "hint": "Elige al menos una categoría del marketplace."
+        },
+        "cover": {
+          "label": "Imagen de portada",
+          "hint": "Sube una portada. Aparece en la página del producto y en las tarjetas del marketplace."
+        },
+        "module": {
+          "label": "Módulo",
+          "hint": "Añade al menos un módulo."
+        },
+        "lesson": {
+          "label": "Lección",
+          "hint": "Añade al menos una lección."
+        },
+        "pricing": {
+          "label": "Precios",
+          "hint": "Define un precio mayor que $0 o elige Gratis."
+        },
+        "outcomes": {
+          "label": "Resultados de aprendizaje",
+          "hint": "Añade resultados de aprendizaje. Ayudan a vender en la página del producto."
+        },
+        "installments": {
+          "label": "Cuotas",
+          "hint": "Define un límite de cuotas válido."
+        },
+        "payouts": {
+          "label": "Cobros de Stripe",
+          "hint": "Completa la configuración de cobros de Stripe antes de publicar un curso de pago."
+        },
+        "verification": {
+          "label": "Verificación profesional",
+          "hint": "Completa la verificación profesional antes de publicar.",
+          "optionalHint": "Hoy es opcional; será obligatoria cuando se abra la admisión profesional."
+        }
+      },
+      "groups": {
+        "content": "Contenido guardado",
+        "page": "Página preparada",
+        "sale": "Venta disponible"
+      },
+      "groupCount": "{done} de {total}"
+    }
+  },
+  "courseMedia": {
+    "assetKinds": {
+      "course_cover": "Portada del curso",
+      "members_cover": "Portada del área de miembros",
+      "module_cover": "Portada del módulo",
+      "lesson_thumbnail": "Miniatura de la lección",
+      "lesson_material": "Material de la lección",
+      "lesson_video": "Video de la lección",
+      "live_recording": "Grabación en vivo"
+    },
+    "upload": {
+      "complete": "Subida completada",
+      "sending": "Enviando...",
+      "uploading": "Subiendo",
+      "transferred": "{transferred} de {total}",
+      "errors": {
+        "limit": "Este archivo supera el límite actual de subida (~{limit}). Usa un enlace de YouTube o un archivo más pequeño.",
+        "permission": "No tienes permiso para subir archivos a este curso.",
+        "rateLimit": "Demasiadas subidas en la última hora. Espera un poco e inténtalo de nuevo; no se perdió nada.",
+        "session": "Tu sesión caducó. Inicia sesión de nuevo y vuelve a enviar el archivo.",
+        "videoPermission": "No tienes permiso para subir videos a este curso.",
+        "videoService": "El servicio de video no pudo aceptar el archivo. Inténtalo de nuevo en unos minutos.",
+        "interrupted": "La subida se interrumpió, normalmente por una pérdida de conexión. Revisa tu conexión y vuelve a enviar el archivo.",
+        "generic": "No pudimos subir este archivo. Revisa el tipo de archivo y los permisos del curso.",
+        "invalidFile": "El tipo de archivo no es compatible o el archivo es demasiado grande.",
+        "coverHost": "La URL de la portada no pertenece a un sitio de medios permitido.",
+        "activation": "Paga la tarifa única de activación antes de subir videos del curso."
+      }
+    },
+    "preview": {
+      "assetError": "El acceso al archivo está protegido. Actualiza tu sesión e inténtalo de nuevo.",
+      "preparingAsset": "Preparando archivo protegido...",
+      "openFile": "Abrir archivo",
+      "download": "Descargar",
+      "videoError": "No pudimos cargar este video. Actualiza la página e inténtalo de nuevo.",
+      "unavailable": "Video no disponible",
+      "loading": "Cargando video...",
+      "preparingPlayback": "Preparando la reproducción."
+    },
+    "watermark": {
+      "learner": "Estudiante de {brandName}",
+      "protectedPlayback": "reproducción protegida"
+    }
   }
 }

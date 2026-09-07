@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createHmac } from "node:crypto";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   createServer: vi.fn(),
@@ -14,7 +15,8 @@ vi.mock("@/lib/supabase/admin", () => ({
   getSupabaseAdminClient: mocks.getAdmin,
 }));
 
-vi.mock("@/lib/bunny/server", () => ({
+vi.mock("@/lib/bunny/server", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/bunny/server")>(),
   signBunnyEmbedUrl: mocks.signEmbed,
 }));
 
@@ -32,10 +34,23 @@ function createQuery(result: { data: unknown; error: unknown }) {
 }
 
 function createAdmin(...results: Array<{ data: unknown; error: unknown }>) {
+  for (const result of results) {
+    const row = result.data as Record<string, unknown> | null;
+    if (row?.bunny_video_id && !("storage_path" in row)) {
+      row.storage_path = binding(String(row.course_id), String(row.owner_id), String(row.bunny_video_id));
+    }
+  }
   let index = 0;
   return {
     from: vi.fn(() => createQuery(results[index++] ?? { data: null, error: null })),
   };
+}
+
+function binding(courseId: string, ownerId: string, videoId: string) {
+  const receipt = createHmac("sha256", "local-bunny-test-key")
+    .update(JSON.stringify(["skillsetmind:bunny-asset:v1", courseId, ownerId, videoId]))
+    .digest("hex");
+  return `bunny/${videoId}/${receipt}`;
 }
 
 function request(body: unknown) {
@@ -49,11 +64,42 @@ function request(body: unknown) {
 describe("course video token", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv("BUNNY_STREAM_API_KEY", "local-bunny-test-key");
     mocks.createServer.mockResolvedValue({
       auth: { getUser: vi.fn(async () => ({ data: { user: null }, error: null })) },
       rpc: vi.fn(async () => ({ data: false, error: null })),
     });
     mocks.signEmbed.mockReturnValue("https://video.example/signed");
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  it.each([
+    binding("other-course", "attacker", "video-1"),
+    binding("course-1", "other-owner", "video-1"),
+    binding("course-1", "attacker", "other-video"),
+    "bunny/video-1",
+    `bunny/video-1/${"é".repeat(64)}`,
+    null,
+  ])("refuses a creator's forged video asset before minting playback", async (storagePath) => {
+    mocks.createServer.mockResolvedValue({
+      auth: { getUser: vi.fn(async () => ({ data: { user: { id: "attacker" } }, error: null })) },
+    });
+    mocks.getAdmin.mockReturnValue(createAdmin({ data: {
+      bunny_video_id: "video-1", course_id: "course-1", owner_id: "attacker",
+      is_preview: false, lesson_id: "lesson-1", storage_path: storagePath,
+    }, error: null }));
+    expect((await POST(request({ assetId: "forged" }))).status).toBe(404);
+    expect(mocks.signEmbed).not.toHaveBeenCalled();
+  });
+
+  it("does not launder another course's video through the public preview", async () => {
+    mocks.getAdmin.mockReturnValue(createAdmin(
+      { data: { id: "course-1" }, error: null },
+      { data: { bunny_video_id: "video-1", course_id: "course-1", owner_id: "attacker",
+        is_preview: true, lesson_id: "lesson-1", storage_path: binding("other-course", "attacker", "video-1") }, error: null },
+    ));
+    expect((await POST(request({ courseId: "course-1", lessonId: "lesson-1" }))).status).toBe(404);
+    expect(mocks.signEmbed).not.toHaveBeenCalled();
   });
 
   it("allows an anonymous visitor to play only the configured preview of a published course", async () => {

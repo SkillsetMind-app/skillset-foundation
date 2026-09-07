@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getAuthPathIntentFromSearchParams, getAuthRoute } from "@/lib/auth/routing";
 
 type SignupPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -10,7 +11,7 @@ function firstParam(value: string | string[] | undefined) {
 
 export default async function SignupPage({ searchParams }: SignupPageProps) {
   const params = (await searchParams) ?? {};
-  const nextParams = new URLSearchParams({ mode: "signup" });
+  const nextParams = new URLSearchParams();
   const path = firstParam(params.path);
   const role = firstParam(params.role);
 
@@ -22,5 +23,9 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
     nextParams.set("role", role);
   }
 
-  redirect(`/auth?${nextParams.toString()}`);
+  redirect(getAuthRoute(
+    "signup",
+    getAuthPathIntentFromSearchParams(nextParams),
+    firstParam(params.returnTo) ?? null,
+  ));
 }

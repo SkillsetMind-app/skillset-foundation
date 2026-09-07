@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
+import { getAuthRoute } from "@/lib/auth/routing";
 import { hasAnyPermission, type Permission } from "@/lib/permissions";
 
 type ProtectedSurfaceProps = {
@@ -67,7 +68,7 @@ export function ProtectedSurface({ permissions, children }: ProtectedSurfaceProp
         title={t("auth.guard.signInTitle")}
         description={t("auth.guard.signInDescription")}
         cta={{ href: loginHref, label: t("auth.guard.signIn") }}
-        secondary={{ href: "/signup", label: t("auth.guard.createAccount") }}
+        secondary={{ href: getAuthRoute("signup", null, destination), label: t("auth.guard.createAccount") }}
       />
     );
   }

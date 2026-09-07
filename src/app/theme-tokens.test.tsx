@@ -159,6 +159,19 @@ function ratio(
   return (hi + 0.05) / (lo + 0.05);
 }
 
+describe.each([["light", light], ["dark", dark]] as const)("semantic success contrast — %s", (_theme, vars) => {
+  it.each(["--color-base", "--color-surface", "--color-surface-soft", "--color-surface-strong"])(
+    "keeps success text at AA on %s and its success tint",
+    (surface) => {
+      for (const background of [surface, "--color-success-soft"]) {
+        const contrast = ratio("var(--color-success-fg)", `var(${background})`, vars, surface);
+        expect(contrast, `${background} over ${surface} must resolve`).not.toBeNull();
+        expect(contrast!, `${background} over ${surface}`).toBeGreaterThanOrEqual(4.5);
+      }
+    },
+  );
+});
+
 /**
  * First top-level token of a background shorthand (`#fff url(...) no-repeat`).
  *
@@ -201,6 +214,35 @@ const coveredPrefixes = [...darkOverrides]
   .filter(Boolean);
 
 describe("dark mode contrast", () => {
+  it("keeps gold CTAs above AA in both themes, including hover", () => {
+    for (const base of [".btn-cta-hero", ".button-accent", ".button-solid-light"]) {
+      const foreground = block(base).match(/\scolor:\s*([^;]+);/)?.[1];
+      expect(foreground).toBeTruthy();
+      for (const vars of [light, dark]) {
+        for (const selector of [base, `${base}:hover`]) {
+          const background = block(selector).match(/\sbackground:\s*([^;]+);/)?.[1];
+          expect(background).toBeTruthy();
+          const contrast = ratio(foreground!, background!, vars);
+          expect(contrast).not.toBeNull();
+          expect(contrast!, selector).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    }
+  });
+
+  it("keeps the gold CTA readable under the dark promo card's descendant override", () => {
+    const foreground = block('[data-theme="dark"] .primary-fill-card .button-solid-light *')
+      .match(/\scolor:\s*([^;]+);/)?.[1];
+    expect(foreground).toBeTruthy();
+    for (const selector of [".button-solid-light", ".button-solid-light:hover"]) {
+      const background = block(selector).match(/\sbackground:\s*([^;]+);/)?.[1];
+      expect(background).toBeTruthy();
+      const contrast = ratio(foreground!, background!, dark);
+      expect(contrast).not.toBeNull();
+      expect(contrast!, selector).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it("never renders a color/background pair that passes in light but fails in dark", () => {
     const regressions: string[] = [];
 

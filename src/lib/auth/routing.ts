@@ -85,8 +85,8 @@ export function getSafeReturnTo(
     return null;
   }
 
-  // "//host" and "/\host" are protocol-relative escapes browsers honor.
-  if (raw.startsWith("//") || raw.startsWith("/\\")) {
+  // URL parsing removes TAB/LF/CR: /\n/host would become //host in the router.
+  if (raw.startsWith("//") || raw.startsWith("/\\") || /[\t\n\r]/.test(raw)) {
     return null;
   }
 
@@ -118,6 +118,25 @@ export function getLoadingRoute(
   }
 
   return `/loading?${searchParams.toString()}`;
+}
+
+export function getAuthRoute(
+  mode: "signin" | "signup",
+  intent: AuthPathIntent | null = null,
+  returnTo: string | null = null,
+): string {
+  const searchParams = new URLSearchParams({ mode });
+
+  if (intent) {
+    searchParams.set("path", intent);
+  }
+
+  const safeReturnTo = getSafeReturnTo(new URLSearchParams({ returnTo: returnTo ?? "" }));
+  if (safeReturnTo) {
+    searchParams.set("returnTo", safeReturnTo);
+  }
+
+  return `/auth?${searchParams.toString()}`;
 }
 
 /**
@@ -153,6 +172,14 @@ export function getPostAuthRoute(
 ): string {
   if (!profile?.onboardingCompleted) {
     return getWelcomeRoute(intent);
+  }
+
+  if (intent === "teacher") {
+    return profile.roles.includes("teacher") ? "/teach" : "/onboarding?path=teacher";
+  }
+
+  if (intent === "student") {
+    return "/learn";
   }
 
   if (profile.onboardingPath === "teacher" && !profile.roles.includes("teacher")) {

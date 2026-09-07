@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OnboardingWizard } from "@/components/auth/onboarding-wizard";
+import type { SkillsetUser } from "@/domain/auth";
 
 /**
  * O primeiro passo depois de confirmar o e-mail e se apresentar: nome
@@ -15,7 +16,8 @@ const mocks = vi.hoisted(() => ({
   // Objeto estavel: um novo por render reinscreve efeitos e entra em laco.
   auth: {
     status: "authenticated",
-    user: { uid: "u-1", email: "patrick@example.com", displayName: "Patrick Simon", roles: ["student"] },
+    user: { uid: "u-1", email: "patrick@example.com", displayName: "Patrick Simon", roles: ["student"] } as
+      Pick<SkillsetUser, "uid" | "email" | "displayName" | "roles"> | null,
   },
   profile: {
     displayName: "Patrick Simon",
@@ -41,6 +43,13 @@ vi.mock("@/lib/data/user-profiles", () => ({
   updateOnboardingAnswers: mocks.updateOnboardingAnswers,
   updateUserIdentity: mocks.updateUserIdentity,
 }));
+
+beforeEach(() => {
+  mocks.auth = {
+    status: "authenticated",
+    user: { uid: "u-1", email: "patrick@example.com", displayName: "Patrick Simon", roles: ["student"] },
+  };
+});
 
 describe("boas-vindas: o passo de perfil vem primeiro", () => {
   beforeEach(() => {
@@ -226,5 +235,69 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
         expect(mocks.router.replace).toHaveBeenCalledWith("/onboarding?path=teacher"),
       { timeout: 4000 },
     );
+  });
+});
+
+describe("boas-vindas: retoma o checkout depois de perder a sessão", () => {
+  const checkout = "/courses/focus/checkout?offer=LAUNCH&priceId=price-1";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.searchParams = new URLSearchParams({ path: "student", returnTo: checkout });
+    mocks.profile = { displayName: "Patrick Simon", phoneNumber: null, onboardingAnswers: {} };
+    mocks.getUserProfile.mockImplementation(() => Promise.resolve(mocks.profile));
+    mocks.updateOnboardingAnswers.mockResolvedValue(undefined);
+    mocks.updateUserIdentity.mockResolvedValue(undefined);
+  });
+
+  afterEach(cleanup);
+
+  it.each([
+    [checkout, checkout],
+    ["//outside.example/checkout", null],
+  ])("preserves only a safe destination when entering without a session: %s", async (returnTo, expected) => {
+    mocks.auth = { status: "unauthenticated", user: null };
+    mocks.searchParams = new URLSearchParams({ path: "teacher", returnTo: returnTo! });
+    render(<OnboardingWizard />);
+
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledTimes(1));
+    const destination = new URL(mocks.router.replace.mock.calls[0][0], "https://skillsetmind.example");
+    expect(destination.pathname).toBe("/auth");
+    expect(destination.searchParams.get("mode")).toBe("signin");
+    expect(destination.searchParams.get("path")).toBe("teacher");
+    expect(destination.searchParams.get("returnTo")).toBe(expected);
+    expect(mocks.getUserProfile).not.toHaveBeenCalled();
+    expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
+    expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
+  });
+
+  it.each(["profile", "completion"])("preserves checkout when the session disappears before %s", async (step) => {
+    if (step === "completion") {
+      mocks.profile.onboardingAnswers = {
+        profileConfirmed: true,
+        path: "student",
+        primaryGoal: ["Business"],
+        sourceOfDiscovery: "Instagram",
+      };
+    }
+    const view = render(<OnboardingWizard />);
+    await screen.findByText(step === "profile"
+      ? "First, tell us who you are."
+      : "Where did you hear about SkillsetMind?");
+
+    mocks.auth = { status: "unauthenticated", user: null };
+    view.rerender(<OnboardingWizard />);
+    // The auth effect already redirected. Clear only that observation so the
+    // submit guard must preserve the destination independently, before any write.
+    mocks.router.replace.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(mocks.router.replace).toHaveBeenCalledTimes(1);
+    const destination = new URL(mocks.router.replace.mock.calls[0][0], "https://skillsetmind.example");
+    expect(destination.searchParams.get("mode")).toBe("signin");
+    expect(destination.searchParams.get("path")).toBe("student");
+    expect(destination.searchParams.get("returnTo")).toBe(checkout);
+    expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
+    expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
   });
 });

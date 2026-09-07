@@ -5,8 +5,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { LessonUnlockState } from "@/domain/drip-policy";
 import type { CourseModule } from "@/domain/learning";
+import { LessonThumbnail } from "@/components/learn/lesson-thumbnail";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 
 type CoursePlaylistProps = {
+  thumbnailUrlByLessonId?: ReadonlyMap<string, string>;
   modules: CourseModule[];
   selectedLessonId: string | null;
   completedLessonIds: string[];
@@ -27,6 +30,7 @@ type CoursePlaylistProps = {
 // ("Aula 3/12 · Arquivos 2"). O que o aluno quer ali é a lista: módulos em
 // acordeão, aula atual destacada, check e cadeado por aula, busca no topo.
 export function CoursePlaylist({
+  thumbnailUrlByLessonId,
   modules,
   selectedLessonId,
   completedLessonIds,
@@ -34,6 +38,7 @@ export function CoursePlaylist({
   onSelect,
   onUncomplete,
 }: CoursePlaylistProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   // A aula atual era destacada mas a lista nao rolava ate ela: trocar de aula
   // (ou o avanco automatico) deixava o destaque fora da area visivel da
@@ -81,20 +86,22 @@ export function CoursePlaylist({
   const matchCount = groups.reduce((total, group) => total + group.lessons.length, 0);
 
   return (
-    <nav className="member-playlist" aria-label="Lessons">
+    <nav className="member-playlist" aria-label={t("learn.classroom.curriculum.lessons")}>
       <label className="member-playlist__search">
         <Search aria-hidden="true" size={15} strokeWidth={1.8} />
-        <span className="sr-only">Search lessons</span>
+        <span className="sr-only">{t("learn.classroom.curriculum.search")}</span>
         <input
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search lessons"
+          placeholder={t("learn.classroom.curriculum.search")}
         />
       </label>
       {normalizedQuery ? (
         <p aria-live="polite" className="member-playlist__count">
-          {matchCount} lesson{matchCount === 1 ? "" : "s"} match &quot;{query.trim()}&quot;
+          {t(`learn.classroom.curriculum.${matchCount === 1 ? "matchOne" : "matchMany"}`)
+            .replace("{count}", () => String(matchCount))
+            .replace("{query}", () => query.trim())}
         </p>
       ) : null}
 
@@ -127,8 +134,11 @@ export function CoursePlaylist({
               >
                 <span className="member-playlist__module-title">
                   <span className="member-playlist__module-eyebrow">
-                    Module {moduleIndex + 1}
+                    {t("learn.classroom.curriculum.module").replace("{number}", () => String(moduleIndex + 1))}
                   </span>
+                  {/* O espaço separa "Módulo 1" do título no nome acessível
+                      do botão; o grid do título não o desenha. */}
+                  {" "}
                   {group.module.title}
                 </span>
                 <span className="member-playlist__module-meta">
@@ -161,8 +171,8 @@ export function CoursePlaylist({
                           <button
                             type="button"
                             onClick={() => onUncomplete(lesson.id)}
-                            aria-label={`Mark "${lesson.title}" incomplete`}
-                            title="Mark incomplete"
+                            aria-label={t("learn.classroom.curriculum.markLessonIncomplete").replace("{title}", () => lesson.title)}
+                            title={t("learn.classroom.curriculum.markIncomplete")}
                             className="member-playlist__status member-playlist__status--button"
                           >
                             <CheckCircle2 aria-hidden size={15} />
@@ -186,11 +196,25 @@ export function CoursePlaylist({
                           aria-current={isSelected ? "true" : undefined}
                           className="member-playlist__lesson-button"
                         >
-                          <span className="member-playlist__lesson-title">{lesson.title}</span>
-                          <span className="member-playlist__lesson-meta">
-                            {lesson.duration}
-                            {isCompleted ? " · Completed" : ""}
-                            {!unlocked ? " · Locked" : ""}
+                          <span className="flex min-w-0 items-center gap-2">
+                            <LessonThumbnail src={thumbnailUrlByLessonId?.get(lesson.id)} />
+                            <span className="min-w-0">
+                              <span className="member-playlist__lesson-title">{lesson.title}</span>
+                              <span className="member-playlist__lesson-meta">
+                                {/* "Tocando agora" (paridade Hotmart): a cor
+                                    da linha sozinha nao dizia "e esta" a quem
+                                    nao distingue cor; aria-current ja avisava
+                                    o leitor de tela, faltava o texto. */}
+                                {isSelected ? (
+                                  <span className="member-playlist__now">
+                                    {t("learn.classroom.curriculum.playingNow")}
+                                  </span>
+                                ) : null}
+                                {lesson.duration}
+                                {isCompleted ? ` · ${t("learn.classroom.curriculum.completed")}` : ""}
+                                {!unlocked ? ` · ${t("learn.classroom.curriculum.locked")}` : ""}
+                              </span>
+                            </span>
                           </span>
                         </button>
                       </li>

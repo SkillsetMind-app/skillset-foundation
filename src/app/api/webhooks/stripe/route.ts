@@ -10,6 +10,7 @@ import {
   ledgerRefundStatus,
   nextLedgerStatusOnDispute,
   resolveInvoicePaymentIntentId,
+  sanitizeStripeSecret,
   shouldCancelCourseSubscriptionForRefund,
   shouldApplyOrderStatusTransition,
   shouldMarkEnrollmentRefundedAfterChargeRefund,
@@ -17,11 +18,12 @@ import {
   stripeFeeMinorFromBalanceTransaction,
   stripeProcessingFeeMinor,
 } from "@/lib/payments/rules";
-import { fromStripeAmount } from "@/lib/payments/currencies";
+import { fromStripeAmount, toStripeAmount } from "@/lib/payments/currencies";
 import { getStripeClient, isStripeConfigured } from "@/lib/payments/server/stripe";
 import {
   courseSubscriptionInterval,
   ensureCourseSubscriptionCanceled,
+  hasRetainedActivationPayment,
 } from "@/lib/payments/server/stripe-helpers";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
@@ -242,6 +244,11 @@ async function handleActivationFeePaid(
     throw new Error("Activation fee checkout session is missing uid metadata.");
   }
 
+  const paymentIntentId = typeof session.payment_intent === "string"
+    ? session.payment_intent : session.payment_intent?.id;
+  if (!paymentIntentId) throw new Error("Activation fee session is missing its payment identity.");
+  if (!await hasRetainedActivationPayment(getStripeClient(), paymentIntentId, uid)) return;
+
   const ts = nowIso();
   await requireSupabaseWrite(
     admin
@@ -252,10 +259,6 @@ async function handleActivationFeePaid(
     "Stamp storefront activation fee",
   );
 
-  const paymentIntentId =
-    typeof session.payment_intent === "string"
-      ? session.payment_intent
-      : session.payment_intent?.id ?? null;
   const { error: auditError } = await admin.rpc("log_audit_event", {
     p_action: "STOREFRONT_ACTIVATION_FEE_PAID",
     p_actor_id: uid,
@@ -280,11 +283,42 @@ async function handleCheckoutCompleted(
 ): Promise<void> {
   if (session.payment_status !== "paid") return;
 
-  const orderId = session.metadata?.orderId;
-  const courseId = session.metadata?.courseId;
-  const userId = session.metadata?.userId;
-  if (!orderId || !courseId || !userId) {
+  const metadata = session.metadata;
+  const orderId = metadata?.orderId;
+  if (!orderId || !metadata?.courseId || !metadata.userId) {
     throw new Error("Missing required Checkout metadata.");
+  }
+
+  const { data: order, error: orderError } = await admin
+    .from("orders")
+    .select("*")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (orderError || !order) throw new Error("Could not verify the saved checkout order.");
+
+  const courseId = order.course_id;
+  const userId = order.user_id;
+  const accountMatches = order.payout_model === "direct_charge"
+    ? Boolean(order.teacher_stripe_connected_account_id)
+      && connectedAccountId === order.teacher_stripe_connected_account_id
+    : ["separate_charges_and_transfers", "destination_charge"].includes(order.payout_model ?? "")
+      && connectedAccountId === null;
+  const amountMinor = Number(order.amount_minor);
+  // The server attaches this session before returning its URL. Metadata is a
+  // reference to that saved sale, never authority to replace its buyer or course.
+  if (
+    !order.checkout_session_id || order.checkout_session_id !== session.id
+    || metadata.courseId !== courseId || metadata.userId !== userId
+    || !accountMatches
+    || typeof order.currency !== "string"
+    || session.currency?.toUpperCase() !== order.currency.toUpperCase()
+    || !Number.isSafeInteger(amountMinor) || amountMinor < 0
+    || session.amount_total !== toStripeAmount(amountMinor, order.currency)
+    || (metadata.teacherId !== undefined && metadata.teacherId !== order.teacher_id)
+    || (metadata.connectedAccountId !== undefined
+      && metadata.connectedAccountId !== order.teacher_stripe_connected_account_id)
+  ) {
+    throw new Error("Checkout does not match its saved order.");
   }
 
   await finalizeCourseCouponReservation(admin, orderId);
@@ -303,13 +337,6 @@ async function handleCheckoutCompleted(
     .eq("id", orderId)
     .maybeSingle();
   if (existingLedger) return;
-
-  const { data: order } = await admin
-    .from("orders")
-    .select("*")
-    .eq("id", orderId)
-    .maybeSingle();
-  if (!order) throw new Error(`Order ${orderId} not found.`);
 
   const { data: course } = await admin
     .from("courses")
@@ -659,10 +686,17 @@ async function handleCourseSubscriptionInvoicePaid(
     }
   }
 
-  await requireSupabaseWrite(
-    admin.rpc("fulfill_paid_course_access", { p_user_id: userId, p_course_id: courseId, p_source: "subscription", p_subscription_id: subscriptionId }),
-    "Fulfill subscription enrollment",
-  );
+  // An old paid invoice can arrive after cancellation/refund. Book the sale
+  // above, but only the subscription's CURRENT entitlement may restore access.
+  // The RPC serializes with creator revocation and preserves progress.
+  const entitled = subscription.status === "active" || subscription.status === "trialing";
+  if (entitled) {
+    await requireSupabaseWrite(
+      admin.rpc("fulfill_paid_course_access", { p_user_id: userId, p_course_id: courseId, p_source: "subscription", p_subscription_id: subscriptionId }),
+      "Fulfill subscription enrollment",
+    );
+  }
+
   // Mirror the subscription for the learner's cancel UI + lifecycle handler.
   await requireSupabaseWrite(
     admin.from("course_subscriptions").upsert(
@@ -1075,6 +1109,7 @@ type DisputeLedger = {
   status: string;
   kind: string | null;
   order_id: string | null;
+  subscription_id: string | null;
 };
 
 async function resolveLedgerForDispute(
@@ -1090,7 +1125,7 @@ async function resolveLedgerForDispute(
     .from("payout_ledger")
     // kind + order_id are only needed by the lost branch below, but the row is
     // already being fetched — a second round trip to widen it would be waste.
-    .select("id,status,kind,order_id")
+    .select("id,status,kind,order_id,subscription_id")
     .eq("payment_id", paymentIntentId)
     .limit(1)
     .maybeSingle();
@@ -1231,10 +1266,15 @@ async function handleDisputeClosed(
       );
     }
   }
-  // ponytail: course SUBSCRIPTION chargebacks still fall through. Stripe cancels
-  // the subscription itself on a lost dispute and the lifecycle handler revokes
-  // from there; add ensureCourseSubscriptionCanceled here if that ever proves
-  // unreliable.
+  // Stripe keeps subscriptions running after disputes unless optional account
+  // settings cancel them. A lost payment must stop billing regardless of those
+  // settings; the subscription lifecycle event revokes its course access.
+  if (event === "lost" && ledger.kind === "course_subscription") {
+    if (!ledger.subscription_id) throw new Error("Disputed subscription has no subscription identity.");
+    await ensureCourseSubscriptionCanceled(
+      getStripeClient(), ledger.subscription_id, connectedAccountId,
+    );
+  }
 }
 
 // --- terminal order status (expired / failed) with lock release + B2 guard --
@@ -1499,11 +1539,15 @@ function constructStripeWebhookEvent(
 }
 
 export async function POST(request: Request) {
+  const secret = sanitizeStripeSecret(process.env.STRIPE_SECRET_KEY);
+  const stripeMode = secret.ok
+    ? /^(?:sk|rk)_(live|test)_.+$/.exec(secret.key)?.[1]
+    : undefined;
   const webhookSecrets = [
     process.env.STRIPE_WEBHOOK_SECRET,
     process.env.STRIPE_CONNECT_WEBHOOK_SECRET,
   ].filter((secret): secret is string => Boolean(secret));
-  if (!isStripeConfigured() || webhookSecrets.length === 0) {
+  if (!isStripeConfigured() || !stripeMode || webhookSecrets.length === 0) {
     return NextResponse.json(
       { error: "Stripe webhook is not configured.", code: "payments_not_configured" },
       { status: 503 },
@@ -1530,8 +1574,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid Stripe webhook signature." }, { status: 400 });
   }
 
-  // Acknowledge unhandled types without an idempotency round-trip.
-  if (!HANDLED_STRIPE_EVENT_TYPES.has(event.type)) {
+  // A live payment must remain retryable when the server has a test key.
+  if (event.livemode && stripeMode === "test" && HANDLED_STRIPE_EVENT_TYPES.has(event.type)) {
+    return NextResponse.json(
+      { error: "Live Stripe events require a live API key.", code: "payments_not_configured" },
+      { status: 503 },
+    );
+  }
+
+  // Production Connect endpoints can also receive test events; ignore those
+  // before claiming anything. Match the server key, not NODE_ENV.
+  if (event.livemode !== (stripeMode === "live") || !HANDLED_STRIPE_EVENT_TYPES.has(event.type)) {
     return NextResponse.json({ received: true, ignored: true });
   }
 
@@ -1587,7 +1640,13 @@ export async function POST(request: Request) {
       case "customer.subscription.created":
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
-        const subscriptionObject = event.data.object;
+        // Delivery order is not guaranteed. An older active snapshot must not
+        // resurrect a subscription that Stripe has already canceled.
+        const subscriptionObject = await getStripeClient().subscriptions.retrieve(
+          event.data.object.id,
+          undefined,
+          eventAccountId ? { stripeAccount: eventAccountId } : undefined,
+        );
         const handledAsCourse = await handleCourseSubscriptionLifecycle(
           admin,
           subscriptionObject,

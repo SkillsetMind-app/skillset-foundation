@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 // Bunny Stream server helpers. All secrets (API key, token-auth key) are read
 // here and never leave the server: the browser uploads bytes straight to Bunny
@@ -23,6 +23,26 @@ function getLibraryId(): string {
 
 function sha256Hex(input: string): string {
   return createHash("sha256").update(input).digest("hex");
+}
+
+// course_assets is client-writable. This receipt proves which course/owner the
+// server created the video for; a copied GUID must not become a new entitlement.
+// ponytail: receipts reuse the Bunny key. Rotation requires controlled receipt
+// renewal; never re-sign untrusted asset rows without verifying their old proof.
+export function signBunnyAssetPath(courseId: string, ownerId: string, videoId: string): string {
+  const receipt = createHmac("sha256", requireEnv("BUNNY_STREAM_API_KEY"))
+    .update(JSON.stringify(["skillsetmind:bunny-asset:v1", courseId, ownerId, videoId]))
+    .digest("hex");
+  return `bunny/${videoId}/${receipt}`;
+}
+
+export function hasValidBunnyAssetPath(
+  courseId: string, ownerId: string, videoId: string, storagePath: string | null,
+): boolean {
+  const expected = signBunnyAssetPath(courseId, ownerId, videoId);
+  return typeof storagePath === "string" && storagePath.length === expected.length
+    && Buffer.byteLength(storagePath) === Buffer.byteLength(expected)
+    && timingSafeEqual(Buffer.from(storagePath), Buffer.from(expected));
 }
 
 // Create an empty video object in the library; the browser then streams the

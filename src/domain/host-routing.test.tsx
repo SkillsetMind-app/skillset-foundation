@@ -9,6 +9,44 @@ import {
 
 const TEACHER = "teacher-uid-123";
 
+describe("platform entry aliases", () => {
+  it.each([
+    ["app.skillsetmind.com", "/teach"],
+    ["consumer.skillsetmind.com", "/learn"],
+    ["pay.skillsetmind.com", "/courses"],
+  ])("routes the root of %s to its existing area", (hostname, path) => {
+    expect(decideHostRoute({ hostname, pathname: "/", search: "?from=entry", resolvedUid: null }))
+      .toEqual({ kind: "redirect", status: 307, url: `${PLATFORM_ORIGIN}${path}?from=entry` });
+  });
+
+  it("preserves checkout, offer and encoded return data on the fixed destination", () => {
+    const path = "/courses/course-fixture/checkout";
+    const search = "?offer=launch&priceId=price-fixture&returnTo=%2Flearn%3Fq%3Da%2526b";
+    expect(decideHostRoute({ hostname: "pay.skillsetmind.com", pathname: path, search, resolvedUid: "ignored-fixture" }))
+      .toEqual({ kind: "redirect", status: 307, url: `${PLATFORM_ORIGIN}${path}${search}` });
+  });
+
+  it("does not use a destination supplied in the query as the redirect origin", () => {
+    const decision = decideHostRoute({ hostname: "app.skillsetmind.com", pathname: "/auth", search: "?next=https://external.example.test/", resolvedUid: null });
+    expect(decision).toEqual({ kind: "redirect", status: 307, url: `${PLATFORM_ORIGIN}/auth?next=https://external.example.test/` });
+  });
+
+  it.each(["POST", "PUT", "PATCH", "DELETE", "OPTIONS", "TRACE", "CONNECT"])(
+    "refuses %s before infrastructure paths can pass through",
+    (method) => {
+      for (const hostname of ["app.skillsetmind.com", "consumer.skillsetmind.com", "pay.skillsetmind.com"]) {
+        expect(decideHostRoute({ hostname, method, pathname: "/api/teach/domains/fixture.png", search: "", resolvedUid: null }))
+          .toEqual({ kind: "method-not-allowed" });
+      }
+    },
+  );
+
+  it.each(["www.skillsetmind.com", "lp.skillsetmind.com", "myapp.skillsetmind.com", "skillset-foundation-qa.vercel.app", "localhost"])(
+    "leaves the existing platform host %s unchanged",
+    (hostname) => expect(decideHostRoute({ hostname, pathname: "/auth", search: "", resolvedUid: null })).toEqual({ kind: "pass" }),
+  );
+});
+
 function onCustomDomain(pathname: string, search = "") {
   return decideHostRoute({
     hostname: "mysite.com",
@@ -149,10 +187,29 @@ describe("normaliseHostHeader", () => {
     expect(normaliseHostHeader("example.com")).toBe("example.com");
   });
 
+  it.each([
+    ["App.SkillsetMind.Com.:443", "app.skillsetmind.com"],
+    ["CONSUMER.SKILLSETMIND.COM.", "consumer.skillsetmind.com"],
+    ["pay.skillsetmind.com.:3000", "pay.skillsetmind.com"],
+    ["Teacher.Example.Test.:443", "teacher.example.test"],
+    ["localhost.:3000", "localhost"],
+    ["app.skillsetmind.com.evil.test.", "app.skillsetmind.com.evil.test"],
+    ["app.skillsetmind.com..", "app.skillsetmind.com."],
+  ])("normalizes one DNS root dot in %s before host classification", (header, hostname) => {
+    expect(normaliseHostHeader(header)).toBe(hostname);
+  });
+
   // Splitting at the first colon would turn "[::1]:3000" into "[" — the bracket
   // has to be closed before the port is looked for.
   it("handles a bracketed IPv6 literal with a port", () => {
     expect(normaliseHostHeader("[::1]:3000")).toBe("::1");
+  });
+
+  it.each([
+    ["[::1]", "::1"],
+    ["[2001:DB8::1]:443", "2001:db8::1"],
+  ])("preserves the bracketed IPv6 address in %s", (header, hostname) => {
+    expect(normaliseHostHeader(header)).toBe(hostname);
   });
 
   it("returns null for a missing or empty header", () => {

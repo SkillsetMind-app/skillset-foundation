@@ -23,8 +23,7 @@ export default async function ResetPasswordPage() {
 
   return (
     <AuthShell
-      eyebrow={t("auth.forgot.eyebrow")}
-      title={t("authFlow.recovery.pageTitle")}
+      title={t("authFlow.recovery.choosePassword")}
       description={t("authFlow.recovery.pageDescription")}
       footer={
         <>
@@ -38,15 +37,7 @@ export default async function ResetPasswordPage() {
         </>
       }
     >
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          {t("authFlow.recovery.almostDone")}
-        </p>
-        <h2 className="display-title mt-3 text-4xl text-[var(--color-primary)]">
-          {t("authFlow.recovery.choosePassword")}
-        </h2>
-        <UpdatePasswordForm recoveryVerified={recoveryVerified} />
-      </div>
+      <UpdatePasswordForm recoveryVerified={recoveryVerified} />
     </AuthShell>
   );
 }

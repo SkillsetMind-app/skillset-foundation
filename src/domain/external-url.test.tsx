@@ -50,6 +50,13 @@ describe("getSafeMediaUrl", () => {
     expect(getSafeMediaUrl(longQuery)).toBeNull();
   });
 
+  it.each(["\t", "\n", "\r"])("rejects a relative media path containing browser-normalized control %j", (control) => {
+    const value = `/${control}/tracker.invalid/pixel.png`;
+    // The browser strips these characters before resolving the apparent path.
+    expect(new URL(value, "https://www.skillsetmind.com").hostname).toBe("tracker.invalid");
+    expect(getSafeMediaUrl(value)).toBeNull();
+  });
+
   it("host suffix matching is exact on labels", () => {
     expect(isAllowedMediaHost("cdn.b-cdn.net")).toBe(true);
     expect(isAllowedMediaHost("evil-b-cdn.net.attacker.com")).toBe(false);

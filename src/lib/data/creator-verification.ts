@@ -173,14 +173,19 @@ export function subscribeToVerificationQueue(
   onError: (error: Error) => void,
 ): () => void {
   const supabase = getSupabaseBrowserClient();
+  let active = true;
+  let generation = 0;
 
   const load = async () => {
+    if (!active) return;
+    const currentGeneration = ++generation;
     const { data, error } = await supabase
       .from(casesTable)
       .select("*")
       .eq("status", "pending")
       .order("created_at", { ascending: true });
 
+    if (!active || currentGeneration !== generation) return;
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -195,6 +200,8 @@ export function subscribeToVerificationQueue(
         .select("uid, display_name, email")
         .in("uid", creatorIds);
 
+      // An approval refresh may finish while this older lookup is pending.
+      if (!active || currentGeneration !== generation) return;
       if (usersError) {
         onError(
           usersError instanceof Error
@@ -226,9 +233,8 @@ export function subscribeToVerificationQueue(
 
   void load();
 
-  // A review UPDATE moves the row out of the pending filter, so the change
-  // event may not fire for this channel — the queue UI also removes reviewed
-  // rows locally after a successful decision.
+  // Listen beyond pending rows: a review must refresh every subscriber when
+  // the new status leaves the queue. The read above still selects only pending.
   const channel = supabase
     .channel("creator_verification:pending")
     .on(
@@ -237,7 +243,6 @@ export function subscribeToVerificationQueue(
         event: "*",
         schema: "public",
         table: casesTable,
-        filter: "status=eq.pending",
       },
       () => {
         void load();
@@ -246,6 +251,7 @@ export function subscribeToVerificationQueue(
     .subscribe();
 
   return () => {
+    active = false;
     void supabase.removeChannel(channel);
   };
 }

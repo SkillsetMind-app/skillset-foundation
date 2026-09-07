@@ -261,9 +261,10 @@ export async function uploadLessonVideoToBunny(
   if (!createRes.ok) {
     throw new Error(`bunny-create-failed:${createRes.status}`);
   }
-  const { videoId, libraryId, signature, expires, endpoint } =
+  const { videoId, storagePath, libraryId, signature, expires, endpoint } =
     (await createRes.json()) as {
       videoId: string;
+      storagePath: string;
       libraryId: string;
       signature: string;
       expires: number;
@@ -332,7 +333,7 @@ export async function uploadLessonVideoToBunny(
     file_name: input.file.name,
     content_type: input.file.type || "video/mp4",
     size: input.file.size,
-    storage_path: `bunny/${videoId}`,
+    storage_path: storagePath,
     download_url: null,
     bunny_video_id: videoId,
     is_preview: input.isPreview,

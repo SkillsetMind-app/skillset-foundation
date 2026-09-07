@@ -3,6 +3,7 @@
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import {
+  getAuthRoute,
   getPostAuthRoute,
   getSafeReturnTo,
   getWelcomeRoute,
@@ -46,7 +47,7 @@ export function LoadingScreen() {
         parseAuthPathIntent(searchParams.get("role"));
       const next = searchParams.get("next");
       const returnTo = getSafeReturnTo(searchParams);
-      let destination = "/auth?mode=signin";
+      let destination = getAuthRoute("signin", intent, returnTo);
 
       if (status === "mfa_required") {
         // Senha aceita, código ainda não. A tela de login retoma o desafio ao
@@ -69,10 +70,6 @@ export function LoadingScreen() {
           // sign-in. Onboarded accounts only — first-timers went to /welcome
           // above, the same rule the email login applies.
           destination = returnTo;
-        } else if (intent === "teacher" && profile?.roles.includes("teacher")) {
-          destination = "/teach";
-        } else if (intent === "student") {
-          destination = "/learn";
         } else {
           destination = getPostAuthRoute(profile, intent);
         }

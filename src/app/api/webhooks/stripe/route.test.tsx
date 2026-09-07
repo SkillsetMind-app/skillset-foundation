@@ -6,7 +6,9 @@ const mocks = vi.hoisted(() => ({
   isStripeConfigured: vi.fn(() => true),
   reversalCreate: vi.fn(),
   subscriptionRetrieve: vi.fn(),
+  subscriptionCancel: vi.fn(),
   paymentIntentRetrieve: vi.fn(),
+  disputesList: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -19,7 +21,7 @@ vi.mock("@/lib/payments/server/stripe", () => ({
 }));
 
 import { POST } from "@/app/api/webhooks/stripe/route";
-import { ACTIVATION_FEE_CHECKOUT_PURPOSE } from "@/data/plans";
+import { ACTIVATION_FEE_CHECKOUT_PURPOSE, planById } from "@/data/plans";
 
 type FailurePoint =
   | "payments.upsert"
@@ -52,6 +54,11 @@ type AdminState = {
   rpcCalls: Array<{ name: string; args: Record<string, unknown> }>;
   userUpdates: Array<Record<string, unknown>>;
   enrollmentUpdates: Array<Record<string, unknown>>;
+  enrollmentInserts: Array<Record<string, unknown>>;
+  planSubscriptions: Array<Record<string, unknown>>;
+  orderRow: Record<string, unknown>;
+  paymentWrites: Array<Record<string, unknown>>;
+  orderWrites: Array<Record<string, unknown>>;
 };
 
 type Filter = { column: string; value: unknown };
@@ -89,6 +96,23 @@ function createAdmin(
     rpcCalls: [],
     userUpdates: [],
     enrollmentUpdates: [],
+    enrollmentInserts: [],
+    planSubscriptions: [],
+    orderRow: {
+      id: "order_1",
+      user_id: "user_1",
+      course_id: "course_1",
+      teacher_id: "teacher_1",
+      teacher_stripe_connected_account_id: "acct_teacher",
+      checkout_session_id: "cs_1",
+      payout_model: "direct_charge",
+      amount_minor: 10000,
+      currency: "USD",
+      platform_fee_bps: 1000,
+      status: "pending",
+    },
+    paymentWrites: [],
+    orderWrites: [],
   };
 
   class Query {
@@ -135,6 +159,11 @@ function createAdmin(
     // .is(column, null) to stay idempotent.
     is(column: string, value: unknown) {
       this.filters.push({ column, value });
+      return this;
+    }
+
+    in(column: string, values: unknown[]) {
+      this.filters.push({ column, value: values });
       return this;
     }
 
@@ -190,10 +219,27 @@ function createAdmin(
         }
 
         if (this.table === "enrollments" && this.operation === "update") {
+          // Filters that miss the row update zero rows, like PostgREST would.
           const matches = this.filters
             .filter(({ column }) => column === "source" || column === "subscription_id")
             .every(({ column, value }) => state.enrollmentRow?.[column] === value);
-          if (matches) state.enrollmentUpdates.push({ ...this.values, id: this.filterValue("id") });
+          if (matches) {
+            state.enrollmentUpdates.push({ ...this.values, id: this.filterValue("id") });
+            if (state.enrollmentRow) Object.assign(state.enrollmentRow, this.values);
+          }
+        }
+
+        if (this.table === "enrollments" && this.operation === "insert") {
+          state.enrollmentInserts.push({ ...this.values });
+        }
+
+        if (this.table === "payments") state.paymentWrites.push({ ...this.values });
+        if (this.table === "orders") state.orderWrites.push({ ...this.values });
+
+        if (this.table === "subscriptions" && this.operation === "upsert") {
+          const existing = state.planSubscriptions.find((row) => row.id === this.values.id);
+          if (existing) Object.assign(existing, this.values);
+          else state.planSubscriptions.push({ ...this.values });
         }
 
         if (this.table === "users" && this.operation === "update") {
@@ -218,17 +264,17 @@ function createAdmin(
       }
 
       let data: Record<string, unknown> | null = null;
-      if (this.table === "orders") {
-        data = {
-          id: "order_1",
-          user_id: "user_1",
-          course_id: "course_1",
-          teacher_id: "teacher_1",
-          amount_minor: 10000,
-          currency: "USD",
-          platform_fee_bps: 1000,
-          status: "pending",
+      if (this.table === "subscriptions") {
+        const statuses = this.filterValue("status") as unknown[] | undefined;
+        return {
+          data: state.planSubscriptions.filter((row) =>
+            row.user_id === this.filterValue("user_id") && (!statuses || statuses.includes(row.status)),
+          ),
+          error: null,
         };
+      }
+      if (this.table === "orders") {
+        data = this.filterValue("id") === state.orderRow.id ? { ...state.orderRow } : null;
       } else if (this.table === "courses") {
         data = {
           id: "course_1",
@@ -361,22 +407,31 @@ function createAdmin(
   return admin;
 }
 
+// Fulfilment is an RPC now, so "enrollment written" means "RPC called".
+function fulfillCalls(admin: ReturnType<typeof createAdmin>) {
+  return admin.state.rpcCalls.filter((call) => call.name === "fulfill_paid_course_access");
+}
+
 function checkoutEvent() {
   return {
     id: "evt_checkout",
     type: "checkout.session.completed",
+    account: "acct_teacher",
     data: {
       object: {
         id: "cs_1",
         mode: "payment",
         payment_status: "paid",
         payment_intent: "pi_1",
+        amount_total: 10000,
+        currency: "usd",
         metadata: {
           orderId: "order_1",
           courseId: "course_1",
           userId: "user_1",
           teacherId: "teacher_1",
-        },
+          connectedAccountId: "acct_teacher",
+        } as Record<string, string>,
       },
     },
   };
@@ -501,13 +556,14 @@ async function postEvent(event: Record<string, unknown>) {
     new Request("http://localhost/api/webhooks/stripe", {
       method: "POST",
       headers: { "stripe-signature": "test_signature" },
-      body: JSON.stringify(event),
+      body: JSON.stringify({ livemode: true, ...event }),
     }),
   );
 }
 
 describe("Stripe webhook financial integrity", () => {
   beforeEach(() => {
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_live_fixture");
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
     process.env.STRIPE_CONNECT_WEBHOOK_SECRET = "whsec_connect_test";
     mocks.getAdmin.mockReset();
@@ -515,6 +571,8 @@ describe("Stripe webhook financial integrity", () => {
     mocks.subscriptionRetrieve.mockReset().mockResolvedValue({
       metadata: { purpose: "course_subscription" },
     });
+    mocks.subscriptionCancel.mockReset().mockResolvedValue({ status: "canceled" });
+    mocks.disputesList.mockReset().mockResolvedValue({ data: [] });
     mocks.isStripeConfigured.mockReturnValue(true);
     mocks.paymentIntentRetrieve
       .mockReset()
@@ -531,7 +589,9 @@ describe("Stripe webhook financial integrity", () => {
       },
       subscriptions: {
         retrieve: mocks.subscriptionRetrieve,
+        cancel: mocks.subscriptionCancel,
       },
+      disputes: { list: mocks.disputesList },
     });
     vi.spyOn(console, "error").mockImplementation(() => undefined);
   });
@@ -540,6 +600,155 @@ describe("Stripe webhook financial integrity", () => {
     delete process.env.STRIPE_WEBHOOK_SECRET;
     delete process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  it.each([
+    ["sk_live_fixture", false],
+    ["rk_live_fixture", false],
+  ] as const)("ignores the opposite event mode with %s before claiming it", async (key, livemode) => {
+    vi.stubEnv("STRIPE_SECRET_KEY", key);
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    const response = await postEvent({ ...checkoutEvent(), livemode });
+    expect(response.status).toBe(200);
+    expect(admin.state.enrollmentInserts).toEqual([]);
+    expect(await response.json()).toMatchObject({ received: true, ignored: true });
+    expect(mocks.getAdmin).not.toHaveBeenCalled();
+  });
+
+  it.each(["sk_test_fixture", "rk_test_fixture"])(
+    "retries a live event after correcting the configured test key %s", async (key) => {
+      vi.stubEnv("STRIPE_SECRET_KEY", key);
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = checkoutEvent();
+      expect((await postEvent(event)).status).toBe(503);
+      expect(mocks.getAdmin).not.toHaveBeenCalled();
+      expect(admin.state.enrollmentInserts).toEqual([]);
+
+      vi.stubEnv("STRIPE_SECRET_KEY", "sk_live_fixture");
+      expect((await postEvent(event)).status).toBe(200);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+    },
+  );
+
+  it.each([
+    ["sk_live_fixture", true],
+    ["rk_live_fixture", true],
+    ["sk_test_fixture", false],
+    ["rk_test_fixture", false],
+    ["  sk_live_fixture\n", true],
+  ] as const)("accepts a matching event mode with %s", async (key, livemode) => {
+    vi.stubEnv("STRIPE_SECRET_KEY", key);
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    const response = await postEvent({ ...checkoutEvent(), livemode });
+    expect(response.status).toBe(200);
+    expect(fulfillCalls(admin)).toHaveLength(1);
+  });
+
+  it.each(["", "unknown_fixture", "sk_live_bad key", "pk_live_fixture", "sk_live_"])(
+    "fails closed when the secret has no usable server mode: %s", async (key) => {
+      vi.stubEnv("STRIPE_SECRET_KEY", key);
+      const response = await postEvent(checkoutEvent());
+      expect(response.status).toBe(503);
+      expect(mocks.getAdmin).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["course", { course_id: "course_other" }],
+    ["buyer", { user_id: "user_other" }],
+    ["session", { checkout_session_id: "cs_other" }],
+    ["missing session", { checkout_session_id: null }],
+    ["connected account", { teacher_stripe_connected_account_id: "acct_other" }],
+    ["missing direct account", { teacher_stripe_connected_account_id: null }],
+    ["teacher metadata", { teacher_id: "teacher_other" }],
+    ["currency", { currency: "EUR" }],
+    ["total", { amount_minor: 20000 }],
+    ["unknown payout model", { payout_model: "unknown" }],
+    ["platform charge with a connected event", { payout_model: "destination_charge" }],
+  ] as const)("rejects a mismatched %s before coupon or financial writes", async (_label, patch) => {
+    const admin = createAdmin("checkout");
+    Object.assign(admin.state.orderRow, patch);
+    mocks.getAdmin.mockReturnValue(admin);
+    const response = await postEvent(checkoutEvent());
+    expect(response.status).toBe(500);
+    expect(admin.state.rpcCalls).not.toContainEqual(expect.objectContaining({
+      name: "finalize_course_coupon_reservation",
+    }));
+    expect(admin.state.paymentWrites).toEqual([]);
+    expect(admin.state.orderWrites).toEqual([]);
+    expect(admin.state.enrollmentInserts).toEqual([]);
+    expect(fulfillCalls(admin)).toEqual([]);
+    expect(admin.state.doneEvents).not.toContain("evt_checkout");
+  });
+
+  it("validates asynchronous success through the same order binding", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    const event = checkoutEvent();
+    event.type = "checkout.session.async_payment_succeeded";
+    event.data.object.metadata.connectedAccountId = "acct_forged";
+    const response = await postEvent(event);
+    expect(response.status).toBe(500);
+    expect(admin.state.paymentWrites).toEqual([]);
+    expect(admin.state.rpcCalls).toEqual([]);
+  });
+
+  it("can retry after the server finishes attaching the checkout session", async () => {
+    const admin = createAdmin("checkout");
+    admin.state.orderRow.checkout_session_id = null;
+    mocks.getAdmin.mockReturnValue(admin);
+    expect((await postEvent(checkoutEvent())).status).toBe(500);
+    expect(admin.state.paymentWrites).toEqual([]);
+    admin.state.orderRow.checkout_session_id = "cs_1";
+    expect((await postEvent(checkoutEvent())).status).toBe(200);
+    expect(fulfillCalls(admin)).toHaveLength(1);
+  });
+
+  it.each(["separate_charges_and_transfers", "destination_charge"])(
+    "preserves %s without newer optional metadata", async (payoutModel) => {
+      const admin = createAdmin("checkout");
+      admin.state.orderRow.payout_model = payoutModel;
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = checkoutEvent();
+      delete (event as { account?: string }).account;
+      delete event.data.object.metadata.teacherId;
+      delete event.data.object.metadata.connectedAccountId;
+      expect((await postEvent(event)).status).toBe(200);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+    },
+  );
+
+  it.each([
+    ["JPY", 100050, 1001],
+    ["USD", 7000, 7000],
+  ] as const)("uses the saved discounted price and Stripe units for %s", async (currency, saved, charged) => {
+    const admin = createAdmin("checkout");
+    Object.assign(admin.state.orderRow, { currency, amount_minor: saved, discount_minor: 3000 });
+    mocks.getAdmin.mockReturnValue(admin);
+    const event = checkoutEvent();
+    event.data.object.currency = currency.toLowerCase();
+    event.data.object.amount_total = charged;
+    expect((await postEvent(event)).status).toBe(200);
+    expect(admin.state.paymentWrites[0]).toMatchObject({ amount_minor: saved, currency });
+    expect(fulfillCalls(admin)).toHaveLength(1);
+  });
+
+  it("uses the account saved on the order after the creator reconnects", async () => {
+    const admin = createAdmin("checkout");
+    admin.state.orderRow.teacher_stripe_connected_account_id = "acct_original";
+    mocks.getAdmin.mockReturnValue(admin);
+    const event = checkoutEvent();
+    event.account = "acct_original";
+    event.data.object.metadata.connectedAccountId = "acct_original";
+    expect((await postEvent(event)).status).toBe(200);
+    expect(fulfillCalls(admin)).toHaveLength(1);
+    expect(mocks.paymentIntentRetrieve).toHaveBeenCalledWith(
+      "pi_1", expect.anything(), { stripeAccount: "acct_original" },
+    );
   });
 
   it.each<FailurePoint>([
@@ -560,6 +769,14 @@ describe("Stripe webhook financial integrity", () => {
   it("stamps the activation fee instead of routing it through course fulfilment", async () => {
     const admin = createAdmin("checkout");
     mocks.getAdmin.mockReturnValue(admin);
+    mocks.paymentIntentRetrieve.mockResolvedValueOnce({
+      status: "succeeded", amount: 2500, currency: "usd",
+      metadata: { uid: "teacher_1", purpose: ACTIVATION_FEE_CHECKOUT_PURPOSE },
+      latest_charge: {
+        id: "ch_activation_1", payment_intent: "pi_activation_1", amount_captured: 2500, currency: "usd",
+        paid: true, captured: true, refunded: false, disputed: false,
+      },
+    });
 
     const response = await postEvent(activationFeeEvent());
 
@@ -613,6 +830,39 @@ describe("Stripe webhook financial integrity", () => {
 
     expect(response.status).toBe(200);
     expect(admin.state.userUpdates).toHaveLength(0);
+  });
+
+  it.each(["refunded", "lost"])("does not regrant activation from a delayed paid event after %s", async (outcome) => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.paymentIntentRetrieve.mockResolvedValueOnce({
+      id: "pi_activation_1",
+      status: "succeeded", amount: 2500, currency: "usd",
+      metadata: { uid: "teacher_1", purpose: ACTIVATION_FEE_CHECKOUT_PURPOSE },
+      latest_charge: {
+        payment_intent: "pi_activation_1", amount_captured: 2500, currency: "usd",
+        id: "ch_activation_1", paid: true, captured: true,
+        refunded: outcome === "refunded", disputed: outcome === "lost",
+      },
+    });
+    mocks.disputesList.mockResolvedValueOnce({ data: [{ status: "lost" }] });
+
+    const response = await postEvent(activationFeeEvent());
+
+    expect(response.status).toBe(200);
+    expect(admin.state.userUpdates).toEqual([]);
+  });
+
+  it("retries activation fulfillment if the current payment cannot be verified", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.paymentIntentRetrieve.mockRejectedValueOnce(new Error("Stripe temporarily unavailable"));
+
+    const response = await postEvent(activationFeeEvent());
+
+    expect(response.status).toBe(500);
+    expect(admin.state.userUpdates).toEqual([]);
+    expect(admin.state.doneEvents).not.toContain("evt_activation");
   });
 
   it("does not swallow a failed course subscription status write", async () => {
@@ -783,6 +1033,47 @@ describe("Stripe webhook financial integrity", () => {
     };
   }
 
+  it.each(["disputed", "settled"])("cancels a course subscription after a lost chargeback (ledger %s)", async (status) => {
+    const admin = createAdmin("refund");
+    Object.assign(admin.state.ledger, { status, kind: "course_subscription", subscription_id: "sub_1" });
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.subscriptionRetrieve.mockResolvedValueOnce({ status: "active" });
+
+    const response = await postEvent({
+      ...disputeClosedEvent("evt_sub_dispute_lost", "lost"), account: "acct_teacher",
+    });
+
+    expect(response.status).toBe(200);
+    expect(mocks.subscriptionCancel).toHaveBeenCalledWith("sub_1", {}, { stripeAccount: "acct_teacher" });
+  });
+
+  it("retries a lost subscription chargeback when cancellation fails", async () => {
+    const admin = createAdmin("refund");
+    Object.assign(admin.state.ledger, { status: "disputed", kind: "course_subscription", subscription_id: "sub_1" });
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.subscriptionCancel.mockRejectedValueOnce(new Error("Stripe temporarily unavailable"));
+
+    const response = await postEvent({
+      ...disputeClosedEvent("evt_sub_dispute_retry", "lost"), account: "acct_teacher",
+    });
+
+    expect(response.status).toBe(500);
+    expect(admin.state.doneEvents).not.toContain("evt_sub_dispute_retry");
+  });
+
+  it("does not acknowledge a lost subscription chargeback with no subscription identity", async () => {
+    const admin = createAdmin("refund");
+    Object.assign(admin.state.ledger, { status: "disputed", kind: "course_subscription", subscription_id: null });
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const response = await postEvent({
+      ...disputeClosedEvent("evt_sub_dispute_missing", "lost"), account: "acct_teacher",
+    });
+
+    expect(response.status).toBe(500);
+    expect(admin.state.doneEvents).not.toContain("evt_sub_dispute_missing");
+  });
+
   // "disputed" is the normal path (dispute.created was processed first).
   // "released" is a missed dispute.created: nextLedgerStatusOnDispute returns
   // null there, so if the revoke sat behind that guard the buyer would keep a
@@ -904,7 +1195,9 @@ describe("Stripe webhook financial integrity", () => {
       admin.state.enrollmentRow = { status: "completed", progress_percent: 100, source: "subscription", subscription_id: "sub_1" };
       mocks.getAdmin.mockReturnValue(admin);
 
-      const response = await postEvent(subscriptionEvent("evt_sub_done", "canceled"));
+      const event = subscriptionEvent("evt_sub_done", "canceled");
+      mocks.subscriptionRetrieve.mockResolvedValueOnce(event.data.object);
+      const response = await postEvent(event);
 
       expect(response.status).toBe(200);
       expect(admin.state.enrollmentUpdates).toContainEqual(
@@ -917,7 +1210,9 @@ describe("Stripe webhook financial integrity", () => {
       admin.state.enrollmentRow = { status: "active", progress_percent: 40, source: "subscription", subscription_id: "sub_1" };
       mocks.getAdmin.mockReturnValue(admin);
 
-      const response = await postEvent(subscriptionEvent("evt_sub_active", "canceled"));
+      const event = subscriptionEvent("evt_sub_active", "canceled");
+      mocks.subscriptionRetrieve.mockResolvedValueOnce(event.data.object);
+      const response = await postEvent(event);
 
       expect(response.status).toBe(200);
       expect(admin.state.enrollmentUpdates).toContainEqual(
@@ -931,7 +1226,9 @@ describe("Stripe webhook financial integrity", () => {
       admin.state.enrollmentRow = { status: "completed", progress_percent: 100, source: "subscription", subscription_id: "sub_1" };
       mocks.getAdmin.mockReturnValue(admin);
 
-      const response = await postEvent(subscriptionEvent("evt_sub_live", "active"));
+      const event = subscriptionEvent("evt_sub_live", "active");
+      mocks.subscriptionRetrieve.mockResolvedValueOnce(event.data.object);
+      const response = await postEvent(event);
 
       expect(response.status).toBe(200);
       expect(admin.state.enrollmentUpdates).toEqual([]);
@@ -943,7 +1240,9 @@ describe("Stripe webhook financial integrity", () => {
       admin.state.enrollmentRow = { status: "revoked", progress_percent: 100, source: "subscription", subscription_id: "sub_1" };
       mocks.getAdmin.mockReturnValue(admin);
 
-      const response = await postEvent(subscriptionEvent("evt_sub_back", "active"));
+      const event = subscriptionEvent("evt_sub_back", "active");
+      mocks.subscriptionRetrieve.mockResolvedValueOnce(event.data.object);
+      const response = await postEvent(event);
 
       expect(response.status).toBe(200);
       expect(admin.state.enrollmentUpdates).toContainEqual(
@@ -962,6 +1261,80 @@ describe("Stripe webhook financial integrity", () => {
       mocks.getAdmin.mockReturnValue(admin);
       expect((await postEvent(subscriptionEvent("evt_foreign_sub", eventStatus as string))).status).toBe(200);
       expect(admin.state.enrollmentUpdates).toEqual([]);
+    });
+
+    it("does not restore canceled access when an older active snapshot arrives later", async () => {
+      const admin = createAdmin("refund");
+      admin.state.enrollmentRow = { status: "active", progress_percent: 40, source: "subscription", subscription_id: "sub_1" };
+      mocks.getAdmin.mockReturnValue(admin);
+      const canceled = subscriptionEvent("evt_sub_canceled", "canceled");
+      mocks.subscriptionRetrieve.mockResolvedValue(canceled.data.object);
+
+      expect((await postEvent(canceled)).status).toBe(200);
+      expect((await postEvent(subscriptionEvent("evt_sub_stale", "active"))).status).toBe(200);
+
+      expect(admin.state.enrollmentRow.status).toBe("revoked");
+      expect(mocks.subscriptionRetrieve).toHaveBeenCalledWith("sub_1", undefined, { stripeAccount: "acct_teacher" });
+    });
+
+    it("does not restore a paid plan from an outdated active snapshot", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      const current = {
+        id: "sub_plan_1", status: "canceled", customer: "cus_plan_1",
+        metadata: { uid: "user_1" }, cancel_at_period_end: false,
+        items: { data: [{ price: { id: planById("pro").stripePriceIds!.monthlyId } }] },
+      };
+      mocks.subscriptionRetrieve.mockResolvedValue(current);
+
+      const response = await postEvent({
+        id: "evt_plan_stale", type: "customer.subscription.updated",
+        data: { object: { ...current, status: "active" } },
+      });
+
+      expect(response.status).toBe(200);
+      expect(admin.state.userUpdates.at(-1)?.current_plan_id).toBe("free");
+      expect(mocks.subscriptionRetrieve).toHaveBeenCalledWith("sub_plan_1", undefined, undefined);
+    });
+
+    it("retries lifecycle sync instead of trusting a snapshot when Stripe is unavailable", async () => {
+      const admin = createAdmin("refund");
+      admin.state.enrollmentRow = { status: "revoked", progress_percent: 40, source: "subscription", subscription_id: "sub_1" };
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockRejectedValueOnce(new Error("Stripe temporarily unavailable"));
+
+      const response = await postEvent(subscriptionEvent("evt_sub_retry", "active"));
+
+      expect(response.status).toBe(500);
+      expect(admin.state.enrollmentRow.status).toBe("revoked");
+      expect(admin.state.doneEvents).not.toContain("evt_sub_retry");
+    });
+
+    it.each(["canceled", "unpaid", "paused", "incomplete_expired"])("does not grant a delayed paid invoice when the subscription is now %s", async (status) => {
+      const admin = createAdmin("checkout");
+      admin.state.enrollmentRow = { status: "revoked", progress_percent: 40, source: "subscription", subscription_id: "sub_1" };
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(subscriptionEvent("evt_current", status).data.object);
+
+      const response = await postEvent(paidInvoiceEvent());
+
+      expect(response.status).toBe(200);
+      // The RPC is the only writer now: its absence is what proves the guard.
+      expect(fulfillCalls(admin)).toEqual([]);
+      expect(admin.state.enrollmentRow.status).toBe("revoked");
+      expect(admin.state.enrollmentInserts).toEqual([]);
+      expect(admin.state.doneEvents).toContain("evt_invoice_paid");
+    });
+
+    // Control: without this, dropping the RPC call entirely would pass above.
+    it.each(["active", "trialing"])("grants a delayed paid invoice through the RPC when the subscription is %s", async (status) => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(subscriptionEvent("evt_current", status).data.object);
+
+      expect((await postEvent(paidInvoiceEvent())).status).toBe(200);
+      expect(admin.state.rpcCalls).toContainEqual({ name: "fulfill_paid_course_access", args: { p_user_id: "user_1", p_course_id: "course_1", p_source: "subscription", p_subscription_id: "sub_1" } });
+      expect(admin.state.enrollmentInserts).toEqual([]);
     });
 
     // Uma compra AVULSA cai no ramo de assinatura enquanto a linha de `payments`

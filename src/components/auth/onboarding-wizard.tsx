@@ -13,6 +13,7 @@ import { skillsetCourseCategories } from "@/domain/teacher-course";
 import type { OnboardingAnswers } from "@/domain/user-profile";
 import {
   getAuthPathIntentFromSearchParams,
+  getAuthRoute,
   getSafeReturnTo,
 } from "@/lib/auth/routing";
 import { isValidPhoneNumber } from "@/domain/user-profile";
@@ -252,7 +253,7 @@ export function OnboardingWizard() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.replace("/auth?mode=signin");
+      router.replace(getAuthRoute("signin", pathIntent, returnTo));
       return;
     }
 
@@ -295,7 +296,7 @@ export function OnboardingWizard() {
     return () => {
       mounted = false;
     };
-  }, [pathIntent, router, status, user]);
+  }, [pathIntent, returnTo, router, status, user]);
 
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
@@ -388,7 +389,7 @@ export function OnboardingWizard() {
   // validateCurrentQuestion: nome e telefone vivem em estado proprio.
   async function saveProfileAndContinue() {
     if (!user) {
-      router.replace("/auth?mode=signin");
+      router.replace(getAuthRoute("signin", pathIntent, returnTo));
       return;
     }
 
@@ -452,7 +453,7 @@ export function OnboardingWizard() {
 
   async function finishOnboarding() {
     if (!user) {
-      router.replace("/auth?mode=signin");
+      router.replace(getAuthRoute("signin", pathIntent, returnTo));
       return;
     }
 

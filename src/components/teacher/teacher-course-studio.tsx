@@ -16,6 +16,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ListingSearchBar } from "@/components/shared/listing-search-bar";
 import { StatusChip } from "@/components/shared/status-chip";
 import { CreateCourseStart } from "@/components/teacher/create-course-start";
@@ -23,39 +24,42 @@ import type { TeacherCourse, TeacherCourseProductFormat } from "@/domain/teacher
 import { teacherCanDeleteCourse } from "@/domain/teacher-course";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { deleteTeacherCourse, subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
+import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 
 type ProductFilter = "all" | "draft" | "in_review" | "published" | "attention";
 
-const productFilters: Array<{ id: ProductFilter; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "draft", label: "Drafts" },
-  { id: "in_review", label: "Legacy review" },
-  { id: "published", label: "Live" },
-  { id: "attention", label: "Needs attention" },
+// Labels are dictionary keys resolved at render, so the list follows a locale
+// switch; the ids stay the data codes the filter compares against.
+const productFilters: Array<{ id: ProductFilter; labelKey: string }> = [
+  { id: "all", labelKey: "creatorPanel.filters.all" },
+  { id: "draft", labelKey: "creatorPanel.filters.drafts" },
+  { id: "in_review", labelKey: "creatorPanel.products.filterLegacyReview" },
+  { id: "published", labelKey: "creatorPanel.products.filterLive" },
+  { id: "attention", labelKey: "creatorPanel.filters.needsAttention" },
 ];
 
 const workspaceShortcuts = [
   {
-    title: "Members & communities",
-    detail: "Customize delivery and learner spaces",
+    titleKey: "platform.nav.membersArea",
+    detailKey: "creatorPanel.products.shortcuts.membersDetail",
     href: "/teach/members",
     icon: UsersRound,
   },
   {
-    title: "Online events",
-    detail: "Schedule workshops and live sessions",
+    titleKey: "platform.nav.onlineEvents",
+    detailKey: "creatorPanel.products.shortcuts.eventsDetail",
     href: "/teach/events",
     icon: CalendarDays,
   },
   {
-    title: "Marketing workspace",
-    detail: "Pages, media, messages, and promotions",
+    titleKey: "creatorPanel.hub.tools.marketing",
+    detailKey: "creatorPanel.products.shortcuts.marketingDetail",
     href: "/teach/marketing",
     icon: Megaphone,
   },
   {
-    title: "Coupons",
-    detail: "Create discount codes for your products",
+    titleKey: "platform.nav.coupons",
+    detailKey: "creatorPanel.products.shortcuts.couponsDetail",
     href: "/teach/coupons",
     icon: Handshake,
   },
@@ -69,13 +73,6 @@ function filterMatches(course: TeacherCourse, filter: ProductFilter) {
   return course.status === filter;
 }
 
-function accessModelLabel(course: TeacherCourse) {
-  if (course.paymentType === "free") return "Free";
-  if (course.paymentType === "subscription_monthly") return "Monthly subscription";
-  if (course.paymentType === "subscription_yearly") return "Yearly subscription";
-  return "One-time purchase";
-}
-
 function ProductActionsMenu({
   course,
   onRequestDelete,
@@ -83,10 +80,11 @@ function ProductActionsMenu({
   course: TeacherCourse;
   onRequestDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const courseTitle = course.title || "Untitled product";
+  const courseTitle = course.title || t("creatorPanel.untitledProduct");
 
   useEffect(() => {
     if (!open) {
@@ -121,7 +119,7 @@ function ProductActionsMenu({
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`More actions for ${courseTitle}`}
+        aria-label={t("creatorPanel.products.actions.more").replace("{title}", () => courseTitle)}
         onClick={() => setOpen((current) => !current)}
         className="grid min-h-11 min-w-11 place-items-center rounded-[7px] border border-[var(--color-line-strong)] bg-white text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
       >
@@ -131,7 +129,7 @@ function ProductActionsMenu({
       {open ? (
         <div
           role="menu"
-          aria-label={`Actions for ${courseTitle}`}
+          aria-label={t("creatorPanel.products.actions.menu").replace("{title}", () => courseTitle)}
           className="absolute right-0 top-[calc(100%+8px)] z-40 w-48 rounded-[8px] border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
         >
           <Link
@@ -140,7 +138,7 @@ function ProductActionsMenu({
             onClick={() => setOpen(false)}
             className="flex min-h-11 items-center rounded-[6px] px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
           >
-            Edit
+            {t("creatorPanel.products.actions.edit")}
           </Link>
           <Link
             href={`/teach/builder/${encodeURIComponent(course.id)}/preview`}
@@ -148,7 +146,7 @@ function ProductActionsMenu({
             onClick={() => setOpen(false)}
             className="flex min-h-11 items-center rounded-[6px] px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
           >
-            View as student
+            {t("creatorPanel.products.actions.viewAsStudent")}
           </Link>
           {teacherCanDeleteCourse(course.status) ? (
             <button
@@ -161,7 +159,7 @@ function ProductActionsMenu({
               }}
               className="flex min-h-11 w-full items-center rounded-[6px] border-t border-[var(--color-line)] px-3 text-left text-sm font-semibold text-[var(--color-danger-fg)] hover:bg-[var(--color-danger-soft)]"
             >
-              Delete
+              {t("creatorPanel.products.actions.delete")}
             </button>
           ) : null}
         </div>
@@ -181,8 +179,9 @@ function DeleteCourseDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const { t } = useTranslation();
   const dialogRef = useRef<HTMLDivElement>(null);
-  const courseTitle = course.title || "Untitled product";
+  const courseTitle = course.title || t("creatorPanel.untitledProduct");
   useModalFocus(dialogRef, true);
 
   useEffect(() => {
@@ -210,17 +209,17 @@ function DeleteCourseDialog({
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
-        aria-label={`Delete ${courseTitle}`}
+        aria-label={t("creatorPanel.products.delete.aria").replace("{title}", () => courseTitle)}
         className="modal-panel modal-panel-scroll w-full max-w-md rounded-[16px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
       >
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-danger-fg)]">
-          Delete product
+          {t("creatorPanel.products.delete.eyebrow")}
         </p>
         <h2 className="mt-2 text-2xl font-semibold text-[var(--color-primary)]">
-          Delete {courseTitle}?
+          {t("creatorPanel.products.delete.title").replace("{title}", () => courseTitle)}
         </h2>
         <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-          This permanently removes the draft and its course content. This action cannot be undone.
+          {t("creatorPanel.products.delete.description")}
         </p>
         <div className="mt-6 flex flex-wrap justify-end gap-3">
           <button
@@ -229,7 +228,7 @@ function DeleteCourseDialog({
             disabled={busy}
             className="button-outline px-4 text-sm disabled:opacity-60"
           >
-            Cancel
+            {t("creatorPanel.products.delete.cancel")}
           </button>
           <button
             type="button"
@@ -237,7 +236,9 @@ function DeleteCourseDialog({
             disabled={busy}
             className="button-danger px-4 text-sm disabled:opacity-60"
           >
-            {busy ? "Deleting..." : "Confirm delete"}
+            {busy
+              ? t("creatorPanel.products.delete.busy")
+              : t("creatorPanel.products.delete.confirm")}
           </button>
         </div>
       </div>
@@ -253,13 +254,15 @@ export function TeacherCourseStudio({
   initialFormat?: TeacherCourseProductFormat;
 }) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const productView = searchParams.get("view") === "communities" ? "communities" : "products";
   const [courseQuery, setCourseQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProductFilter>("all");
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
-  const [error, setError] = useState("");
+  // Kept as a dictionary key so the message follows a locale switch.
+  const [errorKey, setErrorKey] = useState<string | null>(null);
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
   const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
@@ -289,22 +292,20 @@ export function TeacherCourseStudio({
         setIsLoadingCourses(false);
       },
       () => {
-        setError(
-          "We could not load your products. Please refresh or contact SkillsetMind support.",
-        );
+        setErrorKey("creatorPanel.products.loadError");
         setIsLoadingCourses(false);
       },
     );
   }, [user]);
 
   async function handleDeleteCourse(courseId: string) {
-    setError("");
+    setErrorKey(null);
     setDeletingCourseId(courseId);
 
     try {
       await deleteTeacherCourse(courseId);
     } catch {
-      setError("We could not delete this draft. Please try again or contact SkillsetMind support.");
+      setErrorKey("creatorPanel.products.deleteError");
     } finally {
       setDeletingCourseId(null);
       setConfirmingDeleteId(null);
@@ -316,7 +317,7 @@ export function TeacherCourseStudio({
       <CreateCourseStart ownerId={user.uid} initialFormat={initialFormat} />
     ) : (
       <p className="rounded-[8px] border border-[var(--color-line)] bg-white p-4 text-sm text-[var(--color-ink-soft)]">
-        Sign in as a creator to start a product.
+        {t("creatorPanel.products.signIn")}
       </p>
     );
   }
@@ -327,52 +328,60 @@ export function TeacherCourseStudio({
       : "/teach/builder?newCourse=1&format=course";
   const confirmingDeleteCourse =
     courses.find((course) => course.id === confirmingDeleteId) ?? null;
+  const count = (oneKey: string, manyKey: string, value: number) =>
+    t(value === 1 ? oneKey : manyKey).replace("{count}", () => String(value));
+  const communityCount = courses.filter((course) => course.communityEnabled).length;
 
   return (
     <div className="grid gap-6">
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--color-line)] pb-5">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
-            Products
+            {t("creatorPanel.products.eyebrow")}
           </p>
           <h1 className="mt-2 text-3xl font-semibold leading-tight text-[var(--color-primary)]">
-            My products
+            {t("platform.nav.courseBuilder")}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-            Create private drafts, complete the product checks, and publish directly once your
-            professional verification is approved.
+            {t("creatorPanel.products.description")}
           </p>
         </div>
         <Link href={createHref} className="button-solid px-4 text-sm">
           <Plus aria-hidden="true" size={16} strokeWidth={2} />
-          New product
+          {t("creatorPanel.newProduct")}
         </Link>
       </header>
 
-      {error ? (
+      {errorKey ? (
         <p
           role="alert"
           className="rounded-[8px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
-          {error}
+          {t(errorKey)}
         </p>
       ) : null}
 
       <section aria-labelledby="product-list-title">
         <div>
           <h2 id="product-list-title" className="text-lg font-semibold text-[var(--color-ink)]">
-            {productView === "communities" ? "Community workspace" : "Product workspace"}
+            {productView === "communities"
+              ? t("creatorPanel.products.communityWorkspace")
+              : t("creatorPanel.products.productWorkspace")}
           </h2>
           <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
             {isLoadingCourses
-              ? "Loading products..."
+              ? t("creatorPanel.products.loading")
               : productView === "communities"
-                ? `${courses.filter((course) => course.communityEnabled).length} ${
-                    courses.filter((course) => course.communityEnabled).length === 1
-                      ? "community"
-                      : "communities"
-                  }`
-                : `${courses.length} ${courses.length === 1 ? "product" : "products"}`}
+                ? count(
+                    "creatorPanel.products.communityOne",
+                    "creatorPanel.products.communityMany",
+                    communityCount,
+                  )
+                : count(
+                    "creatorPanel.products.productOne",
+                    "creatorPanel.products.productMany",
+                    courses.length,
+                  )}
           </p>
         </div>
 
@@ -380,13 +389,17 @@ export function TeacherCourseStudio({
           <ListingSearchBar
             value={courseQuery}
             onChange={setCourseQuery}
-            placeholder={productView === "communities" ? "Search communities..." : "Search products..."}
+            placeholder={
+              productView === "communities"
+                ? t("creatorPanel.products.searchCommunities")
+                : t("creatorPanel.products.searchProducts")
+            }
             className="max-w-none"
           />
           <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
-            Type
+            {t("creatorPanel.products.typeLabel")}
             <select
-              aria-label="Product type"
+              aria-label={t("creatorPanel.products.typeAria")}
               value={productView}
               onChange={(event) =>
                 router.push(
@@ -397,21 +410,21 @@ export function TeacherCourseStudio({
               }
               className="min-h-11 rounded-[7px] border border-[var(--color-line-strong)] bg-white px-3 text-sm font-semibold normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
             >
-              <option value="products">Products</option>
-              <option value="communities">Communities</option>
+              <option value="products">{t("creatorPanel.products.eyebrow")}</option>
+              <option value="communities">{t("platform.nav.communities")}</option>
             </select>
           </label>
           <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
-            Status
+            {t("creatorPanel.products.status")}
             <select
-              aria-label="Product status"
+              aria-label={t("creatorPanel.products.statusAria")}
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as ProductFilter)}
               className="min-h-11 rounded-[7px] border border-[var(--color-line-strong)] bg-white px-3 text-sm font-semibold normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
             >
               {productFilters.map((filter) => (
                 <option key={filter.id} value={filter.id}>
-                  {filter.label}
+                  {t(filter.labelKey)}
                 </option>
               ))}
             </select>
@@ -420,7 +433,7 @@ export function TeacherCourseStudio({
 
         <div className="mt-5">
           {isLoadingCourses ? (
-            <div className="grid gap-0" aria-label="Loading products">
+            <div className="grid gap-0" aria-label={t("creatorPanel.products.loadingAria")}>
               {[1, 2, 3].map((item) => (
                 <div
                   key={item}
@@ -436,43 +449,51 @@ export function TeacherCourseStudio({
                 <BookOpen aria-hidden="true" size={20} strokeWidth={1.8} />
               </span>
               <h3 className="mt-4 text-lg font-semibold text-[var(--color-ink)]">
-                {productView === "communities" ? "No communities yet" : "No products yet"}
+                {productView === "communities"
+                  ? t("creatorPanel.products.emptyCommunitiesTitle")
+                  : t("creatorPanel.products.emptyProductsTitle")}
               </h3>
               <p className="mt-2 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
                 {productView === "communities"
-                  ? "Create a recurring members space for posts, discussion, and practitioner-led exchange."
-                  : "Start a course, subscription, community, event, or free program. The draft stays private until you publish it."}
+                  ? t("creatorPanel.products.emptyCommunitiesDescription")
+                  : t("creatorPanel.products.emptyProductsDescription")}
               </p>
               <Link href={createHref} className="button-solid mt-5 px-4 text-sm">
                 <Plus aria-hidden="true" size={16} strokeWidth={2} />
-                {productView === "communities" ? "Create community" : "Create product"}
+                {productView === "communities"
+                  ? t("creatorPanel.products.createCommunity")
+                  : t("creatorPanel.createProduct")}
               </Link>
             </div>
           ) : visibleCourses.length === 0 ? (
             <p className="border-y border-[var(--color-line)] py-10 text-center text-sm text-[var(--color-ink-soft)]">
-              No products match this search and status filter.
+              {t("creatorPanel.products.noMatch")}
             </p>
           ) : (
             <table
-              aria-label={productView === "communities" ? "Communities" : "Products"}
+              aria-label={
+                productView === "communities"
+                  ? t("platform.nav.communities")
+                  : t("creatorPanel.products.eyebrow")
+              }
               className="w-full border-y border-[var(--color-line)]"
             >
               <thead className="hidden border-b border-[var(--color-line)] bg-[var(--color-surface-soft)] lg:table-header-group">
                 <tr>
                   <th scope="col" className="w-[42%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
-                    Product
+                    {t("creatorPanel.products.columns.product")}
                   </th>
                   <th scope="col" className="w-[16%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
-                    Status
+                    {t("creatorPanel.products.status")}
                   </th>
                   <th scope="col" className="w-[18%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
-                    Access
+                    {t("creatorPanel.products.columns.access")}
                   </th>
                   <th scope="col" className="w-[10%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
-                    Students
+                    {t("creatorPanel.hub.sections.students")}
                   </th>
                   <th scope="col" className="w-[14%] px-4 py-3">
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">{t("creatorPanel.products.columns.actions")}</span>
                   </th>
                 </tr>
               </thead>
@@ -498,35 +519,47 @@ export function TeacherCourseStudio({
                         </div>
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
-                            {course.title || "Untitled product"}
+                            {course.title || t("creatorPanel.untitledProduct")}
                           </p>
                           <p className="mt-1 truncate text-xs text-[var(--color-ink-soft)]">
-                            {course.category || "Uncategorized"}
+                            {course.category
+                              ? getCourseCategoryLabel(course.category, t)
+                              : t("creatorPanel.products.uncategorized")}
                           </p>
                           <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
-                            {course.modules.length} modules · {course.lessonCount} lessons
-                            {course.communityEnabled ? " · Community on" : ""}
+                            {count(
+                              "creatorPanel.modulesOne",
+                              "creatorPanel.modulesMany",
+                              course.modules.length,
+                            )}
+                            {" · "}
+                            {count(
+                              "publicCourses.lessonOne",
+                              "publicCourses.lessonMany",
+                              course.lessonCount,
+                            )}
+                            {course.communityEnabled ? ` · ${t("creatorPanel.communityOn")}` : ""}
                           </p>
                         </div>
                       </div>
                     </td>
                     <td className="block pb-3 lg:table-cell lg:px-4 lg:py-4">
                       <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)] lg:hidden">
-                        Status
+                        {t("creatorPanel.products.status")}
                       </p>
                       <StatusChip status={course.status} />
                     </td>
                     <td className="block pb-3 lg:table-cell lg:px-4 lg:py-4">
                       <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)] lg:hidden">
-                        Access
+                        {t("creatorPanel.products.columns.access")}
                       </p>
                       <p className="text-xs font-semibold text-[var(--color-ink-soft)]">
-                        {accessModelLabel(course)}
+                        {t(`creatorPanel.paymentType.${course.paymentType ?? "one_time"}`)}
                       </p>
                     </td>
                     <td className="block pb-4 lg:table-cell lg:px-4 lg:py-4">
                       <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)] lg:hidden">
-                        Students
+                        {t("creatorPanel.hub.sections.students")}
                       </p>
                       <p className="text-sm font-semibold tabular-nums text-[var(--color-ink)]">
                         {course.enrollmentCount ?? 0}
@@ -538,7 +571,7 @@ export function TeacherCourseStudio({
                           href={`/teach/courses/${encodeURIComponent(course.id)}/manage`}
                           className="button-solid px-3 text-xs"
                         >
-                          Open
+                          {t("teach.insights.open")}
                         </Link>
                         <ProductActionsMenu
                           course={course}
@@ -555,7 +588,7 @@ export function TeacherCourseStudio({
       </section>
 
       <nav
-        aria-label="Product workspace shortcuts"
+        aria-label={t("creatorPanel.products.shortcuts.label")}
         className="grid overflow-hidden rounded-[8px] border border-[var(--color-line)] sm:grid-cols-2 xl:grid-cols-4"
       >
         {workspaceShortcuts.map((item) => {
@@ -571,9 +604,9 @@ export function TeacherCourseStudio({
                 <Icon aria-hidden="true" size={17} strokeWidth={1.8} />
               </span>
               <span className="min-w-0">
-                <strong className="block text-sm text-[var(--color-ink)]">{item.title}</strong>
+                <strong className="block text-sm text-[var(--color-ink)]">{t(item.titleKey)}</strong>
                 <small className="mt-1 block text-xs leading-5 text-[var(--color-ink-soft)]">
-                  {item.detail}
+                  {t(item.detailKey)}
                 </small>
                 <ArrowRight
                   aria-hidden="true"

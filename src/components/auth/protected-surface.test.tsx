@@ -62,4 +62,20 @@ describe("ProtectedSurface — senha aceita, codigo ainda nao", () => {
 
     expect(screen.getByText("conteudo protegido")).toBeTruthy();
   });
+
+  it("carries the guarded path and query into both sign-in and account creation", () => {
+    mocks.session = { status: "unauthenticated", user: null };
+    const originalUrl = window.location.href;
+    try {
+      window.history.replaceState(null, "", "/account?section=billing&from=course");
+      renderGuarded();
+      for (const name of ["auth.guard.signIn", "auth.guard.createAccount"]) {
+        const destination = new URL(screen.getByRole("link", { name }).getAttribute("href")!, "https://skillset.test");
+        expect(destination.searchParams.get("returnTo")).toBe("/account?section=billing&from=course");
+      }
+      expect(screen.queryByText("conteudo protegido")).toBeNull();
+    } finally {
+      window.history.replaceState(null, "", originalUrl);
+    }
+  });
 });

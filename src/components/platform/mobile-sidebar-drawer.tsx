@@ -18,6 +18,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { PlatformNav } from "@/components/platform/platform-nav";
 import { SessionCard } from "@/components/platform/session-card";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
+import type { PlatformNavCounts } from "@/data/site";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { getWorkspaceHomeHref } from "@/lib/auth/routing";
 
@@ -26,6 +27,8 @@ type MobileSidebarDrawerProps = {
   onOpen: () => void;
   onClose: () => void;
   initialSection?: string;
+  currentNavigationHref?: string;
+  navigationCounts?: PlatformNavCounts;
 };
 
 function visibleNavigationControl() {
@@ -39,6 +42,8 @@ export function MobileSidebarDrawer({
   onOpen,
   onClose,
   initialSection,
+  currentNavigationHref,
+  navigationCounts,
 }: MobileSidebarDrawerProps) {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -167,14 +172,18 @@ export function MobileSidebarDrawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="grid size-9 place-items-center rounded-[10px] text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
+                className="grid size-11 place-items-center rounded-[10px] text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
                 aria-label={t("platform.mobile.close")}
               >
                 <X aria-hidden="true" size={18} strokeWidth={1.8} />
               </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-3">
-              <PlatformNav initialSection={initialSection} />
+              <PlatformNav
+                initialSection={initialSection}
+                currentNavigationHref={currentNavigationHref}
+                navigationCounts={navigationCounts}
+              />
             </div>
             <div className="border-t border-[var(--color-line)] p-3">
               <SessionCard />

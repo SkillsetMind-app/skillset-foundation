@@ -26,7 +26,8 @@ $$;
 -- a tentativa, nao esta transacao inteira.
 CREATE OR REPLACE FUNCTION pg_temp.assert_recusa(
   p_sql text,
-  p_message text
+  p_message text,
+  p_expected_sqlstate text DEFAULT NULL
 ) RETURNS void
 LANGUAGE plpgsql
 AS $$
@@ -34,6 +35,9 @@ BEGIN
   BEGIN
     EXECUTE p_sql;
   EXCEPTION WHEN others THEN
+    IF p_expected_sqlstate IS NOT NULL AND SQLSTATE <> p_expected_sqlstate THEN
+      RAISE;
+    END IF;
     RETURN;
   END;
   RAISE EXCEPTION 'SMOKE_ASSERTION_FAILED: %', p_message;
@@ -251,8 +255,9 @@ SELECT pg_temp.assert_true(
     WHERE n.nspname = 'public'
       AND c.relname = 'lesson_playback'
       AND p.polcmd <> 'r'   -- 'r' = SELECT
+      AND p.polpermissive   -- restritiva limita; nao concede escrita sozinha
   ),
-  'lesson_playback nao pode ter policy de escrita: toda escrita passa pela funcao'
+  'lesson_playback nao pode ter policy permissiva de escrita: toda escrita passa pela funcao'
 );
 
 SELECT pg_temp.assert_true(
@@ -264,5 +269,26 @@ SELECT pg_temp.assert_true(
   NOT has_table_privilege('anon', 'public.lesson_playback', 'SELECT'),
   'visitante deslogado nao pode ler onde os alunos pararam'
 );
+
+-- O aluno tem matricula ativa e le sua linha, mas escreve somente pela RPC.
+-- Valores validos evitam que uma constraint ou erro de SQL mascare a recusa.
+SELECT pg_temp.vira('22222222-2222-4222-8222-222222222222');
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.assert_recusa(
+  $$INSERT INTO public.lesson_playback(enrollment_id,lesson_id,user_id)
+    VALUES('smoke-pb-a','aula-2','22222222-2222-4222-8222-222222222222')$$,
+  'aluno inseriu lesson_playback diretamente', '42501'
+);
+SELECT pg_temp.assert_recusa(
+  $$UPDATE public.lesson_playback SET position_seconds=99
+    WHERE enrollment_id='smoke-pb-a' AND lesson_id='aula-1'$$,
+  'aluno atualizou lesson_playback diretamente', '42501'
+);
+SELECT pg_temp.assert_recusa(
+  $$DELETE FROM public.lesson_playback
+    WHERE enrollment_id='smoke-pb-a' AND lesson_id='aula-1'$$,
+  'aluno excluiu lesson_playback diretamente', '42501'
+);
+RESET ROLE;
 
 ROLLBACK;

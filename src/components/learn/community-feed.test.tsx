@@ -2,9 +2,12 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CommunityFeed } from "@/components/learn/community-feed";
+import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
 import type { CommunitySpace } from "@/domain/learning";
-import { createCommunityPost } from "@/lib/data/community-posts";
+import { createCommunityPost, createCommunityComment, setCommunityPostAcceptedAnswer, setCommunityPostPinned, subscribeToCommunityPosts } from "@/lib/data/community-posts";
+import { subscribeToEnrollment } from "@/lib/data/enrollments";
+import { setCommunityPostLike } from "@/lib/data/gamification";
 
 /**
  * Mockup 5, rodada 11 — o feed simplificado, renderizado de verdade:
@@ -40,7 +43,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mocks.pathname,
-  useRouter: () => ({ push: mocks.push, replace: vi.fn() }),
+  useRouter: () => ({ push: mocks.push, replace: vi.fn(), refresh: vi.fn() }),
 }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
@@ -204,8 +207,14 @@ const comments: CommunityComment[] = [
   },
 ];
 
-async function renderFeed(props: Partial<Parameters<typeof CommunityFeed>[0]> = {}) {
-  const view = render(<CommunityFeed space={space} instructorName="Patrick" {...props} />);
+function ChangeLanguage() {
+  const { locale, setLocale } = useTranslation();
+  return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
+}
+
+async function renderFeed(props: Partial<Parameters<typeof CommunityFeed>[0]> = {}, locale?: "en" | "es") {
+  const feed = <CommunityFeed space={space} instructorName="Patrick" {...props} />;
+  const view = render(locale ? <I18nProvider initialLocale={locale}><ChangeLanguage />{feed}</I18nProvider> : feed);
   await waitFor(() => expect(mocks.postsCallback).not.toBeNull());
   await act(async () => {
     mocks.postsCallback?.(posts);
@@ -231,6 +240,157 @@ describe("feed da comunidade (rodada 11)", () => {
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
+  });
+
+  it("translates filters and a literal instructor name while preserving query, focus and subscriptions", async () => {
+    await renderFeed({ instructorName: "Pat $$50 $&" }, "en");
+    fireEvent.click(screen.getByRole("tab", { name: "Questions · 1 open" }));
+    const search = screen.getByRole("searchbox", { name: "Search posts" });
+    fireEvent.change(search, { target: { value: "portuguese" } });
+    search.focus();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByRole("tab", { name: "Preguntas · 1 abierta" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "De Pat $$50 $&" })).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "Buscar publicaciones" })).toBe(search);
+    expect(search).toHaveFocus();
+    expect(search).toHaveValue("portuguese");
+    expect(screen.getByRole("article")).toHaveTextContent("My team reads Portuguese better than English.");
+    expect(screen.getByRole("heading", { name: "Leading Teams Through Change" })).toBeInTheDocument();
+    expect(mocks.subscriptions).toBe(1);
+    expect(subscribeToCommunityPosts).toHaveBeenCalledTimes(1);
+    expect(createCommunityPost).not.toHaveBeenCalled();
+    expect(setCommunityPostLike).not.toHaveBeenCalled();
+    expect(setCommunityPostPinned).not.toHaveBeenCalled();
+  });
+
+  it("keeps the question draft, focus, lesson attachment and original payload during a locale change and pending post", async () => {
+    await renderFeed({ currentLesson: { id: "l3", title: "Original lesson", number: 3 } }, "en");
+    let resolve!: (value: Awaited<ReturnType<typeof createCommunityPost>>) => void;
+    vi.mocked(createCommunityPost).mockReturnValueOnce(new Promise((done) => { resolve = done; }));
+    fireEvent.click(screen.getByRole("button", { name: "Ask a question" }));
+    const question = screen.getByRole("textbox", { name: "Your question" });
+    fireEvent.change(question, { target: { value: "Question literal $$50 $&" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Details (optional)" }), { target: { value: "Details $$ $&" } });
+    question.focus();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByRole("textbox", { name: "Tu pregunta" })).toBe(question);
+    expect(question).toHaveFocus();
+    expect(question).toHaveValue("Question literal $$50 $&");
+    expect(screen.getByText("Sobre la lección 3")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Publicar pregunta" }));
+    expect(screen.getByRole("button", { name: "Publicando…" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByRole("button", { name: "Posting…" })).toBeDisabled();
+    expect(question).toHaveValue("Question literal $$50 $&");
+    expect(createCommunityPost).toHaveBeenCalledExactlyOnceWith({
+      courseSlug: space.courseSlug, category: "question", title: "Question literal $$50 $&", body: "Details $$ $&",
+      lessonId: "l3", lessonTitle: "lesson 3", user: mocks.auth.user,
+    });
+    await act(async () => resolve({ id: "post-test" }));
+    expect(screen.queryByRole("form", { name: "Ask a question" })).not.toBeInTheDocument();
+    expect(createCommunityPost).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a removed attachment removed when relocalizing the composer", async () => {
+    await renderFeed({ currentLesson: { id: "l3", title: "Original lesson", number: 3 } }, "en");
+    fireEvent.click(screen.getByRole("button", { name: "Ask a question" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove lesson 3" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.queryByText("Sobre la lección 3")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "Tu pregunta" }), { target: { value: "Question $$ $& literal" } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Publicar pregunta" })); });
+    expect(createCommunityPost).toHaveBeenCalledWith(expect.objectContaining({ lessonId: null, lessonTitle: null }));
+  });
+
+  it.each([
+    ["Share", "Compartir", "Tu publicación", "Publicar", "discussion"],
+    ["Post an update", "Publicar un aviso", "Tu publicación", "Publicar aviso", "announcement"],
+  ])("preserves the %s draft and payload while translating", async (entry, formName, label, submit, category) => {
+    await renderFeed({ canModerate: true }, "en");
+    fireEvent.click(screen.getByRole("button", { name: entry }));
+    const field = screen.getByRole("textbox", { name: "Your post" });
+    fireEvent.change(field, { target: { value: "Original content $$50 $&" } });
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByRole("form", { name: formName })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: label })).toBe(field);
+    expect(field).toHaveValue("Original content $$50 $&");
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: submit })); });
+    expect(createCommunityPost).toHaveBeenCalledWith(expect.objectContaining({ category, body: "Original content $$50 $&", title: null, lessonId: null, lessonTitle: null }));
+  });
+
+  it("translates a stored validation error and retains the draft without publishing", async () => {
+    await renderFeed({}, "en");
+    fireEvent.click(screen.getByRole("button", { name: "Ask a question" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Your question" }), { target: { value: "short" } });
+    fireEvent.click(screen.getByRole("button", { name: "Post question" }));
+    expect(screen.getByText("Write your question in one line first — at least a few words.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByText("Escribe primero tu pregunta en una línea, con al menos unas palabras.")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Tu pregunta" })).toHaveValue("short");
+    expect(createCommunityPost).not.toHaveBeenCalled();
+  });
+
+  it("does not reveal pending posts just because the locale changes", async () => {
+    await renderFeed({}, "en");
+    act(() => mocks.postsCallback?.([post({ id: "arrival", body: "New literal $$ $&", category: "discussion" }), ...posts]));
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByRole("button", { name: "1 publicación nueva" })).toBeInTheDocument();
+    expect(screen.queryByText("New literal $$ $&")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("article")).toHaveLength(4);
+    fireEvent.click(screen.getByRole("button", { name: "1 publicación nueva" }));
+    expect(screen.getByText("New literal $$ $&")).toBeInTheDocument();
+    expect(subscribeToCommunityPosts).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the localized access-load failure without opening the community gate", () => {
+    vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, _next, onError) => {
+      onError(new Error("private cause"));
+      return vi.fn();
+    });
+    render(<I18nProvider initialLocale="es"><CommunityFeed space={space} /></I18nProvider>);
+    expect(screen.getByText("No pudimos confirmar tu acceso a la comunidad.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Esta comunidad está vinculada a la inscripción en el curso." })).toBeInTheDocument();
+    expect(subscribeToCommunityPosts).not.toHaveBeenCalled();
+    expect(createCommunityPost).not.toHaveBeenCalled();
+  });
+
+  it("keeps an inline reply and its focused field until the pending response settles across locales", async () => {
+    await renderFeed({}, "en");
+    const card = screen.getByRole("article", { name: /Portuguese version/ });
+    fireEvent.click(within(card).getByRole("button", { name: "Reply" }));
+    const field = within(card).getByRole("textbox", { name: "Your reply" });
+    fireEvent.change(field, { target: { value: "Reply literal $$50 $&" } });
+    field.focus();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(within(card).getByRole("textbox", { name: "Tu respuesta" })).toBe(field);
+    expect(field).toHaveFocus();
+    let resolve!: (value: { id: string }) => void;
+    vi.mocked(createCommunityComment).mockReturnValueOnce(new Promise((done) => { resolve = done; }));
+    fireEvent.click(within(card).getByRole("button", { name: "Publicar respuesta" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(within(card).getByRole("button", { name: "Posting…" })).toBeDisabled();
+    expect(field).toHaveValue("Reply literal $$50 $&");
+    expect(createCommunityComment).toHaveBeenCalledExactlyOnceWith({ postId: "open", courseSlug: space.courseSlug, body: "Reply literal $$50 $&", user: mocks.auth.user });
+    await act(async () => resolve({ id: "reply-test" }));
+    expect(within(card).queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("localizes the live state, member panel and rules without changing the scheduled session", async () => {
+    await renderFeed({ instructorName: "Pat $$ $&" }, "en");
+    act(() => {
+      mocks.eventsCallback?.([{ id: "event-test", title: "Original live $$ $&", startsAt: new Date(NOW + 40 * 60_000).toISOString(), externalUrl: "https://example.com/live-test" }]);
+      mocks.presenceCallback?.([{ uid: "teacher-1", name: "Pat $$ $&" }]);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Rules" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByRole("region", { name: "Próxima sesión en vivo" })).toHaveTextContent("En vivo en 40 min");
+    expect(screen.getByText("Pregunta sobre el curso y comparte lo que has probado.")).toBeInTheDocument();
+    expect(screen.getByText("Pat $$ $& responde a cada presentación.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reglas" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: "Grabaciones" })).toHaveAttribute("href", "/learn/courses/course-1/lives");
+    await act(async () => { vi.setSystemTime(NOW + 41 * 60_000); await vi.advanceTimersByTimeAsync(30_000); });
+    expect(within(screen.getByRole("region", { name: "Próxima sesión en vivo" })).getByRole("link", { name: "Unirse" })).toHaveAttribute("href", "https://example.com/live-test");
+    expect(subscribeToCommunityPosts).toHaveBeenCalledTimes(1);
   });
 
   it("tres filtros: All com o fixado no topo; Questions conta as abertas; From Patrick so o instrutor", async () => {
@@ -414,6 +574,56 @@ describe("gaveta da pergunta (11b)", () => {
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
+  });
+
+  it("preserves the open drawer, reply draft and focus while localizing controls and retaining read-only gates", async () => {
+    mocks.pathname = "/learn/courses/course-1/community/q/answered";
+    await renderFeed({ openPostId: "answered" }, "en");
+    const drawer = screen.getByRole("dialog", { name: /real deadline/ });
+    const field = within(drawer).getByRole("textbox", { name: "Add your reply" });
+    fireEvent.change(field, { target: { value: "Drawer reply $$50 $&" } });
+    field.focus();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByRole("dialog", { name: /real deadline/ })).toBe(drawer);
+    expect(within(drawer).getByRole("textbox", { name: "Añade tu respuesta" })).toBe(field);
+    expect(field).toHaveValue("Drawer reply $$50 $&");
+    expect(field).toHaveFocus();
+    expect(within(drawer).getByRole("list", { name: "Respuestas" })).toBeInTheDocument();
+    expect(within(drawer).getByText(/de lesson 5/)).toBeInTheDocument();
+    expect(within(drawer).queryByRole("button", { name: /como respuesta/ })).not.toBeInTheDocument();
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(createCommunityComment).not.toHaveBeenCalled();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(mocks.push).toHaveBeenCalledExactlyOnceWith("/learn/courses/course-1/community");
+  });
+
+  it("keeps the drawer reply pending across locales and clears it only after the original response", async () => {
+    await renderFeed({ openPostId: "answered" }, "en");
+    const drawer = screen.getByRole("dialog", { name: /real deadline/ });
+    const field = within(drawer).getByRole("textbox", { name: "Add your reply" });
+    fireEvent.change(field, { target: { value: "Draft $$ $&" } });
+    let resolve!: (value: { id: string }) => void;
+    vi.mocked(createCommunityComment).mockReturnValueOnce(new Promise((done) => { resolve = done; }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Reply" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(within(drawer).getByRole("button", { name: "…" })).toBeDisabled();
+    expect(field).toHaveValue("Draft $$ $&");
+    expect(createCommunityComment).toHaveBeenCalledExactlyOnceWith({ postId: "answered", courseSlug: space.courseSlug, body: "Draft $$ $&", user: mocks.auth.user });
+    await act(async () => resolve({ id: "drawer-reply" }));
+    expect(field).toHaveValue("");
+    expect(within(drawer).getByRole("button", { name: "Responder" })).toBeEnabled();
+  });
+
+  it("relocalizes an answer-mark failure without repeating the moderation action", async () => {
+    await renderFeed({ openPostId: "answered", canModerate: true }, "en");
+    const drawer = screen.getByRole("dialog", { name: /real deadline/ });
+    vi.mocked(setCommunityPostAcceptedAnswer).mockRejectedValueOnce(new Error("private internal detail"));
+    await act(async () => { fireEvent.click(within(drawer).getByRole("button", { name: "Unmark as the answer" })); });
+    expect(within(drawer).getByRole("alert")).toHaveTextContent("We could not save the answer mark. Try again.");
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(within(drawer).getByRole("alert")).toHaveTextContent("No pudimos guardar la respuesta marcada. Inténtalo de nuevo.");
+    expect(within(drawer).getByRole("button", { name: "Quitar marca de respuesta" })).toBeInTheDocument();
+    expect(setCommunityPostAcceptedAnswer).toHaveBeenCalledExactlyOnceWith("answered", null);
   });
 
   it("o titulo e 'View N replies' abrem a gaveta pelo endereco, sem trocar de pagina", async () => {

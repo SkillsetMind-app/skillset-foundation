@@ -2,6 +2,8 @@
 
 import { Check, ChevronDown } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
+import { useTranslation } from "@/components/i18n/i18n-provider";
+import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 
 type CourseCategorySelectProps = {
   options: readonly string[];
@@ -18,6 +20,7 @@ export function CourseCategorySelect({
   disabled = false,
   max = 5,
 }: CourseCategorySelectProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const optionsId = useId();
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -72,7 +75,7 @@ export function CourseCategorySelect({
         <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
           {selected.length === 0 ? (
             <span className="text-[var(--color-ink-muted)]">
-              Select up to {max} categories
+              {t("creatorEditor.categorySelect.select").replace("{max}", () => String(max))}
             </span>
           ) : (
             selected.map((item, index) => (
@@ -84,10 +87,10 @@ export function CourseCategorySelect({
                     : "bg-[var(--color-surface-strong)] text-[var(--color-ink)]"
                 }`}
               >
-                {item}
+                {getCourseCategoryLabel(item, t)}
                 {index === 0 ? (
                   <span className="text-[9px] font-bold uppercase tracking-wide opacity-80">
-                    Primary
+                    {t("creatorEditor.categorySelect.primary")}
                   </span>
                 ) : null}
               </span>
@@ -111,7 +114,7 @@ export function CourseCategorySelect({
         <div
           id={optionsId}
           role="group"
-          aria-label="Course categories"
+          aria-label={t("creatorEditor.categorySelect.label")}
           className="course-category-menu absolute z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-[8px] border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
         >
           {visibleOptions.map((item) => {
@@ -129,9 +132,9 @@ export function CourseCategorySelect({
                 // simplesmente não respondia, sem uma palavra de explicação.
                 title={
                   isRequiredSelection
-                    ? "Pick the new category first — a course needs at least one."
+                    ? t("creatorEditor.categorySelect.keepOne")
                     : isLockedOut
-                      ? "Maximum categories selected. Remove one to add another."
+                      ? t("creatorEditor.categorySelect.maximum")
                       : undefined
                 }
                 className={`flex w-full items-center gap-2.5 rounded-[6px] px-3 py-2 text-left text-sm transition-colors ${
@@ -145,7 +148,7 @@ export function CourseCategorySelect({
                   checked={isSelected}
                   disabled={isLockedOut || isRequiredSelection}
                   onChange={() => onToggle(item)}
-                  aria-label={item}
+                  aria-label={getCourseCategoryLabel(item, t)}
                   className="peer sr-only"
                 />
                 <span
@@ -159,7 +162,7 @@ export function CourseCategorySelect({
                     <Check aria-hidden="true" size={11} strokeWidth={3} />
                   ) : null}
                 </span>
-                <span className="min-w-0 flex-1 truncate">{item}</span>
+                <span className="min-w-0 flex-1 truncate">{getCourseCategoryLabel(item, t)}</span>
               </label>
             );
           })}
@@ -167,8 +170,7 @@ export function CourseCategorySelect({
               regra ("a última não sai") é justamente a que trava o clique. */}
           {selected.length === 1 ? (
             <p className="px-3 py-2 text-[11px] leading-4 text-[var(--color-ink-muted)]">
-              To swap the category, pick the new one first — a course needs at
-              least one.
+              {t("creatorEditor.categorySelect.swapHelp")}
             </p>
           ) : null}
         </div>

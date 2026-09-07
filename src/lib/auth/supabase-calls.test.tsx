@@ -2,10 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   changeSkillsetPassword,
+  resendSignupConfirmation,
   signInWithGoogle,
 } from "@/lib/auth/supabase-auth";
 
-// The four GoTrue calls these tests care about, shaped like the Supabase
+// The GoTrue calls these tests care about, shaped like the Supabase
 // client so getSupabaseBrowserClient() can hand the whole object back.
 const mocks = vi.hoisted(() => {
   const fn = vi.fn;
@@ -14,6 +15,7 @@ const mocks = vi.hoisted(() => {
     updateUser: fn(),
     signInWithOAuth: fn(),
     signInWithPassword: fn(),
+    resend: fn(),
   };
   return { auth, client: { auth } };
 });
@@ -30,6 +32,41 @@ vi.mock("@/lib/auth/pwned-password", () => ({
 type OAuthCall = { options: { redirectTo: string } };
 type PasswordCall = { options?: { captchaToken: string } };
 type UpdateCall = { password: string };
+
+describe("resendSignupConfirmation destination", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.auth.resend.mockResolvedValue({ error: null });
+  });
+
+  it("carries the post-confirmation destination into the resent email", async () => {
+    const destination = "/loading?next=welcome&path=teacher&returnTo=%2Fcourses%2Ffocus%2Fcheckout%3Foffer%3DLAUNCH%26priceId%3Dprice-1";
+    await resendSignupConfirmation("learner@example.test", destination);
+
+    const [call] = mocks.auth.resend.mock.calls[0];
+    const redirectTo = new URL(call.options.emailRedirectTo);
+    expect(call.type).toBe("signup");
+    expect(call.email).toBe("learner@example.test");
+    expect(redirectTo.origin).toBe(window.location.origin);
+    expect(redirectTo.pathname).toBe("/auth/confirm");
+    expect(redirectTo.searchParams.get("next")).toBe(destination);
+  });
+
+  it("defaults to onboarding when no destination was supplied", async () => {
+    await resendSignupConfirmation("learner@example.test");
+    const [call] = mocks.auth.resend.mock.calls[0];
+    const redirectTo = new URL(call.options.emailRedirectTo);
+    expect(redirectTo.pathname).toBe("/auth/confirm");
+    expect(redirectTo.searchParams.get("next")).toBe("/welcome");
+  });
+
+  it.each(["over_email_send_rate_limit", "unexpected_failure"])("propagates provider errors without retrying: %s", async (code) => {
+    const error = { code, message: "Provider detail" };
+    mocks.auth.resend.mockResolvedValue({ error });
+    await expect(resendSignupConfirmation("learner@example.test")).rejects.toBe(error);
+    expect(mocks.auth.resend).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe("signInWithGoogle destination", () => {
   beforeEach(() => {
