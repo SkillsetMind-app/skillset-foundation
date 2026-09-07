@@ -4,6 +4,7 @@ import { Play, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { Lesson } from "@/domain/learning";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 
 const COUNTDOWN_SECONDS = 5;
 /** Tem que bater com a transição de `.member-next-lesson.is-leaving`. */
@@ -33,6 +34,7 @@ export function NextLessonCard({
   onCancel: () => void;
   onPlay: () => void;
 }) {
+  const { t } = useTranslation();
   const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SECONDS);
   const [leaving, setLeaving] = useState(false);
 
@@ -69,7 +71,7 @@ export function NextLessonCard({
   return (
     <div
       role="dialog"
-      aria-label="Next lesson"
+      aria-label={t("learn.classroom.nextLesson.title")}
       aria-live="polite"
       className={`member-next-lesson ${leaving ? "is-leaving" : ""} absolute inset-x-3 bottom-3 z-10 flex items-center gap-3 rounded-[12px] bg-[rgba(15,39,68,0.92)] p-3 text-white shadow-[0_18px_36px_rgba(15,39,68,0.35)] backdrop-blur sm:inset-x-auto sm:right-3 sm:max-w-[360px]`}
     >
@@ -86,7 +88,7 @@ export function NextLessonCard({
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/60">
-          {`Next lesson in ${secondsLeft}s`}
+          {t("learn.classroom.nextLesson.countdown").replace("{seconds}", () => String(secondsLeft))}
         </p>
         <p className="truncate text-sm font-semibold">{lesson.title}</p>
       </div>
@@ -97,12 +99,12 @@ export function NextLessonCard({
           className="inline-flex min-h-11 items-center gap-1.5 rounded-[10px] bg-[var(--color-accent)] px-3 text-xs font-bold text-white"
         >
           <Play aria-hidden="true" size={14} strokeWidth={2.5} />
-          Watch now
+          {t("learn.classroom.nextLesson.watch")}
         </button>
         <button
           type="button"
           onClick={() => setLeaving(true)}
-          aria-label="Cancel"
+          aria-label={t("learn.classroom.nextLesson.cancel")}
           className="grid size-11 place-items-center rounded-[10px] text-white/80 hover:bg-white/10 hover:text-white"
         >
           <X aria-hidden="true" size={16} strokeWidth={2.25} />

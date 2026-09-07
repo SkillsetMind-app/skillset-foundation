@@ -49,7 +49,7 @@ export function ClassroomTabs({
       {certificateHref ? (
         <Link href={certificateHref} className="member-classroom-tabs__action">
           <Award size={15} aria-hidden />
-          Get certificate
+          {t("learn.classroom.workspace.certificate")}
         </Link>
       ) : null}
     </nav>
