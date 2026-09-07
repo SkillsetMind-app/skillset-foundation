@@ -17,25 +17,9 @@ vi.mock("@/components/auth/auth-provider", () => ({
   }),
 }));
 
-vi.mock("@/components/i18n/i18n-provider", () => ({
-  useTranslation: () => ({
-    locale: "en-US",
-    t: (key: string) =>
-      ({
-        "teach.dashboard.welcomeBackNamed": "Welcome back, {name}",
-        "teach.dashboard.welcomeBack": "Welcome back",
-        "platform.banner.connectPayouts":
-          "Connect your Stripe account before selling paid courses - buyers are charged on it directly.",
-        "teach.activity.title": "Recent activity",
-        "teach.activity.emptyTitle": "Nothing has happened yet.",
-        "teach.activity.emptyDescription": "Enrollments, sales and questions land here.",
-        "teach.storefrontCard.title": "Your storefront",
-        "teach.storefrontCard.empty": "The page exists, but nothing is published on it yet.",
-        "teach.storefrontCard.open": "Open storefront",
-        "teach.storefrontCard.edit": "Edit storefront",
-      })[key] ?? key,
-  }),
-}));
+// Sem mock do i18n: fora do I18nProvider, useTranslation cai no dicionario
+// ingles real. O mock antigo devolvia a CHAVE crua para tudo que nao estava
+// no mapa, e a Home agora le todos os rotulos do dicionario.
 
 vi.mock("@/components/teacher/teacher-overview-metrics", () => ({
   TeacherOverviewMetrics: () => <div>Overview metrics</div>,

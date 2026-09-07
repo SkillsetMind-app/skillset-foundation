@@ -665,6 +665,307 @@
       "edit": "Editar tienda"
     }
   },
+  "creatorPanel": {
+    "newProduct": "Nuevo producto",
+    "createProduct": "Crear producto",
+    "untitledProduct": "Producto sin título",
+    "communityOn": "Comunidad activa",
+    "modulesOne": "{count} módulo",
+    "modulesMany": "{count} módulos",
+    "enabled": "Activado",
+    "disabled": "Desactivado",
+    "paymentType": {
+      "free": "Gratis",
+      "one_time": "Pago único",
+      "subscription_monthly": "Suscripción mensual",
+      "subscription_yearly": "Suscripción anual"
+    },
+    "filters": {
+      "all": "Todos",
+      "drafts": "Borradores",
+      "needsAttention": "Requiere atención"
+    },
+    "hub": {
+      "sections": {
+        "overview": "Panel",
+        "links": "Enlaces de promoción",
+        "basic": "Información básica",
+        "pricing": "Precios y ofertas",
+        "members": "Área de miembros",
+        "students": "Alumnos",
+        "page": "Página del producto",
+        "content": "Contenido",
+        "tax": "Cobro de impuestos",
+        "tools": "Herramientas"
+      },
+      "nav": {
+        "label": "Secciones de gestión del curso",
+        "manage": "Gestionar",
+        "roadmap": "En el roadmap"
+      },
+      "roadmap": {
+        "assistantLabel": "Asistente de ventas",
+        "assistantTitle": "El asistente de ventas está en el roadmap.",
+        "assistantDescription": "Un asistente de IA entrenado con el contenido de este curso que responde las preguntas de los compradores en la página del producto. Todavía no está disponible: preferimos decírtelo antes que mostrarte una simulación. El precio se anunciará cuando se lance.",
+        "notify": "Avísame cuando esté listo",
+        "notifySubject": "Avísame: {feature}"
+      },
+      "status": {
+        "draft": "Borrador privado: solo tú puedes ver este curso. Completa la lista y publícalo cuando esté listo.",
+        "in_review": "Estado de revisión heredado: abre el creador para completar las verificaciones y publicar directamente.",
+        "needs_changes": "Se pidieron cambios anteriormente. Atiende la nota, actualiza el curso y publícalo cuando esté listo.",
+        "published": "Publicado en el marketplace. Los alumnos ya pueden inscribirse.",
+        "inactive": "Oculto del marketplace. Un profesional aprobado puede volver a publicarlo directamente."
+      },
+      "price": {
+        "perMonth": "{amount} / mes",
+        "perYear": "{amount} / año"
+      },
+      "highlight": {
+        "title": "Destacado en el marketplace",
+        "description": "Los cursos destacados se fijan por encima del resto del catálogo. Tu plan incluye un número fijo de destacados a la vez.",
+        "on": "Destacado en el marketplace",
+        "off": "No destacado",
+        "usage": "{used} de {limit} destacados usados en el plan {plan}",
+        "saving": "Guardando...",
+        "remove": "Quitar destacado",
+        "add": "Destacar este curso",
+        "seePlans": "Ver planes",
+        "gatePublish": "Publica el curso primero: solo los cursos publicados pueden destacarse.",
+        "gatePlan": "Los destacados del marketplace empiezan en el plan {plan}.",
+        "paidPlan": "de pago",
+        "gateQuota": "Estás usando los {limit} destacados de tu plan. Quita uno de otro curso primero.",
+        "updateError": "No se pudo actualizar el destacado del marketplace."
+      },
+      "loading": "Cargando curso...",
+      "notFound": {
+        "title": "Este curso no está en tu estudio.",
+        "description": "Puede que se haya eliminado o que pertenezca a otro creador.",
+        "back": "Volver a mis cursos"
+      },
+      "header": {
+        "eyebrow": "Gestión del curso",
+        "coverAlt": "Portada de {title}",
+        "courseFallback": "Curso",
+        "noCover": "Sin portada",
+        "switchCourse": "Cambiar de curso"
+      },
+      "editInBuilder": "Editar en el Creador",
+      "checklist": {
+        "title": "Lista de publicación",
+        "progress": "{done} de {total} pasos obligatorios listos · {percent}% listo",
+        "optional": "Opcional",
+        "openVerification": "Abrir verificación",
+        "reviewNote": "Nota de revisión de SkillsetMind",
+        "reviewPublish": "Revisar y publicar"
+      },
+      "links": {
+        "descriptionLive": "Compártelos donde promociones el curso.",
+        "descriptionDraft": "Enlaces que compartirás cuando el curso esté publicado. Hasta entonces, la página del producto solo se abre para ti.",
+        "checkout": "Checkout"
+      },
+      "basic": {
+        "description": "Identidad que se muestra en el marketplace y en la página del producto. Edita estos campos en el Creador.",
+        "title": "Título",
+        "category": "Categoría",
+        "allCategories": "Todas las categorías",
+        "summary": "Resumen",
+        "outcomes": "Resultados de aprendizaje",
+        "noneYet": "Todavía ninguno",
+        "cover": "Imagen de portada",
+        "uploaded": "Subida",
+        "missing": "Falta",
+        "edit": "Editar datos básicos en el Creador"
+      },
+      "pricing": {
+        "title": "Precios y checkout",
+        "description": "Define el modelo de acceso y las condiciones comerciales base, y luego crea ofertas específicas con enlaces distintos para cada comprador.",
+        "price": "Precio",
+        "paymentType": "Tipo de pago",
+        "installments": "Cuotas",
+        "installmentsUpTo": "Hasta {max} cuotas",
+        "stripeCheckout": "Checkout seguro de Stripe",
+        "payouts": "Pagos de Stripe",
+        "payoutsReady": "Listo",
+        "payoutsIncomplete": "Configuración incompleta",
+        "edit": "Editar precios en el Creador",
+        "finishOnboarding": "Completar la configuración de pagos"
+      },
+      "content": {
+        "description": "{modules} y {lessons} en el plan de estudios.",
+        "empty": "Todavía no hay módulos: arma el plan de estudios en el Creador.",
+        "edit": "Editar contenido en el Creador"
+      },
+      "members": {
+        "description": "El espacio al que llegan los alumnos inscritos después de comprar.",
+        "theme": "Tema",
+        "themeLight": "Claro",
+        "themeDark": "Oscuro",
+        "welcomeTitle": "Título de bienvenida",
+        "subtitle": "Subtítulo",
+        "default": "Predeterminado",
+        "community": "Comunidad",
+        "preview": "Vista previa del área de miembros"
+      },
+      "page": {
+        "title": "Página pública del producto",
+        "description": "La URL que ve el comprador. Hasta que publiques, solo tú puedes abrirla.",
+        "open": "Abrir página del producto"
+      },
+      "sales": {
+        "description": "Los pedidos, reembolsos e ingresos están en el panel de ventas de todo el estudio.",
+        "open": "Abrir panel de ventas",
+        "messages": "Mensajes de alumnos"
+      },
+      "tools": {
+        "title": "Herramientas del producto",
+        "description": "Abre los espacios de apoyo para preparar, promocionar y operar este producto.",
+        "marketing": "Espacio de marketing",
+        "marketingDetail": "Páginas, multimedia, mensajes de compradores y promociones",
+        "mediaDetail": "Portadas de cursos y archivos de entrega",
+        "integrationsDetail": "Servicios de entrega y de negocio conectados",
+        "verification": "Verificación profesional",
+        "verificationDetail": "Credenciales y admisión en el marketplace"
+      }
+    },
+    "overview": {
+      "title": "Cómo va este producto",
+      "scope": "Todo lo de abajo cuenta solo {title}, nunca tus otros productos.",
+      "viewPublic": "Ver página pública",
+      "previewStudent": "Ver como alumno",
+      "students": "Alumnos inscritos",
+      "studentsHintJoined": "{count} se unieron en los últimos 7 días",
+      "studentsHintEmpty": "Los compradores aparecen aquí en cuanto se confirma la compra.",
+      "revenueHintOne": "{count} pedido pagado, sin contar reembolsos",
+      "revenueHintMany": "{count} pedidos pagados, sin contar reembolsos",
+      "revenueHintEmpty": "Todavía no hay pedidos pagados en este producto.",
+      "completionHint": "{done} de {total} terminaron el curso",
+      "completionHintEmpty": "Se mide cuando alguien se inscribe.",
+      "rating": "Valoración media",
+      "reviewsOne": "{count} reseña",
+      "reviewsMany": "{count} reseñas",
+      "ratingHintEmpty": "Todavía no hay reseñas: los alumnos valoran después de inscribirse.",
+      "emptyTitle": "Todavía nadie ha comprado este producto.",
+      "emptyLive": "Las inscripciones, los ingresos, la finalización y la valoración aparecen aquí después de la primera venta. Comparte la página del producto para conseguirla.",
+      "emptyDraft": "Publica el curso primero: los números empiezan en cuanto el primer comprador complete el checkout.",
+      "openPage": "Abrir la página del producto",
+      "attentionTitle": "Requiere tu atención",
+      "attentionOne": "Hay una cosa en este producto que conviene arreglar.",
+      "attentionMany": "Hay {count} cosas en este producto que conviene arreglar."
+    },
+    "products": {
+      "eyebrow": "Productos",
+      "description": "Crea borradores privados, completa las verificaciones del producto y publica directamente cuando tu verificación profesional esté aprobada.",
+      "productWorkspace": "Espacio de productos",
+      "communityWorkspace": "Espacio de comunidades",
+      "loading": "Cargando productos...",
+      "loadingAria": "Cargando productos",
+      "productOne": "{count} producto",
+      "productMany": "{count} productos",
+      "communityOne": "{count} comunidad",
+      "communityMany": "{count} comunidades",
+      "searchProducts": "Buscar productos...",
+      "searchCommunities": "Buscar comunidades...",
+      "typeLabel": "Tipo",
+      "typeAria": "Tipo de producto",
+      "status": "Estado",
+      "statusAria": "Estado del producto",
+      "filterLegacyReview": "Revisión heredada",
+      "filterLive": "Publicados",
+      "emptyProductsTitle": "Todavía no hay productos",
+      "emptyProductsDescription": "Empieza un curso, una suscripción, una comunidad, un evento o un programa gratuito. El borrador se mantiene privado hasta que lo publiques.",
+      "emptyCommunitiesTitle": "Todavía no hay comunidades",
+      "emptyCommunitiesDescription": "Crea un espacio recurrente para miembros con publicaciones, debate e intercambio entre profesionales.",
+      "createCommunity": "Crear comunidad",
+      "noMatch": "Ningún producto coincide con esta búsqueda y este filtro de estado.",
+      "columns": {
+        "product": "Producto",
+        "access": "Acceso",
+        "actions": "Acciones"
+      },
+      "uncategorized": "Sin categoría",
+      "signIn": "Inicia sesión como creador para empezar un producto.",
+      "loadError": "No pudimos cargar tus productos. Actualiza la página o contacta con el soporte de SkillsetMind.",
+      "deleteError": "No pudimos eliminar este borrador. Inténtalo de nuevo o contacta con el soporte de SkillsetMind.",
+      "actions": {
+        "more": "Más acciones para {title}",
+        "menu": "Acciones para {title}",
+        "edit": "Editar",
+        "viewAsStudent": "Ver como alumno",
+        "delete": "Eliminar"
+      },
+      "delete": {
+        "aria": "Eliminar {title}",
+        "eyebrow": "Eliminar producto",
+        "title": "¿Eliminar {title}?",
+        "description": "Esto elimina de forma permanente el borrador y el contenido del curso. Esta acción no se puede deshacer.",
+        "cancel": "Cancelar",
+        "busy": "Eliminando...",
+        "confirm": "Confirmar eliminación"
+      },
+      "shortcuts": {
+        "label": "Atajos del espacio de productos",
+        "membersDetail": "Personaliza la entrega y los espacios de los alumnos",
+        "eventsDetail": "Programa talleres y sesiones en vivo",
+        "marketingDetail": "Páginas, multimedia, mensajes y promociones",
+        "couponsDetail": "Crea códigos de descuento para tus productos"
+      }
+    },
+    "home": {
+      "description": "Continúa la configuración, gestiona tus productos y sigue el trabajo que los acerca a la publicación y a las ventas.",
+      "storefront": "Tienda",
+      "nextSteps": {
+        "eyebrow": "Próximos pasos",
+        "title": "Prepárate para tu primera venta",
+        "progress": "{done} de {total} completados",
+        "listLabel": "Próximos pasos del creador",
+        "recommended": "Recomendado ahora"
+      },
+      "steps": {
+        "create": "Crea un producto",
+        "createDetail": "Elige el modelo de entrega y de acceso.",
+        "creatorData": "Completa tus datos de creador",
+        "creatorDataDetail": "Termina la verificación profesional y los pagos de productos de pago.",
+        "creatorDataAction": "Completar configuración",
+        "prepare": "Prepara el producto para vender",
+        "prepareDetail": "Añade contenido, precios, la experiencia de miembros y revisa el borrador.",
+        "prepareAction": "Preparar producto"
+      },
+      "products": {
+        "title": "Productos en tu espacio",
+        "showAll": "Ver todos",
+        "filtersLabel": "Filtros de productos",
+        "filterLiveSales": "En venta",
+        "empty": "Todavía no hay productos en esta vista.",
+        "manage": "Gestionar producto"
+      },
+      "formats": {
+        "eyebrow": "¿Qué quieres vender?",
+        "title": "Elige un formato de producto",
+        "course": "Curso online",
+        "courseDetail": "Video, texto, descargas, certificados y lecciones estructuradas.",
+        "program": "Programa guiado",
+        "programDetail": "Un recorrido secuenciado de aprendizaje, práctica y encuentros en vivo opcionales.",
+        "subscription": "Suscripción",
+        "subscriptionDetail": "Acceso recurrente con cobro mensual o anual.",
+        "community": "Comunidad",
+        "communityDetail": "Un espacio recurrente para miembros con publicaciones e intercambio entre profesionales.",
+        "event": "Evento online",
+        "eventDetail": "Talleres en vivo, cohortes y sesiones grupales programadas.",
+        "free": "Programa gratuito",
+        "freeDetail": "Inscripción abierta sin checkout ni pago."
+      },
+      "milestones": {
+        "eyebrow": "Mi evolución",
+        "title": "Hitos del creador",
+        "item": "Hito {number}",
+        "firstProduct": "Primer producto",
+        "verified": "Profesional verificado",
+        "payouts": "Pagos listos",
+        "firstLive": "Primer producto publicado"
+      }
+    }
+  },
   "profileValidation": {
     "usernameRequired": "Elige un nombre de usuario para tu identidad en SkillsetMind.",
     "usernameInvalid": "Usa de 3 a 32 letras minúsculas, números o guiones. Empieza con una letra o un número.",

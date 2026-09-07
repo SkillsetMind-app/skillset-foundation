@@ -5,6 +5,7 @@ import { AlertTriangle, ExternalLink, Eye } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StudioRecentActivity } from "@/components/teacher/studio-recent-activity";
 import { Card, EmptyState } from "@/components/ui";
 import type { CourseAsset } from "@/domain/course-asset";
@@ -71,39 +72,54 @@ export function CourseOverviewPanelView({
   loading: boolean;
   children?: React.ReactNode;
 }) {
+  const { t } = useTranslation();
+  const count = (oneKey: string, manyKey: string, value: number) =>
+    t(value === 1 ? oneKey : manyKey).replace("{count}", () => String(value));
   const revenueValue = stats.revenue.length
     ? stats.revenue.map((total) => formatMoney(total.netMinor, total.currency)).join(" · ")
     : formatMoney(0, "USD");
 
   const cards = [
     {
-      label: "Students enrolled",
+      label: t("creatorPanel.overview.students"),
       value: String(stats.studentCount),
       hint: stats.studentCount
-        ? `${stats.newThisWeekCount} joined in the last 7 days`
-        : "Buyers land here the moment a purchase clears.",
+        ? t("creatorPanel.overview.studentsHintJoined").replace("{count}", () =>
+            String(stats.newThisWeekCount),
+          )
+        : t("creatorPanel.overview.studentsHintEmpty"),
     },
     {
-      label: "Revenue",
+      label: t("teach.insights.revenue"),
       value: revenueValue,
       hint: stats.paidOrderCount
-        ? `${stats.paidOrderCount} paid ${stats.paidOrderCount === 1 ? "order" : "orders"}, net of refunds`
-        : "No paid order on this product yet.",
+        ? count(
+            "creatorPanel.overview.revenueHintOne",
+            "creatorPanel.overview.revenueHintMany",
+            stats.paidOrderCount,
+          )
+        : t("creatorPanel.overview.revenueHintEmpty"),
     },
     {
-      label: "Completion",
+      label: t("teach.metrics.completion"),
       value: stats.completionPercent === null ? "--" : `${stats.completionPercent}%`,
       hint:
         stats.completionPercent === null
-          ? "Measured once someone is enrolled."
-          : `${stats.completedCount} of ${stats.studentCount} finished the course`,
+          ? t("creatorPanel.overview.completionHintEmpty")
+          : t("creatorPanel.overview.completionHint")
+              .replace("{done}", () => String(stats.completedCount))
+              .replace("{total}", () => String(stats.studentCount)),
     },
     {
-      label: "Average rating",
+      label: t("creatorPanel.overview.rating"),
       value: stats.ratingAverage === null ? "--" : stats.ratingAverage.toFixed(1),
       hint: stats.ratingCount
-        ? `${stats.ratingCount} ${stats.ratingCount === 1 ? "review" : "reviews"}`
-        : "No review yet — students rate after they enroll.",
+        ? count(
+            "creatorPanel.overview.reviewsOne",
+            "creatorPanel.overview.reviewsMany",
+            stats.ratingCount,
+          )
+        : t("creatorPanel.overview.ratingHintEmpty"),
     },
   ];
 
@@ -115,10 +131,10 @@ export function CourseOverviewPanelView({
             id="course-overview-title"
             className="text-base font-semibold text-[var(--color-ink)]"
           >
-            How this product is doing
+            {t("creatorPanel.overview.title")}
           </h2>
           <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
-            Everything below counts only {course.title}, never your other products.
+            {t("creatorPanel.overview.scope").replace("{title}", () => course.title)}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -127,14 +143,14 @@ export function CourseOverviewPanelView({
             className="button-outline inline-flex items-center gap-2 px-4 py-2 text-xs"
           >
             <ExternalLink aria-hidden="true" size={14} strokeWidth={1.9} />
-            View public page
+            {t("creatorPanel.overview.viewPublic")}
           </Link>
           <Link
             href={`/teach/builder/${encodeURIComponent(course.id)}/preview`}
             className="button-outline inline-flex items-center gap-2 px-4 py-2 text-xs"
           >
             <Eye aria-hidden="true" size={14} strokeWidth={1.9} />
-            Preview as a student
+            {t("creatorPanel.overview.previewStudent")}
           </Link>
         </div>
       </div>
@@ -156,11 +172,11 @@ export function CourseOverviewPanelView({
         // comecou".
         <EmptyState
           as="h3"
-          title="No one has bought this product yet."
+          title={t("creatorPanel.overview.emptyTitle")}
           description={
             course.status === "published"
-              ? "Enrollments, revenue, completion and rating appear here after the first sale. Share the product page to get the first one."
-              : "Publish the course first — the numbers start the moment the first buyer clears checkout."
+              ? t("creatorPanel.overview.emptyLive")
+              : t("creatorPanel.overview.emptyDraft")
           }
           action={
             course.status === "published" ? (
@@ -168,14 +184,14 @@ export function CourseOverviewPanelView({
                 href={`/courses/${encodeURIComponent(course.id)}`}
                 className="button-solid px-4 py-2 text-xs"
               >
-                Open the product page
+                {t("creatorPanel.overview.openPage")}
               </Link>
             ) : (
               <Link
                 href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=review`}
                 className="button-solid px-4 py-2 text-xs"
               >
-                Review &amp; publish
+                {t("creatorPanel.hub.checklist.reviewPublish")}
               </Link>
             )
           }
@@ -191,12 +207,14 @@ export function CourseOverviewPanelView({
               strokeWidth={1.9}
               className="text-[var(--color-warning-fg)]"
             />
-            Needs your attention
+            {t("creatorPanel.overview.attentionTitle")}
           </h3>
           <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
-            {issues.length === 1
-              ? "One thing on this product is worth fixing."
-              : `${issues.length} things on this product are worth fixing.`}
+            {count(
+              "creatorPanel.overview.attentionOne",
+              "creatorPanel.overview.attentionMany",
+              issues.length,
+            )}
           </p>
           <ul className="mt-4 grid gap-3">
             {issues.map((issue) => (
