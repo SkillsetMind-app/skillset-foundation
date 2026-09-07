@@ -90,7 +90,7 @@ export async function SiteFooter() {
           </span>
           <div className="flex flex-wrap items-center gap-4">
             <PrivacyChoicesButton />
-            <LocaleSwitcher />
+            <LocaleSwitcher dropUp />
           </div>
           <span>{t("footer.rightsLine")}</span>
         </div>

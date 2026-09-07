@@ -58,9 +58,10 @@ describe("the auth frame stays consistent during recovery and loading", () => {
     const { container } = render(<I18nProvider initialLocale="en">{page}</I18nProvider>);
     expect(container.querySelector(".auth-form-col")).toBeInTheDocument();
     expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument();
-    expect(screen.queryAllByRole("button")).toHaveLength(0);
+    // The only button is the language menu: no disabled mode tabs rendered as buttons.
+    expect(screen.getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual(["Language: English"]);
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Language" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Language: English" })).toHaveAttribute("aria-haspopup", "listbox");
   });
 
   it("keeps the real onboarding Suspense fallback inside a single page heading", async () => {

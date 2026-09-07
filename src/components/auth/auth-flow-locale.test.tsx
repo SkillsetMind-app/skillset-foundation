@@ -82,8 +82,9 @@ describe("auth flow follows the selected language without resetting state", () =
     const { container } = render(<I18nProvider initialLocale="en"><AuthPage /></I18nProvider>);
     fireEvent.change(container.querySelector('input[type="email"]')!, { target: { value: "alex@example.test" } });
     fireEvent.change(container.querySelector('input[type="password"]')!, { target: { value: "unchanged-password" } });
-    fireEvent.change(screen.getByRole("combobox", { name: "Language" }), { target: { value: "es" } });
-    expect(screen.getByRole("combobox", { name: "Idioma" })).toHaveValue("es");
+    fireEvent.click(screen.getByRole("button", { name: "Language: English" }));
+    fireEvent.click(screen.getByRole("option", { name: "Español" }));
+    expect(screen.getByRole("button", { name: "Idioma: Español" })).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByDisplayValue("alex@example.test")).toBeInTheDocument();
     expect(screen.getByDisplayValue("unchanged-password")).toBeInTheDocument();
     await waitFor(() => expect(mocks.getPendingSecondFactor).toHaveBeenCalledTimes(1));

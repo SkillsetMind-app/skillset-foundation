@@ -53,7 +53,7 @@ describe("SiteNav", () => {
     expect(compactBrand?.closest("a")?.parentElement).toHaveClass("md:hidden");
     expect(document.querySelector(".logo-wordmark__full")?.closest("a")?.parentElement).toHaveClass("hidden", "md:block");
 
-    expect(screen.getByRole("combobox", { name: "Language" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Language: English" })).toHaveAttribute("aria-haspopup", "listbox");
     fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
     expect(screen.getByRole("link", { name: "Go to dashboard" })).toHaveAttribute("href", "/teach");
     fireEvent.keyDown(document, { key: "Escape" });
@@ -154,13 +154,17 @@ describe("SiteNav", () => {
     expect(desktopEntry).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("offers the language switch in the header", () => {
+  it("offers the language switch in the header as a styled menu, not a native select", () => {
     render(<SiteNav />);
 
-    const selector = screen.getByRole("combobox", { name: "Language" });
-    expect(selector).toHaveValue("en");
-    expect(within(selector).getByRole("option", { name: "English" })).toHaveValue("en");
-    expect(within(selector).getByRole("option", { name: "Español" })).toHaveValue("es");
+    const trigger = screen.getByRole("button", { name: "Language: English" });
+    expect(document.querySelector("select")).toBeNull();
+    fireEvent.click(trigger);
+    const menu = screen.getByRole("listbox", { name: "Language" });
+    // Right-aligned so it never leaves the viewport on a 320px header.
+    expect(menu).toHaveClass("right-0", "top-full");
+    expect(within(menu).getByRole("option", { name: "English" })).toHaveAttribute("aria-selected", "true");
+    expect(within(menu).getByRole("option", { name: "Español" })).toHaveAttribute("aria-selected", "false");
   });
 
   it("keeps the mobile menu in the same order and closes on Escape", () => {
