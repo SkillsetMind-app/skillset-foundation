@@ -2,6 +2,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthProvider, useAuth } from "@/components/auth/auth-provider";
+import { ViewAsSwitcher } from "@/components/admin/view-as";
+import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 
 const mocks = vi.hoisted(() => ({
   user: null as { uid: string; roles: string[] } | null,
@@ -15,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   usePathname: vi.fn(() => "/ops"),
 }));
 
-vi.mock("next/navigation", () => ({ usePathname: mocks.usePathname }));
+vi.mock("next/navigation", () => ({ usePathname: mocks.usePathname, useRouter: () => ({ refresh: vi.fn() }) }));
 
 vi.mock("@/lib/auth/supabase-auth", () => ({
   listenToAuthState: mocks.listenToAuthState,
@@ -44,6 +46,11 @@ function RolesProbe() {
   );
 }
 
+function ChangeLanguage() {
+  const { locale, setLocale } = useTranslation();
+  return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
+}
+
 function renderWith(roles: string[]) {
   mocks.listenToAuthState.mockImplementation(
     (setSession: (next: unknown) => void) => {
@@ -64,9 +71,13 @@ function renderWith(roles: string[]) {
   return render(
     // AuthProvider mounts ViewAsBanner itself, which is the point: the
     // preview follows you off this page, so the way out has to as well.
-    <AuthProvider>
-      <RolesProbe />
-    </AuthProvider>,
+    <I18nProvider initialLocale="en">
+      <ChangeLanguage />
+      <AuthProvider>
+        <RolesProbe />
+        <ViewAsSwitcher />
+      </AuthProvider>
+    </I18nProvider>,
   );
 }
 
@@ -105,6 +116,32 @@ describe("view-as preview", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /exit preview/i }));
 
+    expect(screen.getByTestId("roles")).toHaveTextContent("admin,teacher");
+    expect(window.sessionStorage.getItem("skillsetmind.viewAs")).toBeNull();
+  });
+
+  it.each([
+    ["student", "Learner", "Estudiante"],
+    ["teacher", "Instructor", "Instructor"],
+    ["support", "Team", "Equipo"],
+  ])("retains the canonical %s preview and translates its global reminder", (role, english, spanish) => {
+    renderWith(["admin", "teacher"]);
+    fireEvent.click(screen.getByRole("button", { name: english }));
+    const subscriptions = mocks.listenToAuthState.mock.calls.length;
+    expect(screen.getByTestId("roles")).toHaveTextContent(role);
+    expect(screen.getByRole("status")).toHaveTextContent(`Previewing as ${english}. Your admin access is unchanged.`);
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByRole("heading", { name: "Vista previa de la plataforma" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: spanish })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("status")).toHaveTextContent(`Vista previa como ${spanish}. Tu acceso de administrador no cambia.`);
+    expect(screen.getByTestId("roles")).toHaveTextContent(role);
+    expect(window.sessionStorage.getItem("skillsetmind.viewAs")).toBe(role);
+    expect(mocks.listenToAuthState).toHaveBeenCalledTimes(subscriptions);
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByRole("button", { name: english })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    fireEvent.click(screen.getByRole("button", { name: "Salir de la vista previa" }));
+    expect(screen.queryByRole("status")).toBeNull();
     expect(screen.getByTestId("roles")).toHaveTextContent("admin,teacher");
     expect(window.sessionStorage.getItem("skillsetmind.viewAs")).toBeNull();
   });

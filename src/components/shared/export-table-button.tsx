@@ -3,6 +3,7 @@
 import { Download } from "lucide-react";
 import { useState } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { cn } from "@/lib/cn";
 
 type ExportCell = string | number | boolean | null | undefined;
@@ -71,6 +72,7 @@ export function ExportTableButton({
   className,
   disabled = false,
 }: ExportTableButtonProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const isDisabled = disabled || rows.length === 0;
 
@@ -104,7 +106,7 @@ export function ExportTableButton({
         aria-expanded={open}
       >
         <Download aria-hidden="true" size={14} strokeWidth={1.9} />
-        Export
+        {t("platform.ops.exportButton.export")}
       </button>
 
       {open && !isDisabled ? (
@@ -118,7 +120,7 @@ export function ExportTableButton({
             onClick={() => handleExport("csv")}
             className="w-full rounded-[8px] px-3 py-2 text-left text-xs font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
           >
-            Export as CSV
+            {t("platform.ops.exportButton.csv")}
           </button>
           <button
             type="button"
@@ -126,7 +128,7 @@ export function ExportTableButton({
             onClick={() => handleExport("json")}
             className="w-full rounded-[8px] px-3 py-2 text-left text-xs font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
           >
-            Export as JSON
+            {t("platform.ops.exportButton.json")}
           </button>
         </div>
       ) : null}
