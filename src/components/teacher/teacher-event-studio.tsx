@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import {
   courseEventStatusLabels,
   courseEventTypeLabels,
@@ -49,6 +50,7 @@ function toDateTimeLocalValue(iso: string): string {
 
 export function TeacherEventStudio() {
   const { user } = useAuth();
+  const { t, locale } = useTranslation();
   const searchParams = useSearchParams();
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [events, setEvents] = useState<CourseEvent[]>([]);
@@ -408,7 +410,7 @@ export function TeacherEventStudio() {
                   {event.courseTitle}
                 </p>
                 <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
-                  {formatEventDateTime(event.startsAt)}
+                  {formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"))}
                 </p>
                 <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
                   {event.description}

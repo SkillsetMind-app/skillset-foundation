@@ -46,7 +46,7 @@ const FALLBACK_COVER = "/brand/logo-mark.png";
 
 export function LearnDashboard() {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [enrollmentQuery, setEnrollmentQuery] = useState("");
   const [courseFilter, setCourseFilter] = useState<CourseFilter>("in_progress");
@@ -427,7 +427,7 @@ export function LearnDashboard() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
-                      {formatEventDateTime(event.startsAt)}
+                      {formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"))}
                     </p>
                     <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
                       {event.title}

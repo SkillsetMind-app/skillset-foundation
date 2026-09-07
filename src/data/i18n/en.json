@@ -895,6 +895,9 @@
         "related": "Open related help"
       }
     },
+    "events": {
+      "datePending": "Date pending"
+    },
     "notifications": {
       "open": "Open notifications",
       "openUnread": "Open notifications, {count} unread",
