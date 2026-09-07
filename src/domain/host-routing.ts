@@ -27,12 +27,58 @@
 /** The platform's own hostname, used as the redirect target. */
 export const PLATFORM_ORIGIN = "https://skillsetmind.com";
 
+/**
+ * The three short entry hosts and the area each one opens. One table serves
+ * both directions: the proxy asks "which area does this host open?" and the
+ * public links ask "which host publishes this area?". Nothing else in the
+ * codebase spells these hostnames out.
+ */
+const ENTRIES = {
+  app: { host: "app.skillsetmind.com", path: "/teach" },
+  consumer: { host: "consumer.skillsetmind.com", path: "/learn" },
+  pay: { host: "pay.skillsetmind.com", path: "/courses" },
+} as const;
+
+export type EntryKind = keyof typeof ENTRIES;
+
 // Entry links use the existing session host; they never start a second login.
-const PLATFORM_ENTRIES = new Map([
-  ["app.skillsetmind.com", "/teach"],
-  ["consumer.skillsetmind.com", "/learn"],
-  ["pay.skillsetmind.com", "/courses"],
-]);
+const PLATFORM_ENTRIES = new Map<string, string>(
+  Object.values(ENTRIES).map(({ host, path }): [string, string] => [host, path]),
+);
+
+/**
+ * Where the short hosts are known to resolve. `isPlatformHost` also accepts
+ * previews and localhost, which is right for serving but wrong for publishing:
+ * an absolute `pay.skillsetmind.com` link pasted from a Vercel preview would
+ * pull the visitor out of the preview and into production.
+ */
+export function isProductionHost(hostname: string | null | undefined): boolean {
+  return hostname === "skillsetmind.com" || hostname === "www.skillsetmind.com";
+}
+
+/**
+ * Public link for a short entry host, built from the table above so no
+ * component carries the hostname as a loose string.
+ *
+ * On a production host it is `https://<entry>.skillsetmind.com<path><search>`.
+ * Anywhere else — a preview, localhost, or a render that does not know its host
+ * yet (`hostname` null on the server) — it stays relative, so the link keeps
+ * the visitor on the origin they are already on. Forgetting the hostname
+ * therefore fails toward "stay here", never toward a wrong absolute host.
+ *
+ * An empty path mirrors the proxy's root rule: the short host itself in
+ * production, the area it opens elsewhere.
+ */
+export function entryUrl(
+  kind: EntryKind,
+  path = "",
+  search = "",
+  hostname: string | null | undefined = null,
+): string {
+  const entry = ENTRIES[kind];
+  if (isProductionHost(hostname)) return `https://${entry.host}${path}${search}`;
+  return `${path === "" || path === "/" ? entry.path : path}${search}`;
+}
 
 export type HostRouteDecision =
   /** Not a custom domain, or nothing to do — hand the request on untouched. */

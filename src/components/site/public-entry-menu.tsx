@@ -4,10 +4,13 @@ import { ChevronDown, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { entryUrl } from "@/domain/host-routing";
 import { getAuthRoute } from "@/lib/auth/routing";
+import { useCurrentHostname } from "@/lib/ui/use-current-hostname";
 
 export function PublicEntryMenu({ mobile = false }: { mobile?: boolean }) {
   const { t } = useTranslation();
+  const hostname = useCurrentHostname();
   const [open, setOpen] = useState(false);
   const wrapper = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -50,13 +53,16 @@ export function PublicEntryMenu({ mobile = false }: { mobile?: boolean }) {
           id={panelId}
           className={`${mobile ? "mt-2 w-full" : "absolute right-0 top-full z-[60] mt-2 w-64 max-w-[calc(100vw-2rem)]"} grid gap-1 rounded-[14px] border border-[var(--color-line)] bg-white p-2 shadow-[var(--shadow-soft)]`}
         >
+          {/* Each intent enters through its own short host in production; the
+              sign-in route and intent ride along unchanged, so the proxy's 307
+              lands on the same /auth?mode=signin&path=… the menu always used. */}
           {([
-            ["student", "nav.myCourses"],
-            ["teacher", "nav.manageBusiness"],
-          ] as const).map(([intent, label]) => (
+            ["student", "consumer", "nav.myCourses"],
+            ["teacher", "app", "nav.manageBusiness"],
+          ] as const).map(([intent, entry, label]) => (
             <Link
               key={intent}
-              href={getAuthRoute("signin", intent)}
+              href={entryUrl(entry, getAuthRoute("signin", intent), "", hostname)}
               target="_blank"
               rel="noopener noreferrer"
               className="flex min-h-11 items-center justify-between gap-3 rounded-[10px] px-3 py-3 text-sm font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-soft)] focus-visible:outline-2 focus-visible:outline-offset-2"

@@ -280,6 +280,7 @@ export function CourseOffersPanel({
                   <CourseShareLink
                     label={`${offer.name} checkout`}
                     title={courseTitle}
+                    entry="pay"
                     path={`/courses/${encodeURIComponent(courseId)}/checkout?${
                       offer.publicCode
                         ? `offer=${encodeURIComponent(offer.publicCode)}`

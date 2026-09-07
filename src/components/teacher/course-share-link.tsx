@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { entryUrl, type EntryKind } from "@/domain/host-routing";
 import { SITE_URL } from "@/lib/seo/page-metadata";
+import { useCurrentHostname } from "@/lib/ui/use-current-hostname";
 
 const actionClass =
   "inline-flex min-h-11 items-center px-4 py-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
@@ -12,14 +14,23 @@ export function CourseShareLink({
   label,
   path,
   title,
+  entry,
 }: {
   label: string;
   path: string;
   /** Course title: the text that travels with the URL when shared. */
   title: string;
+  /**
+   * Short host that publishes this link ("pay" for checkout). Only takes
+   * effect in production, where the short hosts resolve; a preview or
+   * localhost keeps the link relative so nobody is sent to production from a
+   * test environment. Omitted: the canonical www URL, as before.
+   */
+  entry?: EntryKind;
 }) {
   const { t } = useTranslation();
-  const url = `${SITE_URL}${path}`;
+  const hostname = useCurrentHostname();
+  const url = entry ? entryUrl(entry, path, "", hostname) : `${SITE_URL}${path}`;
   const [result, setResult] = useState<"copied" | "error" | null>(null);
   const [open, setOpen] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
