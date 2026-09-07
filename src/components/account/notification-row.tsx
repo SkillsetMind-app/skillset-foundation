@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 
 import type { AppNotification, NotificationType } from "@/domain/notification";
+import { DEFAULT_LOCALE } from "@/lib/i18n/config";
+import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
 const typeIcons: Record<NotificationType, typeof Bell> = {
   community_comment: MessageCircle,
@@ -38,9 +40,17 @@ const unreadChipByType: Record<NotificationType, string> = {
   course_message: "bg-[rgba(44,82,130,0.1)] text-[var(--color-primary)]",
 };
 
+// English dictionary as the default translator: callers that pass nothing keep
+// the same strings as before, the classroom passes its own `t` and locale.
+const englishT = (key: string) => translate(getDictionary(DEFAULT_LOCALE), key);
+
 // Relative time from a notification's server-written creation time. Coarse on
 // purpose — the inbox is glanceable, not an audit log.
-export function formatNotificationTime(createdAt: unknown): string {
+export function formatNotificationTime(
+  createdAt: unknown,
+  t: (key: string) => string = englishT,
+  locale?: string,
+): string {
   // Supabase rows carry created_at as an ISO string; legacy Firestore-shaped
   // values carry { seconds }. Accept both so timestamps render either way.
   const seconds =
@@ -50,23 +60,25 @@ export function formatNotificationTime(createdAt: unknown): string {
   if (!seconds || Number.isNaN(seconds)) {
     return "";
   }
+  const relative = (key: string, count: number) =>
+    t(`platform.notifications.time.${key}`).replace("{count}", () => String(count));
   const deltaMs = Date.now() - seconds * 1000;
   if (deltaMs < 60_000) {
-    return "Just now";
+    return t("platform.notifications.time.justNow");
   }
   const minutes = Math.floor(deltaMs / 60_000);
   if (minutes < 60) {
-    return `${minutes}m ago`;
+    return relative("minutes", minutes);
   }
   const hours = Math.floor(minutes / 60);
   if (hours < 24) {
-    return `${hours}h ago`;
+    return relative("hours", hours);
   }
   const days = Math.floor(hours / 24);
   if (days < 7) {
-    return `${days}d ago`;
+    return relative("days", days);
   }
-  return new Date(seconds * 1000).toLocaleDateString();
+  return new Date(seconds * 1000).toLocaleDateString(locale);
 }
 
 export function NotificationRow({

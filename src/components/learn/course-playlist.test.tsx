@@ -2,8 +2,16 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CoursePlaylist } from "@/components/learn/course-playlist";
+import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import type { LessonUnlockState } from "@/domain/drip-policy";
 import type { CourseModule } from "@/domain/learning";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+
+function ChangeLanguage() {
+  const { locale, setLocale } = useTranslation();
+  return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
+}
 
 // A lista de aulas existia tres vezes na sala e nenhuma ficava visivel com o
 // video tocando. Agora e UMA playlist ao lado do video: modulos em acordeao,
@@ -47,6 +55,47 @@ function renderPlaylist(overrides: Partial<Parameters<typeof CoursePlaylist>[0]>
 describe("CoursePlaylist", () => {
   beforeEach(() => {
     Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  it("keeps the search, focus and selected lesson while localizing literal results", () => {
+    const title = "Practice $$50 $&";
+    const localizedModules = [{ ...modules[0], lessons: [{ ...modules[0].lessons[0], title }] }];
+    const onSelect = vi.fn();
+    const onUncomplete = vi.fn();
+    render(<I18nProvider initialLocale="en">
+      <ChangeLanguage />
+      <CoursePlaylist modules={localizedModules} selectedLessonId="l1" completedLessonIds={["l1"]}
+        unlockStateById={unlockStateById} onSelect={onSelect} onUncomplete={onUncomplete} />
+    </I18nProvider>);
+    const search = screen.getByRole("searchbox", { name: "Search lessons" });
+    fireEvent.change(search, { target: { value: "$$50 $&" } });
+    search.focus();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByRole("navigation", { name: "Lecciones" })).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "Buscar lecciones" })).toBe(search);
+    expect(search).toHaveValue("$$50 $&");
+    expect(search).toHaveFocus();
+    expect(screen.getByText('1 lección coincide con "$$50 $&"')).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: `Marcar "${title}" como incompleta` })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Practice/ })).toHaveAttribute("aria-current", "true");
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onUncomplete).not.toHaveBeenCalled();
+  });
+
+  it("keeps collapsed modules and locked navigation when the locale changes", () => {
+    const onSelect = vi.fn();
+    render(<I18nProvider initialLocale="en"><ChangeLanguage />
+      <CoursePlaylist modules={modules} selectedLessonId="l2" completedLessonIds={["l1"]}
+        unlockStateById={unlockStateById} onSelect={onSelect} />
+    </I18nProvider>);
+    fireEvent.click(screen.getByRole("button", { name: /Basics/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByRole("button", { name: /Módulo 1 Basics/ })).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(screen.getByRole("button", { name: /Advanced/ }));
+    const locked = screen.getByRole("button", { name: /Deep dive/ });
+    expect(locked).toHaveTextContent("Bloqueada");
+    fireEvent.click(locked);
+    expect(onSelect).toHaveBeenCalledExactlyOnceWith("l3");
   });
 
   it("shows a decorative thumbnail without changing locked lesson navigation", () => {

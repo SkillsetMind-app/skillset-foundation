@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CommunityPostDrawer } from "@/components/learn/community-post-drawer";
 import type { SkillsetUser } from "@/domain/auth";
 import {
@@ -89,6 +90,7 @@ export function CommunityFeed({
   openPostId = null,
 }: CommunityFeedProps) {
   const { user } = useAuth();
+  const { t, locale } = useTranslation();
   const router = useRouter();
   const pathname = usePathname() ?? "";
   // "/learn/courses/<curso>/community" — sem a gaveta ("/q/<post>") no fim.
@@ -100,6 +102,7 @@ export function CommunityFeed({
   const closePost = useCallback(() => router.push(communityPath), [communityPath, router]);
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [enrollmentReady, setEnrollmentReady] = useState(skipEnrollmentGate);
+  // Chave do dicionario, nao texto: o idioma pode trocar com o erro na tela.
   const [error, setError] = useState("");
 
   // Feed: `all` e tudo o que chegou; `visible` e o que esta na tela; `pending`
@@ -133,7 +136,7 @@ export function CommunityFeed({
         setEnrollmentReady(true);
       },
       () => {
-        setError("We could not confirm your community access.");
+        setError("learn.community.accessError");
         setEnrollmentReady(true);
       },
     );
@@ -169,7 +172,7 @@ export function CommunityFeed({
         });
       },
       () => {
-        setError("We could not load community posts.");
+        setError("learn.community.postsError");
         setFeed({ all: [], visible: [], pending: 0, ready: true });
       },
     );
@@ -232,27 +235,32 @@ export function CommunityFeed({
   }
 
   if (!enrollmentReady) {
-    return <p className="text-sm text-[var(--color-ink-soft)]">Loading community...</p>;
+    return <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.community.loading")}</p>;
   }
 
   if (!canRead) {
     return (
       <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          Access required
+          {t("learn.community.accessRequired")}
         </p>
         <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-          This community is linked to course enrollment.
+          {t("learn.community.gateHeading")}
         </h2>
         <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-          Open the course page first and add it to your learning workspace.
+          {t("learn.community.gateDetails")}
         </p>
+        {error ? (
+          <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+            {t(error)}
+          </p>
+        ) : null}
       </section>
     );
   }
 
-  const instructorLabel = instructorName?.trim() || "the instructor";
-  const liveChip = nextLive ? liveChipLabel(nextLive, now) : null;
+  const instructorLabel = instructorName?.trim() || t("learn.community.instructorFallback");
+  const liveChip = nextLive ? liveChipLabel(nextLive, now, t) : null;
 
   return (
     <div className="community-feed grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
@@ -260,7 +268,7 @@ export function CommunityFeed({
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              Community
+              {t("learn.community.eyebrow")}
             </p>
             <h2 className="display-title mt-1 text-2xl text-[var(--color-ink)]">
               {space.name.replace(/ community$/i, "")}
@@ -275,12 +283,18 @@ export function CommunityFeed({
 
         {/* Tres filtros no lugar de seis espacos com ordenacao. */}
         <div className="flex flex-wrap items-center gap-2">
-          <div role="tablist" aria-label="Filter posts" className="flex flex-wrap gap-1">
+          <div role="tablist" aria-label={t("learn.community.filters")} className="flex flex-wrap gap-1">
             {(
               [
-                ["all", "All"],
-                ["questions", openQuestionCount ? `Questions · ${openQuestionCount} open` : "Questions"],
-                ["instructor", `From ${instructorLabel}`],
+                ["all", t("learn.community.all")],
+                [
+                  "questions",
+                  openQuestionCount
+                    ? t(`learn.community.${openQuestionCount === 1 ? "questionsOpenOne" : "questionsOpenMany"}`)
+                        .replace("{count}", () => String(openQuestionCount))
+                    : t("learn.community.questions"),
+                ],
+                ["instructor", t("learn.community.fromInstructor").replace("{name}", () => instructorLabel)],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -300,12 +314,12 @@ export function CommunityFeed({
             ))}
           </div>
           <label className="ml-auto min-w-[160px] flex-1 sm:flex-none">
-            <span className="sr-only">Search posts</span>
+            <span className="sr-only">{t("learn.community.search")}</span>
             <input
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search"
+              placeholder={t("learn.community.searchPlaceholder")}
               className="field-input min-h-11"
             />
           </label>
@@ -325,7 +339,7 @@ export function CommunityFeed({
 
         {error ? (
           <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {error}
+            {t(error)}
           </p>
         ) : null}
 
@@ -336,19 +350,17 @@ export function CommunityFeed({
               onClick={showPending}
               className="min-h-11 rounded-full bg-[var(--color-primary)] px-5 text-sm font-bold text-[var(--color-base)] shadow-[var(--shadow-soft)]"
             >
-              {feed.pending} new post{feed.pending === 1 ? "" : "s"}
+              {t(`learn.community.${feed.pending === 1 ? "newPostOne" : "newPostMany"}`).replace("{count}", () => String(feed.pending))}
             </button>
           </div>
         ) : null}
 
         <div className="grid gap-3" aria-live="polite">
           {!feed.ready ? (
-            <p className="text-sm text-[var(--color-ink-soft)]">Loading community feed...</p>
+            <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.community.feedLoading")}</p>
           ) : shownPosts.length === 0 ? (
             <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-              {feed.visible.length === 0
-                ? "No posts yet. Ask the first question or share what you're working on."
-                : "Nothing matches this filter."}
+              {t(feed.visible.length === 0 ? "learn.community.empty" : "learn.community.emptyFilter")}
             </p>
           ) : (
             shownPosts.map((post) => (
@@ -378,7 +390,7 @@ export function CommunityFeed({
       ) : null}
 
       <aside className="grid gap-3">
-        <LiveCard live={nextLive} now={now} />
+        <LiveCard live={nextLive} now={now} locale={locale} />
 
         <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]">
           <div className="flex items-center gap-2">
@@ -388,29 +400,31 @@ export function CommunityFeed({
               ))}
             </span>
             <p className="text-sm font-semibold text-[var(--color-ink)]">
-              {online.length} online
-              {members.length ? ` · ${members.length} member${members.length === 1 ? "" : "s"}` : ""}
+              {t("learn.community.online").replace("{count}", () => String(online.length))}
+              {members.length
+                ? ` · ${t(`learn.community.${members.length === 1 ? "memberOne" : "memberMany"}`).replace("{count}", () => String(members.length))}`
+                : ""}
             </p>
           </div>
         </section>
 
         {isNewHere ? (
           <section className="rounded-[14px] border border-[rgba(201,154,70,0.35)] bg-[rgba(201,154,70,0.08)] p-4">
-            <p className="text-sm font-bold text-[var(--color-ink)]">New here? Say hi 👋</p>
+            <p className="text-sm font-bold text-[var(--color-ink)]">{t("learn.community.sayHi")}</p>
             <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
-              {instructorLabel} replies to every intro.
+              {t("learn.community.sayHiDetails").replace("{name}", () => instructorLabel)}
             </p>
           </section>
         ) : null}
 
-        <nav aria-label="Community sections" className="grid gap-1 text-sm font-semibold">
+        <nav aria-label={t("learn.community.sections")} className="grid gap-1 text-sm font-semibold">
           <button
             type="button"
             onClick={() => setAsideView((view) => (view === "members" ? "none" : "members"))}
             aria-expanded={asideView === "members"}
             className="min-h-11 rounded-[10px] px-3 text-left text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
           >
-            Members ({members.length})
+            {t("learn.community.members").replace("{count}", () => String(members.length))}
           </button>
           <button
             type="button"
@@ -418,20 +432,20 @@ export function CommunityFeed({
             aria-expanded={asideView === "rules"}
             className="min-h-11 rounded-[10px] px-3 text-left text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
           >
-            Rules
+            {t("learn.community.rules")}
           </button>
           <Link
             href={pathname.replace(/\/community(\/.*)?$/, "") + "/lives"}
             className="flex min-h-11 items-center rounded-[10px] px-3 text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
           >
-            Recordings
+            {t("learn.community.recordings")}
           </Link>
         </nav>
 
         {asideView === "members" ? (
           <ul className="grid gap-2 rounded-[14px] border border-[var(--color-line)] bg-white p-4 text-sm">
             {members.length === 0 ? (
-              <li className="text-[var(--color-ink-soft)]">No one has posted yet.</li>
+              <li className="text-[var(--color-ink-soft)]">{t("learn.community.noMembers")}</li>
             ) : (
               members.map((member) => (
                 <li key={member.uid} className="flex items-center gap-2">
@@ -447,9 +461,9 @@ export function CommunityFeed({
           <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             <p>{space.description}</p>
             <ul className="mt-3 list-disc pl-5">
-              <li>Ask about the course; share what you tried.</li>
-              <li>Be specific — say which lesson you mean.</li>
-              <li>No selling, no spam. Report anything off.</li>
+              <li>{t("learn.community.rule1")}</li>
+              <li>{t("learn.community.rule2")}</li>
+              <li>{t("learn.community.rule3")}</li>
             </ul>
           </section>
         ) : null}
@@ -475,8 +489,10 @@ function Composer({
   instructorLabel: string;
   answeredPosts: CommunityPost[];
   canModerate: boolean;
-  onError: (message: string) => void;
+  /** Recebe a CHAVE do dicionario (ou "" para limpar); o pai traduz na tela. */
+  onError: (messageKey: string) => void;
 }) {
+  const { t, locale } = useTranslation();
   const [mode, setMode] = useState<"idle" | "ask" | "share" | "update">("idle");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -512,11 +528,11 @@ function Composer({
     const nextBody = body.trim();
 
     if (mode === "ask" && nextTitle.length < 8) {
-      onError("Write your question in one line first — at least a few words.");
+      onError("learn.community.composer.shortQuestion");
       return;
     }
     if (mode !== "ask" && nextBody.length < 8) {
-      onError("Write a little more before posting.");
+      onError("learn.community.composer.shortPost");
       return;
     }
 
@@ -534,7 +550,7 @@ function Composer({
       });
       reset();
     } catch {
-      onError("We could not publish your post.");
+      onError("learn.community.composer.publishError");
     } finally {
       setIsSubmitting(false);
     }
@@ -549,21 +565,21 @@ function Composer({
           onClick={() => setMode("share")}
           className="min-h-11 flex-1 rounded-[10px] bg-[var(--color-surface-soft)] px-4 text-left text-sm text-[var(--color-ink-muted)]"
         >
-          Ask the cohort or share something…
+          {t("learn.community.composer.prompt")}
         </button>
         <button
           type="button"
           onClick={() => setMode("ask")}
           className="button-solid min-h-11 px-4 text-sm"
         >
-          Ask a question
+          {t("learn.community.composer.ask")}
         </button>
         <button
           type="button"
           onClick={() => setMode("share")}
           className="button-outline min-h-11 px-4 text-sm"
         >
-          Share
+          {t("learn.community.composer.share")}
         </button>
         {canModerate ? (
           <button
@@ -571,39 +587,43 @@ function Composer({
             onClick={() => setMode("update")}
             className="button-outline min-h-11 px-4 text-sm"
           >
-            Post an update
+            {t("learn.community.composer.update")}
           </button>
         ) : null}
       </div>
     );
   }
 
+  const modeKey = mode === "ask" ? "ask" : mode === "update" ? "update" : "share";
+
   return (
     <form
       onSubmit={handleSubmit}
-      aria-label={mode === "ask" ? "Ask a question" : mode === "update" ? "Post an update" : "Share"}
+      aria-label={t(`learn.community.composer.${modeKey}`)}
       className="grid gap-3 rounded-[14px] border border-[var(--color-primary)] bg-white p-4 shadow-[var(--shadow-soft)]"
     >
       <div className="flex items-center gap-2">
         <Avatar name={user.displayName ?? ""} small />
         <div className="text-sm">
           <p className="font-semibold text-[var(--color-ink)]">
-            {firstName(user.displayName)}{" "}
-            {mode === "ask" ? "asks a question" : mode === "update" ? "posts an update" : "shares"}
+            {firstName(user.displayName, t)}{" "}
+            {t(`learn.community.composer.${mode === "ask" ? "asks" : mode === "update" ? "posts" : "shares"}`)}
           </p>
           {mode === "ask" ? (
-            <p className="text-xs text-[var(--color-ink-muted)]">{instructorLabel} answers questions here.</p>
+            <p className="text-xs text-[var(--color-ink-muted)]">
+              {t("learn.community.composer.answersHere").replace("{name}", () => instructorLabel)}
+            </p>
           ) : null}
         </div>
       </div>
 
       {mode === "ask" ? (
         <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-          <span className="sr-only">Your question</span>
+          <span className="sr-only">{t("learn.community.composer.questionLabel")}</span>
           <input
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder="What do you want to ask?"
+            placeholder={t("learn.community.composer.questionPlaceholder")}
             autoFocus
             className="field-input min-h-12 text-base"
           />
@@ -611,30 +631,32 @@ function Composer({
       ) : null}
 
       <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-        <span className="sr-only">{mode === "ask" ? "Details (optional)" : "Your post"}</span>
+        <span className="sr-only">
+          {t(mode === "ask" ? "learn.community.composer.detailsLabel" : "learn.community.composer.postLabel")}
+        </span>
         <textarea
           value={body}
           onChange={(event) => setBody(event.target.value)}
           rows={3}
           autoFocus={mode !== "ask"}
-          placeholder={
+          placeholder={t(
             mode === "ask"
-              ? "Add details (optional) — what you tried, what you expected…"
+              ? "learn.community.composer.detailsPlaceholder"
               : mode === "update"
-                ? "What should the cohort know this week?"
-                : "What are you working on? A win, a doubt, a before/after…"
-          }
+                ? "learn.community.composer.updatePlaceholder"
+                : "learn.community.composer.sharePlaceholder",
+          )}
           className="field-input min-h-[88px] resize-y"
         />
       </label>
 
       {mode === "ask" && lesson ? (
         <span className="inline-flex w-fit items-center gap-1 rounded-full bg-[var(--color-surface-soft)] px-3 py-1 text-xs font-semibold text-[var(--color-ink)]">
-          About lesson {lesson.number}
+          {t("learn.community.composer.aboutLesson").replace("{number}", () => String(lesson.number))}
           <button
             type="button"
             onClick={() => setLesson(null)}
-            aria-label={`Remove lesson ${lesson.number}`}
+            aria-label={t("learn.community.composer.removeLesson").replace("{number}", () => String(lesson.number))}
             className="ml-1 rounded-full p-0.5 hover:bg-white"
           >
             <X size={12} aria-hidden />
@@ -645,12 +667,14 @@ function Composer({
       {similar.length > 0 ? (
         <div className="rounded-[10px] border border-[rgba(22,163,74,0.35)] bg-[rgba(22,163,74,0.06)] p-3 text-sm">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[rgb(21,128,61)]">
-            Already answered · similar
+            {t("learn.community.composer.similar")}
           </p>
           <ul className="mt-2 grid gap-1">
             {similar.map((post) => (
               <li key={post.id} className="text-[var(--color-ink)]">
-                “{post.title}” — answered {formatNotificationTime(post.createdAt)}
+                {t("learn.community.composer.similarItem")
+                  .replace("{title}", () => post.title ?? "")
+                  .replace("{time}", () => formatNotificationTime(post.createdAt, t, locale))}
               </li>
             ))}
           </ul>
@@ -659,20 +683,22 @@ function Composer({
 
       <div className="flex flex-wrap items-center justify-end gap-2">
         <button type="button" onClick={reset} className="button-outline min-h-11 px-4 text-sm">
-          Cancel
+          {t("learn.community.composer.cancel")}
         </button>
         <button
           type="submit"
           disabled={isSubmitting}
           className="button-solid min-h-11 px-4 text-sm disabled:opacity-60"
         >
-          {isSubmitting
-            ? "Posting…"
-            : mode === "ask"
-              ? "Post question"
-              : mode === "update"
-                ? "Post update"
-                : "Post"}
+          {t(
+            isSubmitting
+              ? "learn.community.composer.posting"
+              : mode === "ask"
+                ? "learn.community.composer.postQuestion"
+                : mode === "update"
+                  ? "learn.community.composer.postUpdate"
+                  : "learn.community.composer.post",
+          )}
         </button>
       </div>
     </form>
@@ -697,12 +723,14 @@ function FeedCard({
   /** Abre o post na gaveta (titulo e "View N replies"). */
   onOpen: () => void;
 }) {
+  const { t, locale } = useTranslation();
   const [likes, setLikes] = useState<{ count: number; likerIds: string[] }>({ count: 0, likerIds: [] });
   const [likePending, setLikePending] = useState(false);
   const [replyOpen, setReplyOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [replyBody, setReplyBody] = useState("");
   const [isReplying, setIsReplying] = useState(false);
+  // Chave do dicionario, nao texto.
   const [replyError, setReplyError] = useState("");
 
   useEffect(() => subscribeToPostLikes(post.id, setLikes, () => undefined), [post.id]);
@@ -732,7 +760,7 @@ function FeedCard({
     if (!currentUser) return;
     const next = replyBody.trim();
     if (next.length < 3) {
-      setReplyError("Write a short reply first.");
+      setReplyError("learn.community.card.shortReply");
       return;
     }
     setReplyError("");
@@ -748,7 +776,7 @@ function FeedCard({
       setReplyOpen(false);
       setShowAll(true);
     } catch {
-      setReplyError("We could not publish your reply.");
+      setReplyError("learn.community.card.replyError");
     } finally {
       setIsReplying(false);
     }
@@ -766,14 +794,18 @@ function FeedCard({
       <header className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-ink-muted)]">
         <Avatar name={post.authorName} small />
         <span className="text-sm font-semibold text-[var(--color-ink)]">{post.authorName}</span>
-        {fromInstructor ? <span className="font-semibold text-[var(--color-primary)]">· Instructor</span> : null}
-        <span>· {formatNotificationTime(post.createdAt)}</span>
+        {fromInstructor ? (
+          <span className="font-semibold text-[var(--color-primary)]">· {t("learn.community.card.instructor")}</span>
+        ) : null}
+        <span>· {formatNotificationTime(post.createdAt, t, locale)}</span>
         {post.pinned ? (
           <span className="inline-flex items-center gap-1">
-            <Pin size={11} aria-hidden /> pinned
+            <Pin size={11} aria-hidden /> {t("learn.community.card.pinned")}
           </span>
         ) : null}
-        {post.lessonTitle ? <span>· from {post.lessonTitle}</span> : null}
+        {post.lessonTitle ? (
+          <span>· {t("learn.community.card.fromLesson").replace("{lesson}", () => post.lessonTitle ?? "")}</span>
+        ) : null}
         {kind === "question" ? (
           <span
             className={`ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-bold ${
@@ -783,7 +815,7 @@ function FeedCard({
             }`}
           >
             {answered ? <CheckCircle2 size={12} aria-hidden /> : <HelpCircle size={12} aria-hidden />}
-            {answered ? "Answered" : "Question"}
+            {t(answered ? "learn.community.card.answered" : "learn.community.card.question")}
           </span>
         ) : null}
         {canModerate ? (
@@ -792,7 +824,7 @@ function FeedCard({
             onClick={() => void setCommunityPostPinned(post.id, !post.pinned)}
             className="text-xs font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
           >
-            {post.pinned ? "Unpin" : "Pin"}
+            {t(post.pinned ? "learn.community.card.unpin" : "learn.community.card.pin")}
           </button>
         ) : null}
       </header>
@@ -820,7 +852,7 @@ function FeedCard({
           onClick={() => void toggleLike()}
           disabled={!currentUser || isOwn || likePending}
           aria-pressed={liked}
-          aria-label={`Clap · ${likes.count}`}
+          aria-label={t("learn.community.card.clap").replace("{count}", () => String(likes.count))}
           className={`min-h-11 rounded-full px-3 ${liked ? "bg-[var(--color-surface-soft)] text-[var(--color-ink)]" : "hover:bg-[var(--color-surface-soft)]"} disabled:opacity-70`}
         >
           👏 {likes.count}
@@ -830,7 +862,7 @@ function FeedCard({
           onClick={() => setReplyOpen((open) => !open)}
           className="min-h-11 rounded-full px-3 hover:bg-[var(--color-surface-soft)]"
         >
-          Reply
+          {t("learn.community.card.reply")}
         </button>
         {comments.length > 1 && !showAll ? (
           <button
@@ -838,7 +870,7 @@ function FeedCard({
             onClick={onOpen}
             className="min-h-11 rounded-full px-3 hover:bg-[var(--color-surface-soft)]"
           >
-            View {comments.length} replies
+            {t("learn.community.card.viewReplies").replace("{count}", () => String(comments.length))}
           </button>
         ) : null}
       </footer>
@@ -859,14 +891,14 @@ function FeedCard({
                 <div className="min-w-0">
                   <p className="text-xs text-[var(--color-ink-muted)]">
                     <span className="font-semibold text-[var(--color-ink)]">{reply.authorName}</span>
-                    {replyFromInstructor ? " · Instructor" : ""}
+                    {replyFromInstructor ? ` · ${t("learn.community.card.instructor")}` : ""}
                     {isAnswer ? (
                       <span className="ml-1 inline-flex items-center gap-0.5 font-bold text-[rgb(21,128,61)]">
-                        <CheckCircle2 size={11} aria-hidden /> answer
+                        <CheckCircle2 size={11} aria-hidden /> {t("learn.community.card.answer")}
                       </span>
                     ) : null}
                     {" · "}
-                    {formatNotificationTime(reply.createdAt)}
+                    {formatNotificationTime(reply.createdAt, t, locale)}
                   </p>
                   <p className="mt-0.5 whitespace-pre-wrap leading-6 text-[var(--color-ink)]">{reply.body}</p>
                 </div>
@@ -880,25 +912,25 @@ function FeedCard({
       {replyOpen ? (
         <form onSubmit={submitReply} className="mt-3 grid gap-2">
           <label className="grid gap-1 text-sm">
-            <span className="sr-only">Your reply</span>
+            <span className="sr-only">{t("learn.community.card.replyLabel")}</span>
             <textarea
               value={replyBody}
               onChange={(event) => setReplyBody(event.target.value)}
               rows={2}
               autoFocus
-              placeholder="Add your reply…"
+              placeholder={t("learn.community.card.replyPlaceholder")}
               className="field-input min-h-[64px] resize-y"
             />
           </label>
           {replyError ? (
-            <p className="text-xs font-semibold text-[var(--color-danger-fg)]">{replyError}</p>
+            <p className="text-xs font-semibold text-[var(--color-danger-fg)]">{t(replyError)}</p>
           ) : null}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setReplyOpen(false)} className="button-outline min-h-11 px-3 text-sm">
-              Cancel
+              {t("learn.community.composer.cancel")}
             </button>
             <button type="submit" disabled={isReplying} className="button-solid min-h-11 px-3 text-sm disabled:opacity-60">
-              {isReplying ? "Posting…" : "Post reply"}
+              {t(isReplying ? "learn.community.composer.posting" : "learn.community.card.postReply")}
             </button>
           </div>
         </form>
@@ -909,11 +941,12 @@ function FeedCard({
 
 // ---------------------------------------------------------------------------
 
-function LiveCard({ live, now }: { live: CourseEvent | null; now: number }) {
+function LiveCard({ live, now, locale }: { live: CourseEvent | null; now: number; locale: string }) {
+  const { t } = useTranslation();
   if (!live) {
     return (
       <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 text-sm text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)]">
-        No live scheduled yet.
+        {t("learn.community.live.none")}
       </section>
     );
   }
@@ -921,7 +954,7 @@ function LiveCard({ live, now }: { live: CourseEvent | null; now: number }) {
   const running = startsAt <= now;
   return (
     <section
-      aria-label="Next live"
+      aria-label={t("learn.community.live.next")}
       className={`rounded-[14px] border p-4 shadow-[var(--shadow-soft)] ${
         running
           ? "border-[rgba(22,163,74,0.35)] bg-[rgba(22,163,74,0.06)]"
@@ -929,11 +962,11 @@ function LiveCard({ live, now }: { live: CourseEvent | null; now: number }) {
       }`}
     >
       <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-[rgb(21,128,61)]">
-        <Radio size={12} aria-hidden /> {liveChipLabel(live, now)}
+        <Radio size={12} aria-hidden /> {liveChipLabel(live, now, t)}
       </p>
       <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">{live.title}</p>
       <p className="mt-0.5 text-xs text-[var(--color-ink-muted)]">
-        {new Date(startsAt).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" })}
+        {new Date(startsAt).toLocaleString(locale, { weekday: "short", hour: "2-digit", minute: "2-digit" })}
       </p>
       {running ? (
         <a
@@ -942,10 +975,10 @@ function LiveCard({ live, now }: { live: CourseEvent | null; now: number }) {
           rel="noopener noreferrer"
           className="button-solid mt-3 inline-flex min-h-11 items-center px-4 text-sm"
         >
-          Join
+          {t("learn.community.live.join")}
         </a>
       ) : (
-        <p className="mt-3 text-xs text-[var(--color-ink-muted)]">Join when it starts</p>
+        <p className="mt-3 text-xs text-[var(--color-ink-muted)]">{t("learn.community.live.joinLater")}</p>
       )}
     </section>
   );
@@ -962,17 +995,17 @@ function pickNextLive(events: CourseEvent[], now: number): CourseEvent | null {
   );
 }
 
-function liveChipLabel(live: CourseEvent, now: number): string {
+function liveChipLabel(live: CourseEvent, now: number, t: (key: string) => string): string {
   const diff = Date.parse(live.startsAt) - now;
   if (diff <= 0) {
-    return "Live now";
+    return t("learn.community.live.now");
   }
   const minutes = Math.round(diff / 60_000);
   if (minutes < 60) {
-    return `Live in ${minutes} min`;
+    return t("learn.community.live.inMinutes").replace("{count}", () => String(minutes));
   }
   const hours = Math.round(minutes / 60);
-  return `Live in ${hours} h`;
+  return t("learn.community.live.inHours").replace("{count}", () => String(hours));
 }
 
 function Avatar({ name, online = false, small = false }: { name: string; online?: boolean; small?: boolean }) {
@@ -997,6 +1030,6 @@ function Avatar({ name, online = false, small = false }: { name: string; online?
   );
 }
 
-function firstName(displayName: string | null | undefined): string {
-  return displayName?.trim().split(/\s+/)[0] || "You";
+function firstName(displayName: string | null | undefined, t: (key: string) => string): string {
+  return displayName?.trim().split(/\s+/)[0] || t("learn.community.composer.you");
 }

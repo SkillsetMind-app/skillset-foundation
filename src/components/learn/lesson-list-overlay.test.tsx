@@ -2,8 +2,16 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { LessonListOverlay } from "@/components/learn/lesson-list-overlay";
+import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import type { LessonUnlockState } from "@/domain/drip-policy";
 import type { CourseModule, Lesson } from "@/domain/learning";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+
+function ChangeLanguage() {
+  const { locale, setLocale } = useTranslation();
+  return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
+}
 
 function lesson(id: string, title: string): Lesson {
   return {
@@ -57,6 +65,42 @@ function renderOverlay(overrides: { onSelect?: () => void; onClose?: () => void 
 }
 
 describe("LessonListOverlay", () => {
+  it("localizes the open dialog without losing search, focus or absolute lesson numbering", () => {
+    const onClose = vi.fn();
+    const onSelect = vi.fn();
+    const title = "Debrief $$50 $&";
+    const localizedModules = modules.map((module) => ({ ...module, lessons: module.lessons.map((item) => item.id === "l4" ? { ...item, title } : item) }));
+    render(<I18nProvider initialLocale="en"><ChangeLanguage />
+      <LessonListOverlay modules={localizedModules} selectedLessonId="l1" completedLessonIds={["l1"]}
+        unlockStateById={new Map()} onSelect={onSelect} onClose={onClose} />
+    </I18nProvider>);
+    const dialog = screen.getByRole("dialog", { name: "All lessons" });
+    const search = screen.getByRole("searchbox", { name: "Search lessons" });
+    fireEvent.change(search, { target: { value: "$$50 $&" } });
+    search.focus();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByRole("dialog", { name: "Todas las lecciones" })).toBe(dialog);
+    expect(screen.getByRole("searchbox", { name: "Buscar lecciones" })).toBe(search);
+    expect(search).toHaveFocus();
+    expect(search).toHaveValue("$$50 $&");
+    expect(screen.getByText('1 lección coincide con "$$50 $&"')).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Debrief/ })).toHaveTextContent("4");
+    expect(screen.getAllByRole("button", { name: "Cerrar lista de lecciones" })).toHaveLength(2);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onSelect).not.toHaveBeenCalled();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses Spanish plural and empty search copy", () => {
+    render(<I18nProvider initialLocale="es"><LessonListOverlay modules={modules}
+      selectedLessonId="l1" completedLessonIds={[]} unlockStateById={new Map()}
+      onSelect={vi.fn()} onClose={vi.fn()} /></I18nProvider>);
+    expect(screen.getByText("4 lecciones en este curso")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "missing" } });
+    expect(screen.getByText('0 lecciones coinciden con "missing"')).toBeInTheDocument();
+    expect(screen.getByText("Ninguna lección coincide con la búsqueda.")).toBeInTheDocument();
+  });
   it("keeps thumbnails and locked labels while filtering and selecting a lesson", () => {
     const onSelect = vi.fn();
     const { container } = render(<LessonListOverlay

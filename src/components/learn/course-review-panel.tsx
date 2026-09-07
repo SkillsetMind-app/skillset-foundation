@@ -4,6 +4,7 @@ import { Star } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { CourseReview } from "@/domain/course-review";
 import {
   submitCourseReview,
@@ -16,11 +17,35 @@ type CourseReviewPanelProps = {
   previewMode?: boolean;
 };
 
+// The RPC may reject with a plain Supabase error object. Keep only known public
+// reasons in UI state so a later locale change translates the same failure.
+const reviewFailureKeys = new Map([
+  ["Sign in before reviewing a course.", "signIn"],
+  ["A valid course id is required.", "invalidCourse"],
+  ["Rating must be between 1 and 5.", "invalidRating"],
+  ["Review text must be at least 3 characters when provided.", "shortBody"],
+  ["Course not found.", "courseMissing"],
+  ["Only published courses can receive reviews.", "courseNotPublished"],
+  ["Enroll in this course before leaving a review.", "enrollFirst"],
+  ["You can only review courses attached to your account.", "wrongAccount"],
+  ["This enrollment cannot leave a review.", "inactiveEnrollment"],
+  ["Complete at least 50% of the course before leaving a review.", "progressRequired"],
+  ["RATE_LIMIT", "rateLimit"],
+  ["RATE_LIMIT: too many attempts, please wait before trying again", "rateLimit"],
+]);
+
+function reviewFailureKey(error: unknown): string {
+  const message = error && typeof error === "object" && "message" in error ? error.message : null;
+  const key = typeof message === "string" ? reviewFailureKeys.get(message) : undefined;
+  return `learn.classroom.review.${key ?? "saveError"}`;
+}
+
 export function CourseReviewPanel({
   courseId,
   progressPercent,
   previewMode = false,
 }: CourseReviewPanelProps) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [existingReview, setExistingReview] = useState<CourseReview | null>(null);
   const [rating, setRating] = useState(5);
@@ -45,7 +70,7 @@ export function CourseReviewPanel({
         }
       },
       () => {
-        setMessage("We could not load your course review.");
+        setMessage("learn.classroom.review.loadError");
       },
     );
   }, [courseId, previewMode, user]);
@@ -62,13 +87,9 @@ export function CourseReviewPanel({
 
     try {
       await submitCourseReview({ courseId, rating, body });
-      setMessage("Review saved. Thank you for rating this course.");
+      setMessage("learn.classroom.review.saved");
     } catch (error) {
-      setMessage(
-        error instanceof Error && error.message
-          ? error.message
-          : "We could not save your review. Try again.",
-      );
+      setMessage(reviewFailureKey(error));
     } finally {
       setIsSaving(false);
     }
@@ -78,19 +99,18 @@ export function CourseReviewPanel({
     <section className="member-review-panel">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-          Course review
+          {t("learn.classroom.review.title")}
         </p>
         <h4 className="mt-2 text-lg font-semibold text-[var(--color-primary)]">
-          Rate the learning experience.
+          {t("learn.classroom.review.heading")}
         </h4>
         <p className="mt-2 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          Reviews become part of the public course record after you have real
-          learning progress. One review is allowed per enrolled account.
+          {t("learn.classroom.review.description")}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="mt-5 grid gap-4">
-        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Course rating">
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("learn.classroom.review.rating")}>
           {[1, 2, 3, 4, 5].map((value) => (
             <button
               key={value}
@@ -100,7 +120,7 @@ export function CourseReviewPanel({
               onClick={() => setRating(value)}
               disabled={!canReview || isSaving}
               className={`member-review-star ${value <= rating ? "is-active" : ""}`}
-              aria-label={`${value} star${value === 1 ? "" : "s"}`}
+              aria-label={t(`learn.classroom.review.${value === 1 ? "starOne" : "starMany"}`).replace("{count}", () => String(value))}
             >
               <Star aria-hidden="true" size={18} fill="currentColor" />
             </button>
@@ -114,22 +134,23 @@ export function CourseReviewPanel({
           maxLength={1200}
           rows={4}
           className="min-h-28 rounded-[12px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)]"
-          placeholder="What should future learners know about this course?"
+          aria-label={t("learn.classroom.review.bodyLabel")}
+          placeholder={t("learn.classroom.review.placeholder")}
         />
 
         {!canReview ? (
           <p className="rounded-[10px] bg-white px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-ink-soft)]">
             {previewMode
-              ? "Preview mode cannot publish course reviews."
+              ? t("learn.classroom.review.preview")
               : progressPercent < 50
-                ? "Reviews open after you complete 50% of the course."
-                : "Sign in to review this course."}
+                ? t("learn.classroom.review.progressRequired")
+                : t("learn.classroom.review.signIn")}
           </p>
         ) : null}
 
         {message ? (
           <p className="rounded-[10px] bg-white px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-primary)]">
-            {message}
+            {t(message)}
           </p>
         ) : null}
 
@@ -139,10 +160,10 @@ export function CourseReviewPanel({
           className="button-solid w-fit px-4 py-2.5 text-sm disabled:opacity-60"
         >
           {isSaving
-            ? "Saving..."
+            ? t("learn.classroom.review.saving")
             : existingReview
-              ? "Update review"
-              : "Submit review"}
+              ? t("learn.classroom.review.update")
+              : t("learn.classroom.review.submit")}
         </button>
       </form>
     </section>
