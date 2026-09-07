@@ -127,6 +127,7 @@
       "heading": "Complete your profile"
     },
     "signup": {
+      "progress": "Step {current} of {total}",
       "introLearner": "This starts you as a learner. You can add the educator side later from your profile.",
       "introEducator": "This starts you as an educator. You can add the learner side later from your profile.",
       "roleQuestion": "What brings you to SkillsetMind?",

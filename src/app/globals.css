@@ -60,10 +60,8 @@
   --color-danger-soft: rgba(178, 34, 52, 0.06);
   --color-ink-indigo: #14182b;
   --color-brass: #c99a46;
-  /* Dark-mode foreground variants. In :root they EQUAL the saturated base token
-     (zero light-mode change); [data-theme="dark"] lightens them so semantic TEXT/
-     ICON/BORDER clears WCAG AA on dark surfaces (the base tokens stay saturated
-     for white-bearing solid fills, which never use these). See A1-cont record. */
+  /* Semantic foreground variants for text/icons/borders on themed surfaces.
+     Keep them separate from decorative colors and white-bearing solid fills. */
   --color-accent-fg: #795615;
   /* Error text used to be var(--color-accent-fg) everywhere, and that was
      correct while the accent WAS this red. The brass rebrand moved accent-fg to
@@ -71,7 +69,9 @@
      a failure. This is the --color-danger-fg the account-menu comment below
      anticipated. #b22234 = 6.11:1 on the 6%-tint pill, 6.64:1 on white. */
   --color-danger-fg: #b22234;
-  --color-success-fg: #1f8a5b;
+  /* The decorative green gives 12px password requirements only 3.92:1 on
+     surface-soft. This darker foreground clears normal-text AA. */
+  --color-success-fg: #176b46;
   --shadow-soft: 0 1px 2px rgba(26, 54, 93, 0.08), 0 10px 24px rgba(26, 54, 93, 0.11);
   --shadow-strong: 0 18px 44px rgba(15, 39, 68, 0.14);
   /* Anel de foco unico. Antes cada tela pintava o seu (navy antigo
@@ -691,7 +691,6 @@ p {
 [data-theme="dark"] .payout-statements,
 [data-theme="dark"] .payout-tax-card,
 [data-theme="dark"] .course-upload-panel,
-[data-theme="dark"] .auth-card,
 [data-theme="dark"] .credential-metric-card {
   background: var(--color-surface);
 }
@@ -714,7 +713,6 @@ p {
 /* Selected tabs keep their white "selected" affordance (like .platform-nav-active)
    but their label used var(--color-primary) -> light blue on white (~2.16:1).
    Pin the label to the same dark ink the nav chip uses (~15:1). Covers hover. */
-[data-theme="dark"] .auth-tabs button.active,
 [data-theme="dark"] .studio-range-tabs button:hover,
 [data-theme="dark"] .studio-range-tabs button.is-active,
 [data-theme="dark"] .credential-filter-tabs button:hover,
@@ -2084,61 +2082,40 @@ select:focus-visible {
 }
 
 .auth-split {
-  min-height: 100vh;
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  background:
-    radial-gradient(circle at 8% -10%, rgba(44, 82, 130, 0.08), transparent 36rem),
-    radial-gradient(circle at 110% 8%, rgba(178, 34, 52, 0.06), transparent 32rem),
-    linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  min-height: 100svh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  background: var(--color-base);
 }
 
-/* Desktop split: navy brand panel on the left, form column on the right.
-   Mobile keeps the single top-anchored card (aside hidden). */
+/* Form first in the document; the decorative portrait occupies the right half. */
 @media (min-width: 1024px) {
   .auth-split {
-    flex-direction: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-/* Brand panel — desktop only. Always-navy regardless of theme, so it uses
-   fixed brand values like the marketing hero. A researched background image can
-   later layer in behind the content under a navy overlay (one-element insert). */
 .auth-aside {
   display: none;
 }
 
 @media (min-width: 1024px) {
   .auth-aside {
-    /* Pinned to the viewport: the panel (and the portrait inside it) never
-       grows past one screen even when the form column is taller. This is also
-       what keeps the photo from being blown up — the taller the panel, the
-       more the browser has to upscale the image. */
+    /* Only the portrait is capped; the form and document may grow freely. */
     position: sticky;
     top: 0;
-    height: 100vh;
-    height: 100dvh;
-    align-self: flex-start;
+    height: 100svh;
+    min-width: 0;
+    align-self: start;
     overflow: hidden;
-    flex: 0 0 44%;
-    max-width: 600px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    gap: 32px;
-    padding: 40px 48px;
-    background:
-      radial-gradient(circle at 16% 18%, rgba(255, 255, 255, 0.1), transparent 42%),
-      radial-gradient(circle at 88% 86%, rgba(178, 34, 52, 0.32), transparent 46%),
-      linear-gradient(150deg, #07172a 0%, #102944 52%, #1a365d 100%);
-    color: #ffffff;
+    display: block;
+    background: #091d2f;
   }
 }
 
 .auth-form-col {
-  flex: 1 1 auto;
   min-width: 0;
+  min-height: 100svh;
   display: flex;
   flex-direction: column;
 }
@@ -2169,70 +2146,83 @@ select:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 16px 32px;
+  gap: 12px;
+  padding: 16px clamp(16px, 3vw, 40px);
 }
 
 .auth-main {
-  /* Grow to fill tall viewports, but NEVER shrink below the form's own height.
-     That shrink (the old `flex: 1` resolves to flex-basis:0% + shrinkable) is
-     exactly what let the taller signup form get pinned inside the 100dvh column
-     so its last rows were unreachable at max scroll. flex-shrink:0 guarantees
-     the document grows past the viewport and the whole form stays
-     scroll-reachable on short laptops. */
+  /* A long form grows the document instead of clipping its final controls. */
   flex: 1 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  /* Sit high (founder: "precisa subir") with bottom clearance so the final
-     "Already have an account?" link clears the fold. Tightened (was 2.5vh/48px)
-     so the signup form fits common laptop viewports without a tall page. */
-  padding: clamp(8px, 1.5vh, 20px) 24px 32px;
+  padding: 32px clamp(20px, 4vw, 56px) 40px;
 }
 
 .auth-card {
   width: 100%;
+  min-width: 0;
   max-width: 440px;
-  /* Top-anchored (vertical offset lives on .auth-main); no full vertical
-     centering, so the form sits high and reads without scrolling on common
-     laptop heights. */
   margin: 0 auto;
-  padding: 20px 28px;
-  border: 1px solid var(--color-line-strong);
-  border-radius: 20px;
-  background: #ffffff;
-  box-shadow:
-    0 1px 2px rgba(15, 39, 68, 0.05),
-    0 24px 48px rgba(15, 39, 68, 0.08);
+  text-align: left;
+  overflow-wrap: anywhere;
 }
 
-.auth-tabs {
-  display: flex;
-  gap: 0;
-  padding: 4px;
-  margin-bottom: 16px;
-  border: 1px solid rgba(26, 54, 93, 0.1);
-  border-radius: 12px;
+.auth-title {
+  margin: 0;
+  font-size: clamp(1.625rem, 2.5vw, 2rem);
+  line-height: 1.2;
+  color: var(--color-primary);
+}
+
+.auth-description {
+  margin-top: 12px;
+  color: var(--color-ink-soft);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.auth-footer {
+  margin-top: 24px;
+  color: var(--color-ink-soft);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.auth-home-link {
+  display: inline-flex;
+  min-height: 44px;
+  min-width: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  color: var(--color-ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.auth-home-link:hover {
   background: var(--color-surface-soft);
 }
 
-.auth-tabs button {
-  flex: 1;
-  padding: 9px 12px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--color-ink-soft);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 700;
+.auth-topbar > a {
+  min-height: 44px;
 }
 
-.auth-tabs button.active {
-  background: #ffffff;
-  color: var(--color-primary);
-  box-shadow: 0 4px 10px rgba(15, 39, 68, 0.06);
+.auth-text-link,
+.auth-footer a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  max-width: 100%;
+}
+
+.auth-main button {
+  min-height: 44px;
+  min-width: 44px;
 }
 
 @keyframes dropdown-in {

@@ -19,7 +19,6 @@ export default async function ForgotPasswordPage() {
 
   return (
     <AuthShell
-      eyebrow={t("auth.forgot.eyebrow")}
       title={t("auth.forgot.title")}
       description={t("auth.forgot.description")}
       footer={
@@ -31,15 +30,7 @@ export default async function ForgotPasswordPage() {
         </>
       }
     >
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          {t("auth.forgot.kicker")}
-        </p>
-        <h2 className="display-title mt-3 text-4xl text-[var(--color-primary)]">
-          {t("auth.forgot.heading")}
-        </h2>
-        <ResetPasswordForm />
-      </div>
+      <ResetPasswordForm />
     </AuthShell>
   );
 }

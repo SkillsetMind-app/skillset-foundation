@@ -282,14 +282,7 @@ export function LoginForm() {
 
   return (
     <form className="mt-5 grid gap-3.5" onSubmit={handleSubmit}>
-      <div className="rounded-[12px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-          {accessLabel}
-        </p>
-        <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
-          {t("auth.accessSubtitle")}
-        </p>
-      </div>
+      <p className="text-sm text-[var(--color-ink-soft)]">{accessLabel}</p>
       <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
         {t("auth.email")}
         <input
@@ -307,7 +300,7 @@ export function LoginForm() {
           {t("auth.password")}
           <Link
             href="/forgot-password"
-            className="text-sm font-semibold text-[var(--color-primary)]"
+            className="auth-text-link text-sm font-semibold text-[var(--color-primary)]"
           >
             {t("auth.forgotPassword")}
           </Link>
@@ -367,7 +360,7 @@ export function LoginForm() {
       ) : null}
       <Link
         href={signupHref}
-        className="inline-flex text-sm font-semibold text-[var(--color-primary)]"
+        className="auth-text-link text-sm font-semibold text-[var(--color-primary)]"
       >
         {t("auth.createAccount")}
       </Link>

@@ -127,6 +127,7 @@
       "heading": "Completa tu perfil"
     },
     "signup": {
+      "progress": "Paso {current} de {total}",
       "introLearner": "Empiezas como estudiante. Puedes activar el lado de educador más tarde desde tu perfil.",
       "introEducator": "Empiezas como educador. Puedes activar el lado de estudiante más tarde desde tu perfil.",
       "roleQuestion": "¿Qué te trae a SkillsetMind?",
