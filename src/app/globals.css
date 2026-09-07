@@ -6827,6 +6827,11 @@ button:hover > .dash-card,
   --ma-ink: #eef1f6;
   --ma-ink-soft: #9aa6b6;
   --ma-ink-muted: #67717f;
+  /* O texto do hero fica na base: o gradiente vertical escurece o terço
+     inferior o bastante para branco ler sobre qualquer foto. Pior caso, foto
+     branca: 0.92 dá (27,29,32) → 16.9:1 para o título e 11.7:1 para a
+     descrição a 82% de branco (AA pede 4.5:1); o gradiente horizontal ainda
+     soma por cima disso. */
   --ma-hero-scrim:
     linear-gradient(
       90deg,
@@ -6835,7 +6840,7 @@ button:hover > .dash-card,
       rgba(7, 9, 13, 0.3) 62%,
       rgba(7, 9, 13, 0.1) 100%
     ),
-    linear-gradient(0deg, rgba(7, 9, 13, 0.7), rgba(7, 9, 13, 0) 40%);
+    linear-gradient(0deg, rgba(7, 9, 13, 0.92) 0%, rgba(7, 9, 13, 0.55) 34%, rgba(7, 9, 13, 0) 68%);
   --ma-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
   /* Brand colours used as TEXT need a per-theme variant: --ma-accent (#b22234)
      reads 2.84:1 on this background, so dark courses get a lighter red.
@@ -6862,7 +6867,7 @@ button:hover > .dash-card,
       rgba(8, 20, 38, 0.22) 64%,
       rgba(8, 20, 38, 0.04) 100%
     ),
-    linear-gradient(0deg, rgba(8, 20, 38, 0.54), rgba(8, 20, 38, 0) 42%);
+    linear-gradient(0deg, rgba(8, 20, 38, 0.86) 0%, rgba(8, 20, 38, 0.48) 36%, rgba(8, 20, 38, 0) 70%);
   --ma-shadow: 0 16px 40px rgba(15, 39, 68, 0.1);
   /* Mirror of the dark block: --ma-accent already reads 5.48:1 here, but
      --ma-success (#27a06a) is only 2.75:1 on near-white, so light courses get
@@ -6887,7 +6892,15 @@ button:hover > .dash-card,
   position: relative;
   overflow: hidden;
   display: flex;
-  min-height: clamp(380px, 46vw, 520px);
+  /* Altura = fatia do viewport, não 520px fixos. O canvas mede 1214px tanto a
+     1366 quanto a 1920 de largura, então proporção só por largura (21/9 do
+     canvas = 520px) não encaixava nada: entre as duas telas o que muda é a
+     ALTURA. 48svh deixa hero + faixa de prévia + abas dentro de um viewport de
+     ~600px (1366×768 com o navegador); 43vw ≈ 21/9 do canvas em janelas mais
+     estreitas que 1280px; 520px segue como teto. min-height, e não
+     aspect-ratio: com overflow hidden uma caixa de proporção fixa cortaria um
+     título de duas linhas ou o CTA do certificado — esta cresce com o texto. */
+  min-height: clamp(300px, min(43vw, 48svh), 520px);
   background: var(--ma-surface-2);
   font-family: var(--ma-sans);
 }
@@ -6898,6 +6911,9 @@ button:hover > .dash-card,
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* Capa mais larga que a caixa perde as bordas de cima e de baixo; ancorar no
+     terço superior preserva rostos, que numa foto de professor ficam ali. */
+  object-position: 50% 20%;
   display: block;
 }
 .members-hero__art {
@@ -6940,11 +6956,13 @@ button:hover > .dash-card,
 .members-hero__inner {
   position: relative;
   z-index: 3;
-  align-self: center;
+  /* Canto inferior esquerdo, sobre a parte mais escura do scrim. Centrado, o
+     título boiava no meio com um vazio embaixo. */
+  align-self: flex-end;
   width: 100%;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 48px 56px;
+  padding: 40px 56px;
 }
 .members-hero__back {
   display: inline-flex;
@@ -6996,9 +7014,12 @@ button:hover > .dash-card,
   -webkit-line-clamp: unset;
 }
 .members-hero__more {
-  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 4px;
   margin-left: -4px;
-  padding: 12px 4px;
+  padding: 0 4px;
   background: none;
   border: none;
   color: #fff;
@@ -7058,7 +7079,7 @@ button:hover > .dash-card,
 
 @media (max-width: 1100px) {
   .members-hero__inner {
-    padding: 44px 44px;
+    padding: 40px 44px;
   }
   .members-hero__art {
     width: 38%;
