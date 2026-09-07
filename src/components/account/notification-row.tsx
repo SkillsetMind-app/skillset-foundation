@@ -11,6 +11,7 @@ import {
   Star,
 } from "lucide-react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { AppNotification, NotificationType } from "@/domain/notification";
 import { DEFAULT_LOCALE } from "@/lib/i18n/config";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
@@ -86,6 +87,7 @@ export function NotificationRow({
 }: {
   notification: AppNotification;
 }) {
+  const { t, locale } = useTranslation();
   const Icon = typeIcons[notification.type] ?? Bell;
 
   return (
@@ -115,7 +117,7 @@ export function NotificationRow({
           </p>
         ) : null}
         <p className="mt-1 text-[11px] font-medium text-[var(--color-ink-muted)]">
-          {formatNotificationTime(notification.createdAt)}
+          {formatNotificationTime(notification.createdAt, t, locale)}
         </p>
       </div>
       {!notification.read ? (
