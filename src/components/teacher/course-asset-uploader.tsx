@@ -8,9 +8,10 @@ import {
 } from "lucide-react";
 
 import type { CourseAsset, CourseAssetKind } from "@/domain/course-asset";
+import { useTranslation } from "@/components/i18n/i18n-provider";
+import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 import {
   courseAssetAcceptTypes,
-  courseAssetKindLabels,
   formatCourseAssetSize,
   getCourseAssetUploadErrorMessage,
   isAllowedCourseAssetFile,
@@ -32,22 +33,19 @@ const moduleTargetKinds: CourseAssetKind[] = ["module_cover"];
 
 const uploadPresets: Array<{
   kind: CourseAssetKind;
-  label: string;
   detail: string;
   icon: LucideIcon;
 }> = [
   {
     kind: "module_cover",
-    label: "Module cover",
     // A proporção é a do .member-module-card__cover (16/10, object-cover):
     // sem dizer isso aqui o professor só descobria o enquadramento na área do aluno.
-    detail: "Visual cover for one module in the student members area. Shown at 16:10.",
+    detail: "creatorEditor.assets.presets.module",
     icon: Layers3,
   },
   {
     kind: "course_cover",
-    label: "Course cover",
-    detail: "Public artwork for marketplace, course detail, and previews.",
+    detail: "creatorEditor.assets.presets.course",
     icon: UploadCloud,
   },
 ];
@@ -58,6 +56,7 @@ type CourseAssetUploaderProps = {
 };
 
 export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderProps) {
+  const { locale, t } = useTranslation();
   const [assets, setAssets] = useState<CourseAsset[]>([]);
   const [kind, setKind] = useState<CourseAssetKind>("course_cover");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -66,8 +65,13 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
   const [fileInputKey, setFileInputKey] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadCourseAssetProgress | null>(null);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState<
+    | { kind: "load" | "module" | "delete" }
+    | { kind: "invalidFile"; assetKind: CourseAssetKind }
+    | { kind: "upload"; cause: unknown }
+    | null
+  >(null);
+  const [success, setSuccess] = useState<"uploaded" | "deleted" | null>(null);
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
   const allLessons = course.modules.flatMap((module) =>
     module.lessons.map((lesson) => ({
@@ -84,6 +88,14 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
   const moduleAssets = assets.filter((asset) => asset.moduleId);
   const lessonAssets = assets.filter((asset) => asset.lessonId);
   const activePreset = uploadPresets.find((preset) => preset.kind === kind);
+  const kindLabel = getCourseAssetKindLabel(kind, t);
+  const errorMessage = !error ? null : error.kind === "upload"
+    ? getCourseAssetUploadErrorMessage(error.cause, supabaseUploadLimitBytes, t)
+    : error.kind === "invalidFile"
+      ? t("creatorEditor.assets.errors.invalidFile")
+        .replace("{kind}", () => getCourseAssetKindLabel(error.assetKind, t).toLocaleLowerCase(locale))
+        .replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))
+      : t(`creatorEditor.assets.errors.${error.kind}`);
 
   // Prévia do arquivo escolhido antes de enviar. Os dois presets deste painel
   // são imagens; sem isto o professor subia a capa do módulo às cegas.
@@ -107,7 +119,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
     return subscribeToCourseAssets(
       course.id,
       setAssets,
-      () => setError("We could not load course assets."),
+      () => setError({ kind: "load" }),
     );
   }, [course.id]);
 
@@ -118,19 +130,17 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
       return;
     }
 
-    setError("");
-    setSuccess("");
+    setError(null);
+    setSuccess(null);
     setUploadProgress(null);
 
     if (!isAllowedCourseAssetFile(selectedFile, kind)) {
-      setError(
-        `Use a valid ${courseAssetKindLabels[kind].toLowerCase()} file under ${formatCourseAssetSize(supabaseUploadLimitBytes)}.`,
-      );
+      setError({ kind: "invalidFile", assetKind: kind });
       return;
     }
 
     if (requiresModuleTarget && !moduleId) {
-      setError("Choose the module this cover belongs to.");
+      setError({ kind: "module" });
       return;
     }
 
@@ -147,7 +157,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
         moduleId: requiresModuleTarget ? moduleId : null,
         onProgress: setUploadProgress,
       });
-      setSuccess("Asset uploaded.");
+      setSuccess("uploaded");
       setSelectedFile(null);
       setModuleId("");
       setIsPreview(false);
@@ -157,7 +167,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
       // O motivo real (teto de tamanho, permissão, conexão) já vem pronto do
       // domínio; o texto genérico culpava "permissões" por um 413 de tamanho.
       setUploadProgress(null);
-      setError(getCourseAssetUploadErrorMessage(uploadError));
+      setError({ kind: "upload", cause: uploadError });
     } finally {
       setIsUploading(false);
     }
@@ -169,22 +179,22 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
     }
 
     const confirmed = window.confirm(
-      `Delete "${asset.fileName}"? This permanently removes the file.`,
+      t("creatorEditor.lesson.deleteConfirm").replace("{fileName}", () => asset.fileName),
     );
 
     if (!confirmed) {
       return;
     }
 
-    setError("");
-    setSuccess("");
+    setError(null);
+    setSuccess(null);
     setDeletingAssetId(asset.id);
 
     try {
       await deleteCourseAsset(asset);
-      setSuccess("Asset deleted.");
+      setSuccess("deleted");
     } catch {
-      setError("We could not delete this asset. Check course ownership and current permissions.");
+      setError({ kind: "delete" });
     } finally {
       setDeletingAssetId(null);
     }
@@ -195,29 +205,27 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Course media library
+            {t("creatorEditor.assets.label")}
           </p>
           <h3 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
-            Upload covers, videos, and materials for this course.
+            {t("creatorEditor.assets.title")}
           </h3>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-            Upload and manage media for this course and its modules. For
-            per-lesson videos, materials, and thumbnails, open the Lesson
-            Studio by clicking any lesson in the Curriculum tab.
+            {t("creatorEditor.assets.help")}
           </p>
         </div>
         <span className="rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
-          {assets.length} uploaded
+          {t("creatorEditor.assets.count").replace("{count}", () => String(assets.length))}
         </span>
       </div>
       {course.coverImageUrl ? (
         <p className="mt-4 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]">
-          Course cover is set. Upload another course cover to replace it.
+          {t("creatorEditor.assets.coverSet")}
         </p>
       ) : null}
 
       <form className="mt-5 grid gap-3" onSubmit={handleUpload}>
-        <div className="course-upload-presets" role="list" aria-label="Upload type">
+        <div className="course-upload-presets" role="list" aria-label={t("creatorEditor.assets.uploadType")}>
           {uploadPresets.map((preset) => {
             const Icon = preset.icon;
             const active = preset.kind === kind;
@@ -241,9 +249,9 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
                   <Icon aria-hidden="true" size={18} strokeWidth={2} />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-sm font-bold">{preset.label}</span>
+                  <span className="block text-sm font-bold">{getCourseAssetKindLabel(preset.kind, t)}</span>
                   <span className="mt-1 block text-xs leading-5">
-                    {preset.detail}
+                    {t(preset.detail)}
                   </span>
                 </span>
               </button>
@@ -253,18 +261,19 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
 
         <div className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
-            Uploading
+            {t("creatorEditor.assets.uploadingLabel")}
           </p>
           <p className="mt-2 text-sm font-bold text-[var(--color-ink)]">
-            {activePreset?.label ?? courseAssetKindLabels[kind]}
+            {kindLabel}
           </p>
           <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
-            {activePreset?.detail ?? "Choose the target and file before uploading."}{" "}
-            Image up to {formatCourseAssetSize(supabaseUploadLimitBytes)}.
+            {activePreset ? t(activePreset.detail) : t("creatorEditor.assets.targetHelp")}{" "}
+            {t("creatorEditor.assets.imageLimit").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))}
           </p>
         </div>
 
         <select
+          aria-label={t("creatorEditor.assets.assetType")}
           value={kind}
           onChange={(event) => {
             setKind(event.target.value as CourseAssetKind);
@@ -278,14 +287,14 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
         >
           {assetKinds.map((item) => (
             <option key={item} value={item}>
-              {courseAssetKindLabels[item]}
+              {getCourseAssetKindLabel(item, t)}
             </option>
           ))}
         </select>
 
         {requiresModuleTarget ? (
           <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Attach to module
+            {t("creatorEditor.assets.attachModule")}
             <select
               value={moduleId}
               onChange={(event) => setModuleId(event.target.value)}
@@ -293,7 +302,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
               className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
             >
               <option value="">
-                {allModules.length === 0 ? "Add modules first" : "Choose module"}
+                {allModules.length === 0 ? t("creatorEditor.assets.addModules") : t("creatorEditor.assets.chooseModule")}
               </option>
               {allModules.map((module) => (
                 <option key={module.id} value={module.id}>
@@ -308,7 +317,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
           key={fileInputKey}
           type="file"
           accept={courseAssetAcceptTypes[kind]}
-          aria-label={`Choose a ${courseAssetKindLabels[kind].toLowerCase()} file`}
+          aria-label={t("creatorEditor.assets.chooseFile").replace("{kind}", () => locale === "en" ? kindLabel.toLowerCase() : kindLabel)}
           disabled={!isEditable || isUploading}
           onChange={(event) => {
             setSelectedFile(event.target.files?.[0] ?? null);
@@ -325,7 +334,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
             onChange={(event) => setIsPreview(event.target.checked)}
             className="mt-1"
           />
-          Mark as free preview asset when it is safe to expose before purchase.
+          {t("creatorEditor.assets.previewHelp")}
         </label>
 
         {selectedFile ? (
@@ -335,12 +344,12 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={previewUrl}
-                alt={`Preview of ${selectedFile.name}`}
+                alt={t("creatorEditor.assets.previewAlt").replace("{fileName}", () => selectedFile.name)}
                 className="h-16 w-24 shrink-0 rounded-[8px] border border-[var(--color-line)] bg-white object-cover"
               />
             ) : null}
             <span>
-              Selected: {selectedFile.name} ({formatCourseAssetSize(selectedFile.size)})
+              {t("creatorEditor.assets.selected").replace(/\{fileName\}|\{size\}/g, (token) => token === "{fileName}" ? selectedFile.name : formatCourseAssetSize(selectedFile.size))}
             </span>
           </div>
         ) : null}
@@ -348,14 +357,14 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
         {uploadProgress ? <UploadProgressNote progress={uploadProgress} /> : null}
 
         {error ? (
-          <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {error}
+          <p role="alert" className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+            {errorMessage}
           </p>
         ) : null}
 
         {success ? (
           <p className="info-notice">
-            {success}
+            {success === "uploaded" ? t("creatorEditor.assets.uploaded") : t("creatorEditor.lesson.success.deleted")}
           </p>
         ) : null}
 
@@ -369,20 +378,19 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
           }
           className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
         >
-          {isUploading ? "Uploading..." : "Upload asset"}
+          {isUploading ? t("creatorEditor.members.uploading") : t("creatorEditor.assets.upload")}
         </button>
       </form>
 
       <div className="mt-6 grid gap-4">
         {assets.length === 0 ? (
           <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-            No uploaded assets yet. Start with a course cover or first lesson
-            material.
+            {t("creatorEditor.assets.empty")}
           </p>
         ) : (
           <>
             <AssetGroup
-              title="Course-level assets"
+              title={t("creatorEditor.assets.courseGroup")}
               assets={courseLevelAssets}
               allModules={allModules}
               allLessons={allLessons}
@@ -391,7 +399,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
               onDelete={handleDeleteAsset}
             />
             <AssetGroup
-              title="Module assets"
+              title={t("creatorEditor.assets.moduleGroup")}
               assets={moduleAssets}
               allModules={allModules}
               allLessons={allLessons}
@@ -400,7 +408,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
               onDelete={handleDeleteAsset}
             />
             <AssetGroup
-              title="Lesson assets"
+              title={t("creatorEditor.assets.lessonGroup")}
               assets={lessonAssets}
               allModules={allModules}
               allLessons={allLessons}
@@ -432,6 +440,7 @@ function AssetGroup({
   deletingAssetId: string | null;
   onDelete: (asset: CourseAsset) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="grid gap-2">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
@@ -439,7 +448,7 @@ function AssetGroup({
       </p>
       {assets.length === 0 ? (
         <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-3 text-xs leading-5 text-[var(--color-ink-soft)]">
-          Nothing uploaded here yet.
+          {t("creatorEditor.assets.groupEmpty")}
         </p>
       ) : (
         assets.map((asset) => {
@@ -461,7 +470,7 @@ function AssetGroup({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={asset.downloadUrl}
-                    alt={`${courseAssetKindLabels[asset.kind]}: ${asset.fileName}`}
+                    alt={`${getCourseAssetKindLabel(asset.kind, t)}: ${asset.fileName}`}
                     className="h-16 w-24 shrink-0 rounded-[8px] border border-[var(--color-line)] bg-white object-cover"
                   />
                 ) : null}
@@ -470,11 +479,11 @@ function AssetGroup({
                     {asset.fileName}
                   </p>
                   <p className="mt-1 text-xs uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                    {courseAssetKindLabels[asset.kind]} - {formatCourseAssetSize(asset.size)}
+                    {getCourseAssetKindLabel(asset.kind, t)} - {formatCourseAssetSize(asset.size)}
                   </p>
                   {asset.lessonId ? (
                     <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
-                      Lesson:{" "}
+                      {t("creatorEditor.assets.lesson")}{" "}
                       {lesson
                         ? `${lesson.moduleTitle} - ${lesson.title}`
                         : asset.lessonId}
@@ -482,12 +491,12 @@ function AssetGroup({
                   ) : null}
                   {asset.moduleId ? (
                     <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
-                      Module: {targetModule ? targetModule.title : asset.moduleId}
+                      {t("creatorEditor.assets.module")} {targetModule ? targetModule.title : asset.moduleId}
                     </p>
                   ) : null}
                 </div>
                 <span className="rounded-[8px] bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
-                  {asset.isPreview ? "Preview" : "Private"}
+                  {asset.isPreview ? t("creatorEditor.lesson.state.preview") : t("creatorEditor.lesson.state.private")}
                 </span>
               </div>
               {isEditable ? (
@@ -498,7 +507,7 @@ function AssetGroup({
                     disabled={deletingAssetId === asset.id}
                     className="button-danger px-3.5 py-2 text-xs disabled:opacity-60"
                   >
-                    {deletingAssetId === asset.id ? "Deleting..." : "Delete"}
+                    {deletingAssetId === asset.id ? t("creatorEditor.lesson.deleting") : t("creatorEditor.lesson.delete")}
                   </button>
                 </div>
               ) : null}

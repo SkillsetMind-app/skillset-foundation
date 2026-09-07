@@ -85,10 +85,7 @@ import {
 } from "@/lib/data/course-assets";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
 import type { CourseAsset } from "@/domain/course-asset";
-import {
-  ACTIVATION_REQUIRED_MESSAGE,
-  isActivationRequiredError,
-} from "@/domain/creator-verification";
+import { isActivationRequiredError } from "@/domain/creator-verification";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import { isPublicFeatureEnabled } from "@/lib/feature-flags";
 import { track } from "@/lib/posthog/events";
@@ -98,11 +95,11 @@ import { usePublishGates } from "@/components/teacher/use-publish-gates";
 import { getCourseReadiness } from "@/domain/course-readiness";
 
 const builderTabs = [
-  { value: "details", label: "Details", sub: "Title, categories, promise" },
-  { value: "pricing", label: "Pricing", sub: "Payment, drip, preview" },
-  { value: "content", label: "Curriculum", sub: "Modules, lessons, uploads" },
+  { value: "details", label: "creatorEditor.builder.steps.details.tab", sub: "creatorEditor.builder.steps.details.tabHelp" },
+  { value: "pricing", label: "creatorEditor.builder.steps.pricing.tab", sub: "creatorEditor.builder.steps.pricing.tabHelp" },
+  { value: "content", label: "creatorEditor.builder.steps.content.tab", sub: "creatorEditor.builder.steps.content.tabHelp" },
   { value: "members", label: "Members Area", sub: "Theme, cover, title" },
-  { value: "review", label: "Publish", sub: "Readiness and launch" },
+  { value: "review", label: "creatorEditor.builder.steps.review.tab", sub: "creatorEditor.builder.steps.review.tabHelp" },
 ] as const;
 
 type BuilderTab = (typeof builderTabs)[number]["value"];
@@ -118,11 +115,11 @@ const builderStages: Array<{
   target: BuilderTab;
   anchor: string;
 }> = [
-  { id: "basics", label: "Course basics", sub: "Info, cover, promise", target: "details", anchor: "builder-sec-cover" },
-  { id: "pricing", label: "Pricing", sub: "Access model", target: "pricing", anchor: "builder-sec-pricing" },
-  { id: "content", label: "Curriculum", sub: "Modules and lessons", target: "content", anchor: "builder-sec-modules" },
+  { id: "basics", label: "creatorEditor.builder.steps.details.stage", sub: "creatorEditor.builder.steps.details.stageHelp", target: "details", anchor: "builder-sec-cover" },
+  { id: "pricing", label: "creatorEditor.builder.steps.pricing.tab", sub: "creatorEditor.builder.steps.pricing.stageHelp", target: "pricing", anchor: "builder-sec-pricing" },
+  { id: "content", label: "creatorEditor.builder.steps.content.tab", sub: "creatorEditor.builder.steps.content.stageHelp", target: "content", anchor: "builder-sec-modules" },
   { id: "members", label: "Members area", sub: "Learner experience", target: "members", anchor: "builder-sec-members" },
-  { id: "publish", label: "Publish", sub: "Final checks", target: "review", anchor: "builder-sec-review" },
+  { id: "publish", label: "creatorEditor.builder.steps.review.tab", sub: "creatorEditor.builder.steps.review.stageHelp", target: "review", anchor: "builder-sec-review" },
 ];
 type ActiveLessonStudio = {
   moduleId: string;
@@ -130,71 +127,71 @@ type ActiveLessonStudio = {
 } | null;
 
 const lessonTypes: { value: LessonType; label: string }[] = [
-  { value: "video", label: "Video lesson" },
-  { value: "text", label: "Text lesson" },
+  { value: "video", label: "publicCourses.lessonTypes.video" },
+  { value: "text", label: "publicCourses.lessonTypes.text" },
   // Quiz/assignment authoring is hidden until a real assessment engine exists
   // (no question/submission/grading model). See
   // docs/plans/2026-06-23-launch-readiness.md (B8).
-  { value: "live_recording", label: "Live recording" },
-  { value: "download", label: "Download" },
-  { value: "external_embed", label: "External embed" },
+  { value: "live_recording", label: "publicCourses.lessonTypes.live_recording" },
+  { value: "download", label: "publicCourses.lessonTypes.download" },
+  { value: "external_embed", label: "publicCourses.lessonTypes.external_embed" },
 ];
 
 const dripStrategies: { value: DripStrategy; label: string; detail: string }[] = [
   {
     value: "instant",
-    label: "Instant access",
-    detail: "Every lesson is available immediately after enrollment.",
+    label: "creatorEditor.builder.drip.instant.label",
+    detail: "creatorEditor.builder.drip.instant.detail",
   },
   {
     value: "sequential_progress",
-    label: "Sequential progress",
-    detail: "The next lesson opens after the previous lesson is completed.",
+    label: "creatorEditor.builder.drip.sequential_progress.label",
+    detail: "creatorEditor.builder.drip.sequential_progress.detail",
   },
   {
     value: "time_drip_lesson",
-    label: "One lesson per interval",
-    detail: "Release lessons gradually based on enrollment date.",
+    label: "creatorEditor.builder.drip.time_drip_lesson.label",
+    detail: "creatorEditor.builder.drip.time_drip_lesson.detail",
   },
   {
     value: "time_drip_module",
-    label: "One module per interval",
-    detail: "Release modules gradually based on enrollment date.",
+    label: "creatorEditor.builder.drip.time_drip_module.label",
+    detail: "creatorEditor.builder.drip.time_drip_module.detail",
   },
   {
     value: "time_drip_custom",
-    label: "Custom lesson schedule",
-    detail: "Use each lesson's delay field for precise release timing.",
+    label: "creatorEditor.builder.drip.time_drip_custom.label",
+    detail: "creatorEditor.builder.drip.time_drip_custom.detail",
   },
 ];
 
 const paymentModelOptions: PlanSelectorOption<TeacherCoursePaymentType>[] = [
   {
     value: "one_time",
-    title: "One-time payment",
-    description: "Learners pay once and get lifetime access.",
-    features: ["Best for complete courses", "Lifetime access for learners"],
+    title: "creatorEditor.builder.paymentModels.one_time.title",
+    description: "creatorEditor.builder.paymentModels.one_time.description",
+    features: ["creatorEditor.builder.paymentModels.one_time.feature1", "creatorEditor.builder.paymentModels.one_time.feature2"],
     icon: CreditCard,
   },
   {
     value: "free",
-    title: "Free",
-    description: "No payment required. Useful for lead-gen or trial cohorts.",
-    features: ["Opens enrollment without checkout", "Useful for previews or pilots"],
+    title: "creatorEditor.builder.paymentModels.free.title",
+    description: "creatorEditor.builder.paymentModels.free.description",
+    features: ["creatorEditor.builder.paymentModels.free.feature1", "creatorEditor.builder.paymentModels.free.feature2"],
     icon: Gift,
   },
   {
     value: "subscription_monthly",
-    title: "Monthly subscription",
-    description: "Recurring monthly billing.",
-    features: ["Recurring access", "Cancellation controls"],
+    title: "creatorEditor.builder.paymentModels.subscription_monthly.title",
+    description: "creatorEditor.builder.paymentModels.subscription_monthly.description",
+    features: ["creatorEditor.builder.paymentModels.subscription_monthly.feature1", "creatorEditor.builder.paymentModels.subscription_monthly.feature2"],
     icon: Repeat,
   },
   {
     value: "subscription_yearly",
-    title: "Yearly subscription",
-    description: "Recurring yearly billing.",
-    features: ["Annual access", "Renewal reminders"],
+    title: "creatorEditor.builder.paymentModels.subscription_yearly.title",
+    description: "creatorEditor.builder.paymentModels.subscription_yearly.description",
+    features: ["creatorEditor.builder.paymentModels.subscription_yearly.feature1", "creatorEditor.builder.paymentModels.subscription_yearly.feature2"],
     icon: CalendarClock,
   },
 ];
@@ -267,8 +264,8 @@ function normalizeDripDelayDays(value: string): number | null {
   return Math.round(parsedValue);
 }
 
-function getLessonTypeLabel(type: LessonType) {
-  return lessonTypes.find((item) => item.value === type)?.label ?? type;
+function getLessonTypeLabel(type: LessonType, t: (key: string) => string) {
+  return t(`publicCourses.lessonTypes.${type}`);
 }
 
 function moveArrayItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
@@ -298,20 +295,29 @@ function sanitizeModules(modules: TeacherCourseModule[]): TeacherCourseModule[] 
   return normalizeTeacherCourseModules(modules);
 }
 
-function getCourseStructureError(modules: TeacherCourseModule[]): string {
+type BuilderError = {
+  code: "notFound" | "load" | "chooseModule" | "lessonTitle" | "moduleTitleMissing"
+    | "lessonTitleMissing" | "price" | "installmentsSave" | "category" | "paidPrice"
+    | "installmentsPublish" | "duplicateTitle" | "activation" | "save" | "preview"
+    | "setup" | "verification" | "payouts" | "payment" | "publish";
+  moduleIndex?: number;
+  lessonIndex?: number;
+};
+
+function getCourseStructureError(modules: TeacherCourseModule[]): BuilderError | null {
   for (const [moduleIndex, module] of modules.entries()) {
     if (!module.title.trim()) {
-      return `Module ${moduleIndex + 1} needs a title before saving.`;
+      return { code: "moduleTitleMissing", moduleIndex: moduleIndex + 1 };
     }
 
     for (const [lessonIndex, lesson] of module.lessons.entries()) {
       if (!lesson.title.trim()) {
-        return `Lesson ${lessonIndex + 1} in module ${moduleIndex + 1} needs a title before saving.`;
+        return { code: "lessonTitleMissing", moduleIndex: moduleIndex + 1, lessonIndex: lessonIndex + 1 };
       }
     }
   }
 
-  return "";
+  return null;
 }
 
 type BuilderDraftFields = {
@@ -424,7 +430,7 @@ function builderDraftSignatureFromCourse(course: TeacherCourse): string {
 }
 
 export function CourseBuilderStudio() {
-  const { t } = useTranslation();
+  const { locale, t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const courseId = searchParams.get("courseId");
@@ -472,7 +478,7 @@ export function CourseBuilderStudio() {
   const [communityEnabled, setCommunityEnabled] = useState(false);
   const [moduleTitle, setModuleTitle] = useState("");
   const [moduleSummary, setModuleSummary] = useState("");
-  const [moduleError, setModuleError] = useState("");
+  const [moduleError, setModuleError] = useState(false);
   const [lessonModuleId, setLessonModuleId] = useState("");
   const [lessonTitle, setLessonTitle] = useState("");
   const [lessonType, setLessonType] = useState<LessonType>("video");
@@ -482,8 +488,13 @@ export function CourseBuilderStudio() {
   const [lessonContentText, setLessonContentText] = useState("");
   const [lessonExternalUrl, setLessonExternalUrl] = useState("");
   const [lessonIsFreePreview, setLessonIsFreePreview] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState<BuilderError | null>(null);
+  const [success, setSuccess] = useState<"lessonAdded" | "draftSaved" | "published" | null>(null);
+  const errorMessage = error
+    ? t(`creatorEditor.builder.errors.${error.code}`)
+      .replace("{module}", () => String(error.moduleIndex ?? ""))
+      .replace("{lesson}", () => String(error.lessonIndex ?? ""))
+    : null;
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -521,7 +532,7 @@ export function CourseBuilderStudio() {
         setIsLoading(false);
 
         if (!nextCourse) {
-          setError("We could not find this course.");
+          setError({ code: "notFound" });
           return;
         }
 
@@ -559,7 +570,7 @@ export function CourseBuilderStudio() {
         setMembersDescription(nextCourse.membersDescription ?? "");
         setCommunityEnabled(nextCourse.communityEnabled ?? false);
         setLessonModuleId(nextCourse.modules?.[0]?.id ?? "");
-        setError("");
+        setError(null);
         // Baseline mirrors exactly what the state setters above produce, so a
         // fresh hydration (or our own write echoing back) is never seen as a
         // user edit. Async callback -> setState is allowed here.
@@ -581,12 +592,12 @@ export function CourseBuilderStudio() {
         ) {
           pendingLessonStudioRef.current = null;
           setActiveLessonStudio(pendingStudio);
-          setSuccess("");
+          setSuccess(null);
         }
       },
       () => {
         setIsLoading(false);
-        setError("We could not load this course. Please return to Teacher Studio and try again.");
+        setError({ code: "load" });
       },
     );
   }, [courseId]);
@@ -724,6 +735,7 @@ export function CourseBuilderStudio() {
   const readiness = getCourseReadiness(
     { ...builderDraftPayload, coverImageUrl: course?.coverImageUrl ?? null },
     publishGates,
+    t,
   );
   const activeLessonStudioModule = activeLessonStudio
     ? modules.find((module) => module.id === activeLessonStudio.moduleId) ?? null
@@ -753,20 +765,20 @@ export function CourseBuilderStudio() {
   );
   const priceIntervalSuffix =
     paymentType === "subscription_monthly"
-      ? " / month"
+      ? t("creatorEditor.builder.summary.month")
       : paymentType === "subscription_yearly"
-        ? " / year"
+        ? t("creatorEditor.builder.summary.year")
         : "";
   const formattedPrice =
     paymentType === "free"
-      ? "Free"
+      ? t("publicCourses.free")
       : parsedPriceAmountMinor
-        ? `${new Intl.NumberFormat("en-US", {
+        ? `${new Intl.NumberFormat(locale, {
             style: "currency",
             currency: currency.toUpperCase(),
             maximumFractionDigits: 0,
           }).format(parsedPriceAmountMinor / 100)}${priceIntervalSuffix}`
-        : "Set price";
+        : t("creatorEditor.builder.summary.setPrice");
   const tabCompletion: Record<BuilderTab, boolean> = {
     details: Boolean(
       title.trim()
@@ -813,17 +825,26 @@ export function CourseBuilderStudio() {
     isEditable,
     priceFieldIsValid,
     installmentsAreValid,
-    draftStructureError,
+    draftStructureError: Boolean(draftStructureError),
   });
   const canAutosaveDraft = isEditable && autosaveBlockedReason === null;
   const draftIsDirty =
     savedSignature !== null && builderDraftSignature !== savedSignature;
+  // Preço e parcelas só ficam inválidos por digitação (a hidratação sempre
+  // produz valor válido ou vazio). Um preço inválido que normaliza para o mesmo
+  // valor da base ("invalid" e vazio viram null) não muda a assinatura, e o
+  // estúdio dizia "All changes saved" com o campo errado na tela. O bloqueio
+  // desses campos é visível mesmo sem diferença na assinatura; estrutura segue
+  // exigindo rascunho sujo, porque pode vir assim do banco.
+  const typedFieldBlocksSave =
+    savedSignature !== null
+    && (autosaveBlockedReason === "price" || autosaveBlockedReason === "installments");
   const displayedSaveStatus: "pending" | "saving" | "saved" | "error" | "blocked" =
     autosaveState === "saving"
       ? "saving"
       : autosaveState === "error"
         ? "error"
-        : draftIsDirty && autosaveBlockedReason
+        : autosaveBlockedReason && (draftIsDirty || typedFieldBlocksSave)
           ? "blocked"
           : draftIsDirty
             ? "pending"
@@ -845,7 +866,7 @@ export function CourseBuilderStudio() {
       setInstallmentsEnabled(false);
     }
 
-    setSuccess("");
+    setSuccess(null);
   }
 
   function toggleCategory(nextCategory: string) {
@@ -862,7 +883,7 @@ export function CourseBuilderStudio() {
       setCategory(normalizedCategories[0] ?? "");
       return normalizedCategories;
     });
-    setSuccess("");
+    setSuccess(null);
   }
 
   function handleAddModule(event: FormEvent<HTMLFormElement>) {
@@ -879,11 +900,11 @@ export function CourseBuilderStudio() {
       // é renderizado ~600 linhas abaixo daqui, três telas de rolagem longe do
       // botão. Clicar em "Add module" sem título parecia não fazer nada, e a
       // explicação estava fora da tela.
-      setModuleError("Add a module title before creating the module.");
+      setModuleError(true);
       return;
     }
 
-    setModuleError("");
+    setModuleError(false);
 
     const nextModule = {
       id: createLocalId("module"),
@@ -897,8 +918,8 @@ export function CourseBuilderStudio() {
     setLessonModuleId(nextModule.id);
     setModuleTitle("");
     setModuleSummary("");
-    setError("");
-    setSuccess("");
+    setError(null);
+    setSuccess(null);
   }
 
   function handleAddLesson(event: FormEvent<HTMLFormElement>) {
@@ -909,14 +930,14 @@ export function CourseBuilderStudio() {
     }
 
     if (!lessonModuleId) {
-      setError("Create or choose a module before adding a lesson.");
+      setError({ code: "chooseModule" });
       return;
     }
 
     const nextTitle = lessonTitle.trim();
 
     if (!nextTitle) {
-      setError("Add a lesson title before creating the lesson.");
+      setError({ code: "lessonTitle" });
       return;
     }
 
@@ -960,14 +981,14 @@ export function CourseBuilderStudio() {
     setLessonContentText("");
     setLessonExternalUrl("");
     setLessonIsFreePreview(false);
-    setError("");
+    setError(null);
     // Video-first flow: the lesson studio (Video tab) opens automatically as
     // soon as autosave persists the lesson — no hunting for the studio button.
     pendingLessonStudioRef.current = {
       moduleId: lessonModuleId,
       lessonId: nextLessonId,
     };
-    setSuccess("Lesson added — opening the lesson studio once it autosaves…");
+    setSuccess("lessonAdded");
   }
 
   function updateModuleTitle(moduleId: string, nextTitle: string) {
@@ -980,7 +1001,7 @@ export function CourseBuilderStudio() {
         module.id === moduleId ? { ...module, title: nextTitle } : module,
       ),
     );
-    setSuccess("");
+    setSuccess(null);
   }
 
   function updateModuleSummary(moduleId: string, nextSummary: string) {
@@ -993,7 +1014,7 @@ export function CourseBuilderStudio() {
         module.id === moduleId ? { ...module, summary: nextSummary } : module,
       ),
     );
-    setSuccess("");
+    setSuccess(null);
   }
 
   function moveModule(moduleId: string, direction: "up" | "down") {
@@ -1006,7 +1027,7 @@ export function CourseBuilderStudio() {
       const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
       return moveArrayItem(currentModules, currentIndex, nextIndex);
     });
-    setSuccess("");
+    setSuccess(null);
   }
 
   function deleteModule(moduleId: string) {
@@ -1020,11 +1041,14 @@ export function CourseBuilderStudio() {
     const target = modules.find((module) => module.id === moduleId);
     const lessonCount = target?.lessons.length ?? 0;
     const confirmed = window.confirm(
-      `Delete module "${target?.title || "Untitled module"}"${
-        lessonCount > 0
-          ? ` and its ${lessonCount} lesson${lessonCount === 1 ? "" : "s"}`
-          : ""
-      }? This cannot be undone after autosave.`,
+      t(lessonCount === 0
+        ? "creatorEditor.builder.confirm.deleteModuleEmpty"
+        : lessonCount === 1
+          ? "creatorEditor.builder.confirm.deleteModuleOne"
+          : "creatorEditor.builder.confirm.deleteModuleMany")
+        .replace(/\{title\}|\{count\}/g, (token) => token === "{title}"
+          ? target?.title || t("creatorEditor.builder.curriculum.untitledModule")
+          : String(lessonCount)),
     );
 
     if (!confirmed) {
@@ -1047,7 +1071,7 @@ export function CourseBuilderStudio() {
 
       return nextModules;
     });
-    setSuccess("");
+    setSuccess(null);
   }
 
   function updateLesson(
@@ -1071,7 +1095,7 @@ export function CourseBuilderStudio() {
           : module,
       ),
     );
-    setSuccess("");
+    setSuccess(null);
   }
 
   function moveLesson(moduleId: string, lessonId: string, direction: "up" | "down") {
@@ -1094,7 +1118,7 @@ export function CourseBuilderStudio() {
         };
       }),
     );
-    setSuccess("");
+    setSuccess(null);
   }
 
   function deleteLesson(moduleId: string, lessonId: string) {
@@ -1109,7 +1133,7 @@ export function CourseBuilderStudio() {
       (lesson) => lesson.id === lessonId,
     );
     const confirmed = window.confirm(
-      `Delete lesson "${targetLesson?.title || "Untitled lesson"}"? This cannot be undone after autosave.`,
+      t("creatorEditor.builder.confirm.deleteLesson").replace("{title}", () => targetLesson?.title || t("creatorEditor.builder.curriculum.untitledLesson")),
     );
 
     if (!confirmed) {
@@ -1138,7 +1162,7 @@ export function CourseBuilderStudio() {
       setActiveLessonStudio(null);
     }
 
-    setSuccess("");
+    setSuccess(null);
   }
 
   async function saveDraft() {
@@ -1146,16 +1170,16 @@ export function CourseBuilderStudio() {
       return;
     }
 
-    setError("");
-    setSuccess("");
+    setError(null);
+    setSuccess(null);
 
     if (!priceFieldIsValid) {
-      setError("Use a valid non-negative price, or leave the field empty.");
+      setError({ code: "price" });
       return;
     }
 
     if (!installmentsAreValid) {
-      setError("Set a valid installment limit before saving.");
+      setError({ code: "installmentsSave" });
       return;
     }
 
@@ -1172,7 +1196,7 @@ export function CourseBuilderStudio() {
       await updateTeacherCourseBuilder(courseId, builderDraftPayload);
       setSavedSignature(signatureAtSave);
       setAutosaveState("saved");
-      setSuccess("Draft saved.");
+      setSuccess("draftSaved");
     } catch (caughtError) {
       // Surface the duplicate-title block on rename the same way the create
       // screen does — otherwise a colliding title is swallowed by the generic
@@ -1181,15 +1205,11 @@ export function CourseBuilderStudio() {
         caughtError instanceof Error ? caughtError.message.toLowerCase() : "";
       pendingLessonStudioRef.current = null;
       setAutosaveState("error");
-      setError(
-        message.includes("already")
-          ? "A course with this title already exists. Choose a different name."
-          : isActivationRequiredError(message)
-          // The trigger fires on UPDATE too, so an unpaid creator editing an
-          // existing course lands here — not only on publish.
-          ? ACTIVATION_REQUIRED_MESSAGE
-          : "We could not save this course. Please try again.",
-      );
+      setError({ code: message.includes("already")
+        ? "duplicateTitle"
+        : isActivationRequiredError(message)
+          ? "activation"
+          : "save" });
     } finally {
       setIsSaving(false);
     }
@@ -1200,26 +1220,26 @@ export function CourseBuilderStudio() {
       return;
     }
 
-    setError("");
-    setSuccess("");
+    setError(null);
+    setSuccess(null);
 
     if (!priceFieldIsValid) {
-      setError("Use a valid non-negative price, or leave the field empty.");
+      setError({ code: "price" });
       return;
     }
 
     if (selectedCategories.length === 0) {
-      setError("Choose at least one marketplace category before publishing.");
+      setError({ code: "category" });
       return;
     }
 
     if (!pricingModelIsReady) {
-      setError("Set a paid price greater than $0, or choose Free as the payment model before publishing.");
+      setError({ code: "paidPrice" });
       return;
     }
 
     if (!installmentsAreValid) {
-      setError("Set a valid installment limit before publishing.");
+      setError({ code: "installmentsPublish" });
       return;
     }
 
@@ -1242,26 +1262,22 @@ export function CourseBuilderStudio() {
         modules_count: modules.length,
         lessons_count: modules.reduce((total, item) => total + item.lessons.length, 0),
       });
-      setSuccess("Course published. Its product page is now live.");
+      setSuccess("published");
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "";
-      setError(
-        message.toLowerCase().includes("preview")
-          ? "Clear the invalid free preview or choose a lesson from this course."
-          : message.toLowerCase().includes("teacher setup")
-          ? "Teacher setup must be complete before publishing courses."
+      setError({ code: message.toLowerCase().includes("preview")
+        ? "preview"
+        : message.toLowerCase().includes("teacher setup")
+          ? "setup"
           : message.toLowerCase().includes("verification")
-          ? "Professional verification must be approved before publishing."
-          : isActivationRequiredError(message)
-          ? ACTIVATION_REQUIRED_MESSAGE
-          : message.toLowerCase().includes("payout")
-          || message.toLowerCase().includes("onboarding")
-          ? "Finish Stripe payout onboarding before publishing a paid course — open the Payouts panel in your studio."
-          : message.toLowerCase().includes("payment")
-          || message.toLowerCase().includes("price")
-          ? "Set a valid payment model before publishing."
-          : "We could not publish this course. Please try again.",
-      );
+            ? "verification"
+            : isActivationRequiredError(message)
+              ? "activation"
+              : message.toLowerCase().includes("payout") || message.toLowerCase().includes("onboarding")
+                ? "payouts"
+                : message.toLowerCase().includes("payment") || message.toLowerCase().includes("price")
+                  ? "payment"
+                  : "publish" });
     } finally {
       setIsSubmitting(false);
     }
@@ -1393,7 +1409,7 @@ export function CourseBuilderStudio() {
       }
 
       const proceed = window.confirm(
-        "This course has unsaved changes. Leave the page and lose them?",
+        t("creatorEditor.builder.confirm.leave"),
       );
 
       if (!proceed) {
@@ -1405,7 +1421,7 @@ export function CourseBuilderStudio() {
     document.addEventListener("click", handleClickCapture, true);
     return () =>
       document.removeEventListener("click", handleClickCapture, true);
-  }, [draftIsDirty]);
+  }, [draftIsDirty, t]);
 
   // Stepper -> section scroll. The ref is read/cleared only here and in the
   // stepper click handler (never during render). useCallback keeps the effect
@@ -1433,10 +1449,10 @@ export function CourseBuilderStudio() {
     return (
       <section className="settings-section-card">
         <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          Choose a course from Teacher Studio before opening the builder.
+          {t("creatorEditor.builder.shell.chooseCourse")}
         </p>
         <Link href="/teach" className="button-outline mt-5 px-4 py-2.5 text-sm">
-          Back to Teacher Studio
+          {t("creatorEditor.builder.navigation.studio")}
         </Link>
       </section>
     );
@@ -1445,7 +1461,7 @@ export function CourseBuilderStudio() {
   if (isLoading) {
     return (
       <section className="settings-section-card">
-        <p className="text-sm text-[var(--color-ink-soft)]">Loading course builder...</p>
+        <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorEditor.builder.shell.loading")}</p>
       </section>
     );
   }
@@ -1454,10 +1470,10 @@ export function CourseBuilderStudio() {
     return (
       <section className="settings-section-card">
         <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {error}
+          {errorMessage}
         </p>
         <Link href="/teach" className="button-outline mt-5 px-4 py-2.5 text-sm">
-          Back to Teacher Studio
+          {t("creatorEditor.builder.navigation.studio")}
         </Link>
       </section>
     );
@@ -1470,7 +1486,7 @@ export function CourseBuilderStudio() {
           <div className="flex flex-wrap items-center gap-2">
             <StatusChip status={course?.status ?? "draft"} />
             <span className="rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface)]/70 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
-              {readiness.percent}% ready
+              {t("creatorEditor.builder.summary.percent").replace("{percent}", () => String(readiness.percent))}
             </span>
             {isEditable ? (
               <BuilderSaveStatus
@@ -1480,7 +1496,7 @@ export function CourseBuilderStudio() {
             ) : null}
           </div>
           <p className="mt-6 text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Course builder
+            {t("creatorEditor.builder.shell.title")}
           </p>
           {/* h1, não h2: esta é a única página do builder e o título do curso é
               o assunto dela. Enquanto era h2, /teach/builder não tinha h1
@@ -1488,12 +1504,10 @@ export function CourseBuilderStudio() {
               navegação) entrava numa página sem título anunciado, e a árvore
               de headings começava direto no nível 2. */}
           <h1 className="display-title mt-3 text-[clamp(2rem,4vw,3.2rem)] leading-[1.02] text-[var(--color-primary)]">
-            {title.trim() || "Untitled course"}
+            {title.trim() || t("creatorEditor.members.untitled")}
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            Build the course learners will actually experience: details, modules,
-            lessons, media, pricing, drip rules, and publication checks in one
-            guided workspace.
+            {t("creatorEditor.builder.shell.help")}
           </p>
         </div>
         <div className="course-builder-hero__actions">
@@ -1501,7 +1515,7 @@ export function CourseBuilderStudio() {
             href={`/teach/courses/${encodeURIComponent(courseId ?? "")}/manage`}
             className="button-outline px-4 py-2.5 text-sm"
           >
-            Manage product
+            {t("creatorEditor.builder.navigation.manage")}
           </Link>
           <Link
             href={`/teach/builder/${courseId}/preview`}
@@ -1519,29 +1533,29 @@ export function CourseBuilderStudio() {
             disabled={!isEditable || isSaving}
             className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
           >
-            {isSaving ? "Saving..." : "Save draft"}
+            {isSaving ? t("creatorEditor.builder.navigation.saving") : t("creatorEditor.builder.navigation.save")}
           </button>
         </div>
       </section>
 
-      <nav className="course-builder-stepper" aria-label="Course creation steps">
+      <nav className="course-builder-stepper" aria-label={t("creatorEditor.builder.navigation.steps")}>
         <div className="course-builder-stepper__head">
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              Course creation
+              {t("creatorEditor.builder.navigation.creation")}
             </p>
             <p className="mt-1 truncate text-sm font-semibold leading-snug text-[var(--color-ink-soft)]">
-              Next:{" "}
+              {t("creatorEditor.builder.navigation.next")}{" "}
               <span className="text-[var(--color-primary)]">
-                {readiness.next?.hint ?? "Course is ready to publish."}
+                {readiness.next?.hint ?? t("creatorEditor.builder.publish.ready")}
               </span>
             </p>
           </div>
           <div className="course-builder-stepper__meter">
             <div className="flex items-center justify-between gap-4 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-              <span>{readiness.doneCount} of {readiness.total} checks ready</span>
+              <span>{t("creatorEditor.builder.summary.checks").replace("{done}", () => String(readiness.doneCount)).replace("{total}", () => String(readiness.total))}</span>
               <span className="text-[var(--color-primary)]">
-                Publish readiness {readiness.percent}%
+                {t("creatorEditor.builder.summary.publishPercent").replace("{percent}", () => String(readiness.percent))}
               </span>
             </div>
             {/* A barra media estagios (5) e o chip media checks (7): 40% e
@@ -1584,8 +1598,8 @@ export function CourseBuilderStudio() {
                   )}
                 </span>
                 <span className="min-w-0">
-                  <span className="course-builder-step__label">{stage.id === "members" ? t("creatorEditor.members.step") : stage.label}</span>
-                  <span className="course-builder-step__sub">{stage.id === "members" ? t("creatorEditor.members.stepHelp") : stage.sub}</span>
+                  <span className="course-builder-step__label">{stage.id === "members" ? t("creatorEditor.members.step") : t(stage.label)}</span>
+                  <span className="course-builder-step__sub">{stage.id === "members" ? t("creatorEditor.members.stepHelp") : t(stage.sub)}</span>
                 </span>
               </button>
             );
@@ -1597,36 +1611,36 @@ export function CourseBuilderStudio() {
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--color-line)] pb-6">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-                {activeTab === "members" ? t("creatorEditor.members.step") : builderTabs[selectedTabIndex]?.label ?? "Builder"}
+                {activeTab === "members" ? t("creatorEditor.members.step") : t(builderTabs[selectedTabIndex]?.label ?? "creatorEditor.builder.shell.shortTitle")}
               </p>
               <h3 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)]">
                 {activeTab === "details"
-                  ? "Set the course foundation."
+                  ? t("creatorEditor.builder.steps.details.heading")
                   : activeTab === "members"
                     ? t("creatorEditor.members.heading")
                     : activeTab === "content"
-                      ? "Build the curriculum."
+                      ? t("creatorEditor.builder.steps.content.heading")
                       : activeTab === "pricing"
-                        ? "Package the offer."
-                        : "Publish to the marketplace."}
+                        ? t("creatorEditor.builder.steps.pricing.heading")
+                        : t("creatorEditor.builder.steps.review.heading")}
               </h3>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
                 {activeTab === "details"
-                  ? "This is the information learners use to understand the promise of the course."
+                  ? t("creatorEditor.builder.steps.details.help")
                   : activeTab === "members"
                     ? t("creatorEditor.members.help")
                     : activeTab === "content"
-                      ? "Create the modules, lessons, links, text content, and upload targets that power the members area."
+                      ? t("creatorEditor.builder.steps.content.help")
                       : activeTab === "pricing"
-                        ? "Set access, price, release timing, and the free preview lesson before publishing."
-                        : "Your professional credential is the gate. Once the product checks pass, publishing opens sales and the public link immediately."}
+                        ? t("creatorEditor.builder.steps.pricing.help")
+                        : t("creatorEditor.builder.steps.review.help")}
               </p>
             </div>
             <div className="grid gap-2 text-right text-xs font-semibold text-[var(--color-ink-soft)]">
-              <span>{modules.length} modules</span>
-              <span>{lessonCount} lessons</span>
+              <span>{t("creatorEditor.builder.summary.modules").replace("{count}", () => String(modules.length))}</span>
+              <span>{t("creatorEditor.builder.summary.lessons").replace("{count}", () => String(lessonCount))}</span>
               {totalDurationMinutes > 0 ? (
-                <span>{formattedDuration} total</span>
+                <span>{t("creatorEditor.builder.summary.duration").replace("{duration}", () => formattedDuration)}</span>
               ) : null}
               <span>{formattedPrice}</span>
             </div>
@@ -1634,19 +1648,17 @@ export function CourseBuilderStudio() {
 
         {course?.status === "in_review" ? (
           <p className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-            This course carries a legacy review status. Complete the checks and
-            publish it directly from this workspace.
+            {t("creatorEditor.builder.shell.legacy")}
           </p>
         ) : course?.status === "published" ? (
           <p className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-            This course is live. You can keep improving its content and learner
-            experience without creating a new review cycle.
+            {t("creatorEditor.builder.shell.published")}
           </p>
         ) : null}
         {course?.reviewNote ? (
           <div className="mt-5 rounded-[14px] border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.04)] p-4">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-              SkillsetMind review note
+              {t("creatorEditor.builder.shell.reviewNote")}
             </p>
             <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
               {course.reviewNote}
@@ -1665,7 +1677,7 @@ export function CourseBuilderStudio() {
             id="builder-sec-basics"
             className="grid gap-2 scroll-mt-24 text-sm font-semibold text-[var(--color-ink)]"
           >
-            Course title
+            {t("creatorEditor.builder.details.title")}
             <input
               value={title}
               onChange={(event) => setTitle(event.target.value)}
@@ -1674,10 +1686,9 @@ export function CourseBuilderStudio() {
             />
           </label>
           <div className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Categories
+            {t("creatorEditor.builder.details.categories")}
             <p className="text-xs font-normal leading-5 text-[var(--color-ink-soft)]">
-              Required. Select up to five. The first selected category becomes
-              the primary marketplace category.
+              {t("creatorEditor.builder.details.categoriesHelp")}
             </p>
                   <CourseCategorySelect
               options={skillsetCourseCategories}
@@ -1690,7 +1701,7 @@ export function CourseBuilderStudio() {
             id="builder-sec-about"
             className="grid gap-2 scroll-mt-24 text-sm font-semibold text-[var(--color-ink)]"
           >
-            Course summary
+            {t("creatorEditor.builder.details.summary")}
             <textarea
               value={summary}
               onChange={(event) => setSummary(event.target.value)}
@@ -1706,19 +1717,18 @@ export function CourseBuilderStudio() {
               }`}
             >
               {summary.trim().length >= 20
-                ? `${summary.trim().length} characters`
-                : `${summary.trim().length}/20 characters minimum for publication`}
+                ? t("creatorEditor.builder.details.characters").replace("{count}", () => String(summary.trim().length))
+                : t("creatorEditor.builder.details.minimumCharacters").replace("{count}", () => String(summary.trim().length))}
             </span>
           </label>
           <div id="builder-sec-outcomes" className="scroll-mt-24 grid gap-3">
             <div className="flex flex-wrap items-end justify-between gap-2">
               <div className="grid gap-1">
                 <p className="text-sm font-semibold text-[var(--color-ink)]">
-                  What learners will learn
+                  {t("creatorEditor.builder.details.outcomes")}
                 </p>
                 <p className="text-xs text-[var(--color-ink-soft)]">
-                  Concrete outcomes shown as the &ldquo;What you&rsquo;ll
-                  learn&rdquo; list on the marketplace page. Aim for 4&ndash;6.
+                  {t("creatorEditor.builder.details.outcomesHelp")}
                 </p>
               </div>
               <span className="shrink-0 text-xs font-semibold text-[var(--color-ink-soft)]">
@@ -1742,8 +1752,8 @@ export function CourseBuilderStudio() {
                       }
                       disabled={!isEditable}
                       maxLength={120}
-                      aria-label={`Learning outcome ${index + 1}`}
-                      placeholder="Example: Launch a paid cohort course end to end"
+                      aria-label={t("creatorEditor.builder.details.outcomeLabel").replace("{index}", () => String(index + 1))}
+                      placeholder={t("creatorEditor.builder.details.outcomePlaceholder")}
                       className="min-w-0 flex-1 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                     />
                     {isEditable ? (
@@ -1756,7 +1766,7 @@ export function CourseBuilderStudio() {
                             ),
                           )
                         }
-                        aria-label={`Remove learning outcome ${index + 1}`}
+                        aria-label={t("creatorEditor.builder.details.removeOutcome").replace("{index}", () => String(index + 1))}
                         className="shrink-0 rounded-[8px] border border-[var(--color-line)] p-2.5 text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-accent-fg)] hover:text-[var(--color-accent-fg)]"
                       >
                         <Trash2 aria-hidden="true" size={14} strokeWidth={1.8} />
@@ -1767,8 +1777,7 @@ export function CourseBuilderStudio() {
               </ul>
             ) : (
               <p className="rounded-[10px] border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs text-[var(--color-ink-soft)]">
-                No outcomes yet. Add the concrete results a student walks away
-                with.
+                {t("creatorEditor.builder.details.noOutcomes")}
               </p>
             )}
 
@@ -1786,13 +1795,12 @@ export function CourseBuilderStudio() {
                 className="inline-flex w-fit items-center gap-1.5 rounded-[8px] border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Plus aria-hidden="true" size={14} strokeWidth={2} />
-                Add learning outcome
+                {t("creatorEditor.builder.details.addOutcome")}
               </button>
             ) : null}
           </div>
           <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-            Keep the title specific, the category clear, and the summary focused
-            on learner outcomes. This copy will influence the marketplace page.
+            {t("creatorEditor.builder.details.help")}
           </p>
         </div>
         ) : null}
@@ -1805,27 +1813,27 @@ export function CourseBuilderStudio() {
             theme={membersTheme}
             onThemeChange={(next) => {
               setMembersTheme(next);
-              setSuccess("");
+              setSuccess(null);
             }}
             coverAssetId={membersCoverAssetId}
             onCoverAssetIdChange={(next) => {
               setMembersCoverAssetId(next);
-              setSuccess("");
+              setSuccess(null);
             }}
             title={membersTitle}
             onTitleChange={(next) => {
               setMembersTitle(next);
-              setSuccess("");
+              setSuccess(null);
             }}
             subtitle={membersSubtitle}
             onSubtitleChange={(next) => {
               setMembersSubtitle(next);
-              setSuccess("");
+              setSuccess(null);
             }}
             description={membersDescription}
             onDescriptionChange={(next) => {
               setMembersDescription(next);
-              setSuccess("");
+              setSuccess(null);
             }}
           />
         ) : null}
@@ -1835,23 +1843,21 @@ export function CourseBuilderStudio() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="grid gap-1">
                 <p className="text-sm font-semibold text-[var(--color-ink)]">
-                  Course community
+                  {t("creatorEditor.builder.community.title")}
                 </p>
                 <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
-                  Adds a private discussion space inside the members area where
-                  enrolled students can post, comment, and connect. You can turn
-                  this on or off at any time, even after publishing.
+                  {t("creatorEditor.builder.community.help")}
                 </p>
               </div>
               <button
                 type="button"
                 role="switch"
                 aria-checked={communityEnabled}
-                aria-label="Enable course community"
+                aria-label={t("creatorEditor.builder.community.enable")}
                 disabled={!isEditable}
                 onClick={() => {
                   setCommunityEnabled((previous) => !previous);
-                  setSuccess("");
+                  setSuccess(null);
                 }}
                 className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                   communityEnabled
@@ -1869,8 +1875,8 @@ export function CourseBuilderStudio() {
             </div>
             <p className="mt-3 text-xs font-semibold text-[var(--color-ink-soft)]">
               {communityEnabled
-                ? "Community is on. Students see a Community section in this course."
-                : "Community is off. Students only see lessons and resources."}
+                ? t("creatorEditor.builder.community.on")
+                : t("creatorEditor.builder.community.off")}
             </p>
           </div>
         ) : null}
@@ -1881,25 +1887,27 @@ export function CourseBuilderStudio() {
             className="scroll-mt-24 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-              Marketplace setup
+              {t("creatorEditor.builder.pricing.setup")}
             </p>
             <div className="mt-4">
               <PlanSelectorCards
                 label={
                   <span className="flex items-center gap-2">
-                    Payment model
+                    {t("creatorEditor.builder.pricing.model")}
                     <InlineHelp
-                      topic="Course pricing"
+                      topic={t("creatorEditor.builder.pricing.helpTopic")}
                       href="/help#course-pricing"
                     >
-                      Choose free access, a one-time purchase, or recurring
-                      monthly or yearly access. Paid products require a positive
-                      price and payout-ready Stripe Connect account before they
-                      can be published.
+                      {t("creatorEditor.builder.pricing.help")}
                     </InlineHelp>
                   </span>
                 }
-                options={paymentModelOptions}
+                options={paymentModelOptions.map((option) => ({
+                  ...option,
+                  title: t(option.title),
+                  description: t(option.description),
+                  features: option.features.map((feature) => t(feature)),
+                }))}
                 value={paymentType}
                 onChange={handlePaymentTypeChange}
                 disabled={!isEditable}
@@ -1913,20 +1921,20 @@ export function CourseBuilderStudio() {
                 acompanhar a coluna em vez de a coluna acompanhar o controle. */}
             <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,200px)]">
               <label className="grid min-w-0 gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                Price
+                {t("creatorEditor.builder.pricing.price")}
                 <input
                   value={priceAmount}
                   onChange={(event) => setPriceAmount(event.target.value)}
                   disabled={!isEditable || paymentType === "free"}
                   inputMode="decimal"
                   placeholder={
-                    paymentType === "free" ? "Free course" : "Example: 149"
+                    paymentType === "free" ? t("creatorEditor.builder.pricing.freePlaceholder") : t("creatorEditor.builder.pricing.pricePlaceholder")
                   }
                   className="min-w-0 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 />
               </label>
               <label className="grid min-w-0 gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                Currency
+                {t("creatorEditor.builder.pricing.currency")}
                 <CurrencySelect
                   value={currency}
                   onChange={(nextCurrency) => {
@@ -1942,23 +1950,23 @@ export function CourseBuilderStudio() {
             <div className="mt-4 flex flex-wrap items-start justify-between gap-4 rounded-[12px] border border-[var(--color-line)] bg-white p-4">
               <div className="max-w-xl">
                 <p className="text-sm font-semibold text-[var(--color-ink)]">
-                  Card installments
+                  {t("creatorEditor.builder.pricing.installments")}
                 </p>
                 <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
                   {paymentType !== "one_time"
-                    ? "Installments apply only to one-time payments."
+                    ? t("creatorEditor.builder.pricing.installmentsOneTime")
                     : !cardInstallmentsConfigured
-                      ? "Unavailable with the current Stripe account. Stripe requires a Mexico platform account and MXN pricing."
+                      ? t("creatorEditor.builder.pricing.installmentsUnavailable")
                       : currency !== "MXN"
-                        ? "Select MXN to configure installments for eligible Mexican cards."
-                        : "Eligible cards choose from the plans configured in Stripe. Card issuer and minimum amount rules apply."}
+                        ? t("creatorEditor.builder.pricing.installmentsCurrency")
+                        : t("creatorEditor.builder.pricing.installmentsEligible")}
                 </p>
               </div>
               <button
                 type="button"
                 role="switch"
                 aria-checked={installmentsEnabled && canConfigureCardInstallments}
-                aria-label="Enable card installments"
+                aria-label={t("creatorEditor.builder.pricing.enableInstallments")}
                 disabled={!isEditable || !canConfigureCardInstallments}
                 onClick={() => setInstallmentsEnabled((previous) => !previous)}
                 className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
@@ -1979,7 +1987,7 @@ export function CourseBuilderStudio() {
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-[1fr_180px]">
               <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                Content release
+                {t("creatorEditor.builder.pricing.release")}
                 <select
                   value={dripStrategy}
                   onChange={(event) =>
@@ -1990,13 +1998,13 @@ export function CourseBuilderStudio() {
                 >
                   {dripStrategies.map((item) => (
                     <option key={item.value} value={item.value}>
-                      {item.label}
+                      {t(item.label)}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                Interval days
+                {t("creatorEditor.builder.pricing.interval")}
                 <input
                   value={dripIntervalDays}
                   onChange={(event) => setDripIntervalDays(event.target.value)}
@@ -2012,20 +2020,20 @@ export function CourseBuilderStudio() {
               </label>
             </div>
             <p className="mt-3 rounded-[10px] border fine-rule bg-white px-4 py-3 text-xs leading-5 text-[var(--color-ink-soft)]">
-              {dripStrategies.find((item) => item.value === dripStrategy)?.detail}
+              {t(dripStrategies.find((item) => item.value === dripStrategy)?.detail ?? "")}
               {dripStrategy === "time_drip_custom"
-                ? " Set each lesson delay in the curriculum editor."
+                ? t("creatorEditor.builder.pricing.customHelp")
                 : ""}
             </p>
             <label className="mt-4 grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-              Free preview lesson
+              {t("creatorEditor.builder.pricing.preview")}
               <select
                 value={freePreviewLessonId}
                 onChange={(event) => setFreePreviewLessonId(event.target.value)}
                 disabled={!isEditable || allLessons.length === 0}
                 className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               >
-                <option value="">No preview selected yet</option>
+                <option value="">{t("creatorEditor.builder.pricing.noPreview")}</option>
                 {allLessons.map((lesson) => (
                   <option key={lesson.id} value={lesson.id}>
                     {lesson.moduleTitle} - {lesson.title}
@@ -2034,8 +2042,7 @@ export function CourseBuilderStudio() {
               </select>
             </label>
             <p className="mt-3 text-xs leading-5 text-[var(--color-ink-soft)]">
-              These fields prepare the public listing. Paid access still requires
-              Stripe checkout before enrollment opens.
+              {t("creatorEditor.builder.pricing.listingHelp")}
             </p>
           </div>
         ) : null}
@@ -2047,18 +2054,18 @@ export function CourseBuilderStudio() {
             className="scroll-mt-24 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
             <h4 className="text-sm font-semibold text-[var(--color-ink)]">
-              Add module
+              {t("creatorEditor.builder.curriculum.addModule")}
             </h4>
             <form className="mt-3 grid gap-3" onSubmit={handleAddModule}>
               <input
                 value={moduleTitle}
                 onChange={(event) => {
                   setModuleTitle(event.target.value);
-                  setModuleError("");
+                  setModuleError(false);
                 }}
                 disabled={!isEditable}
-                aria-label="Module title"
-                placeholder="Example: Foundations"
+                aria-label={t("creatorEditor.builder.curriculum.moduleTitle")}
+                placeholder={t("creatorEditor.builder.curriculum.moduleTitlePlaceholder")}
                 className="min-w-0 flex-1 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               />
               <textarea
@@ -2066,8 +2073,8 @@ export function CourseBuilderStudio() {
                 onChange={(event) => setModuleSummary(event.target.value)}
                 disabled={!isEditable}
                 rows={2}
-                aria-label="Module description"
-                placeholder="Optional module description. Example: Set up the concepts students need before the practical lessons."
+                aria-label={t("creatorEditor.builder.curriculum.moduleDescription")}
+                placeholder={t("creatorEditor.builder.curriculum.moduleDescriptionExample")}
                 className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               />
               {moduleError ? (
@@ -2075,7 +2082,7 @@ export function CourseBuilderStudio() {
                   role="alert"
                   className="text-xs font-semibold text-[var(--color-danger-fg)]"
                 >
-                  {moduleError}
+                  {t("creatorEditor.builder.errors.moduleTitle")}
                 </p>
               ) : null}
               <button
@@ -2083,7 +2090,7 @@ export function CourseBuilderStudio() {
                 disabled={!isEditable}
                 className="button-outline w-fit px-4 py-2.5 text-sm disabled:opacity-60"
               >
-                Add module
+                {t("creatorEditor.builder.curriculum.addModule")}
               </button>
             </form>
           </div>
@@ -2093,14 +2100,12 @@ export function CourseBuilderStudio() {
             className="scroll-mt-24 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
             <h4 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
-              Add lesson
+              {t("creatorEditor.builder.curriculum.addLesson")}
               <InlineHelp
-                topic="Lesson access and drip release"
+                topic={t("creatorEditor.builder.curriculum.helpTopic")}
                 href="/help#drip-release"
               >
-                Use lesson delays to pace access after enrollment. A free
-                preview is optional and must point to a lesson in this course;
-                it helps buyers inspect the teaching style before enrolling.
+                {t("creatorEditor.builder.curriculum.help")}
               </InlineHelp>
             </h4>
             <form className="mt-3 grid gap-3" onSubmit={handleAddLesson}>
@@ -2109,10 +2114,10 @@ export function CourseBuilderStudio() {
                   value={lessonModuleId}
                   onChange={(event) => setLessonModuleId(event.target.value)}
                   disabled={!isEditable || modules.length === 0}
-                  aria-label="Module for this lesson"
+                  aria-label={t("creatorEditor.builder.curriculum.moduleForLesson")}
                   className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 >
-                  <option value="">Choose module</option>
+                  <option value="">{t("creatorEditor.builder.curriculum.chooseModule")}</option>
                   {modules.map((module) => (
                     <option key={module.id} value={module.id}>
                       {module.title}
@@ -2123,12 +2128,12 @@ export function CourseBuilderStudio() {
                   value={lessonType}
                   onChange={(event) => setLessonType(event.target.value as LessonType)}
                   disabled={!isEditable}
-                  aria-label="Lesson type"
+                  aria-label={t("creatorEditor.builder.curriculum.lessonType")}
                   className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 >
                   {lessonTypes.map((item) => (
                     <option key={item.value} value={item.value}>
-                      {item.label}
+                      {t(item.label)}
                     </option>
                   ))}
                 </select>
@@ -2137,8 +2142,8 @@ export function CourseBuilderStudio() {
                 value={lessonTitle}
                 onChange={(event) => setLessonTitle(event.target.value)}
                 disabled={!isEditable}
-                aria-label="Lesson title"
-                placeholder="Lesson title"
+                aria-label={t("creatorEditor.builder.curriculum.lessonTitle")}
+                placeholder={t("creatorEditor.builder.curriculum.lessonTitle")}
                 className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               />
               <div className="grid gap-3 md:grid-cols-[160px_160px_1fr]">
@@ -2147,8 +2152,8 @@ export function CourseBuilderStudio() {
                   onChange={(event) => setLessonDurationMinutes(event.target.value)}
                   disabled={!isEditable}
                   inputMode="numeric"
-                  aria-label="Lesson duration in minutes"
-                  placeholder="Minutes"
+                  aria-label={t("creatorEditor.builder.curriculum.lessonDuration")}
+                  placeholder={t("creatorEditor.builder.curriculum.minutes")}
                   className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 />
                 <input
@@ -2156,16 +2161,16 @@ export function CourseBuilderStudio() {
                   onChange={(event) => setLessonDripDelayDays(event.target.value)}
                   disabled={!isEditable}
                   inputMode="numeric"
-                  aria-label="Drip delay in days"
-                  placeholder="Drip delay days"
+                  aria-label={t("creatorEditor.builder.curriculum.delayLabel")}
+                  placeholder={t("creatorEditor.builder.curriculum.delayPlaceholder")}
                   className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 />
                 <input
                   value={lessonExternalUrl}
                   onChange={(event) => setLessonExternalUrl(event.target.value)}
                   disabled={!isEditable}
-                  aria-label="Lesson external link or replay URL"
-                  placeholder="Optional external link or replay URL"
+                  aria-label={t("creatorEditor.builder.curriculum.externalLabel")}
+                  placeholder={t("creatorEditor.builder.curriculum.externalPlaceholder")}
                   className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 />
               </div>
@@ -2174,8 +2179,8 @@ export function CourseBuilderStudio() {
                 onChange={(event) => setLessonDescription(event.target.value)}
                 disabled={!isEditable}
                 rows={3}
-                aria-label="Lesson note or outcome"
-                placeholder="Optional lesson note or outcome"
+                aria-label={t("creatorEditor.builder.curriculum.noteLabel")}
+                placeholder={t("creatorEditor.builder.curriculum.notePlaceholder")}
                 className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               />
               <textarea
@@ -2183,8 +2188,8 @@ export function CourseBuilderStudio() {
                 onChange={(event) => setLessonContentText(event.target.value)}
                 disabled={!isEditable}
                 rows={4}
-                aria-label="Lesson text content"
-                placeholder="Optional text content, instructions, assignment prompt, or lesson outline."
+                aria-label={t("creatorEditor.builder.curriculum.textLabel")}
+                placeholder={t("creatorEditor.builder.curriculum.textPlaceholder")}
                 className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               />
               <label className="flex items-start gap-3 rounded-[10px] border fine-rule bg-white p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -2195,14 +2200,14 @@ export function CourseBuilderStudio() {
                   onChange={(event) => setLessonIsFreePreview(event.target.checked)}
                   className="mt-1"
                 />
-                Make this lesson the public free preview.
+                {t("creatorEditor.builder.curriculum.makePreview")}
               </label>
               <button
                 type="submit"
                 disabled={!isEditable || modules.length === 0}
                 className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
               >
-                Add lesson
+                {t("creatorEditor.builder.curriculum.addLesson")}
               </button>
             </form>
           </div>
@@ -2211,22 +2216,21 @@ export function CourseBuilderStudio() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                  Curriculum editor
+                  {t("creatorEditor.builder.curriculum.editor")}
                 </p>
                 <h4 className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
-                  Edit, reorder, and clean up modules and lessons
+                  {t("creatorEditor.builder.curriculum.editorHelp")}
                 </h4>
               </div>
               <span className="rounded-[8px] bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold text-[var(--color-ink-soft)]">
-                {lessonCount} lesson{lessonCount === 1 ? "" : "s"}
+                {t(lessonCount === 1 ? "creatorEditor.builder.curriculum.lessonOne" : "creatorEditor.builder.curriculum.lessonMany").replace("{count}", () => String(lessonCount))}
               </span>
             </div>
 
             <div className="mt-4 grid gap-4">
               {modules.length === 0 ? (
                 <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-                  Add your first module above. Once it exists, you can edit, reorder,
-                  and organize its lessons here.
+                  {t("creatorEditor.builder.curriculum.empty")}
                 </p>
               ) : (
                 modules.map((module, moduleIndex) => (
@@ -2236,7 +2240,7 @@ export function CourseBuilderStudio() {
                   >
                     <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-start">
                       <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                        Module {moduleIndex + 1}
+                        {t("creatorEditor.builder.curriculum.moduleNumber").replace("{index}", () => String(moduleIndex + 1))}
                         <input
                           value={module.title}
                           onChange={(event) =>
@@ -2252,8 +2256,8 @@ export function CourseBuilderStudio() {
                           }
                           disabled={!isEditable}
                           rows={2}
-                          aria-label={`Module ${moduleIndex + 1} description`}
-                          placeholder="Optional module description"
+                          aria-label={t("creatorEditor.builder.curriculum.moduleDescriptionNumber").replace("{index}", () => String(moduleIndex + 1))}
+                          placeholder={t("creatorEditor.builder.curriculum.moduleDescriptionPlaceholder")}
                           className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                         />
                       </label>
@@ -2264,7 +2268,7 @@ export function CourseBuilderStudio() {
                           disabled={!isEditable || moduleIndex === 0}
                           className="button-outline px-3 py-2 text-xs disabled:opacity-50"
                         >
-                          Up
+                          {t("creatorEditor.builder.curriculum.up")}
                         </button>
                         <button
                           type="button"
@@ -2272,7 +2276,7 @@ export function CourseBuilderStudio() {
                           disabled={!isEditable || moduleIndex === modules.length - 1}
                           className="button-outline px-3 py-2 text-xs disabled:opacity-50"
                         >
-                          Down
+                          {t("creatorEditor.builder.curriculum.down")}
                         </button>
                         <button
                           type="button"
@@ -2280,7 +2284,7 @@ export function CourseBuilderStudio() {
                           disabled={!isEditable}
                           className="rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-accent-fg)] disabled:opacity-50"
                         >
-                          Delete
+                          {t("creatorEditor.builder.curriculum.delete")}
                         </button>
                       </div>
                     </div>
@@ -2288,7 +2292,7 @@ export function CourseBuilderStudio() {
                     <div className="mt-4 grid gap-3">
                       {module.lessons.length === 0 ? (
                         <p className="rounded-[10px] border fine-rule bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-                          This module has no lessons yet.
+                          {t("creatorEditor.builder.curriculum.moduleEmpty")}
                         </p>
                       ) : (
                         module.lessons.map((lesson, lessonIndex) => (
@@ -2298,7 +2302,7 @@ export function CourseBuilderStudio() {
                           >
                             <div className="grid gap-3 lg:grid-cols-[1fr_190px_120px_140px_auto] lg:items-end">
                               <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                                Lesson title
+                                {t("creatorEditor.builder.curriculum.lessonTitle")}
                                 <input
                                   value={lesson.title}
                                   onChange={(event) =>
@@ -2311,7 +2315,7 @@ export function CourseBuilderStudio() {
                                 />
                               </label>
                               <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                                Type
+                                {t("creatorEditor.builder.curriculum.type")}
                                 <select
                                   value={lesson.type}
                                   onChange={(event) =>
@@ -2324,13 +2328,13 @@ export function CourseBuilderStudio() {
                                 >
                                   {lessonTypes.map((item) => (
                                     <option key={item.value} value={item.value}>
-                                      {item.label}
+                                      {t(item.label)}
                                     </option>
                                   ))}
                                 </select>
                               </label>
                               <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                                Minutes
+                                {t("creatorEditor.builder.curriculum.minutes")}
                                 <input
                                   value={lesson.durationMinutes ?? ""}
                                   onChange={(event) =>
@@ -2346,7 +2350,7 @@ export function CourseBuilderStudio() {
                                 />
                               </label>
                               <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                                Delay days
+                                {t("creatorEditor.builder.curriculum.delayDays")}
                                 <input
                                   value={lesson.dripDelayDays ?? ""}
                                   onChange={(event) =>
@@ -2368,7 +2372,7 @@ export function CourseBuilderStudio() {
                                   disabled={!isEditable || lessonIndex === 0}
                                   className="button-outline px-3 py-2 text-xs disabled:opacity-50"
                                 >
-                                  Up
+                                  {t("creatorEditor.builder.curriculum.up")}
                                 </button>
                                 <button
                                   type="button"
@@ -2379,7 +2383,7 @@ export function CourseBuilderStudio() {
                                   }
                                   className="button-outline px-3 py-2 text-xs disabled:opacity-50"
                                 >
-                                  Down
+                                  {t("creatorEditor.builder.curriculum.down")}
                                 </button>
                               </div>
                             </div>
@@ -2393,8 +2397,8 @@ export function CourseBuilderStudio() {
                               }
                               disabled={!isEditable}
                               rows={2}
-                              aria-label={`Lesson ${lessonIndex + 1} note or outcome`}
-                              placeholder="Lesson note or learner outcome"
+                              aria-label={t("creatorEditor.builder.curriculum.noteNumber").replace("{index}", () => String(lessonIndex + 1))}
+                              placeholder={t("creatorEditor.builder.curriculum.editNotePlaceholder")}
                               className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                             />
                             <textarea
@@ -2406,8 +2410,8 @@ export function CourseBuilderStudio() {
                               }
                               disabled={!isEditable}
                               rows={3}
-                              aria-label={`Lesson ${lessonIndex + 1} text content`}
-                              placeholder="Text content, assignment prompt, or lesson outline"
+                              aria-label={t("creatorEditor.builder.curriculum.textNumber").replace("{index}", () => String(lessonIndex + 1))}
+                              placeholder={t("creatorEditor.builder.curriculum.editTextPlaceholder")}
                               className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                             />
                             <input
@@ -2418,8 +2422,8 @@ export function CourseBuilderStudio() {
                                 })
                               }
                               disabled={!isEditable}
-                              aria-label={`Lesson ${lessonIndex + 1} external link`}
-                              placeholder="Optional external link, live replay, or embed URL"
+                              aria-label={t("creatorEditor.builder.curriculum.externalNumber").replace("{index}", () => String(lessonIndex + 1))}
+                              placeholder={t("creatorEditor.builder.curriculum.editExternalPlaceholder")}
                               className="rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                             />
 
@@ -2438,17 +2442,17 @@ export function CourseBuilderStudio() {
                                     title={
                                       lessonIdsWithVideo.has(lesson.id) ||
                                       getTrustedLessonEmbed(lesson.externalUrl)
-                                        ? "Edit the lesson video, materials, and settings"
-                                        : "Add the lesson video"
+                                        ? t("creatorEditor.builder.curriculum.editTitle")
+                                        : t("creatorEditor.builder.curriculum.addVideoTitle")
                                     }
                                   >
                                     {lessonIdsWithVideo.has(lesson.id) ||
                                     getTrustedLessonEmbed(lesson.externalUrl) ? (
-                                      "Edit content"
+                                      t("creatorEditor.builder.curriculum.editContent")
                                     ) : (
                                       <>
                                         <Film aria-hidden="true" size={13} strokeWidth={1.9} />
-                                        Add video
+                                        {t("creatorEditor.builder.curriculum.addVideo")}
                                       </>
                                     )}
                                   </button>
@@ -2457,9 +2461,9 @@ export function CourseBuilderStudio() {
                                     type="button"
                                     disabled
                                     className="button-solid px-3 py-2 text-xs disabled:opacity-60"
-                                    title="Autosave failed — use Save draft to enable uploads"
+                                    title={t("creatorEditor.builder.curriculum.saveErrorTitle")}
                                   >
-                                    Save draft to upload
+                                    {t("creatorEditor.builder.curriculum.saveToUpload")}
                                   </button>
                                 ) : (
                                   <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink-soft)]">
@@ -2469,7 +2473,7 @@ export function CourseBuilderStudio() {
                                       strokeWidth={2.2}
                                       className="animate-spin"
                                     />
-                                    Saving lesson…
+                                    {t("creatorEditor.builder.curriculum.savingLesson")}
                                   </span>
                                 )}
                                 <button
@@ -2487,8 +2491,8 @@ export function CourseBuilderStudio() {
                                   }`}
                                 >
                                   {freePreviewLessonId === lesson.id
-                                    ? "Free preview selected"
-                                    : "Mark free preview"}
+                                    ? t("creatorEditor.builder.curriculum.previewSelected")
+                                    : t("creatorEditor.builder.curriculum.markPreview")}
                                 </button>
                               </div>
                               <button
@@ -2497,7 +2501,7 @@ export function CourseBuilderStudio() {
                                 disabled={!isEditable}
                                 className="rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-accent-fg)] disabled:opacity-50"
                               >
-                                Delete lesson
+                                {t("creatorEditor.builder.curriculum.deleteLesson")}
                               </button>
                             </div>
                           </div>
@@ -2518,18 +2522,15 @@ export function CourseBuilderStudio() {
             className="mt-6 scroll-mt-24 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-5"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-              Publish readiness
+              {t("creatorEditor.builder.publish.title")}
             </p>
             <h4 className="display-title mt-3 flex items-center gap-2 text-3xl text-[var(--color-ink)]">
-              Ready the product for launch
+              {t("creatorEditor.builder.publish.heading")}
               <InlineHelp
-                topic="Course publishing"
+                topic={t("creatorEditor.builder.publish.helpTopic")}
                 href="/help#course-publishing"
               >
-                SkillsetMind verifies the professional rather than manually
-                approving every course. Once these product checks pass, an
-                approved creator publishes directly and the marketplace link
-                opens immediately.
+                {t("creatorEditor.builder.publish.help")}
               </InlineHelp>
             </h4>
             <div className="mt-5 grid gap-3">
@@ -2543,7 +2544,7 @@ export function CourseBuilderStudio() {
                     {item.label}
                     {item.optional ? (
                       <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                        Optional
+                        {t("creatorEditor.builder.publish.optional")}
                       </span>
                     ) : null}
                   </p>
@@ -2554,8 +2555,7 @@ export function CourseBuilderStudio() {
               ))}
             </div>
             <p className="mt-5 text-sm leading-7 text-[var(--color-ink-soft)]">
-              SkillsetMind gates the professional, not each course. Product,
-              pricing, and payout checks run before the marketplace link opens.
+              {t("creatorEditor.builder.publish.checksHelp")}
             </p>
           </div>
         ) : null}
@@ -2576,8 +2576,8 @@ export function CourseBuilderStudio() {
             {selectedTabIndex > 0
               ? builderTabs[selectedTabIndex - 1].value === "members"
                 ? t("creatorEditor.members.backTo")
-                : `Back to ${builderTabs[selectedTabIndex - 1].label}`
-              : "Back"}
+                : t("creatorEditor.builder.navigation.backTo").replace("{step}", () => t(builderTabs[selectedTabIndex - 1].label))
+              : t("creatorEditor.builder.navigation.back")}
           </button>
           {selectedTabIndex < builderTabs.length - 1 ? (
             <button
@@ -2592,12 +2592,12 @@ export function CourseBuilderStudio() {
             >
               {builderTabs[selectedTabIndex + 1].value === "members"
                 ? t("creatorEditor.members.continueTo")
-                : `Continue to ${builderTabs[selectedTabIndex + 1].label}`}
+                : t("creatorEditor.builder.navigation.continueTo").replace("{step}", () => t(builderTabs[selectedTabIndex + 1].label))}
               <ArrowRight aria-hidden="true" size={14} strokeWidth={1.9} />
             </button>
           ) : (
             <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
-              Finish the publication checks to go live.
+              {t("creatorEditor.builder.publish.finish")}
             </span>
           )}
         </div>
@@ -2606,15 +2606,15 @@ export function CourseBuilderStudio() {
       <div className="course-builder-footer">
         <section className="settings-section-card">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Course structure
+            {t("creatorEditor.builder.summary.structure")}
           </p>
           <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-            {modules.length} modules, {lessonCount} lessons
+            {t("creatorEditor.builder.summary.structureCount").replace("{modules}", () => String(modules.length)).replace("{lessons}", () => String(lessonCount))}
           </h3>
           <div className="mt-5 grid gap-3">
             {modules.length === 0 ? (
               <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-                Start with one module, then add the lessons learners should complete.
+                {t("creatorEditor.builder.summary.empty")}
               </p>
             ) : (
               modules.map((module, index) => (
@@ -2623,7 +2623,7 @@ export function CourseBuilderStudio() {
                   className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
                 >
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                    Module {index + 1}
+                    {t("creatorEditor.builder.curriculum.moduleNumber").replace("{index}", () => String(index + 1))}
                   </p>
                   <h4 className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
                     {module.title}
@@ -2631,7 +2631,7 @@ export function CourseBuilderStudio() {
                   <div className="mt-3 grid gap-2">
                     {module.lessons.length === 0 ? (
                       <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
-                        No lessons yet.
+                        {t("creatorEditor.builder.summary.noLessons")}
                       </p>
                     ) : (
                       module.lessons.map((lesson) => (
@@ -2643,12 +2643,12 @@ export function CourseBuilderStudio() {
                             {lesson.title}
                           </p>
                           <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                            {getLessonTypeLabel(lesson.type)}
+                            {getLessonTypeLabel(lesson.type, t)}
                             {lesson.durationMinutes ? ` - ${lesson.durationMinutes} min` : ""}
                             {typeof lesson.dripDelayDays === "number"
                               ? ` - D+${lesson.dripDelayDays}`
                               : ""}
-                            {freePreviewLessonId === lesson.id ? " - preview" : ""}
+                            {freePreviewLessonId === lesson.id ? t("creatorEditor.builder.summary.preview") : ""}
                           </p>
                           {lesson.description ? (
                             <p className="mt-2 text-xs leading-5 text-[var(--color-ink-soft)]">
@@ -2677,16 +2677,16 @@ export function CourseBuilderStudio() {
 
         <section className="settings-section-card">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Publish readiness
+            {t("creatorEditor.builder.publish.title")}
           </p>
           {/* Era uma segunda lista, escrita a mao com regra diferente da aba
               Publish (sem parcelas, outro texto de preco). Mesma fonte agora. */}
           <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-            {readiness.percent}% ready
+            {t("creatorEditor.builder.summary.percent").replace("{percent}", () => String(readiness.percent))}
           </p>
           <div className="mt-4 grid gap-2 text-sm text-[var(--color-ink-soft)]">
             {readiness.pending.length === 0 ? (
-              <p>Every publish check passed.</p>
+              <p>{t("creatorEditor.builder.publish.passed")}</p>
             ) : (
               readiness.pending.map((item) => <p key={item.id}>{item.hint}</p>)
             )}
@@ -2696,20 +2696,20 @@ export function CourseBuilderStudio() {
               role="alert"
               className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
             >
-              <p>{error}</p>
-              {error.startsWith("Activate your storefront") ? (
+              <p>{errorMessage}</p>
+              {error.code === "activation" ? (
                 <Link
                   href="/teach/activate"
                   className="button-solid mt-3 px-4 py-2 text-xs"
                 >
-                  Activate storefront
+                  {t("creatorEditor.builder.publish.activate")}
                 </Link>
               ) : null}
             </div>
           ) : null}
           {success ? (
             <p className="mt-4 info-notice">
-              {success}
+              {t(`creatorEditor.builder.success.${success}`)}
             </p>
           ) : null}
           <div className="mt-5 grid gap-3">
@@ -2719,7 +2719,7 @@ export function CourseBuilderStudio() {
               disabled={!isEditable || isSaving}
               className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
             >
-              {isSaving ? "Saving..." : "Save draft"}
+              {isSaving ? t("creatorEditor.builder.navigation.saving") : t("creatorEditor.builder.navigation.save")}
             </button>
             <button
               type="button"
@@ -2732,10 +2732,10 @@ export function CourseBuilderStudio() {
               }
               className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
             >
-              {isSubmitting ? "Publishing..." : "Publish product"}
+              {isSubmitting ? t("creatorEditor.builder.publish.publishing") : t("creatorEditor.builder.publish.submit")}
             </button>
             <Link href="/teach" className="button-outline px-4 py-2.5 text-sm">
-              Back to Teacher Studio
+              {t("creatorEditor.builder.navigation.studio")}
             </Link>
           </div>
         </section>
@@ -2796,25 +2796,27 @@ export function CourseBuilderStudio() {
  * `canAutosaveDraft` passou a DERIVAR daqui, e não o contrário: assim um gate
  * novo não entra sem trazer junto o texto que diz ao professor o que corrigir.
  */
+type AutosaveBlockedReason = "price" | "installments" | "structure";
+
 export function getAutosaveBlockedReason(input: {
   isEditable: boolean;
   priceFieldIsValid: boolean;
   installmentsAreValid: boolean;
-  draftStructureError: string;
-}): string | null {
+  draftStructureError: boolean;
+}): AutosaveBlockedReason | null {
   if (!input.isEditable) {
     // Curso não editável não tem rascunho para perder — não há bloqueio a
     // anunciar, e alarmar aqui seria ruído.
     return null;
   }
   if (!input.priceFieldIsValid) {
-    return "fix the price";
+    return "price";
   }
   if (!input.installmentsAreValid) {
-    return "fix the installment limit";
+    return "installments";
   }
   if (input.draftStructureError) {
-    return "fix the course structure";
+    return "structure";
   }
   return null;
 }
@@ -2824,8 +2826,9 @@ function BuilderSaveStatus({
   blockedReason,
 }: {
   state: "pending" | "saving" | "saved" | "error" | "blocked";
-  blockedReason?: string | null;
+  blockedReason?: AutosaveBlockedReason | null;
 }) {
+  const { t } = useTranslation();
   // Autosave parado por campo inválido. Precisa ser visualmente diferente do
   // "Unsaved changes" neutro — este estado não passa sozinho, e continuar
   // digitando só aumenta o que vai se perder.
@@ -2836,7 +2839,9 @@ function BuilderSaveStatus({
         className="inline-flex items-center gap-1.5 rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]"
       >
         <CloudOff aria-hidden="true" size={12} strokeWidth={2} />
-        Not saving — {blockedReason ?? "fix the highlighted field"}
+        {t("creatorEditor.builder.save.blocked").replace("{reason}", () =>
+          t(`creatorEditor.builder.save.reasons.${blockedReason ?? "field"}`),
+        )}
       </span>
     );
   }
@@ -2850,7 +2855,7 @@ function BuilderSaveStatus({
           strokeWidth={2.2}
           className="animate-spin"
         />
-        Saving
+        {t("creatorEditor.builder.save.saving")}
       </span>
     );
   }
@@ -2859,7 +2864,7 @@ function BuilderSaveStatus({
     return (
       <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
         <span className="size-1.5 rounded-full bg-[var(--color-ink-muted)]" />
-        Unsaved changes
+        {t("creatorEditor.builder.save.pending")}
       </span>
     );
   }
@@ -2868,7 +2873,7 @@ function BuilderSaveStatus({
     return (
       <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]">
         <CloudOff aria-hidden="true" size={12} strokeWidth={2} />
-        Save failed — use Save draft
+        {t("creatorEditor.builder.save.error")}
       </span>
     );
   }
@@ -2876,7 +2881,7 @@ function BuilderSaveStatus({
   return (
     <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
       <CheckCircle2 aria-hidden="true" size={12} strokeWidth={2} />
-      All changes saved
+      {t("creatorEditor.builder.save.saved")}
     </span>
   );
 }
@@ -2893,9 +2898,12 @@ function CourseCoverField({
   course: TeacherCourse;
   isEditable: boolean;
 }) {
+  const { t } = useTranslation();
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState<UploadCourseAssetProgress | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<
+    { kind: "invalid-image" } | { kind: "upload"; cause: unknown } | null
+  >(null);
   const [fileInputKey, setFileInputKey] = useState(0);
 
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
@@ -2905,13 +2913,11 @@ function CourseCoverField({
       return;
     }
 
-    setError("");
+    setError(null);
     setProgress(null);
 
     if (!isAllowedCourseAssetFile(file, "course_cover")) {
-      setError(
-        `Use an image file under ${formatCourseAssetSize(supabaseUploadLimitBytes)}.`,
-      );
+      setError({ kind: "invalid-image" });
       setFileInputKey((current) => current + 1);
       return;
     }
@@ -2930,7 +2936,7 @@ function CourseCoverField({
     } catch (uploadError) {
       // O motivo real (teto de tamanho, permissão, conexão) já vem pronto do
       // domínio; o texto genérico mandava conferir "propriedade do curso".
-      setError(getCourseAssetUploadErrorMessage(uploadError));
+      setError({ kind: "upload", cause: uploadError });
     } finally {
       setIsUploading(false);
       setProgress(null);
@@ -2943,17 +2949,15 @@ function CourseCoverField({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            Course cover
+            {t("courseMedia.assetKinds.course_cover")}
           </p>
           <p className="mt-1 max-w-xl text-xs leading-5 text-[var(--color-ink-soft)]">
-            Public artwork for the marketplace, the course page, and the student
-            classroom hero. Recommended 16:9, under{" "}
-            {formatCourseAssetSize(supabaseUploadLimitBytes)}.
+            {t("creatorEditor.builder.cover.help").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))}
           </p>
         </div>
         {course.coverImageUrl ? (
           <span className="inline-flex items-center gap-1 rounded-[8px] bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
-            <CheckCircle2 size={12} aria-hidden /> Cover set
+            <CheckCircle2 size={12} aria-hidden /> {t("creatorEditor.members.coverSet")}
           </span>
         ) : null}
       </div>
@@ -2964,14 +2968,14 @@ function CourseCoverField({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={course.coverImageUrl}
-              alt={`${course.title || "Course"} cover`}
+              alt={t("creatorEditor.builder.cover.alt").replace("{title}", () => course.title || t("creatorEditor.builder.cover.course"))}
               className="h-full w-full object-cover"
             />
           ) : (
             <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-[var(--color-ink-soft)]">
               <ImageIcon size={22} aria-hidden />
               <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
-                No cover yet
+                {t("creatorEditor.members.noCover")}
               </span>
             </div>
           )}
@@ -2979,7 +2983,7 @@ function CourseCoverField({
 
         <div className="grid content-start gap-2">
           <label
-            className={`inline-flex w-fit items-center gap-2 rounded-[10px] border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] ${
+            className={`inline-flex w-fit items-center gap-2 rounded-[10px] border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
               !isEditable || isUploading
                 ? "pointer-events-none opacity-60"
                 : "cursor-pointer"
@@ -2987,32 +2991,33 @@ function CourseCoverField({
           >
             <UploadCloud size={16} aria-hidden />
             {isUploading
-              ? "Uploading..."
+              ? t("creatorEditor.members.uploading")
               : course.coverImageUrl
-                ? "Replace cover"
-                : "Upload cover"}
+                ? t("creatorEditor.members.replaceCover")
+                : t("creatorEditor.members.uploadCover")}
             <input
               key={fileInputKey}
               type="file"
               accept={courseAssetAcceptTypes.course_cover}
               disabled={!isEditable || isUploading}
               onChange={handleFile}
-              className="hidden"
+              className="sr-only"
             />
           </label>
 
           {progress ? <UploadProgressNote progress={progress} /> : null}
 
           {error ? (
-            <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">
-              {error}
+            <p role="alert" className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">
+              {error.kind === "invalid-image"
+                ? t("creatorEditor.members.invalidImage").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))
+                : getCourseAssetUploadErrorMessage(error.cause, supabaseUploadLimitBytes, t)}
             </p>
           ) : null}
 
           {!course.coverImageUrl && !error && !progress ? (
             <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
-              Add a cover — it appears on the marketplace card, the course page,
-              and the classroom.
+              {t("creatorEditor.builder.cover.emptyHelp")}
             </p>
           ) : null}
         </div>

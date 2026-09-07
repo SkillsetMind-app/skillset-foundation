@@ -13,10 +13,11 @@ import { subscribeToCourseAssets, uploadCourseAsset } from "@/lib/data/course-as
 const mocks = vi.hoisted(() => {
   // Fusivel: um laco de render nao estoura o timeout do vitest, come memoria
   // ate matar o processo. Contamos as inscricoes e explodimos cedo.
+  const subscriptionCounts = new Map<string, number>();
   function fused<A extends unknown[]>(name: string, impl: (...args: A) => () => void) {
-    let calls = 0;
     return (...args: A) => {
-      calls += 1;
+      const calls = (subscriptionCounts.get(name) ?? 0) + 1;
+      subscriptionCounts.set(name, calls);
       if (calls > 20) {
         throw new Error(`${name} inscrito ${calls} vezes: laco de render`);
       }
@@ -43,6 +44,7 @@ const mocks = vi.hoisted(() => {
 
   return {
     fused,
+    resetSubscriptionCounts: () => subscriptionCounts.clear(),
     course,
     // O MESMO objeto em todo render: um usuario novo por render reinscreve
     // os efeitos e entra em laco.
@@ -130,18 +132,289 @@ function renderMembers() {
   );
 }
 
+function renderBuilder(tab = "details") {
+  mocks.searchParams.set("tab", tab);
+  return render(
+    <I18nProvider initialLocale="en">
+      <SwitchLanguage />
+      <CourseBuilderStudio />
+    </I18nProvider>,
+  );
+}
+
 // O professor via, para o mesmo curso, 71% no chip do construtor, 40% na
 // barra logo abaixo do chip e 50% no Manage. Cada tela tinha regra propria.
 // Agora as tres leem a mesma funcao e mostram o mesmo numero.
 describe("o que falta para publicar: um numero so em todas as telas", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.resetSubscriptionCounts();
+  });
 
   afterEach(() => {
     cleanup();
     mocks.searchParams.delete("section");
     mocks.searchParams.delete("tab");
+    mocks.searchParams.set("courseId", "course-1");
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it.each([
+    ["details", "Define las bases del curso."],
+    ["pricing", "Presenta la oferta."],
+    ["content", "Organiza el contenido."],
+    ["members", "Personaliza el área de miembros."],
+    ["review", "Publica en el marketplace."],
+  ])("keeps the %s step, course and publication gates while switching the builder language", async (tab, heading) => {
+    renderBuilder(tab);
+    await screen.findByRole("heading", { name: mocks.course.title });
+    const subscriptions = vi.mocked(subscribeToTeacherCourse).mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByRole("navigation", { name: "Pasos para crear el curso" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: mocks.course.title })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Guardar borrador" })).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Publicar producto" })).toBeDisabled();
+    expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({ width: "67%" });
+    expect(screen.getAllByText("Añade al menos una lección.").length).toBeGreaterThan(0);
+    expect(mocks.searchParams.get("tab")).toBe(tab);
+    expect(subscribeToTeacherCourse).toHaveBeenCalledTimes(subscriptions);
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+    expect(publishTeacherCourse).not.toHaveBeenCalled();
+    if (tab === "details") {
+      fireEvent.click(screen.getByRole("button", { name: "Continuar a Precios" }));
+      expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith("/teach/builder?courseId=course-1&tab=pricing", { scroll: false });
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByRole("navigation", { name: "Course creation steps" })).toBeInTheDocument();
+  });
+
+  it("does not restart the 1800ms autosave when the language changes halfway through", async () => {
+    vi.useFakeTimers();
+    let finishSave = () => {};
+    vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(() => new Promise<void>((resolve) => { finishSave = resolve; }));
+    renderBuilder();
+    await act(async () => {});
+    const title = screen.getByRole("textbox", { name: "Course title" });
+    fireEvent.change(title, { target: { value: "Curso $$ y $& con borrador" } });
+    act(() => vi.advanceTimersByTime(900));
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByRole("textbox", { name: "Título del curso" })).toBe(title);
+    expect(title).toHaveValue("Curso $$ y $& con borrador");
+    expect(screen.getByText("Cambios sin guardar")).toBeInTheDocument();
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(900));
+    expect(updateTeacherCourseBuilder).toHaveBeenCalledOnce();
+    expect(vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1]).toMatchObject({ title: "Curso $$ y $& con borrador", categories: ["Applied Psychology & Behavior"], currency: "USD" });
+    expect(screen.getByText("Guardando")).toBeInTheDocument();
+    await act(async () => finishSave());
+    expect(screen.getByText("Todos los cambios guardados")).toBeInTheDocument();
+    expect(updateTeacherCourseBuilder).toHaveBeenCalledOnce();
+    expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
+  });
+
+  it("localizes a visible price block without saving the invalid draft", async () => {
+    vi.useFakeTimers();
+    renderBuilder("pricing");
+    await act(async () => {});
+    const price = screen.getByRole("textbox", { name: "Price" });
+    fireEvent.change(price, { target: { value: "invalid" } });
+    expect(screen.getByRole("status")).toHaveTextContent("fix the price");
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByRole("status")).toHaveTextContent("No se guarda: corrige el precio");
+    expect(screen.getByRole("textbox", { name: "Precio" })).toBe(price);
+    expect(price).toHaveValue("invalid");
+    act(() => vi.advanceTimersByTime(5000));
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Publicar producto" })).toBeDisabled();
+  });
+
+  it("keeps canonical price, currency and release values when their labels change", async () => {
+    vi.useFakeTimers();
+    renderBuilder("pricing");
+    await act(async () => {});
+    fireEvent.change(screen.getByRole("textbox", { name: "Price" }), { target: { value: "149,50" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Currency" }), { target: { value: "BRL" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Content release" }), { target: { value: "time_drip_custom" } });
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByRole("textbox", { name: "Precio" })).toHaveValue("149,50");
+    expect(screen.getByRole("combobox", { name: "Moneda" })).toHaveValue("BRL");
+    expect(screen.getByRole("combobox", { name: "Disponibilidad del contenido" })).toHaveValue("time_drip_custom");
+    expect(screen.getByRole("option", { name: "Calendario por lección" })).toHaveProperty("selected", true);
+    const displayPrice = new Intl.NumberFormat("es", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(149.5);
+    expect(screen.getByText((_content, element) => element?.tagName === "SPAN" && element.textContent === displayPrice)).toBeInTheDocument();
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTime(1800));
+    expect(updateTeacherCourseBuilder).toHaveBeenCalledOnce();
+    expect(vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1]).toMatchObject({
+      priceAmountMinor: 14950,
+      currency: "BRL",
+      paymentType: "one_time",
+      installmentsEnabled: false,
+      dripStrategy: "time_drip_custom",
+    });
+    expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
+  });
+
+  it.each([0, 1, 2])("keeps a module name literal and cancels its deletion with %i lessons in Spanish", async (count) => {
+    const title = "Módulo $$ $& {count}";
+    const lessons = Array.from({ length: count }, (_, index) => ({
+      id: `l${index}`, title: `Lección ${index}`, type: "text" as const, description: "",
+    }));
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, modules: [{ id: "m1", title, lessons }] });
+      return () => {};
+    });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    renderBuilder("content");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    fireEvent.click(screen.getByRole("button", { name: "Eliminar" }));
+    const related = count === 0 ? "" : count === 1 ? " y su 1 lección" : " y sus 2 lecciones";
+    expect(confirm).toHaveBeenCalledExactlyOnceWith(`¿Eliminar el módulo "${title}"${related}? No se podrá deshacer después del guardado automático.`);
+    expect(screen.getByRole("textbox", { name: "Módulo 1" })).toHaveValue(title);
+    expect(screen.getAllByRole("textbox", { name: "Título de la lección" })).toHaveLength(count + 1);
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+    expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
+  });
+
+  it("localizes an existing module validation error and retains the unsaved lesson fields", async () => {
+    renderBuilder("content");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    const lesson = screen.getByRole("textbox", { name: "Lesson title" });
+    fireEvent.change(lesson, { target: { value: "Lección $$ $& sin enviar" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add module" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Add a module title before creating the module.");
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Escribe un título antes de crear el módulo.");
+    expect(screen.getByRole("textbox", { name: "Título de la lección" })).toBe(lesson);
+    expect(lesson).toHaveValue("Lección $$ $& sin enviar");
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+  });
+
+  it.each(["save", "publish"] as const)("keeps the activation recovery link after a %s error changes language", async (operation) => {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, paymentType: "free", priceAmountMinor: 0, modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text" }] }] });
+      return () => {};
+    });
+    const activation = new Error("Pay the one-time activation fee before publishing courses.");
+    if (operation === "save") vi.mocked(updateTeacherCourseBuilder).mockRejectedValueOnce(activation);
+    else vi.mocked(publishTeacherCourse).mockRejectedValueOnce(activation);
+    renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    fireEvent.click(operation === "save"
+      ? screen.getAllByRole("button", { name: "Save draft" })[0]
+      : screen.getByRole("button", { name: "Publish product" }));
+    await screen.findByRole("link", { name: "Activate storefront" });
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Activa tu tienda para habilitar la publicación: es un pago único.");
+    expect(screen.getByRole("link", { name: "Activar tienda" })).toHaveAttribute("href", "/teach/activate");
+    expect(updateTeacherCourseBuilder).toHaveBeenCalledOnce();
+    expect(publishTeacherCourse).toHaveBeenCalledTimes(operation === "publish" ? 1 : 0);
+  });
+
+  it("translates a completed save without repeating it", async () => {
+    renderBuilder();
+    await screen.findByRole("heading", { name: mocks.course.title });
+    fireEvent.click(screen.getAllByRole("button", { name: "Save draft" })[0]);
+    await screen.findByText("Draft saved.");
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByText("Borrador guardado.")).toBeInTheDocument();
+    expect(updateTeacherCourseBuilder).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the new lesson pending across a locale change until the saved course echoes its id", async () => {
+    vi.useFakeTimers();
+    let emitCourse: (course: TeacherCourse | null) => void = () => {};
+    let finishSave = () => {};
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emitCourse = emit;
+      emit(mocks.course);
+      return () => {};
+    });
+    vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(() => new Promise<void>((resolve) => { finishSave = resolve; }));
+    renderBuilder("content");
+    await act(async () => {});
+    fireEvent.change(screen.getByRole("textbox", { name: "Lesson title" }), { target: { value: "Aula $$ $&" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add lesson" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByText("Lección añadida. El editor se abrirá cuando termine el guardado automático…")).toBeInTheDocument();
+    expect(screen.getByText("Guardando lección…")).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(1800));
+    expect(updateTeacherCourseBuilder).toHaveBeenCalledOnce();
+    const payload = vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1];
+    expect(payload.modules?.[0].lessons[0].title).toBe("Aula $$ $&");
+    await act(async () => finishSave());
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    act(() => emitCourse({ ...mocks.course, ...payload }));
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(screen.getByRole("dialog")).toHaveTextContent("Aula $$ $&");
+    expect(updateTeacherCourseBuilder).toHaveBeenCalledOnce();
+    expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the course-cover upload and translates its eventual failure", async () => {
+    let rejectUpload: (error: Error) => void = () => {};
+    vi.mocked(uploadCourseAsset).mockImplementationOnce((input) => {
+      input.onProgress?.({ bytesTransferred: 512, totalBytes: 1024, percent: 50, state: "running" });
+      return new Promise<string>((_resolve, reject) => { rejectUpload = reject; });
+    });
+    renderBuilder();
+    await screen.findByRole("heading", { name: mocks.course.title });
+    const file = new File(["fixture"], "cover-$$-$&.png", { type: "image/png" });
+    const input = screen.getByLabelText("Upload cover");
+    fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByLabelText("Subiendo...")).toBe(input);
+    expect(input).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent("50%");
+    expect(vi.mocked(uploadCourseAsset).mock.calls[0][0]).toMatchObject({ file, courseId: "course-1", kind: "course_cover", isPreview: false });
+    await act(async () => rejectUpload(Object.assign(new Error("permission"), { status: 403 })));
+    expect(screen.getByRole("alert")).toHaveTextContent("No tienes permiso para subir archivos a este curso.");
+    expect(screen.getByLabelText("Subir portada")).not.toBeDisabled();
+    expect(uploadCourseAsset).toHaveBeenCalledOnce();
+    expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
+  });
+
+  it("uses the current language when leaving a dirty draft and keeps new-tab preview exempt", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const { container } = renderBuilder();
+    await screen.findByRole("heading", { name: mocks.course.title });
+    fireEvent.change(screen.getByRole("textbox", { name: "Course title" }), { target: { value: "Edited course title" } });
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    const leave = document.createElement("a");
+    leave.href = "/teach";
+    leave.textContent = "Leave fixture";
+    container.appendChild(leave);
+    expect(fireEvent.click(leave)).toBe(false);
+    expect(confirm).toHaveBeenCalledExactlyOnceWith("Este curso tiene cambios sin guardar. ¿Quieres salir y perderlos?");
+    const preview = screen.getByRole("link", { name: /^Vista previa.*pestaña nueva/i });
+    preview.addEventListener("click", (event) => event.preventDefault());
+    fireEvent.click(preview);
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+  });
+
+  it("translates a read failure and recovers through the original subscription", async () => {
+    let recover: (course: TeacherCourse | null) => void = () => {};
+    const unsubscribe = vi.fn();
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit, fail) => {
+      recover = emit;
+      fail(new Error("Temporary fixture failure"));
+      return unsubscribe;
+    });
+    const { unmount } = renderBuilder();
+    expect(screen.getByText(/We could not load this course/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByText("No pudimos cargar este curso. Vuelve al estudio del creador e inténtalo de nuevo.")).toBeInTheDocument();
+    await act(async () => recover(mocks.course));
+    expect(screen.getByRole("navigation", { name: "Pasos para crear el curso" })).toBeInTheDocument();
+    expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
+    unmount();
+    expect(unsubscribe).toHaveBeenCalledOnce();
   });
 
   it("offers permanent checkout and product page links in Promo links", async () => {

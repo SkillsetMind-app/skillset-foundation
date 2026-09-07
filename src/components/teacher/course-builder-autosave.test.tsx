@@ -6,7 +6,7 @@ const ok = {
   isEditable: true,
   priceFieldIsValid: true,
   installmentsAreValid: true,
-  draftStructureError: "",
+  draftStructureError: false,
 };
 
 describe("getAutosaveBlockedReason", () => {
@@ -19,12 +19,12 @@ describe("getAutosaveBlockedReason", () => {
   });
 
   it.each([
-    [{ priceFieldIsValid: false }, /price/],
-    [{ installmentsAreValid: false }, /installment/],
-    [{ draftStructureError: "A module has no lesson." }, /structure/],
+    [{ priceFieldIsValid: false }, "price"],
+    [{ installmentsAreValid: false }, "installments"],
+    [{ draftStructureError: true }, "structure"],
   ])("nomeia o bloqueio em vez de só parar (%o)", (override, expected) => {
     const reason = getAutosaveBlockedReason({ ...ok, ...override });
-    expect(reason).toMatch(expected);
+    expect(reason).toBe(expected);
   });
 
   // Curso publicado/arquivado não é editável: não há rascunho para perder, e
