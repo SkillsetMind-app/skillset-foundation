@@ -9,7 +9,7 @@ it("shares checkout by public code or offer ID, never inactive offers", async ()
     { id: "o2", name: "Standard", active: true, prices: [price] },
     { id: "o3", name: "Expired", active: false, prices: [price] },
   ] }) })));
-  render(<CourseOffersPanel courseId="course-1" />);
+  render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" />);
   expect(await screen.findByRole("link", { name: "Open Launch checkout" })).toHaveAttribute("href", "https://www.skillsetmind.com/courses/course-1/checkout?offer=LAUNCH");
   expect(screen.getByRole("link", { name: "Open Standard checkout" })).toHaveAttribute("href", "https://www.skillsetmind.com/courses/course-1/checkout?offerId=o2");
   expect(screen.queryByRole("link", { name: /Expired/ })).not.toBeInTheDocument();

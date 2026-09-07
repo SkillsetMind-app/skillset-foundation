@@ -46,9 +46,11 @@ function money(amountMinor: number, currency: string): string {
  */
 export function CourseOffersPanel({
   courseId,
+  courseTitle,
   defaultCurrency = "USD",
 }: {
   courseId: string;
+  courseTitle: string;
   defaultCurrency?: string;
 }) {
   const [offers, setOffers] = useState<OfferRow[]>([]);
@@ -277,6 +279,7 @@ export function CourseOffersPanel({
                 {offer.active && price ? (
                   <CourseShareLink
                     label={`${offer.name} checkout`}
+                    title={courseTitle}
                     path={`/courses/${encodeURIComponent(courseId)}/checkout?${
                       offer.publicCode
                         ? `offer=${encodeURIComponent(offer.publicCode)}`
