@@ -11,7 +11,6 @@ import {
   subscribeToCommunityPosts,
   subscribeToCourseCommunityComments,
 } from "@/lib/data/community-posts";
-import { subscribeToLessonComments } from "@/lib/data/lesson-comments";
 import { recordLessonProgress } from "@/lib/data/lesson-progress";
 
 /**
@@ -142,14 +141,6 @@ vi.mock("@/lib/data/course-events", () => ({
   subscribeToCourseEvents: vi.fn(() => vi.fn()),
 }));
 
-// A caixa ANTIGA (tabela lesson_comments) saiu da aula em 07/09. O mock fica
-// so para provar que ninguem mais inscreve nela.
-vi.mock("@/lib/data/lesson-comments", () => ({
-  subscribeToLessonComments: vi.fn(() => vi.fn()),
-  addLessonComment: vi.fn(),
-  deleteLessonComment: vi.fn(),
-}));
-
 vi.mock("@/lib/posthog/events", () => ({
   track: new Proxy({}, { get: () => vi.fn() }),
 }));
@@ -278,7 +269,6 @@ beforeEach(() => {
   vi.mocked(createCommunityPost).mockClear();
   vi.mocked(subscribeToCommunityPosts).mockClear();
   vi.mocked(subscribeToCourseCommunityComments).mockClear();
-  vi.mocked(subscribeToLessonComments).mockClear();
   Element.prototype.scrollIntoView = vi.fn();
   window.requestAnimationFrame = (cb: FrameRequestCallback) => {
     cb(0);
@@ -478,8 +468,7 @@ describe("comentarios da aula sob o player", () => {
     // Aberta: UM textbox e UM "Comment" — os da caixa nova, sob o player.
     expect(screen.getAllByRole("textbox")).toHaveLength(1);
     expect(screen.getAllByRole("button", { name: /comment/i })).toHaveLength(1);
-    // Ninguem inscreve mais na tabela antiga; o bloco do fim do corpo nao existe.
-    expect(subscribeToLessonComments).not.toHaveBeenCalled();
+    // O bloco do fim do corpo (a caixa antiga) nao existe.
     expect(document.getElementById("member-lesson-discussion")).toBeNull();
   });
 });
