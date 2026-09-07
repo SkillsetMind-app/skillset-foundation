@@ -1070,6 +1070,18 @@
         "materials": "Materials",
         "availableFrom": "Available from"
       },
+      "lessonComments": {
+        "title": "Lesson comments",
+        "prompt": "Comment on the lesson.",
+        "form": "Comment on the lesson",
+        "bodyLabel": "Your comment on this lesson",
+        "publish": "Comment",
+        "loading": "Loading lesson comments...",
+        "empty": "No comments on this lesson yet.",
+        "replyOne": "{count} reply",
+        "replyMany": "{count} replies",
+        "viewInCommunity": "View in community"
+      },
       "review": {
         "title": "Course review",
         "heading": "Rate the learning experience.",

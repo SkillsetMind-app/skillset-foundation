@@ -1070,6 +1070,18 @@
         "materials": "Materiales",
         "availableFrom": "Disponible desde"
       },
+      "lessonComments": {
+        "title": "Comentarios de la lección",
+        "prompt": "Comenta algo sobre la lección.",
+        "form": "Comentar la lección",
+        "bodyLabel": "Tu comentario sobre esta lección",
+        "publish": "Comentar",
+        "loading": "Cargando los comentarios de la lección...",
+        "empty": "Todavía no hay comentarios en esta lección.",
+        "replyOne": "{count} respuesta",
+        "replyMany": "{count} respuestas",
+        "viewInCommunity": "Ver en la comunidad"
+      },
       "review": {
         "title": "Reseña del curso",
         "heading": "Valora la experiencia de aprendizaje.",
