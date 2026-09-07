@@ -1859,7 +1859,9 @@
         "shortTitle": "Constructor",
         "legacy": "Este curso conserva un estado de revisión anterior. Completa los requisitos y publícalo directamente desde este espacio.",
         "published": "Este curso está publicado. Puedes seguir mejorando su contenido y la experiencia del estudiante sin iniciar otra revisión.",
-        "reviewNote": "Nota de revisión de SkillsetMind"
+        "reviewNote": "Nota de revisión de SkillsetMind",
+        "unpublished": "Este producto todavía no está publicado. Los estudiantes solo lo verán después de publicarlo.",
+        "unpublishedLink": "Abrir el panel del producto"
       },
       "navigation": {
         "studio": "Volver al estudio del creador",
@@ -2049,7 +2051,13 @@
           "hint": "Completa la verificación profesional antes de publicar.",
           "optionalHint": "Hoy es opcional; será obligatoria cuando se abra la admisión profesional."
         }
-      }
+      },
+      "groups": {
+        "content": "Contenido guardado",
+        "page": "Página preparada",
+        "sale": "Venta disponible"
+      },
+      "groupCount": "{done} de {total}"
     }
   },
   "courseMedia": {

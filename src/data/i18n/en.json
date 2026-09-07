@@ -1859,7 +1859,9 @@
         "shortTitle": "Builder",
         "legacy": "This course carries a legacy review status. Complete the checks and publish it directly from this workspace.",
         "published": "This course is live. You can keep improving its content and learner experience without creating a new review cycle.",
-        "reviewNote": "SkillsetMind review note"
+        "reviewNote": "SkillsetMind review note",
+        "unpublished": "This product is not published yet. Students only see it after you publish.",
+        "unpublishedLink": "Open the product panel"
       },
       "navigation": {
         "studio": "Back to Teacher Studio",
@@ -2049,7 +2051,13 @@
           "hint": "Complete professional verification before publishing.",
           "optionalHint": "Optional today — becomes required when professional admission opens."
         }
-      }
+      },
+      "groups": {
+        "content": "Content saved",
+        "page": "Page prepared",
+        "sale": "Sale available"
+      },
+      "groupCount": "{done} of {total}"
     }
   },
   "courseMedia": {

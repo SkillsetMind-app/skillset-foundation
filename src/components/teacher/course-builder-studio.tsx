@@ -83,7 +83,9 @@ import {
   uploadCourseAsset,
   type UploadCourseAssetProgress,
 } from "@/lib/data/course-assets";
+import { ReadinessGroups } from "@/components/teacher/readiness-groups";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
+import { InlineAlert } from "@/components/ui";
 import type { CourseAsset } from "@/domain/course-asset";
 import { isActivationRequiredError } from "@/domain/creator-verification";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
@@ -1481,6 +1483,23 @@ export function CourseBuilderStudio() {
 
   return (
     <div className="course-builder-shell">
+      {/* A Hotmart mostra "esse produto nao esta publicado" no topo do editor
+          enquanto e rascunho. Aqui o chip de status ficava escondido entre
+          outros dois, e quem entrava pelo construtor nao sabia se o aluno ja
+          via o curso. Rascunho e "ajustes pedidos" nunca chegaram ao
+          marketplace; "inativo" pode ter aluno matriculado, entao a frase
+          "so veem depois de publicar" seria falsa e ele fica de fora. */}
+      {course?.status === "draft" || course?.status === "needs_changes" ? (
+        <InlineAlert tone="info" className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span>{t("creatorEditor.builder.shell.unpublished")}</span>
+          <Link
+            href={`/teach/courses/${encodeURIComponent(courseId ?? "")}/manage`}
+            className="inline-flex min-h-11 items-center font-bold text-[var(--color-primary)] underline underline-offset-2"
+          >
+            {t("creatorEditor.builder.shell.unpublishedLink")}
+          </Link>
+        </InlineAlert>
+      ) : null}
       <section className="course-builder-hero">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -2533,9 +2552,11 @@ export function CourseBuilderStudio() {
                 {t("creatorEditor.builder.publish.help")}
               </InlineHelp>
             </h4>
-            <div className="mt-5 grid gap-3">
-              {readiness.items.map((item) => (
-                <div
+            <ReadinessGroups
+              readiness={readiness}
+              className="mt-5 grid gap-6"
+              renderItem={(item) => (
+                <li
                   key={item.id}
                   className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3"
                 >
@@ -2551,9 +2572,9 @@ export function CourseBuilderStudio() {
                   {item.done ? null : (
                     <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">{item.hint}</p>
                   )}
-                </div>
-              ))}
-            </div>
+                </li>
+              )}
+            />
             <p className="mt-5 text-sm leading-7 text-[var(--color-ink-soft)]">
               {t("creatorEditor.builder.publish.checksHelp")}
             </p>

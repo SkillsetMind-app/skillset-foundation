@@ -16,6 +16,7 @@ import {
 import { CourseShareLink } from "@/components/teacher/course-share-link";
 import { CourseOffersPanel } from "@/components/teacher/course-offers-panel";
 import { CourseOverviewPanel } from "@/components/teacher/course-overview-panel";
+import { ReadinessGroups } from "@/components/teacher/readiness-groups";
 import { CourseStudentRoster } from "@/components/teacher/course-student-roster";
 import { CourseLandingEditor } from "@/components/teacher/course-landing-editor";
 import { SalesPageEditor } from "@/components/teacher/sales-page-editor";
@@ -472,8 +473,10 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
                 {readiness.doneCount} of {readiness.total} required steps done · {readiness.percent}% ready
               </p>
-              <ul className="mt-4 grid gap-3">
-                {readiness.items.map((item) => (
+              <ReadinessGroups
+                readiness={readiness}
+                className="mt-4 grid gap-5"
+                renderItem={(item) => (
                   <li key={item.id} className="flex items-start gap-3">
                     <span
                       aria-hidden
@@ -510,8 +513,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                       </p>
                     </div>
                   </li>
-                ))}
-              </ul>
+                )}
+              />
               {course.reviewNote ? (
                 <div className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.18)] bg-white px-4 py-3">
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
