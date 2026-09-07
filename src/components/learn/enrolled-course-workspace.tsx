@@ -1303,16 +1303,6 @@ const lessonTypeLabels: Record<LessonType, string> = {
   external_embed: "learn.classroom.lesson.types.external_embed",
 };
 
-const lessonTypeDescriptions: Record<LessonType, string> = {
-  video: "Secure video playback will appear here when the instructor attaches the lesson media.",
-  text: "Written lesson content will appear here when the instructor publishes the lesson body.",
-  quiz: "Quiz questions and passing rules will appear here when assessment tools are connected.",
-  assignment: "Assignment instructions, submission upload, and review status will appear here in the assignment module.",
-  live_recording: "Recorded live sessions will appear here after the instructor uploads or links the replay.",
-  download: "Downloadable files and supporting materials will appear here after upload.",
-  external_embed: "External learning embeds will appear here when the instructor connects a trusted provider link.",
-};
-
 function formatUnlockMessage(unlockState: LessonUnlockState, locale: string, t: (key: string) => string) {
   if (unlockState.unlocked) {
     return t("learn.classroom.lesson.available");
@@ -1589,9 +1579,6 @@ function LessonContentPanel({
             {t("learn.classroom.lesson.openResource")}
           </a>
         ) : null}
-        <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-          {lessonTypeDescriptions[lesson.type]}
-        </p>
         {!locked && enableFirestoreAssets ? (
           <LessonAssetList assets={supportingAssets} isLoading={isLoadingAssets} />
         ) : null}

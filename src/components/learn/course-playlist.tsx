@@ -136,6 +136,9 @@ export function CoursePlaylist({
                   <span className="member-playlist__module-eyebrow">
                     {t("learn.classroom.curriculum.module").replace("{number}", () => String(moduleIndex + 1))}
                   </span>
+                  {/* O espaço separa "Módulo 1" do título no nome acessível
+                      do botão; o grid do título não o desenha. */}
+                  {" "}
                   {group.module.title}
                 </span>
                 <span className="member-playlist__module-meta">

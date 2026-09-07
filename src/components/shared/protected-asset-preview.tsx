@@ -46,8 +46,12 @@ function ProtectedAssetPreviewContent({
     let isMounted = true;
     let nextObjectUrl: string | null = null;
 
-    getProtectedCourseAssetObjectUrl(asset)
-      .then((url) => {
+    // await + try/catch instead of .then/.catch: a helper that throws (or
+    // returns nothing) before producing a promise lands in the same error
+    // state instead of crashing the render.
+    void (async () => {
+      try {
+        const url = await getProtectedCourseAssetObjectUrl(asset);
         nextObjectUrl = url;
 
         if (isMounted) {
@@ -55,12 +59,12 @@ function ProtectedAssetPreviewContent({
         } else {
           releaseObjectUrl(url);
         }
-      })
-      .catch(() => {
+      } catch {
         if (isMounted) {
           setHasError(true);
         }
-      });
+      }
+    })();
 
     return () => {
       isMounted = false;

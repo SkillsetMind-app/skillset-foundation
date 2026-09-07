@@ -78,14 +78,20 @@ export function isValidExternalEventUrl(value: string): boolean {
   }
 }
 
-export function formatEventDateTime(value: string): string {
+// Defaults keep every existing caller on English; the classroom passes its
+// locale and an already-translated placeholder.
+export function formatEventDateTime(
+  value: string,
+  locale = "en",
+  fallback = "Date pending",
+): string {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "Date pending";
+    return fallback;
   }
 
-  return new Intl.DateTimeFormat("en", {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
