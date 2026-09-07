@@ -18,13 +18,13 @@ import { getWorkspaceHomeHref } from "@/lib/auth/routing";
 // gaveta que o "More" da barra de baixo, que está sempre visível e ao alcance
 // do polegar. Duas portas para a mesma sala, uma delas no canto oposto ao da
 // mão. De 640px para cima ele já era `sm:hidden`, então nada muda ali.
-export function PlatformHeader() {
+export function PlatformHeader({ currentNavigationHref }: { currentNavigationHref?: string }) {
   const pathname = usePathname() ?? "";
   const { t } = useTranslation();
   const { status, user, signOut } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
   const surface = getSurface(pathname);
-  const pageLabel = getPageLabel(pathname, t);
+  const pageLabel = getPageLabel(pathname, t, currentNavigationHref);
 
   return (
     <header className="platform-topbar">
@@ -107,7 +107,11 @@ function getSurface(pathname: string): Surface {
 function getPageLabel(
   pathname: string,
   t: (key: string) => string,
+  currentNavigationHref?: string,
 ): string {
+  const currentItem = platformNav.find((item) => item.href === currentNavigationHref);
+  if (currentItem) return t(currentItem.labelKey);
+
   const matches = platformNav
     .filter(
       (item) =>

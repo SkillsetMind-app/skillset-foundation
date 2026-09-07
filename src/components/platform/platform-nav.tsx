@@ -11,13 +11,16 @@ import {
   BookOpen,
   Calendar,
   ChevronDown,
+  ClipboardList,
   CreditCard,
   ExternalLink,
+  Flag,
   GraduationCap,
   Handshake,
   House,
   Image,
   LayoutDashboard,
+  LifeBuoy,
   Megaphone,
   MessageCircle,
   PenTool,
@@ -27,6 +30,7 @@ import {
   RefreshCw,
   Repeat2,
   Settings,
+  ShieldCheck,
   ShoppingBag,
   Store,
   Tag,
@@ -38,7 +42,14 @@ import {
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { platformNav, type PlatformNavContext } from "@/data/site";
+import {
+  canAccessPlatformNavItem,
+  getOpsNavItem,
+  platformNav,
+  type PlatformNavContext,
+  type PlatformNavCount,
+  type PlatformNavCounts,
+} from "@/data/site";
 import { hasPermission, type PermissionSubject } from "@/lib/permissions";
 
 const iconMap: Record<string, LucideIcon> = {
@@ -48,12 +59,15 @@ const iconMap: Record<string, LucideIcon> = {
   Bookmark,
   BookOpen,
   Calendar,
+  ClipboardList,
   CreditCard,
+  Flag,
   GraduationCap,
   Handshake,
   House,
   Image,
   LayoutDashboard,
+  LifeBuoy,
   Megaphone,
   MessageCircle,
   PenTool,
@@ -63,6 +77,7 @@ const iconMap: Record<string, LucideIcon> = {
   RefreshCw,
   Repeat2,
   Settings,
+  ShieldCheck,
   ShoppingBag,
   Store,
   Tag,
@@ -134,12 +149,21 @@ type PlatformNavProps = {
   collapsed?: boolean;
   onRequestExpand?: (section: string) => void;
   initialSection?: string;
+  currentNavigationHref?: string;
+  navigationCounts?: PlatformNavCounts;
 };
 
-export function PlatformNav({ collapsed = false, onRequestExpand, initialSection }: PlatformNavProps) {
+export function PlatformNav({
+  collapsed = false,
+  onRequestExpand,
+  initialSection,
+  currentNavigationHref,
+  navigationCounts,
+}: PlatformNavProps) {
   const { user } = useAuth();
   const { t } = useTranslation();
   const pathname = usePathname() ?? "";
+  const activeHref = currentNavigationHref ?? (pathname === "/ops" ? getOpsNavItem(null).href : pathname);
   const panelIdPrefix = useId();
   // Antes isto guardava UMA seção: abrir um grupo fechava todos os outros.
   // Medido no /teach, com 6 grupos: nunca havia mais de 7 a 9 links visíveis,
@@ -158,7 +182,7 @@ export function PlatformNav({ collapsed = false, onRequestExpand, initialSection
     .filter(
       (item) =>
         item.contexts.includes(context) &&
-        (!item.permission || hasPermission(subject, item.permission))
+        canAccessPlatformNavItem(subject, item)
     )
     .sort((a, b) => {
       const sectionDelta = getSectionRank(a.sectionKey) - getSectionRank(b.sectionKey);
@@ -181,12 +205,12 @@ export function PlatformNav({ collapsed = false, onRequestExpand, initialSection
   }
 
   const activeSection = groups.find((group) =>
-    group.items.some((item) => isActivePlatformRoute(pathname, item.href))
+    group.items.some((item) => isActivePlatformRoute(pathname, item.href, activeHref))
   )?.section;
   const activeAccordionSection = groups.find(
     (group) =>
       !directSections.has(group.section) &&
-      group.items.some((item) => isActivePlatformRoute(pathname, item.href))
+      group.items.some((item) => isActivePlatformRoute(pathname, item.href, activeHref))
   )?.section;
   const firstAccordionSection = groups.find((group) => !directSections.has(group.section))?.section;
   // Padrão: o grupo da rota atual aberto (ou o primeiro), como antes. A
@@ -226,9 +250,10 @@ export function PlatformNav({ collapsed = false, onRequestExpand, initialSection
               href={item.href}
               label={t(item.labelKey)}
               icon={item.icon}
-              active={isActivePlatformRoute(pathname, item.href)}
+              active={isActivePlatformRoute(pathname, item.href, activeHref)}
               newTab={item.newTab}
               collapsed={collapsed}
+              count={navigationCounts?.[item.href]}
             />
           ))}
         </div>
@@ -293,8 +318,9 @@ export function PlatformNav({ collapsed = false, onRequestExpand, initialSection
                 href={item.href}
                 label={t(item.labelKey)}
                 icon={item.icon}
-                active={isActivePlatformRoute(pathname, item.href)}
+                active={isActivePlatformRoute(pathname, item.href, activeHref)}
                 newTab={item.newTab}
+                count={navigationCounts?.[item.href]}
               />
             ))}
           </div>
@@ -347,7 +373,9 @@ function resolveContext(pathname: string, subject: PermissionSubject): PlatformN
   return "learner";
 }
 
-function isActivePlatformRoute(pathname: string, href: string) {
+function isActivePlatformRoute(pathname: string, href: string, activeHref: string) {
+  if (href.includes("?")) return href === activeHref;
+
   if (href === "/teach/builder" && pathname.startsWith("/teach/courses/")) {
     return true;
   }
@@ -376,6 +404,7 @@ function PlatformNavLink({
   active,
   newTab = false,
   collapsed = false,
+  count,
 }: {
   href: string;
   label: string;
@@ -383,9 +412,18 @@ function PlatformNavLink({
   active: boolean;
   newTab?: boolean;
   collapsed?: boolean;
+  count?: PlatformNavCount;
 }) {
   const { t } = useTranslation();
   const Icon = iconMap[icon] ?? LayoutDashboard;
+  const countLabel = count === undefined
+    ? undefined
+    : typeof count === "number"
+      ? t("platform.queueCount.pending").replace("{count}", String(count))
+      : t(`platform.queueCount.${count}`);
+  const countText = typeof count === "number"
+    ? (count > 99 ? "99+" : count)
+    : count === "loading" ? "…" : "—";
 
   return (
     <Link
@@ -394,7 +432,7 @@ function PlatformNavLink({
       // Recolhida, a barra esconde o rótulo (largura 0) e o ícone ficava sem
       // nome: só os grupos tinham dica. O title devolve o nome no hover; o
       // rótulo continua no DOM para leitores de tela.
-      title={collapsed ? label : undefined}
+      title={collapsed ? [label, countLabel].filter(Boolean).join(", ") : undefined}
       target={newTab ? "_blank" : undefined}
       rel={newTab ? "noopener noreferrer" : undefined}
       className={`platform-nav-link group relative flex h-11 min-h-11 shrink-0 items-center gap-2.5 rounded-[10px] border px-2.5 py-1.5 text-sm font-semibold transition-colors ${
@@ -404,13 +442,33 @@ function PlatformNavLink({
       }`}
     >
       {collapsed ? (
-        <Icon aria-hidden="true" size={18} strokeWidth={2} className="shrink-0" />
+        <Icon
+          aria-hidden="true"
+          size={18}
+          strokeWidth={2}
+          className={count === undefined ? "shrink-0" : "shrink-0 -translate-y-2"}
+        />
       ) : (
         <span className="platform-nav-icon-chip">
           <Icon aria-hidden="true" size={18} strokeWidth={2} className="shrink-0" />
         </span>
       )}
       <span className="platform-sidebar-label min-w-0 truncate">{label}</span>
+      {count !== undefined ? (
+        <>
+          <span
+            aria-hidden="true"
+            className={`shrink-0 rounded-[4px] bg-[var(--color-surface-soft)] px-1 text-center font-semibold tabular-nums text-[var(--color-ink)] ${
+              collapsed
+                ? "absolute bottom-1 left-1/2 h-3.5 min-w-5 -translate-x-1/2 text-[10px] leading-3.5"
+                : "ml-auto h-5 min-w-5 text-[11px] leading-5"
+            }`}
+          >
+            {countText}
+          </span>
+          <span className="sr-only">, {countLabel}</span>
+        </>
+      ) : null}
       {newTab ? (
         <ExternalLink
           aria-hidden="true"

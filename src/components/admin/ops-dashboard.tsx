@@ -1,7 +1,8 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { startTransition, useEffect, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { AccountActionRequestsPanel } from "@/components/admin/account-action-requests-panel";
 import { AdminEnrollmentPanel } from "@/components/admin/admin-enrollment-panel";
@@ -14,109 +15,79 @@ import { RoleManager } from "@/components/admin/role-manager";
 import { SupportTicketQueue } from "@/components/admin/support-ticket-queue";
 import { UserLookupPanel } from "@/components/admin/user-lookup-panel";
 import { ViewAsSwitcher } from "@/components/admin/view-as";
-import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
+import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
+import { PlatformShell } from "@/components/platform/platform-shell";
+import { canAccessPlatformNavItem, getOpsNavItem } from "@/data/site";
 import {
   subscribeToAuditLog,
   type AuditLogEntry,
 } from "@/lib/data/audit-log";
 
-// Oito filas, cada uma com endereço próprio (?tab=). "Access" é a oitava:
-// papéis e "ver como" moravam no fim da página, fora das abas — dois modelos
-// de navegação na mesma tela.
-const opsTabValues = [
-  "verification",
-  "catalog",
-  "payments",
-  "community",
-  "support",
-  "users",
-  "audit",
-  "access",
-] as const;
-
-type OpsTab = (typeof opsTabValues)[number];
-
-function isOpsTab(value: string | null): value is OpsTab {
-  return (opsTabValues as readonly string[]).includes(value ?? "");
-}
-
 export function OpsDashboard() {
-  const router = useRouter();
+  const { user } = useAuth();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
-  const requestedTab = searchParams.get("tab");
-  const activeTab: OpsTab = isOpsTab(requestedTab) ? requestedTab : "verification";
+  const currentItem = getOpsNavItem(searchParams.get("tab"));
+  const activeTab = currentItem.tab;
+  const canOpenQueue = canAccessPlatformNavItem(user, currentItem);
   const counts = useOpsQueueCounts();
 
-  // Os três cartões de métrica que ficavam entre as abas e o conteúdo viraram
-  // estes contadores, ao lado do nome da fila. Enquanto carrega, sem número —
-  // um "0" que depois vira "3" é pior que nada.
-  const badge = (value: number) => (counts.isLoading ? undefined : value);
-  const opsTabs = [
-    { value: "verification", label: "Creator verification", count: badge(counts.pendingVerifications) },
-    { value: "catalog", label: "Published catalog" },
-    { value: "payments", label: "Payments" },
-    { value: "community", label: "Community reports", count: badge(counts.openReports) },
-    { value: "support", label: "Support tickets", count: badge(counts.openTickets) },
-    { value: "users", label: "Users" },
-    { value: "audit", label: "Audit log" },
-    { value: "access", label: "Access" },
-  ];
-
-  // Os filtros Período e Status saíram: nenhuma das sete filas lia esses
-  // parâmetros (grep em todos os painéis: zero leituras). Eram dois seletores
-  // decorativos entre a aba e a fila. Quando uma fila ganhar filtro de verdade,
-  // ele nasce dentro dela, na linha do título.
-  function selectTab(value: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", value);
-
-    startTransition(() => {
-      router.replace(`/ops?${params.toString()}`, { scroll: false });
-    });
-  }
-
   return (
-    <div className="grid gap-5">
-      <section className="rounded-[14px] border border-[var(--color-line)] bg-white px-5 pt-2 shadow-[var(--shadow-soft)]">
-        <HorizontalTabs
-          tabs={opsTabs}
-          activeValue={activeTab}
-          onChange={selectTab}
-          ariaLabel="Operations queues"
-          className="border-b-0"
-        />
-      </section>
-
-      {activeTab === "access" ? (
-        <section className="grid gap-5">
-          <h2 className="text-base font-bold text-[var(--color-ink)]">
-            Access levels
-          </h2>
-          <ViewAsSwitcher />
-          <RoleManager />
-        </section>
-      ) : activeTab === "verification" ? (
-        <CreatorVerificationQueue />
-      ) : activeTab === "catalog" ? (
-        <ManagedCoursePanel />
-      ) : activeTab === "payments" ? (
-        <>
-          <PaymentOperationsPanel />
-          <AdminEnrollmentPanel />
-        </>
-      ) : activeTab === "community" ? (
-        <CommunityModerationQueue />
-      ) : activeTab === "support" ? (
-        <SupportTicketQueue />
-      ) : activeTab === "users" ? (
-        <>
-          <UserLookupPanel />
-          <AccountActionRequestsPanel />
-        </>
-      ) : activeTab === "audit" ? (
-        <AuditLogPanel />
-      ) : null}
-    </div>
+    <PlatformShell
+      title={t("platform.nav.operations")}
+      compact
+      currentNavigationHref={currentItem.href}
+      navigationCounts={{
+        [getOpsNavItem("verification").href]: counts.pendingVerifications,
+        [getOpsNavItem("community").href]: counts.openReports,
+        [getOpsNavItem("support").href]: counts.openTickets,
+      }}
+    >
+      <div className="grid min-w-0 gap-5">
+        {!canOpenQueue ? (
+          <section className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface)] p-4 sm:p-6">
+            <p role="alert" className="text-sm text-[var(--color-ink)]">
+              {t("platform.ops.unavailable")}
+            </p>
+            <Link
+              href="/ops"
+              className="mt-4 inline-flex min-h-11 items-center rounded-[10px] px-3 text-sm font-semibold text-[var(--color-primary)] underline underline-offset-4"
+            >
+              {t("platform.ops.back")}
+            </Link>
+          </section>
+        ) : activeTab === "access" ? (
+          <section className="grid gap-5">
+            <h2 className="text-base font-bold text-[var(--color-ink)]">
+              {t("platform.ops.accessLevels")}
+            </h2>
+            <ViewAsSwitcher />
+            <RoleManager />
+          </section>
+        ) : activeTab === "verification" ? (
+          <CreatorVerificationQueue />
+        ) : activeTab === "catalog" ? (
+          <ManagedCoursePanel />
+        ) : activeTab === "payments" ? (
+          <>
+            <PaymentOperationsPanel />
+            <AdminEnrollmentPanel />
+          </>
+        ) : activeTab === "community" ? (
+          <CommunityModerationQueue />
+        ) : activeTab === "support" ? (
+          <SupportTicketQueue />
+        ) : activeTab === "users" ? (
+          <>
+            <UserLookupPanel />
+            <AccountActionRequestsPanel />
+          </>
+        ) : activeTab === "audit" ? (
+          <AuditLogPanel />
+        ) : null}
+      </div>
+    </PlatformShell>
   );
 }
 

@@ -138,7 +138,9 @@ it.each(["close button", "backdrop", "swipe"])("closes via %s and returns focus"
   const trigger = openGroup("Marketing");
   const drawer = screen.getByRole("dialog");
   if (action === "close button") {
-    fireEvent.click(within(drawer).getByRole("button", { name: "Close navigation" }));
+    const closeButton = within(drawer).getByRole("button", { name: "Close navigation" });
+    expect(closeButton).toHaveClass("size-11");
+    fireEvent.click(closeButton);
   } else if (action === "backdrop") {
     fireEvent.click(drawer.parentElement!.querySelector("button")!);
   } else {

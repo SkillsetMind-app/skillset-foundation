@@ -397,6 +397,24 @@
       "earnings": "Ingresos",
       "verification": "Verificación"
     },
+    "ops": {
+      "verification": "Verificación de creadores",
+      "catalog": "Catálogo publicado",
+      "payments": "Pagos",
+      "community": "Denuncias de la comunidad",
+      "support": "Tickets de soporte",
+      "users": "Usuarios",
+      "audit": "Registro de auditoría",
+      "access": "Acceso",
+      "accessLevels": "Niveles de acceso",
+      "unavailable": "Tu nivel de acceso no incluye esta cola.",
+      "back": "Volver a Operaciones"
+    },
+    "queueCount": {
+      "pending": "{count} pendientes",
+      "loading": "Cargando contador",
+      "unavailable": "Contador no disponible"
+    },
     "navSection": {
       "home": "Inicio",
       "products": "Productos",
