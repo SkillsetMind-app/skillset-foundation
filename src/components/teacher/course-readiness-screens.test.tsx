@@ -122,17 +122,6 @@ function SwitchLanguage() {
   return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Switch language</button>;
 }
 
-// A faixa "ainda nao publicado" (P5) tambem e role="status" e fica fixa no
-// topo do construtor em rascunho. Estes casos miram o anuncio que MUDA durante
-// o teste; exigir exatamente um fora da faixa mantem a prova de que so ele existe.
-function changingStatus() {
-  const others = screen.getAllByRole("status").filter(
-    (el) => !/not published yet|todavía no está publicado/.test(el.textContent ?? ""),
-  );
-  expect(others).toHaveLength(1);
-  return others[0];
-}
-
 function renderMembers() {
   mocks.searchParams.set("tab", "members");
   return render(
@@ -232,9 +221,11 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     await act(async () => {});
     const price = screen.getByRole("textbox", { name: "Price" });
     fireEvent.change(price, { target: { value: "invalid" } });
-    expect(changingStatus()).toHaveTextContent("fix the price");
+    // A faixa "ainda nao publicado" tambem e role="status" (vem do InlineAlert),
+    // entao o anuncio se acha pelo proprio texto e a prova e estar numa regiao viva.
+    expect(screen.getByText(/fix the price/).closest('[role="status"]')).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
-    expect(changingStatus()).toHaveTextContent("No se guarda: corrige el precio");
+    expect(screen.getByText(/corrige el precio/).closest('[role="status"]')).not.toBeNull();
     expect(screen.getByRole("textbox", { name: "Precio" })).toBe(price);
     expect(price).toHaveValue("invalid");
     act(() => vi.advanceTimersByTime(5000));
@@ -381,7 +372,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByLabelText("Subiendo...")).toBe(input);
     expect(input).toBeDisabled();
-    expect(changingStatus()).toHaveTextContent("50%");
+    expect(screen.getByText("50%").closest('[role="status"]')).not.toBeNull();
     expect(vi.mocked(uploadCourseAsset).mock.calls[0][0]).toMatchObject({ file, courseId: "course-1", kind: "course_cover", isPreview: false });
     await act(async () => rejectUpload(Object.assign(new Error("permission"), { status: 403 })));
     expect(screen.getByRole("alert")).toHaveTextContent("No tienes permiso para subir archivos a este curso.");
@@ -620,11 +611,11 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const file = new File(["fixture"], "cover-$$-$&.png", { type: "image/png" });
     const input = screen.getByLabelText("Upload cover");
     fireEvent.change(input, { target: { files: [file] } });
-    expect(changingStatus()).toHaveTextContent("50%");
+    expect(screen.getByText("50%").closest('[role="status"]')).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByLabelText("Subiendo...")).toBe(input);
     expect(input).toBeDisabled();
-    expect(changingStatus()).toHaveTextContent("50%");
+    expect(screen.getByText("50%").closest('[role="status"]')).not.toBeNull();
     expect(uploadCourseAsset).toHaveBeenCalledOnce();
     expect(vi.mocked(uploadCourseAsset).mock.calls[0][0]).toMatchObject({ file, courseId: "course-1", ownerId: "teacher-1", kind: "members_cover", isPreview: false });
     const subscriptions = vi.mocked(subscribeToCourseAssets).mock.calls.length;

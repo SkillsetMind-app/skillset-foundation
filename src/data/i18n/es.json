@@ -895,6 +895,9 @@
         "related": "Abrir la ayuda relacionada"
       }
     },
+    "events": {
+      "datePending": "Fecha pendiente"
+    },
     "notifications": {
       "open": "Abrir notificaciones",
       "openUnread": "Abrir notificaciones, {count} sin leer",

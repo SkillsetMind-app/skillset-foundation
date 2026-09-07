@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { SkillsetUser } from "@/domain/auth";
 import {
   courseEventRsvpStatusLabels,
@@ -180,6 +181,7 @@ function LearnerEventCard({
   currentUser: SkillsetUser | null;
   event: CourseEvent;
 }) {
+  const { t, locale } = useTranslation();
   const [rsvp, setRsvp] = useState<CourseEventRsvp | null>(null);
   const [isLoadingRsvp, setIsLoadingRsvp] = useState(true);
   const [isSavingRsvp, setIsSavingRsvp] = useState(false);
@@ -248,7 +250,7 @@ function LearnerEventCard({
         {event.courseTitle}
       </p>
       <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
-        {formatEventDateTime(event.startsAt)}
+        {formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"))}
       </p>
       <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
         {event.description}

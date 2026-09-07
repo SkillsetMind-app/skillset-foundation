@@ -1093,6 +1093,7 @@ export function EnrolledCourseWorkspace({
 // teacher-event-studio writes). Renders nothing when the course has no
 // scheduled events, so lesson-only courses stay uncluttered.
 function CourseEventsAgenda({ courseId }: { courseId: string }) {
+  const { t, locale } = useTranslation();
   const [events, setEvents] = useState<CourseEvent[]>([]);
   // "Now" is sampled when the event list loads (render must stay pure), so
   // live-now state refreshes on every realtime change to the course's events.
@@ -1158,7 +1159,7 @@ function CourseEventsAgenda({ courseId }: { courseId: string }) {
                   {event.title}
                 </p>
                 <p className="mt-1 text-xs font-semibold text-[var(--color-ink-soft)]">
-                  {formatEventDateTime(event.startsAt)}
+                  {formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"))}
                 </p>
               </div>
               {joinUrl ? (

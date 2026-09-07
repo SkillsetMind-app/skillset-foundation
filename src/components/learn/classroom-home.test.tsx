@@ -8,6 +8,7 @@ import type { Course } from "@/domain/learning";
 import type { CourseAsset } from "@/domain/course-asset";
 import { subscribeToCourseAssets, getProtectedCourseAssetObjectUrl } from "@/lib/data/course-assets";
 import { countOpenCommunityQuestions } from "@/lib/data/community-posts";
+import { subscribeToCourseEvents } from "@/lib/data/course-events";
 import { recordLessonProgress } from "@/lib/data/lesson-progress";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 
@@ -600,5 +601,34 @@ describe("o contador de perguntas abertas na aba Community", () => {
     await waitFor(() => expect(countOpenCommunityQuestions).toHaveBeenCalled());
     expect(within(tabs).getByRole("link", { name: "Community" })).toBeInTheDocument();
     expect(tabs.querySelector(".member-classroom-tabs__count")).toBeNull();
+  });
+
+  it("na aba En vivo, a data da sessao sai no idioma da pessoa", () => {
+    const startsAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+    vi.mocked(subscribeToCourseEvents).mockImplementationOnce((_courseId, onData) => {
+      onData([{
+        id: "event-1",
+        courseId: course.id,
+        courseSlug: course.slug,
+        courseTitle: course.title,
+        ownerId: "teacher-1",
+        title: "Live Q&A",
+        description: "",
+        type: "live_class",
+        status: "scheduled",
+        startsAt,
+        externalUrl: "https://meet.example.com/live",
+        recordingAssetId: null,
+      }]);
+      return () => undefined;
+    });
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.pathname = "/learn/courses/demo-course/lives";
+    mocks.completed = [];
+    render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace course={course} tab="lives" /></I18nProvider>);
+
+    expect(screen.getByText(
+      new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(startsAt)),
+    )).toBeInTheDocument();
   });
 });

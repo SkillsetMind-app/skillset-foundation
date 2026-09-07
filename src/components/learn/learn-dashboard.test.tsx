@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { LearnDashboard } from "@/components/learn/learn-dashboard";
 import type { CourseEvent } from "@/domain/course-event";
 import type { Enrollment } from "@/domain/enrollment";
@@ -177,6 +178,13 @@ const { mockUser, fixtures, fuse } = vi.hoisted(() => {
   return { mockUser, fixtures, fuse };
 });
 
+// O I18nProvider chama useRouter() para o refresh ao trocar de idioma.
+const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...await importOriginal<typeof import("next/navigation")>(),
+  useRouter: () => router,
+}));
+
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({ user: mockUser, status: "authenticated" }),
 }));
@@ -349,5 +357,13 @@ describe("LearnDashboard", () => {
       within(lives).getByText("No live sessions scheduled in your courses."),
     ).toBeInTheDocument();
     expect(screen.getByText("1 course in progress")).toBeInTheDocument();
+  });
+
+  it("a data da proxima live sai no idioma da pessoa", async () => {
+    render(<I18nProvider initialLocale="es"><LearnDashboard /></I18nProvider>);
+
+    expect(await screen.findByText(
+      new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(fixtures.liveEvent.startsAt)),
+    )).toBeInTheDocument();
   });
 });

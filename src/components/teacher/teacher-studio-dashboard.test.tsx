@@ -171,4 +171,19 @@ describe("Home do professor: uma manchete, o que aconteceu e a vitrine", () => {
       screen.getByText("The page exists, but nothing is published on it yet."),
     ).toBeInTheDocument();
   });
+
+  it("um nome com $& na manchete aparece literal, sem virar '{name}'", async () => {
+    // Num replace sem callback, "$&" vira o trecho casado ("{name}") e "$'" o
+    // resto da frase. O nome vem do cadastro: e texto da pessoa, nao nosso.
+    mockUser.displayName = "Mc$&Donald Simon";
+    try {
+      render(<TeacherStudioDashboard />);
+
+      expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent(
+        "Welcome back, Mc$&Donald.",
+      );
+    } finally {
+      mockUser.displayName = "Patrick Simon";
+    }
+  });
 });
