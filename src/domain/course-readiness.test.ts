@@ -3,6 +3,7 @@ import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
 import {
   getCourseReadiness,
+  groupCourseReadiness,
   type CourseReadinessInput,
 } from "@/domain/course-readiness";
 
@@ -159,5 +160,81 @@ describe("getCourseReadiness", () => {
     expect(readiness.items.some((item) => item.id === "payouts")).toBe(false);
     expect(readiness.items.find((item) => item.id === "verification")?.optional).toBe(true);
     expect(readiness.ready).toBe(true);
+  });
+});
+
+// A barra "N de M" somava titulo, capa e repasse do Stripe como se fossem a
+// mesma coisa; a pessoa nao sabia se estava travada no conteudo, na pagina ou
+// no dinheiro. O recorte em tres grupos e so leitura: mesmos ids, mesmo
+// total, mesmo `ready`.
+describe("groupCourseReadiness", () => {
+  const partial: CourseReadinessInput = {
+    ...complete,
+    modules: [{ id: "m1", title: "Start here", lessons: [] }],
+    priceAmountMinor: null,
+  };
+  const account = { payoutsReady: false, verificationRequired: true, verificationApproved: false };
+
+  it("separa conteudo, pagina e venda, nessa ordem, com contagem so dos obrigatorios", () => {
+    const readiness = getCourseReadiness(partial, account);
+    const groups = groupCourseReadiness(readiness);
+
+    expect(groups.map((group) => group.id)).toEqual(["content", "page", "sale"]);
+    expect(groups.map((group) => group.items.map((item) => item.id))).toEqual([
+      ["title", "module", "lesson"],
+      ["summary", "category", "cover", "outcomes"],
+      ["pricing", "verification"],
+    ]);
+    // Capa e resultados sao opcionais: aparecem na pagina, ficam fora do 2 de 2.
+    expect(groups.map((group) => [group.doneCount, group.total, group.ready])).toEqual([
+      [2, 3, false],
+      [2, 2, true],
+      [0, 2, false],
+    ]);
+  });
+
+  it("a soma dos grupos bate com o geral e nada do contrato antigo muda", () => {
+    const readiness = getCourseReadiness(partial, account);
+    const groups = groupCourseReadiness(readiness);
+
+    expect(groups.reduce((sum, group) => sum + group.doneCount, 0)).toBe(readiness.doneCount);
+    expect(groups.reduce((sum, group) => sum + group.total, 0)).toBe(readiness.total);
+    expect(groups.flatMap((group) => group.items)).toHaveLength(readiness.items.length);
+    expect(readiness.pending.map((item) => item.id)).toEqual(["lesson", "pricing", "verification"]);
+    expect(readiness.percent).toBe(57);
+    expect(readiness.ready).toBe(false);
+  });
+
+  it("parcelas e repasses do curso pago caem em venda; verificacao opcional nao conta", () => {
+    const readiness = getCourseReadiness(
+      { ...complete, installmentsEnabled: true, installmentsMax: 6 },
+      { payoutsReady: true, verificationRequired: false, verificationApproved: false },
+    );
+    const [content, page, sale] = groupCourseReadiness(readiness);
+
+    expect(sale.items.map((item) => item.id)).toEqual(["pricing", "installments", "payouts", "verification"]);
+    expect([sale.doneCount, sale.total, sale.ready]).toEqual([3, 3, true]);
+    expect(content.ready).toBe(true);
+    expect(page.ready).toBe(true);
+    expect(readiness.ready).toBe(true);
+  });
+
+  it("todo item carrega o grupo e a traducao nao o altera", () => {
+    const en = getCourseReadiness(partial, account);
+    const es = getCourseReadiness(partial, account, (key) => translate(getDictionary("es"), key));
+
+    expect(en.items.map((item) => item.group)).toEqual(es.items.map((item) => item.group));
+    expect(en.items.every((item) => ["content", "page", "sale"].includes(item.group))).toBe(true);
+    expect(groupCourseReadiness(es).map((group) => group.doneCount)).toEqual(
+      groupCourseReadiness(en).map((group) => group.doneCount),
+    );
+  });
+
+  it("sem conta e curso gratis, venda so tem preco e ja nasce pronta", () => {
+    const readiness = getCourseReadiness({ ...complete, paymentType: "free", priceAmountMinor: 0 });
+    const sale = groupCourseReadiness(readiness)[2];
+
+    expect(sale.items.map((item) => item.id)).toEqual(["pricing"]);
+    expect([sale.doneCount, sale.total, sale.ready]).toEqual([1, 1, true]);
   });
 });

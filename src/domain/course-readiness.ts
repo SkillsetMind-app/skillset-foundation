@@ -47,8 +47,15 @@ export type CourseReadinessItemId =
   | "payouts"
   | "verification";
 
+// Os tres estados que a Hotmart separa e a barra "N de M" misturava:
+// conteudo salvo (o que o aluno assiste), pagina preparada (o que o comprador
+// le) e venda disponivel (o que o dinheiro exige). So agrupamento e rotulo;
+// nada aqui segura a publicacao.
+export type CourseReadinessGroupId = "content" | "page" | "sale";
+
 export type CourseReadinessItem = {
   id: CourseReadinessItemId;
+  group: CourseReadinessGroupId;
   label: string;
   // Presentation can be localized; callers without a translator keep English.
   hint: string;
@@ -84,6 +91,7 @@ export function getCourseReadiness(
   const items: CourseReadinessItem[] = [
     {
       id: "title",
+      group: "content",
       label: "Course title",
       // 3 caracteres e o minimo do formulario de criacao e do Manage; o
       // construtor aceitava qualquer caractere. Vale o mais exigente.
@@ -93,6 +101,7 @@ export function getCourseReadiness(
     },
     {
       id: "summary",
+      group: "page",
       label: "Summary",
       hint: "Write a summary with at least 20 characters.",
       done: course.summary.trim().length >= 20,
@@ -100,6 +109,7 @@ export function getCourseReadiness(
     },
     {
       id: "category",
+      group: "page",
       label: "Marketplace category",
       hint: "Choose at least one marketplace category.",
       done:
@@ -109,6 +119,7 @@ export function getCourseReadiness(
     },
     {
       id: "cover",
+      group: "page",
       label: "Cover image",
       hint: "Upload a cover — it fronts the product page and marketplace cards.",
       done: Boolean(course.coverImageUrl),
@@ -116,6 +127,7 @@ export function getCourseReadiness(
     },
     {
       id: "module",
+      group: "content",
       label: "Module",
       hint: "Add at least one module.",
       done: modules.length > 0,
@@ -123,6 +135,7 @@ export function getCourseReadiness(
     },
     {
       id: "lesson",
+      group: "content",
       label: "Lesson",
       hint: "Add at least one lesson.",
       done: countCourseLessons(modules) > 0,
@@ -130,6 +143,7 @@ export function getCourseReadiness(
     },
     {
       id: "pricing",
+      group: "sale",
       label: "Pricing",
       hint: "Set a paid price greater than $0, or choose Free.",
       done: paymentType === "free" || priceAmountMinor > 0,
@@ -137,6 +151,7 @@ export function getCourseReadiness(
     },
     {
       id: "outcomes",
+      group: "page",
       label: "Learning outcomes",
       hint: "Add learning outcomes — they lift conversion on the product page.",
       done: (course.learningOutcomes?.length ?? 0) > 0,
@@ -150,6 +165,7 @@ export function getCourseReadiness(
   if (paymentType === "one_time" && course.installmentsEnabled) {
     items.push({
       id: "installments",
+      group: "sale",
       label: "Installments",
       hint: "Set a valid installment limit.",
       done:
@@ -162,6 +178,7 @@ export function getCourseReadiness(
     if (paid) {
       items.push({
         id: "payouts",
+        group: "sale",
         label: "Stripe payouts",
         hint: "Finish Stripe payout onboarding before publishing a paid course.",
         done: account.payoutsReady,
@@ -170,6 +187,7 @@ export function getCourseReadiness(
     }
     items.push({
       id: "verification",
+      group: "sale",
       label: "Professional verification",
       hint: account.verificationRequired
         ? "Complete professional verification before publishing."
@@ -203,4 +221,34 @@ export function getCourseReadiness(
       : 0,
     ready: pending.length === 0,
   };
+}
+
+export type CourseReadinessGroup = {
+  id: CourseReadinessGroupId;
+  items: CourseReadinessItem[];
+  // Mesma conta de `doneCount`/`total`: so obrigatorios. Opcionais aparecem
+  // na lista do grupo e ficam fora do numero, como ja ficavam do geral.
+  doneCount: number;
+  total: number;
+  ready: boolean;
+};
+
+export const COURSE_READINESS_GROUP_IDS: readonly CourseReadinessGroupId[] = [
+  "content",
+  "page",
+  "sale",
+];
+
+// Recorte puro sobre a lista ja calculada: nao muda `ready`, `percent` nem
+// ids. Um grupo sem obrigatorio (ex.: venda de curso gratis sem conta) conta
+// como pronto, e a soma dos tres `doneCount`/`total` bate com o geral.
+export function groupCourseReadiness(
+  readiness: Pick<CourseReadiness, "items">,
+): CourseReadinessGroup[] {
+  return COURSE_READINESS_GROUP_IDS.map((id) => {
+    const items = readiness.items.filter((item) => item.group === id);
+    const required = items.filter((item) => !item.optional);
+    const doneCount = required.filter((item) => item.done).length;
+    return { id, items, doneCount, total: required.length, ready: doneCount === required.length };
+  });
 }
