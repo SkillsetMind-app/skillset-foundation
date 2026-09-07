@@ -118,6 +118,12 @@ vi.mock("@/lib/data/course-assets", () => ({
 // do contador dizem o que a leitura devolve.
 vi.mock("@/lib/data/community-posts", () => ({
   countOpenCommunityQuestions: vi.fn(() => new Promise<number>(() => {})),
+  // Comentarios da aula sob o player (P3) abrem as mesmas inscricoes do feed.
+  // Aqui nunca respondem: a sala renderiza antes do feed chegar, e o alvo
+  // deste arquivo e a sala, nao a lista (lesson-comments.test.tsx).
+  subscribeToCommunityPosts: vi.fn(() => vi.fn()),
+  subscribeToCourseCommunityComments: vi.fn(() => vi.fn()),
+  createCommunityPost: vi.fn(),
 }));
 
 vi.mock("@/lib/data/course-events", () => ({
