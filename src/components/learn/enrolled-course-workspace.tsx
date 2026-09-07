@@ -2,10 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Fragment, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   FileText,
+  Info,
   LockKeyhole,
   MessageCircle,
   PlayCircle,
@@ -607,6 +611,19 @@ export function EnrolledCourseWorkspace({
   // only if that ever confuses someone.
   const moduleCoverUrlById = new Map<string, string>();
   const totalLessonCount = allLessons.length;
+  // Mesma conta de getCourseProgressPercent: so aulas que existem no curso.
+  const completedLessonCount = allLessons.filter((lesson) =>
+    completedLessonIds.includes(lesson.id),
+  ).length;
+  const selectedModule = selectedLesson
+    ? course.modules.find((module) =>
+        module.lessons.some((lesson) => lesson.id === selectedLesson.id),
+      ) ?? null
+    : null;
+  // Um so criterio para o certificado, no hero e na barra de abas. Whitelabel
+  // esconde todo link que volta para a plataforma.
+  const certificateHref =
+    progressPercent === 100 && !whitelabel ? "/learn/credentials" : null;
   const selectedLessonNumber = selectedLesson
     ? allLessons.findIndex((lesson) => lesson.id === selectedLesson.id) + 1
     : 0;
@@ -827,6 +844,9 @@ export function EnrolledCourseWorkspace({
           course={course}
           coverAsset={membersCoverAsset}
           progressPercent={previewMode ? null : progressPercent}
+          completedCount={previewMode ? null : completedLessonCount}
+          totalCount={previewMode ? null : totalLessonCount}
+          certificateHref={previewMode ? null : certificateHref}
           backHref={backHref}
           backTo={inClassroomTab ? "lesson" : "courses"}
         />
@@ -835,9 +855,22 @@ export function EnrolledCourseWorkspace({
           <Link href={backHref} className="member-classroom-head__back">
             ← {backLabel}
           </Link>
-          <h1 className="member-classroom-head__title">
-            {course.membersTitle ?? course.title}
-          </h1>
+          <div className="member-classroom-head__main">
+            <h1 className="member-classroom-head__title">
+              {course.membersTitle ?? course.title}
+            </h1>
+            {tab === "lesson" && selectedLesson ? (
+              <LessonStepper
+                previous={previousInOrder}
+                next={nextInOrder}
+                nextLocked={Boolean(
+                  nextInOrder
+                    && lessonUnlockStateById.get(nextInOrder.id)?.unlocked === false,
+                )}
+                onSelect={selectLesson}
+              />
+            ) : null}
+          </div>
           <span
             className="member-classroom-head__progress"
             role="progressbar"
@@ -877,9 +910,7 @@ export function EnrolledCourseWorkspace({
         active={tab}
         lessonId={selectedLesson?.id ?? null}
         tabs={classroomTabs}
-        certificateHref={
-          progressPercent === 100 && !whitelabel ? "/learn/credentials" : null
-        }
+        certificateHref={certificateHref}
       />
 
       {tab === "lesson" ? (
@@ -902,6 +933,7 @@ export function EnrolledCourseWorkspace({
             )}
             isLoadingContent={isLessonContentLoading}
             lesson={resolvedSelectedLesson}
+            moduleTitle={selectedModule?.title ?? null}
             onEnded={handleLessonEnded}
             unlockState={selectedLessonUnlockState}
             previewMode={previewMode}
@@ -919,23 +951,11 @@ export function EnrolledCourseWorkspace({
           // repaints, so the bar follows the course theme with no fork.
           <nav
             aria-label={t("creatorEditor.preview.lessonNavigation")}
-            className="sticky bottom-0 z-20 mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] bg-inherit py-3"
+            className="sticky bottom-0 z-20 mt-5 flex flex-wrap items-center justify-center gap-3 border-t border-[var(--color-line)] bg-inherit py-3"
           >
-            {previousInOrder ? (
-              <button
-                type="button"
-                onClick={() => selectLesson(previousInOrder.id)}
-                aria-label={t("creatorEditor.preview.previousLesson").replace("{title}", () => previousInOrder.title)}
-                className="button-outline max-w-full px-4 py-2.5 text-sm sm:max-w-[26%]"
-              >
-                <span className="block truncate">
-                  &larr; {previousInOrder.title}
-                </span>
-              </button>
-            ) : (
-              <span aria-hidden />
-            )}
-            <div className="order-last flex w-full items-center gap-2 sm:order-none sm:w-auto">
+            {/* "Anterior" morava aqui, sozinho, sem "proxima" ao lado. Os dois
+                agora ficam junto do titulo (LessonStepper), uma vez so. */}
+            <div className="flex w-full items-center gap-2 sm:w-auto">
               <button
                 type="button"
                 onClick={() => setLessonListOpen(true)}
@@ -977,7 +997,6 @@ export function EnrolledCourseWorkspace({
                           : t("learn.classroom.workspace.complete")}
               </button>
             </div>
-            <span aria-hidden />
           </nav>
         ) : null}
         </section>
@@ -1225,12 +1244,18 @@ function MembersAreaHeroBand({
   course,
   coverAsset,
   progressPercent,
+  completedCount,
+  totalCount,
+  certificateHref,
   backHref,
   backTo,
 }: {
   course: Course;
   coverAsset?: CourseAsset;
   progressPercent: number | null;
+  completedCount: number | null;
+  totalCount: number | null;
+  certificateHref: string | null;
   backHref: string;
   /** Voltar sobe um nivel: da aba About, para a aula; da aula, para /learn. */
   backTo: "courses" | "lesson";
@@ -1287,6 +1312,9 @@ function MembersAreaHeroBand({
       subtitle={course.membersSubtitle ?? null}
       description={course.membersDescription ?? course.summary ?? null}
       progressPercent={progressPercent}
+      completedCount={completedCount}
+      totalCount={totalCount}
+      certificateHref={certificateHref}
       backHref={backHref}
       backTo={backTo}
     />
@@ -1322,6 +1350,129 @@ function formatUnlockMessage(unlockState: LessonUnlockState, locale: string, t: 
   }
 
   return t("learn.classroom.curriculum.locked");
+}
+
+// Anterior / proxima junto do titulo (paridade Hotmart, §4.3). A conta dos
+// vizinhos ja existia (previousInOrder / nextInOrder); o botao "anterior" da
+// barra inferior morava sozinho, sem "proxima". Aqui os dois, uma vez so.
+// Desabilitado = aria-disabled (continua focavel; o leitor de tela ouve
+// "indisponivel") e o clique nao faz nada: a proxima bloqueada NUNCA abre por
+// aqui — o cadeado e do painel, nao da navegacao. O avanco automatico ao fim
+// do video (NextLessonCard) segue como esta.
+function LessonStepper({
+  previous,
+  next,
+  nextLocked,
+  onSelect,
+}: {
+  previous: Lesson | null;
+  next: Lesson | null;
+  nextLocked: boolean;
+  onSelect: (lessonId: string) => void;
+}) {
+  const { t } = useTranslation();
+  const steps = [
+    { key: "previous", lesson: previous, disabled: !previous, Icon: ChevronLeft },
+    { key: "next", lesson: next, disabled: !next || nextLocked, Icon: ChevronRight },
+  ] as const;
+
+  return (
+    <div className="member-classroom-head__nav">
+      {steps.map(({ key, lesson, disabled, Icon }) => (
+        <button
+          key={key}
+          type="button"
+          className="member-classroom-head__nav-button"
+          aria-disabled={disabled || undefined}
+          aria-label={
+            lesson
+              ? t(`learn.classroom.navigation.${key}Titled`).replace("{title}", () => lesson.title)
+              : t(`learn.classroom.navigation.${key}`)
+          }
+          onClick={() => {
+            if (!disabled && lesson) {
+              onSelect(lesson.id);
+            }
+          }}
+        >
+          <Icon aria-hidden="true" size={18} strokeWidth={2.25} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// "Informacoes da aula" sob o player (paridade Hotmart, §4.3): tipo, duracao,
+// modulo, materiais e data de liberacao — so o que `lesson`, o modulo e o
+// estado de liberacao ja trazem; nenhuma leitura nova. Estado local + botao
+// (nao <details>): aria-expanded / aria-controls explicitos, alvo de 44px.
+function LessonInfo({
+  lesson,
+  moduleTitle,
+  materialsCount,
+  unlocksAt,
+}: {
+  lesson: Lesson;
+  moduleTitle: string | null;
+  /** null = curso sem arquivos (catalogo) ou ainda carregando: a linha some. */
+  materialsCount: number | null;
+  unlocksAt: Date | null;
+}) {
+  const { t, locale } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const rows: Array<[string, string]> = [
+    [t("learn.classroom.lessonInfo.type"), t(lessonTypeLabels[lesson.type])],
+    [t("learn.classroom.lessonInfo.duration"), lesson.duration],
+  ];
+  if (moduleTitle) {
+    rows.push([t("learn.classroom.lessonInfo.module"), moduleTitle]);
+  }
+  if (materialsCount != null) {
+    rows.push([
+      t("learn.classroom.lessonInfo.materials"),
+      t(`learn.classroom.resources.${materialsCount === 1 ? "fileOne" : "fileMany"}`)
+        .replace("{count}", () => String(materialsCount)),
+    ]);
+  }
+  if (unlocksAt) {
+    rows.push([
+      t("learn.classroom.lessonInfo.availableFrom"),
+      new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", year: "numeric" })
+        .format(unlocksAt),
+    ]);
+  }
+
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={open ? "member-lesson-info" : undefined}
+        onClick={() => setOpen((current) => !current)}
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-[10px] px-2 text-sm font-semibold text-[var(--color-ink)] underline-offset-4 hover:underline"
+      >
+        <Info aria-hidden="true" size={15} />
+        {t("learn.classroom.lessonInfo.toggle")}
+        <ChevronDown aria-hidden="true" size={15} className={open ? "rotate-180" : ""} />
+      </button>
+      {/* Fechado = fora do DOM, nao `hidden`: o tipo da aula ja esta no
+          cabecalho do painel, e uma copia oculta viraria texto duplicado para
+          quem busca por ele (leitor de tela em modo de leitura, testes). */}
+      {open ? (
+        <dl
+          id="member-lesson-info"
+          className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 rounded-[12px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm"
+        >
+          {rows.map(([term, value]) => (
+            <Fragment key={term}>
+              <dt className="font-semibold text-[var(--color-ink-soft)]">{term}</dt>
+              <dd className="m-0 text-[var(--color-ink)]">{value}</dd>
+            </Fragment>
+          ))}
+        </dl>
+      ) : null}
+    </div>
+  );
 }
 
 function CourseAssetResourceList({
@@ -1397,6 +1548,7 @@ function LessonContentPanel({
   isLoadingAssets,
   isLoadingContent,
   lesson,
+  moduleTitle,
   nextUp = null,
   onCancelNextUp,
   onEnded,
@@ -1419,6 +1571,8 @@ function LessonContentPanel({
   onPlayNextUp?: () => void;
   isLoadingContent: boolean;
   lesson: Lesson;
+  /** Modulo da aula, para "Informacoes da aula". */
+  moduleTitle: string | null;
   onEnded: () => void;
   previewMode: boolean;
   unlockState: LessonUnlockState | null;
@@ -1542,6 +1696,15 @@ function LessonContentPanel({
         )}
       </div>
       </VideoDock>
+
+      <LessonInfo
+        lesson={lesson}
+        moduleTitle={moduleTitle}
+        materialsCount={
+          enableFirestoreAssets && !isLoadingAssets ? supportingAssets.length : null
+        }
+        unlocksAt={unlockState?.unlocksAt ?? null}
+      />
 
       <div id="member-lesson-content" className="member-lesson-body">
         <div className="flex flex-wrap items-center justify-between gap-3">

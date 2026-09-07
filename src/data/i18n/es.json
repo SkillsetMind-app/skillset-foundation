@@ -1018,7 +1018,8 @@
         "markLessonIncomplete": "Marcar \"{title}\" como incompleta",
         "markIncomplete": "Marcar como incompleta",
         "completed": "Completada",
-        "locked": "Bloqueada"
+        "locked": "Bloqueada",
+        "playingNow": "Reproduciendo ahora"
       },
       "resources": {
         "title": "Recursos del curso",
@@ -1054,6 +1055,20 @@
         "countdown": "Siguiente lección en {seconds} s",
         "watch": "Ver ahora",
         "cancel": "Cancelar"
+      },
+      "navigation": {
+        "previous": "Lección anterior",
+        "previousTitled": "Lección anterior: {title}",
+        "next": "Siguiente lección",
+        "nextTitled": "Siguiente lección: {title}"
+      },
+      "lessonInfo": {
+        "toggle": "Información de la lección",
+        "type": "Tipo",
+        "duration": "Duración",
+        "module": "Módulo",
+        "materials": "Materiales",
+        "availableFrom": "Disponible desde"
       },
       "review": {
         "title": "Reseña del curso",
@@ -1156,7 +1171,9 @@
       "showLess": "Ver menos",
       "complete": "completado",
       "back": "Mis cursos",
-      "backToLesson": "Lección"
+      "backToLesson": "Lección",
+      "progress": "{completed} de {total} lecciones · {percent}%",
+      "certificate": "Ver certificado"
     },
     "paths": {
       "eyebrow": "Ruta de aprendizaje",
