@@ -79,11 +79,12 @@ export function LogoWordmark({
       </span>
     );
 
+  // Alvo de toque de 44px: a marca no topo mede 40 (mark) ou 32 (wordmark).
   return (
     <Link
       href={href}
       aria-label={brand.name}
-      className={["inline-flex shrink-0 items-center", className]
+      className={["inline-flex min-h-11 min-w-11 shrink-0 items-center", className]
         .filter(Boolean)
         .join(" ")}
     >

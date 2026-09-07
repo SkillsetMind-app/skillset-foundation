@@ -1110,10 +1110,12 @@ p {
   .button-solid-light,
   .button-outline-light {
     display: inline-flex;
+    /* Mesmo alvo de 44px da base solid/outline. Sem isto, padding 10 + linha
+       20 + borda 2 davam 42px nos CTAs do hero (QA celular/tablet, 07/09). */
+    min-height: 44px;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    /* Same unified default height as the solid/outline base. */
     padding: 0.625rem 1rem;
     border-radius: 8px;
     font-size: 0.875rem;

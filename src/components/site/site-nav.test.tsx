@@ -51,6 +51,9 @@ describe("SiteNav", () => {
     expect(dashboard.parentElement).toHaveClass("hidden", "lg:block");
     const compactBrand = document.querySelector(".logo-wordmark__mark");
     expect(compactBrand?.closest("a")?.parentElement).toHaveClass("md:hidden");
+    // O link da marca é alvo de toque: a marca mede 40 (mark) ou 32 (wordmark),
+    // e o link herdava isso — abaixo de 44px no celular e no tablet (QA 07/09).
+    expect(compactBrand?.closest("a")).toHaveClass("min-h-11", "min-w-11");
     expect(document.querySelector(".logo-wordmark__full")?.closest("a")?.parentElement).toHaveClass("hidden", "md:block");
 
     expect(screen.getByRole("button", { name: "Language: English" })).toHaveAttribute("aria-haspopup", "listbox");

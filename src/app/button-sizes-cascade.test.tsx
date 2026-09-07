@@ -17,7 +17,7 @@ const root = process.cwd();
 const globalsPath = join(root, "src/app/globals.css");
 
 const PROBE_CLASSES =
-  "button-solid button-outline button-danger text-xs text-sm py-2 py-2.5 px-3.5 text-[var(--color-accent-fg)] focus-visible:outline-[var(--focus-ring)] focus-visible:ring-[var(--focus-ring)]";
+  "button-solid button-outline button-danger button-solid-light button-outline-light text-xs text-sm py-2 py-2.5 px-3.5 text-[var(--color-accent-fg)] focus-visible:outline-[var(--focus-ring)] focus-visible:ring-[var(--focus-ring)]";
 
 async function compileGlobals(): Promise<Root> {
   // Só troca a varredura de arquivos por uma lista fixa de classes: o resto
@@ -175,6 +175,13 @@ describe("tamanho dos botões (P-16)", () => {
   it("o alvo mínimo de 44px continua valendo quando ninguém pede outra altura", () => {
     const button = mount("button-outline px-3.5 py-2 text-xs");
     expect(resolve(css, button, "min-height")).toBe("44px");
+  });
+
+  // As variantes claras do hero viviam num bloco próprio, sem min-height:
+  // padding 10 + linha 20 + borda 2 = 42px no celular e no tablet (QA 07/09).
+  it("as variantes claras (hero) guardam os mesmos 44px", () => {
+    expect(resolve(css, mount("button-solid-light"), "min-height")).toBe("44px");
+    expect(resolve(css, mount("button-outline-light"), "min-height")).toBe("44px");
   });
 
   it("nenhuma variante de botão rebaixa o alvo de 44px para 36px ou 40px", () => {
