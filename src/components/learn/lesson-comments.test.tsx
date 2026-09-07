@@ -11,6 +11,7 @@ import {
   subscribeToCommunityPosts,
   subscribeToCourseCommunityComments,
 } from "@/lib/data/community-posts";
+import { subscribeToLessonComments } from "@/lib/data/lesson-comments";
 import { recordLessonProgress } from "@/lib/data/lesson-progress";
 
 /**
@@ -141,6 +142,8 @@ vi.mock("@/lib/data/course-events", () => ({
   subscribeToCourseEvents: vi.fn(() => vi.fn()),
 }));
 
+// A caixa ANTIGA (tabela lesson_comments) saiu da aula em 07/09. O mock fica
+// so para provar que ninguem mais inscreve nela.
 vi.mock("@/lib/data/lesson-comments", () => ({
   subscribeToLessonComments: vi.fn(() => vi.fn()),
   addLessonComment: vi.fn(),
@@ -275,6 +278,7 @@ beforeEach(() => {
   vi.mocked(createCommunityPost).mockClear();
   vi.mocked(subscribeToCommunityPosts).mockClear();
   vi.mocked(subscribeToCourseCommunityComments).mockClear();
+  vi.mocked(subscribeToLessonComments).mockClear();
   Element.prototype.scrollIntoView = vi.fn();
   window.requestAnimationFrame = (cb: FrameRequestCallback) => {
     cb(0);
@@ -380,7 +384,7 @@ describe("comentarios da aula sob o player", () => {
       new Promise<{ id: string }>((done) => { resolve = done; }),
     );
 
-    // Em repouso a caixa e um botao (um so textbox na aula: o da discussao).
+    // Em repouso a caixa e um botao: nenhum textbox na aula.
     fireEvent.click(screen.getByRole("button", { name: "Comment on the lesson." }));
     const field = screen.getByRole("textbox", { name: "Your comment on this lesson" });
     expect(field).toHaveAttribute("placeholder", "Comment on the lesson.");
@@ -459,5 +463,23 @@ describe("comentarios da aula sob o player", () => {
     expect(mocks.enrollmentSubscriptions).toBe(1);
     expect(subscribeToCommunityPosts).toHaveBeenCalledTimes(1);
     expect(createCommunityPost).toHaveBeenCalledTimes(1);
+  });
+
+  it("uma caixa so por aula (decisao 07/09): a antiga, da tabela lesson_comments, saiu", () => {
+    renderClassroom("lesson=l1");
+    deliverFeed();
+
+    // Em repouso: nenhum textbox na aula e um so botao de comentar.
+    expect(screen.queryAllByRole("textbox")).toHaveLength(0);
+    expect(screen.getAllByRole("button", { name: /comment/i })).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Comment on the lesson." }));
+
+    // Aberta: UM textbox e UM "Comment" — os da caixa nova, sob o player.
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /comment/i })).toHaveLength(1);
+    // Ninguem inscreve mais na tabela antiga; o bloco do fim do corpo nao existe.
+    expect(subscribeToLessonComments).not.toHaveBeenCalled();
+    expect(document.getElementById("member-lesson-discussion")).toBeNull();
   });
 });
