@@ -88,7 +88,7 @@ export function TeacherStudioDashboard() {
               nomeava a tela ("Home" ja esta na barra e na trilha do topo). */}
           <h1 className="text-3xl font-semibold leading-tight text-[var(--color-primary)] sm:text-4xl">
             {firstName
-              ? t("teach.dashboard.welcomeBackNamed").replace("{name}", firstName)
+              ? t("teach.dashboard.welcomeBackNamed").replace("{name}", () => firstName)
               : t("teach.dashboard.welcomeBack")}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
