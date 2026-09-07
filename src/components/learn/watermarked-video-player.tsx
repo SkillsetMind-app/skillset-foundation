@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import {
   clearLessonPosition,
   markLessonOpened,
@@ -31,7 +32,8 @@ export function VideoWatermark({
   brandName?: string;
 }) {
   const { user } = useAuth();
-  const [timestamp, setTimestamp] = useState("");
+  const { locale, t } = useTranslation();
+  const [timestamp, setTimestamp] = useState<number | null>(null);
   // Uma etiqueta só, que muda de canto a cada ~30 s. Antes eram duas fixas o
   // tempo todo (e-mail e hora no canto superior, "protected playback" no
   // inferior). Uma etiqueta pequena e translúcida que passeia pelos quatro
@@ -41,12 +43,7 @@ export function VideoWatermark({
 
   useEffect(() => {
     function updateTimestamp() {
-      setTimestamp(
-        new Intl.DateTimeFormat("en", {
-          dateStyle: "medium",
-          timeStyle: "short",
-        }).format(new Date()),
-      );
+      setTimestamp(Date.now());
     }
 
     updateTimestamp();
@@ -65,8 +62,11 @@ export function VideoWatermark({
   const viewerLabel =
     user?.email
     || user?.displayName
-    || `${brandName} learner`;
-  const watermarkText = `${viewerLabel} · ${timestamp || "protected playback"} · ${brandName}`;
+    || t("courseMedia.watermark.learner").replace("{brandName}", () => brandName);
+  const timestampLabel = timestamp === null
+    ? t("courseMedia.watermark.protectedPlayback")
+    : new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(timestamp);
+  const watermarkText = `${viewerLabel} · ${timestampLabel} · ${brandName}`;
 
   return (
     <div className="relative overflow-hidden rounded-[10px] bg-[var(--color-primary)]">

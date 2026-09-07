@@ -2,6 +2,7 @@
 
 import { PlayCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 
 import {
   clearLessonPosition,
@@ -69,11 +70,12 @@ export function withAutoplay(embedUrl: string, autoplay?: boolean): string {
 }
 
 export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
+  const { t } = useTranslation();
   const [playback, setPlayback] = useState<{
     key: string;
     embedUrl: string | null;
-    error: string;
-  }>({ key: "", embedUrl: null, error: "" });
+    error: boolean;
+  }>({ key: "", embedUrl: null, error: false });
   const assetId = "assetId" in props ? props.assetId : undefined;
   const courseId = "courseId" in props ? props.courseId : undefined;
   const lessonId = "lessonId" in props ? props.lessonId : undefined;
@@ -82,7 +84,7 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
     : `preview:${courseId}:${lessonId}`;
   const currentPlayback = playback.key === requestKey
     ? playback
-    : { key: requestKey, embedUrl: null, error: "" };
+    : { key: requestKey, embedUrl: null, error: false };
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const onEnded = props.onEnded;
   const resume = props.resume ?? null;
@@ -262,7 +264,7 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
       )
       .then((data: { embedUrl: string }) => {
         if (active) {
-          setPlayback({ key: requestKey, embedUrl: data.embedUrl, error: "" });
+          setPlayback({ key: requestKey, embedUrl: data.embedUrl, error: false });
         }
       })
       .catch(() => {
@@ -270,7 +272,7 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
           setPlayback({
             key: requestKey,
             embedUrl: null,
-            error: "We could not load this video. Refresh and try again.",
+            error: true,
           });
         }
       });
@@ -284,8 +286,8 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
     return (
       <div className="member-video-empty">
         <PlayCircle size={34} aria-hidden />
-        <h5>Video unavailable</h5>
-        <p>{currentPlayback.error}</p>
+        <h5>{t("courseMedia.preview.unavailable")}</h5>
+        <p>{t("courseMedia.preview.videoError")}</p>
       </div>
     );
   }
@@ -294,8 +296,8 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
     return (
       <div className="member-video-empty">
         <PlayCircle size={34} aria-hidden />
-        <h5>Loading video...</h5>
-        <p>Preparing playback.</p>
+        <h5>{t("courseMedia.preview.loading")}</h5>
+        <p>{t("courseMedia.preview.preparingPlayback")}</p>
       </div>
     );
   }

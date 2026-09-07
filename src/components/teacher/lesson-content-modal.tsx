@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { LessonVideoSourcePicker } from "@/components/teacher/lesson-video-source-picker";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import { TrustedEmbedPlayer } from "@/components/learn/trusted-embed-player";
 import { ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
@@ -20,7 +21,6 @@ import type { CourseAsset, CourseAssetKind } from "@/domain/course-asset";
 import {
   bunnyVideoMaxBytes,
   courseAssetAcceptTypes,
-  courseAssetKindLabels,
   formatCourseAssetSize,
   getCourseAssetUploadErrorMessage,
   getPrimaryLessonVideoAsset,
@@ -48,6 +48,7 @@ import {
 } from "@/lib/data/course-assets";
 import { isBunnyConfigured } from "@/lib/bunny/config";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
+import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 
 type LessonContentModalProps = {
   course: TeacherCourse;
@@ -63,59 +64,86 @@ type LessonContentModalProps = {
 };
 
 type LessonModalTab = "video" | "description" | "materials" | "settings";
+type LessonError =
+  | { kind: "load" | "delete" }
+  | { kind: "notVideo"; fileName: string }
+  | { kind: "videoTooLarge"; size: number; limitBytes: number }
+  | { kind: "videoLimit"; limitBytes: number }
+  | { kind: "invalidFile"; assetKind: CourseAssetKind; limitBytes: number }
+  | { kind: "upload"; cause: unknown; limitBytes: number };
+
+function getLessonErrorMessage(error: LessonError | null, t: (key: string) => string): string {
+  if (!error) return "";
+  if (error.kind === "upload") {
+    return getCourseAssetUploadErrorMessage(error.cause, error.limitBytes, t);
+  }
+  let message = t(`creatorEditor.lesson.errors.${error.kind}`);
+  if (error.kind === "notVideo") return message.replace("{fileName}", () => error.fileName);
+  if ("limitBytes" in error) {
+    message = message.replace("{limit}", () => formatCourseAssetSize(error.limitBytes));
+  }
+  if (error.kind === "videoTooLarge") return message.replace("{size}", () => formatCourseAssetSize(error.size));
+  if (error.kind === "invalidFile") {
+    return message.replace("{kind}", () => getCourseAssetKindLabel(error.assetKind, t).toLowerCase());
+  }
+  return message;
+}
 
 // Author preview never advances or records a student's lesson progress.
 function handlePreviewEnded() {}
 
 const lessonModalTabs: Array<{
   value: LessonModalTab;
-  label: string;
   icon: LucideIcon;
 }> = [
-  { value: "video", label: "Video", icon: Film },
-  { value: "description", label: "Description", icon: FileText },
-  { value: "materials", label: "Materials", icon: UploadCloud },
-  { value: "settings", label: "Settings", icon: Settings },
+  { value: "video", icon: Film },
+  { value: "description", icon: FileText },
+  { value: "materials", icon: UploadCloud },
+  { value: "settings", icon: Settings },
 ];
 
-const editableLessonTypes: Array<{ value: LessonType; label: string }> = [
-  { value: "video", label: "Video lesson" },
-  { value: "text", label: "Text lesson" },
+const editableLessonTypes: LessonType[] = [
+  "video",
+  "text",
   // Quiz/assignment authoring is intentionally hidden until a real assessment
   // engine exists (no question/submission/grading model yet). Exposing them lets
   // instructors sell a course whose paid lessons render only a placeholder.
   // See docs/plans/2026-06-23-launch-readiness.md (B8). The LessonType union and
   // student-side rendering are kept for forward-compat.
-  { value: "live_recording", label: "Live recording" },
-  { value: "download", label: "Download" },
-  { value: "external_embed", label: "External embed" },
+  "live_recording",
+  "download",
+  "external_embed",
 ];
 
-function getAssetStatusLabel(assets: CourseAsset[], lesson: TeacherLesson) {
+function getAssetStatus(assets: CourseAsset[], lesson: TeacherLesson) {
   const hasVideo = assets.some((asset) => isVideoAssetKind(asset.kind));
 
   if (hasVideo) {
-    return "Uploaded";
+    return "uploaded";
   }
 
   if (getTrustedLessonEmbed(lesson.externalUrl)) {
-    return "Embedded";
+    return "embedded";
   }
 
-  return "Empty";
+  return "empty";
 }
 
-function formatProgress(progress: UploadCourseAssetProgress | null) {
+function formatProgress(progress: UploadCourseAssetProgress | null, t: (key: string) => string) {
   if (!progress) {
     return "";
   }
 
   // Sem porcentagem do transporte (Supabase Storage), não inventa "0%".
   if (progress.percent === null) {
-    return `Sending ${formatCourseAssetSize(progress.totalBytes)}...`;
+    return t("creatorEditor.lesson.progress.sending")
+      .replace("{total}", () => formatCourseAssetSize(progress.totalBytes));
   }
 
-  return `${progress.percent}% - ${formatCourseAssetSize(progress.bytesTransferred)} of ${formatCourseAssetSize(progress.totalBytes)}`;
+  return t("creatorEditor.lesson.progress.determinate")
+    .replace("{percent}", () => String(progress.percent))
+    .replace("{transferred}", () => formatCourseAssetSize(progress.bytesTransferred))
+    .replace("{total}", () => formatCourseAssetSize(progress.totalBytes));
 }
 
 export function LessonContentModal({
@@ -130,6 +158,7 @@ export function LessonContentModal({
   onSetFreePreview,
   onUpdateLesson,
 }: LessonContentModalProps) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<LessonModalTab>("video");
   const [assets, setAssets] = useState<CourseAsset[]>([]);
   const [uploadKind, setUploadKind] = useState<CourseAssetKind>("lesson_video");
@@ -140,8 +169,8 @@ export function LessonContentModal({
   // Guarda o cancelador entregue pelo uploader enquanto o envio corre.
   const [cancelUpload, setCancelUpload] = useState<(() => void) | null>(null);
   const [uploadProgress, setUploadProgress] = useState<UploadCourseAssetProgress | null>(null);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState<LessonError | null>(null);
+  const [success, setSuccess] = useState<"uploaded" | "deleted" | null>(null);
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
   const lessonAssets = assets.filter((asset) => asset.lessonId === lesson.id);
   const videoAssets = lessonAssets.filter((asset) => isVideoAssetKind(asset.kind));
@@ -161,7 +190,9 @@ export function LessonContentModal({
   // envio inalcançável numa aula nova — a fonte só vira "upload" no sucesso do
   // envio, e o envio só aparecia se a fonte já fosse "upload".
   const isUploadPanelOpen = resolvedSource === "upload" || selectedFile !== null;
-  const videoStatus = getAssetStatusLabel(lessonAssets, lesson);
+  const videoStatus = t(`creatorEditor.lesson.state.${getAssetStatus(lessonAssets, lesson)}`);
+  const errorMessage = getLessonErrorMessage(error, t);
+  const successMessage = success ? t(`creatorEditor.lesson.success.${success}`) : "";
 
   const dialogRef = useRef<HTMLElement>(null);
 
@@ -182,7 +213,7 @@ export function LessonContentModal({
     return subscribeToCourseAssets(
       course.id,
       setAssets,
-      () => setError("We could not load lesson assets."),
+      () => setError({ kind: "load" }),
     );
   }, [course.id]);
 
@@ -206,8 +237,8 @@ export function LessonContentModal({
     setUploadKind(nextKind);
     setSelectedFile(null);
     setUploadProgress(null);
-    setSuccess("");
-    setError("");
+    setSuccess(null);
+    setError(null);
     setFileInputKey((current) => current + 1);
   }
 
@@ -234,8 +265,8 @@ export function LessonContentModal({
       return;
     }
 
-    setError("");
-    setSuccess("");
+    setError(null);
+    setSuccess(null);
 
     // Videos route to Bunny Stream (HLS + CDN) when configured; everything else
     // — and videos before Bunny is wired — stays on Supabase Storage.
@@ -247,28 +278,22 @@ export function LessonContentModal({
       // tipo quanto tamanho: um PDF de 200 MB recebia uma mensagem sobre o teto
       // de 5 GB, que não tem nada a ver com o motivo da recusa.
       if (!selectedFile.type.startsWith("video/")) {
-        setError(
-          `"${selectedFile.name}" is not a video file. Use MP4, MOV or WebM.`,
-        );
+        setError({ kind: "notVideo", fileName: selectedFile.name });
         return;
       }
       if (selectedFile.size > bunnyVideoMaxBytes) {
-        setError(
-          `This video is ${formatCourseAssetSize(selectedFile.size)} — the limit is ${formatCourseAssetSize(bunnyVideoMaxBytes)}.`,
-        );
+        setError({ kind: "videoTooLarge", size: selectedFile.size, limitBytes: bunnyVideoMaxBytes });
         return;
       }
       if (!isAllowedBunnyVideoFile(selectedFile)) {
-        setError(`Use a video file under ${formatCourseAssetSize(bunnyVideoMaxBytes)}.`);
+        setError({ kind: "videoLimit", limitBytes: bunnyVideoMaxBytes });
         return;
       }
     } else if (!isAllowedCourseAssetFile(selectedFile, uploadKind)) {
       // Sem Bunny os bytes vão para o Supabase Storage, e o validador já
       // recusa acima do teto do plano (~50 MB), não do bucket — o ramo
       // separado de tamanho que existia aqui virou inalcançável (#138).
-      setError(
-        `Use a valid ${courseAssetKindLabels[uploadKind].toLowerCase()} file under ${formatCourseAssetSize(supabaseUploadLimitBytes)}.`,
-      );
+      setError({ kind: "invalidFile", assetKind: uploadKind, limitBytes: supabaseUploadLimitBytes });
       return;
     }
 
@@ -318,7 +343,7 @@ export function LessonContentModal({
       if (isVideoKind) {
         onUpdateLesson({ videoSource: "upload" });
       }
-      setSuccess("File uploaded to this lesson.");
+      setSuccess("uploaded");
       setSelectedFile(null);
       setUploadProgress(null);
       setIsPreviewAsset(false);
@@ -334,12 +359,7 @@ export function LessonContentModal({
         // generic message that made failures look random. E sem deixar o
         // progresso antigo na tela ao lado da caixa vermelha.
         setUploadProgress(null);
-        setError(
-          getCourseAssetUploadErrorMessage(
-            caughtError,
-            useBunny ? bunnyVideoMaxBytes : supabaseUploadLimitBytes,
-          ),
-        );
+        setError({ kind: "upload", cause: caughtError, limitBytes: useBunny ? bunnyVideoMaxBytes : supabaseUploadLimitBytes });
       }
     } finally {
       setCancelUpload(null);
@@ -353,15 +373,15 @@ export function LessonContentModal({
     }
 
     const confirmed = window.confirm(
-      `Delete "${asset.fileName}"? This permanently removes the file.`,
+      t("creatorEditor.lesson.deleteConfirm").replace("{fileName}", () => asset.fileName),
     );
 
     if (!confirmed) {
       return;
     }
 
-    setError("");
-    setSuccess("");
+    setError(null);
+    setSuccess(null);
     setDeletingAssetId(asset.id);
 
     // Apagar o último vídeo deixava a aula declarada como "upload" sem nenhum
@@ -379,9 +399,9 @@ export function LessonContentModal({
         onUpdateLesson({ videoSource: null });
       }
 
-      setSuccess("Asset deleted.");
+      setSuccess("deleted");
     } catch {
-      setError("We could not delete this file. Check course ownership and current permissions.");
+      setError({ kind: "delete" });
     } finally {
       setDeletingAssetId(null);
     }
@@ -399,14 +419,14 @@ export function LessonContentModal({
         onMouseDown={(event) => event.stopPropagation()}
       >
         <header className="lesson-modal__header">
-          <p className="lesson-modal__crumb">Lesson {lessonIndex + 1}</p>
+          <p className="lesson-modal__crumb">{t("creatorEditor.lesson.number").replace("{lessonIndex}", () => String(lessonIndex + 1))}</p>
           <button type="button" className="lesson-modal__close" onClick={requestClose}>
             <X aria-hidden="true" size={18} />
-            <span className="sr-only">Close lesson studio</span>
+            <span className="sr-only">{t("creatorEditor.lesson.close")}</span>
           </button>
         </header>
 
-        <nav className="lesson-modal__tabs" aria-label="Lesson setup">
+        <nav className="lesson-modal__tabs" aria-label={t("creatorEditor.lesson.setup")}>
           {lessonModalTabs.map((item) => {
             const Icon = item.icon;
             const active = tab === item.value;
@@ -415,13 +435,13 @@ export function LessonContentModal({
                 ? videoStatus
                 : item.value === "description"
                   ? lesson.description.trim().length > 0 || lesson.contentText?.trim()
-                    ? "Done"
-                    : "Empty"
+                    ? t("creatorEditor.lesson.state.done")
+                    : t("creatorEditor.lesson.state.empty")
                   : item.value === "materials"
                     ? String(materialAssets.length)
                     : isFreePreview
-                      ? "Preview"
-                      : "Private";
+                      ? t("creatorEditor.lesson.state.preview")
+                      : t("creatorEditor.lesson.state.private");
 
             return (
               <button
@@ -433,7 +453,7 @@ export function LessonContentModal({
                 onClick={() => handleTabChange(item.value)}
               >
                 <Icon aria-hidden="true" size={14} />
-                {item.label}
+                {t(`creatorEditor.lesson.tabs.${item.value}`)}
                 <span>{badge}</span>
               </button>
             );
@@ -442,22 +462,25 @@ export function LessonContentModal({
 
         <div className="lesson-modal__body">
           <div className="lesson-modal__context">
-            <h3 id="lesson-modal-title">{lesson.title || "Untitled lesson"}</h3>
+            <h3 id="lesson-modal-title">{lesson.title || t("creatorEditor.lesson.untitled")}</h3>
             <p className="lesson-modal__crumb">
-              Module {moduleIndex + 1} - {module.title} / Lesson {lessonIndex + 1}
+              {t("creatorEditor.lesson.context")
+                .replace("{moduleIndex}", () => String(moduleIndex + 1))
+                .replace("{lessonIndex}", () => String(lessonIndex + 1))
+                .replace("{moduleTitle}", () => module.title)}
             </p>
           </div>
           {tab === "video" ? (
             <div className="grid gap-5">
               {resolvedSource ? (
-                <section aria-label="Lesson video preview" className="grid min-w-0 gap-2">
-                  <h4 className="text-sm font-semibold">Video preview</h4>
+                <section aria-label={t("creatorEditor.lesson.previewLabel")} className="grid min-w-0 gap-2">
+                  <h4 className="text-sm font-semibold">{t("creatorEditor.lesson.previewTitle")}</h4>
                   {resolvedSource === "upload" && primaryVideo ? (
                     primaryVideo.bunnyVideoId ? (
                       <>
                         <BunnyVideoPlayer key={primaryVideo.id} assetId={primaryVideo.id} title={lesson.title} />
                         <p className="text-sm text-[var(--color-ink-soft)]">
-                          Your upload is saved. New videos may still be processing before they can play.
+                          {t("creatorEditor.lesson.savedProcessing")}
                         </p>
                       </>
                     ) : (
@@ -482,17 +505,17 @@ export function LessonContentModal({
                 externalUrl={lesson.externalUrl ?? ""}
                 embedStatus={
                   trustedEmbed
-                    ? `${trustedEmbed.provider === "youtube" ? "YouTube" : "Vimeo"} embed detected.`
+                    ? t("creatorEditor.lesson.embedDetected").replace("{provider}", () => trustedEmbed.provider === "youtube" ? "YouTube" : "Vimeo")
                     : lesson.externalUrl
-                      ? "Link saved, but it will not play in the classroom. Use a standard YouTube or Vimeo video URL."
-                      : "Paste a link when the video already lives outside SkillsetMind."
+                      ? t("creatorEditor.lesson.embedInvalid")
+                      : t("creatorEditor.lesson.embedEmpty")
                 }
                 onChange={(videoSource) => onUpdateLesson({ videoSource })}
                 onSelectFile={(file) => {
                   setSelectedFile(file);
                   setUploadProgress(null);
-                  setSuccess("");
-                  setError("");
+                  setSuccess(null);
+                  setError(null);
                 }}
                 onExternalUrlChange={(nextUrl) =>
                   onUpdateLesson({ externalUrl: nextUrl || null })
@@ -509,8 +532,8 @@ export function LessonContentModal({
                       disabled={!isEditable || isUploading}
                     >
                       <Film aria-hidden="true" size={18} />
-                      <strong>Upload lesson video</strong>
-                      <small>MP4, MOV, WebM or any browser-supported video file.</small>
+                      <strong>{t("creatorEditor.lesson.uploadVideo")}</strong>
+                      <small>{t("creatorEditor.lesson.uploadVideoHelp")}</small>
                     </button>
                     <button
                       type="button"
@@ -519,13 +542,13 @@ export function LessonContentModal({
                       disabled={!isEditable || isUploading}
                     >
                       <UploadCloud aria-hidden="true" size={18} />
-                      <strong>Upload live recording</strong>
-                      <small>Replay from cohort classes, mentorships or webinars.</small>
+                      <strong>{t("creatorEditor.lesson.uploadRecording")}</strong>
+                      <small>{t("creatorEditor.lesson.uploadRecordingHelp")}</small>
                     </button>
                   </div>
 
                   <LessonUploadForm
-                    error={error}
+                    error={errorMessage}
                     isEditable={isEditable}
                     isPreviewAsset={isPreviewAsset}
                     isUploading={isUploading}
@@ -533,21 +556,21 @@ export function LessonContentModal({
                     onFileChange={(file) => {
                       setSelectedFile(file);
                       setUploadProgress(null);
-                      setSuccess("");
-                      setError("");
+                      setSuccess(null);
+                      setError(null);
                     }}
                     onSubmit={handleUpload}
-                    progressLabel={formatProgress(uploadProgress)}
-                onCancel={cancelUpload}
+                    progressLabel={formatProgress(uploadProgress, t)}
+                    onCancel={cancelUpload}
                     selectedFile={selectedFile}
                     fileInputKey={fileInputKey}
-                    success={success}
+                    success={successMessage}
                     uploadKind={uploadKind}
                   />
 
                   <LessonAssetList
                     assets={videoAssets}
-                    emptyLabel="No uploaded video file yet."
+                    emptyLabel={t("creatorEditor.lesson.noVideo")}
                     isEditable={isEditable}
                     deletingAssetId={deletingAssetId}
                     onDelete={handleDeleteAsset}
@@ -556,8 +579,7 @@ export function LessonContentModal({
               ) : null}
 
               <p className="lesson-modal__guidance">
-                Upload the video to SkillsetMind or paste a YouTube/Vimeo URL.
-                Learners can play either one in the classroom.
+                {t("creatorEditor.lesson.videoHelp")}
               </p>
             </div>
           ) : null}
@@ -565,7 +587,7 @@ export function LessonContentModal({
           {tab === "description" ? (
             <div className="grid gap-4">
               <label className="lesson-modal-field">
-                <span>Lesson title</span>
+                <span>{t("creatorEditor.lesson.title")}</span>
                 <input
                   value={lesson.title}
                   onChange={(event) => onUpdateLesson({ title: event.target.value })}
@@ -574,28 +596,28 @@ export function LessonContentModal({
               </label>
               <label className="lesson-modal-field">
                 <span>
-                  Lesson description
-                  <small>Shown below the video in the members area.</small>
+                  {t("creatorEditor.lesson.description")}
+                  <small>{t("creatorEditor.lesson.descriptionHelp")}</small>
                 </span>
                 <textarea
                   value={lesson.description}
                   onChange={(event) => onUpdateLesson({ description: event.target.value })}
                   disabled={!isEditable}
                   rows={5}
-                  placeholder="Explain what the student is about to learn and why it matters."
+                  placeholder={t("creatorEditor.lesson.descriptionPlaceholder")}
                 />
               </label>
               <label className="lesson-modal-field">
                 <span>
-                  Text content, prompt, or notes
-                  <small>Use this for text lessons, assignments, scripts or key takeaways.</small>
+                  {t("creatorEditor.lesson.text")}
+                  <small>{t("creatorEditor.lesson.textHelp")}</small>
                 </span>
                 <textarea
                   value={lesson.contentText ?? ""}
                   onChange={(event) => onUpdateLesson({ contentText: event.target.value || null })}
                   disabled={!isEditable}
                   rows={7}
-                  placeholder="Add the lesson outline, assignment instructions, checklist, or supporting notes."
+                  placeholder={t("creatorEditor.lesson.textPlaceholder")}
                 />
               </label>
             </div>
@@ -606,12 +628,11 @@ export function LessonContentModal({
               <div className="lesson-modal-note">
                 <FileText aria-hidden="true" size={17} />
                 <p>
-                  Complementary files are attached to this lesson and become
-                  downloadable inside the student classroom.
+                  {t("creatorEditor.lesson.materialsHelp")}
                 </p>
               </div>
               <LessonUploadForm
-                error={error}
+                error={errorMessage}
                 isEditable={isEditable}
                 isPreviewAsset={isPreviewAsset}
                 isUploading={isUploading}
@@ -624,16 +645,16 @@ export function LessonContentModal({
                   setUploadKind("lesson_material");
                   void handleUpload(event);
                 }}
-                progressLabel={formatProgress(uploadProgress)}
+                progressLabel={formatProgress(uploadProgress, t)}
                 onCancel={cancelUpload}
                 selectedFile={selectedFile}
                 fileInputKey={fileInputKey}
-                success={success}
+                success={successMessage}
                 uploadKind="lesson_material"
               />
               <LessonAssetList
                 assets={materialAssets}
-                emptyLabel="No complementary materials yet."
+                emptyLabel={t("creatorEditor.lesson.noMaterials")}
                 isEditable={isEditable}
                 deletingAssetId={deletingAssetId}
                 onDelete={handleDeleteAsset}
@@ -645,21 +666,21 @@ export function LessonContentModal({
             <div className="grid gap-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="lesson-modal-field">
-                  <span>Lesson type</span>
+                  <span>{t("creatorEditor.lesson.type")}</span>
                   <select
                     value={lesson.type}
                     onChange={(event) => onUpdateLesson({ type: event.target.value as LessonType })}
                     disabled={!isEditable}
                   >
-                    {editableLessonTypes.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
+                    {editableLessonTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {t(`publicCourses.lessonTypes.${type}`)}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="lesson-modal-field">
-                  <span>Duration minutes</span>
+                  <span>{t("creatorEditor.lesson.duration")}</span>
                   <input
                     value={lesson.durationMinutes ?? ""}
                     inputMode="numeric"
@@ -679,8 +700,8 @@ export function LessonContentModal({
               </div>
               <div className="lesson-modal-setting">
                 <div>
-                  <strong>Free preview</strong>
-                  <p>Make this lesson visible before purchase. SkillsetMind recommends one strong preview lesson.</p>
+                  <strong>{t("creatorEditor.lesson.freePreview")}</strong>
+                  <p>{t("creatorEditor.lesson.freePreviewHelp")}</p>
                 </div>
                 <button
                   type="button"
@@ -688,13 +709,13 @@ export function LessonContentModal({
                   onClick={onSetFreePreview}
                   disabled={!isEditable}
                   aria-pressed={isFreePreview}
-                  aria-label="Use this lesson as the free preview"
+                  aria-label={t("creatorEditor.lesson.freePreviewLabel")}
                 />
               </div>
               <label className="lesson-modal-field">
                 <span>
-                  Drip delay days
-                  <small>Leave blank for immediate release, or set D+ days after enrollment.</small>
+                  {t("creatorEditor.lesson.drip")}
+                  <small>{t("creatorEditor.lesson.dripHelp")}</small>
                 </span>
                 <input
                   value={lesson.dripDelayDays ?? ""}
@@ -715,12 +736,11 @@ export function LessonContentModal({
               <div className="lesson-modal-note">
                 <ImageIcon aria-hidden="true" size={17} />
                 <p>
-                  Optional thumbnail upload. It is used by the members area when
-                  students browse lessons.
+                  {t("creatorEditor.lesson.thumbnailHelp")}
                 </p>
               </div>
               <LessonUploadForm
-                error={error}
+                error={errorMessage}
                 isEditable={isEditable}
                 isPreviewAsset={isPreviewAsset}
                 isUploading={isUploading}
@@ -733,16 +753,16 @@ export function LessonContentModal({
                   setUploadKind("lesson_thumbnail");
                   void handleUpload(event);
                 }}
-                progressLabel={formatProgress(uploadProgress)}
+                progressLabel={formatProgress(uploadProgress, t)}
                 onCancel={cancelUpload}
                 selectedFile={selectedFile}
                 fileInputKey={fileInputKey}
-                success={success}
+                success={successMessage}
                 uploadKind="lesson_thumbnail"
               />
               <LessonAssetList
                 assets={thumbnailAssets}
-                emptyLabel="No lesson thumbnail yet."
+                emptyLabel={t("creatorEditor.lesson.noThumbnail")}
                 isEditable={isEditable}
                 deletingAssetId={deletingAssetId}
                 onDelete={handleDeleteAsset}
@@ -750,14 +770,14 @@ export function LessonContentModal({
             </div>
           ) : null}
           <p className="lesson-modal__guidance">
-            Configure the exact lesson students will watch, read, download, and discuss.
+            {t("creatorEditor.lesson.contextHelp")}
           </p>
         </div>
 
         <footer className="lesson-modal__footer">
           <p>
             <CheckCircle2 aria-hidden="true" size={14} />
-            Uploads save immediately. Text and settings save with the course draft.
+            {t("creatorEditor.lesson.saveHelp")}
           </p>
           <button
             type="button"
@@ -765,7 +785,7 @@ export function LessonContentModal({
             onClick={requestClose}
             disabled={isUploading}
           >
-            {isUploading ? "Uploading..." : "Done"}
+            {isUploading ? t("creatorEditor.lesson.file.uploading") : t("creatorEditor.lesson.state.done")}
           </button>
         </footer>
       </section>
@@ -803,16 +823,17 @@ function LessonUploadForm({
   success: string;
   uploadKind: CourseAssetKind;
 }) {
+  const { t } = useTranslation();
   return (
     <form className="lesson-modal-upload" onSubmit={onSubmit}>
       <label>
-        <span>{courseAssetKindLabels[uploadKind]}</span>
+        <span>{getCourseAssetKindLabel(uploadKind, t)}</span>
         <input
           key={`${fileInputKey}-${uploadKind}`}
           type="file"
           accept={courseAssetAcceptTypes[uploadKind]}
           disabled={!isEditable || isUploading}
-          aria-label={courseAssetKindLabels[uploadKind]}
+          aria-label={getCourseAssetKindLabel(uploadKind, t)}
           onChange={(event) => onFileChange(event.target.files?.[0] ?? null)}
           className="lesson-modal-upload__input"
         />
@@ -821,7 +842,7 @@ function LessonUploadForm({
           data-disabled={!isEditable || isUploading ? "true" : undefined}
         >
           <UploadCloud size={16} aria-hidden />
-          {selectedFile ? "Choose a different file" : "Choose file"}
+          {t(`creatorEditor.lesson.file.${selectedFile ? "selectAnother" : "select"}`)}
         </span>
       </label>
       <label className="lesson-modal-upload__preview">
@@ -831,7 +852,7 @@ function LessonUploadForm({
           disabled={!isEditable || isUploading}
           onChange={(event) => onChangePreview(event.target.checked)}
         />
-        Allow this file in the public preview when it is safe.
+        {t("creatorEditor.lesson.file.allowPreview")}
       </label>
       {selectedFile ? (
         <p className="lesson-modal-upload__file">
@@ -852,7 +873,7 @@ function LessonUploadForm({
               onClick={onCancel}
               className="min-h-11 rounded-md border border-[var(--color-line)] px-3 text-xs font-bold text-[var(--color-ink-soft)] hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
             >
-              Cancel upload
+              {t("creatorEditor.lesson.file.cancel")}
             </button>
           ) : null}
         </div>
@@ -864,7 +885,7 @@ function LessonUploadForm({
         disabled={!isEditable || isUploading || !selectedFile}
         className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
       >
-        {isUploading ? "Uploading..." : "Upload file"}
+        {t(`creatorEditor.lesson.file.${isUploading ? "uploading" : "upload"}`)}
       </button>
     </form>
   );
@@ -883,6 +904,7 @@ function LessonAssetList({
   deletingAssetId: string | null;
   onDelete: (asset: CourseAsset) => void;
 }) {
+  const { t } = useTranslation();
   if (assets.length === 0) {
     return <p className="lesson-modal-empty">{emptyLabel}</p>;
   }
@@ -898,15 +920,15 @@ function LessonAssetList({
           <div>
             {thumbnailUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={thumbnailUrl} alt={`Lesson thumbnail: ${asset.fileName}`} className="mb-2 max-h-32 max-w-full rounded-lg object-contain" />
+              <img src={thumbnailUrl} alt={t("creatorEditor.lesson.thumbnailAlt").replace("{fileName}", () => asset.fileName)} className="mb-2 max-h-32 max-w-full rounded-lg object-contain" />
             ) : null}
             <strong>{asset.fileName}</strong>
             <span>
-              {courseAssetKindLabels[asset.kind]} - {formatCourseAssetSize(asset.size)}
+              {getCourseAssetKindLabel(asset.kind, t)} - {formatCourseAssetSize(asset.size)}
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <small>{asset.isPreview ? "Preview" : "Enrolled only"}</small>
+            <small>{asset.isPreview ? t("creatorEditor.lesson.state.preview") : t("creatorEditor.lesson.enrolledOnly")}</small>
             {isEditable ? (
               <button
                 type="button"
@@ -914,7 +936,7 @@ function LessonAssetList({
                 disabled={deletingAssetId === asset.id}
                 className="button-danger px-3.5 py-2 text-xs disabled:opacity-60"
               >
-                {deletingAssetId === asset.id ? "Deleting..." : "Delete"}
+                {t(`creatorEditor.lesson.${deletingAssetId === asset.id ? "deleting" : "delete"}`)}
               </button>
             ) : null}
           </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { WatermarkedVideoPlayer } from "@/components/learn/watermarked-video-player";
 import type { CourseAsset } from "@/domain/course-asset";
 import { getProtectedCourseAssetObjectUrl } from "@/lib/data/course-assets";
@@ -37,8 +38,9 @@ function ProtectedAssetPreviewContent({
   onEnded?: () => void;
   resume?: LessonPositionRef | null;
 }) {
+  const { t } = useTranslation();
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -56,7 +58,7 @@ function ProtectedAssetPreviewContent({
       })
       .catch(() => {
         if (isMounted) {
-          setError("Asset access is protected. Try again after refreshing your session.");
+          setHasError(true);
         }
       });
 
@@ -69,10 +71,10 @@ function ProtectedAssetPreviewContent({
     };
   }, [asset]);
 
-  if (error) {
+  if (hasError) {
     return (
       <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
-        {error}
+        {t("courseMedia.preview.assetError")}
       </p>
     );
   }
@@ -80,7 +82,7 @@ function ProtectedAssetPreviewContent({
   if (!objectUrl) {
     return (
       <p className="mt-3 rounded-[10px] bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
-        Preparing protected asset...
+        {t("courseMedia.preview.preparingAsset")}
       </p>
     );
   }
@@ -133,6 +135,7 @@ function ProtectedAssetActions({
   asset: CourseAsset;
   objectUrl: string;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="mt-3 flex flex-wrap gap-2">
       <a
@@ -141,14 +144,14 @@ function ProtectedAssetActions({
         rel="noopener noreferrer"
         className="button-outline px-4 py-2 text-xs"
       >
-        Open file
+        {t("courseMedia.preview.openFile")}
       </a>
       <a
         href={objectUrl}
         download={asset.fileName}
         className="button-solid px-4 py-2 text-xs"
       >
-        Download
+        {t("courseMedia.preview.download")}
       </a>
     </div>
   );

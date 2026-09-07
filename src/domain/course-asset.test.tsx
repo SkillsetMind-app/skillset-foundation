@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
 import {
   canViewCourseAssetVideo,
   courseAssetAcceptTypes,
   courseAssetKindLabels,
+  courseAssetUploadLimitMessage,
   formatCourseAssetSize,
   getCourseAssetUploadErrorMessage,
   isAllowedCourseAssetFile,
@@ -73,6 +75,37 @@ describe("course asset validation", () => {
 });
 
 describe("upload error mapping", () => {
+  const spanish = (key: string) => translate(getDictionary("es"), key);
+
+  it.each([
+    ["size", { status: 413 }, "Este archivo supera el límite actual de subida (~50.0 MB). Usa un enlace de YouTube o un archivo más pequeño."],
+    ["permission", { status: 403 }, "No tienes permiso para subir archivos a este curso."],
+    ["rls", new Error("new row violates row-level security policy"), "No tienes permiso para subir archivos a este curso."],
+    ["rate limit", new Error("bunny-create-failed:429"), "Demasiadas subidas en la última hora. Espera un poco e inténtalo de nuevo; no se perdió nada."],
+    ["session", new Error("bunny-create-failed:401"), "Tu sesión caducó. Inicia sesión de nuevo y vuelve a enviar el archivo."],
+    ["session 419", new Error("bunny-create-failed:419"), "Tu sesión caducó. Inicia sesión de nuevo y vuelve a enviar el archivo."],
+    ["video permission", new Error("bunny-create-failed:403"), "No tienes permiso para subir videos a este curso."],
+    ["video service", new Error("bunny-create-failed:500"), "El servicio de video no pudo aceptar el archivo. Inténtalo de nuevo en unos minutos."],
+    ["activation", new Error("Pay the one-time activation fee before uploading course video."), "Paga la tarifa única de activación antes de subir videos del curso."],
+    ["file type", new Error("Unsupported file type or file too large."), "El tipo de archivo no es compatible o el archivo es demasiado grande."],
+    ["cover host", new Error("Cover image URL is not on an allowed media host."), "La URL de la portada no pertenece a un sitio de medios permitido."],
+    ["interrupted", Object.assign(new Error("PATCH https://provider.example/private"), { originalRequest: {} }), "La subida se interrumpió, normalmente por una pérdida de conexión. Revisa tu conexión y vuelve a enviar el archivo."],
+    ["unknown provider", new Error("Unexpected failure at https://provider.example/private"), "No pudimos subir este archivo. Revisa el tipo de archivo y los permisos del curso."],
+    ["no detail", undefined, "No pudimos subir este archivo. Revisa el tipo de archivo y los permisos del curso."],
+  ])("localizes %s without returning provider details", (_name, error, expected) => {
+    expect(getCourseAssetUploadErrorMessage(error, undefined, spanish)).toBe(expected);
+  });
+
+  it("translates a preflight error again without replacing its captured upload limit", () => {
+    const message = courseAssetUploadLimitMessage(75 * 1024 * 1024);
+    const error = new Error(message);
+    expect(getCourseAssetUploadErrorMessage(error)).toBe(message);
+    expect(getCourseAssetUploadErrorMessage(error, undefined, spanish)).toBe(
+      "Este archivo supera el límite actual de subida (~75.0 MB). Usa un enlace de YouTube o un archivo más pequeño.",
+    );
+    expect(courseAssetUploadLimitMessage(5 * 1024 * 1024 * 1024, spanish)).toContain("~5 GB");
+  });
+
   it("defaults the effective Supabase limit to 50MB when the env override is unset", () => {
     expect(supabaseUploadLimitBytes).toBe(50 * 1024 * 1024);
   });
