@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   decideHostRoute,
+  entryUrl,
   isPlatformHost,
+  isProductionHost,
   normaliseHostHeader,
   PLATFORM_ORIGIN,
 } from "@/domain/host-routing";
@@ -45,6 +47,83 @@ describe("platform entry aliases", () => {
     "leaves the existing platform host %s unchanged",
     (hostname) => expect(decideHostRoute({ hostname, pathname: "/auth", search: "", resolvedUid: null })).toEqual({ kind: "pass" }),
   );
+});
+
+// Os links públicos e o proxy leem a MESMA tabela: o host que entryUrl publica
+// tem de ser exatamente o host que decideHostRoute devolve à área certa. Se as
+// duas pontas divergirem um dia, um link copiado passa a apontar para um host
+// que o proxy não conhece — e este bloco é o que acusa.
+describe("entryUrl — public links on the short hosts", () => {
+  const PRODUCTION = ["skillsetmind.com", "www.skillsetmind.com"];
+
+  it.each([
+    ["app", "https://app.skillsetmind.com", "/teach"],
+    ["consumer", "https://consumer.skillsetmind.com", "/learn"],
+    ["pay", "https://pay.skillsetmind.com", "/courses"],
+  ] as const)("publishes %s on its own host, preserving path and query, and the proxy opens it", (kind, origin, area) => {
+    for (const hostname of PRODUCTION) {
+      expect(entryUrl(kind, "/courses/course-fixture/checkout", "?offer=launch&priceId=price-fixture", hostname))
+        .toBe(`${origin}/courses/course-fixture/checkout?offer=launch&priceId=price-fixture`);
+    }
+    // Fecha o círculo com a tabela do proxy: a raiz do host publicado abre a área.
+    expect(decideHostRoute({ hostname: new URL(origin).hostname, pathname: "/", search: "", resolvedUid: null }))
+      .toEqual({ kind: "redirect", status: 307, url: `${PLATFORM_ORIGIN}${area}` });
+  });
+
+  it("keeps an already-built route with its query intact as the path", () => {
+    expect(entryUrl("consumer", "/auth?mode=signin&path=student", "", "www.skillsetmind.com"))
+      .toBe("https://consumer.skillsetmind.com/auth?mode=signin&path=student");
+  });
+
+  it("uses the bare short host for an empty path in production, and the area it opens elsewhere", () => {
+    expect(entryUrl("pay", "", "", "www.skillsetmind.com")).toBe("https://pay.skillsetmind.com");
+    expect(entryUrl("pay", "/", "?utm=x", "www.skillsetmind.com")).toBe("https://pay.skillsetmind.com/?utm=x");
+    expect(entryUrl("pay", "", "", "localhost")).toBe("/courses");
+    expect(entryUrl("app", "/", "?utm=x", "localhost")).toBe("/teach?utm=x");
+  });
+
+  // Um preview da Vercel, o localhost e o próprio servidor (que ainda não sabe
+  // em que host está) nunca podem emitir um host curto: ele só resolve em
+  // produção, e um link absoluto tiraria quem testa do ambiente de teste.
+  it.each([
+    "skillset-foundation-git-feat-links-skillsetmind.vercel.app",
+    "skillset-foundation-qa.vercel.app",
+    "localhost",
+    "127.0.0.1",
+    "::1",
+    "lp.skillsetmind.com",
+    "staging.skillsetmind.com",
+    "mysite.com",
+    null,
+    undefined,
+  ])("stays relative on %s, which is not production", (hostname) => {
+    for (const kind of ["app", "consumer", "pay"] as const) {
+      const url = entryUrl(kind, "/courses/course-fixture/checkout", "?offer=launch", hostname);
+      expect(url).toBe("/courses/course-fixture/checkout?offer=launch");
+      expect(url).not.toContain("skillsetmind.com");
+    }
+  });
+
+  it("defaults to relative when no hostname is given, so a forgotten argument never invents a host", () => {
+    expect(entryUrl("pay", "/courses/x")).toBe("/courses/x");
+  });
+});
+
+describe("isProductionHost — narrower than isPlatformHost on purpose", () => {
+  it.each(["skillsetmind.com", "www.skillsetmind.com"])("accepts %s", (hostname) => {
+    expect(isProductionHost(hostname)).toBe(true);
+    expect(isPlatformHost(hostname)).toBe(true);
+  });
+
+  it.each(["skillset-foundation-qa.vercel.app", "localhost", "127.0.0.1", "lp.skillsetmind.com", "notskillsetmind.com"])(
+    "rejects %s even though the platform may serve it",
+    (hostname) => expect(isProductionHost(hostname)).toBe(false),
+  );
+
+  it("rejects a missing hostname", () => {
+    expect(isProductionHost(null)).toBe(false);
+    expect(isProductionHost(undefined)).toBe(false);
+  });
 });
 
 function onCustomDomain(pathname: string, search = "") {

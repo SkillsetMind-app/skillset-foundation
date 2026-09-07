@@ -594,6 +594,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 label={t("creatorPanel.hub.links.checkout")}
                 path={`/courses/${encodeURIComponent(courseId)}/checkout`}
                 title={courseTitle}
+                entry="pay"
               />
               <CourseShareLink
                 label={t("creatorPanel.hub.sections.page")}

@@ -8,7 +8,14 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
   useTranslation: () => ({ t: (key: string) => translate(getDictionary(locale.value), key) }),
 }));
 
-afterEach(() => { cleanup(); locale.value = "en"; });
+afterEach(() => { cleanup(); locale.value = "en"; vi.unstubAllGlobals(); });
+
+// jsdom serve em localhost, que é o caso "fora de produção" dos testes acima.
+// Para provar os hosts curtos é preciso fingir o host real; os demais campos
+// de location continuam os de verdade para o next/link não estranhar.
+function viewFrom(hostname: string) {
+  vi.stubGlobal("location", { ...window.location, hostname });
+}
 
 describe("public account entry", () => {
   it("opens two role-intent links in separate tabs without changing the current page", () => {
@@ -22,6 +29,39 @@ describe("public account entry", () => {
       expect(link).toHaveAttribute("rel", "noopener noreferrer");
     }
   });
+
+  // Em produção cada intenção entra pelo seu host curto. A rota de sign-in e a
+  // intenção viajam inteiras na URL, porque o proxy responde 307 preservando
+  // caminho e query — o destino final é o mesmo /auth?mode=signin&path=… de sempre.
+  it.each(["www.skillsetmind.com", "skillsetmind.com"])(
+    "enters through consumer. and app. when viewed from %s, keeping intent and the new tab",
+    (hostname) => {
+      viewFrom(hostname);
+      render(<PublicEntryMenu />);
+      fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+      const student = screen.getByRole("link", { name: "My courses (opens in a new tab)" });
+      const teacher = screen.getByRole("link", { name: "Manage my business (opens in a new tab)" });
+      expect(student).toHaveAttribute("href", "https://consumer.skillsetmind.com/auth?mode=signin&path=student");
+      expect(teacher).toHaveAttribute("href", "https://app.skillsetmind.com/auth?mode=signin&path=teacher");
+      for (const link of [student, teacher]) {
+        expect(link).toHaveAttribute("target", "_blank");
+        expect(link).toHaveAttribute("rel", "noopener noreferrer");
+      }
+    },
+  );
+
+  // Um preview da Vercel nunca manda ninguém para produção: os hosts curtos só
+  // resolvem lá, e quem está testando precisa continuar no preview.
+  it.each(["skillset-foundation-git-feat-links-skillsetmind.vercel.app", "localhost"])(
+    "keeps both links relative when viewed from %s",
+    (hostname) => {
+      viewFrom(hostname);
+      render(<PublicEntryMenu />);
+      fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+      expect(screen.getByRole("link", { name: /My courses/ })).toHaveAttribute("href", "/auth?mode=signin&path=student");
+      expect(screen.getByRole("link", { name: /Manage my business/ })).toHaveAttribute("href", "/auth?mode=signin&path=teacher");
+    },
+  );
 
   it("closes on Escape and returns focus to its trigger", () => {
     render(<PublicEntryMenu />);

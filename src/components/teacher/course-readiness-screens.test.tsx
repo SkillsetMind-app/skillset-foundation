@@ -428,15 +428,26 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(unsubscribe).toHaveBeenCalledOnce();
   });
 
+  // jsdom serve em localhost, que é "fora de produção": o checkout fica relativo
+  // (o host curto só resolve em produção) e a página do produto segue em www.
   it("offers permanent checkout and product page links in Promo links", async () => {
     mocks.searchParams.set("section", "links");
     render(<CourseManageHub courseId="course-1" />);
     await screen.findByRole("button", { name: "Copy Checkout link" });
-    expect(screen.getByRole("link", { name: "Open Checkout" })).toHaveAttribute("href", "https://www.skillsetmind.com/courses/course-1/checkout");
+    expect(screen.getByRole("link", { name: "Open Checkout" })).toHaveAttribute("href", "/courses/course-1/checkout");
     expect(screen.getByRole("link", { name: "Open Product page" })).toHaveAttribute("href", "https://www.skillsetmind.com/courses/course-1");
     expect(screen.getByRole("link", { name: "Open Checkout" })).not.toHaveAttribute("target", "_blank");
     expect(screen.getByRole("link", { name: "Open Product page" })).not.toHaveAttribute("target", "_blank");
     expect(screen.getByRole("button", { name: "Copy Checkout link" })).toBeInTheDocument();
+  });
+
+  it("publishes the checkout link on pay.skillsetmind.com in production and keeps the product page on www", async () => {
+    vi.stubGlobal("location", { ...window.location, hostname: "www.skillsetmind.com" });
+    mocks.searchParams.set("section", "links");
+    render(<CourseManageHub courseId="course-1" />);
+    await screen.findByRole("button", { name: "Copy Checkout link" });
+    expect(screen.getByRole("link", { name: "Open Checkout" })).toHaveAttribute("href", "https://pay.skillsetmind.com/courses/course-1/checkout");
+    expect(screen.getByRole("link", { name: "Open Product page" })).toHaveAttribute("href", "https://www.skillsetmind.com/courses/course-1");
   });
 
   const expected = getCourseReadiness(mocks.course);

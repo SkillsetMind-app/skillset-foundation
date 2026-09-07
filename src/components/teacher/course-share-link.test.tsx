@@ -30,6 +30,48 @@ describe("CourseShareLink", () => {
     expect(writeText).toHaveBeenCalledWith(url);
   });
 
+  // O link de checkout é o que o professor cola em anúncio e story: em produção
+  // ele sai no host curto de pagamento, com a oferta preservada, e é esse URL
+  // que aparece, é copiado, é aberto e viaja nas redes.
+  it("publishes a checkout link on pay.skillsetmind.com in production, offer included", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    vi.stubGlobal("location", { ...window.location, hostname: "www.skillsetmind.com" });
+    render(<CourseShareLink label="Checkout" path="/courses/course-1/checkout?offer=LAUNCH" title={title} entry="pay" />);
+    const url = "https://pay.skillsetmind.com/courses/course-1/checkout?offer=LAUNCH";
+    expect(screen.getByText(url)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Checkout" })).toHaveAttribute("href", url);
+    fireEvent.click(screen.getByRole("button", { name: "Copy Checkout link" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Link copied.");
+    expect(writeText).toHaveBeenCalledWith(url);
+
+    fireEvent.click(screen.getByRole("button", { name: "Share Checkout" }));
+    const menu = screen.getByRole("menu", { name: "Checkout share options" });
+    const encodedPayUrl = "https%3A%2F%2Fpay.skillsetmind.com%2Fcourses%2Fcourse-1%2Fcheckout%3Foffer%3DLAUNCH";
+    expect(within(menu).getByRole("menuitem", { name: "WhatsApp" })).toHaveAttribute("href", `https://wa.me/?text=${encodedTitle}%20${encodedPayUrl}`);
+    expect(within(menu).getByRole("menuitem", { name: "LinkedIn" })).toHaveAttribute("href", `https://www.linkedin.com/sharing/share-offsite/?url=${encodedPayUrl}`);
+  });
+
+  // Fora de produção o host curto não resolve; o link fica relativo para que
+  // quem testa num preview da Vercel continue no preview em vez de cair em produção.
+  it.each(["skillset-foundation-git-feat-links-skillsetmind.vercel.app", "localhost"])(
+    "keeps a checkout link relative when viewed from %s",
+    (hostname) => {
+      vi.stubGlobal("location", { ...window.location, hostname });
+      render(<CourseShareLink label="Checkout" path="/courses/course-1/checkout?offer=LAUNCH" title={title} entry="pay" />);
+      const url = "/courses/course-1/checkout?offer=LAUNCH";
+      expect(screen.getByText(url)).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Open Checkout" })).toHaveAttribute("href", url);
+      expect(document.body.innerHTML).not.toContain("pay.skillsetmind.com");
+    },
+  );
+
+  it("leaves the product page on www even in production, because only checkout moves to pay.", () => {
+    vi.stubGlobal("location", { ...window.location, hostname: "www.skillsetmind.com" });
+    render(<CourseShareLink label="Product page" path="/courses/course-1" title={title} />);
+    expect(screen.getByRole("link", { name: "Open Product page" })).toHaveAttribute("href", "https://www.skillsetmind.com/courses/course-1");
+  });
+
   it("announces denied clipboard permission and keeps the URL available", async () => {
     vi.stubGlobal("navigator", { clipboard: { writeText: vi.fn().mockRejectedValue(new Error("denied")) } });
     render(<CourseShareLink label="Checkout" path="/courses/course-1/checkout" title={title} />);

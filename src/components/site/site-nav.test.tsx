@@ -30,6 +30,7 @@ vi.mock("@/components/auth/auth-provider", () => ({
 afterEach(() => {
   cleanup();
   auth.user = null;
+  vi.unstubAllGlobals();
 });
 
 const HEADER_ORDER = ["Courses", "For creators", "Pricing", "Promise", "Help"];
@@ -90,6 +91,33 @@ describe("SiteNav", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
     expect(screen.getByRole("link", { name: /My courses/ })).toHaveAttribute("href", "/auth?mode=signin&path=student");
     expect(screen.getByRole("link", { name: /Manage my business/ })).toHaveAttribute("target", "_blank");
+  });
+
+  // A barra pública é onde o visitante encontra a entrada. Em produção o menu
+  // (desktop e móvel) publica os hosts curtos; o "Get started" de cadastro e o
+  // Dashboard autenticado ficam como estão — só a entrada por intenção muda.
+  it("publishes the short hosts from both header menus in production", () => {
+    vi.stubGlobal("location", { ...window.location, hostname: "www.skillsetmind.com" });
+    render(<SiteNav />);
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(screen.getByRole("link", { name: /My courses/ })).toHaveAttribute("href", "https://consumer.skillsetmind.com/auth?mode=signin&path=student");
+    expect(screen.getByRole("link", { name: /Manage my business/ })).toHaveAttribute("href", "https://app.skillsetmind.com/auth?mode=signin&path=teacher");
+    expect(screen.getByRole("link", { name: /Manage my business/ })).toHaveAttribute("target", "_blank");
+    expect(screen.getAllByRole("link", { name: "Get started free" })[0]).toHaveAttribute("href", "/auth?mode=signup");
+
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const panel = document.getElementById("site-mobile-menu")!;
+    fireEvent.click(within(panel).getByRole("button", { name: "Sign in" }));
+    expect(within(panel).getByRole("link", { name: /My courses/ })).toHaveAttribute("href", "https://consumer.skillsetmind.com/auth?mode=signin&path=student");
+    expect(within(panel).getByRole("link", { name: /Manage my business/ })).toHaveAttribute("href", "https://app.skillsetmind.com/auth?mode=signin&path=teacher");
+  });
+
+  it("keeps the entry links relative on a Vercel preview", () => {
+    vi.stubGlobal("location", { ...window.location, hostname: "skillset-foundation-git-feat-links-skillsetmind.vercel.app" });
+    render(<SiteNav />);
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(screen.getByRole("link", { name: /My courses/ })).toHaveAttribute("href", "/auth?mode=signin&path=student");
+    expect(screen.getByRole("link", { name: /Manage my business/ })).toHaveAttribute("href", "/auth?mode=signin&path=teacher");
   });
 
   it("keeps mobile entry open after Escape dismisses its nested disclosure", () => {
