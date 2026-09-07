@@ -4,7 +4,15 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { NextLessonCard } from "@/components/learn/next-lesson-card";
+import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import type { Lesson } from "@/domain/learning";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+
+function ChangeLanguage() {
+  const { locale, setLocale } = useTranslation();
+  return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
+}
 
 // O avanco automatico existia, mas em silencio: a aula mudava sem aviso, sem
 // "cancelar", e o proximo video nao comecava a tocar. Agora um cartao sobre o
@@ -25,6 +33,43 @@ describe("NextLessonCard", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it("translates a running countdown without restarting it or replacing the focused button", () => {
+    const onPlay = vi.fn();
+    render(<I18nProvider initialLocale="en"><ChangeLanguage />
+      <NextLessonCard lesson={lesson} onPlay={onPlay} onCancel={vi.fn()} />
+    </I18nProvider>);
+    for (let tick = 0; tick < 3; tick += 1) act(() => { vi.advanceTimersByTime(1000); });
+    const button = screen.getByRole("button", { name: "Watch now" });
+    button.focus();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByRole("dialog", { name: "Siguiente lección" })).toBeInTheDocument();
+    expect(screen.getByText("Siguiente lección en 2 s")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ver ahora" })).toBe(button);
+    expect(button).toHaveFocus();
+    act(() => { vi.advanceTimersByTime(1000); });
+    expect(onPlay).not.toHaveBeenCalled();
+    act(() => { vi.advanceTimersByTime(1000); });
+    expect(onPlay).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps cancellation pending for the same exit delay after changing locale", () => {
+    const onPlay = vi.fn();
+    const onCancel = vi.fn();
+    render(<I18nProvider initialLocale="en"><ChangeLanguage />
+      <NextLessonCard lesson={lesson} onPlay={onPlay} onCancel={onCancel} />
+    </I18nProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    act(() => { vi.advanceTimersByTime(100); });
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(149); });
+    expect(onCancel).not.toHaveBeenCalled();
+    act(() => { vi.advanceTimersByTime(1); });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    act(() => { vi.advanceTimersByTime(6000); });
+    expect(onPlay).not.toHaveBeenCalled();
   });
 
   it("mostra a proxima aula e a contagem de 5 s", () => {
