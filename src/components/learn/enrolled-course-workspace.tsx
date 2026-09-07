@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Fragment, useEffect, useMemo, useState, type FormEvent } from "react";
+import { Fragment, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import {
   ChevronDown,
   ChevronLeft,
@@ -23,6 +23,7 @@ import { CommunityFeed, type CommunityFeedLesson } from "@/components/learn/comm
 import { CourseMessagesPanel } from "@/components/learn/course-messages-panel";
 import { CoursePlaylist } from "@/components/learn/course-playlist";
 import { CourseReviewPanel } from "@/components/learn/course-review-panel";
+import { LessonComments } from "@/components/learn/lesson-comments";
 import { LessonListOverlay } from "@/components/learn/lesson-list-overlay";
 import { NextLessonCard } from "@/components/learn/next-lesson-card";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
@@ -937,6 +938,17 @@ export function EnrolledCourseWorkspace({
             onEnded={handleLessonEnded}
             unlockState={selectedLessonUnlockState}
             previewMode={previewMode}
+            lessonComments={
+              // Sob o player e "Informacoes da aula" (paridade Hotmart, P3):
+              // o feed da comunidade filtrado por esta aula. Some sozinho
+              // quando a comunidade do curso esta desligada.
+              <LessonComments
+                course={course}
+                lesson={{ id: selectedLesson.id, number: selectedLessonNumber }}
+                basePath={basePath}
+                previewMode={previewMode}
+              />
+            }
             autoplay={autoplayLessonId === selectedLesson.id}
             nextUp={nextUp}
             onPlayNextUp={playNextUp}
@@ -1548,6 +1560,7 @@ function LessonContentPanel({
   isLoadingAssets,
   isLoadingContent,
   lesson,
+  lessonComments = null,
   moduleTitle,
   nextUp = null,
   onCancelNextUp,
@@ -1571,6 +1584,10 @@ function LessonContentPanel({
   onPlayNextUp?: () => void;
   isLoadingContent: boolean;
   lesson: Lesson;
+  /** Comentarios da aula (feed da comunidade filtrado), logo abaixo de
+   *  "Informacoes da aula". O painel nao sabe de comunidade: quem monta e a
+   *  sala, que tem o caminho base e o numero da aula. */
+  lessonComments?: ReactNode;
   /** Modulo da aula, para "Informacoes da aula". */
   moduleTitle: string | null;
   onEnded: () => void;
@@ -1705,6 +1722,9 @@ function LessonContentPanel({
         }
         unlocksAt={unlockState?.unlocksAt ?? null}
       />
+
+      {/* Aula trancada: sem comentarios, como a discussao mais abaixo. */}
+      {!locked ? lessonComments : null}
 
       <div id="member-lesson-content" className="member-lesson-body">
         <div className="flex flex-wrap items-center justify-between gap-3">
