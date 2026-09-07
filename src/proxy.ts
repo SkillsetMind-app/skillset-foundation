@@ -200,6 +200,8 @@ export async function proxy(request: NextRequest) {
         for (const { name, value } of cookiesToSet) {
           request.cookies.set(name, value);
         }
+        // Forward the updated Cookie header without losing the sanitized CSP/nonce.
+        requestHeaders.set("cookie", request.headers.get("cookie") ?? "");
         response = NextResponse.next({ request: { headers: requestHeaders } });
         for (const { name, value, options } of cookiesToSet) {
           response.cookies.set(name, value, options);

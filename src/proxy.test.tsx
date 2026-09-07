@@ -4,7 +4,15 @@
 // is not the runtime's own class — jsdom supplies a different one, so this
 // file runs in node rather than the suite default.
 
+import { IncomingMessage } from "node:http";
+import { Socket } from "node:net";
+
 import { NextRequest } from "next/server";
+import { NodeNextRequest } from "next/dist/server/base-http/node";
+import {
+  createRequestStoreForAPI,
+  createRequestStoreForRender,
+} from "next/dist/server/async-storage/request-store";
 import type { CookieMethodsServer } from "@supabase/ssr";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -163,7 +171,7 @@ describe("security headers across proxy response paths", () => {
     expect(mocks.createServerClient).not.toHaveBeenCalled();
   });
 
-  it("preserves refreshed cookies and forwards the SDK anti-cache headers", async () => {
+  it.each(["renewed-fixture", ""])("forwards session value %j to the native API cookie store and preserves security headers", async (sessionValue) => {
     vi.resetModules();
     mocks.getSupabaseClientConfig.mockReturnValue({
       url: "https://project.example.test",
@@ -177,11 +185,15 @@ describe("security headers across proxy response paths", () => {
     const getUser = vi.fn();
     mocks.createServerClient.mockImplementation((_url: string, _key: string, options: { cookies: CookieMethodsServer }) => {
       getUser.mockImplementation(async () => {
-        expect(await options.cookies.getAll!()).toEqual([{ name: "audit-session", value: "old-fixture" }]);
+        expect(await options.cookies.getAll!()).toEqual([
+          { name: "audit-session", value: "old-fixture" },
+          { name: "audit-session.1", value: "old-chunk-fixture" },
+          { name: "skillset.locale", value: "es" },
+        ]);
         await options.cookies.setAll!([
           {
             name: "audit-session",
-            value: "renewed-fixture",
+            value: sessionValue,
             options: { path: "/", httpOnly: true, secure: true, sameSite: "lax" },
           },
           { name: "audit-session.1", value: "", options: { path: "/", maxAge: 0 } },
@@ -192,22 +204,64 @@ describe("security headers across proxy response paths", () => {
     });
     const { proxy } = await import("@/proxy");
     const request = new NextRequest("https://www.skillsetmind.com/api/auth/pwned-check?prefix=ABCDE", {
-      headers: { host: "www.skillsetmind.com", cookie: "audit-session=old-fixture" },
+      headers: {
+        host: "www.skillsetmind.com",
+        cookie: "audit-session=old-fixture; audit-session.1=old-chunk-fixture; skillset.locale=es",
+      },
     });
     const response = await proxy(request);
 
     expect(getUser).toHaveBeenCalledOnce();
-    expect(request.cookies.get("audit-session")?.value).toBe("renewed-fixture");
+    expect(request.cookies.get("audit-session")?.value).toBe(sessionValue);
     expect(response.cookies.get("audit-session")).toMatchObject({
-      value: "renewed-fixture", path: "/", httpOnly: true, secure: true, sameSite: "lax",
+      value: sessionValue, path: "/", httpOnly: true, secure: true, sameSite: "lax",
     });
     expect(response.cookies.get("audit-session.1")).toMatchObject({ value: "", maxAge: 0 });
-    // This is how Next makes middleware cookies visible to cookies() in RSC/API.
-    expect(response.headers.get("x-middleware-set-cookie")).toContain("audit-session=renewed-fixture");
+    expect(response.headers.get("x-middleware-set-cookie")).toContain(`audit-session=${sessionValue}`);
     for (const [name, value] of Object.entries(antiCacheHeaders)) {
       expect(response.headers.get(name), name).toBe(value);
     }
     const nonce = response.headers.get("x-middleware-request-x-nonce");
     expect(response.headers.get("content-security-policy")).toContain(`'nonce-${nonce}'`);
+
+    // Compose the request headers exactly as the Next router protocol carries
+    // them, then exercise its real stores instead of mocking cookies().
+    const forwardedHeaders: Record<string, string> = {};
+    for (const name of response.headers.get("x-middleware-override-headers")!.split(",")) {
+      forwardedHeaders[name] = response.headers.get(`x-middleware-request-${name}`)!;
+    }
+    forwardedHeaders["x-middleware-set-cookie"] = response.headers.get("x-middleware-set-cookie")!;
+    const implicitTags = { tags: [], expirationsByCacheKind: new Map() };
+
+    // Node RSC already merges middleware Set-Cookie into its cookie store.
+    // Keep this input separate: reading that store may update its headers.
+    const socket = new Socket();
+    try {
+      const incoming = new IncomingMessage(socket);
+      incoming.method = "GET";
+      incoming.url = request.url;
+      incoming.headers = { ...forwardedHeaders };
+      const renderStore = createRequestStoreForRender(
+        new NodeNextRequest(incoming), undefined, request.nextUrl, {}, implicitTags,
+        undefined, undefined, false, undefined, null, null,
+      );
+      expect(renderStore.cookies.get("audit-session")?.value ?? "").toBe(sessionValue);
+    } finally {
+      socket.destroy();
+    }
+
+    // App Route uses a NextRequest, not Node's headers object. Its cookies()
+    // reader must receive the renewed/cleared session in this same request.
+    const routeRequest = new NextRequest(request.url, { headers: forwardedHeaders });
+    const routeStore = createRequestStoreForAPI(routeRequest, routeRequest.nextUrl, implicitTags, undefined, undefined);
+    const routeCookies = routeStore.userspaceMutableCookies.getAll();
+    expect(routeCookies.find(({ name }) => name === "audit-session")?.value).toBe(sessionValue);
+    expect(routeCookies).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "audit-session", value: sessionValue }),
+      expect.objectContaining({ name: "audit-session.1", value: "" }),
+      expect.objectContaining({ name: "skillset.locale", value: "es" }),
+    ]));
+    expect(routeRequest.headers.get("x-nonce")).toBe(nonce);
+    expect(routeRequest.headers.get("content-security-policy")).toBe(response.headers.get("content-security-policy"));
   });
 });
