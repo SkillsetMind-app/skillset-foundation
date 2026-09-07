@@ -94,7 +94,7 @@ function getAccountBanner(
   // nunca se ia até a conta ficar conectada, então a pessoa passava semanas com
   // um alerta permanente no topo — e alerta permanente deixa de ser alerta.
   // Agora ele vive em dois lugares onde tem consequência: um passo da lista
-  // "Get ready for your first sale", na Home do professor, e uma linha discreta
+  // `creatorPanel.home.nextSteps.title`, na Home do professor, e uma linha discreta
   // e dispensável nas telas de venda (ver `stripe-connect-notice.tsx`). Os dois
   // somem sozinhos quando a conta conecta.
   return null;

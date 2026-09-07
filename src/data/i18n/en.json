@@ -684,6 +684,307 @@
       "edit": "Edit storefront"
     }
   },
+  "creatorPanel": {
+    "newProduct": "New product",
+    "createProduct": "Create product",
+    "untitledProduct": "Untitled product",
+    "communityOn": "Community on",
+    "modulesOne": "{count} module",
+    "modulesMany": "{count} modules",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "paymentType": {
+      "free": "Free",
+      "one_time": "One-time purchase",
+      "subscription_monthly": "Monthly subscription",
+      "subscription_yearly": "Yearly subscription"
+    },
+    "filters": {
+      "all": "All",
+      "drafts": "Drafts",
+      "needsAttention": "Needs attention"
+    },
+    "hub": {
+      "sections": {
+        "overview": "Panel",
+        "links": "Promo links",
+        "basic": "Basic info",
+        "pricing": "Pricing & offers",
+        "members": "Members area",
+        "students": "Students",
+        "page": "Product page",
+        "content": "Content",
+        "tax": "Tax collection",
+        "tools": "Tools"
+      },
+      "nav": {
+        "label": "Course management sections",
+        "manage": "Manage",
+        "roadmap": "On the roadmap"
+      },
+      "roadmap": {
+        "assistantLabel": "Sales assistant",
+        "assistantTitle": "The sales assistant is on the roadmap.",
+        "assistantDescription": "An AI assistant trained on this course's content that answers buyer questions on the product page. It isn't live yet — we'd rather tell you that than show a mock. Pricing is announced when it ships.",
+        "notify": "Notify me when it ships",
+        "notifySubject": "Notify me: {feature}"
+      },
+      "status": {
+        "draft": "Private draft — only you can see this course. Complete the checklist, then publish when ready.",
+        "in_review": "Legacy review status — open the builder to complete the checks and publish directly.",
+        "needs_changes": "Changes were previously requested. Address the note, update the course, and publish when ready.",
+        "published": "Live on the marketplace. Students can enroll right now.",
+        "inactive": "Hidden from the marketplace. An approved professional can republish it directly."
+      },
+      "price": {
+        "perMonth": "{amount} / month",
+        "perYear": "{amount} / year"
+      },
+      "highlight": {
+        "title": "Marketplace highlight",
+        "description": "Highlighted courses are pinned above the rest of the catalog. Your plan includes a set number of highlights at a time.",
+        "on": "Highlighted in the marketplace",
+        "off": "Not highlighted",
+        "usage": "{used} of {limit} highlights used on the {plan} plan",
+        "saving": "Saving...",
+        "remove": "Remove highlight",
+        "add": "Highlight this course",
+        "seePlans": "See plans",
+        "gatePublish": "Publish the course first — only live courses can be highlighted.",
+        "gatePlan": "Marketplace highlights start on the {plan} plan.",
+        "paidPlan": "paid",
+        "gateQuota": "You're using all {limit} highlights on your plan. Remove one from another course first.",
+        "updateError": "Could not update the marketplace highlight."
+      },
+      "loading": "Loading course...",
+      "notFound": {
+        "title": "This course isn't in your studio.",
+        "description": "It may have been deleted, or it belongs to another creator.",
+        "back": "Back to my courses"
+      },
+      "header": {
+        "eyebrow": "Course management",
+        "coverAlt": "{title} cover",
+        "courseFallback": "Course",
+        "noCover": "No cover",
+        "switchCourse": "Switch course"
+      },
+      "editInBuilder": "Edit in Builder",
+      "checklist": {
+        "title": "Publish checklist",
+        "progress": "{done} of {total} required steps done · {percent}% ready",
+        "optional": "Optional",
+        "openVerification": "Open verification",
+        "reviewNote": "SkillsetMind review note",
+        "reviewPublish": "Review & publish"
+      },
+      "links": {
+        "descriptionLive": "Share these anywhere you promote the course.",
+        "descriptionDraft": "Links you'll share once the course is published. Until then the product page opens only for you.",
+        "checkout": "Checkout"
+      },
+      "basic": {
+        "description": "Identity shown across the marketplace and product page. Edit these fields in the Builder.",
+        "title": "Title",
+        "category": "Category",
+        "allCategories": "All categories",
+        "summary": "Summary",
+        "outcomes": "Learning outcomes",
+        "noneYet": "None yet",
+        "cover": "Cover image",
+        "uploaded": "Uploaded",
+        "missing": "Missing",
+        "edit": "Edit basics in Builder"
+      },
+      "pricing": {
+        "title": "Pricing & checkout",
+        "description": "Set the access model and base commercial terms, then create targeted offers for distinct buyer links.",
+        "price": "Price",
+        "paymentType": "Payment type",
+        "installments": "Installments",
+        "installmentsUpTo": "Up to {max}x",
+        "stripeCheckout": "Secure Stripe checkout",
+        "payouts": "Stripe payouts",
+        "payoutsReady": "Ready",
+        "payoutsIncomplete": "Onboarding incomplete",
+        "edit": "Edit pricing in Builder",
+        "finishOnboarding": "Finish payout onboarding"
+      },
+      "content": {
+        "description": "{modules} and {lessons} in the curriculum.",
+        "empty": "No modules yet — build the curriculum in the Builder.",
+        "edit": "Edit content in Builder"
+      },
+      "members": {
+        "description": "The workspace enrolled students land in after purchase.",
+        "theme": "Theme",
+        "themeLight": "Light",
+        "themeDark": "Dark",
+        "welcomeTitle": "Welcome title",
+        "subtitle": "Subtitle",
+        "default": "Default",
+        "community": "Community",
+        "preview": "Preview members area"
+      },
+      "page": {
+        "title": "Public product page",
+        "description": "The buyer-facing URL. Until published, only you can open it.",
+        "open": "Open product page"
+      },
+      "sales": {
+        "description": "Orders, refunds, and revenue live in the studio-wide sales dashboard.",
+        "open": "Open sales dashboard",
+        "messages": "Student messages"
+      },
+      "tools": {
+        "title": "Product tools",
+        "description": "Open the supporting workspaces used to prepare, promote, and operate this product.",
+        "marketing": "Marketing workspace",
+        "marketingDetail": "Pages, media, buyer messages, and promotions",
+        "mediaDetail": "Course covers and delivery assets",
+        "integrationsDetail": "Connected delivery and business services",
+        "verification": "Professional verification",
+        "verificationDetail": "Credentials and marketplace admission"
+      }
+    },
+    "overview": {
+      "title": "How this product is doing",
+      "scope": "Everything below counts only {title}, never your other products.",
+      "viewPublic": "View public page",
+      "previewStudent": "Preview as a student",
+      "students": "Students enrolled",
+      "studentsHintJoined": "{count} joined in the last 7 days",
+      "studentsHintEmpty": "Buyers land here the moment a purchase clears.",
+      "revenueHintOne": "{count} paid order, net of refunds",
+      "revenueHintMany": "{count} paid orders, net of refunds",
+      "revenueHintEmpty": "No paid order on this product yet.",
+      "completionHint": "{done} of {total} finished the course",
+      "completionHintEmpty": "Measured once someone is enrolled.",
+      "rating": "Average rating",
+      "reviewsOne": "{count} review",
+      "reviewsMany": "{count} reviews",
+      "ratingHintEmpty": "No review yet — students rate after they enroll.",
+      "emptyTitle": "No one has bought this product yet.",
+      "emptyLive": "Enrollments, revenue, completion and rating appear here after the first sale. Share the product page to get the first one.",
+      "emptyDraft": "Publish the course first — the numbers start the moment the first buyer clears checkout.",
+      "openPage": "Open the product page",
+      "attentionTitle": "Needs your attention",
+      "attentionOne": "One thing on this product is worth fixing.",
+      "attentionMany": "{count} things on this product are worth fixing."
+    },
+    "products": {
+      "eyebrow": "Products",
+      "description": "Create private drafts, complete the product checks, and publish directly once your professional verification is approved.",
+      "productWorkspace": "Product workspace",
+      "communityWorkspace": "Community workspace",
+      "loading": "Loading products...",
+      "loadingAria": "Loading products",
+      "productOne": "{count} product",
+      "productMany": "{count} products",
+      "communityOne": "{count} community",
+      "communityMany": "{count} communities",
+      "searchProducts": "Search products...",
+      "searchCommunities": "Search communities...",
+      "typeLabel": "Type",
+      "typeAria": "Product type",
+      "status": "Status",
+      "statusAria": "Product status",
+      "filterLegacyReview": "Legacy review",
+      "filterLive": "Live",
+      "emptyProductsTitle": "No products yet",
+      "emptyProductsDescription": "Start a course, subscription, community, event, or free program. The draft stays private until you publish it.",
+      "emptyCommunitiesTitle": "No communities yet",
+      "emptyCommunitiesDescription": "Create a recurring members space for posts, discussion, and practitioner-led exchange.",
+      "createCommunity": "Create community",
+      "noMatch": "No products match this search and status filter.",
+      "columns": {
+        "product": "Product",
+        "access": "Access",
+        "actions": "Actions"
+      },
+      "uncategorized": "Uncategorized",
+      "signIn": "Sign in as a creator to start a product.",
+      "loadError": "We could not load your products. Please refresh or contact SkillsetMind support.",
+      "deleteError": "We could not delete this draft. Please try again or contact SkillsetMind support.",
+      "actions": {
+        "more": "More actions for {title}",
+        "menu": "Actions for {title}",
+        "edit": "Edit",
+        "viewAsStudent": "View as student",
+        "delete": "Delete"
+      },
+      "delete": {
+        "aria": "Delete {title}",
+        "eyebrow": "Delete product",
+        "title": "Delete {title}?",
+        "description": "This permanently removes the draft and its course content. This action cannot be undone.",
+        "cancel": "Cancel",
+        "busy": "Deleting...",
+        "confirm": "Confirm delete"
+      },
+      "shortcuts": {
+        "label": "Product workspace shortcuts",
+        "membersDetail": "Customize delivery and learner spaces",
+        "eventsDetail": "Schedule workshops and live sessions",
+        "marketingDetail": "Pages, media, messages, and promotions",
+        "couponsDetail": "Create discount codes for your products"
+      }
+    },
+    "home": {
+      "description": "Continue setup, manage products, and follow the work that moves them toward publication and sales.",
+      "storefront": "Storefront",
+      "nextSteps": {
+        "eyebrow": "Next steps",
+        "title": "Get ready for your first sale",
+        "progress": "{done} of {total} complete",
+        "listLabel": "Creator next steps",
+        "recommended": "Recommended now"
+      },
+      "steps": {
+        "create": "Create a product",
+        "createDetail": "Choose the delivery and access model.",
+        "creatorData": "Complete creator data",
+        "creatorDataDetail": "Finish professional verification and paid-product payouts.",
+        "creatorDataAction": "Complete setup",
+        "prepare": "Prepare product to sell",
+        "prepareDetail": "Add content, pricing, members experience, and review the draft.",
+        "prepareAction": "Prepare product"
+      },
+      "products": {
+        "title": "Products in your workspace",
+        "showAll": "Show all",
+        "filtersLabel": "Product filters",
+        "filterLiveSales": "Live sales",
+        "empty": "No products in this view yet.",
+        "manage": "Manage product"
+      },
+      "formats": {
+        "eyebrow": "What do you want to sell?",
+        "title": "Choose a product format",
+        "course": "Online course",
+        "courseDetail": "Video, text, downloads, certificates, and structured lessons.",
+        "program": "Guided program",
+        "programDetail": "A sequenced pathway of learning, practice, and optional live touchpoints.",
+        "subscription": "Subscription",
+        "subscriptionDetail": "Recurring access billed monthly or yearly.",
+        "community": "Community",
+        "communityDetail": "A recurring members space for posts and practitioner-led exchange.",
+        "event": "Online event",
+        "eventDetail": "Live workshops, cohorts, and scheduled group sessions.",
+        "free": "Free program",
+        "freeDetail": "Open enrollment without checkout or payment."
+      },
+      "milestones": {
+        "eyebrow": "My evolution",
+        "title": "Creator milestones",
+        "item": "Milestone {number}",
+        "firstProduct": "First product",
+        "verified": "Professional verified",
+        "payouts": "Payouts ready",
+        "firstLive": "First live product"
+      }
+    }
+  },
   "profileValidation": {
     "usernameRequired": "Choose a username for your SkillsetMind identity.",
     "usernameInvalid": "Use 3-32 lowercase letters, numbers, or hyphens. Start with a letter or number.",
