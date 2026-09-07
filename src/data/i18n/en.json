@@ -1018,7 +1018,8 @@
         "markLessonIncomplete": "Mark \"{title}\" incomplete",
         "markIncomplete": "Mark incomplete",
         "completed": "Completed",
-        "locked": "Locked"
+        "locked": "Locked",
+        "playingNow": "Playing now"
       },
       "resources": {
         "title": "Course resources",
@@ -1054,6 +1055,20 @@
         "countdown": "Next lesson in {seconds}s",
         "watch": "Watch now",
         "cancel": "Cancel"
+      },
+      "navigation": {
+        "previous": "Previous lesson",
+        "previousTitled": "Previous lesson: {title}",
+        "next": "Next lesson",
+        "nextTitled": "Next lesson: {title}"
+      },
+      "lessonInfo": {
+        "toggle": "Lesson information",
+        "type": "Type",
+        "duration": "Duration",
+        "module": "Module",
+        "materials": "Materials",
+        "availableFrom": "Available from"
       },
       "review": {
         "title": "Course review",
@@ -1156,7 +1171,9 @@
       "showLess": "Show less",
       "complete": "complete",
       "back": "My courses",
-      "backToLesson": "Lesson"
+      "backToLesson": "Lesson",
+      "progress": "{completed} of {total} lessons · {percent}%",
+      "certificate": "View certificate"
     },
     "paths": {
       "eyebrow": "Learning path",

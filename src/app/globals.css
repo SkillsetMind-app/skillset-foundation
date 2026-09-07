@@ -4296,6 +4296,46 @@ body:has([aria-label="Course categories"])
   color: var(--color-ink-soft);
 }
 
+/* Anterior / próxima junto do título (paridade Hotmart). O título e o par de
+   setas dividem a coluna do meio da grade; alvo de 44px; desabilitado é
+   aria-disabled (segue focável) e o cadeado nunca é burlado por aqui. */
+.member-classroom-head__main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.member-classroom-head__main > .member-classroom-head__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.member-classroom-head__nav {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.member-classroom-head__nav-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  color: var(--color-ink-soft);
+}
+
+.member-classroom-head__nav-button:not([aria-disabled="true"]):hover {
+  background: var(--color-surface-soft);
+  color: var(--color-ink);
+}
+
+.member-classroom-head__nav-button[aria-disabled="true"] {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
 /* Playlist ao lado do vídeo: módulos em acordeão, aula atual em destaque,
    check e cadeado por aula, busca no topo. */
 .member-playlist {
@@ -4478,6 +4518,21 @@ body:has([aria-label="Course categories"])
 .member-playlist__lesson-meta {
   font-size: 11px;
   color: var(--color-ink-soft);
+}
+
+/* "Tocando agora": só existe na linha atual; mesmo par de cores do pill de
+   status dessa linha (branco + primário; no tema, --ma-bg-top + acento). */
+.member-playlist__now {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary);
 }
 
 .member-playlist__lesson.is-done .member-playlist__lesson-title {
@@ -5319,6 +5374,20 @@ body:has([aria-label="Course categories"])
 .member-classroom[data-members-theme] .member-classroom-head__back,
 .member-classroom[data-members-theme] .member-classroom-head__percent {
   color: var(--ma-ink-soft);
+}
+
+.member-classroom[data-members-theme] .member-classroom-head__nav-button {
+  color: var(--ma-ink-soft);
+}
+
+.member-classroom[data-members-theme] .member-classroom-head__nav-button:not([aria-disabled="true"]):hover {
+  background: var(--ma-elev);
+  color: var(--ma-ink);
+}
+
+.member-classroom[data-members-theme] .member-playlist__now {
+  background: var(--ma-bg-top);
+  color: var(--ma-accent-ink);
 }
 
 .member-classroom[data-members-theme] .member-playlist__module-eyebrow {
@@ -6967,6 +7036,24 @@ button:hover > .dash-card,
   height: 100%;
   border-radius: 999px;
   background: var(--ma-accent);
+}
+/* "Ver certificado" no hero, só a 100%: branco sobre o acento (AA nos dois
+   temas, o mesmo par do botão de acento da sala). */
+.members-hero__cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 18px;
+  padding: 0 20px;
+  border-radius: 10px;
+  background: var(--ma-accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.members-hero__cta:hover {
+  background: var(--ma-accent-hover);
 }
 
 @media (max-width: 1100px) {

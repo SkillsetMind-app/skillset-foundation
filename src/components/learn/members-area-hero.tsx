@@ -15,6 +15,13 @@ export interface MembersAreaHeroProps {
   studioName?: string | null;
   studioInitials?: string | null;
   progressPercent?: number | null;
+  /** "N de M aulas · X%" junto da barra (paridade Hotmart). Sem os dois, a
+   *  linha continua "X% complete" como sempre foi. */
+  completedCount?: number | null;
+  totalCount?: number | null;
+  /** So aparece com 100%: quem terminou ve o certificado no proprio hero,
+   *  nao so na aba de credenciais. null (whitelabel, preview) = nada. */
+  certificateHref?: string | null;
   backHref?: string | null;
   /** Para onde o "voltar" leva. Na aba About da sala ele sobe UM nivel — para
    *  a aula — em vez de sair do curso inteiro. */
@@ -41,6 +48,9 @@ export function MembersAreaHero({
   studioName,
   studioInitials,
   progressPercent,
+  completedCount,
+  totalCount,
+  certificateHref,
   backHref,
   backTo = "courses",
 }: MembersAreaHeroProps) {
@@ -120,12 +130,27 @@ export function MembersAreaHero({
         {pct != null ? (
           <div className="members-hero__prog">
             <span className="members-hero__prog-label">
-              <strong>{pct}%</strong> {t("learn.membersHero.complete")}
+              {completedCount != null && totalCount != null ? (
+                t("learn.membersHero.progress")
+                  .replace("{completed}", () => String(completedCount))
+                  .replace("{total}", () => String(totalCount))
+                  .replace("{percent}", () => String(pct))
+              ) : (
+                <>
+                  <strong>{pct}%</strong> {t("learn.membersHero.complete")}
+                </>
+              )}
             </span>
             <span className="members-hero__bar">
               <span style={{ width: `${pct}%` }} />
             </span>
           </div>
+        ) : null}
+
+        {pct === 100 && certificateHref ? (
+          <Link className="members-hero__cta" href={certificateHref}>
+            {t("learn.membersHero.certificate")}
+          </Link>
         ) : null}
       </div>
     </header>

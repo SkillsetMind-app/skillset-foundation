@@ -201,6 +201,15 @@ export function CoursePlaylist({
                             <span className="min-w-0">
                               <span className="member-playlist__lesson-title">{lesson.title}</span>
                               <span className="member-playlist__lesson-meta">
+                                {/* "Tocando agora" (paridade Hotmart): a cor
+                                    da linha sozinha nao dizia "e esta" a quem
+                                    nao distingue cor; aria-current ja avisava
+                                    o leitor de tela, faltava o texto. */}
+                                {isSelected ? (
+                                  <span className="member-playlist__now">
+                                    {t("learn.classroom.curriculum.playingNow")}
+                                  </span>
+                                ) : null}
                                 {lesson.duration}
                                 {isCompleted ? ` · ${t("learn.classroom.curriculum.completed")}` : ""}
                                 {!unlocked ? ` · ${t("learn.classroom.curriculum.locked")}` : ""}
