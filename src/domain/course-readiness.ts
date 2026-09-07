@@ -50,7 +50,7 @@ export type CourseReadinessItemId =
 export type CourseReadinessItem = {
   id: CourseReadinessItemId;
   label: string;
-  // O que fazer quando pendente. Texto pronto para a tela, em ingles.
+  // Presentation can be localized; callers without a translator keep English.
   hint: string;
   done: boolean;
   // Opcional nao entra na porcentagem nem trava o publish.
@@ -71,6 +71,7 @@ export type CourseReadiness = {
 export function getCourseReadiness(
   course: CourseReadinessInput,
   account?: CourseReadinessAccount,
+  t?: (key: string) => string,
 ): CourseReadiness {
   // Curso antigo pode nao ter paymentType gravado; o construtor sempre leu
   // preco 0 como Free e o resto como venda avulsa. Mesma leitura aqui.
@@ -176,6 +177,15 @@ export function getCourseReadiness(
       done: account.verificationApproved,
       optional: !account.verificationRequired,
     });
+  }
+
+  if (t) {
+    for (const item of items) {
+      item.label = t(`creatorEditor.readiness.items.${item.id}.label`);
+      item.hint = t(`creatorEditor.readiness.items.${item.id}.${
+        item.id === "verification" && item.optional ? "optionalHint" : "hint"
+      }`);
+    }
   }
 
   const required = items.filter((item) => !item.optional);

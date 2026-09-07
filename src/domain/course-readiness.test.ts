@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
 import {
   getCourseReadiness,
@@ -18,6 +19,42 @@ const complete: CourseReadinessInput = {
 };
 
 describe("getCourseReadiness", () => {
+  it.each([false, true])("localizes every check without changing publication gates (paid: %s)", (paid) => {
+    const input = {
+      ...complete,
+      paymentType: paid ? "one_time" as const : "free" as const,
+      priceAmountMinor: paid ? 14900 : 0,
+      installmentsEnabled: true,
+      installmentsMax: null,
+    };
+    const account = { payoutsReady: false, verificationRequired: paid, verificationApproved: false };
+    const legacy = getCourseReadiness(input, account);
+    const en = getCourseReadiness(input, account, (key) => translate(getDictionary("en"), key));
+    const es = getCourseReadiness(input, account, (key) => translate(getDictionary("es"), key));
+    const gates = (result: typeof legacy) => ({
+      items: result.items.map(({ id, done, optional }) => ({ id, done, optional })),
+      pending: result.pending.map(({ id }) => id),
+      next: result.next?.id,
+      doneCount: result.doneCount,
+      total: result.total,
+      percent: result.percent,
+      ready: result.ready,
+    });
+    expect(en).toEqual(legacy);
+    expect(gates(es)).toEqual(gates(legacy));
+    expect(es.items.find(({ id }) => id === "title")?.label).toBe("Título del curso");
+    expect(es.items.find(({ id }) => id === "title")?.hint).toBe("Dale al curso un título de al menos 3 caracteres.");
+    expect(es.items.find(({ id }) => id === "verification")?.hint).toBe(paid
+      ? "Completa la verificación profesional antes de publicar."
+      : "Hoy es opcional; será obligatoria cuando se abra la admisión profesional.");
+    for (const item of es.items) {
+      expect(item.label).not.toBe(legacy.items.find(({ id }) => id === item.id)?.label);
+      expect(item.hint).not.toBe(legacy.items.find(({ id }) => id === item.id)?.hint);
+      expect(item.label).not.toContain("creatorEditor.");
+      expect(item.hint).not.toContain("creatorEditor.");
+    }
+  });
+
   // O professor via tres listas de "o que falta" com tres numeros diferentes
   // para o mesmo curso. A prova de que agora ha uma regra: a mesma entrada
   // devolve exatamente a mesma lista, sempre.
