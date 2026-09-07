@@ -41,7 +41,8 @@
     "privacyPolicy": "Política de privacidad",
     "refundPolicy": "Política de reembolsos",
     "rightsLine": "Aprendizaje centrado en cursos. Tus compradores pagan directo a tu cuenta de Stripe.",
-    "language": "Idioma"
+    "language": "Idioma",
+    "languageCurrent": "Idioma: {language}"
   },
   "auth": {
     "learnerAccess": "acceso de estudiante",

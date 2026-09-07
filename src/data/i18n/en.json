@@ -41,7 +41,8 @@
     "privacyPolicy": "Privacy policy",
     "refundPolicy": "Refund policy",
     "rightsLine": "Course-first learning. Your buyers pay your Stripe account directly.",
-    "language": "Language"
+    "language": "Language",
+    "languageCurrent": "Language: {language}"
   },
   "auth": {
     "learnerAccess": "learner access",

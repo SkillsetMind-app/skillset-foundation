@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SiteFooter } from "@/components/site/site-footer";
@@ -36,6 +36,12 @@ describe("SiteFooter", () => {
       .filter((link) => link.getAttribute("href") === "/promise");
     expect(promiseLinks).toHaveLength(1);
     expect(screen.queryByText("Creator Promise")).not.toBeInTheDocument();
+  });
+
+  it("abre o menu de idioma para cima, para não cair fora da página", async () => {
+    render(await SiteFooter());
+    fireEvent.click(screen.getByRole("button", { name: "Language: English" }));
+    expect(screen.getByRole("listbox", { name: "Language" })).toHaveClass("bottom-full", "right-0");
   });
 
   it("tem os rótulos novos nos dois dicionários", () => {
