@@ -9,7 +9,6 @@ import type { CourseAsset } from "@/domain/course-asset";
 import { subscribeToCourseAssets, getProtectedCourseAssetObjectUrl } from "@/lib/data/course-assets";
 import { countOpenCommunityQuestions } from "@/lib/data/community-posts";
 import { recordLessonProgress } from "@/lib/data/lesson-progress";
-import { addLessonComment, deleteLessonComment, subscribeToLessonComments } from "@/lib/data/lesson-comments";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 
 /**
@@ -130,12 +129,6 @@ vi.mock("@/lib/data/course-events", () => ({
   subscribeToCourseEvents: vi.fn(() => vi.fn()),
 }));
 
-vi.mock("@/lib/data/lesson-comments", () => ({
-  subscribeToLessonComments: vi.fn(() => vi.fn()),
-  addLessonComment: vi.fn(),
-  deleteLessonComment: vi.fn(),
-}));
-
 vi.mock("@/lib/posthog/events", () => ({
   track: new Proxy({}, { get: () => vi.fn() }),
 }));
@@ -207,9 +200,6 @@ describe("sala de aula com matricula real", () => {
     mocks.replace.mockReset();
     mocks.enrollmentSubscriptions = 0;
     vi.mocked(recordLessonProgress).mockClear();
-    vi.mocked(addLessonComment).mockReset();
-    vi.mocked(deleteLessonComment).mockClear();
-    vi.mocked(subscribeToLessonComments).mockClear();
     Element.prototype.scrollIntoView = vi.fn();
     window.requestAnimationFrame = (cb: FrameRequestCallback) => {
       cb(0);
@@ -227,7 +217,7 @@ describe("sala de aula com matricula real", () => {
     expect(screen.getByText("Lección de texto")).toBeInTheDocument();
     expect(screen.getByText("Contenido de la lección")).toBeInTheDocument();
     expect(screen.getByText("Vista previa gratuita")).toBeInTheDocument();
-    expect(screen.getByText("Debate de la lección")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Comentarios de la lección" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Marcar como completada y continuar" })).toBeInTheDocument();
     expect(screen.getByText("One")).toBeInTheDocument();
     expect(mocks.searchParams.toString()).toBe("lesson=l1&campaign=literal");
@@ -276,74 +266,6 @@ describe("sala de aula com matricula real", () => {
     act(() => emit([]));
     expect(screen.getByText("0 archivos")).toBeInTheDocument();
     expect(screen.getByText("Este curso todavía no tiene recursos generales adjuntos.")).toBeInTheDocument();
-  });
-
-  it("keeps the discussion draft and focused field through locale changes and the original pending publish", async () => {
-    mocks.searchParams = new URLSearchParams("lesson=l1");
-    mocks.completed = [];
-    vi.mocked(subscribeToLessonComments).mockImplementationOnce((_courseId, _lessonId, onNext) => {
-      onNext([]);
-      return vi.fn();
-    });
-    let resolve!: () => void;
-    vi.mocked(addLessonComment).mockReturnValue(new Promise<void>((done) => { resolve = done; }));
-    render(<I18nProvider initialLocale="en"><ChangeLanguage /><EnrolledCourseWorkspace course={course} /></I18nProvider>);
-    const body = "Question $$50 $& — sin traducir";
-    const field = screen.getByRole("textbox", { name: "Write a comment for this lesson" });
-    fireEvent.change(field, { target: { value: body } });
-    field.focus();
-    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByRole("textbox", { name: "Escribe un comentario para esta lección" })).toBe(field);
-    expect(field).toHaveFocus();
-    expect(field).toHaveValue(body);
-    expect(screen.getByText("0 comentarios")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Publicar comentario" }));
-    expect(screen.getByRole("button", { name: "Publicando..." })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByRole("button", { name: "Publishing..." })).toBeDisabled();
-    expect(field).toHaveValue(body);
-    expect(addLessonComment).toHaveBeenCalledExactlyOnceWith({ courseId: course.id, lessonId: "l1",
-      authorId: "student-1", authorName: "SkillsetMind learner", body });
-    expect(subscribeToLessonComments).toHaveBeenCalledTimes(1);
-    expect(mocks.enrollmentSubscriptions).toBe(1);
-    await act(async () => resolve());
-    expect(field).toHaveValue("");
-    expect(recordLessonProgress).not.toHaveBeenCalled();
-  });
-
-  it("localizes a stored discussion error without reloading or publishing and keeps the draft", async () => {
-    mocks.searchParams = new URLSearchParams("lesson=l1");
-    mocks.completed = [];
-    vi.mocked(subscribeToLessonComments).mockImplementationOnce((_courseId, _lessonId, _onNext, onError) => {
-      onError(new Error("private internal detail"));
-      return vi.fn();
-    });
-    render(<I18nProvider initialLocale="en"><ChangeLanguage /><EnrolledCourseWorkspace course={course} /></I18nProvider>);
-    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Draft $$ $&" } });
-    expect(screen.getByText("We could not load this lesson discussion.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByText("No pudimos cargar el debate de esta lección.")).toBeInTheDocument();
-    expect(screen.getByRole("textbox")).toHaveValue("Draft $$ $&");
-    expect(subscribeToLessonComments).toHaveBeenCalledTimes(1);
-    expect(addLessonComment).not.toHaveBeenCalled();
-    vi.mocked(addLessonComment).mockRejectedValueOnce(new Error("private internal detail"));
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Publicar comentario" })); });
-    expect(screen.getByText("No pudimos publicar tu comentario.")).toBeInTheDocument();
-    expect(screen.getByRole("textbox")).toHaveValue("Draft $$ $&");
-    expect(screen.queryByText("private internal detail")).not.toBeInTheDocument();
-  });
-
-  it("keeps the preview discussion read-only in Spanish", () => {
-    mocks.searchParams = new URLSearchParams("lesson=l1");
-    render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace course={course} previewMode /></I18nProvider>);
-    const field = screen.getByRole("textbox", { name: "Escribe un comentario para esta lección" });
-    expect(field).toBeDisabled();
-    expect(field).toHaveAttribute("placeholder", "La vista previa no permite publicar comentarios.");
-    expect(screen.getByRole("button", { name: "Publicar comentario" })).toBeDisabled();
-    expect(subscribeToLessonComments).not.toHaveBeenCalled();
-    expect(addLessonComment).not.toHaveBeenCalled();
-    expect(deleteLessonComment).not.toHaveBeenCalled();
-    expect(recordLessonProgress).not.toHaveBeenCalled();
   });
 
   it("localizes the certificate link without changing its destination", () => {

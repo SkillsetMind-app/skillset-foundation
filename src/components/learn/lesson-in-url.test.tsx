@@ -62,12 +62,6 @@ vi.mock("@/lib/data/course-events", () => ({
   subscribeToCourseEvents: vi.fn(() => vi.fn()),
 }));
 
-vi.mock("@/lib/data/lesson-comments", () => ({
-  subscribeToLessonComments: vi.fn(() => vi.fn()),
-  addLessonComment: vi.fn(),
-  deleteLessonComment: vi.fn(),
-}));
-
 vi.mock("@/lib/posthog/events", () => ({
   track: new Proxy({}, { get: () => vi.fn() }),
 }));
