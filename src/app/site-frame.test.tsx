@@ -115,6 +115,15 @@ describe("hero", () => {
     expect(section?.className).toContain("min-h-[clamp(560px,92svh,900px)]");
     expect(section?.className).not.toContain("min-h-[100svh]");
   });
+
+  it("volta a trocar de retrato: só o hero liga a rotação do BrandPortrait", () => {
+    // A onda 2 (#174) trocou a rotação por um retrato fixo por visita; o
+    // Patrick pediu as imagens trocando de volta na home. O login fica fixo
+    // (sem a prop), então o contrato mora aqui, no hero.
+    expect(readSource("src/components/site/marketing-hero.tsx")).toMatch(
+      /<BrandPortrait[^>]*\brotate\b/,
+    );
+  });
 });
 
 describe("rodapé", () => {
