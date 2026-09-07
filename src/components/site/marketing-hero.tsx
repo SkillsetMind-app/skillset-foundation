@@ -15,11 +15,14 @@ export async function MarketingHero() {
     <section className="relative flex min-h-[clamp(560px,92svh,900px)] items-center overflow-hidden bg-[var(--color-primary)] text-white">
       <div className="absolute inset-0 bg-gradient-to-br from-[#071523] via-[#102a43] to-[#173a59]" />
 
-      {/* One still portrait per visit — see BrandPortrait. */}
+      {/* Starts on the visit's face and crossfades through the others every
+          few seconds — see BrandPortrait. Only the home rotates; sign-in
+          keeps its still portrait. */}
       <div aria-hidden="true" className="absolute inset-0">
         <div className="hero-portrait-layer absolute inset-0 opacity-65 lg:opacity-100">
           <div className="hero-portrait-frame absolute inset-y-0 right-0 w-full">
             <BrandPortrait
+              rotate
               imageClassName="hero-portrait-image object-cover object-[78%_center] sm:object-[74%_center] md:object-[68%_center] lg:object-center"
               sizes="100vw"
               priority
