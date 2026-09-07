@@ -21,8 +21,8 @@ at send time.
 ## Why recovery.html and confirmation.html do NOT use `{{ .ConfirmationURL }}`
 
 `recovery.html` and, since 2026-09-02, `confirmation.html` deliberately build
-their own link with `{{ .TokenHash }}` pointing at `/auth/confirm` (magic link,
-invite and email change still use `{{ .ConfirmationURL }}`). Reason:
+their own link with `{{ .TokenHash }}` pointing at `/auth/confirm` (invite and
+email change still use `{{ .ConfirmationURL }}`). Magic Link now does too. Reason:
 
 `{{ .ConfirmationURL }}` routes through Supabase's `/auth/v1/verify`, which
 hands the app a PKCE `?code=`. Exchanging that code requires a `code_verifier`
@@ -48,7 +48,43 @@ canonical origin, while production actually serves `www`. Harmless for auth
 SEO canonical currently points at a redirecting host. Worth reconciling
 separately.
 
-## Sender address — done
+## Manual course access — prepared, NOT published
+
+The versioned Magic Link template now uses `TokenHash`, `type=email` and
+`next=/loading%3Fnext%3Droute`. The existing confirmation route verifies the token
+on any device, then the regular auth flow claims grants after MFA. The learner
+finds the course in their learning workspace. A failed claim does not block
+sign-in; a later auth event or session refresh retries safely.
+
+GoTrue sends Confirm Signup for new/unconfirmed accounts requested through OTP,
+not Magic Link ([official source](https://github.com/supabase/auth/blob/master/internal/api/magic_link.go)).
+Both templates carry `RedirectTo` encoded by Go's `urlquery`. The confirmation
+route accepts only its own origin and the known `/auth/confirm` or `/loading`
+entry paths. It extracts a safe internal `next`, and validates nested `returnTo`
+with the existing auth-routing guard. This also preserves a signup's course and
+offer on another device. Invalid destinations fall back to `/welcome`; old links
+without `redirect_to` still work. New accounts use `type=signup`.
+
+Before deploying the manual-access route, obtain specific approval to apply
+`20260906010000_creator_course_access.sql` and publish `magic_link.html` plus
+`confirmation.html` in Authentication → Email Templates. Keep the signup subject
+unchanged and the Magic Link subject
+`Your SkillsetMind sign-in link`. Verify the effective Site URL, allowed redirect
+URLs, SMTP and template first; the historical checks below are not current proof.
+No configuration, migration or real email was changed/sent by this implementation.
+
+Rollout order: approved migration, approved compatible template, then app deploy.
+Rollback: revert the app to stop new sends; retain the additive table and grant
+history, existing enrollments and compatible template. Do not drop grant rows or
+delete enrollments as a rollback. The new RPCs may be disabled explicitly if
+needed; that is a separate production change requiring approval.
+
+Email delivery is separate from access: a failed send leaves the grant recorded.
+Resend uses the authorized stored address and allows at most three attempts per
+grant per hour, with an additional owner-wide limit. No provider errors or tokens
+are shown to the creator. Pending accounts must confirm their Auth email.
+
+## Sender address — historical verification
 
 Custom SMTP is configured. Verified 2026-09-01 by sending a real recovery email:
 it arrived from `no-reply@skillsetmind.com`, not the Supabase default sender.

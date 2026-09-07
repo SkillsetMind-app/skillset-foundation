@@ -14,7 +14,6 @@ import {
   shouldCancelCourseSubscriptionForRefund,
   shouldApplyOrderStatusTransition,
   shouldMarkEnrollmentRefundedAfterChargeRefund,
-  shouldReactivateEnrollment,
   shouldReleaseCheckoutLock,
   stripeFeeMinorFromBalanceTransaction,
   stripeProcessingFeeMinor,
@@ -437,44 +436,11 @@ async function handleCheckoutCompleted(
     "Mark checkout order paid",
   );
 
-  // Grant on first purchase; re-activate on repurchase after a refund/lapse;
-  // never downgrade or reset progress on an already active/completed enrollment.
-  // (ignoreDuplicates upsert used to skip existing rows entirely, so a learner
-  // who repurchased after a refund was charged but stayed enrollment=refunded.)
-  const enrollmentId = `${userId}__${courseId}`;
-  const { data: existingEnrollment } = await admin
-    .from("enrollments")
-    .select("status")
-    .eq("id", enrollmentId)
-    .maybeSingle();
-  if (!existingEnrollment) {
-    await requireSupabaseWrite(
-      admin.from("enrollments").insert({
-        id: enrollmentId,
-        user_id: userId,
-        course_id: courseId,
-        course_slug: courseId,
-        course_title: course.title,
-        course_category: course.category,
-        course_image: course.cover_image_url || "/brand/logo-mark.png",
-        status: "active",
-        source: "payment",
-        progress_percent: 0,
-        created_at: ts,
-        updated_at: ts,
-      }),
-      "Create checkout enrollment",
-    );
-  } else if (shouldReactivateEnrollment(existingEnrollment.status)) {
-    await requireSupabaseWrite(
-      admin
-        .from("enrollments")
-        .update({ status: "active", source: "payment", updated_at: ts })
-        .eq("id", enrollmentId),
-      "Reactivate checkout enrollment",
-    );
-  }
-
+  // The UPSERT serializes with creator revocation and preserves progress.
+  await requireSupabaseWrite(
+    admin.rpc("fulfill_paid_course_access", { p_user_id: userId, p_course_id: courseId, p_source: "payment" }),
+    "Fulfill checkout enrollment",
+  );
   // Earnings record LAST (the re-arm gate). Written `settled` with no release
   // date: the teacher was already paid by Stripe at capture. Legacy
   // amount_minor/platform_fee_minor are mirrored (gross / skillset fee) so the
@@ -720,48 +686,14 @@ async function handleCourseSubscriptionInvoicePaid(
     }
   }
 
-  // Grant on first paid invoice; re-activate on renewal after a lapse; never
-  // downgrade an already active/completed enrollment.
-  const enrollmentId = `${userId}__${courseId}`;
-  const { data: enrollment } = await admin
-    .from("enrollments")
-    .select("status")
-    .eq("id", enrollmentId)
-    .maybeSingle();
   // An old paid invoice can arrive after cancellation/refund. Book the sale
   // above, but only the subscription's CURRENT entitlement may restore access.
+  // The RPC serializes with creator revocation and preserves progress.
   const entitled = subscription.status === "active" || subscription.status === "trialing";
-  if (entitled && !enrollment) {
+  if (entitled) {
     await requireSupabaseWrite(
-      admin.from("enrollments").insert({
-        id: enrollmentId,
-        user_id: userId,
-        course_id: courseId,
-        course_slug: courseId,
-        course_title: course.title,
-        course_category: course.category,
-        course_image: course.cover_image_url || "/brand/logo-mark.png",
-        status: "active",
-        source: "subscription",
-        subscription_id: subscriptionId,
-        progress_percent: 0,
-        created_at: ts,
-        updated_at: ts,
-      }),
-      "Create subscription enrollment",
-    );
-  } else if (entitled && enrollment && shouldReactivateEnrollment(enrollment.status)) {
-    await requireSupabaseWrite(
-      admin
-        .from("enrollments")
-        .update({
-          status: "active",
-          source: "subscription",
-          subscription_id: subscriptionId,
-          updated_at: ts,
-        })
-        .eq("id", enrollmentId),
-      "Reactivate subscription enrollment",
+      admin.rpc("fulfill_paid_course_access", { p_user_id: userId, p_course_id: courseId, p_source: "subscription", p_subscription_id: subscriptionId }),
+      "Fulfill subscription enrollment",
     );
   }
 
@@ -881,7 +813,9 @@ async function handleCourseSubscriptionLifecycle(
       admin
         .from("enrollments")
         .update({ status: "revoked", updated_at: ts })
-        .eq("id", enrollmentId),
+        .eq("id", enrollmentId)
+        .eq("source", "subscription")
+        .eq("subscription_id", subscription.id),
       "Revoke course subscription enrollment",
     );
   } else if (entitled && enrollmentStatus === "revoked") {
@@ -899,7 +833,9 @@ async function handleCourseSubscriptionLifecycle(
           subscription_id: subscription.id,
           updated_at: ts,
         })
-        .eq("id", enrollmentId),
+        .eq("id", enrollmentId)
+        .eq("source", "subscription")
+        .eq("subscription_id", subscription.id),
       "Restore course subscription enrollment",
     );
   }

@@ -12,6 +12,7 @@ export type EnrollmentSource =
   | "free_course"
   | "payment"
   | "subscription"
+  | "creator"
   | "admin";
 
 export type Enrollment = {

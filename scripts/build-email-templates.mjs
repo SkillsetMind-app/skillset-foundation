@@ -51,8 +51,9 @@ const DISPLAY = "'Montserrat','Segoe UI',Helvetica,Arial,sans-serif";
 const RECOVERY_URL =
   "{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=recovery&amp;next=/reset-password";
 const SIGNUP_URL =
-  "{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=signup&amp;next=/welcome";
-// Magic link, invite and email change still go through {{ .ConfirmationURL }}:
+  "{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=signup&amp;redirect_to={{ .RedirectTo | urlquery }}";
+const MAGIC_LINK_URL = "{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/loading%3Fnext%3Droute&amp;redirect_to={{ .RedirectTo | urlquery }}";
+// Invite and email change still go through {{ .ConfirmationURL }}:
 // each would need its own verifyOtp type, and none of them is on the path
 // that was failing. One change, one proof.
 const CONFIRMATION_URL = "{{ .ConfirmationURL }}";
@@ -183,7 +184,7 @@ const TEMPLATES = [
     title: "Your sign-in link.",
     intro:
       "Click the button below to sign in to your SkillsetMind account. This link expires soon and can only be used once. If you didn't request it, ignore this email.",
-    main: button(CONFIRMATION_URL, "Sign in to SkillsetMind"),
+    main: button(MAGIC_LINK_URL, "Sign in to SkillsetMind"),
     footer: "",
   },
   {

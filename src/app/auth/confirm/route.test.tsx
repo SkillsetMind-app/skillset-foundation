@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -83,5 +84,30 @@ describe("/auth/confirm", () => {
     const response = await get("?token_hash=abc&type=recovery");
 
     expect(response.headers.get("location")).toBe(`${ORIGIN}/login?error=confirm`);
+  });
+
+  it.each([["confirmation", "signup"], ["magic_link", "email"]])("keeps the %s email on the cross-device token route", (file, type) => {
+    const template = readFileSync(`supabase/templates/${file}.html`, "utf8");
+    expect(template).toContain("/auth/confirm?token_hash={{ .TokenHash }}");
+    expect(template).toContain(`&amp;type=${type}`);
+    expect(template).toContain("&amp;redirect_to={{ .RedirectTo | urlquery }}");
+    expect(template).not.toContain("{{ .ConfirmationURL }}");
+  });
+
+  it("preserves the signup course and offer from the email on a fresh device", async () => {
+    const next = "/welcome?returnTo=%2Fcourses%2Fcourse-1%3Foffer%3Doffer-1";
+    const redirectTo = `${ORIGIN}/auth/confirm?next=${encodeURIComponent(next)}`;
+    const response = await get(`?token_hash=abc&type=signup&redirect_to=${encodeURIComponent(redirectTo)}`);
+    expect(response.headers.get("location")).toBe(`${ORIGIN}${next}`);
+  });
+
+  it("sends a manual OTP invitation to normal post-auth routing", async () => {
+    const response = await get(`?token_hash=abc&type=email&redirect_to=${encodeURIComponent(`${ORIGIN}/loading?next=route`)}`);
+    expect(response.headers.get("location")).toBe(`${ORIGIN}/loading?next=route`);
+  });
+
+  it.each(["https://evil.test/loading?next=route", `${ORIGIN}/auth/confirm?next=${encodeURIComponent("//evil.test")}`, `${ORIGIN}/auth/confirm?next=${encodeURIComponent("/\\evil.test")}`])("refuses an unsafe email redirect %s", async (redirectTo) => {
+    const response = await get(`?token_hash=abc&type=signup&redirect_to=${encodeURIComponent(redirectTo)}`);
+    expect(response.headers.get("location")).toBe(`${ORIGIN}/welcome`);
   });
 });

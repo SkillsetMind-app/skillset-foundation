@@ -54,6 +54,7 @@ function buildClient(initial: Assurance, user: unknown = supabaseUser) {
   let assurance = initial;
 
   const client = {
+    rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
     auth: {
       getUser: async () => ({ data: { user }, error: null }),
       mfa: {
@@ -127,6 +128,7 @@ describe("listenToAuthState — a senha sozinha nao abre uma conta com TOTP", ()
     expect(seen.at(-1)?.user).toBeNull();
     // Nem o perfil e lido: nada da conta chega ao app antes do codigo.
     expect(profileMocks.getUserProfile).not.toHaveBeenCalled();
+    expect(harness.client.rpc).not.toHaveBeenCalled();
   });
 
   it("depois do codigo, a mesma sessao vira authenticated", async () => {
@@ -146,6 +148,22 @@ describe("listenToAuthState — a senha sozinha nao abre uma conta com TOTP", ()
 
     expect(statuses(seen)).toEqual(["mfa_required", "authenticated"]);
     expect(seen.at(-1)?.user?.displayName).toBe("Teacher");
+    expect(harness.client.rpc).toHaveBeenCalledWith("claim_my_course_grants");
+  });
+
+  it.each(["INITIAL_SESSION", "TOKEN_REFRESHED", "SIGNED_IN"])("claims before emitting %s, including OTP and Google sessions", async (event) => {
+    const harness = buildClient(VERIFIED);
+    supabaseMocks.getSupabaseBrowserClient.mockReturnValue(harness.client);
+    const seen: AuthSession[] = [];
+    const claimsAtEmit: number[] = [];
+    listenToAuthState((session) => {
+      if (session.status === "authenticated") claimsAtEmit.push(harness.client.rpc.mock.calls.length);
+      seen.push(session);
+    });
+    harness.fire(event, { user: supabaseUser });
+    await flush();
+    expect(statuses(seen)).toEqual(["authenticated"]);
+    expect(claimsAtEmit).toEqual([1]);
   });
 
   it("conta sem fator entra direto: quem nao usa MFA nao muda nada", async () => {
@@ -163,6 +181,23 @@ describe("listenToAuthState — a senha sozinha nao abre uma conta com TOTP", ()
 });
 
 describe("getCurrentAuthSession — o refreshUser() do provider passa pelo mesmo portao", () => {
+  it("claims confirmed-email grants before returning authentication, and retries after failure", async () => {
+    const { client } = buildClient(VERIFIED);
+    supabaseMocks.getSupabaseBrowserClient.mockReturnValue(client);
+    profileMocks.getUserProfile.mockResolvedValue(null);
+    client.rpc.mockResolvedValueOnce({ data: null, error: { message: "offline" } });
+    expect((await getCurrentAuthSession()).status).toBe("authenticated");
+    expect(client.rpc).toHaveBeenCalledWith("claim_my_course_grants");
+    expect((await getCurrentAuthSession()).status).toBe("authenticated");
+    expect(client.rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not claim grants before MFA", async () => {
+    const { client } = buildClient(PENDING);
+    supabaseMocks.getSupabaseBrowserClient.mockReturnValue(client);
+    expect((await getCurrentAuthSession()).status).toBe("mfa_required");
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     profileMocks.getUserProfile.mockResolvedValue(null);
