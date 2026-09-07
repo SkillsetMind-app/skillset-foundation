@@ -4,10 +4,14 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import PreviewPage from "@/app/teach/builder/[courseId]/preview/page";
+import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import type { TeacherCourse } from "@/domain/teacher-course";
+import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
 const mocks = vi.hoisted(() => ({
   pathname: "",
+  serverLocale: "en" as "en" | "es",
+  refresh: vi.fn(),
   searchParams: new URLSearchParams("lesson=l2"),
   auth: {
     status: "authenticated",
@@ -25,7 +29,13 @@ vi.mock("next/navigation", () => ({
   notFound: () => { throw new Error("NOT_FOUND"); },
   usePathname: () => mocks.pathname,
   useSearchParams: () => mocks.searchParams,
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: mocks.refresh }),
+}));
+vi.mock("@/lib/i18n/server", () => ({
+  getServerTranslation: async () => ({
+    locale: mocks.serverLocale,
+    t: (key: string) => translate(getDictionary(mocks.serverLocale), key),
+  }),
 }));
 vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => mocks.auth }));
 vi.mock("@/lib/learn/server/member-area", () => ({ getMemberArea: mocks.getMemberArea }));
@@ -89,6 +99,11 @@ const routes = import.meta.glob<{ default: typeof PreviewPage }>(
   "./builder/**/preview/**/page.tsx",
 );
 
+function SwitchLanguage() {
+  const { locale, setLocale } = useTranslation();
+  return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Switch language</button>;
+}
+
 async function renderPreview(tab?: string) {
   const basePath = `/teach/builder/${course.id}/preview`;
   mocks.pathname = tab ? `${basePath}/${tab}` : basePath;
@@ -98,11 +113,12 @@ async function renderPreview(tab?: string) {
     expect(load, "Next route /teach/builder/[courseId]/preview/[tab]").toBeDefined();
     Page = (await load()).default;
   }
-  return render(await Page({ params: Promise.resolve({ courseId: course.id, tab }) }));
+  return render(<I18nProvider initialLocale={mocks.serverLocale}><SwitchLanguage />{await Page({ params: Promise.resolve({ courseId: course.id, tab }) })}</I18nProvider>);
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.serverLocale = "en";
   Element.prototype.scrollIntoView = vi.fn();
   mocks.auth.user.roles = ["teacher"];
   mocks.searchParams = new URLSearchParams("lesson=l2");
@@ -116,6 +132,36 @@ beforeEach(() => {
 });
 
 describe("abas da prévia do professor", () => {
+  it("keeps preview routes, read-only gates and course subscription while switching EN/ES", async () => {
+    await renderPreview();
+    expect(screen.getByRole("button", { name: "Preview only" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    const tabs = screen.getByRole("navigation", { name: "Secciones del curso" });
+    for (const [tab, label] of [["lesson", "Lección"], ["materials", "Materiales"], ["review", "Reseña"], ["about", "Acerca del curso"]]) {
+      expect(within(tabs).getByRole("link", { name: label })).toHaveAttribute("href", `/teach/builder/course-1/preview${tab === "lesson" ? "" : `/${tab}`}?lesson=l2`);
+    }
+    expect(within(tabs).queryByRole("link", { name: /En vivo|Comunidad|Mensajes/ })).not.toBeInTheDocument();
+    expect(screen.getByText("Modo de vista previa: así verán tus alumnos el curso.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Salir de la vista previa" })).toHaveAttribute("href", "/teach/builder?courseId=course-1&tab=members");
+    expect(screen.getByRole("navigation", { name: "Navegación de lecciones" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Todas las lecciones (2)" })).toBeInTheDocument();
+    const completion = screen.getByRole("button", { name: "Solo vista previa" });
+    expect(completion).toBeDisabled();
+    fireEvent.click(completion);
+    expect(mocks.subscribeToTeacherCourse).toHaveBeenCalledOnce();
+    expect(mocks.subscribeToEnrollment).not.toHaveBeenCalled();
+    expect(mocks.recordLessonProgress).not.toHaveBeenCalled();
+    expect(mocks.submitCourseReview).not.toHaveBeenCalled();
+  });
+
+  it("uses the request locale for the server loading fallback", async () => {
+    mocks.serverLocale = "es";
+    const page = await PreviewPage({ params: Promise.resolve({ courseId: course.id }) });
+    const suspense = page.props.children.props.children;
+    render(suspense.props.fallback);
+    expect(screen.getByText("Cargando vista previa del curso...")).toBeInTheDocument();
+  });
+
   it("mantém a aula na rota-base e os links das abas dentro da prévia", async () => {
     await renderPreview();
     const tabs = screen.getByRole("navigation", { name: "Course sections" });

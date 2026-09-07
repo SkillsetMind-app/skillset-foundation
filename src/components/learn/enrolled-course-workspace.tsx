@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import { ClassroomTabs, type ClassroomTabItem } from "@/components/learn/classroom-tabs";
 import { CommunityFeed, type CommunityFeedLesson } from "@/components/learn/community-feed";
@@ -112,6 +113,7 @@ export function EnrolledCourseWorkspace({
   tab = "lesson",
   openPostId = null,
 }: EnrolledCourseWorkspaceProps) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const searchParams = useSearchParams();
   // Stripe's success_url carries ?checkout=success while the webhook is still
@@ -662,7 +664,7 @@ export function EnrolledCourseWorkspace({
   }
   async function toggleLessonCompletion(lessonId: string, completed: boolean) {
     if (previewMode) {
-      setError("Preview mode is read-only. Student progress is not saved here.");
+      setError("creatorEditor.preview.readOnly");
       return;
     }
 
@@ -802,17 +804,17 @@ export function EnrolledCourseWorkspace({
   // (cursos publicados por professor); lives, comunidade e mensagens não
   // existem na pré-visualização — e comunidade só se o professor ligou.
   const classroomTabs: ClassroomTabItem[] = [
-    { id: "lesson", label: "Lesson" },
+    { id: "lesson", label: t("creatorEditor.preview.tabs.lesson") },
     ...(enableFirestoreAssets
-      ? [{ id: "materials" as const, label: "Materials", count: courseLevelAssets.length }]
+      ? [{ id: "materials" as const, label: t("creatorEditor.preview.tabs.materials"), count: courseLevelAssets.length }]
       : []),
-    ...(previewMode ? [] : [{ id: "lives" as const, label: "Lives" }]),
+    ...(previewMode ? [] : [{ id: "lives" as const, label: t("creatorEditor.preview.tabs.lives") }]),
     ...(communityEnabled
-      ? [{ id: "community" as const, label: "Community", count: openQuestionCount }]
+      ? [{ id: "community" as const, label: t("creatorEditor.preview.tabs.community"), count: openQuestionCount }]
       : []),
-    ...(previewMode ? [] : [{ id: "messages" as const, label: "Messages" }]),
-    { id: "review", label: "Review" },
-    { id: "about", label: "About" },
+    ...(previewMode ? [] : [{ id: "messages" as const, label: t("creatorEditor.preview.tabs.messages") }]),
+    { id: "review", label: t("creatorEditor.preview.tabs.review") },
+    { id: "about", label: t("creatorEditor.preview.tabs.about") },
   ];
 
   return (
@@ -854,11 +856,11 @@ export function EnrolledCourseWorkspace({
         <section className="member-preview-banner">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm font-semibold text-[var(--color-primary)]">
-              Preview mode - this is how students will see your course.
+              {t("creatorEditor.preview.banner")}
             </p>
             {previewExitHref ? (
               <Link href={previewExitHref} className="button-outline px-4 py-2 text-xs">
-                Exit preview
+                {t("creatorEditor.preview.exit")}
               </Link>
             ) : null}
           </div>
@@ -885,7 +887,7 @@ export function EnrolledCourseWorkspace({
         <section id="member-lesson-player" className="member-classroom-player">
         {error ? (
           <p className="mb-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {error}
+            {error === "creatorEditor.preview.readOnly" ? t(error) : error}
           </p>
         ) : null}
         {selectedLesson && resolvedSelectedLesson ? (
@@ -916,14 +918,14 @@ export function EnrolledCourseWorkspace({
           // bg-inherit picks up the player surface, which the members theme
           // repaints, so the bar follows the course theme with no fork.
           <nav
-            aria-label="Lesson navigation"
+            aria-label={t("creatorEditor.preview.lessonNavigation")}
             className="sticky bottom-0 z-20 mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] bg-inherit py-3"
           >
             {previousInOrder ? (
               <button
                 type="button"
                 onClick={() => selectLesson(previousInOrder.id)}
-                aria-label={`Previous lesson: ${previousInOrder.title}`}
+                aria-label={t("creatorEditor.preview.previousLesson").replace("{title}", () => previousInOrder.title)}
                 className="button-outline max-w-full px-4 py-2.5 text-sm sm:max-w-[26%]"
               >
                 <span className="block truncate">
@@ -939,7 +941,7 @@ export function EnrolledCourseWorkspace({
                 onClick={() => setLessonListOpen(true)}
                 className="button-outline flex-1 px-4 py-2.5 text-sm sm:flex-none"
               >
-                All lessons ({totalLessonCount})
+                {t("creatorEditor.preview.allLessons").replace("{count}", () => String(totalLessonCount))}
               </button>
               {/* One action instead of "Mark complete" + "Next": completing
                   and advancing is a single intent, and it gives every backend
@@ -960,7 +962,7 @@ export function EnrolledCourseWorkspace({
                 className="button-solid flex-1 px-4 py-2.5 text-sm disabled:opacity-60 sm:flex-none"
               >
                 {previewMode
-                  ? "Preview only"
+                  ? t("creatorEditor.preview.only")
                   : selectedLessonUnlockState
                       && !selectedLessonUnlockState.unlocked
                     ? "Lesson locked"
