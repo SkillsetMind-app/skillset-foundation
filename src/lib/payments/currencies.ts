@@ -96,9 +96,9 @@ export function fromStripeAmount(
     : stripeAmount;
 }
 
-export function getCurrencyLabel(currency: string): string {
+export function getCurrencyLabel(currency: string, locale = "en"): string {
   try {
-    return new Intl.DisplayNames(["en"], { type: "currency" }).of(currency) ?? currency;
+    return new Intl.DisplayNames([locale], { type: "currency" }).of(currency) ?? currency;
   } catch {
     return currency;
   }

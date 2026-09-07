@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
+
 import {
   getCurrencyLabel,
   supportedStripeCurrencies,
@@ -48,6 +50,7 @@ export function CurrencySelect({
   id,
   "aria-label": ariaLabel,
 }: CurrencySelectProps) {
+  const { locale, t } = useTranslation();
   return (
     <select
       id={id}
@@ -57,17 +60,17 @@ export function CurrencySelect({
       disabled={disabled}
       className={className}
     >
-      <optgroup label="Most used">
+      <optgroup label={t("creatorEditor.currencySelect.mostUsed")}>
         {topSkillsetCurrencies.map((item) => (
           <option key={item} value={item}>
-            {optionLabel(item, value)}
+            {optionLabel(item, value, locale)}
           </option>
         ))}
       </optgroup>
-      <optgroup label="Other supported currencies">
+      <optgroup label={t("creatorEditor.currencySelect.other")}>
         {secondaryCurrencies.map((item) => (
           <option key={item} value={item}>
-            {optionLabel(item, value)}
+            {optionLabel(item, value, locale)}
           </option>
         ))}
       </optgroup>
@@ -77,6 +80,6 @@ export function CurrencySelect({
 
 /** Fechado, o <select> mostra o texto da opção escolhida — então ela é só o
  *  código. Todas as outras trazem código + nome. */
-function optionLabel(item: string, selected: string): string {
-  return item === selected ? item : `${item} - ${getCurrencyLabel(item)}`;
+function optionLabel(item: string, selected: string, locale: string): string {
+  return item === selected ? item : `${item} - ${getCurrencyLabel(item, locale)}`;
 }

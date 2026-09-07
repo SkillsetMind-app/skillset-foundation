@@ -14,6 +14,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { cn } from "@/lib/cn";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import {
   announceFloatingAction,
   onFloatingActionOpened,
@@ -29,6 +30,7 @@ type InlineHelpProps = {
 };
 
 export function InlineHelp({ topic, children, href, className }: InlineHelpProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const instanceId = useId();
   const dialogId = `${instanceId}-dialog`;
@@ -112,7 +114,7 @@ export function InlineHelp({ topic, children, href, className }: InlineHelpProps
       <button
         ref={triggerRef}
         type="button"
-        aria-label={`Help about ${topic}`}
+        aria-label={t("platform.help.contextual.about").replace("{topic}", () => topic)}
         aria-haspopup="dialog"
         aria-controls={dialogId}
         aria-expanded={open}
@@ -140,7 +142,7 @@ export function InlineHelp({ topic, children, href, className }: InlineHelpProps
                 <header className="flex items-start justify-between gap-4 border-b border-[var(--color-line)] px-5 py-5 sm:px-6">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
-                      Contextual help
+                      {t("platform.help.contextual.heading")}
                     </p>
                     <h2
                       id={titleId}
@@ -153,7 +155,7 @@ export function InlineHelp({ topic, children, href, className }: InlineHelpProps
                     type="button"
                     autoFocus
                     onClick={closeHelp}
-                    aria-label="Close contextual help"
+                    aria-label={t("platform.help.contextual.close")}
                     className="grid size-9 shrink-0 place-items-center rounded-full text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary-light)]"
                   >
                     <X aria-hidden="true" size={18} strokeWidth={1.9} />
@@ -170,7 +172,7 @@ export function InlineHelp({ topic, children, href, className }: InlineHelpProps
                     onClick={closeHelp}
                     className="text-sm font-semibold text-[var(--color-primary)] underline underline-offset-4"
                   >
-                    Open related help
+                    {t("platform.help.contextual.related")}
                   </Link>
                 </footer>
               </section>

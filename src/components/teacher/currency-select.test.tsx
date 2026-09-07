@@ -4,13 +4,44 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import { CurrencySelect } from "@/components/teacher/currency-select";
+import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import { supportedStripeCurrencies } from "@/lib/payments/currencies";
+
+const localeRouter = vi.hoisted(() => ({ refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => localeRouter }));
+
+function SwitchLanguage() {
+  const { locale, setLocale } = useTranslation();
+  return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Switch language</button>;
+}
 
 // O seletor de moeda saía do cartão: a coluna era 140px fixos e um <select>
 // nunca fica mais estreito que a sua opção mais larga. E em Gerenciar → Preços
 // a moeda era um campo de texto livre de três letras.
 
 describe("CurrencySelect", () => {
+  it("keeps the selected code and options while names and groups follow the locale", () => {
+    const onChange = vi.fn();
+    render(
+      <I18nProvider initialLocale="en">
+        <SwitchLanguage />
+        <CurrencySelect value="USD" onChange={onChange} aria-label="Currency" />
+      </I18nProvider>,
+    );
+    const select = screen.getByRole("combobox");
+    const originalCodes = screen.getAllByRole("option").map((option) => (option as HTMLOptionElement).value);
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByRole("group", { name: "Más usadas" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Otras monedas admitidas" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "BRL - real brasileño" })).toHaveValue("BRL");
+    expect(screen.getByRole("option", { name: "USD" })).toHaveProperty("selected", true);
+    expect(screen.getByRole("combobox")).toBe(select);
+    expect(screen.getAllByRole("option").map((option) => (option as HTMLOptionElement).value)).toEqual(originalCodes);
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.change(select, { target: { value: "MXN" } });
+    expect(onChange).toHaveBeenCalledExactlyOnceWith("MXN");
+  });
+
   it("oferece exatamente as moedas que o Stripe aceita, nenhuma a mais", () => {
     render(<CurrencySelect value="USD" onChange={() => {}} />);
 
