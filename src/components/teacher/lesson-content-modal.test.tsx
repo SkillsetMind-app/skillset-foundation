@@ -111,6 +111,7 @@ function renderModal(lessonOverrides: Partial<TeacherLesson> = {}, moduleTitle =
   };
 
   const onUpdateLesson = vi.fn();
+  const onClose = vi.fn();
 
   const modal = (nextLesson: TeacherLesson, onChange: (patch: Partial<TeacherLesson>) => void = onUpdateLesson) => (
     <LessonContentModal
@@ -121,7 +122,7 @@ function renderModal(lessonOverrides: Partial<TeacherLesson> = {}, moduleTitle =
       lessonIndex={0}
       isEditable
       isFreePreview={false}
-      onClose={vi.fn()}
+      onClose={onClose}
       onSetFreePreview={vi.fn()}
       onUpdateLesson={onChange}
     />
@@ -137,7 +138,7 @@ function renderModal(lessonOverrides: Partial<TeacherLesson> = {}, moduleTitle =
     <I18nProvider initialLocale="en"><ChangeLanguage /><EditableModal /></I18nProvider>
   ) : modal(lesson));
 
-  return { onUpdateLesson, lesson, rerenderLesson: (patch: Partial<TeacherLesson>) => view.rerender(modal({ ...lesson, ...patch })) };
+  return { onClose, onUpdateLesson, lesson, rerenderLesson: (patch: Partial<TeacherLesson>) => view.rerender(modal({ ...lesson, ...patch })) };
 }
 
 function chooseVideoFile(name = "aula.mp4") {
@@ -155,6 +156,34 @@ describe("LessonContentModal — video tab", () => {
     currentAssets = [];
     bunnyConfig.isBunnyConfigured = false;
     vi.clearAllMocks();
+  });
+
+  it("dismisses URL help with Escape while keeping the lesson open and focused", () => {
+    const { onClose } = renderModal();
+    const help = screen.getByRole("button", { name: "How the YouTube or Vimeo URL field works" });
+    act(() => help.focus());
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+    fireEvent.keyDown(help, { key: "Escape" });
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(help).toHaveFocus();
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.keyDown(help, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("dismisses hovered URL help before Escape reaches the lesson, without moving input focus", () => {
+    const { onClose } = renderModal();
+    const input = screen.getByPlaceholderText("https://www.youtube.com/watch?v=...");
+    act(() => input.focus());
+    fireEvent.mouseEnter(screen.getByRole("button", { name: "How the YouTube or Vimeo URL field works" }));
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    expect(input).toHaveFocus();
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it.each(["success", "failure", "cancel"] as const)(
@@ -194,7 +223,7 @@ describe("LessonContentModal — video tab", () => {
       expect(screen.getByLabelText("Video de la lección")).toBe(fileInput);
       expect(screen.getByText(/Aula \$& — ação\.mp4/)).toBeInTheDocument();
       expect(screen.getByDisplayValue(url)).toBeDisabled();
-      for (const name of [/^Video/, /^Descripción/, /^Materiales/, /^Configuración/]) {
+      for (const name of [/^Video/, /^Descripción/, /^Materiales/, /^Ajustes/]) {
         expect(screen.getByRole("button", { name })).toBeDisabled();
       }
       expect(onUpdateLesson).toHaveBeenCalledTimes(updatesBeforeLanguage);
@@ -255,6 +284,7 @@ describe("LessonContentModal — video tab", () => {
     const { onUpdateLesson } = renderModal({ type: "external_embed", durationMinutes: 12, dripDelayDays: 7 }, "Módulo $& {lessonIndex}", true);
     fireEvent.click(screen.getByRole("button", { name: /^Settings/ }));
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByRole("button", { name: /^Ajustes/ })).toHaveAttribute("aria-current", "page");
     const type = screen.getByLabelText("Tipo de lección");
     expect(type).toHaveValue("external_embed");
     expect(within(type).getAllByRole("option").map((option) => (option as HTMLOptionElement).value))

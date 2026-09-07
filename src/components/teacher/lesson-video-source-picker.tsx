@@ -112,13 +112,13 @@ export function LessonVideoSourcePicker(props: {
           }`}
         >
           <span className="lesson-video-source-picker__url-label">
-            <Link2 aria-hidden="true" size={15} />
-            <strong>{t("creatorEditor.videoSource.url")}</strong>
+            <Link2 aria-hidden="true" size={15} className="shrink-0" />
+            <strong className="min-w-0">{t("creatorEditor.videoSource.url")}</strong>
             <Tooltip content={t("creatorEditor.videoSource.help")}>
               <button
                 type="button"
                 aria-label={t("creatorEditor.videoSource.helpLabel")}
-                className="inline-flex items-center text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
+                className="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
               >
                 <HelpCircle aria-hidden="true" size={13} />
               </button>

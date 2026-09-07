@@ -73,6 +73,18 @@ describe("LessonVideoSourcePicker", () => {
     ).toBeInTheDocument();
   });
 
+  it("gives the small help icon a full touch target and an accessible description without changing the URL", () => {
+    const props = renderPicker({ externalUrl: "https://vimeo.com/123456" });
+    const help = screen.getByRole("button", { name: "How the YouTube or Vimeo URL field works" });
+    expect(help).toHaveClass("size-11", "shrink-0");
+    expect(help.querySelector("svg")).toHaveAttribute("width", "13");
+    fireEvent.focus(help);
+    expect(help).toHaveAccessibleDescription(screen.getByRole("tooltip").textContent ?? "");
+    expect(screen.getByDisplayValue("https://vimeo.com/123456")).toBeInTheDocument();
+    expect(props.onChange).not.toHaveBeenCalled();
+    expect(props.onExternalUrlChange).not.toHaveBeenCalled();
+  });
+
   // Escolher NAO declara a fonte. A versao anterior destes dois testes exigia
   // `onChange("upload")` na escolha, e era essa a regra que apagava a aula para
   // quem ja tinha pago: `videoSource` e persistido pelo autosave e e o campo que
