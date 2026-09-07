@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Fragment, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ChevronDown,
   ChevronLeft,
@@ -11,7 +11,6 @@ import {
   FileText,
   Info,
   LockKeyhole,
-  MessageCircle,
   PlayCircle,
 } from "lucide-react";
 
@@ -81,12 +80,6 @@ import {
   getProtectedCourseAssetObjectUrl,
   subscribeToCourseAssets,
 } from "@/lib/data/course-assets";
-import {
-  addLessonComment,
-  deleteLessonComment,
-  subscribeToLessonComments,
-  type LessonComment,
-} from "@/lib/data/lesson-comments";
 import {
   resolveLessonContent,
   subscribeToLessonContent,
@@ -925,7 +918,6 @@ export function EnrolledCourseWorkspace({
         {selectedLesson && resolvedSelectedLesson ? (
           <LessonContentPanel
             assets={selectedLessonAssets}
-            courseId={course.id}
             enrollmentId={workspaceEnrollment?.id ?? null}
             enableFirestoreAssets={enableFirestoreAssets}
             isLoadingAssets={Boolean(
@@ -1554,7 +1546,6 @@ function CourseAssetResourceList({
 function LessonContentPanel({
   assets,
   autoplay = false,
-  courseId,
   enrollmentId,
   enableFirestoreAssets,
   isLoadingAssets,
@@ -1572,7 +1563,6 @@ function LessonContentPanel({
   assets: CourseAsset[];
   /** A aula abriu pelo cartão "Próxima aula": começa a tocar sozinha. */
   autoplay?: boolean;
-  courseId: string;
   /** A matricula do aluno: sem ela (preview do professor) a posicao do video
    *  nao vai para o banco, so para o navegador. */
   enrollmentId: string | null;
@@ -1723,7 +1713,7 @@ function LessonContentPanel({
         unlocksAt={unlockState?.unlocksAt ?? null}
       />
 
-      {/* Aula trancada: sem comentarios, como a discussao mais abaixo. */}
+      {/* Aula trancada: sem comentarios. */}
       {!locked ? lessonComments : null}
 
       <div id="member-lesson-content" className="member-lesson-body">
@@ -1765,182 +1755,7 @@ function LessonContentPanel({
         {!locked && enableFirestoreAssets ? (
           <LessonAssetList assets={supportingAssets} isLoading={isLoadingAssets} />
         ) : null}
-        {!locked ? (
-          <LessonDiscussion
-            courseId={courseId}
-            lessonId={lesson.id}
-            previewMode={previewMode}
-          />
-        ) : null}
       </div>
-    </div>
-  );
-}
-
-function LessonDiscussion({
-  courseId,
-  lessonId,
-  previewMode,
-}: {
-  courseId: string;
-  lessonId: string;
-  previewMode: boolean;
-}) {
-  const { t } = useTranslation();
-  const { user } = useAuth();
-  const [comments, setComments] = useState<LessonComment[]>([]);
-  const [commentsKey, setCommentsKey] = useState("");
-  const [body, setBody] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState("");
-  const currentKey = `${courseId}:${lessonId}`;
-  const isReady = previewMode || commentsKey === currentKey;
-
-  useEffect(() => {
-    if (previewMode) {
-      return undefined;
-    }
-
-    return subscribeToLessonComments(
-      courseId,
-      lessonId,
-      (nextComments) => {
-        setComments(nextComments);
-        setCommentsKey(`${courseId}:${lessonId}`);
-      },
-      () => {
-        setError("learn.classroom.discussion.loadError");
-        setCommentsKey(`${courseId}:${lessonId}`);
-      },
-    );
-  }, [courseId, lessonId, previewMode]);
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!user || previewMode || body.trim().length < 3) {
-      return;
-    }
-
-    setIsSaving(true);
-    setError("");
-
-    try {
-      await addLessonComment({
-        courseId,
-        lessonId,
-        authorId: user.uid,
-        // No email fallback: lesson comments are readable by every enrolled
-        // learner, so an email-as-name leaked the author's address.
-        authorName: user.displayName || "SkillsetMind learner",
-        body,
-      });
-      setBody("");
-    } catch {
-      setError("learn.classroom.discussion.publishError");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  async function handleDeleteComment(commentId: string) {
-    if (!user || previewMode) {
-      return;
-    }
-
-    setError("");
-
-    try {
-      await deleteLessonComment(courseId, commentId);
-    } catch {
-      setError("learn.classroom.discussion.deleteError");
-    }
-  }
-
-  return (
-    <div id="member-lesson-discussion" className="mt-5 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <div className="flex items-center gap-2">
-            <MessageCircle size={15} className="text-[var(--color-accent-fg)]" aria-hidden />
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-              {t("learn.classroom.discussion.title")}
-            </p>
-          </div>
-          <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-            {t("learn.classroom.discussion.description")}
-          </p>
-        </div>
-        <span className="rounded-[8px] bg-white px-3 py-1 text-xs font-semibold text-[var(--color-primary)]">
-          {t(`learn.classroom.discussion.${comments.length === 1 ? "commentOne" : "commentMany"}`).replace("{count}", () => String(comments.length))}
-        </span>
-      </div>
-
-      <div className="mt-4 grid gap-3">
-        {!isReady ? (
-          <p className="rounded-[10px] bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
-            {t("learn.classroom.discussion.loading")}
-          </p>
-        ) : comments.length === 0 ? (
-          <p className="rounded-[10px] bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
-            {t("learn.classroom.discussion.empty")}
-          </p>
-        ) : (
-          comments.map((comment) => (
-            <article
-              key={comment.id}
-              className="rounded-[10px] border border-[var(--color-line)] bg-white p-3"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
-                  {comment.authorName}
-                </p>
-                {user?.uid === comment.authorId ? (
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteComment(comment.id)}
-                    className="text-xs font-semibold text-[var(--color-accent-fg)] hover:text-[var(--color-primary)]"
-                  >
-                    {t("learn.classroom.discussion.delete")}
-                  </button>
-                ) : null}
-              </div>
-              <p className="mt-2 whitespace-pre-line text-sm leading-6 text-[var(--color-ink)]">
-                {comment.body}
-              </p>
-            </article>
-          ))
-        )}
-      </div>
-
-      {error ? (
-        <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {t(error)}
-        </p>
-      ) : null}
-
-      <form className="mt-4 grid gap-3" onSubmit={handleSubmit}>
-        <textarea
-          value={body}
-          onChange={(event) => setBody(event.target.value)}
-          disabled={previewMode || isSaving}
-          rows={3}
-          aria-label={t("learn.classroom.discussion.bodyLabel")}
-          placeholder={
-            previewMode
-              ? t("learn.classroom.discussion.preview")
-              : t("learn.classroom.discussion.placeholder")
-          }
-          className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-        />
-        <button
-          type="submit"
-          disabled={previewMode || isSaving || body.trim().length < 3}
-          className="button-outline w-fit px-4 py-2.5 text-sm disabled:opacity-60"
-        >
-          {t(isSaving ? "learn.classroom.discussion.publishing" : "learn.classroom.discussion.publish")}
-        </button>
-      </form>
     </div>
   );
 }
