@@ -18,19 +18,24 @@ import { getWorkspaceHomeHref } from "@/lib/auth/routing";
 // gaveta que o "More" da barra de baixo, que está sempre visível e ao alcance
 // do polegar. Duas portas para a mesma sala, uma delas no canto oposto ao da
 // mão. De 640px para cima ele já era `sm:hidden`, então nada muda ali.
-export function PlatformHeader({ currentNavigationHref }: { currentNavigationHref?: string }) {
+export function PlatformHeader({ currentNavigationHref, searchHref }: {
+  currentNavigationHref?: string;
+  searchHref?: string | null;
+}) {
   const pathname = usePathname() ?? "";
   const { t } = useTranslation();
   const { status, user, signOut } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
   const surface = getSurface(pathname);
   const pageLabel = getPageLabel(pathname, t, currentNavigationHref);
+  const showSearch = searchHref !== null && (!pathname.startsWith("/ops") || Boolean(searchHref));
 
   return (
     <header className="platform-topbar">
       <div className="platform-topbar__inner">
         <LogoWordmark
           nav
+          variant="mark"
           href={getWorkspaceHomeHref(pathname, user)}
           className="platform-topbar__logo"
         />
@@ -48,12 +53,12 @@ export function PlatformHeader({ currentNavigationHref }: { currentNavigationHre
           <span className="cur">{pageLabel}</span>
         </nav>
 
-        <PlatformSearch pathname={pathname} open={searchOpen} />
+        {showSearch ? <PlatformSearch pathname={pathname} open={searchOpen} searchHref={searchHref ?? undefined} /> : null}
 
         <div className="platform-topbar__actions">
           {/* No celular o campo não cabe na linha: o ícone o abre logo abaixo
               da barra. Em telas maiores ele já está aberto e este botão some. */}
-          <button
+          {showSearch ? <button
             type="button"
             onClick={() => setSearchOpen((open) => !open)}
             className="platform-topbar__search-toggle grid size-10 place-items-center rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-ink)] transition hover:bg-[var(--color-surface-strong)]"
@@ -61,7 +66,7 @@ export function PlatformHeader({ currentNavigationHref }: { currentNavigationHre
             aria-label={t("platform.openSearch")}
           >
             <Search aria-hidden="true" size={18} strokeWidth={1.8} />
-          </button>
+          </button> : null}
           <div className="hidden sm:block">
             <ThemeToggle />
           </div>

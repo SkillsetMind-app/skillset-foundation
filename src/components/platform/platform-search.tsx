@@ -15,29 +15,49 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 export function PlatformSearch({
   pathname,
   open = false,
+  searchHref,
 }: {
   pathname: string;
   /** No celular a barra do topo não tem largura para o campo; um ícone o abre. */
   open?: boolean;
+  /** A page with a query consumer can preserve its own scope and parameters. */
+  searchHref?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { t } = useTranslation();
-  const placeholder = t(getSearchPlaceholderKey(pathname));
+  const placeholder = t(getSearchPlaceholderKey(pathname, searchHref));
   const shortcutLabel = useShortcutLabel();
+  const savedQuery = new URLSearchParams(searchHref?.split("?")[1]).get("q") ?? "";
+
+  useEffect(() => {
+    if (searchHref !== undefined && inputRef.current) inputRef.current.value = savedQuery;
+  }, [searchHref, savedQuery]);
+
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
 
   function submitSearch() {
     const query = inputRef.current?.value.trim();
+
+    if (searchHref) {
+      const [path, search] = searchHref.split("?");
+      const params = new URLSearchParams(search);
+      if (query) params.set("q", query);
+      else params.delete("q");
+      const suffix = params.toString();
+      router.push(suffix ? `${path}?${suffix}` : path);
+      return;
+    }
 
     if (!query) {
       return;
     }
 
-    const target = pathname.startsWith("/ops")
-      ? `/ops?q=${encodeURIComponent(query)}`
-      : pathname.startsWith("/teach")
-        ? `/teach?query=${encodeURIComponent(query)}`
-        : `/courses?q=${encodeURIComponent(query)}`;
+    const target = pathname.startsWith("/teach")
+      ? `/teach?query=${encodeURIComponent(query)}`
+      : `/courses?q=${encodeURIComponent(query)}`;
 
     router.push(target);
   }
@@ -68,6 +88,7 @@ export function PlatformSearch({
       <input
         ref={inputRef}
         type="search"
+        defaultValue={savedQuery}
         placeholder={placeholder}
         aria-label={placeholder}
         onKeyDown={handleKeyDown}
@@ -99,7 +120,7 @@ function useShortcutLabel() {
   );
 }
 
-function getSearchPlaceholderKey(pathname: string) {
+function getSearchPlaceholderKey(pathname: string, searchHref?: string) {
   if (pathname.startsWith("/teach")) {
     return "platform.searchTeachPlaceholder";
   }
@@ -109,6 +130,9 @@ function getSearchPlaceholderKey(pathname: string) {
   }
 
   if (pathname.startsWith("/ops")) {
+    const tab = new URLSearchParams(searchHref?.split("?")[1]).get("tab");
+    if (tab === "support") return "platform.ops.searchSupport";
+    if (tab === "verification") return "platform.ops.searchVerification";
     return "platform.searchOpsPlaceholder";
   }
 
