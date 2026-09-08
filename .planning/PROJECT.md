@@ -73,6 +73,8 @@ That fifth item used to read "fund protection", which assumed the platform held 
 | 2026-09-07 | Extraction runs one platform at a time in the connected Chrome window: capturing a background tab freezes the renderer, so two parallel agents in one window are not viable. |
 | 2026-09-07 | Captures stay outside the repo and outside the vault git (account data); only per-item notes and the checklist are versioned, in the private vault. |
 | 2026-09-07 | Whether a teacher may archive a published course (as Hotmart deactivates instead of deleting) is decided after F1 evidence, not before. |
+| 2026-09-08 | Pages that only SkillsetMind has (Online events first) are not compared with Hotmart; they receive the house pattern distilled from the pages where parity was reached. |
+| 2026-09-08 | Requested by the founder, pending design and go: login served on `sso.skillsetmind.com`, buyers landing on `consumer.`, creators on `app.` (served, not redirected), and Google sign-in switched on. Both touch the session cookie domain and DNS; they run as their own phase, not inside the parity PRs. |
 
 ---
 *Last updated: 2026-09-07 after opening milestone v1.1 (issue #243)*

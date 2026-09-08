@@ -143,6 +143,7 @@ The launch program follows the verified state of the code rather than the older 
 2. Adopt/adapt rows carry measurements (spacing, hierarchy, tap targets, mobile behavior) taken from the captures, not from memory.
 3. Founder decisions are preserved (dark members area, optimistic publishing, no affiliates, no gamification, no cross-sell in the classroom, no own checkout, no creator color customization).
 4. The list is ordered by value and each item names the files it touches.
+5. Surfaces that exist only on SkillsetMind (Online events with agenda is the first named) are not compared but receive the house pattern distilled from the adopted rows, so they stop looking raw next to the refined pages (founder direction 2026-09-08).
 
 **Plans:** 1 plan (session-owner analysis; no agent).
 

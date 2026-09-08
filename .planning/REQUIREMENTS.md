@@ -10,7 +10,7 @@
 - [x] **PAR-01:** A closed checklist gives one row to every Hotmart producer menu item, course-center tab and header action, Club menu item, learner screen and commercial flow, and marks what the existing captures already cover. (Phase 7, done 2026-09-07)
 - [ ] **PAR-02:** Every checklist row is visited on Hotmart, read-only, with desktop 1440, mobile 390 and full-page captures, the real destination URL and the list of buttons with their destinations, or an explicit blocked reason. (Phase 8)
 - [ ] **PAR-03:** Every checklist row is visited on SkillsetMind production with the same columns; rows without an equivalent are marked `NÃO EXISTE`; empty states caused by empty data are marked as such. (Phase 9)
-- [ ] **PAR-04:** Every row has a verdict (equal / adopt / adapt / skip) with a one-line reason; adopt/adapt rows carry measurements from the captures; the list is ordered by value and names the files touched. (Phase 10)
+- [ ] **PAR-04:** Every row has a verdict (equal / adopt / adapt / skip) with a one-line reason; adopt/adapt rows carry measurements from the captures; the list is ordered by value and names the files touched. Rows that exist only on SkillsetMind (no Hotmart equivalent, e.g. Online events with agenda) get a fourth verdict, **apply house pattern**: the hierarchy, spacing and layout rules distilled from the rows where parity was reached are applied to them, so no surface stays raw while its neighbours were refined. (Phase 10; founder direction 2026-09-08)
 
 ### Parity delivery
 
