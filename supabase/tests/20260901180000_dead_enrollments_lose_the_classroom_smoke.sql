@@ -64,6 +64,17 @@ SELECT pg_temp.assert_true(
       -- Exceção documentada: devolve o histórico do PRÓPRIO usuário, que é dele
       -- qualquer que seja o status da matrícula.
       AND p.polname <> 'lesson_progress_select_owner'
+      -- Exceção documentada: é a única política de DELETE aqui, e nela a
+      -- pergunta é a inversa. As outras consultam `enrollments` para LIBERAR
+      -- acesso, e aí uma linha morta não pode valer. Esta consulta para
+      -- RECUSAR: matrícula reembolsada, revogada ou expirada continua sendo
+      -- registro do aluno, e `enrollments_course_id_fkey` é RESTRICT — o banco
+      -- já barraria o DELETE com um 23503. A política diz a mesma regra onde
+      -- quem lê RLS procura, e devolve zero linhas em vez de um erro de chave
+      -- estrangeira. Filtrar por status aqui ABRIRIA o buraco em vez de
+      -- fechá-lo: um curso com matrícula morta voltaria a ser apagável.
+      -- Ver 20260908120000_excluir_ou_arquivar_curso_do_professor.sql.
+      AND p.polname <> 'courses_delete_owner'
   ),
   'some RLS policy reads enrollments without checking status'
 );

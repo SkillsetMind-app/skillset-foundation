@@ -51,10 +51,12 @@ begin
     raise exception 'Only the course owner can delete it.';
   end if;
 
+  -- Matricula e pedido de QUALQUER status contam. Uma matricula reembolsada e
+  -- um checkout pendente continuam sendo registro de alguem, e as duas chaves
+  -- estrangeiras para `courses` sao RESTRICT (ao contrario de course_coupons e
+  -- course_lesson_content, que cascateiam): sem esta contagem o DELETE abaixo
+  -- morreria num 23503 no meio da acao, em vez de virar arquivamento.
   select count(*) into v_enrollments from public.enrollments where course_id = p_course_id;
-  -- Pedido de qualquer status conta: um checkout pendente ou reembolsado e
-  -- historico financeiro do comprador, e apagar o curso levaria o nome e o
-  -- preco junto (orders.course_id nao cascateia por acaso).
   select count(*) into v_orders from public.orders where course_id = p_course_id;
 
   if v_enrollments = 0 and v_orders = 0 then
@@ -105,9 +107,16 @@ grant execute on function public.delete_or_archive_own_course(text) to authentic
 
 -- A policy permite DELETE direto pelo dono em draft/needs_changes/inactive.
 -- Depois desta migration 'inactive' passa a ser tambem o estado de ARQUIVADO,
--- ou seja, o estado de um curso que TEM aluno — sem a condicao abaixo, um
--- cliente PostgREST autenticado apagaria pela tabela o curso que a RPC se
--- recusa a apagar, e levaria junto o acesso de quem pagou.
+-- ou seja, o estado de um curso que TEM aluno. As FKs de enrollments e orders
+-- sao RESTRICT e ja barrariam o comando, mas com um 23503 vindo do nada: a
+-- regra fica escrita onde quem le RLS a procura, e o cliente PostgREST recebe
+-- zero linhas em vez de um erro de chave estrangeira.
+--
+-- De proposito SEM filtro de e.status, ao contrario das outras politicas que
+-- consultam enrollments: elas usam a matricula para LIBERAR acesso, e aí uma
+-- linha morta nao pode valer; esta usa para RECUSAR, e matricula reembolsada
+-- continua sendo registro do aluno. A excecao esta documentada na guarda, em
+-- supabase/tests/20260901180000_dead_enrollments_lose_the_classroom_smoke.sql.
 -- `alter policy` e nao drop/create: o portao do segundo fator abaixo veio da
 -- 20260902120000 e recriar a policy do zero e a forma classica de perde-lo.
 alter policy courses_delete_owner on public.courses
