@@ -2542,6 +2542,14 @@ select:focus-visible {
   height: 2rem;
 }
 
+/* Rail recolhido: a marca centra no mesmo eixo dos icones. Antes ficava
+   encostada a esquerda (flex sem justify + 4px de padding) enquanto cada
+   icone abaixo e um quadrado centrado nos 64px — a marca parecia deslocada. */
+.platform-sidebar.sidebar-collapsed .platform-sidebar-brand {
+  justify-content: center;
+  padding-inline: 0;
+}
+
 .platform-sidebar-brand__name {
   color: #ffffff;
   font-family: var(--font-display);
