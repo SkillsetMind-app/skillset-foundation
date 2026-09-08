@@ -1,9 +1,5 @@
 import { isVideoAssetKind, type CourseAsset } from "@/domain/course-asset";
 import { isCouponExpired, type CourseCoupon } from "@/domain/course-commerce";
-import {
-  getCourseReadiness,
-  type CourseReadinessAccount,
-} from "@/domain/course-readiness";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
@@ -133,16 +129,20 @@ export type CourseMaintenanceIssue = {
  * `assets` e `coupons` chegam como null enquanto a leitura nao voltou — a
  * regra que depende deles fica de fora nesse instante, porque acusar "aula sem
  * conteudo" so porque os assets ainda nao carregaram e pior que nao acusar.
+ *
+ * O que NAO entra aqui: nada que a lista de prontidao ja diga. O checklist de
+ * publicacao mora na MESMA tela, logo acima, e listava capa e resultados de
+ * aprendizagem duas vezes — o professor lia "Cover image" no card de atencao e
+ * de novo tres centimetros abaixo. Um aviso repetido nao e um aviso a mais,
+ * e um aviso a menos: ensina a ignorar o card.
  */
 export function getCourseMaintenanceIssues({
   course,
-  account,
   assets,
   coupons,
   now = new Date(),
 }: {
   course: TeacherCourse;
-  account?: CourseReadinessAccount;
   assets: CourseAsset[] | null;
   coupons: CourseCoupon[] | null;
   now?: Date;
@@ -205,16 +205,6 @@ export function getCourseMaintenanceIssues({
           .map((coupon) => coupon.code)
           .join(", ")} still read as active on this product but no longer apply at checkout. Turn them off or extend the date.`,
       });
-    }
-  }
-
-  // O resto sai da mesma lista de prontidao que a tela ja mostra — os itens
-  // opcionais, que nunca travam a publicacao e por isso ficam esquecidos num
-  // produto que ja esta no ar. `payouts` e `verification` ficam de fora: sao
-  // pendencias da CONTA, valem para a loja inteira, e ja tem tela propria.
-  for (const item of getCourseReadiness(course, account).items) {
-    if (item.optional && !item.done && item.id !== "payouts" && item.id !== "verification") {
-      issues.push({ id: `readiness-${item.id}`, title: item.label, hint: item.hint });
     }
   }
 

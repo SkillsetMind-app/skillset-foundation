@@ -10,7 +10,6 @@ import { StudioRecentActivity } from "@/components/teacher/studio-recent-activit
 import { Card, EmptyState } from "@/components/ui";
 import type { CourseAsset } from "@/domain/course-asset";
 import type { CourseCoupon } from "@/domain/course-commerce";
-import type { CourseReadinessAccount } from "@/domain/course-readiness";
 import {
   getCourseMaintenanceIssues,
   getCourseOverviewStats,
@@ -237,13 +236,7 @@ export function CourseOverviewPanelView({
   );
 }
 
-export function CourseOverviewPanel({
-  course,
-  account,
-}: {
-  course: TeacherCourse;
-  account?: CourseReadinessAccount;
-}) {
+export function CourseOverviewPanel({ course }: { course: TeacherCourse }) {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [students, setStudents] = useState<CourseStudent[] | null>(null);
@@ -311,8 +304,8 @@ export function CourseOverviewPanel({
   );
 
   const issues = useMemo(
-    () => getCourseMaintenanceIssues({ course, account, assets, coupons }),
-    [account, assets, coupons, course],
+    () => getCourseMaintenanceIssues({ course, assets, coupons }),
+    [assets, coupons, course],
   );
 
   return (

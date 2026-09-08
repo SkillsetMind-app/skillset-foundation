@@ -249,7 +249,10 @@ describe("getCourseMaintenanceIssues", () => {
     expect(expired?.hint).not.toContain("STILLGOOD");
   });
 
-  it("picks up the optional publish steps a live product forgets", () => {
+  // O card "Needs your attention" repetia, palavra por palavra, duas linhas do
+  // checklist de publicacao que fica na MESMA tela: "Cover image" e "Learning
+  // outcomes". Nada que o checklist ja diga entra aqui.
+  it("leaves the publish checklist to say what the publish checklist already says", () => {
     const issues = getCourseMaintenanceIssues({
       course: { ...course, coverImageUrl: null, learningOutcomes: [] },
       assets: [],
@@ -257,26 +260,19 @@ describe("getCourseMaintenanceIssues", () => {
       now: NOW,
     });
 
-    expect(issues.map((issue) => issue.id)).toEqual([
-      "readiness-cover",
-      "readiness-outcomes",
-    ]);
+    expect(issues).toEqual([]);
   });
 
-  it("keeps account-wide chores out of a single product's list", () => {
+  // Contraprova: o que NAO esta no checklist continua sendo acusado, na mesma
+  // chamada em que capa e resultados estao faltando.
+  it("still reports what the checklist never looks at", () => {
     const issues = getCourseMaintenanceIssues({
-      course,
-      account: {
-        payoutsReady: false,
-        verificationRequired: false,
-        verificationApproved: false,
-      },
-      assets: [],
-      coupons: [],
+      course: { ...withLessons, coverImageUrl: null, learningOutcomes: [] },
+      assets: [videoAsset],
+      coupons: [coupon({ expiresAt: daysAgo(2) })],
       now: NOW,
     });
 
-    expect(issues.some((issue) => issue.id === "readiness-verification")).toBe(false);
-    expect(issues).toEqual([]);
+    expect(issues.map((issue) => issue.id)).toEqual(["empty-lessons", "expired-coupons"]);
   });
 });
