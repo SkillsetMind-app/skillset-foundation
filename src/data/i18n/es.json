@@ -1522,6 +1522,8 @@
         "progress": "{done} de {total} pasos obligatorios listos · {percent}% listo",
         "optional": "Opcional",
         "openVerification": "Abrir verificación",
+        "edit": "Editar",
+        "editItem": "Editar {item}",
         "reviewNote": "Nota de revisión de SkillsetMind",
         "reviewPublish": "Revisar y publicar"
       },

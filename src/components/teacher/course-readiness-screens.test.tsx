@@ -112,9 +112,11 @@ vi.mock("@/components/teacher/course-asset-uploader", () => ({
 
 // O painel do produto (numeros, atividade, manutencao) le pedidos, matriculas,
 // cupons, avaliacoes e perguntas. Nada disso muda a porcentagem que este
-// arquivo mede, e tem prova propria em course-overview-panel.test.tsx.
+// arquivo mede, e tem prova propria em course-overview-panel.test.tsx. O
+// marcador existe para a prova de ORDEM: onde o painel cai em relacao ao
+// checklist e decisao do hub, nao do painel.
 vi.mock("@/components/teacher/course-overview-panel", () => ({
-  CourseOverviewPanel: () => null,
+  CourseOverviewPanel: () => <div data-testid="course-overview-panel" />,
 }));
 
 function SwitchLanguage() {
@@ -705,5 +707,89 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(
       within(list).getByText("Set a paid price greater than $0, or choose Free."),
     ).toBeInTheDocument();
+  });
+});
+
+// O professor de um curso ainda nao publicado abria o Painel e via tres caixas
+// vazias — "ninguem comprou este produto ainda", "precisa da sua atencao" e
+// "atividade recente" — antes de chegar no que ele foi procurar: o que falta
+// para publicar. E cada linha do checklist so descrevia a pendencia, sem levar
+// a lugar nenhum.
+describe("Painel: o que falta para publicar vem primeiro e cada linha leva a algum lugar", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.resetSubscriptionCounts();
+  });
+
+  afterEach(() => {
+    cleanup();
+    mocks.searchParams.delete("section");
+    mocks.searchParams.delete("tab");
+    vi.restoreAllMocks();
+  });
+
+  function checklistCard() {
+    const card = screen.getByText("Publish checklist").closest("section");
+    if (!card) throw new Error("checklist card nao montou");
+    return card;
+  }
+
+  it("rascunho: o checklist vem ANTES do painel; publicado: depois", async () => {
+    const { unmount } = render(<CourseManageHub courseId="course-1" />);
+    await screen.findByText("Publish checklist");
+
+    const draftOrder = checklistCard().compareDocumentPosition(
+      screen.getByTestId("course-overview-panel"),
+    );
+    // FOLLOWING = o painel vem DEPOIS do checklist no DOM (e na tela).
+    expect(draftOrder & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    unmount();
+
+    vi.mocked(subscribeToTeacherCourse).mockImplementation((_id, onCourse) => {
+      onCourse({ ...mocks.course, status: "published" });
+      return () => undefined;
+    });
+    render(<CourseManageHub courseId="course-1" />);
+    await screen.findByText("Publish checklist");
+
+    const liveOrder = checklistCard().compareDocumentPosition(
+      screen.getByTestId("course-overview-panel"),
+    );
+    expect(liveOrder & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+  });
+
+  it("cada linha leva a tela que EDITA o campo, e nao duplica o link da verificacao", async () => {
+    render(<CourseManageHub courseId="course-1" />);
+    await screen.findByText("Publish checklist");
+    const card = checklistCard();
+
+    const hrefOf = (item: string) =>
+      within(card)
+        .getByLabelText(`Edit ${item}`)
+        .getAttribute("href");
+
+    expect(hrefOf("Course title")).toBe("/teach/builder?courseId=course-1&tab=details");
+    expect(hrefOf("Cover image")).toBe("/teach/builder?courseId=course-1&tab=details");
+    expect(hrefOf("Lesson")).toBe("/teach/builder?courseId=course-1&tab=content");
+    expect(hrefOf("Pricing")).toBe("/teach/builder?courseId=course-1&tab=pricing");
+    // Resultados de aprendizagem tem editor de verdade DENTRO do hub.
+    expect(hrefOf("Learning outcomes")).toBe(
+      "/teach/courses/course-1/manage?section=page",
+    );
+    // A verificacao ja tem o proprio link na dica: nao ganha um segundo.
+    expect(within(card).getByRole("link", { name: "Open verification" })).toBeInTheDocument();
+    expect(within(card).queryByLabelText(/^Edit Professional verification$/)).toBeNull();
+  });
+
+  it("linha concluida fica verde; linha pendente fica neutra", async () => {
+    render(<CourseManageHub courseId="course-1" />);
+    await screen.findByText("Publish checklist");
+    const card = checklistCard();
+
+    // "Module" esta feito (o curso tem um modulo); "Lesson" nao.
+    const done = card.querySelector('[data-readiness-item="module"]');
+    const pending = card.querySelector('[data-readiness-item="lesson"]');
+    expect(done?.className).toContain("bg-[var(--color-success-soft)]");
+    expect(pending?.className).not.toContain("bg-[var(--color-success-soft)]");
   });
 });

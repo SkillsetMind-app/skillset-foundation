@@ -35,7 +35,7 @@ import {
   quotaStatus,
 } from "@/domain/entitlements";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
-import { getCourseReadiness } from "@/domain/course-readiness";
+import { getCourseReadiness, type CourseReadinessItem } from "@/domain/course-readiness";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { teacherCanPublishCourse } from "@/domain/teacher-course";
 import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
@@ -85,6 +85,38 @@ const hubMenuItemClass =
 
 function isPaidCourse(course: TeacherCourse): boolean {
   return course.paymentType !== "free" && (course.priceAmountMinor ?? 0) > 0;
+}
+
+// Cada linha do checklist so DESCREVIA a pendencia ("Add at least one module")
+// e nao levava a lugar nenhum: a pessoa lia o que faltava e tinha de caçar
+// onde arrumar. Aqui fica o destino de cada linha, sempre a tela que EDITA o
+// campo. Os cards "basic" e "pricing" do proprio hub sao so leitura — o botao
+// deles ja manda para o construtor —, entao apontamos direto para la e
+// poupamos um clique. `outcomes` e a excecao porque o hub tem editor de
+// verdade (SalesPageEditor, na secao "page"), e ali a pessoa nem sai do hub.
+function readinessEditHref(item: CourseReadinessItem, courseId: string): string | null {
+  const id = encodeURIComponent(courseId);
+  switch (item.id) {
+    case "title":
+    case "summary":
+    case "category":
+    case "cover":
+      return `/teach/builder?courseId=${id}&tab=details`;
+    case "module":
+    case "lesson":
+      return `/teach/builder?courseId=${id}&tab=content`;
+    case "pricing":
+    case "installments":
+      return `/teach/builder?courseId=${id}&tab=pricing`;
+    case "outcomes":
+      return `/teach/courses/${id}/manage?section=page`;
+    case "payouts":
+      return "/account/payments#stripe-connect";
+    // `verification` ja tem o proprio link dentro da dica; um segundo link na
+    // mesma linha, com outro rotulo e o mesmo destino, so confunde.
+    default:
+      return null;
+  }
 }
 
 function priceLabel(course: TeacherCourse, t: Translate): string {
@@ -354,6 +386,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   // o Manage tinha regra propria (titulo+resumo num item so, sem parcelas) e
   // o mesmo curso aparecia com tres porcentagens diferentes.
   const readiness = getCourseReadiness(course, account);
+  const published = course.status === "published";
   const switchableCourses = myCourses.filter((candidate) => candidate.id !== course.id);
   // This course's own flag comes from the single-course subscription, the rest
   // from the owner-wide one. Mixing them keeps the count from flickering while
@@ -550,12 +583,14 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
         </nav>
 
         <div className="grid gap-4">
-          {/* O painel do produto vem antes da lista de publicacao: quem abre
-              esta tela abre para saber como o produto esta indo. A lista de
-              o-que-falta continua logo abaixo, e o estado vazio do painel
-              aponta para ela quando o curso ainda nao foi publicado. */}
-          {section === "overview" ? (
-            <CourseOverviewPanel course={course} account={account} />
+          {/* A ordem depende do estado do produto. PUBLICADO: o painel vem
+              primeiro, porque quem abre esta tela abre para saber como o
+              produto esta indo. AINDA NAO PUBLICADO: os numeros sao todos
+              vazios ("ninguem comprou ainda", "nenhuma atividade") e o
+              professor tinha de rolar tres caixas vazias para descobrir o que
+              falta para publicar — entao o checklist sobe e o painel desce. */}
+          {section === "overview" && published ? (
+            <CourseOverviewPanel course={course} />
           ) : null}
 
           {section === "overview" ? (
@@ -579,44 +614,71 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               <ReadinessGroups
                 readiness={readiness}
                 className="mt-4 grid gap-5"
-                renderItem={(item) => (
-                  <li key={item.id} className="flex items-start gap-3">
-                    <span
-                      aria-hidden
-                      className={`mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
-                        item.done
-                          ? "bg-[var(--color-primary)] text-white"
-                          : "border fine-rule bg-white text-[var(--color-ink-muted)]"
+                renderItem={(item) => {
+                  const editHref = readinessEditHref(item, course.id);
+                  return (
+                    // Linha pronta ganha o verde suave da casa (o mesmo do
+                    // InlineAlert tone="success"): a pessoa varre a lista e ve
+                    // onde ainda falta sem ler item por item.
+                    <li
+                      key={item.id}
+                      data-readiness-item={item.id}
+                      className={`flex items-start gap-3 rounded-[10px] px-3 py-2 ${
+                        item.done ? "bg-[var(--color-success-soft)]" : ""
                       }`}
                     >
-                      {item.done ? "✓" : ""}
-                    </span>
-                    <div>
-                      <p className="text-sm font-semibold text-[var(--color-ink)]">
-                        {item.label}
-                        {item.optional ? (
-                          <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                            {t("creatorPanel.hub.checklist.optional")}
-                          </span>
-                        ) : null}
-                      </p>
-                      <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
-                        {item.hint}
-                        {item.id === "verification" ? (
-                          <>
-                            {" "}
-                            <Link
-                              href="/teach/verification"
-                              className="font-semibold text-[var(--color-primary)] underline"
-                            >
-                              {t("creatorPanel.hub.checklist.openVerification")}
-                            </Link>
-                          </>
-                        ) : null}
-                      </p>
-                    </div>
-                  </li>
-                )}
+                      <span
+                        aria-hidden
+                        className={`mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                          item.done
+                            ? "bg-[var(--color-primary)] text-white"
+                            : "border fine-rule bg-white text-[var(--color-ink-muted)]"
+                        }`}
+                      >
+                        {item.done ? "✓" : ""}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-[var(--color-ink)]">
+                          {item.label}
+                          {item.optional ? (
+                            <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+                              {t("creatorPanel.hub.checklist.optional")}
+                            </span>
+                          ) : null}
+                        </p>
+                        <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
+                          {item.hint}
+                          {item.id === "verification" ? (
+                            <>
+                              {" "}
+                              <Link
+                                href="/teach/verification"
+                                className="font-semibold text-[var(--color-primary)] underline"
+                              >
+                                {t("creatorPanel.hub.checklist.openVerification")}
+                              </Link>
+                            </>
+                          ) : null}
+                        </p>
+                      </div>
+                      {editHref ? (
+                        // Rotulo visivel curto, nome acessivel completo: sao
+                        // ate onze links "Edit" na mesma lista e um leitor de
+                        // tela precisa saber qual e qual.
+                        <Link
+                          href={editHref}
+                          aria-label={t("creatorPanel.hub.checklist.editItem").replace(
+                            "{item}",
+                            () => item.label,
+                          )}
+                          className="shrink-0 text-xs font-semibold text-[var(--color-primary)] underline"
+                        >
+                          {t("creatorPanel.hub.checklist.edit")}
+                        </Link>
+                      ) : null}
+                    </li>
+                  );
+                }}
               />
               {course.reviewNote ? (
                 <div className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.18)] bg-white px-4 py-3">
@@ -637,6 +699,10 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 </Link>
               ) : null}
             </PanelCard>
+          ) : null}
+
+          {section === "overview" && !published ? (
+            <CourseOverviewPanel course={course} />
           ) : null}
 
           {section === "overview" ? (
