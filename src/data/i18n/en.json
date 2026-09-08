@@ -2981,7 +2981,6 @@
         "editorHelp": "Edit, reorder, and clean up modules and lessons",
         "lessonOne": "{count} lesson",
         "lessonMany": "{count} lessons",
-        "empty": "Add your first module above. Once it exists, you can edit, reorder, and organize its lessons here.",
         "moduleNumber": "Module {index}",
         "moduleDescriptionNumber": "Module {index} description",
         "noteNumber": "Lesson {index} note or outcome",
@@ -3001,7 +3000,16 @@
         "addVideoTitle": "Add the lesson video",
         "editContent": "Edit content",
         "previewSelected": "Free preview selected",
-        "markPreview": "Mark free preview"
+        "markPreview": "Mark free preview",
+        "createModule": "Create module",
+        "addFirstModule": "Add your first module",
+        "addLessonToModule": "Add lesson to module {index}",
+        "moreOptions": "More options",
+        "showLessons": "Show the lessons in module {index}",
+        "hideLessons": "Hide the lessons in module {index}",
+        "cancel": "Cancel",
+        "openMediaLibrary": "Open media library",
+        "closeMediaLibrary": "Hide media library"
       },
       "summary": {
         "month": " / month",

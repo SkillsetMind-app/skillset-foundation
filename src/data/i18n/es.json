@@ -2981,7 +2981,6 @@
         "editorHelp": "Edita, reordena y organiza los módulos y las lecciones",
         "lessonOne": "{count} lección",
         "lessonMany": "{count} lecciones",
-        "empty": "Añade el primer módulo arriba. Después podrás editar, reordenar y organizar sus lecciones aquí.",
         "moduleNumber": "Módulo {index}",
         "moduleDescriptionNumber": "Descripción del módulo {index}",
         "noteNumber": "Nota o resultado de la lección {index}",
@@ -3001,7 +3000,16 @@
         "addVideoTitle": "Añadir el vídeo de la lección",
         "editContent": "Editar contenido",
         "previewSelected": "Vista previa gratuita seleccionada",
-        "markPreview": "Marcar como vista previa gratuita"
+        "markPreview": "Marcar como vista previa gratuita",
+        "createModule": "Crear módulo",
+        "addFirstModule": "Añade tu primer módulo",
+        "addLessonToModule": "Añadir lección al módulo {index}",
+        "moreOptions": "Más opciones",
+        "showLessons": "Mostrar las lecciones del módulo {index}",
+        "hideLessons": "Ocultar las lecciones del módulo {index}",
+        "cancel": "Cancelar",
+        "openMediaLibrary": "Abrir la biblioteca de archivos",
+        "closeMediaLibrary": "Ocultar la biblioteca de archivos"
       },
       "summary": {
         "month": " / mes",

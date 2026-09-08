@@ -6,6 +6,8 @@ import {
   ArrowRight,
   CalendarClock,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   CloudOff,
   CreditCard,
   ExternalLink,
@@ -490,6 +492,13 @@ export function CourseBuilderStudio() {
   const [lessonContentText, setLessonContentText] = useState("");
   const [lessonExternalUrl, setLessonExternalUrl] = useState("");
   const [lessonIsFreePreview, setLessonIsFreePreview] = useState(false);
+  // Os dois formularios agora sao pedidos, nao paisagem: a lista de modulos e
+  // que abre a aba. Modulo recolhido mostra uma linha; abre no clique, ao
+  // receber uma aula nova ou ao ser criado.
+  const [isModuleFormRequested, setIsModuleFormOpen] = useState(false);
+  const [lessonFormModuleId, setLessonFormModuleId] = useState("");
+  const [expandedModuleIds, setExpandedModuleIds] = useState<string[]>([]);
+  const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
   const [error, setError] = useState<BuilderError | null>(null);
   const [success, setSuccess] = useState<"lessonAdded" | "draftSaved" | "published" | null>(null);
   const errorMessage = error
@@ -655,6 +664,8 @@ export function CourseBuilderStudio() {
     && currency === "MXN"
     && cardInstallmentsConfigured;
   const lessonCount = countCourseLessons(modules);
+  // Curso sem nenhum modulo abre ja com o formulario: nao ha lista para olhar.
+  const isModuleFormOpen = isModuleFormRequested || modules.length === 0;
   const allLessons = modules.flatMap((module) =>
     module.lessons.map((lesson) => ({
       ...lesson,
@@ -920,8 +931,29 @@ export function CourseBuilderStudio() {
     setLessonModuleId(nextModule.id);
     setModuleTitle("");
     setModuleSummary("");
+    // O modulo recem-criado abre: e nele que a proxima aula vai entrar.
+    setExpandedModuleIds((current) => [...current, nextModule.id]);
+    setIsModuleFormOpen(false);
     setError(null);
     setSuccess(null);
+  }
+
+  function toggleModuleExpanded(moduleId: string) {
+    setExpandedModuleIds((current) =>
+      current.includes(moduleId)
+        ? current.filter((id) => id !== moduleId)
+        : [...current, moduleId],
+    );
+  }
+
+  function openLessonForm(moduleId: string) {
+    // `lessonModuleId` era o select "Choose module"; agora quem responde por ele
+    // e a linha do modulo, e `handleAddLesson` segue igual.
+    setLessonFormModuleId(moduleId);
+    setLessonModuleId(moduleId);
+    setExpandedModuleIds((current) =>
+      current.includes(moduleId) ? current : [...current, moduleId],
+    );
   }
 
   function handleAddLesson(event: FormEvent<HTMLFormElement>) {
@@ -2068,170 +2100,14 @@ export function CourseBuilderStudio() {
 
         {activeTab === "content" ? (
         <div className="mt-6 grid gap-4">
+          {/* A lista vem primeiro. Antes, a estrutura do curso era a ultima
+              coisa da aba: dois formularios grandes sempre abertos ("Add
+              module" e "Add lesson", com um select "Choose module") ficavam
+              acima dela. */}
           <div
             id="builder-sec-modules"
-            className="scroll-mt-24 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+            className="scroll-mt-24 rounded-[14px] border fine-rule bg-white p-4"
           >
-            <h4 className="text-sm font-semibold text-[var(--color-ink)]">
-              {t("creatorEditor.builder.curriculum.addModule")}
-            </h4>
-            <form className="mt-3 grid gap-3" onSubmit={handleAddModule}>
-              <input
-                value={moduleTitle}
-                onChange={(event) => {
-                  setModuleTitle(event.target.value);
-                  setModuleError(false);
-                }}
-                disabled={!isEditable}
-                aria-label={t("creatorEditor.builder.curriculum.moduleTitle")}
-                placeholder={t("creatorEditor.builder.curriculum.moduleTitlePlaceholder")}
-                className="min-w-0 flex-1 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-              />
-              <textarea
-                value={moduleSummary}
-                onChange={(event) => setModuleSummary(event.target.value)}
-                disabled={!isEditable}
-                rows={2}
-                aria-label={t("creatorEditor.builder.curriculum.moduleDescription")}
-                placeholder={t("creatorEditor.builder.curriculum.moduleDescriptionExample")}
-                className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-              />
-              {moduleError ? (
-                <p
-                  role="alert"
-                  className="text-xs font-semibold text-[var(--color-danger-fg)]"
-                >
-                  {t("creatorEditor.builder.errors.moduleTitle")}
-                </p>
-              ) : null}
-              <button
-                type="submit"
-                disabled={!isEditable}
-                className="button-outline w-fit px-4 py-2.5 text-sm disabled:opacity-60"
-              >
-                {t("creatorEditor.builder.curriculum.addModule")}
-              </button>
-            </form>
-          </div>
-
-          <div
-            id="builder-sec-lessons"
-            className="scroll-mt-24 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
-          >
-            <h4 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
-              {t("creatorEditor.builder.curriculum.addLesson")}
-              <InlineHelp
-                topic={t("creatorEditor.builder.curriculum.helpTopic")}
-                href="/help#drip-release"
-              >
-                {t("creatorEditor.builder.curriculum.help")}
-              </InlineHelp>
-            </h4>
-            <form className="mt-3 grid gap-3" onSubmit={handleAddLesson}>
-              <div className="grid gap-3 md:grid-cols-2">
-                <select
-                  value={lessonModuleId}
-                  onChange={(event) => setLessonModuleId(event.target.value)}
-                  disabled={!isEditable || modules.length === 0}
-                  aria-label={t("creatorEditor.builder.curriculum.moduleForLesson")}
-                  className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                >
-                  <option value="">{t("creatorEditor.builder.curriculum.chooseModule")}</option>
-                  {modules.map((module) => (
-                    <option key={module.id} value={module.id}>
-                      {module.title}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={lessonType}
-                  onChange={(event) => setLessonType(event.target.value as LessonType)}
-                  disabled={!isEditable}
-                  aria-label={t("creatorEditor.builder.curriculum.lessonType")}
-                  className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                >
-                  {lessonTypes.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {t(item.label)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <input
-                value={lessonTitle}
-                onChange={(event) => setLessonTitle(event.target.value)}
-                disabled={!isEditable}
-                aria-label={t("creatorEditor.builder.curriculum.lessonTitle")}
-                placeholder={t("creatorEditor.builder.curriculum.lessonTitle")}
-                className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-              />
-              <div className="grid gap-3 md:grid-cols-[160px_160px_1fr]">
-                <input
-                  value={lessonDurationMinutes}
-                  onChange={(event) => setLessonDurationMinutes(event.target.value)}
-                  disabled={!isEditable}
-                  inputMode="numeric"
-                  aria-label={t("creatorEditor.builder.curriculum.lessonDuration")}
-                  placeholder={t("creatorEditor.builder.curriculum.minutes")}
-                  className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                />
-                <input
-                  value={lessonDripDelayDays}
-                  onChange={(event) => setLessonDripDelayDays(event.target.value)}
-                  disabled={!isEditable}
-                  inputMode="numeric"
-                  aria-label={t("creatorEditor.builder.curriculum.delayLabel")}
-                  placeholder={t("creatorEditor.builder.curriculum.delayPlaceholder")}
-                  className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                />
-                <input
-                  value={lessonExternalUrl}
-                  onChange={(event) => setLessonExternalUrl(event.target.value)}
-                  disabled={!isEditable}
-                  aria-label={t("creatorEditor.builder.curriculum.externalLabel")}
-                  placeholder={t("creatorEditor.builder.curriculum.externalPlaceholder")}
-                  className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                />
-              </div>
-              <textarea
-                value={lessonDescription}
-                onChange={(event) => setLessonDescription(event.target.value)}
-                disabled={!isEditable}
-                rows={3}
-                aria-label={t("creatorEditor.builder.curriculum.noteLabel")}
-                placeholder={t("creatorEditor.builder.curriculum.notePlaceholder")}
-                className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-              />
-              <textarea
-                value={lessonContentText}
-                onChange={(event) => setLessonContentText(event.target.value)}
-                disabled={!isEditable}
-                rows={4}
-                aria-label={t("creatorEditor.builder.curriculum.textLabel")}
-                placeholder={t("creatorEditor.builder.curriculum.textPlaceholder")}
-                className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-              />
-              <label className="flex items-start gap-3 rounded-[10px] border fine-rule bg-white p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-                <input
-                  type="checkbox"
-                  checked={lessonIsFreePreview}
-                  disabled={!isEditable}
-                  onChange={(event) => setLessonIsFreePreview(event.target.checked)}
-                  className="mt-1"
-                />
-                {t("creatorEditor.builder.curriculum.makePreview")}
-              </label>
-              <button
-                type="submit"
-                disabled={!isEditable || modules.length === 0}
-                className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
-              >
-                {t("creatorEditor.builder.curriculum.addLesson")}
-              </button>
-            </form>
-          </div>
-
-          <div className="rounded-[14px] border fine-rule bg-white p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
@@ -2240,24 +2116,124 @@ export function CourseBuilderStudio() {
                 <h4 className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
                   {t("creatorEditor.builder.curriculum.editorHelp")}
                 </h4>
+                {/* Tamanho do curso e quanto falta em uma linha, aqui em cima:
+                    os dois cartoes do rodape ficam tres telas abaixo. */}
+                <p className="mt-2 text-xs font-semibold text-[var(--color-ink-soft)]">
+                  {t("creatorEditor.builder.summary.structureCount")
+                    .replace("{modules}", () => String(modules.length))
+                    .replace("{lessons}", () => String(lessonCount))}
+                  {" · "}
+                  {t("creatorEditor.builder.summary.percent").replace("{percent}", () => String(readiness.percent))}
+                </p>
               </div>
-              <span className="rounded-[8px] bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold text-[var(--color-ink-soft)]">
-                {t(lessonCount === 1 ? "creatorEditor.builder.curriculum.lessonOne" : "creatorEditor.builder.curriculum.lessonMany").replace("{count}", () => String(lessonCount))}
-              </span>
+              {isModuleFormOpen ? null : (
+                <button
+                  type="button"
+                  onClick={() => setIsModuleFormOpen(true)}
+                  disabled={!isEditable}
+                  className="button-outline inline-flex items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-60"
+                >
+                  <Plus aria-hidden="true" size={14} strokeWidth={2} />
+                  {t("creatorEditor.builder.curriculum.addModule")}
+                </button>
+              )}
             </div>
 
-            <div className="mt-4 grid gap-4">
-              {modules.length === 0 ? (
-                <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-                  {t("creatorEditor.builder.curriculum.empty")}
-                </p>
-              ) : (
-                modules.map((module, moduleIndex) => (
+            {isModuleFormOpen ? (
+              <form
+                className="mt-4 grid gap-3 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+                onSubmit={handleAddModule}
+              >
+                <h5 className="text-sm font-semibold text-[var(--color-ink)]">
+                  {t(modules.length === 0
+                    ? "creatorEditor.builder.curriculum.addFirstModule"
+                    : "creatorEditor.builder.curriculum.addModule")}
+                </h5>
+                <input
+                  value={moduleTitle}
+                  onChange={(event) => {
+                    setModuleTitle(event.target.value);
+                    setModuleError(false);
+                  }}
+                  disabled={!isEditable}
+                  aria-label={t("creatorEditor.builder.curriculum.moduleTitle")}
+                  placeholder={t("creatorEditor.builder.curriculum.moduleTitlePlaceholder")}
+                  className="min-w-0 flex-1 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                />
+                {/* So o titulo e obrigatorio; a descricao fica recolhida para o
+                    formulario caber em uma olhada. */}
+                <details className="rounded-[10px] border fine-rule bg-white px-4 py-3">
+                  <summary className="cursor-pointer text-xs font-semibold text-[var(--color-ink-soft)]">
+                    {t("creatorEditor.builder.curriculum.moreOptions")}
+                  </summary>
+                  <textarea
+                    value={moduleSummary}
+                    onChange={(event) => setModuleSummary(event.target.value)}
+                    disabled={!isEditable}
+                    rows={2}
+                    aria-label={t("creatorEditor.builder.curriculum.moduleDescription")}
+                    placeholder={t("creatorEditor.builder.curriculum.moduleDescriptionExample")}
+                    className="mt-3 w-full resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                  />
+                </details>
+                {moduleError ? (
+                  <p
+                    role="alert"
+                    className="text-xs font-semibold text-[var(--color-danger-fg)]"
+                  >
+                    {t("creatorEditor.builder.errors.moduleTitle")}
+                  </p>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="submit"
+                    disabled={!isEditable}
+                    className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+                  >
+                    {t("creatorEditor.builder.curriculum.createModule")}
+                  </button>
+                  {modules.length === 0 ? null : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsModuleFormOpen(false);
+                        setModuleError(false);
+                      }}
+                      className="button-outline px-4 py-2.5 text-sm"
+                    >
+                      {t("creatorEditor.builder.curriculum.cancel")}
+                    </button>
+                  )}
+                </div>
+              </form>
+            ) : null}
+
+            <div className="mt-4 grid gap-3">
+              {modules.map((module, moduleIndex) => {
+                const isExpanded = expandedModuleIds.includes(module.id);
+                const isLessonFormOpen = lessonFormModuleId === module.id;
+                return (
                   <article
                     key={module.id}
                     className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
                   >
-                    <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-start">
+                    <div className="grid gap-3 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-end">
+                      <button
+                        type="button"
+                        onClick={() => toggleModuleExpanded(module.id)}
+                        aria-expanded={isExpanded}
+                        aria-label={t(isExpanded
+                          ? "creatorEditor.builder.curriculum.hideLessons"
+                          : "creatorEditor.builder.curriculum.showLessons")
+                          .replace("{index}", () => String(moduleIndex + 1))}
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-[10px] border border-[var(--color-line)] bg-white text-[var(--color-ink-soft)]"
+                      >
+                        {isExpanded ? (
+                          <ChevronDown aria-hidden="true" size={16} strokeWidth={2} />
+                        ) : (
+                          <ChevronRight aria-hidden="true" size={16} strokeWidth={2} />
+                        )}
+                      </button>
                       <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                         {t("creatorEditor.builder.curriculum.moduleNumber").replace("{index}", () => String(moduleIndex + 1))}
                         <input
@@ -2268,19 +2244,26 @@ export function CourseBuilderStudio() {
                           disabled={!isEditable}
                           className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                         />
-                        <textarea
-                          value={module.summary ?? ""}
-                          onChange={(event) =>
-                            updateModuleSummary(module.id, event.target.value)
-                          }
-                          disabled={!isEditable}
-                          rows={2}
-                          aria-label={t("creatorEditor.builder.curriculum.moduleDescriptionNumber").replace("{index}", () => String(moduleIndex + 1))}
-                          placeholder={t("creatorEditor.builder.curriculum.moduleDescriptionPlaceholder")}
-                          className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                        />
                       </label>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-[8px] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink-soft)]">
+                          {t(module.lessons.length === 1
+                            ? "creatorEditor.builder.curriculum.lessonOne"
+                            : "creatorEditor.builder.curriculum.lessonMany")
+                            .replace("{count}", () => String(module.lessons.length))}
+                        </span>
+                        {/* O modulo desta linha ja e o modulo da aula: o select
+                            "Choose module" some junto com o formulario solto. */}
+                        <button
+                          type="button"
+                          onClick={() => openLessonForm(module.id)}
+                          disabled={!isEditable}
+                          aria-label={t("creatorEditor.builder.curriculum.addLessonToModule").replace("{index}", () => String(moduleIndex + 1))}
+                          className="button-outline inline-flex items-center gap-1.5 px-3 py-2 text-xs disabled:opacity-50"
+                        >
+                          <Plus aria-hidden="true" size={13} strokeWidth={2} />
+                          {t("creatorEditor.builder.curriculum.addLesson")}
+                        </button>
                         <button
                           type="button"
                           onClick={() => moveModule(module.id, "up")}
@@ -2308,7 +2291,146 @@ export function CourseBuilderStudio() {
                       </div>
                     </div>
 
+                    {isExpanded ? (
                     <div className="mt-4 grid gap-3">
+                      <details className="rounded-[10px] border fine-rule bg-white px-4 py-3">
+                        <summary className="cursor-pointer text-xs font-semibold text-[var(--color-ink-soft)]">
+                          {t("creatorEditor.builder.curriculum.moreOptions")}
+                        </summary>
+                        <textarea
+                          value={module.summary ?? ""}
+                          onChange={(event) =>
+                            updateModuleSummary(module.id, event.target.value)
+                          }
+                          disabled={!isEditable}
+                          rows={2}
+                          aria-label={t("creatorEditor.builder.curriculum.moduleDescriptionNumber").replace("{index}", () => String(moduleIndex + 1))}
+                          placeholder={t("creatorEditor.builder.curriculum.moduleDescriptionPlaceholder")}
+                          className="mt-3 w-full resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                        />
+                      </details>
+
+                      {isLessonFormOpen ? (
+                        <form
+                          className="grid gap-3 rounded-[14px] border fine-rule bg-white p-4"
+                          onSubmit={handleAddLesson}
+                        >
+                          <h5 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                            {t("creatorEditor.builder.curriculum.addLesson")}
+                            <InlineHelp
+                              topic={t("creatorEditor.builder.curriculum.helpTopic")}
+                              href="/help#drip-release"
+                            >
+                              {t("creatorEditor.builder.curriculum.help")}
+                            </InlineHelp>
+                          </h5>
+                          <div className="grid gap-3 md:grid-cols-[180px_minmax(0,1fr)_140px]">
+                            <select
+                              value={lessonType}
+                              onChange={(event) => setLessonType(event.target.value as LessonType)}
+                              disabled={!isEditable}
+                              aria-label={t("creatorEditor.builder.curriculum.lessonType")}
+                              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                            >
+                              {lessonTypes.map((item) => (
+                                <option key={item.value} value={item.value}>
+                                  {t(item.label)}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              value={lessonTitle}
+                              onChange={(event) => setLessonTitle(event.target.value)}
+                              disabled={!isEditable}
+                              aria-label={t("creatorEditor.builder.curriculum.lessonTitle")}
+                              placeholder={t("creatorEditor.builder.curriculum.lessonTitle")}
+                              className="min-w-0 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                            />
+                            <input
+                              value={lessonDurationMinutes}
+                              onChange={(event) => setLessonDurationMinutes(event.target.value)}
+                              disabled={!isEditable}
+                              inputMode="numeric"
+                              aria-label={t("creatorEditor.builder.curriculum.lessonDuration")}
+                              placeholder={t("creatorEditor.builder.curriculum.minutes")}
+                              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                            />
+                          </div>
+                          {/* Drip, link, nota, texto e previa gratis sao a
+                              minoria dos casos: ficam a um clique daqui. */}
+                          <details className="rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3">
+                            <summary className="cursor-pointer text-xs font-semibold text-[var(--color-ink-soft)]">
+                              {t("creatorEditor.builder.curriculum.moreOptions")}
+                            </summary>
+                            <div className="mt-3 grid gap-3">
+                              <div className="grid gap-3 md:grid-cols-[160px_minmax(0,1fr)]">
+                                <input
+                                  value={lessonDripDelayDays}
+                                  onChange={(event) => setLessonDripDelayDays(event.target.value)}
+                                  disabled={!isEditable}
+                                  inputMode="numeric"
+                                  aria-label={t("creatorEditor.builder.curriculum.delayLabel")}
+                                  placeholder={t("creatorEditor.builder.curriculum.delayPlaceholder")}
+                                  className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                                />
+                                <input
+                                  value={lessonExternalUrl}
+                                  onChange={(event) => setLessonExternalUrl(event.target.value)}
+                                  disabled={!isEditable}
+                                  aria-label={t("creatorEditor.builder.curriculum.externalLabel")}
+                                  placeholder={t("creatorEditor.builder.curriculum.externalPlaceholder")}
+                                  className="min-w-0 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                                />
+                              </div>
+                              <textarea
+                                value={lessonDescription}
+                                onChange={(event) => setLessonDescription(event.target.value)}
+                                disabled={!isEditable}
+                                rows={2}
+                                aria-label={t("creatorEditor.builder.curriculum.noteLabel")}
+                                placeholder={t("creatorEditor.builder.curriculum.notePlaceholder")}
+                                className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                              />
+                              <textarea
+                                value={lessonContentText}
+                                onChange={(event) => setLessonContentText(event.target.value)}
+                                disabled={!isEditable}
+                                rows={3}
+                                aria-label={t("creatorEditor.builder.curriculum.textLabel")}
+                                placeholder={t("creatorEditor.builder.curriculum.textPlaceholder")}
+                                className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                              />
+                              <label className="flex items-start gap-3 rounded-[10px] border fine-rule bg-white p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+                                <input
+                                  type="checkbox"
+                                  checked={lessonIsFreePreview}
+                                  disabled={!isEditable}
+                                  onChange={(event) => setLessonIsFreePreview(event.target.checked)}
+                                  className="mt-1"
+                                />
+                                {t("creatorEditor.builder.curriculum.makePreview")}
+                              </label>
+                            </div>
+                          </details>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="submit"
+                              disabled={!isEditable}
+                              className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+                            >
+                              {t("creatorEditor.builder.curriculum.addLesson")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setLessonFormModuleId("")}
+                              className="button-outline px-4 py-2.5 text-sm"
+                            >
+                              {t("creatorEditor.builder.curriculum.cancel")}
+                            </button>
+                          </div>
+                        </form>
+                      ) : null}
+
                       {module.lessons.length === 0 ? (
                         <p className="rounded-[10px] border fine-rule bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
                           {t("creatorEditor.builder.curriculum.moduleEmpty")}
@@ -2527,9 +2649,10 @@ export function CourseBuilderStudio() {
                         ))
                       )}
                     </div>
+                    ) : null}
                   </article>
-                ))
-              )}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -2761,9 +2884,24 @@ export function CourseBuilderStudio() {
           </div>
         </section>
 
+        {/* A biblioteca inteira (upload de capa + lista de arquivos) vinha
+            aberta embaixo de toda aba e sozinha respondia por boa parte dos
+            3.138 px da aba de conteudo. Agora e um clique de quem precisa. */}
         {course ? (
-          <div className="course-builder-footer__full">
-            <CourseAssetUploader course={course} isEditable={isEditable} />
+          <div className="course-builder-footer__full grid gap-3">
+            <button
+              type="button"
+              onClick={() => setIsMediaLibraryOpen((current) => !current)}
+              className="button-outline inline-flex w-fit items-center gap-2 px-4 py-2.5 text-sm"
+            >
+              <ImageIcon aria-hidden="true" size={14} strokeWidth={1.9} />
+              {t(isMediaLibraryOpen
+                ? "creatorEditor.builder.curriculum.closeMediaLibrary"
+                : "creatorEditor.builder.curriculum.openMediaLibrary")}
+            </button>
+            {isMediaLibraryOpen ? (
+              <CourseAssetUploader course={course} isEditable={isEditable} />
+            ) : null}
           </div>
         ) : null}
       </div>
