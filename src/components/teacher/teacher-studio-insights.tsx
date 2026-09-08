@@ -13,16 +13,20 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { PeriodTabs } from "@/components/shared/period-tabs";
 import { StatusChip } from "@/components/shared/status-chip";
+import { RevenueChart } from "@/components/teacher/revenue-chart";
+import {
+  buildRevenueSeries,
+  resolveRevenueRangeWindow,
+  type RevenueRange,
+} from "@/domain/creator-reports";
 import type { Order } from "@/domain/order";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { logSubscriptionError } from "@/lib/data/subscription-error";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
-import { toDate } from "@/lib/format-date";
-
-type RevenueRange = "3m" | "6m" | "12m" | "all";
 
 const revenueRanges: RevenueRange[] = ["3m", "6m", "12m", "all"];
 
@@ -104,10 +108,14 @@ export function TeacherStudioInsights() {
   const hasSales = paidOrders.length > 0;
   const grossMinor = paidOrders.reduce((sum, order) => sum + order.amountMinor, 0);
   const monthlyRevenue = useMemo(
-    () => buildMonthlyRevenue(paidOrders, revenueRange),
+    () =>
+      buildRevenueSeries(
+        paidOrders,
+        resolveRevenueRangeWindow(paidOrders, revenueRange),
+        (date) => monthFormatter.format(date),
+      ),
     [paidOrders, revenueRange],
   );
-  const chart = useMemo(() => buildChart(monthlyRevenue), [monthlyRevenue]);
   const topCourses = useMemo(
     () => buildTopCourses(courses, paidOrders),
     [courses, paidOrders],
@@ -122,135 +130,27 @@ export function TeacherStudioInsights() {
           ficam sempre, com as dicas de vazio que ja tem. */}
       {hasSales ? (
         <section className="studio-dashboard-grid">
-          <div className="studio-chart-card dash-card p-5 sm:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h3 className="display-title text-2xl text-[var(--color-primary)]">
-                  {t("teach.insights.revenue")}
-                </h3>
-                <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
-                  {t(revenueRangeSubtitleKey[revenueRange])}
-                </p>
-              </div>
-              <div
-                className="studio-range-tabs"
-                role="group"
-                aria-label={t("teach.insights.rangeGroupLabel")}
-              >
-                {revenueRanges.map((range) => (
-                  <button
-                    key={range}
-                    type="button"
-                    aria-pressed={revenueRange === range}
-                    onClick={() => setRevenueRange(range)}
-                    className={revenueRange === range ? "is-active" : undefined}
-                  >
-                    {range === "all" ? t("teach.insights.rangeAllTab") : range}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="studio-chart-canvas">
-              <svg
-                viewBox={`0 0 ${chart.width} ${chart.height}`}
-                role="img"
-                aria-label={t("teach.insights.chartAria")}
-                className="h-full w-full"
-              >
-                <defs>
-                  <linearGradient id="studioRevenueArea" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#1a365d" stopOpacity="0.2" />
-                    <stop offset="100%" stopColor="#1a365d" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                {chart.gridLines.map((line) => (
-                  <line
-                    key={line.y}
-                    x1={chart.padLeft}
-                    x2={chart.width - chart.padRight}
-                    y1={line.y}
-                    y2={line.y}
-                    stroke="var(--color-line)"
-                    strokeDasharray={line.major ? "0" : "4 6"}
-                  />
-                ))}
-                {chart.yLabels.map((label) => (
-                  <text
-                    key={label.text}
-                    x={chart.padLeft - 8}
-                    y={label.y + 4}
-                    textAnchor="end"
-                    fontSize="10"
-                    fill="var(--color-ink-muted)"
-                    fontWeight="700"
-                  >
-                    {label.text}
-                  </text>
-                ))}
-                {monthlyRevenue.map((point, index) => (
-                  <text
-                    key={point.month}
-                    x={chart.points[index]?.[0] ?? 0}
-                    y={chart.height - 8}
-                    textAnchor="middle"
-                    fontSize="10"
-                    fill="var(--color-ink-muted)"
-                    fontWeight="700"
-                  >
-                    {point.month}
-                  </text>
-                ))}
-                <path d={chart.areaPath} fill="url(#studioRevenueArea)" />
-                <path
-                  d={chart.linePath}
-                  stroke="var(--color-primary)"
-                  strokeWidth="3"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                {chart.points.map((point, index) => (
-                  <circle
-                    key={`${point[0]}-${point[1]}`}
-                    cx={point[0]}
-                    cy={point[1]}
-                    r={index === chart.points.length - 1 ? 5 : 2.5}
-                    fill={index === chart.points.length - 1 ? "var(--color-accent)" : "var(--color-primary)"}
-                  />
-                ))}
-                {chart.lastPoint ? (
-                  <g>
-                    <rect
-                      x={chart.lastPoint[0] - 39}
-                      y={chart.lastPoint[1] - 38}
-                      rx="6"
-                      width="78"
-                      height="24"
-                      fill="#0f2744"
-                    />
-                    <text
-                      x={chart.lastPoint[0]}
-                      y={chart.lastPoint[1] - 21}
-                      textAnchor="middle"
-                      fontSize="11"
-                      fontWeight="800"
-                      fill="#fff"
-                    >
-                      {money.format(grossMinor / 100)}
-                    </text>
-                  </g>
-                ) : null}
-              </svg>
-
-              {!grossMinor ? (
-                <div className="studio-chart-empty">
-                  <p>{t("teach.insights.noRevenue")}</p>
-                  <span>{t("teach.insights.noRevenueDetail")}</span>
-                </div>
-              ) : null}
-            </div>
-          </div>
+          <RevenueChart
+            points={monthlyRevenue}
+            totalMinor={grossMinor}
+            totalLabel={money.format(grossMinor / 100)}
+            title={t("teach.insights.revenue")}
+            subtitle={t(revenueRangeSubtitleKey[revenueRange])}
+            ariaLabel={t("teach.insights.chartAria")}
+            emptyTitle={t("teach.insights.noRevenue")}
+            emptyDetail={t("teach.insights.noRevenueDetail")}
+            headerAction={
+              <PeriodTabs
+                options={revenueRanges}
+                value={revenueRange}
+                onChange={setRevenueRange}
+                label={t("teach.insights.rangeGroupLabel")}
+                renderLabel={(range) =>
+                  range === "all" ? t("teach.insights.rangeAllTab") : range
+                }
+              />
+            }
+          />
 
           <aside className="grid gap-5">
             <div className="dash-card p-5">
@@ -454,117 +354,6 @@ function buildActivity(
   return items.slice(0, 3);
 }
 
-function getRevenueMonthsBack(
-  paidOrders: Order[],
-  range: RevenueRange,
-  now: Date,
-): number {
-  if (range === "3m") {
-    return 3;
-  }
-  if (range === "6m") {
-    return 6;
-  }
-  if (range === "12m") {
-    return 12;
-  }
-
-  // "all": span from the earliest paid order to now, clamped to [1, 24] months
-  // so the monthly chart stays readable.
-  const earliest = paidOrders
-    .map((order) => getTimestampMillis(order.createdAt))
-    .filter((value): value is number => value !== null)
-    .sort((left, right) => left - right)[0];
-
-  if (!earliest) {
-    return 12;
-  }
-
-  const earliestDate = new Date(earliest);
-  const monthSpan =
-    (now.getFullYear() - earliestDate.getFullYear()) * 12 +
-    (now.getMonth() - earliestDate.getMonth()) +
-    1;
-
-  return Math.min(24, Math.max(1, monthSpan));
-}
-
-function buildMonthlyRevenue(paidOrders: Order[], range: RevenueRange) {
-  const now = new Date();
-  const monthsBack = getRevenueMonthsBack(paidOrders, range, now);
-  const months = Array.from({ length: monthsBack }, (_, index) => {
-    const date = new Date(
-      now.getFullYear(),
-      now.getMonth() - (monthsBack - 1) + index,
-      1,
-    );
-
-    return {
-      key: `${date.getFullYear()}-${date.getMonth()}`,
-      month: monthFormatter.format(date),
-      grossMinor: 0,
-    };
-  });
-
-  paidOrders.forEach((order) => {
-    const millis = getTimestampMillis(order.createdAt);
-    const date = millis ? new Date(millis) : now;
-    const key = `${date.getFullYear()}-${date.getMonth()}`;
-    const month = months.find((item) => item.key === key);
-
-    if (month) {
-      month.grossMinor += order.amountMinor;
-    }
-  });
-
-  return months;
-}
-
-function buildChart(monthlyRevenue: ReturnType<typeof buildMonthlyRevenue>) {
-  const width = 640;
-  const height = 240;
-  const padLeft = 48;
-  const padRight = 16;
-  const padTop = 18;
-  const padBottom = 32;
-  const innerWidth = width - padLeft - padRight;
-  const innerHeight = height - padTop - padBottom;
-  const maxGross = Math.max(...monthlyRevenue.map((point) => point.grossMinor), 10000);
-  const stepX = innerWidth / Math.max(1, monthlyRevenue.length - 1);
-  const points = monthlyRevenue.map((point, index) => {
-    const x = padLeft + index * stepX;
-    const y = padTop + innerHeight - (point.grossMinor / maxGross) * innerHeight;
-
-    return [x, y] as [number, number];
-  });
-  const linePath = points
-    .map((point, index) => `${index === 0 ? "M" : "L"}${point[0]},${point[1]}`)
-    .join(" ");
-  const baseline = padTop + innerHeight;
-  const areaPath = `${linePath} L${points[points.length - 1]?.[0] ?? padLeft},${baseline} L${points[0]?.[0] ?? padLeft},${baseline} Z`;
-  const gridLines = [0, 0.25, 0.5, 0.75, 1].map((position, index) => ({
-    y: padTop + innerHeight - position * innerHeight,
-    major: index === 0,
-  }));
-  const yLabels = [0, 0.25, 0.5, 0.75, 1].map((position) => ({
-    y: padTop + innerHeight - position * innerHeight,
-    text: formatAxisLabel(maxGross * position),
-  }));
-
-  return {
-    width,
-    height,
-    padLeft,
-    padRight,
-    points,
-    linePath,
-    areaPath,
-    gridLines,
-    yLabels,
-    lastPoint: points.at(-1) ?? null,
-  };
-}
-
 function buildCourseCode(title: string) {
   const letters = title
     .split(/\s+/)
@@ -574,20 +363,6 @@ function buildCourseCode(title: string) {
     .join("");
 
   return letters || "Co";
-}
-
-function formatAxisLabel(amountMinor: number) {
-  const dollars = amountMinor / 100;
-
-  if (dollars >= 1000) {
-    return `$${Math.round(dollars / 1000)}k`;
-  }
-
-  return `$${Math.round(dollars)}`;
-}
-
-function getTimestampMillis(value: unknown): number | null {
-  return toDate(value)?.getTime() ?? null;
 }
 
 function renderActivityIcon(icon: ActivityItem["icon"]) {
