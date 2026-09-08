@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 
 ## Current Position
 
-Phase: 11 of 12 (parity PRs, F4) running in parallel with the tail of Phases 8/9 (extraction rounds F1-r3 and F2-r5, Sonnet agents) and Phase 10 (design verdicts in the private vault, `F3-DECISOES.md`).
-Plan: 11-01 done (PR #253 merged `e224584`, migration applied in production first); next 11-02 (publish checklist panel, B01), 11-03 (pricing summary + Free/subscription bug, B04), then B02 storefront card.
+Phase: 11 of 12 (parity PRs, F4). Phases 8 and 9 (extraction) closed their last rounds: Hotmart 90/95 desktop, 82 mobile, 72 full-page (171 prints); SkillsetMind 100/100/100 (265 prints). Phase 10 (design verdicts, `F3-DECISOES.md` in the private vault) covers sections A, B, C, D, F and the visible part of E; rows E04–E11/E13 and F01/F02 stay blocked until production has one enrollment or a seeded preview exists.
+Plan: 11-01 done (PR #253 `e224584`, migration applied in production first); 11-02 done (PR #258 `dd45fe7`, checklist panel); guard fix from the suggested background task done (PR #257 `a805792`). In progress: 11-03 (pricing summary + Free/subscription bug, B04) and 11-05 (marketing overview as cards + live storefront page, A06/A07), two Opus agents. Queue: 11-04 (home: product thumbnails, hide empty revenue block), 11-06 (earnings: intro, 4-column tiles, Stripe locale), 11-07 (reports page), 11-08 (sales frame always visible + refund link), 11-10 (login: role title + switch link, Google button when the OAuth client exists), 11-11 (Teach shortcut in the Learn sidebar), 11-12 (builder curriculum: list first, lesson form inside module, media library out of the content tab), B02 storefront card.
 Status: In progress
-Last activity: 2026-09-08 03:40 — PR #253 reviewed by Fable, migration `20260908120000` applied and verified in production via Management API, squash-merged; issue #249 closed. Four front micro-PRs also merged tonight (#246 sidebar scrollbar, #248 compact locale button, #251 brand mark PNGs, #254 collapsed-rail centering).
+Last activity: 2026-09-08 04:11 — #258 merged; #257 reviewed and merged; F3 verdicts written for A, B (rest), C, D, E01/E02, F03–F06; 11-03 and 11-05 dispatched.
 
-Progress (v1.1): [███░░░░░░░] 1 of 6 phases complete (7 done; 8, 9, 10, 11 in progress)
+Progress (v1.1): [█████░░░░░] 3 of 6 phases complete (7, 8, 9 done; 10 done except blocked rows; 11 in progress)
 
 ## Accumulated Context
 
@@ -47,8 +47,8 @@ Decisions are logged in PROJECT.md. Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-09-08 03:40
-Stopped at: F1 round 3 and F2 round 5 extraction agents running in the connected Chrome (CDP, `pw.mjs`); 11-01 shipped; 11-02 brief being prepared for an Opus agent once an agent slot frees (two-agent ceiling for RAM).
+Last session: 2026-09-08 04:11
+Stopped at: 11-03 and 11-05 Opus agents running in worktrees `skillset-11-03` / `skillset-11-05`; Fable reviews each PR before merge. Extraction rounds finished; the connected Chrome (port 9333) stays open with both logins for the F5 visual QA.
 Resume file: None
 
 ## v1.0 context (2026-07-15, paused)
