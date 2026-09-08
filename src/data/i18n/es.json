@@ -1611,7 +1611,17 @@
         "payoutsReady": "Listo",
         "payoutsIncomplete": "Configuración incompleta",
         "edit": "Editar precios en el Creador",
-        "finishOnboarding": "Completar la configuración de pagos"
+        "finishOnboarding": "Completar la configuración de pagos",
+        "notApplicable": "—",
+        "installmentsHint": "Cuotas: {value}",
+        "paymentTypeHint": "Cómo se cobra a los compradores en el checkout.",
+        "paymentTypeFreeHint": "Curso gratuito: no se cobra nada en el checkout.",
+        "refundWindow": "Plazo de reembolso",
+        "refundWindowDays": "{days} días",
+        "refundWindowHint": "Garantía de la plataforma en todos los cursos: menos de la mitad completada y sin certificado emitido.",
+        "payoutsFreeHint": "Curso gratuito: no hay pagos que configurar.",
+        "newOffer": "Nueva oferta",
+        "newOfferCancel": "Cancelar"
       },
       "content": {
         "description": "{modules} y {lessons} en el plan de estudios.",

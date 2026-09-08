@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
 import { CourseShareLink } from "@/components/teacher/course-share-link";
 import { CurrencySelect } from "@/components/teacher/currency-select";
+import type { CoursePricingShape } from "@/domain/product-pricing";
 import type { TeacherCoursePaymentType } from "@/domain/teacher-course";
 
 type OfferPrice = {
@@ -47,24 +49,41 @@ function money(amountMinor: number, currency: string): string {
 export function CourseOffersPanel({
   courseId,
   courseTitle,
-  defaultCurrency = "USD",
+  coursePricing,
 }: {
   courseId: string;
   courseTitle: string;
-  defaultCurrency?: string;
+  /** Como o curso cobra hoje: e daqui que a primeira oferta nasce. */
+  coursePricing?: CoursePricingShape;
 }) {
+  const { t } = useTranslation();
   const [offers, setOffers] = useState<OfferRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [name, setName] = useState("Standard offer");
-  const [amount, setAmount] = useState("97");
-  const [currency, setCurrency] = useState(defaultCurrency || "USD");
-  const [paymentType, setPaymentType] =
-    useState<TeacherCoursePaymentType>("one_time");
+  // O formulario nascia com 97 USD avulso mesmo num curso gratuito ou por
+  // assinatura: a tela pedia para confirmar um preco que nao era o do curso.
+  // Semente unica, no primeiro render — reagir a cada mudanca do curso
+  // apagaria o que a pessoa ja estivesse digitando.
+  const [amount, setAmount] = useState(() =>
+    coursePricing ? String(coursePricing.amountMinor / 100) : "97",
+  );
+  const [currency, setCurrency] = useState(coursePricing?.currency || "USD");
+  const [paymentType, setPaymentType] = useState<TeacherCoursePaymentType>(
+    () => coursePricing?.paymentType ?? (coursePricing?.free ? "free" : "one_time"),
+  );
   const [isDefault, setIsDefault] = useState(true);
   const [publicCode, setPublicCode] = useState("");
+  // Com oferta na mesa, a tabela e o assunto; criar outra e uma acao, nao o
+  // primeiro que a pessoa ve. Sem nenhuma, o formulario aberto guia melhor que
+  // uma tabela vazia.
+  const [creating, setCreating] = useState(false);
+
+  const hasOffers = !loading && offers.length > 0;
+  // Sem nenhuma oferta o formulario segue aberto: vazio guiado bate tabela vazia.
+  const formOpen = creating || (!loading && offers.length === 0);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -132,6 +151,7 @@ export function CourseOffersPanel({
       }
       setNotice("Offer created. Its buyer link now resolves this exact price.");
       setPublicCode("");
+      setCreating(false);
       await reload();
     } catch (createError) {
       setError(
@@ -149,105 +169,22 @@ export function CourseOffersPanel({
       title="Offers & prices"
       description="Create one-time or subscription packages. The default drives the main page; every active offer has an exact buyer link."
     >
-      <form onSubmit={(e) => void handleCreate(e)} className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-            Offer name
-          </span>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className={inputClass}
-            required
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-            Public code (optional)
-          </span>
-          <input
-            value={publicCode}
-            onChange={(e) =>
-              setPublicCode(
-                e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 24),
-              )
-            }
-            placeholder="e.g. LAUNCH"
-            className={inputClass}
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-            Amount
-          </span>
-          <input
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            type="number"
-            min={0}
-            step="0.01"
-            className={inputClass}
-            required
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-            Currency
-          </span>
-          {/* Era um campo de texto livre de três letras: aceitava "ABC", que o
-              Stripe recusa só na hora de cobrar. O mesmo seletor do construtor,
-              com exatamente a lista que o Stripe aceita. */}
-          <CurrencySelect
-            value={currency}
-            onChange={setCurrency}
-            className={`${inputClass} w-full min-w-0`}
-            aria-label="Currency"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-            Payment type
-          </span>
-          <select
-            value={paymentType}
-            onChange={(e) => {
-              const next = e.target.value as TeacherCoursePaymentType;
-              setPaymentType(next);
-              if (next === "free") setIsDefault(true);
-            }}
-            className={inputClass}
-          >
-            <option value="one_time">One-time</option>
-            <option value="subscription_monthly">Subscription monthly</option>
-            <option value="subscription_yearly">Subscription yearly</option>
-            <option value="free">Free</option>
-          </select>
-        </label>
-        <label className="flex items-center gap-2 pt-6 text-sm text-[var(--color-ink)]">
-          <input
-            type="checkbox"
-            checked={isDefault}
-            disabled={paymentType === "free"}
-            onChange={(e) => setIsDefault(e.target.checked)}
-          />
-          Default offer (drives checkout + syncs legacy price)
-        </label>
-        <div className="sm:col-span-2">
+      {/* Com oferta criada, o formulario empurrava a lista real para baixo:
+          quem ja precificou vem aqui para conferir ou copiar link, nao para
+          criar de novo. */}
+      {hasOffers ? (
+        <div className="mt-4 flex justify-end">
           <button
-            type="submit"
-            disabled={saving}
-            className="button-solid px-5 py-2.5 text-xs disabled:opacity-60"
+            type="button"
+            onClick={() => setCreating((open) => !open)}
+            className="button-outline px-4 py-2 text-xs"
+            aria-expanded={creating}
           >
-            {saving ? "Creating..." : "Create offer"}
+            {creating
+              ? t("creatorPanel.hub.pricing.newOfferCancel")
+              : t("creatorPanel.hub.pricing.newOffer")}
           </button>
         </div>
-      </form>
-
-      {error ? (
-        <p className="mt-3 text-sm text-[var(--color-danger-fg)]">{error}</p>
-      ) : null}
-      {notice ? (
-        <p className="mt-3 text-sm text-[var(--color-ink-soft)]">{notice}</p>
       ) : null}
 
       {loading ? (
@@ -297,6 +234,110 @@ export function CourseOffersPanel({
           No offers yet — checkout uses the legacy course price until you create one.
         </p>
       )}
+
+      {formOpen ? (
+        <form onSubmit={(e) => void handleCreate(e)} className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
+              Offer name
+            </span>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputClass}
+              required
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
+              Public code (optional)
+            </span>
+            <input
+              value={publicCode}
+              onChange={(e) =>
+                setPublicCode(
+                  e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 24),
+                )
+              }
+              placeholder="e.g. LAUNCH"
+              className={inputClass}
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
+              Amount
+            </span>
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              type="number"
+              min={0}
+              step="0.01"
+              className={inputClass}
+              required
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
+              Currency
+            </span>
+            {/* Era um campo de texto livre de três letras: aceitava "ABC", que o
+                Stripe recusa só na hora de cobrar. O mesmo seletor do construtor,
+                com exatamente a lista que o Stripe aceita. */}
+            <CurrencySelect
+              value={currency}
+              onChange={setCurrency}
+              className={`${inputClass} w-full min-w-0`}
+              aria-label="Currency"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
+              Payment type
+            </span>
+            <select
+              value={paymentType}
+              onChange={(e) => {
+                const next = e.target.value as TeacherCoursePaymentType;
+                setPaymentType(next);
+                if (next === "free") setIsDefault(true);
+              }}
+              className={inputClass}
+            >
+              <option value="one_time">One-time</option>
+              <option value="subscription_monthly">Subscription monthly</option>
+              <option value="subscription_yearly">Subscription yearly</option>
+              <option value="free">Free</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-2 pt-6 text-sm text-[var(--color-ink)]">
+            <input
+              type="checkbox"
+              checked={isDefault}
+              disabled={paymentType === "free"}
+              onChange={(e) => setIsDefault(e.target.checked)}
+            />
+            Default offer (drives checkout + syncs legacy price)
+          </label>
+          <div className="sm:col-span-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="button-solid px-5 py-2.5 text-xs disabled:opacity-60"
+            >
+              {saving ? "Creating..." : "Create offer"}
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      {error ? (
+        <p className="mt-3 text-sm text-[var(--color-danger-fg)]">{error}</p>
+      ) : null}
+      {notice ? (
+        <p className="mt-3 text-sm text-[var(--color-ink-soft)]">{notice}</p>
+      ) : null}
+
     </PanelCard>
   );
 }
