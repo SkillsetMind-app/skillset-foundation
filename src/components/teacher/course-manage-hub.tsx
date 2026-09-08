@@ -272,7 +272,7 @@ function MarketplaceHighlightPanel({
 
 export function CourseManageHub({ courseId }: { courseId: string }) {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   // Deep-link from studio checklist (?section=pricing) — read during render
@@ -363,7 +363,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     const courseHeader = menu.parentElement?.previousElementSibling;
     if (courseHeader) observer?.observe(courseHeader);
     return () => observer?.disconnect();
-  }, [courseLoaded, course?.id, section]);
+  }, [courseLoaded, course?.id, section, locale]);
 
   useEffect(() => {
     if (!user) {

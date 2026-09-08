@@ -512,8 +512,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
 
   // jsdom has no layout. These explicit scrollports model an offscreen tab;
   // assertions check visibility and ancestor position, not a scrolling API.
-  function managementScrollports() {
-    let width = 334;
+  function managementScrollports(initialWidth = 334) {
+    let width = initialWidth;
     let vertical = false;
     let resize = () => {};
     const disconnect = vi.fn();
@@ -532,12 +532,13 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
         const roadmap = !row.classList.contains("overflow-x-auto");
         if (roadmap && !vertical) return new DOMRect();
         const index = Array.from(row.children).indexOf(this);
+        const spanish = row.textContent?.includes("Precios y ofertas");
         const top = 269 + (vertical ? (roadmap ? 640 : 32) - menu.scrollTop : 0);
         if (this.tagName === "BUTTON") {
           return new DOMRect(
-            28 + (vertical ? 8 : index * 139 - row.scrollLeft),
+            28 + (vertical ? 8 : index * (spanish ? 190 : 139) - row.scrollLeft),
             top + (vertical ? index * 48 : 0),
-            vertical ? 224 : 148,
+            vertical ? 224 : spanish ? 156 : 148,
             44,
           );
         }
@@ -567,7 +568,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
   }
 
   function expectSectionVisible(name: string, vertical = false) {
-    const menu = screen.getByRole("navigation", { name: "Course management sections" });
+    const menu = screen.getByRole("navigation", { name: /Course management sections|Secciones de gestión del curso/ });
     const button = within(menu).getByRole("button", { name });
     const bounds = (vertical ? menu : button.parentElement!).getBoundingClientRect();
     const rect = button.getBoundingClientRect();
@@ -640,6 +641,37 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const previousDisconnects = layout.disconnect.mock.calls.length;
     unmount();
     expect(layout.disconnect).toHaveBeenCalledTimes(previousDisconnects + 1);
+  });
+
+  it("keeps pricing visible through ES to EN and back without a URL change or resize", async () => {
+    managementScrollports(264);
+    mocks.searchParams.set("section", "pricing");
+    const { container } = render(
+      <I18nProvider initialLocale="es">
+        <SwitchLanguage />
+        {navigationFixture()}
+      </I18nProvider>,
+    );
+    await screen.findByRole("heading", { name: "Precios y checkout" });
+    const row = expectSectionVisible("Precios y ofertas");
+    const viewport = container.querySelector<HTMLElement>(".platform-content")!;
+    const menu = row.closest("nav")!;
+    const header = menu.parentElement!.previousElementSibling as HTMLElement;
+    const headerTop = header.getBoundingClientRect().top;
+    const rowWidth = row.getBoundingClientRect().width;
+    viewport.scrollTop = 17;
+    const query = mocks.searchParams.toString();
+
+    for (const label of ["Pricing & offers", "Precios y ofertas"]) {
+      fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+      expectSectionVisible(label);
+      expect(row.getBoundingClientRect().width).toBe(rowWidth);
+      expect(viewport.scrollTop).toBe(17);
+      expect(header.getBoundingClientRect().top).toBe(headerTop);
+      expect(mocks.searchParams.toString()).toBe(query);
+    }
+    expect(mocks.router.push).not.toHaveBeenCalled();
+    expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
   });
 
   it("fits the members preview to the intrinsic stage height, including height-only changes, and disconnects", async () => {
