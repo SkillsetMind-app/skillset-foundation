@@ -279,7 +279,9 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const related = count === 0 ? "" : count === 1 ? " y su 1 lección" : " y sus 2 lecciones";
     expect(confirm).toHaveBeenCalledExactlyOnceWith(`¿Eliminar el módulo "${title}"${related}? No se podrá deshacer después del guardado automático.`);
     expect(screen.getByRole("textbox", { name: "Módulo 1" })).toHaveValue(title);
-    expect(screen.getAllByRole("textbox", { name: "Título de la lección" })).toHaveLength(count + 1);
+    // A lista abre recolhida: as aulas do modulo aparecem quando ele abre.
+    fireEvent.click(screen.getByRole("button", { name: "Mostrar las lecciones del módulo 1" }));
+    expect(screen.queryAllByRole("textbox", { name: "Título de la lección" })).toHaveLength(count);
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
     expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
   });
@@ -287,9 +289,12 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
   it("localizes an existing module validation error and retains the unsaved lesson fields", async () => {
     renderBuilder("content");
     await screen.findByRole("heading", { name: mocks.course.title });
+    // A aula agora nasce dentro do modulo, e o formulario do modulo e um pedido.
+    fireEvent.click(screen.getByRole("button", { name: "Add lesson to module 1" }));
     const lesson = screen.getByRole("textbox", { name: "Lesson title" });
     fireEvent.change(lesson, { target: { value: "Lección $$ $& sin enviar" } });
     fireEvent.click(screen.getByRole("button", { name: "Add module" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create module" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Add a module title before creating the module.");
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Escribe un título antes de crear el módulo.");
@@ -341,6 +346,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(() => new Promise<void>((resolve) => { finishSave = resolve; }));
     renderBuilder("content");
     await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: "Add lesson to module 1" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Lesson title" }), { target: { value: "Aula $$ $&" } });
     fireEvent.click(screen.getByRole("button", { name: "Add lesson" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
