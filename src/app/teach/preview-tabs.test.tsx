@@ -95,7 +95,7 @@ const course: TeacherCourse = {
 
 // Next's filesystem route must exist: discovering modules also lets this test
 // fail with a useful assertion if the dynamic route is accidentally removed.
-const routes = import.meta.glob<{ default: typeof PreviewPage }>(
+const routes = import.meta.glob(
   "./builder/**/preview/**/page.tsx",
 );
 
@@ -111,7 +111,7 @@ async function renderPreview(tab?: string) {
   if (tab !== undefined) {
     const load = routes["./builder/[courseId]/preview/[tab]/page.tsx"];
     expect(load, "Next route /teach/builder/[courseId]/preview/[tab]").toBeDefined();
-    Page = (await load()).default;
+    Page = (await load() as { default: typeof PreviewPage }).default;
   }
   return render(<I18nProvider initialLocale={mocks.serverLocale}><SwitchLanguage />{await Page({ params: Promise.resolve({ courseId: course.id, tab }) })}</I18nProvider>);
 }
