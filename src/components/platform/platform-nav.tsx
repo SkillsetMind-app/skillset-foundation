@@ -362,6 +362,17 @@ function resolveContext(pathname: string, subject: PermissionSubject): PlatformN
     return "ops";
   }
 
+  // /account/payments e o dinheiro do PROFESSOR (a pagina inteira exige
+  // teacherStudio.access). Para quem tambem e admin, a regra abaixo devolvia
+  // "ops" — e como o item Earnings so existe no contexto teacher, a barra
+  // escondia justamente a pagina em que a pessoa estava.
+  if (
+    pathname.startsWith("/account/payments")
+    && hasPermission(subject, "teacherStudio.access")
+  ) {
+    return "teacher";
+  }
+
   if (hasPermission(subject, "platform.accessAdmin")) {
     return "ops";
   }

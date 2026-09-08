@@ -11,6 +11,7 @@ import {
 } from "@stripe/connect-js";
 import { useEffect, useRef, useState } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { Button, Card, Eyebrow, InlineAlert } from "@/components/ui";
 import {
   fetchConnectAccountSessionSecret,
@@ -80,6 +81,7 @@ export function TeacherConnectOnboarding({
   onAvailabilityChange,
 }: TeacherConnectOnboardingProps) {
   const { resolvedTheme } = useTheme();
+  const { locale } = useTranslation();
   const [connect, setConnect] = useState<StripeConnectInstance | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<LoadError["error"] | null>(null);
@@ -96,6 +98,13 @@ export function TeacherConnectOnboarding({
   useEffect(() => {
     themeRef.current = resolvedTheme;
   }, [resolvedTheme]);
+  // Mesmo motivo para o idioma: sem `locale` a Stripe adivinha pelo navegador e
+  // servia o KYC em portugues dentro de uma pagina em ingles. Ref para o init,
+  // `update()` abaixo para a troca ao vivo.
+  const localeRef = useRef(locale);
+  useEffect(() => {
+    localeRef.current = locale;
+  }, [locale]);
 
   // Report platform availability upward via a ref'd callback so the parent's
   // inline arrow doesn't retrigger the effect every render.
@@ -136,6 +145,8 @@ export function TeacherConnectOnboarding({
           // Inherit SkillsetMind brand colors (light/dark) so the embedded UI doesn't
           // look like a foreign Stripe widget plopped onto the page.
           appearance: buildConnectAppearance(themeRef.current),
+          // Idioma da INTERFACE, nao o do navegador.
+          locale: localeRef.current,
         });
         if (!cancelled) {
           setConnect(instance);
@@ -165,12 +176,13 @@ export function TeacherConnectOnboarding({
     };
   }, [retryKey]);
 
-  // Re-skin the already-running embedded widget when the teacher flips the theme,
-  // without re-initializing (which would reset their in-progress onboarding).
+  // Re-skin (and re-language) the already-running embedded widget when the
+  // teacher flips the theme or the interface language, without re-initializing
+  // (which would reset their in-progress onboarding).
   useEffect(() => {
     if (!connect) return;
-    connect.update({ appearance: buildConnectAppearance(resolvedTheme) });
-  }, [connect, resolvedTheme]);
+    connect.update({ appearance: buildConnectAppearance(resolvedTheme), locale });
+  }, [connect, resolvedTheme, locale]);
 
   async function openHostedFallback() {
     setError(null);

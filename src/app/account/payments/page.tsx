@@ -5,11 +5,10 @@ import { TeacherWalletPanel } from "@/components/teacher/teacher-wallet-panel";
 export default function AccountPaymentsPage() {
   return (
     <ProtectedSurface permissions={["teacherStudio.access"]}>
-      <PlatformShell
-        title="Payouts & tax"
-        description="Creator money only: Stripe Connect status, sales, earnings, refunds, and statements. Buyers pay your Stripe account directly — SkillsetMind never holds your money and adds no clearing period of its own. Payout timing is Stripe's, and depends on your country, payment method, and your Stripe account's payout schedule. Profile and security settings stay in Settings."
-        compact
-      >
+      {/* Sem `description`: as quatro frases que ficavam aqui empurravam o
+          primeiro numero para baixo de tres paragrafos. O texto vive agora no
+          "Learn more" recolhido do painel, em EN/ES. */}
+      <PlatformShell title="Payouts & tax" compact>
         <TeacherWalletPanel />
       </PlatformShell>
     </ProtectedSurface>

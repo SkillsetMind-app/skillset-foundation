@@ -1400,6 +1400,12 @@
       "emptyTitle": "Todavía no pasó nada.",
       "emptyDescription": "Las inscripciones, ventas, reseñas y preguntas de la comunidad aparecen aquí en cuanto ocurren."
     },
+    "earnings": {
+      "intro": "Los compradores pagan directamente a tu cuenta de Stripe: SkillsetMind nunca retiene tu dinero.",
+      "learnMore": "Más información",
+      "details": "Esta página es tu registro de ingresos: pedidos pagados, lo que cobró SkillsetMind y el estado de tu cuenta de Stripe Connect. Los plazos de pago son de Stripe y dependen de tu país, del método de pago y del calendario de pagos de tu cuenta de Stripe; una cuenta nueva espera la verificación antes de su primer pago. Stripe Connect debe tener los cobros y los pagos habilitados antes de que un producto de pago pueda publicarse. El perfil y la seguridad siguen en Ajustes.",
+      "netHint": "Neto de ventas únicas y por suscripción, después de la comisión de SkillsetMind y las comisiones de Stripe."
+    },
     "storefrontCard": {
       "eyebrow": "Dónde te compran",
       "title": "Tu tienda",
