@@ -42,6 +42,7 @@ import {
 } from "@/domain/product-pricing";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { teacherCanPublishCourse } from "@/domain/teacher-course";
+import { instructorPagePath } from "@/domain/user-profile";
 import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 import {
   setOwnCourseFeatured,
@@ -735,6 +736,13 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               <CourseShareLink
                 label={t("creatorPanel.hub.sections.page")}
                 path={`/courses/${encodeURIComponent(courseId)}`}
+                title={courseTitle}
+              />
+              {/* A vitrine do criador e a terceira porta de venda: sai na mesma
+                  base publica da pagina do produto, com o mesmo trio de botoes. */}
+              <CourseShareLink
+                label={t("creatorPanel.hub.links.storefront")}
+                path={instructorPagePath(course.ownerId)}
                 title={courseTitle}
               />
             </PanelCard>
