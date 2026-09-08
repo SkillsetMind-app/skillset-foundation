@@ -8,6 +8,7 @@ import {
   type CourseReadiness,
   type CourseReadinessItem,
 } from "@/domain/course-readiness";
+import { cn } from "@/lib/cn";
 
 // A barra "N de M" somava titulo, capa e repasse do Stripe como se fossem a
 // mesma coisa. A Hotmart separa em tres estados (conteudo salvo, pagina
@@ -27,7 +28,7 @@ export function ReadinessGroups({
   const { t } = useTranslation();
 
   return (
-    <div className={className}>
+    <div className={cn("grid-cols-1", className)}>
       {groupCourseReadiness(readiness).map((group) => (
         <section key={group.id} data-readiness-group={group.id}>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
@@ -39,7 +40,7 @@ export function ReadinessGroups({
               .replace("{done}", () => String(group.doneCount))
               .replace("{total}", () => String(group.total))}
           </p>
-          <ul className="mt-3 grid gap-3">{group.items.map(renderItem)}</ul>
+          <ul className="mt-3 grid grid-cols-1 gap-3">{group.items.map(renderItem)}</ul>
         </section>
       ))}
     </div>

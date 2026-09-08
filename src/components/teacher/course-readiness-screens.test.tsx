@@ -860,6 +860,24 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(screen.getByRole("button", { name: "Publish product" })).toBeDisabled();
   });
 
+  it("bounds the hub grid tracks without dropping a long author title", async () => {
+    const title = "LOCAL QA — Authored $$ and $& course title";
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, title });
+      return () => {};
+    });
+    render(<CourseManageHub courseId="course-1" />);
+    const menu = await screen.findByRole("navigation", { name: "Course management sections" });
+    const layout = menu.parentElement!;
+    // Structural guard only: jsdom cannot measure intrinsic grid overflow.
+    // Each nested track must shrink below its contents; real 320px QA checks
+    // the resulting canvas, title and checklist bounds independently.
+    expect(layout.parentElement).toHaveClass("grid-cols-1");
+    expect(layout).toHaveClass("grid-cols-1", "lg:grid-cols-[240px_minmax(0,1fr)]");
+    expect(menu.nextElementSibling).toHaveClass("grid-cols-1");
+    expect(screen.getByRole("heading", { level: 1, name: title })).toBeInTheDocument();
+  });
+
   it.each(["en", "es"] as const)("localizes the real manage checklist from %s without changing publication gates or edit destinations", async (initialLocale) => {
     const paidCourse = {
       ...mocks.course,
