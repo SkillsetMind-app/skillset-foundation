@@ -45,10 +45,15 @@ export function LoginForm() {
   // Deep link the sign-in wall captured (e.g. /learn/courses/x). Honored only
   // for onboarded accounts — first-time users still go through /welcome.
   const returnTo = useMemo(() => getSafeReturnTo(searchParams), [searchParams]);
-  const accessLabel = t(
-    pathIntent === "teacher" ? "auth.educatorAccess" : "auth.learnerAccess",
-  );
   const signupHref = getAuthRoute("signup", pathIntent, returnTo);
+  // Quem chegou pela entrada errada troca de papel aqui, levando junto o
+  // destino que a porta de login capturou.
+  const isEducator = pathIntent === "teacher";
+  const switchHref = getAuthRoute(
+    "signin",
+    isEducator ? "student" : "teacher",
+    returnTo,
+  );
   // Auth callback failures (expired/invalid recovery or OAuth links) arrive as
   // ?error= — without seeding it here they failed with no visible message.
   // Distinct reasons get distinct copy: collapsing them all into "expired"
@@ -282,7 +287,24 @@ export function LoginForm() {
 
   return (
     <form className="mt-5 grid gap-3.5" onSubmit={handleSubmit}>
-      <p className="text-sm text-[var(--color-ink-soft)]">{accessLabel}</p>
+      {isGoogleAuthEnabled ? (
+        <>
+          <button
+            type="button"
+            disabled={isLoading}
+            onClick={handleGoogleLogin}
+            className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
+          >
+            <GoogleMark />
+            {t("auth.continueWithGoogle")}
+          </button>
+          <div className="flex items-center gap-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
+            <span className="h-px flex-1 bg-[var(--color-line)]" />
+            {t("auth.signup.or")}
+            <span className="h-px flex-1 bg-[var(--color-line)]" />
+          </div>
+        </>
+      ) : null}
       <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
         {t("auth.email")}
         <input
@@ -347,22 +369,17 @@ export function LoginForm() {
       >
         {isLoading ? t("auth.signingIn") : t("auth.signIn")}
       </button>
-      {isGoogleAuthEnabled ? (
-        <button
-          type="button"
-          disabled={isLoading}
-          onClick={handleGoogleLogin}
-          className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
-        >
-          <GoogleMark />
-          {t("auth.continueWithGoogle")}
-        </button>
-      ) : null}
       <Link
         href={signupHref}
         className="auth-text-link text-sm font-semibold text-[var(--color-primary)]"
       >
         {t("auth.createAccount")}
+      </Link>
+      <Link
+        href={switchHref}
+        className="auth-text-link text-sm font-semibold text-[var(--color-primary)]"
+      >
+        {t(isEducator ? "auth.switchToLearner" : "auth.switchToEducator")}
       </Link>
     </form>
   );

@@ -32,6 +32,10 @@ export function AuthPage() {
     () => getAuthPathIntentFromSearchParams(searchParams),
     [searchParams],
   );
+  // O titulo diz o papel. Sem isso o papel so aparecia num eyebrow miudo e
+  // quem entrava pela porta errada nao percebia.
+  const modeKey = isSignup ? "Signup" : "Signin";
+  const roleKey = pathIntent === "teacher" ? "Educator" : "Learner";
 
   useEffect(() => {
     if (status === "loading" || entrySessionHandled.current) {
@@ -49,7 +53,7 @@ export function AuthPage() {
   return (
     <AuthFrame homeLabel={t("auth.page.backToHome")}>
       <h1 className="auth-title display-title">
-        {isSignup ? t("auth.page.titleSignup") : t("auth.page.titleSignin")}
+        {t(`auth.page.title${modeKey}${roleKey}`)}
       </h1>
       {isSignup ? <SignupForm /> : <LoginForm />}
     </AuthFrame>
