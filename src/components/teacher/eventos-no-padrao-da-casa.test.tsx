@@ -155,6 +155,11 @@ describe("agenda de eventos no padrao da casa", () => {
     expect(screen.getByRole("button", { name: "Export" })).toBeInTheDocument();
     expect(screen.getByText("2 sessions · Upcoming")).toBeInTheDocument();
 
+    // Mesma moldura de Vendas: a busca precisa de largura minima para nao
+    // encolher a 35 px no celular.
+    expect(screen.getByLabelText("Search sessions by title or course")).toHaveClass(
+      "min-w-[12rem]",
+    );
     fireEvent.change(screen.getByLabelText("Search sessions by title or course"), {
       target: { value: "case" },
     });

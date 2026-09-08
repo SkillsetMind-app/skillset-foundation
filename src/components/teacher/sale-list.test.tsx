@@ -65,9 +65,11 @@ describe("SaleList", () => {
     render(<SaleList />);
 
     expect(screen.getByLabelText("Filter by period")).toHaveValue("30d");
-    expect(
-      screen.getByLabelText("Search sales by course or order id"),
-    ).toBeInTheDocument();
+    // A busca tinha min-w-0: a 390 px virava uma caixa de 35 px entre os dois
+    // selects. Com um minimo ela quebra para a linha de baixo, inteira.
+    expect(screen.getByLabelText("Search sales by course or order id")).toHaveClass(
+      "min-w-[12rem]",
+    );
     expect(screen.getByLabelText("Filter by status")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /export/i })).toBeDisabled();
 

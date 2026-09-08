@@ -1,14 +1,17 @@
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import { TeacherEventStudio } from "@/components/teacher/teacher-event-studio";
+import { getServerTranslation } from "@/lib/i18n/server";
 
-export default function TeacherEventsPage() {
+export default async function TeacherEventsPage() {
+  const { t } = await getServerTranslation();
+
   return (
     <ProtectedSurface permissions={["teacherStudio.manageCourses"]}>
       <PlatformShell
-        eyebrow="Course agenda"
-        title="Schedule live learning."
-        description="Create course-linked live classes, mentorships, masterclasses, office hours, webinars, and deadlines. Learners see the same agenda in their workspace."
+        eyebrow={t("teach.eventsPage.eyebrow")}
+        title={t("teach.eventsPage.title")}
+        description={t("teach.eventsPage.description")}
       >
         <TeacherEventStudio />
       </PlatformShell>
