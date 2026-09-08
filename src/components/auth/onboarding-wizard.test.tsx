@@ -197,6 +197,25 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
     );
   });
 
+  it("um nome com $& no 'You're all set' aparece literal, sem virar '{name}'", async () => {
+    // Num replace sem callback, "$&" vira o trecho casado ("{name}") e "$'" o
+    // resto da frase. O nome vem do cadastro: e texto da pessoa, nao nosso.
+    mocks.auth = {
+      status: "authenticated",
+      user: { uid: "u-1", email: "patrick@example.com", displayName: "Mc$&Donald Simon", roles: ["student"] },
+    };
+
+    await terminar();
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: /all set/ }),
+    ).toHaveTextContent("You're all set, Mc$&Donald.");
+    await waitFor(
+      () => expect(mocks.router.replace).toHaveBeenCalledWith("/learn"),
+      { timeout: 4000 },
+    );
+  });
+
   it("descarta destino de outro dominio", async () => {
     mocks.searchParams = new URLSearchParams("returnTo=https://outro.com/pego");
 

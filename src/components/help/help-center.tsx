@@ -140,7 +140,7 @@ export function HelpCenter({ categories }: HelpCenterProps) {
       ) : (
         <div className="mt-10 rounded-[16px] border fine-rule bg-white p-8 text-center shadow-[var(--shadow-soft)]">
           <p className="text-sm font-semibold text-[var(--color-ink)]">
-            {t("publicPages.helpSearch.no_results").replace("{query}", query.trim())}
+            {t("publicPages.helpSearch.no_results").replace("{query}", () => query.trim())}
           </p>
           <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
             {t("publicPages.helpSearch.try_a_different_keyword_or_contact")}

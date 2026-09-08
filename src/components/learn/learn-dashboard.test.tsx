@@ -366,4 +366,19 @@ describe("LearnDashboard", () => {
       new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(fixtures.liveEvent.startsAt)),
     )).toBeInTheDocument();
   });
+
+  it("um nome com $& na saudacao aparece literal, sem virar '{name}'", async () => {
+    // Num replace sem callback, "$&" vira o trecho casado ("{name}") e "$'" o
+    // resto da frase. O nome vem do cadastro: e texto da pessoa, nao nosso.
+    mockUser.displayName = "Mc$&Donald Simon";
+    try {
+      render(<LearnDashboard />);
+
+      expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent(
+        "Hi, Mc$&Donald",
+      );
+    } finally {
+      mockUser.displayName = "Patrick Simon";
+    }
+  });
 });

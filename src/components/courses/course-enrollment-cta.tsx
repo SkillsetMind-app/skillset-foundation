@@ -56,7 +56,7 @@ export function CourseEnrollmentCta({ course }: CourseEnrollmentCtaProps) {
           className="button-outline mt-3 w-full px-5 py-2.5 text-sm"
         >{t("publicCourses.signInContinue")}</Link>
         <p className="mt-3 text-xs leading-6 text-[var(--color-ink-soft)]">
-          {t("publicCourses.sampleGuest").replace("{title}", course.title)}
+          {t("publicCourses.sampleGuest").replace("{title}", () => course.title)}
         </p>
       </>
     );
@@ -69,7 +69,7 @@ export function CourseEnrollmentCta({ course }: CourseEnrollmentCtaProps) {
         className="button-solid mt-6 w-full px-5 py-2.5 text-sm"
       >{t("publicCourses.browseLive")}</Link>
       <p className="mt-3 text-xs leading-6 text-[var(--color-ink-soft)]">
-        {t("publicCourses.sampleMember").replace("{title}", course.title)}
+        {t("publicCourses.sampleMember").replace("{title}", () => course.title)}
       </p>
     </>
   );

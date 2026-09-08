@@ -34,4 +34,12 @@ describe("saídas do tour de boas-vindas", () => {
     expect(close).toHaveClass("h-11", "w-11");
     expect(skip).toHaveClass("min-h-11");
   });
+
+  it("no tour do aluno, um nome com $& aparece literal, sem virar '{name}'", () => {
+    // Num replace sem callback, "$&" vira o trecho casado ("{name}") e "$'" o
+    // resto da frase. O nome vem do cadastro: é texto da pessoa, não nosso.
+    render(<WelcomeTour userId="student-1" firstName="Mc$&Donald" />);
+
+    expect(screen.getByRole("heading", { name: "Welcome, Mc$&Donald" })).toBeInTheDocument();
+  });
 });

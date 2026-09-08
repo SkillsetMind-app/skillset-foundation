@@ -2,7 +2,8 @@ import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import Page, { generateMetadata } from "./page";
-vi.mock("@/lib/data/server/public-course", () => ({ getPublicCourseByRef: async () => ({ title: "Focus", summary: "Build focus", coverImageUrl: null }) }));
+const state = vi.hoisted(() => ({ title: "Focus" }));
+vi.mock("@/lib/data/server/public-course", () => ({ getPublicCourseByRef: async () => ({ title: state.title, summary: "Build focus", coverImageUrl: null }) }));
 vi.mock("@/components/site/site-nav", () => ({ SiteNav: () => null }));
 vi.mock("@/components/courses/creator-course-detail", () => ({ CreatorCourseDetail: (props: { checkoutOnly?: boolean; courseIdOverride?: string; hideHeader?: boolean }) => <div data-testid="checkout" data-compact={props.checkoutOnly} data-course={props.courseIdOverride} data-hide-header={props.hideHeader} /> }));
 afterEach(cleanup);
@@ -19,6 +20,17 @@ it("uses public course metadata and the permanent checkout canonical", async () 
   expect(metadata.title).toContain("Pago");
   expect(metadata.description).toBe("Build focus");
   expect(metadata.alternates?.canonical).toBe("https://www.skillsetmind.com/courses/focus/checkout");
+});
+it("um título com $& no <title> do checkout aparece literal, sem virar '{title}'", async () => {
+  // Num replace sem callback, "$&" vira o trecho casado ("{title}"). O título é
+  // texto do professor, não nosso.
+  state.title = "Focus $&";
+  try {
+    const metadata = await generateMetadata({ params: Promise.resolve({ slug: "focus" }) });
+    expect(metadata.title).toContain("Focus $& — Pago");
+  } finally {
+    state.title = "Focus";
+  }
 });
 
 vi.mock("@/lib/i18n/server", () => ({ getServerTranslation: async () => ({ locale: "es", t: (key: string) => translate(getDictionary("es"), key) }) }));

@@ -212,4 +212,24 @@ describe("Recent activity na Home do professor", () => {
     const [item] = await screen.findAllByRole("listitem");
     expect(item).toHaveTextContent("Hace 1 d");
   });
+
+  // Num replace sem callback, "$&" vira o trecho casado ("{name}", "{course}")
+  // e "$'" o resto da frase. Nome de aluno e titulo de curso sao texto da
+  // pessoa, nao nosso.
+  it("um nome ou titulo com $& aparece literal, sem virar '{name}' ou '{course}'", async () => {
+    mocks.students = [
+      {
+        enrollmentId: "enr-1",
+        courseId: "course-1",
+        courseTitle: "Hyp$&nosis",
+        displayName: "Mc$&Donald",
+        enrolledAt: isoDaysAgo(1),
+      },
+    ];
+
+    render(<StudioRecentActivity courses={courses} />);
+
+    const [item] = await screen.findAllByRole("listitem");
+    expect(item).toHaveTextContent("Mc$&Donald enrolled in Hyp$&nosis");
+  });
 });

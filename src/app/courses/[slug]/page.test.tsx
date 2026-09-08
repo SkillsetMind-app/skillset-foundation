@@ -2,7 +2,7 @@ import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import CourseDetailPage from "@/app/courses/[slug]/page";
+import CourseDetailPage, { generateMetadata } from "@/app/courses/[slug]/page";
 import type { PublicCourseSummary } from "@/lib/data/server/public-course";
 
 const mocks = vi.hoisted(() => ({
@@ -73,6 +73,16 @@ describe("página do curso de criador", () => {
 
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
     expect(screen.getByText("client header shown")).toBeInTheDocument();
+  });
+
+  it("sem resumo, a descrição do <meta> usa o título — e um título com $& aparece literal", async () => {
+    // Num replace sem callback, "$&" vira o trecho casado ("{title}"). O título é
+    // texto do professor, não nosso.
+    mocks.getPublicCourseByRef.mockResolvedValue({ ...published, title: "Deep $& Focus", summary: null });
+
+    const metadata = await generateMetadata({ params: Promise.resolve({ slug: "deep-focus-systems" }) });
+
+    expect(metadata.description).toContain("Deep $& Focus: contenido");
   });
 });
 

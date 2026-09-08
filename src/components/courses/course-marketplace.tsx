@@ -511,8 +511,8 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                     aria-pressed={isWishlisted}
                     aria-label={
                       isWishlisted
-                        ? t("publicCourses.removeTitleWishlist").replace("{title}", track.title)
-                        : t("publicCourses.saveTitleWishlist").replace("{title}", track.title)
+                        ? t("publicCourses.removeTitleWishlist").replace("{title}", () => track.title)
+                        : t("publicCourses.saveTitleWishlist").replace("{title}", () => track.title)
                     }
                     title={
                       isWishlisted

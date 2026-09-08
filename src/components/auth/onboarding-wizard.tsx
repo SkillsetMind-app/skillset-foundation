@@ -542,7 +542,7 @@ export function OnboardingWizard() {
             {t("authFlow.onboarding.welcome")}
           </p>
           <h1 className="display-title mt-4 text-[38px] font-semibold leading-[1.1] text-[var(--color-primary)]">
-            {name ? t("authFlow.onboarding.allSet").replace("{name}", name) : t("authFlow.onboarding.allSetAnonymous")}
+            {name ? t("authFlow.onboarding.allSet").replace("{name}", () => name) : t("authFlow.onboarding.allSetAnonymous")}
           </h1>
           <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("authFlow.onboarding.completeDescription")}

@@ -168,7 +168,7 @@ export function LearnDashboard() {
   const greeting = (
     <h1 className="display-title text-3xl leading-tight text-[var(--color-primary)] sm:text-4xl">
       {firstName
-        ? t("learn.dashboard.greetingNamed").replace("{name}", firstName)
+        ? t("learn.dashboard.greetingNamed").replace("{name}", () => firstName)
         : t("learn.dashboard.greeting")}
     </h1>
   );

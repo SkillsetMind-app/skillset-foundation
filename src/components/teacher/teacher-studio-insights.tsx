@@ -374,7 +374,7 @@ function buildActivity(
   if (needsChanges) {
     items.push({
       title: t("teach.insights.actChangesTitle"),
-      detail: t("teach.insights.actChangesDetail").replace("{title}", needsChanges.title),
+      detail: t("teach.insights.actChangesDetail").replace("{title}", () => needsChanges.title),
       href: `/teach/builder?courseId=${encodeURIComponent(needsChanges.id)}&tab=review`,
       kind: "urgent",
       icon: "flag",
@@ -384,7 +384,7 @@ function buildActivity(
   if (emptyDraft) {
     items.push({
       title: t("teach.insights.actEmptyDraftTitle"),
-      detail: t("teach.insights.actEmptyDraftDetail").replace("{title}", emptyDraft.title),
+      detail: t("teach.insights.actEmptyDraftDetail").replace("{title}", () => emptyDraft.title),
       href: `/teach/builder?courseId=${emptyDraft.id}`,
       kind: "normal",
       icon: "clock",
@@ -404,7 +404,7 @@ function buildActivity(
   if (reviewReadyDraft) {
     items.push({
       title: t("teach.insights.actSubmitTitle"),
-      detail: t("teach.insights.actSubmitDetail").replace("{title}", reviewReadyDraft.title),
+      detail: t("teach.insights.actSubmitDetail").replace("{title}", () => reviewReadyDraft.title),
       href: `/teach/builder?courseId=${encodeURIComponent(reviewReadyDraft.id)}&tab=review`,
       kind: "success",
       icon: "sparkle",
@@ -414,7 +414,7 @@ function buildActivity(
   if (inReview) {
     items.push({
       title: t("teach.insights.actInReviewTitle"),
-      detail: t("teach.insights.actInReviewDetail").replace("{title}", inReview.title),
+      detail: t("teach.insights.actInReviewDetail").replace("{title}", () => inReview.title),
       href: `/teach/builder?courseId=${encodeURIComponent(inReview.id)}&tab=review`,
       kind: "normal",
       icon: "clock",
