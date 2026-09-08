@@ -9,6 +9,7 @@ import {
   Check,
   Circle,
   Gift,
+  Layers3,
   Plus,
   Repeat2,
   Route,
@@ -380,6 +381,22 @@ function StudioProductsSection({
                 href={`/teach/courses/${encodeURIComponent(course.id)}/manage`}
                 className="flex h-full min-h-36 flex-col rounded-[8px] border border-[var(--color-line)] bg-white p-4 transition hover:border-[var(--color-primary-light)] hover:shadow-sm"
               >
+                {/* A mesma miniatura 16:9 da lista de produtos (/teach/builder):
+                    a capa quando existe, o mesmo icone quando nao existe. Sem a
+                    capa o card era so texto e o professor nao reconhecia o
+                    proprio produto. */}
+                <div className="mb-3 grid aspect-video w-full place-items-center overflow-hidden rounded-[6px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
+                  {course.coverImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={course.coverImageUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <Layers3 aria-hidden="true" size={19} strokeWidth={1.7} />
+                  )}
+                </div>
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
                     {t(productTypeKey(course))}

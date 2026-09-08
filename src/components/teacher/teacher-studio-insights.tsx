@@ -99,6 +99,9 @@ export function TeacherStudioInsights() {
   }, [user]);
 
   const paidOrders = orders.filter((order) => order.status === "paid");
+  // Historico de venda = existe pedido pago, nao "entrou dinheiro": um pedido
+  // pago de valor zero (produto gratis) ja e historico e merece o grafico.
+  const hasSales = paidOrders.length > 0;
   const grossMinor = paidOrders.reduce((sum, order) => sum + order.amountMinor, 0);
   const monthlyRevenue = useMemo(
     () => buildMonthlyRevenue(paidOrders, revenueRange),
@@ -113,180 +116,186 @@ export function TeacherStudioInsights() {
 
   return (
     <div className="grid gap-8">
-      <section className="studio-dashboard-grid">
-        <div className="studio-chart-card dash-card p-5 sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h3 className="display-title text-2xl text-[var(--color-primary)]">
-                {t("teach.insights.revenue")}
-              </h3>
-              <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
-                {t(revenueRangeSubtitleKey[revenueRange])}
-              </p>
-            </div>
-            <div
-              className="studio-range-tabs"
-              role="group"
-              aria-label={t("teach.insights.rangeGroupLabel")}
-            >
-              {revenueRanges.map((range) => (
-                <button
-                  key={range}
-                  type="button"
-                  aria-pressed={revenueRange === range}
-                  onClick={() => setRevenueRange(range)}
-                  className={revenueRange === range ? "is-active" : undefined}
-                >
-                  {range === "all" ? t("teach.insights.rangeAllTab") : range}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="studio-chart-canvas">
-            <svg
-              viewBox={`0 0 ${chart.width} ${chart.height}`}
-              role="img"
-              aria-label={t("teach.insights.chartAria")}
-              className="h-full w-full"
-            >
-              <defs>
-                <linearGradient id="studioRevenueArea" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#1a365d" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="#1a365d" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              {chart.gridLines.map((line) => (
-                <line
-                  key={line.y}
-                  x1={chart.padLeft}
-                  x2={chart.width - chart.padRight}
-                  y1={line.y}
-                  y2={line.y}
-                  stroke="var(--color-line)"
-                  strokeDasharray={line.major ? "0" : "4 6"}
-                />
-              ))}
-              {chart.yLabels.map((label) => (
-                <text
-                  key={label.text}
-                  x={chart.padLeft - 8}
-                  y={label.y + 4}
-                  textAnchor="end"
-                  fontSize="10"
-                  fill="var(--color-ink-muted)"
-                  fontWeight="700"
-                >
-                  {label.text}
-                </text>
-              ))}
-              {monthlyRevenue.map((point, index) => (
-                <text
-                  key={point.month}
-                  x={chart.points[index]?.[0] ?? 0}
-                  y={chart.height - 8}
-                  textAnchor="middle"
-                  fontSize="10"
-                  fill="var(--color-ink-muted)"
-                  fontWeight="700"
-                >
-                  {point.month}
-                </text>
-              ))}
-              <path d={chart.areaPath} fill="url(#studioRevenueArea)" />
-              <path
-                d={chart.linePath}
-                stroke="var(--color-primary)"
-                strokeWidth="3"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              {chart.points.map((point, index) => (
-                <circle
-                  key={`${point[0]}-${point[1]}`}
-                  cx={point[0]}
-                  cy={point[1]}
-                  r={index === chart.points.length - 1 ? 5 : 2.5}
-                  fill={index === chart.points.length - 1 ? "var(--color-accent)" : "var(--color-primary)"}
-                />
-              ))}
-              {chart.lastPoint ? (
-                <g>
-                  <rect
-                    x={chart.lastPoint[0] - 39}
-                    y={chart.lastPoint[1] - 38}
-                    rx="6"
-                    width="78"
-                    height="24"
-                    fill="#0f2744"
-                  />
-                  <text
-                    x={chart.lastPoint[0]}
-                    y={chart.lastPoint[1] - 21}
-                    textAnchor="middle"
-                    fontSize="11"
-                    fontWeight="800"
-                    fill="#fff"
-                  >
-                    {money.format(grossMinor / 100)}
-                  </text>
-                </g>
-              ) : null}
-            </svg>
-
-            {!grossMinor ? (
-              <div className="studio-chart-empty">
-                <p>{t("teach.insights.noRevenue")}</p>
-                <span>{t("teach.insights.noRevenueDetail")}</span>
+      {/* Grafico de receita e Top courses so depois da 1a venda. Sem
+          nenhuma venda esse bloco era ~700px de nada: um grafico vazio
+          dizendo "No revenue yet" e uma lista vazia. Os 4 tiles acima
+          ficam sempre, com as dicas de vazio que ja tem. */}
+      {hasSales ? (
+        <section className="studio-dashboard-grid">
+          <div className="studio-chart-card dash-card p-5 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h3 className="display-title text-2xl text-[var(--color-primary)]">
+                  {t("teach.insights.revenue")}
+                </h3>
+                <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
+                  {t(revenueRangeSubtitleKey[revenueRange])}
+                </p>
               </div>
-            ) : null}
-          </div>
-        </div>
-
-        <aside className="grid gap-5">
-          <div className="dash-card p-5">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="display-title text-2xl text-[var(--color-primary)]">
-                {t("teach.insights.topCourses")}
-              </h3>
-              <Link href="/teach/builder" className="button-outline px-3.5 py-2 text-xs">
-                {t("teach.insights.allCourses")}
-              </Link>
-            </div>
-            <div className="mt-4 grid gap-3">
-              {topCourses.length ? (
-                topCourses.map((course) => (
-                  <Link
-                    key={course.id}
-                    href={`/teach/builder?courseId=${course.id}`}
-                    className="studio-course-row"
+              <div
+                className="studio-range-tabs"
+                role="group"
+                aria-label={t("teach.insights.rangeGroupLabel")}
+              >
+                {revenueRanges.map((range) => (
+                  <button
+                    key={range}
+                    type="button"
+                    aria-pressed={revenueRange === range}
+                    onClick={() => setRevenueRange(range)}
+                    className={revenueRange === range ? "is-active" : undefined}
                   >
-                    <span className="studio-course-row__thumb">{course.code}</span>
-                    <span className="min-w-0">
-                      <strong>{course.title}</strong>
-                      <small>
-                        {t("teach.insights.courseMeta")
-                          .replace("{lessons}", String(course.lessonCount))
-                          .replace("{orders}", String(course.orders))}
-                      </small>
-                    </span>
-                    <span className="studio-course-row__value">
-                      <strong>{money.format(course.grossMinor / 100)}</strong>
-                      <StatusChip status={course.status} />
-                    </span>
-                  </Link>
-                ))
-              ) : (
-                <RichEmptyLine
-                  title={t("teach.insights.noCoursesTitle")}
-                  detail={t("teach.insights.noCoursesDetail")}
+                    {range === "all" ? t("teach.insights.rangeAllTab") : range}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="studio-chart-canvas">
+              <svg
+                viewBox={`0 0 ${chart.width} ${chart.height}`}
+                role="img"
+                aria-label={t("teach.insights.chartAria")}
+                className="h-full w-full"
+              >
+                <defs>
+                  <linearGradient id="studioRevenueArea" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#1a365d" stopOpacity="0.2" />
+                    <stop offset="100%" stopColor="#1a365d" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                {chart.gridLines.map((line) => (
+                  <line
+                    key={line.y}
+                    x1={chart.padLeft}
+                    x2={chart.width - chart.padRight}
+                    y1={line.y}
+                    y2={line.y}
+                    stroke="var(--color-line)"
+                    strokeDasharray={line.major ? "0" : "4 6"}
+                  />
+                ))}
+                {chart.yLabels.map((label) => (
+                  <text
+                    key={label.text}
+                    x={chart.padLeft - 8}
+                    y={label.y + 4}
+                    textAnchor="end"
+                    fontSize="10"
+                    fill="var(--color-ink-muted)"
+                    fontWeight="700"
+                  >
+                    {label.text}
+                  </text>
+                ))}
+                {monthlyRevenue.map((point, index) => (
+                  <text
+                    key={point.month}
+                    x={chart.points[index]?.[0] ?? 0}
+                    y={chart.height - 8}
+                    textAnchor="middle"
+                    fontSize="10"
+                    fill="var(--color-ink-muted)"
+                    fontWeight="700"
+                  >
+                    {point.month}
+                  </text>
+                ))}
+                <path d={chart.areaPath} fill="url(#studioRevenueArea)" />
+                <path
+                  d={chart.linePath}
+                  stroke="var(--color-primary)"
+                  strokeWidth="3"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
-              )}
+                {chart.points.map((point, index) => (
+                  <circle
+                    key={`${point[0]}-${point[1]}`}
+                    cx={point[0]}
+                    cy={point[1]}
+                    r={index === chart.points.length - 1 ? 5 : 2.5}
+                    fill={index === chart.points.length - 1 ? "var(--color-accent)" : "var(--color-primary)"}
+                  />
+                ))}
+                {chart.lastPoint ? (
+                  <g>
+                    <rect
+                      x={chart.lastPoint[0] - 39}
+                      y={chart.lastPoint[1] - 38}
+                      rx="6"
+                      width="78"
+                      height="24"
+                      fill="#0f2744"
+                    />
+                    <text
+                      x={chart.lastPoint[0]}
+                      y={chart.lastPoint[1] - 21}
+                      textAnchor="middle"
+                      fontSize="11"
+                      fontWeight="800"
+                      fill="#fff"
+                    >
+                      {money.format(grossMinor / 100)}
+                    </text>
+                  </g>
+                ) : null}
+              </svg>
+
+              {!grossMinor ? (
+                <div className="studio-chart-empty">
+                  <p>{t("teach.insights.noRevenue")}</p>
+                  <span>{t("teach.insights.noRevenueDetail")}</span>
+                </div>
+              ) : null}
             </div>
           </div>
-        </aside>
-      </section>
+
+          <aside className="grid gap-5">
+            <div className="dash-card p-5">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="display-title text-2xl text-[var(--color-primary)]">
+                  {t("teach.insights.topCourses")}
+                </h3>
+                <Link href="/teach/builder" className="button-outline px-3.5 py-2 text-xs">
+                  {t("teach.insights.allCourses")}
+                </Link>
+              </div>
+              <div className="mt-4 grid gap-3">
+                {topCourses.length ? (
+                  topCourses.map((course) => (
+                    <Link
+                      key={course.id}
+                      href={`/teach/builder?courseId=${course.id}`}
+                      className="studio-course-row"
+                    >
+                      <span className="studio-course-row__thumb">{course.code}</span>
+                      <span className="min-w-0">
+                        <strong>{course.title}</strong>
+                        <small>
+                          {t("teach.insights.courseMeta")
+                            .replace("{lessons}", String(course.lessonCount))
+                            .replace("{orders}", String(course.orders))}
+                        </small>
+                      </span>
+                      <span className="studio-course-row__value">
+                        <strong>{money.format(course.grossMinor / 100)}</strong>
+                        <StatusChip status={course.status} />
+                      </span>
+                    </Link>
+                  ))
+                ) : (
+                  <RichEmptyLine
+                    title={t("teach.insights.noCoursesTitle")}
+                    detail={t("teach.insights.noCoursesDetail")}
+                  />
+                )}
+              </div>
+            </div>
+          </aside>
+        </section>
+      ) : null}
 
       <section>
         <div className="sec-head">
