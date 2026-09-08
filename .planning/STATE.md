@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 ## Current Position
 
 Phase: 11 of 12 (parity PRs, F4). Phases 8 and 9 (extraction) closed their last rounds: Hotmart 90/95 desktop, 82 mobile, 72 full-page (171 prints); SkillsetMind 100/100/100 (265 prints). Phase 10 (design verdicts, `F3-DECISOES.md` in the private vault) covers sections A, B, C, D, F and the visible part of E; rows E04–E11/E13 and F01/F02 stay blocked until production has one enrollment or a seeded preview exists.
-Plan: 11-01 done (PR #253 `e224584`, migration applied in production first); 11-02 done (PR #258 `dd45fe7`, checklist panel); guard fix from the suggested background task done (PR #257 `a805792`). In progress: 11-03 (pricing summary + Free/subscription bug, B04) and 11-05 (marketing overview as cards + live storefront page, A06/A07), two Opus agents. Queue: 11-04 (home: product thumbnails, hide empty revenue block), 11-06 (earnings: intro, 4-column tiles, Stripe locale), 11-07 (reports page), 11-08 (sales frame always visible + refund link), 11-10 (login: role title + switch link, Google button when the OAuth client exists), 11-11 (Teach shortcut in the Learn sidebar), 11-12 (builder curriculum: list first, lesson form inside module, media library out of the content tab), B02 storefront card.
+Plan: done — 11-01 (PR #253 `e224584`, migration applied in production first), 11-02 (PR #258 `dd45fe7`, checklist panel), 11-03 (PR #262 `aaa37cb`, pricing shape in the domain + offer form seeded from the course price + 4 tiles + list before form), 11-05 (PR #261 `4be1f77`, marketing cards with real state + storefront page with public link and published state), plus the guard fix #257 `a805792`. Next: 11-12 (builder curriculum: list first, lesson form inside the module, media library out of the content tab) and 11-08 (sales frame always visible, count line, short empty state, "Refund in Stripe" link). Queue after that: 11-06 (earnings), 11-04 (home), 11-07 (reports), 11-10 (login), 11-11 (Teach shortcut in Learn), B02 storefront card, 11-13 (online events on the house pattern), 11-14 (i18n of course-offers-panel literals).
 Status: In progress
-Last activity: 2026-09-08 04:11 — #258 merged; #257 reviewed and merged; F3 verdicts written for A, B (rest), C, D, E01/E02, F03–F06; 11-03 and 11-05 dispatched.
+Last activity: 2026-09-08 04:38 — #261 and #262 reviewed by Fable and squash-merged; worktrees cleaned (junction detached first — lesson recorded after the 04:10 node_modules incident).
 
 Progress (v1.1): [█████░░░░░] 3 of 6 phases complete (7, 8, 9 done; 10 done except blocked rows; 11 in progress)
 
@@ -47,8 +47,8 @@ Decisions are logged in PROJECT.md. Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-09-08 04:11
-Stopped at: 11-03 and 11-05 Opus agents running in worktrees `skillset-11-03` / `skillset-11-05`; Fable reviews each PR before merge. Extraction rounds finished; the connected Chrome (port 9333) stays open with both logins for the F5 visual QA.
+Last session: 2026-09-08 04:40
+Stopped at: 11-12 and 11-08 being dispatched to Opus agents (briefs in the session scratchpad; handoff in the daily log `PS8-OS/06-daily/2026-09-07-skillsetmind-paridade-hotmart-v2.md`). Fable's model quota was at 15% at 04:19, so the next reviews may fall to the next session. The connected Chrome (port 9333) stays open with both logins for the F5 visual QA.
 Resume file: None
 
 ## v1.0 context (2026-07-15, paused)
