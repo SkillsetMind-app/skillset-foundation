@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
 import { NotificationBell } from "@/components/platform/notification-bell";
 import { PlatformSearch } from "@/components/platform/platform-search";
 import { AccountMenu } from "@/components/site/account-menu";
@@ -81,6 +82,11 @@ export function PlatformHeader({ currentNavigationHref, searchHref }: {
           {status === "authenticated" && user ? (
             <AccountMenu user={user} onSignOut={signOut} />
           ) : null}
+          {/* O idioma só existia no site público: dentro de /teach, /learn,
+              /account e /ops a pessoa tinha que sair da plataforma para trocar.
+              Último item do cluster, no extremo direito — onde o olho procura.
+              Todas as quatro superfícies passam por este mesmo cabeçalho. */}
+          <LocaleSwitcher variant="compact" />
         </div>
       </div>
     </header>

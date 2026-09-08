@@ -22,7 +22,7 @@ function Probe() {
   return <p>{t("nav.signIn")}</p>;
 }
 
-function renderSwitcher(props: { dropUp?: boolean } = {}) {
+function renderSwitcher(props: { dropUp?: boolean; variant?: "default" | "compact" } = {}) {
   render(
     <I18nProvider initialLocale="en">
       <a href="#fora">fora</a>
@@ -45,8 +45,30 @@ describe("LocaleSwitcher", () => {
     expect(trigger).toHaveAttribute("aria-haspopup", "listbox");
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     expect(trigger.className).not.toMatch(/outline-none/);
+    expect(trigger.querySelector("svg")).not.toBeNull();
     expect(document.querySelector("select")).toBeNull();
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  // O pill de 44px com seta era grande demais dentro de uma barra de ícones.
+  // Compacto = a mesma caixa dos vizinhos (busca, tema, sino): 40px, moldura
+  // quadrada de cantos suaves, só a sigla. O menu não muda.
+  it("compacto: caixa de 40px quadrada, só a sigla, sem a seta — e o menu abre igual", () => {
+    const trigger = renderSwitcher({ variant: "compact" });
+    expect(trigger).toHaveClass("size-10", "rounded-[10px]");
+    expect(trigger).not.toHaveClass("rounded-full", "min-w-11");
+    expect(trigger).toHaveTextContent("EN");
+    expect(trigger.querySelector("svg")).toBeNull();
+    expect(trigger).toHaveAttribute("aria-haspopup", "listbox");
+    expect(trigger.className).not.toMatch(/outline-none/);
+
+    const menu = openMenu(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(menu).toHaveClass("right-0", "top-full");
+    expect(within(menu).getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "English",
+      "Español",
+    ]);
   });
 
   it("abre com clique, lista as duas opções e marca a atual", () => {

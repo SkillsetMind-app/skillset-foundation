@@ -14,7 +14,20 @@ import { LOCALES, LOCALE_LABELS, LOCALE_SHORT_LABELS, type Locale } from "@/lib/
 // ↑/↓/Home/End andam pela lista. `dropUp` é para o rodapé, onde abrir para
 // baixo cairia fora da página. Sem fechar no blur de propósito: no Safari o
 // clique não foca o botão, e o blur fecharia o menu antes do click da opção.
-export function LocaleSwitcher({ dropUp = false }: { dropUp?: boolean }) {
+//
+// `variant="compact"` é para dentro de uma barra de ícones (topo da plataforma,
+// barra do site): o pill de 44px com seta era grande demais e não parecia da
+// mesma família dos vizinhos. Compacto = a mesma caixa dos botões de busca,
+// tema e sino (size-10, moldura quadrada de cantos suaves), só a sigla, sem a
+// seta. O menu, o teclado e o rótulo continuam idênticos nas duas variantes.
+export function LocaleSwitcher({
+  dropUp = false,
+  variant = "default",
+}: {
+  dropUp?: boolean;
+  variant?: "default" | "compact";
+}) {
+  const compact = variant === "compact";
   const { locale, setLocale, t } = useTranslation();
   const [open, setOpen] = useState(false);
   const wrapper = useRef<HTMLDivElement>(null);
@@ -79,15 +92,21 @@ export function LocaleSwitcher({ dropUp = false }: { dropUp?: boolean }) {
             setOpen(true);
           }
         }}
-        className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-2.5 text-[11px] font-bold tracking-[0.08em] text-[var(--color-ink)] transition-colors hover:border-[var(--color-line-strong)]"
+        className={
+          compact
+            ? "grid size-10 place-items-center rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[11px] font-bold tracking-[0.08em] text-[var(--color-ink)] transition-colors hover:bg-[var(--color-surface-strong)]"
+            : "inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-2.5 text-[11px] font-bold tracking-[0.08em] text-[var(--color-ink)] transition-colors hover:border-[var(--color-line-strong)]"
+        }
       >
         <span aria-hidden="true">{LOCALE_SHORT_LABELS[locale]}</span>
-        <ChevronDown
-          aria-hidden="true"
-          size={12}
-          strokeWidth={1.8}
-          className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-        />
+        {compact ? null : (
+          <ChevronDown
+            aria-hidden="true"
+            size={12}
+            strokeWidth={1.8}
+            className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          />
+        )}
       </button>
       {open ? (
         <div
