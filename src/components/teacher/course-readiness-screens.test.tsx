@@ -115,7 +115,8 @@ vi.mock("@/components/teacher/course-asset-uploader", () => ({
 // arquivo mede, e tem prova propria em course-overview-panel.test.tsx. O
 // marcador existe para a prova de ORDEM: onde o painel cai em relacao ao
 // checklist e decisao do hub, nao do painel.
-vi.mock("@/components/teacher/course-overview-panel", () => ({
+vi.mock("@/components/teacher/course-overview-panel", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/components/teacher/course-overview-panel")>(),
   CourseOverviewPanel: () => <div data-testid="course-overview-panel" />,
 }));
 
@@ -507,6 +508,138 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(menu.style.getPropertyValue("--course-nav-height")).toBe("248px");
     unmount();
     expect(disconnect).toHaveBeenCalledOnce();
+  });
+
+  // jsdom has no layout. These explicit scrollports model an offscreen tab;
+  // assertions check visibility and ancestor position, not a scrolling API.
+  function managementScrollports() {
+    let width = 334;
+    let vertical = false;
+    let resize = () => {};
+    const disconnect = vi.fn();
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(callback: () => void) { resize = callback; }
+      observe() {}
+      disconnect = disconnect;
+    });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ offers: [] }) }));
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains("platform-content")) return new DOMRect(0, 65, width + 56, 600);
+      if (this.tagName === "NAV") return new DOMRect(28, 269, vertical ? 240 : width, vertical ? 250 : 54);
+      const menu = this.closest("nav");
+      const row = this.tagName === "BUTTON" ? this.parentElement : this;
+      if (menu && row?.parentElement === menu) {
+        const roadmap = !row.classList.contains("overflow-x-auto");
+        if (roadmap && !vertical) return new DOMRect();
+        const index = Array.from(row.children).indexOf(this);
+        const top = 269 + (vertical ? (roadmap ? 640 : 32) - menu.scrollTop : 0);
+        if (this.tagName === "BUTTON") {
+          return new DOMRect(
+            28 + (vertical ? 8 : index * 139 - row.scrollLeft),
+            top + (vertical ? index * 48 : 0),
+            vertical ? 224 : 148,
+            44,
+          );
+        }
+        return new DOMRect(28, top, vertical ? 240 : width, vertical ? 576 : 44);
+      }
+      return new DOMRect(28, 269, width, 0);
+    });
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.getBoundingClientRect().height;
+    });
+    return {
+      disconnect,
+      resize(nextWidth: number, nextVertical = false) {
+        width = nextWidth;
+        vertical = nextVertical;
+        act(() => resize());
+      },
+    };
+  }
+
+  function navigationFixture() {
+    return (
+      <section className="platform-content" style={{ paddingBottom: 48 }}>
+        <CourseManageHub courseId="course-1" />
+      </section>
+    );
+  }
+
+  function expectSectionVisible(name: string, vertical = false) {
+    const menu = screen.getByRole("navigation", { name: "Course management sections" });
+    const button = within(menu).getByRole("button", { name });
+    const bounds = (vertical ? menu : button.parentElement!).getBoundingClientRect();
+    const rect = button.getBoundingClientRect();
+    expect(rect.left).toBeGreaterThanOrEqual(bounds.left);
+    expect(rect.right).toBeLessThanOrEqual(bounds.right);
+    expect(rect.top).toBeGreaterThanOrEqual(bounds.top);
+    expect(rect.bottom).toBeLessThanOrEqual(bounds.bottom);
+    return button.parentElement!;
+  }
+
+  it.each([false, true])("reveals a direct pricing section after asynchronous load (initial failure: %s)", async (failsFirst) => {
+    managementScrollports();
+    mocks.searchParams.set("section", "pricing");
+    let receive: (course: TeacherCourse | null) => void = () => {};
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, onCourse, onError) => {
+      receive = onCourse;
+      if (failsFirst) onError(new Error("Temporary load failure"));
+      return () => {};
+    });
+    const { container } = render(navigationFixture());
+    const viewport = container.querySelector<HTMLElement>(".platform-content")!;
+    viewport.scrollTop = 17;
+    expect(screen.queryByRole("navigation", { name: "Course management sections" })).toBeNull();
+
+    await act(async () => receive(mocks.course));
+    expect(screen.getByRole("heading", { name: "Pricing & checkout" })).toBeInTheDocument();
+    expectSectionVisible("Pricing & offers");
+    expect(viewport.scrollTop).toBe(17);
+    expect(mocks.router.push).not.toHaveBeenCalled();
+    expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
+  });
+
+  it("keeps URL-selected sections visible across history and resize without moving the page or course header", async () => {
+    const layout = managementScrollports();
+    const { container, rerender, unmount } = render(navigationFixture());
+    await screen.findByRole("navigation", { name: "Course management sections" });
+    const viewport = container.querySelector<HTMLElement>(".platform-content")!;
+    const menu = screen.getByRole("navigation", { name: "Course management sections" });
+    const header = menu.parentElement!.previousElementSibling as HTMLElement;
+    const headerTop = header.getBoundingClientRect().top;
+    viewport.scrollTop = 17;
+    expect(expectSectionVisible("Panel").scrollLeft).toBe(0);
+
+    mocks.searchParams.set("section", "pricing");
+    rerender(navigationFixture());
+    const row = expectSectionVisible("Pricing & offers");
+    const previousScroll = row.scrollLeft;
+    layout.resize(334);
+    expect(row.scrollLeft).toBe(previousScroll);
+    layout.resize(264);
+    expectSectionVisible("Pricing & offers");
+
+    mocks.searchParams.delete("section");
+    rerender(navigationFixture());
+    expectSectionVisible("Panel");
+    mocks.searchParams.set("section", "assistant");
+    rerender(navigationFixture());
+    const hiddenScroll = row.scrollLeft;
+    layout.resize(1200, true);
+    expectSectionVisible("Sales assistant", true);
+    expect(menu.scrollTop).toBeGreaterThan(0);
+    expect(row.scrollLeft).toBe(hiddenScroll);
+    mocks.searchParams.delete("section");
+    rerender(navigationFixture());
+    expectSectionVisible("Panel", true);
+    expect(viewport.scrollTop).toBe(17);
+    expect(header.getBoundingClientRect().top).toBe(headerTop);
+    expect(mocks.router.push).not.toHaveBeenCalled();
+    expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
+    const previousDisconnects = layout.disconnect.mock.calls.length;
+    unmount();
+    expect(layout.disconnect).toHaveBeenCalledTimes(previousDisconnects + 1);
   });
 
   it("fits the members preview to the intrinsic stage height, including height-only changes, and disconnects", async () => {
