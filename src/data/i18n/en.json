@@ -45,8 +45,8 @@
     "languageCurrent": "Language: {language}"
   },
   "auth": {
-    "learnerAccess": "learner access",
-    "educatorAccess": "educator access",
+    "switchToLearner": "Are you a learner? Sign in here",
+    "switchToEducator": "Are you an educator? Sign in here",
     "accessSubtitle": "Sign in and SkillsetMind opens the workspace that matches your account.",
     "email": "Email",
     "emailPlaceholder": "you@example.com",
@@ -73,8 +73,10 @@
       "modeAria": "Authentication mode",
       "kickerSignup": "Join SkillsetMind",
       "kickerSignin": "Welcome back",
-      "titleSignup": "Create your account.",
-      "titleSignin": "Sign in to SkillsetMind.",
+      "titleSignupLearner": "Create your learner account.",
+      "titleSignupEducator": "Create your educator account.",
+      "titleSigninLearner": "Sign in as a learner.",
+      "titleSigninEducator": "Sign in as an educator.",
       "subSignup": "Free to start. Browse programs, save your progress, and open creator tools from the same account.",
       "subSignin": "Pick up where you left off.",
       "aside": {

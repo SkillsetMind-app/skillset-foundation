@@ -45,8 +45,8 @@
     "languageCurrent": "Idioma: {language}"
   },
   "auth": {
-    "learnerAccess": "acceso de estudiante",
-    "educatorAccess": "acceso de educador",
+    "switchToLearner": "¿Eres estudiante? Entra aquí",
+    "switchToEducator": "¿Eres educador? Entra aquí",
     "accessSubtitle": "Inicia sesión y SkillsetMind abre el espacio que corresponde a tu cuenta.",
     "email": "Correo electrónico",
     "emailPlaceholder": "tu@ejemplo.com",
@@ -73,8 +73,10 @@
       "modeAria": "Modo de autenticación",
       "kickerSignup": "Únete a SkillsetMind",
       "kickerSignin": "Bienvenido de nuevo",
-      "titleSignup": "Crea tu cuenta.",
-      "titleSignin": "Entra en SkillsetMind.",
+      "titleSignupLearner": "Crea tu cuenta de estudiante.",
+      "titleSignupEducator": "Crea tu cuenta de educador.",
+      "titleSigninLearner": "Entra como estudiante.",
+      "titleSigninEducator": "Entra como educador.",
       "subSignup": "Gratis para empezar. Explora programas, guarda tu progreso y usa las herramientas de creador con la misma cuenta.",
       "subSignin": "Retoma donde lo dejaste.",
       "aside": {
