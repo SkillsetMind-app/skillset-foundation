@@ -275,7 +275,7 @@ describe("datas dos gráficos no idioma da pessoa", () => {
     const chart = screen.getByRole("img");
     expect(within(chart).getByText(spanishLabel)).toBeInTheDocument();
     expect(within(chart).queryByText(englishLabel)).not.toBeInTheDocument();
-    expect(chart.querySelector("g")).toHaveTextContent("$200");
+    expect(within(chart.closest<HTMLElement>(".studio-chart-card")!).getByText("$200", { selector: "strong" })).toBeVisible();
   });
 
   it.each(charts)("$name acompanha EN→ES sem trocar período, dados ou total", ({ Component, period, spanishLabel, englishLabel }) => {
@@ -290,7 +290,7 @@ describe("datas dos gráficos no idioma da pessoa", () => {
 
     expect(within(chart).getByText(spanishLabel)).toBeInTheDocument();
     expect(within(chart).queryByText(englishLabel)).not.toBeInTheDocument();
-    expect(chart.querySelector("g")).toHaveTextContent("$200");
+    expect(within(chart.closest<HTMLElement>(".studio-chart-card")!).getByText("$200", { selector: "strong" })).toBeVisible();
     expect(screen.getByRole("button", { name: period })).toHaveAttribute("aria-pressed", "true");
     expect([...chart.querySelectorAll("path")].map((path) => path.getAttribute("d"))).toEqual(geometry);
     expect(chart.querySelectorAll("circle")).toHaveLength(points);

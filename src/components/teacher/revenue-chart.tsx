@@ -38,13 +38,20 @@ export function RevenueChart({
   return (
     <div className="studio-chart-card dash-card p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0 max-w-full">
           <h3 className="display-title text-2xl text-[var(--color-primary)]">
             {title}
           </h3>
           <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
             {subtitle}
           </p>
+          {/* O total é agregado, não o valor do último ponto. Fora do SVG,
+              ele pode quebrar linha sem ser cortado. */}
+          {points.length > 0 && totalMinor ? (
+            <strong className="mt-2 inline-block max-w-full break-all rounded-md bg-[#0f2744] px-3 py-1 text-sm font-extrabold text-white">
+              {totalLabel}
+            </strong>
+          ) : null}
         </div>
         {headerAction}
       </div>
@@ -125,30 +132,6 @@ export function RevenueChart({
               }
             />
           ))}
-          {/* Sem receita a etiqueta dizia "$0" por cima da caixa de vazio
-              (QA visual em producao, 08/09): a caixa ja diz que nao houve. */}
-          {chart.lastPoint && totalMinor ? (
-            <g>
-              <rect
-                x={chart.lastPoint[0] - 39}
-                y={chart.lastPoint[1] - 38}
-                rx="6"
-                width="78"
-                height="24"
-                fill="#0f2744"
-              />
-              <text
-                x={chart.lastPoint[0]}
-                y={chart.lastPoint[1] - 21}
-                textAnchor="middle"
-                fontSize="11"
-                fontWeight="800"
-                fill="#fff"
-              >
-                {totalLabel}
-              </text>
-            </g>
-          ) : null}
         </svg>
 
         {!totalMinor ? (
@@ -203,7 +186,6 @@ function buildChart(points: RevenuePoint[]) {
     areaPath,
     gridLines,
     yLabels,
-    lastPoint: plotted.at(-1) ?? null,
   };
 }
 
