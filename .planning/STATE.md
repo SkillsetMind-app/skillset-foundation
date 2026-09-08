@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 ## Current Position
 
 Phase: 11 of 12 (parity PRs, F4). Phases 8 and 9 (extraction) closed their last rounds: Hotmart 90/95 desktop, 82 mobile, 72 full-page (171 prints); SkillsetMind 100/100/100 (265 prints). Phase 10 (design verdicts, `F3-DECISOES.md` in the private vault) covers sections A, B, C, D, F and the visible part of E; rows E04–E11/E13 and F01/F02 stay blocked until production has one enrollment or a seeded preview exists.
-Plan: done — 11-01 (#253, migration applied in production first), 11-02 (#258 checklist panel), 11-03 (#262 pricing shape + offer form seeded + 4 tiles + list before form), 11-04 (#269 home thumbnails + revenue block only with sales), 11-05 (#261 marketing cards + live storefront page), 11-06 (#271 earnings: one sentence, 4-column tiles, Stripe locale, teacher shell), 11-07 (#278 reports: period, 4 KPIs, shared revenue chart, by-product table, CSV), 11-08 (#265 sales frame + refund link), 11-10 (#272 login by role + switch link + Google button behind the flag), 11-11 (#274 Teach shortcut in the Learn sidebar), 11-12 (#266 builder curriculum list-first), B02 (#277 storefront card in promo links), plus the guard fix #257. In progress: 11-13 (online events on the 7-item house pattern). Left: 11-14 (i18n debt in the offers and wallet panels).
-Status: In progress — Phase 11 nearly complete; Phase 12 (F5 visual QA in production at 390/768/1440 with the connected Chrome) is next.
-Last activity: 2026-09-08 06:17 — seventeen PRs merged tonight; every merge reviewed by Fable; worktrees cleaned with the junction detached first.
+Plan: done — 11-01 (#253, migration applied in production first), 11-02 (#258 checklist panel), 11-03 (#262 pricing shape + offer form seeded + 4 tiles + list before form), 11-04 (#269 home thumbnails + revenue block only with sales), 11-05 (#261 marketing cards + live storefront page), 11-06 (#271 earnings: one sentence, 4-column tiles, Stripe locale, teacher shell), 11-07 (#278 reports: period, 4 KPIs, shared revenue chart, by-product table, CSV), 11-08 (#265 sales frame + refund link), 11-10 (#272 login by role + switch link + Google button behind the flag), 11-11 (#274 Teach shortcut in the Learn sidebar), 11-12 (#266 builder curriculum list-first), B02 (#277 storefront card in promo links), plus the guard fix #257. Also done: 11-13 (#281 online events measured against the 7-item house pattern; 4 items applied). Open: 11-14 (PR #282, i18n of the offers and wallet panels — CI stalls silently in the full suite although each file passes alone; unblock recipe in the PR comment; worktree `skillset-11-14` kept).
+Status: Phase 11 complete except the open #282. Phase 12 (F5 visual QA in production at 390/768/1440) is blocked until the parity Chrome answers on port 9333 again (the founder must close and relaunch it with `launch_chrome.ps1`); the F5 brief is ready in the session scratchpad.
+Last activity: 2026-09-08 07:30 — eighteen PRs merged tonight; every merge reviewed by Fable; worktrees cleaned with the junction detached first.
 
 Progress (v1.1): [█████░░░░░] 3 of 6 phases complete (7, 8, 9 done; 10 done except blocked rows; 11 in progress)
 
@@ -47,8 +47,8 @@ Decisions are logged in PROJECT.md. Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-09-08 06:18
-Stopped at: 11-13 running (Opus, worktree `skillset-11-13`); 11-14 brief ready in the session scratchpad; handoff in the daily log `PS8-OS/06-daily/2026-09-07-skillsetmind-paridade-hotmart-v2.md`. Next phase: F5 visual QA in production (the connected Chrome on port 9333 stays open with both logins), then promote and merge this docs PR (#244).
+Last session: 2026-09-08 07:30
+Stopped at: no agent running; #282 open with the CI-hang recipe; F5 brief ready (`brief-f5-qa-visual-producao.md` in the session scratchpad) but the parity Chrome is not answering on port 9333. Handoff in the daily log `PS8-OS/06-daily/2026-09-07-skillsetmind-paridade-hotmart-v2.md`. Next: relaunch the Chrome, run F5, fix #282, then promote and merge this docs PR (#244).
 Resume file: None
 
 ## v1.0 context (2026-07-15, paused)
