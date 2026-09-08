@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 
 ## Current Position
 
-Phase: 9 of 12 (SkillsetMind extraction, F2) — Phase 8 (Hotmart extraction, F1) waits for the founder's Hotmart login in the connected browser and runs right after, in the same window.
-Plan: 1 of 1 in the current phase (extraction agent run)
+Phase: 11 of 12 (parity PRs, F4) running in parallel with the tail of Phases 8/9 (extraction rounds F1-r3 and F2-r5, Sonnet agents) and Phase 10 (design verdicts in the private vault, `F3-DECISOES.md`).
+Plan: 11-01 done (PR #253 merged `e224584`, migration applied in production first); next 11-02 (publish checklist panel, B01), 11-03 (pricing summary + Free/subscription bug, B04), then B02 storefront card.
 Status: In progress
-Last activity: 2026-09-07 — Phase 7 complete (91-row checklist); milestone opened on branch `docs/issue-243-paridade-hotmart-v2`; F2 extraction agent started.
+Last activity: 2026-09-08 03:40 — PR #253 reviewed by Fable, migration `20260908120000` applied and verified in production via Management API, squash-merged; issue #249 closed. Four front micro-PRs also merged tonight (#246 sidebar scrollbar, #248 compact locale button, #251 brand mark PNGs, #254 collapsed-rail centering).
 
-Progress (v1.1): [██░░░░░░░░] 1 of 6 phases complete
+Progress (v1.1): [███░░░░░░░] 1 of 6 phases complete (7 done; 8, 9, 10, 11 in progress)
 
 ## Accumulated Context
 
@@ -26,16 +26,18 @@ Decisions are logged in PROJECT.md. Recent decisions affecting current work:
 - Phase 8/9: one platform at a time in the connected Chrome window (background-tab capture freezes the renderer); captures stay outside the repo; per-row notes in the private vault.
 - Phase 11: teacher archive of a published course is decided after Phase 8 row C04, not before.
 
-### Facts verified in code (2026-09-07)
+### Facts verified in code (2026-09-08)
 
-- Teacher delete: `deleteTeacherCourse` -> RPC `delete_teacher_course_draft` (draft only), `src/components/teacher/teacher-course-studio.tsx`.
-- Admin delete: `deleteCourseAsAdmin` -> RPC `delete_course_as_admin`, two-step confirmation, `src/components/admin/managed-course-panel.tsx`.
-- Both RPCs are declared in `src/lib/data/teacher-courses.ts`.
+- Teacher delete/archive: `deleteOrArchiveCourse` -> RPC `delete_or_archive_own_course` (deletes when 0 enrollments and 0 orders, otherwise archives as `inactive`), `src/lib/data/teacher-courses.ts`; entry points are the hub caret menu and the product list row menu (`src/components/teacher/course-actions.tsx`). `delete_teacher_course_draft` stays in the database for compatibility only.
+- Admin delete: `deleteCourseAsAdmin` -> RPC `delete_course_as_admin`, two-step confirmation, `src/components/admin/managed-course-panel.tsx` (unchanged).
+- RLS `courses_delete_owner` now requires no enrollment and no order for the course (applied in production 2026-09-08).
+- Learner access depends on the enrollment (active/completed), not on the course status, so archiving never removes a buyer's access.
 
 ### Pending Todos
 
-- Founder: log into Hotmart in the tab the session opened in the connected Chrome window (or install the Claude extension in the Hotmart profile), so Phase 8 can start.
-- After Phases 8 and 9: Phase 10 matrix, then Phase 11 plan 11-01 (archive/delete course).
+- Phase 11: 11-02 (B01 checklist panel: checklist to the top for unpublished courses, "Edit" link per row, done rows in soft green, no duplication in "Needs your attention"), 11-03 (B04 pricing: summary cards, refund window, offers table first; bug "PRICE Free" + "Monthly subscription" + form born at 97 USD), B02 storefront card.
+- Phase 10: verdicts still open for sections A, E, F, mobile, and the house pattern for pages only SkillsetMind has (online events).
+- Founder-dependent, outside this milestone's PRs: `sso.` DNS not resolving at last check; go/no-go for the sso/consumer/app login phase (cookie domain change logs everyone out); Google OAuth client + consent screen before enabling the provider; visual QA in production of the four front micro-PRs.
 
 ### Blockers/Concerns
 
@@ -45,8 +47,8 @@ Decisions are logged in PROJECT.md. Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-09-07 23:30
-Stopped at: F2 extraction agent running in the connected browser; GSD milestone docs written on the docs branch, PR pending.
+Last session: 2026-09-08 03:40
+Stopped at: F1 round 3 and F2 round 5 extraction agents running in the connected Chrome (CDP, `pw.mjs`); 11-01 shipped; 11-02 brief being prepared for an Opus agent once an agent slot frees (two-agent ceiling for RAM).
 Resume file: None
 
 ## v1.0 context (2026-07-15, paused)
