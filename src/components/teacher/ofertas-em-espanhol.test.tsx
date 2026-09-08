@@ -109,8 +109,10 @@ describe("painel de ofertas em espanhol", () => {
       ),
     ).toBeInTheDocument();
 
-    // Marca da oferta padrao e o botao que abre o formulario.
-    expect(screen.getByText("predeterminada")).toBeInTheDocument();
+    // Marca da oferta padrao e o botao que abre o formulario. A lista chega
+    // depois do fetch: esperar, senao a asserção corre na frente do carregamento
+    // (falhava quando dois arquivos dividiam o mesmo fork).
+    expect(await screen.findByText("predeterminada")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Nueva oferta" }),
     ).toBeInTheDocument();

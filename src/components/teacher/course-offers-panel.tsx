@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -66,6 +66,13 @@ export function CourseOffersPanel({
   coursePricing?: CoursePricingShape;
 }) {
   const { t } = useTranslation();
+  // `t` fica fora das dependencias dos efeitos: com ele la, um provider que
+  // devolva funcao nova por render reinscreve tudo em laco (a suite do CI
+  // ficou muda 16 min). A ref le sempre o `t` atual sem reinscrever nada.
+  const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
   const [offers, setOffers] = useState<OfferRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -109,7 +116,7 @@ export function CourseOffersPanel({
       );
       const data = (await res.json()) as { offers?: OfferRow[]; error?: string; warning?: string };
       if (!res.ok) {
-        throw new Error(data.error || t("creatorPanel.offers.loadError"));
+        throw new Error(data.error || tRef.current("creatorPanel.offers.loadError"));
       }
       setOffers(data.offers ?? []);
       if (data.warning) {
@@ -119,13 +126,13 @@ export function CourseOffersPanel({
       setError(
         loadError instanceof Error
           ? loadError.message
-          : t("creatorPanel.offers.loadError"),
+          : tRef.current("creatorPanel.offers.loadError"),
       );
       setOffers([]);
     } finally {
       setLoading(false);
     }
-  }, [courseId, t]);
+  }, [courseId]);
 
   useEffect(() => {
     // Defer so the effect body itself does not synchronously setState (lint).

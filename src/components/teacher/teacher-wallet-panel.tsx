@@ -44,6 +44,13 @@ type Translate = (key: string) => string;
 export function TeacherWalletPanel() {
   const { user } = useAuth();
   const { t } = useTranslation();
+  // `t` fica fora das dependencias dos efeitos: com ele la, um provider que
+  // devolva funcao nova por render reinscreve tudo em laco (a suite do CI
+  // ficou muda 16 min). A ref le sempre o `t` atual sem reinscrever nada.
+  const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -89,11 +96,11 @@ export function TeacherWalletPanel() {
         setIsLoading(false);
       },
       () => {
-        setError(t("teach.earnings.profileError"));
+        setError(tRef.current("teach.earnings.profileError"));
         setIsLoading(false);
       },
     );
-  }, [user, t]);
+  }, [user]);
 
   useEffect(() => {
     if (!user) {
@@ -108,10 +115,10 @@ export function TeacherWalletPanel() {
       },
       () => {
         setLedgerState("error");
-        setError(t("teach.earnings.ledgerReadError"));
+        setError(tRef.current("teach.earnings.ledgerReadError"));
       },
     );
-  }, [user, t]);
+  }, [user]);
 
   function handleOnboardingComplete() {
     void refreshStripeStatus();
