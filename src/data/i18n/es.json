@@ -1466,6 +1466,38 @@
     }
   },
   "creatorPanel": {
+    "sales": {
+      "loading": "Cargando tus ventas...",
+      "error": "No pudimos cargar tus ventas. Actualiza para intentarlo de nuevo.",
+      "periodLabel": "Filtrar por periodo",
+      "period": {
+        "7d": "Últimos 7 días",
+        "30d": "Últimos 30 días",
+        "90d": "Últimos 90 días",
+        "12m": "Últimos 12 meses",
+        "all": "Todo el histórico"
+      },
+      "searchLabel": "Buscar ventas por curso o id de pedido",
+      "searchPlaceholder": "Buscar por curso o id de pedido",
+      "statusLabel": "Filtrar por estado",
+      "status": {
+        "all": "Todos los estados",
+        "paid": "Pagado",
+        "refunded": "Reembolsado"
+      },
+      "count": "{count} pedidos entre {from} y {to}",
+      "countOne": "1 pedido entre {from} y {to}",
+      "countAll": "{count} pedidos, todo el histórico",
+      "countAllOne": "1 pedido, todo el histórico",
+      "emptyTitle": "Sin ventas en este periodo.",
+      "emptyBody": "Cuando alguien complete el pago, el pedido aparece aquí.",
+      "emptyCta": "Ir a tus cursos",
+      "datePending": "Fecha pendiente",
+      "refundInStripe": "Reembolsar en Stripe",
+      "showMore": "Ver {count} más",
+      "stripeNote": "Los compradores pagan directamente a tu cuenta de Stripe — SkillsetMind nunca retiene tu dinero.",
+      "learnMore": "Más información"
+    },
     "newProduct": "Nuevo producto",
     "createProduct": "Crear producto",
     "untitledProduct": "Producto sin título",
