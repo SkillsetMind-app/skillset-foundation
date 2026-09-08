@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TeacherStudioDashboard } from "@/components/teacher/teacher-studio-dashboard";
@@ -87,8 +87,14 @@ describe("Home do professor: o card do produto mostra a capa", () => {
 
     render(<TeacherStudioDashboard />);
 
-    const comCapa = await screen.findByRole("link", { name: /Curso com capa/ });
-    const semCapa = screen.getByRole("link", { name: /Curso sem capa/ });
+    // Escopo na secao de produtos: o titulo do curso tambem aparece em
+    // outros blocos da home (Top courses, atividade), e a busca solta ficaria
+    // ambigua conforme esses blocos aparecem ou nao.
+    const produtos = await screen.findByRole("region", {
+      name: "Products in your workspace",
+    });
+    const comCapa = within(produtos).getByRole("link", { name: /Curso com capa/ });
+    const semCapa = within(produtos).getByRole("link", { name: /Curso sem capa/ });
 
     const img = comCapa.querySelector("img");
     expect(img).not.toBeNull();
