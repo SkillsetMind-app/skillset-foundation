@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronDown } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -9,6 +9,10 @@ import type { ReactNode } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
+import {
+  CourseActionsMenu,
+  DeleteOrArchiveCourseDialog,
+} from "@/components/teacher/course-actions";
 import {
   CouponsPanel,
   PanelCard,
@@ -21,6 +25,7 @@ import { ReadinessGroups } from "@/components/teacher/readiness-groups";
 import { CourseStudentRoster } from "@/components/teacher/course-student-roster";
 import { CourseLandingEditor } from "@/components/teacher/course-landing-editor";
 import { SalesPageEditor } from "@/components/teacher/sales-page-editor";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import type { PlanId } from "@/data/plans";
 import { planById } from "@/data/plans";
 import {
@@ -74,6 +79,9 @@ const roadmapSections = [
 ] as const;
 
 type SectionId = (typeof manageSections)[number]["id"] | (typeof roadmapSections)[number]["id"];
+
+const hubMenuItemClass =
+  "flex min-h-11 items-center rounded-[6px] px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]";
 
 function isPaidCourse(course: TeacherCourse): boolean {
   return course.paymentType !== "free" && (course.priceAmountMinor ?? 0) > 0;
@@ -245,6 +253,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   // state without a synchronous setState reset when the route param changes.
   const [loadedCourseId, setLoadedCourseId] = useState<string | null>(null);
   const [myCourses, setMyCourses] = useState<TeacherCourse[]>([]);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const { account, planId } = usePublishGates(user);
   const section: SectionId = sectionFromUrl ?? "overview";
   const setSection = (next: SectionId) => {
@@ -433,9 +442,66 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
             >
               {t("creatorPanel.hub.editInBuilder")}
             </Link>
+            {/* Mesma posicao da Hotmart: o caret ao lado do seletor de produto.
+                E a unica entrada do professor para tirar o curso do ar — antes
+                so o admin conseguia, pelo /ops. */}
+            <CourseActionsMenu courseTitle={courseTitle} icon={ChevronDown}>
+              <Link
+                href="/teach/builder?newCourse=1&format=course"
+                role="menuitem"
+                className={hubMenuItemClass}
+              >
+                {t("creatorPanel.hub.header.newProduct")}
+              </Link>
+              <Link
+                href={`/teach/builder/${encodeURIComponent(course.id)}/preview`}
+                role="menuitem"
+                className={hubMenuItemClass}
+              >
+                {t("creatorPanel.hub.header.previewAsStudent")}
+              </Link>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => setConfirmingDelete(true)}
+                className="flex min-h-11 w-full items-center rounded-[6px] border-t border-[var(--color-line)] px-3 text-left text-sm font-semibold text-[var(--color-danger-fg)] hover:bg-[var(--color-danger-soft)]"
+              >
+                {t("creatorPanel.hub.header.deleteCourse")}
+              </button>
+            </CourseActionsMenu>
           </div>
         </div>
+        {course.status === "inactive" ? (
+          // Arquivar sem dizer o que fazer depois deixa o professor achando que
+          // perdeu o curso. O chip diz o estado; esta linha diz a saida.
+          <InlineAlert tone="warning" className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>{t("creatorPanel.hub.header.archivedNotice")}</span>
+            <Link
+              href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=review`}
+              className="underline underline-offset-2"
+            >
+              {t("creatorPanel.hub.header.publishAgain")}
+            </Link>
+          </InlineAlert>
+        ) : null}
       </section>
+
+      {confirmingDelete ? (
+        <DeleteOrArchiveCourseDialog
+          courseId={course.id}
+          courseTitle={courseTitle}
+          onCancel={() => setConfirmingDelete(false)}
+          onDone={(result) => {
+            setConfirmingDelete(false);
+            // Apagado, este hub nao existe mais: a assinatura em tempo real
+            // devolveria "curso nao encontrado" no lugar da tela. Arquivado,
+            // ela mesma traz o novo status e o chip troca sozinho.
+            if (result.outcome === "deleted") {
+              router.push("/teach/builder");
+            }
+          }}
+        />
+      ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[240px_1fr] lg:items-start">
         <nav

@@ -17,6 +17,7 @@ import {
   normalizeMembersTheme,
   normalizeTeacherCourseModules,
 } from "@/domain/teacher-course";
+import { getMyCourseStudents } from "@/lib/data/enrollments";
 import { rowToTeacherCourse } from "@/lib/data/published-courses";
 import { resolveLessonContent } from "@/lib/data/lesson-content";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -111,15 +112,61 @@ export async function publishTeacherCourse(courseId: string) {
   }
 }
 
-export async function deleteTeacherCourse(courseId: string) {
+export type DeleteOrArchiveOutcome = {
+  outcome: "deleted" | "archived";
+  enrollments?: number;
+  orders?: number;
+};
+
+/**
+ * Uma acao, dois destinos, decididos no servidor: `delete_or_archive_own_course`
+ * apaga o curso que nunca teve matricula nem pedido e arquiva (status inactive)
+ * o que teve. Substitui `delete_teacher_course_draft`, que so aceitava rascunho
+ * — a RPC antiga continua no banco por compatibilidade, o app nao a chama mais.
+ */
+export async function deleteOrArchiveCourse(courseId: string): Promise<DeleteOrArchiveOutcome> {
   const supabase = getSupabaseBrowserClient();
-  const { error } = await supabase.rpc("delete_teacher_course_draft", {
+  const { data, error } = await supabase.rpc("delete_or_archive_own_course", {
     p_course_id: courseId,
   });
 
   if (error) {
     throw error;
   }
+
+  return data as unknown as DeleteOrArchiveOutcome;
+}
+
+/**
+ * Quantos compradores este curso tem, na visao do dono. Decide o TEXTO do modal
+ * antes da acao; o destino de verdade continua sendo o do servidor.
+ *
+ * Sao duas leituras porque as duas tabelas se leem de formas diferentes: a RLS
+ * de `enrollments` so devolve a linha do PROPRIO aluno (por isso o RPC do
+ * roster existe), enquanto `orders` tem policy de leitura para o professor.
+ *
+ * ponytail: reusa o roster inteiro do professor e conta em memoria. Trocar por
+ * um `p_course_id` + LIMIT na `get_my_course_students` quando alguem passar do
+ * teto de 2.000 alunos do plano Pro — a mesma nota que a migration do roster ja
+ * carrega.
+ */
+export async function getCourseAudience(
+  courseId: string
+): Promise<{ enrollments: number; orders: number }> {
+  const supabase = getSupabaseBrowserClient();
+  const [students, orders] = await Promise.all([
+    getMyCourseStudents(),
+    supabase.from("orders").select("id", { count: "exact", head: true }).eq("course_id", courseId),
+  ]);
+
+  if (orders.error) {
+    throw orders.error;
+  }
+
+  return {
+    enrollments: students.filter((student) => student.courseId === courseId).length,
+    orders: orders.count ?? 0,
+  };
 }
 
 export async function deleteCourseAsAdmin(courseId: string) {

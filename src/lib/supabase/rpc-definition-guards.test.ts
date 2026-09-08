@@ -99,6 +99,85 @@ describe("verify_skillset_certificate — o balde do limite de tentativas", () =
   });
 });
 
+describe("delete_or_archive_own_course — apagar não pode virar apagar de quem pagou", () => {
+  // A função é a única entrada do professor para tirar o curso do ar, e o
+  // destino é decidido AQUI, não na tela: sem matrícula e sem pedido o curso
+  // some; com qualquer um dos dois ele vai para 'inactive' e quem comprou
+  // continua entrando. Se a ramificação de arquivar cair, a tela continua
+  // dizendo "seus alunos mantêm o acesso" enquanto o curso é destruído.
+  const corpo = definicaoEfetiva("delete_or_archive_own_course");
+
+  it("conta matrículas e pedidos antes de escolher o destino", () => {
+    expect(corpo).toMatch(/from\s+public\.enrollments\s+where\s+course_id/i);
+    expect(corpo).toMatch(/from\s+public\.orders\s+where\s+course_id/i);
+  });
+
+  it("tem as duas ramificações: apagar só quando não há comprador", () => {
+    expect(corpo).toMatch(/v_enrollments\s*=\s*0\s+and\s+v_orders\s*=\s*0/i);
+    expect(corpo).toMatch(/delete\s+from\s+public\.courses/i);
+    expect(corpo).toMatch(/'outcome'\s*,\s*'deleted'/i);
+  });
+
+  it("arquiva em vez de apagar quando há comprador", () => {
+    expect(corpo).toMatch(/update\s+public\.courses[\s\S]*status\s*=\s*'inactive'/i);
+    expect(corpo).toMatch(/'outcome'\s*,\s*'archived'/i);
+
+    // O DELETE só pode existir dentro do galho sem comprador: se aparecer
+    // depois do UPDATE de arquivar, o curso com aluno também some.
+    const posicaoUpdate = corpo.search(/update\s+public\.courses/i);
+    const posicaoDelete = corpo.search(/delete\s+from\s+public\.courses/i);
+    expect(
+      posicaoDelete < posicaoUpdate,
+      "o delete de courses saiu do galho 'sem comprador'",
+    ).toBe(true);
+  });
+
+  it("só o dono, com sessão forte, e sem search_path sequestrável", () => {
+    expect(corpo).toMatch(/security\s+definer/i);
+    expect(corpo).toMatch(/set\s+search_path\s+to\s+'public',\s*'pg_temp'/i);
+    expect(corpo).toMatch(/require_strong_session\(\)/i);
+    expect(corpo).toMatch(/v_owner\s*<>\s*v_uid/i);
+  });
+});
+
+describe("courses_delete_owner — a tabela não pode ser a porta dos fundos", () => {
+  // 'inactive' passou a ser também o estado de ARQUIVADO, ou seja, o estado de
+  // um curso que TEM aluno. Sem a condição abaixo, um cliente PostgREST
+  // autenticado apaga pela tabela o que a RPC se recusa a apagar.
+  const corpo = policyEfetiva("courses_delete_owner");
+
+  it("recusa DELETE de curso com matrícula ou pedido", () => {
+    expect(corpo).toMatch(/not\s+exists\s*\([\s\S]*public\.enrollments/i);
+    expect(corpo).toMatch(/not\s+exists\s*\([\s\S]*public\.orders/i);
+  });
+
+  it("continua exigindo o segundo fator", () => {
+    // Recriar a policy do zero é a forma clássica de perder o portão que a
+    // 20260902120000 instalou.
+    expect(corpo).toMatch(/session_is_strong\(\)/);
+  });
+});
+
+describe("arquivar preserva o acesso de quem comprou", () => {
+  // É esta a promessa do modal: "everyone who bought it keeps full access".
+  // Ela só se sustenta porque as duas portas do conteúdo olham a MATRÍCULA,
+  // nunca o status do curso. No dia em que alguém acrescentar `c.status =
+  // 'published'` a uma delas, arquivar passa a cortar o acesso de quem pagou.
+  it.each(["course_assets_select", "course_content_select"])(
+    "%s não olha o status do curso",
+    (nome) => {
+      const corpo = policyEfetiva(nome);
+
+      expect(corpo).toMatch(/enrollments/i);
+      expect(
+        /c\.status|courses\.status/i.test(corpo),
+        `${nome} passou a filtrar pelo status do curso: arquivar deixa de ser `
+          + "reversível e derruba o aluno que já pagou",
+      ).toBe(false);
+    },
+  );
+});
+
 /**
  * Texto de todas as migrations, em ordem, para asserções que não são sobre UMA
  * função — aqui, se o job de limpeza está de fato agendado.
