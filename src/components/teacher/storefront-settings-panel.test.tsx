@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { StorefrontSettingsPanel } from "@/components/teacher/storefront-settings-panel";
@@ -307,5 +315,73 @@ describe("StorefrontSettingsPanel", () => {
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent("Sending...");
     expect(status).not.toHaveTextContent("%");
+  });
+
+  // O que a pessoa sofria: nao havia caminho daqui para a vitrine publica, a
+  // pagina nunca dizia se ela estava no ar, e a frase sobre "um passo
+  // posterior" ficava mesmo com curso ja publicado — ou seja, mentia.
+  describe("estado da vitrine publica", () => {
+    function givenPublishedCourses(titles: string[]) {
+      mocks.subscribeToTeacherCourses.mockImplementation(
+        (_uid: string, onData: (courses: unknown[]) => void) => {
+          onData(
+            titles.map((title, index) => ({
+              id: `course-${index}`,
+              ownerId: "teacher-1",
+              title,
+              status: "published",
+              modules: [],
+              lessonCount: 0,
+            })),
+          );
+          return vi.fn();
+        },
+      );
+    }
+
+    it("leva para a pagina publica e diz que ela esta publicada", async () => {
+      givenPublishedCourses(["Facilitacao para grupos"]);
+
+      render(<StorefrontSettingsPanel />);
+
+      expect(
+        await screen.findByRole("link", { name: /Open public page/ }),
+      ).toHaveAttribute("href", "/instructors/teacher-1");
+      expect(screen.getByText("Published")).toBeInTheDocument();
+      expect(screen.queryByText(/goes live in a later step/)).not.toBeInTheDocument();
+    });
+
+    it("sem curso publicado, avisa que ainda nao esta no ar e mantem a frase do passo posterior", async () => {
+      render(<StorefrontSettingsPanel />);
+
+      expect(await screen.findByText("Not published yet")).toBeInTheDocument();
+      expect(screen.getByText(/goes live in a later step/)).toBeInTheDocument();
+      expect(screen.getByText("No published course yet")).toBeInTheDocument();
+    });
+
+    it("a previa mostra nome, resumo, cor e os cursos que a vitrine exibe", async () => {
+      mocks.getUserProfile.mockResolvedValue({
+        displayName: "Dr. Ana Silva",
+        storefront: {
+          branding: { themePreset: "default", accentColor: "#8a5d08" },
+          showcase: { orderedCourseIds: [], tagline: "Grupos que decidem" },
+        },
+      });
+      givenPublishedCourses(["Facilitacao para grupos", "Reunioes curtas"]);
+
+      render(<StorefrontSettingsPanel />);
+
+      const preview = within(
+        await screen.findByRole("region", { name: "Live storefront preview" }),
+      );
+      expect(preview.getByText("Dr. Ana Silva")).toBeInTheDocument();
+      expect(preview.getByText("Grupos que decidem")).toBeInTheDocument();
+      expect(
+        preview.getByText(
+          "2 published courses: Facilitacao para grupos, Reunioes curtas",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText("Accent color picker")).toHaveValue("#8a5d08");
+    });
   });
 });

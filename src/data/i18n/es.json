@@ -1409,6 +1409,60 @@
       "empty": "La página existe, pero todavía no hay nada publicado en ella.",
       "open": "Abrir tienda",
       "edit": "Editar tienda"
+    },
+    "marketing": {
+      "eyebrow": "Marketing",
+      "title": "Haz crecer cada producto desde un solo espacio",
+      "description": "Prepara la experiencia pública, organiza los archivos de campaña y mantén las conversaciones con compradores junto al producto que vendes.",
+      "sectionTitle": "Espacio de marketing",
+      "checking": "Verificando...",
+      "storefront": {
+        "title": "Tienda y páginas de producto",
+        "description": "Gestiona tu perfil público y las páginas que visitan los compradores.",
+        "action": "Abrir tienda"
+      },
+      "media": {
+        "title": "Biblioteca de medios",
+        "description": "Mantén organizadas las portadas, los archivos de las lecciones y el material de campaña.",
+        "action": "Abrir biblioteca"
+      },
+      "messages": {
+        "title": "Mensajes de compradores",
+        "description": "Continúa las conversaciones de producto y matrícula desde una sola bandeja.",
+        "action": "Abrir mensajes"
+      },
+      "coupons": {
+        "title": "Cupones y promociones",
+        "description": "Abre un producto para configurar sus códigos de descuento y reglas de oferta.",
+        "action": "Gestionar promociones"
+      },
+      "integrations": {
+        "title": "Integraciones",
+        "description": "Las herramientas de email, los webhooks y los destinos de analítica están en la hoja de ruta.",
+        "action": "Ver lo planificado"
+      },
+      "state": {
+        "published": "Publicada",
+        "notPublished": "Todavía sin publicar",
+        "openPublicPage": "Abrir página pública",
+        "filesOne": "1 archivo",
+        "filesMany": "{count} archivos",
+        "awaitingReplyOne": "1 espera respuesta",
+        "awaitingReplyMany": "{count} esperan respuesta",
+        "noAwaitingReply": "Sin respuestas pendientes",
+        "couponsPerProduct": "Se configura por producto",
+        "planned": "Planificado"
+      }
+    },
+    "storefrontPage": {
+      "previewLabel": "Vista previa de la tienda",
+      "openPublicPage": "Abrir página pública",
+      "published": "Publicada",
+      "notPublished": "Todavía sin publicar",
+      "laterStep": "Se guarda aquí ahora; tu tienda pública se activa en un paso posterior.",
+      "previewNoCourse": "Todavía no hay ningún curso publicado",
+      "previewCoursesOne": "1 curso publicado",
+      "previewCoursesMany": "{count} cursos publicados"
     }
   },
   "creatorPanel": {

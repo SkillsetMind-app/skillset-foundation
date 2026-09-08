@@ -391,6 +391,29 @@ export async function fetchCourseAssets(courseId: string): Promise<CourseAsset[]
     .sort((left, right) => left.fileName.localeCompare(right.fileName));
 }
 
+/**
+ * Quantos arquivos o professor tem na midia, somando os cursos dele. O painel
+ * de Marketing so precisa do numero: pedir as linhas de cada curso (ou abrir
+ * um canal realtime por curso) para depois contar seria caro por nada.
+ */
+export async function countCourseAssets(courseIds: string[]): Promise<number> {
+  if (courseIds.length === 0) {
+    return 0;
+  }
+
+  const supabase = getSupabaseBrowserClient();
+  const { count, error } = await supabase
+    .from(courseAssetsTable)
+    .select("id", { count: "exact", head: true })
+    .in("course_id", courseIds);
+
+  if (error) {
+    throw error instanceof Error ? error : new Error(String(error));
+  }
+
+  return count ?? 0;
+}
+
 export function subscribeToCourseAssets(
   courseId: string,
   callback: (assets: CourseAsset[]) => void,

@@ -1,15 +1,25 @@
 "use client";
 
-import { Trash2, UploadCloud } from "lucide-react";
+import { ExternalLink, Trash2, UploadCloud } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
-import { Button, Card, Field, InlineAlert, SectionHeader } from "@/components/ui";
+import { useTranslation } from "@/components/i18n/i18n-provider";
+import {
+  Button,
+  Card,
+  Field,
+  InlineAlert,
+  SectionHeader,
+  buttonClasses,
+} from "@/components/ui";
 import type {
   StorefrontConfig,
   StorefrontThemePreset,
 } from "@/domain/user-profile";
 import {
+  instructorPagePath,
   isStorefrontHexColor,
   maxStorefrontTaglineLength,
   storefrontThemePresets,
@@ -161,6 +171,7 @@ function StorefrontImageUpload({
 
 export function StorefrontSettingsPanel() {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const [displayName, setDisplayName] = useState("");
   const [accentColor, setAccentColor] = useState("");
@@ -463,16 +474,55 @@ export function StorefrontSettingsPanel() {
       ? accentColor.trim()
       : defaultAccentColor;
 
+  // A vitrine so esta no ar quando ha curso publicado nela — mesma regra do
+  // cartao da Home e do de Marketing. Enquanto nao ha, a frase sobre o passo
+  // posterior continua verdadeira; com curso publicado ela virava mentira.
+  const isPublished = publishedCourses.length > 0;
+  const publicPath = user ? instructorPagePath(user.uid) : "";
+
   return (
     <section className="settings-section-card">
       <SectionHeader
         eyebrow="Teacher Studio"
         title="Storefront branding"
-        description="Brand your public instructor page — logo, hero image, accent color, and the order your courses appear in. Saved here now; your public storefront goes live in a later step."
+        description={`Brand your public instructor page — logo, hero image, accent color, and the order your courses appear in.${
+          isPublished ? "" : ` ${t("teach.storefrontPage.laterStep")}`
+        }`}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`status-chip ${isPublished ? "status-chip--success" : "status-chip--draft"}`}
+            >
+              <span className="status-chip__dot" aria-hidden="true" />
+              {t(
+                isPublished
+                  ? "teach.storefrontPage.published"
+                  : "teach.storefrontPage.notPublished",
+              )}
+            </span>
+            {publicPath ? (
+              <Link
+                href={publicPath}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonClasses({ variant: "outline", size: "sm" })}
+              >
+                {t("teach.storefrontPage.openPublicPage")}
+                <ExternalLink aria-hidden="true" size={14} strokeWidth={1.9} />
+                <span className="sr-only">{t("platform.opensInNewTab")}</span>
+              </Link>
+            ) : null}
+          </div>
+        }
       />
 
-      {/* Live brand preview — how your storefront header reads at a glance. */}
-      <div className="mt-6 overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] shadow-[var(--shadow-soft)]">
+      {/* Live brand preview — how your storefront header reads at a glance.
+          Com nome acessivel: era um bloco anonimo, e quem usa leitor de tela
+          nao tinha como saber que aquilo era a previa da vitrine. */}
+      <section
+        aria-label={t("teach.storefrontPage.previewLabel")}
+        className="mt-6 overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] shadow-[var(--shadow-soft)]"
+      >
         <div className="relative flex min-h-32 items-center gap-4 overflow-hidden bg-[var(--color-primary)] px-5 py-6 sm:px-7">
           {heroImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -498,10 +548,24 @@ export function StorefrontSettingsPanel() {
             <span className="mt-1 block max-w-md truncate text-sm text-white/70">
               {tagline.trim() || "One line that sums up what you teach."}
             </span>
+            {/* A previa mentia por omissao: mostrava marca e nada do catalogo,
+                que e o que o comprador realmente ve na vitrine. */}
+            <span className="mt-2 block max-w-md truncate text-xs text-white/60">
+              {orderedCourses.length === 0
+                ? t("teach.storefrontPage.previewNoCourse")
+                : `${t(
+                    orderedCourses.length === 1
+                      ? "teach.storefrontPage.previewCoursesOne"
+                      : "teach.storefrontPage.previewCoursesMany",
+                  ).replace("{count}", String(orderedCourses.length))}: ${orderedCourses
+                    .slice(0, 3)
+                    .map((course) => course.title)
+                    .join(", ")}`}
+            </span>
           </span>
         </div>
         <div className="h-1.5" style={{ background: previewAccent }} />
-      </div>
+      </section>
 
       <form className="mt-6 grid gap-5" onSubmit={handleSubmit}>
         <Card tone="soft" padding="sm" shadow={false} className="grid gap-4">

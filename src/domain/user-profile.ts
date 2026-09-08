@@ -80,6 +80,16 @@ export const maxStorefrontOrderedCourses = 200;
 export const maxStorefrontSectionLabels = 20;
 export const maxStorefrontSectionLabelLength = 60;
 
+/**
+ * Endereco da vitrine publica do professor. O caminho `/instructors/{uid}`
+ * estava escrito a mao em cada tela que precisava dele; com tres telas
+ * apontando para la (Home, Marketing e a propria pagina de vitrine), uma
+ * funcao evita que uma delas mude e as outras fiquem para tras.
+ */
+export function instructorPagePath(uid: string): string {
+  return `/instructors/${uid}`;
+}
+
 /** A teacher-chosen brand accent must be a 6-digit hex so it is safe to drop
  * into a CSS custom property without style/script injection. */
 export function isStorefrontHexColor(value: string): boolean {

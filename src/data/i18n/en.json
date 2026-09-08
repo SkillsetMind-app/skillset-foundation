@@ -1409,6 +1409,60 @@
       "empty": "The page exists, but nothing is published on it yet.",
       "open": "Open storefront",
       "edit": "Edit storefront"
+    },
+    "marketing": {
+      "eyebrow": "Marketing",
+      "title": "Grow each product from one workspace",
+      "description": "Prepare the public experience, organize campaign assets, and keep buyer conversations connected to the product being sold.",
+      "sectionTitle": "Marketing workspace",
+      "checking": "Checking...",
+      "storefront": {
+        "title": "Storefront & product pages",
+        "description": "Manage your public practitioner profile and the pages buyers visit.",
+        "action": "Open storefront"
+      },
+      "media": {
+        "title": "Media library",
+        "description": "Keep course covers, lesson assets, and campaign media organized.",
+        "action": "Open library"
+      },
+      "messages": {
+        "title": "Buyer messages",
+        "description": "Continue product and enrollment conversations from one inbox.",
+        "action": "Open messages"
+      },
+      "coupons": {
+        "title": "Coupons & promotions",
+        "description": "Open a product to configure its discount codes and offer rules.",
+        "action": "Manage promotions"
+      },
+      "integrations": {
+        "title": "Integrations",
+        "description": "Email tools, webhooks, and analytics destinations are on the roadmap.",
+        "action": "See what's planned"
+      },
+      "state": {
+        "published": "Published",
+        "notPublished": "Not published yet",
+        "openPublicPage": "Open public page",
+        "filesOne": "1 file",
+        "filesMany": "{count} files",
+        "awaitingReplyOne": "1 awaiting reply",
+        "awaitingReplyMany": "{count} awaiting reply",
+        "noAwaitingReply": "No reply pending",
+        "couponsPerProduct": "Set per product",
+        "planned": "Planned"
+      }
+    },
+    "storefrontPage": {
+      "previewLabel": "Live storefront preview",
+      "openPublicPage": "Open public page",
+      "published": "Published",
+      "notPublished": "Not published yet",
+      "laterStep": "Saved here now; your public storefront goes live in a later step.",
+      "previewNoCourse": "No published course yet",
+      "previewCoursesOne": "1 published course",
+      "previewCoursesMany": "{count} published courses"
     }
   },
   "creatorPanel": {
