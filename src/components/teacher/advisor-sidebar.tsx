@@ -300,7 +300,7 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
               type="button"
               onClick={closeAdvisor}
               aria-label={t("advisor.close")}
-              className="rounded-full p-1 text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-line)] hover:text-[var(--color-ink)]"
+              className="grid size-11 shrink-0 place-items-center rounded-full text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-line)] hover:text-[var(--color-ink)]"
             >
               <X className="h-4 w-4" aria-hidden="true" />
             </button>

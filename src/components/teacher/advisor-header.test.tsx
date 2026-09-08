@@ -190,7 +190,7 @@ describe("Advisor no cabecalho sem cobrir o conteudo", () => {
     expect(screen.getByRole("dialog", { name: "Asesor del estudio" })).toBeInTheDocument();
     expect(screen.getByText(/^Hola, soy tu asesor del estudio\./)).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Mensaje al asesor del estudio" })).toHaveValue("My own words");
-    expect(screen.getByRole("textbox", { name: "Mensaje al asesor del estudio" })).toHaveAttribute("placeholder", "Pregunta sobre videos, precios, estructura…");
+    expect(screen.getByRole("textbox", { name: "Mensaje al asesor del estudio" })).toHaveAttribute("placeholder", "Escribe tu pregunta…");
     expect(screen.getByRole("button", { name: "Enviar mensaje" })).toBeInTheDocument();
     expect(screen.getByText("Saved advice stays in English.")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledOnce();

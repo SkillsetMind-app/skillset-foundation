@@ -8,7 +8,7 @@
     "greeting": "Hola, soy tu asesor del estudio. Pregúntame cómo estructurar un curso, si conviene insertar videos de YouTube o subir los tuyos, cómo fijar precios o cómo conseguir tus primeras ventas.",
     "loading": "Cargando tu conversación…",
     "thinking": "El asesor está pensando…",
-    "placeholder": "Pregunta sobre videos, precios, estructura…",
+    "placeholder": "Escribe tu pregunta…",
     "messageLabel": "Mensaje al asesor del estudio",
     "send": "Enviar mensaje",
     "notReady": "Estamos preparando el asesor. Estará disponible en breve.",
