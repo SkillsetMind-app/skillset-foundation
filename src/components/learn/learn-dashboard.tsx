@@ -18,6 +18,7 @@ import {
   canOpenEnrollment,
   type Enrollment,
 } from "@/domain/enrollment";
+import { getSafeExternalUrl } from "@/domain/external-url";
 import {
   getRemainingMinutesFrom,
   getResumeCourseLesson,
@@ -161,6 +162,7 @@ export function LearnDashboard() {
       .sort((left, right) => left.startsAt - right.startsAt)
       .map(({ event, startsAt }) => ({
         ...event,
+        externalUrl: getSafeExternalUrl(event.externalUrl),
         isThisWeek: startsAt <= now + weekMillis,
       }));
   }, [eventBuckets]);
@@ -445,7 +447,11 @@ export function LearnDashboard() {
                     >
                       {t("learn.dashboard.joinLive")}
                     </a>
-                  ) : null}
+                  ) : (
+                    <span className="text-xs text-[var(--color-ink-soft)]">
+                      {t("platform.events.linkUnavailable")}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
