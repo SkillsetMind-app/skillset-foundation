@@ -184,46 +184,66 @@ describe("hub do curso — entrada de excluir/arquivar", () => {
 });
 
 describe("o menu abre para dentro da tela", () => {
-  // jsdom nao mede layout: o retangulo do gatilho e simulado. O que importa e
-  // a decisao — com o gatilho encostado na borda esquerda (lista em cartao a
-  // 390/768 px), um menu de 224 px ancorado a direita dele nasceria em x < 0.
-  function retangulo(left: number, width: number): DOMRect {
-    return {
+  // jsdom nao mede layout: o retangulo do gatilho e a largura da janela sao
+  // simulados. O que se prova e a conta — um menu de 224 px nunca nasce fora
+  // da janela, por nenhum dos dois lados, e no desktop alinha a direita do
+  // gatilho como sempre alinhou.
+  const MENU = 224;
+  const GATILHO = 44;
+
+  function simula(left: number, viewport: number) {
+    const janela = window.innerWidth;
+    window.innerWidth = viewport;
+    const medida = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
       left,
-      right: left + width,
+      right: left + GATILHO,
       top: 0,
       bottom: 44,
       x: left,
       y: 0,
-      width,
+      width: GATILHO,
       height: 44,
       toJSON: () => ({}),
-    } as DOMRect;
+    } as DOMRect);
+    return () => {
+      medida.mockRestore();
+      window.innerWidth = janela;
+    };
   }
 
-  it("no celular, com o gatilho na borda esquerda, ancora o menu à esquerda", async () => {
-    const medida = vi
-      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
-      .mockReturnValue(retangulo(95, 44));
+  // Borda esquerda do menu em coordenadas da janela: o gatilho esta em `left`
+  // e o menu e posicionado em relacao a ele.
+  async function bordaEsquerdaDoMenu(left: number) {
+    const menu = await abreMenuDoHub();
+    return left + Number.parseFloat(menu.style.left);
+  }
+
+  it("no celular, com o gatilho na borda esquerda, o menu começa a 8 px da borda", async () => {
+    const desfaz = simula(95, 390);
     try {
-      const menu = await abreMenuDoHub();
-      expect(menu).toHaveClass("left-0");
-      expect(menu).not.toHaveClass("right-0");
+      expect(await bordaEsquerdaDoMenu(95)).toBe(8);
     } finally {
-      medida.mockRestore();
+      desfaz();
     }
   });
 
-  it("no desktop, com o gatilho na borda direita, continua ancorado à direita", async () => {
-    const medida = vi
-      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
-      .mockReturnValue(retangulo(1337, 44));
+  it("no celular, com o gatilho na borda direita, o menu não passa da janela", async () => {
+    const desfaz = simula(340, 390);
     try {
-      const menu = await abreMenuDoHub();
-      expect(menu).toHaveClass("right-0");
-      expect(menu).not.toHaveClass("left-0");
+      const x = await bordaEsquerdaDoMenu(340);
+      expect(x + MENU).toBeLessThanOrEqual(390 - 8);
+      expect(x).toBeGreaterThanOrEqual(8);
     } finally {
-      medida.mockRestore();
+      desfaz();
+    }
+  });
+
+  it("no desktop, com o gatilho na borda direita, o menu alinha à direita dele", async () => {
+    const desfaz = simula(1337, 1440);
+    try {
+      expect((await bordaEsquerdaDoMenu(1337)) + MENU).toBe(1337 + GATILHO);
+    } finally {
+      desfaz();
     }
   });
 });
