@@ -5,9 +5,9 @@ import { useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { ExportTableButton } from "@/components/shared/export-table-button";
+import { EmptyState } from "@/components/ui";
 import {
-  courseEventStatusLabels,
-  courseEventTypeLabels,
   formatEventDateTime,
   isValidExternalEventUrl,
   type CourseEvent,
@@ -26,6 +26,8 @@ import {
 } from "@/lib/data/course-events";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 
+const copy = "creatorPanel.events";
+
 const eventTypes: CourseEventType[] = [
   "live_class",
   "mentorship",
@@ -33,6 +35,27 @@ const eventTypes: CourseEventType[] = [
   "webinar",
   "deadline",
 ];
+
+const FILTERS = ["upcoming", "past", "cancelled", "all"] as const;
+type EventFilter = (typeof FILTERS)[number];
+
+// Tres baldes que nao se sobrepoem e cobrem a agenda inteira: por isso os tres
+// tiles do topo somam o total e cada filtro tem um numero correspondente.
+// Data ilegivel conta como "upcoming" — sumir com a sessao seria pior do que
+// mostra-la com "Date pending".
+function bucketOf(event: CourseEvent, now: number): Exclude<EventFilter, "all"> {
+  if (event.status === "cancelled") {
+    return "cancelled";
+  }
+
+  const startsAt = new Date(event.startsAt).getTime();
+
+  if (Number.isNaN(startsAt)) {
+    return "upcoming";
+  }
+
+  return startsAt < now ? "past" : "upcoming";
+}
 
 // Convert a stored ISO timestamp into the local "YYYY-MM-DDTHH:mm" value a
 // datetime-local input expects, so editing an event pre-fills the right time.
@@ -63,9 +86,21 @@ export function TeacherEventStudio() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [eventsLoaded, setEventsLoaded] = useState(false);
+  // Guarda o CODIGO do erro, nao a frase: o efeito de inscricao nao pode
+  // depender de `t` (fora do provider ele e uma funcao nova a cada render, e o
+  // efeito reinscreveria em laco) e a frase troca de idioma na hora.
   const [error, setError] = useState("");
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [actioningEventId, setActioningEventId] = useState<string | null>(null);
+  // O formulario e um pedido, nao a pagina. Quem chega pelo fluxo de criacao de
+  // produto (`?newEvent=1`, create-course-start.tsx) ja pediu, e so para essa
+  // pessoa ele nasce aberto.
+  const [isFormOpen, setIsFormOpen] = useState(
+    searchParams.get("newEvent") === "1",
+  );
+  const [filter, setFilter] = useState<EventFilter>("upcoming");
+  const [search, setSearch] = useState("");
+  const [now] = useState(() => Date.now());
 
   useEffect(() => {
     if (!user) {
@@ -79,7 +114,7 @@ export function TeacherEventStudio() {
         setIsLoading(false);
       },
       () => {
-        setError("We could not load your courses for scheduling.");
+        setError("courses");
         setIsLoading(false);
       },
     );
@@ -98,7 +133,7 @@ export function TeacherEventStudio() {
       },
       () => {
         setEventsLoaded(true);
-        setError("We could not load your scheduled sessions.");
+        setError("events");
       },
     );
   }, [user]);
@@ -106,6 +141,46 @@ export function TeacherEventStudio() {
   const selectedCourse = useMemo(
     () => courses.find((course) => course.id === courseId) ?? courses[0],
     [courseId, courses],
+  );
+
+  const counts = useMemo(() => {
+    const tally = { upcoming: 0, past: 0, cancelled: 0 };
+
+    events.forEach((event) => {
+      tally[bucketOf(event, now)] += 1;
+    });
+
+    return tally;
+  }, [events, now]);
+
+  const visible = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+
+    return events.filter((event) => {
+      if (filter !== "all" && bucketOf(event, now) !== filter) {
+        return false;
+      }
+
+      if (!needle) {
+        return true;
+      }
+
+      return `${event.title} ${event.courseTitle}`.toLowerCase().includes(needle);
+    });
+  }, [events, filter, now, search]);
+
+  const exportRows = useMemo(
+    () =>
+      visible.map((event) => ({
+        event_id: event.id,
+        title: event.title,
+        course: event.courseTitle,
+        type: event.type,
+        status: event.status,
+        starts_at: event.startsAt,
+        external_url: event.externalUrl,
+      })),
+    [visible],
   );
 
   function resetForm() {
@@ -117,6 +192,11 @@ export function TeacherEventStudio() {
     setType("live_class");
   }
 
+  function closeForm() {
+    resetForm();
+    setIsFormOpen(false);
+  }
+
   function startEditing(event: CourseEvent) {
     setEditingEventId(event.id);
     setCourseId(event.courseId);
@@ -126,6 +206,7 @@ export function TeacherEventStudio() {
     setExternalUrl(event.externalUrl);
     setDescription(event.description);
     setError("");
+    setIsFormOpen(true);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -136,12 +217,12 @@ export function TeacherEventStudio() {
     }
 
     if (!isValidExternalEventUrl(externalUrl)) {
-      setError("Use a valid external link, such as a Zoom or Google Meet URL.");
+      setError("url");
       return;
     }
 
     if (!startsAt) {
-      setError("Choose the date and time for this session.");
+      setError("startsAt");
       return;
     }
 
@@ -157,10 +238,10 @@ export function TeacherEventStudio() {
           startsAt: new Date(startsAt).toISOString(),
           externalUrl,
         });
-        resetForm();
+        closeForm();
       } else {
         if (!selectedCourse) {
-          setError("Create a course draft before scheduling a live session.");
+          setError("noCourse");
           return;
         }
 
@@ -176,11 +257,11 @@ export function TeacherEventStudio() {
           externalUrl,
         });
 
-        resetForm();
+        closeForm();
         setCourseId(selectedCourse.id);
       }
     } catch {
-      setError("We could not save this session. Please check the details and try again.");
+      setError("save");
     } finally {
       setIsSaving(false);
     }
@@ -188,7 +269,7 @@ export function TeacherEventStudio() {
 
   async function handleCancelEvent(event: CourseEvent) {
     const confirmed = window.confirm(
-      `Cancel "${event.title}"? Learners who RSVP'd will see it as cancelled.`,
+      t(`${copy}.confirmCancel`).replace("{title}", () => event.title),
     );
 
     if (!confirmed) {
@@ -201,7 +282,7 @@ export function TeacherEventStudio() {
     try {
       await cancelCourseEvent(event.id);
     } catch {
-      setError("We could not cancel this session.");
+      setError("cancel");
     } finally {
       setActioningEventId(null);
     }
@@ -209,7 +290,7 @@ export function TeacherEventStudio() {
 
   async function handleDeleteEvent(event: CourseEvent) {
     const confirmed = window.confirm(
-      `Permanently delete "${event.title}"? This cannot be undone.`,
+      t(`${copy}.confirmDelete`).replace("{title}", () => event.title),
     );
 
     if (!confirmed) {
@@ -223,172 +304,273 @@ export function TeacherEventStudio() {
       await deleteCourseEvent(event.id);
 
       if (editingEventId === event.id) {
-        resetForm();
+        closeForm();
       }
     } catch {
-      setError("We could not delete this session.");
+      setError("delete");
     } finally {
       setActioningEventId(null);
     }
   }
 
+  const tiles = [
+    {
+      key: "upcoming" as const,
+      label: t(`${copy}.filter.upcoming`),
+      value: counts.upcoming,
+      hint: t(`${copy}.tiles.upcomingHint`),
+    },
+    {
+      key: "past" as const,
+      label: t(`${copy}.filter.past`),
+      value: counts.past,
+      hint: t(`${copy}.tiles.pastHint`),
+    },
+    {
+      key: "cancelled" as const,
+      label: t(`${copy}.filter.cancelled`),
+      value: counts.cancelled,
+      hint: t(`${copy}.tiles.cancelledHint`),
+    },
+  ];
+
+  const countLine = t(`${copy}.${visible.length === 1 ? "countOne" : "count"}`)
+    .replace("{count}", () => String(visible.length))
+    .replace("{filter}", () => t(`${copy}.filter.${filter}`));
+
   return (
-    <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-      <div className="settings-section-card">
-        <div className="flex items-baseline gap-2 border-b border-[var(--color-line)] pb-4">
-          <h3 className="text-base font-bold text-[var(--color-ink)]">
-            {editingEventId ? "Edit agenda item" : "Schedule an agenda item"}
-          </h3>
-          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
-            Course agenda
-          </span>
-        </div>
-        <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-          Add a live class, mentorship, masterclass, office hour, webinar, or
-          deadline. Learners enrolled in that course see it in their own agenda.
-        </p>
-
-        <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
-          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Course
-            <select
-              value={selectedCourse?.id ?? ""}
-              onChange={(event) => setCourseId(event.target.value)}
-              disabled={courses.length === 0 || isLoading || Boolean(editingEventId)}
-              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:opacity-60"
-            >
-              {courses.length === 0 ? (
-                <option value="">Create a course first</option>
-              ) : (
-                courses.map((course) => (
-                  <option key={course.id} value={course.id}>
-                    {course.title}
-                  </option>
-                ))
-              )}
-            </select>
-          </label>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-              Session type
-              <select
-                value={type}
-                onChange={(event) => setType(event.target.value as CourseEventType)}
-                className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
-              >
-                {eventTypes.map((item) => (
-                  <option key={item} value={item}>
-                    {courseEventTypeLabels[item]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-              Date and time
-              <input
-                value={startsAt}
-                onChange={(event) => setStartsAt(event.target.value)}
-                type="datetime-local"
-                required
-                className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
-              />
-            </label>
-          </div>
-
-          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Session title
-            <input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              required
-              minLength={3}
-              placeholder="Example: Leadership clinic with live Q&A"
-              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
-            />
-          </label>
-
-          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            External class link
-            <input
-              value={externalUrl}
-              onChange={(event) => setExternalUrl(event.target.value)}
-              required
-              placeholder="https://meet.google.com/... or https://zoom.us/..."
-              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
-            />
-          </label>
-
-          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Session description
-            <textarea
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              required
-              minLength={12}
-              rows={4}
-              placeholder="What should learners expect in this event?"
-              className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
-            />
-          </label>
-
-          {error ? (
-            <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-              {error}
+    <section className="grid gap-5">
+      <div className="grid gap-4 sm:grid-cols-3">
+        {tiles.map((tile) => (
+          <div
+            key={tile.key}
+            className="studio-kpi-card dash-card dash-card--strong p-5"
+          >
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-ink-muted)]">
+              {tile.label}
             </p>
-          ) : null}
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="submit"
-              disabled={isSaving || (!editingEventId && !selectedCourse)}
-              className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
-            >
-              {isSaving
-                ? "Saving..."
-                : editingEventId
-                  ? "Update session"
-                  : "Schedule session"}
-            </button>
-            {editingEventId ? (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="button-outline px-4 py-2.5 text-sm"
-              >
-                Cancel edit
-              </button>
-            ) : null}
-            {!editingEventId && !selectedCourse && !isLoading ? (
-              <p className="w-full text-xs text-[var(--color-ink-soft)]">
-                Create a course draft first — sessions are linked to a specific course.
+            {eventsLoaded ? (
+              <p className="mt-2 text-4xl font-bold tracking-[-0.04em] text-[var(--color-primary)]">
+                {tile.value}
               </p>
-            ) : null}
+            ) : (
+              <div className="mt-3 h-8 w-16 animate-pulse rounded bg-[var(--color-surface-strong)]" />
+            )}
+            <p className="mt-2 max-w-[13rem] text-xs leading-5 text-[var(--color-ink-soft)]">
+              {tile.hint}
+            </p>
           </div>
-        </form>
+        ))}
       </div>
 
       <div className="settings-section-card">
-        <div className="flex items-baseline gap-2 border-b border-[var(--color-line)] pb-4">
-          <h3 className="text-base font-bold text-[var(--color-ink)]">
-            Scheduled sessions
-          </h3>
-          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
-            Agenda
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-line)] pb-4">
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-base font-bold text-[var(--color-ink)]">
+              {t(`${copy}.sectionTitle`)}
+            </h3>
+            <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
+              {t(`${copy}.sectionEyebrow`)}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => (isFormOpen ? closeForm() : setIsFormOpen(true))}
+            className={`${isFormOpen ? "button-outline" : "button-solid"} px-4 py-2.5 text-sm`}
+          >
+            {isFormOpen ? t(`${copy}.closeForm`) : t(`${copy}.newSession`)}
+          </button>
         </div>
-        <div className="mt-6 grid gap-3">
+
+        {/* Erro fora do formulario: cancelar e excluir tambem falham, e com o
+            formulario fechado a mensagem ficava invisivel. */}
+        {error ? (
+          <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+            {t(`${copy}.errors.${error}`)}
+          </p>
+        ) : null}
+
+        {isFormOpen ? (
+          <div className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-5">
+            <h4 className="text-sm font-bold text-[var(--color-ink)]">
+              {editingEventId
+                ? t(`${copy}.formTitleEdit`)
+                : t(`${copy}.formTitleNew`)}
+            </h4>
+            <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
+              {t(`${copy}.formIntro`)}
+            </p>
+
+            <form className="mt-5 grid gap-4" onSubmit={handleSubmit}>
+              <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                {t(`${copy}.courseLabel`)}
+                <select
+                  value={selectedCourse?.id ?? ""}
+                  onChange={(event) => setCourseId(event.target.value)}
+                  disabled={courses.length === 0 || isLoading || Boolean(editingEventId)}
+                  className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:opacity-60"
+                >
+                  {courses.length === 0 ? (
+                    <option value="">{t(`${copy}.courseEmptyOption`)}</option>
+                  ) : (
+                    courses.map((course) => (
+                      <option key={course.id} value={course.id}>
+                        {course.title}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </label>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                  {t(`${copy}.typeLabel`)}
+                  <select
+                    value={type}
+                    onChange={(event) => setType(event.target.value as CourseEventType)}
+                    className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                  >
+                    {eventTypes.map((item) => (
+                      <option key={item} value={item}>
+                        {t(`${copy}.type.${item}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                  {t(`${copy}.startsAtLabel`)}
+                  <input
+                    value={startsAt}
+                    onChange={(event) => setStartsAt(event.target.value)}
+                    type="datetime-local"
+                    required
+                    className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                  />
+                </label>
+              </div>
+
+              <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                {t(`${copy}.titleLabel`)}
+                <input
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  required
+                  minLength={3}
+                  placeholder={t(`${copy}.titlePlaceholder`)}
+                  className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                />
+              </label>
+
+              <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                {t(`${copy}.urlLabel`)}
+                <input
+                  value={externalUrl}
+                  onChange={(event) => setExternalUrl(event.target.value)}
+                  required
+                  placeholder={t(`${copy}.urlPlaceholder`)}
+                  className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                />
+              </label>
+
+              <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                {t(`${copy}.descriptionLabel`)}
+                <textarea
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  required
+                  minLength={12}
+                  rows={4}
+                  placeholder={t(`${copy}.descriptionPlaceholder`)}
+                  className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                />
+              </label>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={isSaving || (!editingEventId && !selectedCourse)}
+                  className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+                >
+                  {isSaving
+                    ? t(`${copy}.saving`)
+                    : editingEventId
+                      ? t(`${copy}.submitEdit`)
+                      : t(`${copy}.submitNew`)}
+                </button>
+                {editingEventId ? (
+                  <button
+                    type="button"
+                    onClick={closeForm}
+                    className="button-outline px-4 py-2.5 text-sm"
+                  >
+                    {t(`${copy}.cancelEdit`)}
+                  </button>
+                ) : null}
+                {!editingEventId && !selectedCourse && !isLoading ? (
+                  <p className="w-full text-xs text-[var(--color-ink-soft)]">
+                    {t(`${copy}.needCourse`)}
+                  </p>
+                ) : null}
+              </div>
+            </form>
+          </div>
+        ) : null}
+
+        {/* Moldura sempre visivel: mesmo sem nenhuma sessao a pessoa ve DE QUE
+            recorte a lista fala, em vez de um vazio sem contexto (#265). */}
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <label htmlFor="events-filter" className="sr-only">
+            {t(`${copy}.filterLabel`)}
+          </label>
+          <select
+            id="events-filter"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value as EventFilter)}
+            className="min-h-11 rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
+          >
+            {FILTERS.map((option) => (
+              <option key={option} value={option}>
+                {t(`${copy}.filter.${option}`)}
+              </option>
+            ))}
+          </select>
+          <label htmlFor="events-search" className="sr-only">
+            {t(`${copy}.searchLabel`)}
+          </label>
+          <input
+            id="events-search"
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t(`${copy}.searchPlaceholder`)}
+            className="min-h-11 min-w-0 flex-1 rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
+          />
+          <ExportTableButton rows={exportRows} filename="skillset-events" />
+        </div>
+
+        <p className="mt-3 text-sm text-[var(--color-ink-soft)]">{countLine}</p>
+
+        <div className="mt-4 grid gap-3">
           {!eventsLoaded ? (
             <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-              Loading scheduled sessions…
+              {t(`${copy}.loading`)}
             </p>
-          ) : events.length === 0 ? (
-            <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-              No agenda items scheduled yet. Create one when the course has a
-              class, mentorship, masterclass, office hour, webinar, or deadline.
-            </p>
+          ) : visible.length === 0 ? (
+            <EmptyState
+              title={t(`${copy}.emptyTitle`)}
+              description={t(`${copy}.emptyBody`)}
+              action={
+                <button
+                  type="button"
+                  onClick={() => setIsFormOpen(true)}
+                  className="button-solid px-4 py-2.5 text-sm"
+                >
+                  {t(`${copy}.emptyCta`)}
+                </button>
+              }
+            />
           ) : (
-            events.map((event) => (
+            visible.map((event) => (
               <article
                 key={event.id}
                 className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
@@ -396,14 +578,14 @@ export function TeacherEventStudio() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                      {courseEventTypeLabels[event.type]}
+                      {t(`${copy}.type.${event.type}`)}
                     </p>
                     <h4 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
                       {event.title}
                     </h4>
                   </div>
                   <span className="rounded-[8px] bg-white px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
-                    {courseEventStatusLabels[event.status]}
+                    {t(`${copy}.status.${event.status}`)}
                   </span>
                 </div>
                 <p className="mt-3 text-sm font-semibold text-[var(--color-ink)]">
@@ -423,7 +605,7 @@ export function TeacherEventStudio() {
                     rel="noreferrer noopener"
                     className="mt-4 inline-flex text-sm font-semibold text-[var(--color-primary)] hover:text-[var(--color-accent-fg)]"
                   >
-                    Open external link
+                    {t(`${copy}.openLink`)}
                   </a>
                 ) : null}
                 <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--color-line)] pt-3">
@@ -432,7 +614,7 @@ export function TeacherEventStudio() {
                     onClick={() => startEditing(event)}
                     className="button-outline px-3.5 py-2 text-xs"
                   >
-                    Edit
+                    {t(`${copy}.edit`)}
                   </button>
                   {event.status === "scheduled" ? (
                     <button
@@ -441,7 +623,9 @@ export function TeacherEventStudio() {
                       disabled={actioningEventId === event.id}
                       className="button-outline px-3.5 py-2 text-xs disabled:opacity-60"
                     >
-                      {actioningEventId === event.id ? "Working..." : "Cancel session"}
+                      {actioningEventId === event.id
+                        ? t(`${copy}.working`)
+                        : t(`${copy}.cancelSession`)}
                     </button>
                   ) : null}
                   <button
@@ -450,7 +634,7 @@ export function TeacherEventStudio() {
                     disabled={actioningEventId === event.id}
                     className="button-danger px-3.5 py-2 text-xs disabled:opacity-60"
                   >
-                    Delete
+                    {t(`${copy}.delete`)}
                   </button>
                 </div>
               </article>
@@ -463,9 +647,10 @@ export function TeacherEventStudio() {
 }
 
 function TeacherEventRsvpSummary({ eventId }: { eventId: string }) {
+  const { t } = useTranslation();
   const [rsvps, setRsvps] = useState<CourseEventRsvp[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     return subscribeToCourseEventRsvps(
@@ -475,7 +660,7 @@ function TeacherEventRsvpSummary({ eventId }: { eventId: string }) {
         setIsLoading(false);
       },
       () => {
-        setError("RSVP summary unavailable.");
+        setError(true);
         setIsLoading(false);
       },
     );
@@ -487,21 +672,23 @@ function TeacherEventRsvpSummary({ eventId }: { eventId: string }) {
   return (
     <div className="mt-4 rounded-[14px] border border-[var(--color-line)] bg-white p-3">
       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-        RSVP
+        {t(`${copy}.rsvp`)}
       </p>
       {isLoading ? (
-        <p className="mt-2 text-sm text-[var(--color-ink-soft)]">Loading attendance...</p>
+        <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+          {t(`${copy}.rsvpLoading`)}
+        </p>
       ) : error ? (
         <p className="mt-2 text-sm font-semibold text-[var(--color-accent-fg)]">
-          {error}
+          {t(`${copy}.rsvpError`)}
         </p>
       ) : (
         <div className="mt-2 flex flex-wrap gap-2 text-sm">
           <span className="rounded-[8px] bg-[var(--color-surface-soft)] px-3 py-1 font-semibold text-[var(--color-primary)]">
-            {attendingCount} going
+            {t(`${copy}.going`).replace("{count}", () => String(attendingCount))}
           </span>
           <span className="rounded-[8px] bg-[var(--color-surface-soft)] px-3 py-1 font-semibold text-[var(--color-ink-soft)]">
-            {notAttendingCount} not going
+            {t(`${copy}.notGoing`).replace("{count}", () => String(notAttendingCount))}
           </span>
         </div>
       )}

@@ -81,7 +81,10 @@ describe("TeacherEventStudio", () => {
   // O estudio inteiro ainda fala ingles; so a data passou a seguir o idioma da
   // pessoa, e a data invalida mostra o texto traduzido em vez de "Date pending".
   it("na agenda, a data da sessao sai no idioma da pessoa e data invalida vira 'Fecha pendiente'", async () => {
-    const startsAt = "2026-03-14T15:30:00.000Z";
+    // Data no futuro: a agenda abre no filtro "Upcoming", entao uma sessao
+    // passada nao estaria na lista. O que este teste prova (data no idioma da
+    // pessoa e o fallback da data invalida) nao muda com isso.
+    const startsAt = "2027-03-14T15:30:00.000Z";
     const base = {
       courseId: "course-1",
       courseSlug: "existing-course",
