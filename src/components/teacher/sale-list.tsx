@@ -210,13 +210,16 @@ export function SaleList() {
         <label htmlFor="sales-search" className="sr-only">
           {t(`${copy}.searchLabel`)}
         </label>
+        {/* min-w-[12rem]: com flex-1 e min-w-0 a busca encolhia para 35 px a
+            390 px, espremida entre os dois selects (QA visual, 08/09). Com um
+            minimo ela pula para a linha de baixo e ocupa a largura toda. */}
         <input
           id="sales-search"
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder={t(`${copy}.searchPlaceholder`)}
-          className="min-h-11 min-w-0 flex-1 rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
+          className="min-h-11 min-w-[12rem] flex-1 rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
         />
         <label htmlFor="sales-status" className="sr-only">
           {t(`${copy}.statusLabel`)}

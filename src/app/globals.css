@@ -6103,9 +6103,14 @@ button:hover > .dash-card,
 }
 
 .studio-chart-empty {
+  /* Centrada no canvas: encostada no canto inferior direito ela cobria os
+     rotulos do eixo X e brigava com a etiqueta do ultimo ponto (QA visual em
+     producao, 08/09). */
   position: absolute;
-  right: 1.25rem;
-  bottom: 1.25rem;
+  inset: 0;
+  margin: auto;
+  width: max-content;
+  height: max-content;
   max-width: 17rem;
   border: 1px solid rgba(26, 54, 93, 0.1);
   border-radius: 14px;
@@ -6647,6 +6652,7 @@ button:hover > .dash-card,
   .studio-chart-empty {
     position: static;
     margin-top: 0.75rem;
+    width: auto;
     max-width: none;
   }
 

@@ -164,6 +164,29 @@ describe("aba Curriculum: a lista de modulos vem primeiro", () => {
     expect(within(second).getAllByRole("textbox", { name: "Lesson title" })[1]).toHaveValue("Focus blocks");
   });
 
+  // O cabecalho do curriculo dizia "1 modules / 1 lessons" e a estrutura,
+  // "1 modules, 1 lessons" — em EN e em ES (QA visual em producao, 08/09).
+  it("conta no singular: 1 module, 1 lesson", async () => {
+    const modulesOriginais = mocks.course.modules;
+    mocks.course.modules = [
+      {
+        id: "m1",
+        title: "Start here",
+        lessons: [{ id: "l1", title: "Welcome", type: "text", description: "" }],
+      },
+    ];
+    try {
+      renderBuilder();
+      await screen.findByRole("heading", { name: mocks.course.title });
+
+      expect(screen.getByText("1 module")).toBeInTheDocument();
+      expect(screen.getByText("1 module, 1 lesson")).toBeInTheDocument();
+      expect(screen.queryByText("1 modules")).not.toBeInTheDocument();
+    } finally {
+      mocks.course.modules = modulesOriginais;
+    }
+  });
+
   it("nao renderiza a biblioteca de midia ate alguem abrir", async () => {
     renderBuilder();
     await screen.findByRole("heading", { name: mocks.course.title });

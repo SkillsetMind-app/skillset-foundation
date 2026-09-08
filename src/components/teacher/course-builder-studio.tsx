@@ -92,6 +92,7 @@ import type { CourseAsset } from "@/domain/course-asset";
 import { isActivationRequiredError } from "@/domain/creator-verification";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import { isPublicFeatureEnabled } from "@/lib/feature-flags";
+import { countLabel } from "@/lib/i18n/count-label";
 import { track } from "@/lib/posthog/events";
 import { defaultSkillsetCurrency } from "@/lib/payments/currencies";
 import { CurrencySelect } from "@/components/teacher/currency-select";
@@ -664,6 +665,20 @@ export function CourseBuilderStudio() {
     && currency === "MXN"
     && cardInstallmentsConfigured;
   const lessonCount = countCourseLessons(modules);
+  // "1 module", "2 modules": a tela dizia "1 modules, 1 lessons" (QA visual em
+  // producao, 08/09). O singular tem chave propria, como no hub do curso.
+  const modulesLabel = countLabel(
+    t,
+    "creatorEditor.builder.summary.modulesOne",
+    "creatorEditor.builder.summary.modules",
+    modules.length,
+  );
+  const lessonsLabel = countLabel(
+    t,
+    "creatorEditor.builder.summary.lessonsOne",
+    "creatorEditor.builder.summary.lessons",
+    lessonCount,
+  );
   // Curso sem nenhum modulo abre ja com o formulario: nao ha lista para olhar.
   const isModuleFormOpen = isModuleFormRequested || modules.length === 0;
   const allLessons = modules.flatMap((module) =>
@@ -1688,8 +1703,8 @@ export function CourseBuilderStudio() {
               </p>
             </div>
             <div className="grid gap-2 text-right text-xs font-semibold text-[var(--color-ink-soft)]">
-              <span>{t("creatorEditor.builder.summary.modules").replace("{count}", () => String(modules.length))}</span>
-              <span>{t("creatorEditor.builder.summary.lessons").replace("{count}", () => String(lessonCount))}</span>
+              <span>{modulesLabel}</span>
+              <span>{lessonsLabel}</span>
               {totalDurationMinutes > 0 ? (
                 <span>{t("creatorEditor.builder.summary.duration").replace("{duration}", () => formattedDuration)}</span>
               ) : null}
@@ -2120,8 +2135,8 @@ export function CourseBuilderStudio() {
                     os dois cartoes do rodape ficam tres telas abaixo. */}
                 <p className="mt-2 text-xs font-semibold text-[var(--color-ink-soft)]">
                   {t("creatorEditor.builder.summary.structureCount")
-                    .replace("{modules}", () => String(modules.length))
-                    .replace("{lessons}", () => String(lessonCount))}
+                    .replace("{modules}", () => modulesLabel)
+                    .replace("{lessons}", () => lessonsLabel)}
                   {" · "}
                   {t("creatorEditor.builder.summary.percent").replace("{percent}", () => String(readiness.percent))}
                 </p>
@@ -2753,7 +2768,7 @@ export function CourseBuilderStudio() {
             {t("creatorEditor.builder.summary.structure")}
           </p>
           <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-            {t("creatorEditor.builder.summary.structureCount").replace("{modules}", () => String(modules.length)).replace("{lessons}", () => String(lessonCount))}
+            {t("creatorEditor.builder.summary.structureCount").replace("{modules}", () => modulesLabel).replace("{lessons}", () => lessonsLabel)}
           </h3>
           <div className="mt-5 grid gap-3">
             {modules.length === 0 ? (

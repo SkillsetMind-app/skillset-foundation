@@ -1362,6 +1362,21 @@
       "linkCoupons": "Cupones",
       "linkBuilder": "Constructor de cursos"
     },
+    "reportsPage": {
+      "eyebrow": "Estudio del Profesor",
+      "title": "Informes.",
+      "description": "Ventas, ingresos recurrentes y ganancias registradas de un vistazo. Cada cobro se creó en tu propia cuenta de Stripe: SkillsetMind nunca lo retiene. Después se aplican los plazos de liquidación y pago de Stripe."
+    },
+    "salesPage": {
+      "eyebrow": "Estudio del Profesor",
+      "title": "Tus ventas.",
+      "description": "Cada pedido pagado de tus cursos."
+    },
+    "eventsPage": {
+      "eyebrow": "Agenda del curso",
+      "title": "Programa clases en vivo.",
+      "description": "Crea clases en vivo, mentorías, masterclasses, horas de consulta, webinars y plazos vinculados al curso. Los estudiantes ven la misma agenda en su espacio."
+    },
     "page": {
       "eyebrow": "Estudio del Profesor",
       "title": "Crea, publica, cobra.",
@@ -3223,14 +3238,16 @@
         "checks": "{done} de {total} requisitos completos",
         "publishPercent": "Preparación para publicar: {percent}%",
         "percent": "{percent}% listo",
+        "modulesOne": "1 módulo",
         "modules": "{count} módulos",
+        "lessonsOne": "1 lección",
         "lessons": "{count} lecciones",
         "duration": "{duration} en total",
         "structure": "Estructura del curso",
         "empty": "Empieza con un módulo y añade las lecciones que deben completar los estudiantes.",
         "noLessons": "Aún no hay lecciones.",
         "preview": " - vista previa",
-        "structureCount": "{modules} módulos, {lessons} lecciones"
+        "structureCount": "{modules}, {lessons}"
       },
       "shell": {
         "chooseCourse": "Elige un curso en el estudio del creador antes de abrir el constructor.",

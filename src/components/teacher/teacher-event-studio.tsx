@@ -537,13 +537,14 @@ export function TeacherEventStudio() {
           <label htmlFor="events-search" className="sr-only">
             {t(`${copy}.searchLabel`)}
           </label>
+          {/* min-w-[12rem]: mesma moldura de Vendas, mesmo encolhimento a 390 px. */}
           <input
             id="events-search"
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={t(`${copy}.searchPlaceholder`)}
-            className="min-h-11 min-w-0 flex-1 rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
+            className="min-h-11 min-w-[12rem] flex-1 rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
           />
           <ExportTableButton rows={exportRows} filename="skillset-events" />
         </div>

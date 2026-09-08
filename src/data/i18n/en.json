@@ -1362,6 +1362,21 @@
       "linkCoupons": "Coupons",
       "linkBuilder": "Course builder"
     },
+    "reportsPage": {
+      "eyebrow": "Teacher Studio",
+      "title": "Reports.",
+      "description": "Sales, recurring revenue, and recorded earnings at a glance. Every charge was created on your own Stripe account — SkillsetMind never holds it. Stripe's own settlement and payout timing then applies."
+    },
+    "salesPage": {
+      "eyebrow": "Teacher Studio",
+      "title": "Your sales.",
+      "description": "Every paid order for your courses."
+    },
+    "eventsPage": {
+      "eyebrow": "Course agenda",
+      "title": "Schedule live learning.",
+      "description": "Create course-linked live classes, mentorships, masterclasses, office hours, webinars, and deadlines. Learners see the same agenda in their workspace."
+    },
     "page": {
       "eyebrow": "Teacher Studio",
       "title": "Build, ship, get paid.",
@@ -3223,14 +3238,16 @@
         "checks": "{done} of {total} checks ready",
         "publishPercent": "Publish readiness {percent}%",
         "percent": "{percent}% ready",
+        "modulesOne": "1 module",
         "modules": "{count} modules",
+        "lessonsOne": "1 lesson",
         "lessons": "{count} lessons",
         "duration": "{duration} total",
         "structure": "Course structure",
         "empty": "Start with one module, then add the lessons learners should complete.",
         "noLessons": "No lessons yet.",
         "preview": " - preview",
-        "structureCount": "{modules} modules, {lessons} lessons"
+        "structureCount": "{modules}, {lessons}"
       },
       "shell": {
         "chooseCourse": "Choose a course from Teacher Studio before opening the builder.",

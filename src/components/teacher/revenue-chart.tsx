@@ -125,7 +125,9 @@ export function RevenueChart({
               }
             />
           ))}
-          {chart.lastPoint ? (
+          {/* Sem receita a etiqueta dizia "$0" por cima da caixa de vazio
+              (QA visual em producao, 08/09): a caixa ja diz que nao houve. */}
+          {chart.lastPoint && totalMinor ? (
             <g>
               <rect
                 x={chart.lastPoint[0] - 39}

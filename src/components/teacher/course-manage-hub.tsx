@@ -43,6 +43,7 @@ import {
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { teacherCanPublishCourse } from "@/domain/teacher-course";
 import { instructorPagePath } from "@/domain/user-profile";
+import { countLabel } from "@/lib/i18n/count-label";
 import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 import {
   setOwnCourseFeatured,
@@ -141,10 +142,6 @@ function priceLabel(pricing: CoursePricingShape, t: Translate): string {
 }
 
 // Plural pairs live in the dictionary; the number is data, never translated.
-function countLabel(t: Translate, oneKey: string, manyKey: string, count: number): string {
-  return t(count === 1 ? oneKey : manyKey).replace("{count}", () => String(count));
-}
-
 function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b fine-rule py-3 last:border-b-0">
