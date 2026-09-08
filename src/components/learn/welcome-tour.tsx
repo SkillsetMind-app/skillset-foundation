@@ -28,7 +28,7 @@ function buildSteps(
   // Every locale's welcomeNamed ends with ", {name}", so a nameless user just
   // gets the greeting with that suffix stripped instead of "Welcome, ".
   const welcomeTitle = firstName
-    ? t("learn.tour.welcomeNamed").replace("{name}", firstName)
+    ? t("learn.tour.welcomeNamed").replace("{name}", () => firstName)
     : t("learn.tour.welcomeNamed").replace(", {name}", "");
 
   return [

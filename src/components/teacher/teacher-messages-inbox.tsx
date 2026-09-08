@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { formatNotificationTime } from "@/components/account/notification-row";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { CourseMessage } from "@/domain/course-message";
 import {
   COURSE_MESSAGE_MAX_CHARS,
@@ -20,6 +21,7 @@ import {
 // reply composer — replies go through the same enrollment-gated RPC.
 export function TeacherMessagesInbox() {
   const { user } = useAuth();
+  const { t, locale } = useTranslation();
   const [messages, setMessages] = useState<CourseMessage[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -123,7 +125,7 @@ export function TeacherMessagesInbox() {
                 {thread.lastMessage.body}
               </p>
               <p className="mt-1 text-[11px] font-medium text-[var(--color-ink-muted)]">
-                {formatNotificationTime(thread.lastMessage.createdAt)}
+                {formatNotificationTime(thread.lastMessage.createdAt, t, locale)}
               </p>
             </button>
           );
@@ -155,7 +157,7 @@ export function TeacherMessagesInbox() {
                 >
                   <p className="text-xs font-semibold text-[var(--color-ink-muted)]">
                     {isMine ? "You" : selectedThread.studentName} ·{" "}
-                    {formatNotificationTime(message.createdAt)}
+                    {formatNotificationTime(message.createdAt, t, locale)}
                   </p>
                   <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-[var(--color-ink)]">
                     {message.body}

@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const course = await getPublicCourseByRef(slug);
   return buildPageMetadata({
-    title: course ? t("publicCourses.checkoutCourseTitle").replace("{title}", course.title) : t("publicCourses.checkoutTitle"),
+    title: course ? t("publicCourses.checkoutCourseTitle").replace("{title}", () => course.title) : t("publicCourses.checkoutTitle"),
     description: course?.summary || t("publicCourses.checkoutDescription"),
     path: `/courses/${encodeURIComponent(slug)}/checkout`,
     image: course?.coverImageUrl,

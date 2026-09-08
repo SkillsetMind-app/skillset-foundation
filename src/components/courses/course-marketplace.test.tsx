@@ -89,3 +89,14 @@ it("keeps a Spanish category search result when switching back to English", asyn
   expect(state.query.get("q")).toBe("Desarrollo personal");
   expect(state.query.get("offer")).toBe("SPRING");
 });
+
+it("um título com $& na etiqueta da lista de desejos aparece literal, sem virar '{title}'", async () => {
+  // Num replace sem callback, "$&" vira o trecho casado ("{title}"). O título é
+  // texto do professor, não nosso.
+  state.subscribe.mockImplementation((next: (courses: TeacherCourse[]) => void) => {
+    next([{ id: "focus", ownerId: "teacher", title: "Deep $& focus", summary: "Author's own words", category: "Performance", status: "published", modules: [], lessonCount: 3, priceAmountMinor: 9900, currency: "USD" }]);
+    return () => {};
+  });
+  render(<CourseMarketplace />);
+  expect(await screen.findByRole("button", { name: "Save Deep $& focus to wishlist" })).toBeInTheDocument();
+});

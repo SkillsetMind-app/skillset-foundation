@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { I18nProvider } from "@/components/i18n/i18n-provider";
 import {
   TeacherCommunityInbox,
   medianInstructorReplyHours,
@@ -30,6 +31,13 @@ const mocks = vi.hoisted(() => ({
   },
   postsCallback: null as null | ((posts: CommunityPost[]) => void),
   commentsCallback: null as null | ((comments: CommunityComment[]) => void),
+}));
+
+// O I18nProvider chama useRouter() para o refresh ao trocar de idioma.
+const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...await importOriginal<typeof import("next/navigation")>(),
+  useRouter: () => router,
 }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
@@ -102,8 +110,11 @@ const comments: CommunityComment[] = [
   comment({ id: "c-student", postId: "q-old", authorId: "student-4", authorName: "Marcos" }),
 ];
 
-async function renderInbox() {
-  const view = render(<TeacherCommunityInbox courseId="course-1" />);
+async function renderInbox(locale?: "en" | "es") {
+  const inbox = <TeacherCommunityInbox courseId="course-1" />;
+  const view = render(
+    locale ? <I18nProvider initialLocale={locale}>{inbox}</I18nProvider> : inbox,
+  );
   await waitFor(() => expect(mocks.postsCallback).not.toBeNull());
   await act(async () => {
     mocks.postsCallback?.(posts);
@@ -209,6 +220,17 @@ describe("caixa de entrada da comunidade (professor)", () => {
     expect(screen.getByText("5 posts")).toBeInTheDocument();
     expect(screen.getByText("4 questions · 1 share")).toBeInTheDocument();
     expect(screen.getByText("3 of 38 active")).toBeInTheDocument();
+  });
+
+  // O cartao chamava o formatador de hora sem `t` nem `locale`: em espanhol a
+  // hora da ultima resposta de aluno saia em ingles ("30m ago").
+  it("mostra a hora da ultima resposta de aluno no idioma da pessoa", async () => {
+    await renderInbox("es");
+
+    const waiting = screen.getByRole("region", { name: /Waiting for an answer/ });
+    const [oldest] = within(waiting).getAllByRole("article");
+    // c-student respondeu q-old ha meia hora (NOW - HOUR / 2).
+    expect(oldest).toHaveTextContent("1 student reply so far — Hace 30 min");
   });
 });
 

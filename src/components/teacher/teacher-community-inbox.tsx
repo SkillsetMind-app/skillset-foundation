@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import {
   groupCommentsByPost,
   isInstructor,
@@ -207,6 +208,7 @@ function WaitingCard({
   user: NonNullable<ReturnType<typeof useAuth>["user"]>;
   onError: (message: string) => void;
 }) {
+  const { t, locale } = useTranslation();
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState("");
   const [markAsAnswer, setMarkAsAnswer] = useState(true);
@@ -265,7 +267,7 @@ function WaitingCard({
       {otherReplies.length > 0 ? (
         <p className="mt-2 text-xs text-[var(--color-ink-muted)]">
           {otherReplies.length} student repl{otherReplies.length === 1 ? "y" : "ies"} so far —{" "}
-          {formatNotificationTime(otherReplies[otherReplies.length - 1].createdAt)}
+          {formatNotificationTime(otherReplies[otherReplies.length - 1].createdAt, t, locale)}
         </p>
       ) : null}
 

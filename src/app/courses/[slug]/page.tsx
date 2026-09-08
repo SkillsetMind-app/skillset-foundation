@@ -48,7 +48,7 @@ export async function generateMetadata({
       title: published.title,
       description:
         published.summary
-        ?? t("publicCourses.courseMetaTitle").replace("{title}", published.title),
+        ?? t("publicCourses.courseMetaTitle").replace("{title}", () => published.title),
       path: `/courses/${published.urlSlug}`,
       image: published.coverImageUrl,
     });

@@ -64,6 +64,14 @@ it("preserves a typed search across EN to ES and searches the displayed Spanish 
   expect(screen.getByText("No hay artículos de ayuda que coincidan con «no-match-xyz».")).toBeInTheDocument();
 });
 
+it("um termo de busca com $& aparece literal na linha de sem resultados, sem virar '{query}'", () => {
+  // Num replace sem callback, "$&" vira o trecho casado ("{query}") e "$'" o
+  // resto da frase. O termo é o que a pessoa digitou, não nosso.
+  render(<I18nProvider initialLocale="en"><HelpCenter categories={helpFaqCategories} /></I18nProvider>);
+  fireEvent.change(screen.getByRole("searchbox"), { target: { value: "$&" } });
+  expect(screen.getByText("No help articles match “$&”.")).toBeInTheDocument();
+});
+
 it.each([
   ["en", "ES", "refunds", "How are refunds handled?", "¿Cómo se gestionan los reembolsos?"],
   ["es", "EN", "reembolsos", "¿Cómo se gestionan los reembolsos?", "How are refunds handled?"],

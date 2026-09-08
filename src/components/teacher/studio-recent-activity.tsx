@@ -43,7 +43,7 @@ const kindIcon = {
 
 export function StudioRecentActivity({ courses }: { courses: TeacherCourse[] }) {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [orders, setOrders] = useState<Order[]>([]);
   const [students, setStudents] = useState<CourseStudent[]>([]);
   const [reviews, setReviews] = useState<CourseReview[]>([]);
@@ -127,7 +127,7 @@ export function StudioRecentActivity({ courses }: { courses: TeacherCourse[] }) 
         id: `sale-${order.id}`,
         kind: "sale",
         at,
-        text: t("teach.activity.sale").replace("{course}", order.courseTitle),
+        text: t("teach.activity.sale").replace("{course}", () => order.courseTitle),
         href: `/teach/sales/${encodeURIComponent(order.id)}`,
       });
     }
@@ -141,8 +141,8 @@ export function StudioRecentActivity({ courses }: { courses: TeacherCourse[] }) 
         kind: "enrollment",
         at,
         text: t("teach.activity.enrollment")
-          .replace("{name}", student.displayName || t("teach.activity.someone"))
-          .replace("{course}", student.courseTitle),
+          .replace("{name}", () => student.displayName || t("teach.activity.someone"))
+          .replace("{course}", () => student.courseTitle),
         href: `/teach/courses/${encodeURIComponent(student.courseId)}/manage`,
       });
     }
@@ -156,7 +156,7 @@ export function StudioRecentActivity({ courses }: { courses: TeacherCourse[] }) 
         at,
         text: t("teach.activity.review")
           .replace("{rating}", String(review.rating))
-          .replace("{course}", courseTitles.get(review.courseId) ?? ""),
+          .replace("{course}", () => courseTitles.get(review.courseId) ?? ""),
         href: `/teach/courses/${encodeURIComponent(review.courseId)}/manage`,
       });
     }
@@ -169,8 +169,8 @@ export function StudioRecentActivity({ courses }: { courses: TeacherCourse[] }) 
         kind: "question",
         at,
         text: t("teach.activity.question")
-          .replace("{name}", question.authorName || t("teach.activity.someone"))
-          .replace("{course}", courseTitles.get(question.courseSlug) ?? ""),
+          .replace("{name}", () => question.authorName || t("teach.activity.someone"))
+          .replace("{course}", () => courseTitles.get(question.courseSlug) ?? ""),
         href: `/teach/courses/${encodeURIComponent(question.courseSlug)}/community`,
       });
     }
@@ -214,7 +214,7 @@ export function StudioRecentActivity({ courses }: { courses: TeacherCourse[] }) 
                   </span>
                   <span className="min-w-0 flex-1 text-[var(--color-ink)]">{event.text}</span>
                   <span className="shrink-0 text-xs text-[var(--color-ink-muted)]">
-                    {formatNotificationTime(new Date(event.at).toISOString())}
+                    {formatNotificationTime(new Date(event.at).toISOString(), t, locale)}
                   </span>
                 </Link>
               </li>
