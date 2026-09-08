@@ -272,7 +272,7 @@ function MarketplaceHighlightPanel({
 
 export function CourseManageHub({ courseId }: { courseId: string }) {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   // Deep-link from studio checklist (?section=pricing) — read during render
@@ -303,6 +303,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     );
   };
   const menuRef = useRef<HTMLElement>(null);
+  const activeSectionRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     return subscribeToTeacherCourse(
@@ -329,20 +330,40 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
 
     // Both platform and course headers consume space. Measure the menu's
     // normal-flow row so even its bottom fits before the outer page scrolls.
-    const updateHeight = () => {
+    const updateLayout = () => {
       const style = getComputedStyle(viewport);
       const rowTop = menu.parentElement!.getBoundingClientRect().top;
       const offset = rowTop - viewport.getBoundingClientRect().top + viewport.scrollTop;
       const height = viewport.clientHeight - offset - parseFloat(style.paddingBottom);
       menu.style.setProperty("--course-nav-height", `${Math.max(0, height)}px`);
+
+      const active = activeSectionRef.current;
+      const row = active?.parentElement;
+      if (!active || !row) return;
+      const buttonBounds = active.getBoundingClientRect();
+      if (!buttonBounds.width || !buttonBounds.height) return;
+      // Reveal URL-selected sections inside the menu only. scrollIntoView can
+      // also move the platform page and hide its course or platform header.
+      const rowBounds = row.getBoundingClientRect();
+      if (buttonBounds.left < rowBounds.left) {
+        row.scrollLeft += buttonBounds.left - rowBounds.left;
+      } else if (buttonBounds.right > rowBounds.right) {
+        row.scrollLeft += buttonBounds.right - rowBounds.right;
+      }
+      const menuBounds = menu.getBoundingClientRect();
+      if (buttonBounds.top < menuBounds.top) {
+        menu.scrollTop += buttonBounds.top - menuBounds.top;
+      } else if (buttonBounds.bottom > menuBounds.bottom) {
+        menu.scrollTop += buttonBounds.bottom - menuBounds.bottom;
+      }
     };
-    updateHeight();
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateHeight);
+    updateLayout();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateLayout);
     observer?.observe(viewport);
     const courseHeader = menu.parentElement?.previousElementSibling;
     if (courseHeader) observer?.observe(courseHeader);
     return () => observer?.disconnect();
-  }, [courseLoaded, course?.id]);
+  }, [courseLoaded, course?.id, section, locale]);
 
   useEffect(() => {
     if (!user) {
@@ -551,6 +572,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
             {manageSections.map((item) => (
               <button
                 key={item.id}
+                ref={section === item.id ? activeSectionRef : undefined}
                 type="button"
                 onClick={() => setSection(item.id)}
                 className={`min-h-11 shrink-0 whitespace-nowrap rounded-[6px] border-b-2 px-3 py-2 text-left text-sm font-semibold transition lg:w-full lg:border-b-0 lg:border-l-2 ${
@@ -570,6 +592,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
             {roadmapSections.map((item) => (
               <button
                 key={item.id}
+                ref={section === item.id ? activeSectionRef : undefined}
                 type="button"
                 onClick={() => setSection(item.id)}
                 className={`rounded-[8px] px-3 py-2 text-left text-sm font-semibold transition ${
