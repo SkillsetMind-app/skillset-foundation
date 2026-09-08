@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  getCoursePricingShape,
   isLegacyOnlyPricing,
   resolveCoursePrice,
   type ProductOffer,
@@ -134,5 +135,56 @@ describe("resolveCoursePrice", () => {
     expect(
       resolveCoursePrice(course, offers, { publicCode: "missing" }),
     ).toBeNull();
+  });
+});
+
+describe("getCoursePricingShape", () => {
+  // A tela mostrava "Free" e "Monthly subscription" juntos no mesmo rascunho.
+  it("um curso sem valor e gratuito, e o tipo de pagamento nao se aplica", () => {
+    const shape = getCoursePricingShape({
+      priceAmountMinor: 0,
+      currency: "usd",
+      paymentType: "subscription_monthly",
+      installmentsEnabled: true,
+      installmentsMax: 12,
+    });
+
+    expect(shape.free).toBe(true);
+    expect(shape.paymentType).toBeNull();
+    expect(shape.installmentsMax).toBeNull();
+    expect(shape.amountMinor).toBe(0);
+  });
+
+  it("preco nulo ou negativo tambem e gratuito", () => {
+    expect(getCoursePricingShape({ priceAmountMinor: null }).free).toBe(true);
+    expect(getCoursePricingShape({ priceAmountMinor: -100 }).free).toBe(true);
+  });
+
+  it("assinatura com valor mantem o tipo e a moeda em maiuscula", () => {
+    const shape = getCoursePricingShape({
+      priceAmountMinor: 2900,
+      currency: "brl",
+      paymentType: "subscription_monthly",
+    });
+
+    expect(shape).toEqual({
+      free: false,
+      paymentType: "subscription_monthly",
+      amountMinor: 2900,
+      currency: "BRL",
+      installmentsMax: null,
+    });
+  });
+
+  it("curso pago sem paymentType gravado vende avulso e conta as parcelas", () => {
+    const shape = getCoursePricingShape({
+      priceAmountMinor: 9900,
+      installmentsEnabled: true,
+      installmentsMax: 6,
+    });
+
+    expect(shape.paymentType).toBe("one_time");
+    expect(shape.installmentsMax).toBe(6);
+    expect(shape.currency).toBe("USD");
   });
 });

@@ -20,14 +20,14 @@ import {
 } from "@/components/teacher/course-commerce-panels";
 import { CourseShareLink } from "@/components/teacher/course-share-link";
 import { CourseOffersPanel } from "@/components/teacher/course-offers-panel";
-import { CourseOverviewPanel } from "@/components/teacher/course-overview-panel";
+import { CourseOverviewPanel, StatCard } from "@/components/teacher/course-overview-panel";
 import { ReadinessGroups } from "@/components/teacher/readiness-groups";
 import { CourseStudentRoster } from "@/components/teacher/course-student-roster";
 import { CourseLandingEditor } from "@/components/teacher/course-landing-editor";
 import { SalesPageEditor } from "@/components/teacher/sales-page-editor";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import type { PlanId } from "@/data/plans";
-import { planById } from "@/data/plans";
+import { planById, refundWindowDays } from "@/data/plans";
 import {
   effectiveLimit,
   formatLimit,
@@ -36,6 +36,10 @@ import {
 } from "@/domain/entitlements";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
 import { getCourseReadiness, type CourseReadinessItem } from "@/domain/course-readiness";
+import {
+  getCoursePricingShape,
+  type CoursePricingShape,
+} from "@/domain/product-pricing";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { teacherCanPublishCourse } from "@/domain/teacher-course";
 import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
@@ -83,10 +87,6 @@ type SectionId = (typeof manageSections)[number]["id"] | (typeof roadmapSections
 const hubMenuItemClass =
   "flex min-h-11 items-center rounded-[6px] px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]";
 
-function isPaidCourse(course: TeacherCourse): boolean {
-  return course.paymentType !== "free" && (course.priceAmountMinor ?? 0) > 0;
-}
-
 // Cada linha do checklist so DESCREVIA a pendencia ("Add at least one module")
 // e nao levava a lugar nenhum: a pessoa lia o que faltava e tinha de caçar
 // onde arrumar. Aqui fica o destino de cada linha, sempre a tela que EDITA o
@@ -119,18 +119,21 @@ function readinessEditHref(item: CourseReadinessItem, courseId: string): string 
   }
 }
 
-function priceLabel(course: TeacherCourse, t: Translate): string {
-  if (!isPaidCourse(course)) {
+// Como o curso cobra sai INTEIRO de `getCoursePricingShape` (dominio). Ler o
+// preco de um jeito aqui e o `paymentType` cru logo ali era o que fazia a mesma
+// tela dizer "Free" e "Monthly subscription" sobre o mesmo rascunho.
+function priceLabel(pricing: CoursePricingShape, t: Translate): string {
+  if (pricing.free) {
     return t("publicCourses.free");
   }
   const amount = new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: (course.currency ?? "USD").toUpperCase(),
-  }).format((course.priceAmountMinor ?? 0) / 100);
-  if (course.paymentType === "subscription_monthly") {
+    currency: pricing.currency,
+  }).format(pricing.amountMinor / 100);
+  if (pricing.paymentType === "subscription_monthly") {
     return t("creatorPanel.hub.price.perMonth").replace("{amount}", () => amount);
   }
-  if (course.paymentType === "subscription_yearly") {
+  if (pricing.paymentType === "subscription_yearly") {
     return t("creatorPanel.hub.price.perYear").replace("{amount}", () => amount);
   }
   return amount;
@@ -351,7 +354,6 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   }, [user]);
 
   const isOwner = Boolean(course && user && course.ownerId === user.uid);
-  const paid = course ? isPaidCourse(course) : false;
   // Server-enforced by the commerce RPCs; surfaced here so the panels can
   // explain the gate instead of failing on click.
   const activationBlocked = account.verificationRequired && !account.verificationApproved;
@@ -386,6 +388,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   // o Manage tinha regra propria (titulo+resumo num item so, sem parcelas) e
   // o mesmo curso aparecia com tres porcentagens diferentes.
   const readiness = getCourseReadiness(course, account);
+  const pricing = getCoursePricingShape(course);
+  const paid = !pricing.free;
   const published = course.status === "published";
   const switchableCourses = myCourses.filter((candidate) => candidate.id !== course.id);
   // This course's own flag comes from the single-course subscription, the rest
@@ -448,7 +452,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <StatusChip status={course.status} />
                 <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                  {modulesLabel} - {lessonsLabel} - {priceLabel(course, t)}
+                  {modulesLabel} - {lessonsLabel} - {priceLabel(pricing, t)}
                 </span>
               </div>
             </div>
@@ -794,36 +798,58 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 title={t("creatorPanel.hub.pricing.title")}
                 description={t("creatorPanel.hub.pricing.description")}
               >
-                <div className="mt-4">
-                  <DetailRow label={t("creatorPanel.hub.pricing.price")} value={priceLabel(course, t)} />
-                  <DetailRow
-                    label={t("creatorPanel.hub.pricing.paymentType")}
-                    value={t(`creatorPanel.paymentType.${course.paymentType ?? "one_time"}`)}
+                {/* Era uma lista chave-valor: quatro linhas do mesmo tamanho,
+                    nenhuma delas o preco. Vira o mesmo tile do Painel, com o
+                    numero grande — e o prazo de reembolso, que a pessoa so
+                    achava no Termos, entra como o quarto. Quatro tiles enchem
+                    as quatro colunas, o 2x2 e a coluna unica: nenhum orfao. */}
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <StatCard
+                    label={t("creatorPanel.hub.pricing.price")}
+                    value={priceLabel(pricing, t)}
+                    hint={t("creatorPanel.hub.pricing.installmentsHint").replace("{value}", () =>
+                      pricing.free
+                        ? t("creatorPanel.hub.pricing.notApplicable")
+                        : pricing.installmentsMax
+                          ? t("creatorPanel.hub.pricing.installmentsUpTo").replace("{max}", () =>
+                              String(pricing.installmentsMax)
+                            )
+                          : t("creatorPanel.disabled")
+                    )}
                   />
-                  <DetailRow
-                    label={t("creatorPanel.hub.pricing.installments")}
+                  <StatCard
+                    label={t("creatorPanel.hub.pricing.paymentType")}
                     value={
-                      course.installmentsEnabled
-                        ? t("creatorPanel.hub.pricing.installmentsUpTo").replace("{max}", () =>
-                            String(course.installmentsMax ?? 1)
-                          )
-                        : t("creatorPanel.disabled")
+                      pricing.paymentType
+                        ? t(`creatorPanel.paymentType.${pricing.paymentType}`)
+                        : t("creatorPanel.hub.pricing.notApplicable")
+                    }
+                    hint={
+                      pricing.paymentType
+                        ? t("creatorPanel.hub.pricing.paymentTypeHint")
+                        : t("creatorPanel.hub.pricing.paymentTypeFreeHint")
                     }
                   />
-                  <DetailRow
+                  <StatCard
+                    label={t("creatorPanel.hub.pricing.refundWindow")}
+                    value={t("creatorPanel.hub.pricing.refundWindowDays").replace("{days}", () =>
+                      String(refundWindowDays)
+                    )}
+                    hint={t("creatorPanel.hub.pricing.refundWindowHint")}
+                  />
+                  <StatCard
                     label={t("creatorPanel.hub.links.checkout")}
                     value={t("creatorPanel.hub.pricing.stripeCheckout")}
+                    hint={
+                      paid
+                        ? `${t("creatorPanel.hub.pricing.payouts")}: ${
+                            account.payoutsReady
+                              ? t("creatorPanel.hub.pricing.payoutsReady")
+                              : t("creatorPanel.hub.pricing.payoutsIncomplete")
+                          }`
+                        : t("creatorPanel.hub.pricing.payoutsFreeHint")
+                    }
                   />
-                  {paid ? (
-                    <DetailRow
-                      label={t("creatorPanel.hub.pricing.payouts")}
-                      value={
-                        account.payoutsReady
-                          ? t("creatorPanel.hub.pricing.payoutsReady")
-                          : t("creatorPanel.hub.pricing.payoutsIncomplete")
-                      }
-                    />
-                  ) : null}
                 </div>
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Link
@@ -845,7 +871,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               <CourseOffersPanel
                 courseId={course.id}
                 courseTitle={courseTitle}
-                defaultCurrency={course.currency ?? "USD"}
+                coursePricing={pricing}
               />
             </div>
           ) : null}

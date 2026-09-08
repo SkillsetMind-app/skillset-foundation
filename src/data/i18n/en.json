@@ -1557,7 +1557,17 @@
         "payoutsReady": "Ready",
         "payoutsIncomplete": "Onboarding incomplete",
         "edit": "Edit pricing in Builder",
-        "finishOnboarding": "Finish payout onboarding"
+        "finishOnboarding": "Finish payout onboarding",
+        "notApplicable": "—",
+        "installmentsHint": "Installments: {value}",
+        "paymentTypeHint": "How buyers are charged at checkout.",
+        "paymentTypeFreeHint": "Free course — nothing is charged at checkout.",
+        "refundWindow": "Refund window",
+        "refundWindowDays": "{days} days",
+        "refundWindowHint": "Platform guarantee on every course: less than half completed and no certificate issued.",
+        "payoutsFreeHint": "Free course — no payout to set up.",
+        "newOffer": "New offer",
+        "newOfferCancel": "Cancel"
       },
       "content": {
         "description": "{modules} and {lessons} in the curriculum.",

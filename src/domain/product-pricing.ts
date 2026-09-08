@@ -111,3 +111,50 @@ export function resolveCoursePrice(
 export function isLegacyOnlyPricing(offers: ProductOffer[]): boolean {
   return offers.length === 0;
 }
+
+/**
+ * Como o curso cobra, lido UMA vez.
+ *
+ * O que a pessoa sofria: a mesma tela lia o preco de dois jeitos. O rotulo de
+ * preco tratava "sem valor" como gratuito, e a linha ao lado imprimia
+ * `course.paymentType` cru — entao um rascunho com paymentType
+ * "subscription_monthly" e valor zerado dizia "Free" e "Monthly subscription"
+ * ao mesmo tempo. Aqui o valor manda: sem valor, o curso e gratuito e o tipo de
+ * pagamento simplesmente NAO SE APLICA (`null`, a tela mostra "—") em vez de
+ * anunciar uma cobranca que nunca vai acontecer.
+ */
+export type CoursePricingShape = {
+  free: boolean;
+  /** null = nao se aplica (curso gratuito). Nunca um tipo de cobranca sem preco. */
+  paymentType: TeacherCoursePaymentType | null;
+  amountMinor: number;
+  currency: string;
+  /** null = parcelamento desligado ou sem cobranca; numero = maximo de parcelas. */
+  installmentsMax: number | null;
+};
+
+export function getCoursePricingShape(
+  course: Pick<
+    TeacherCourse,
+    | "priceAmountMinor"
+    | "currency"
+    | "paymentType"
+    | "installmentsEnabled"
+    | "installmentsMax"
+  >,
+): CoursePricingShape {
+  const raw = Number(course.priceAmountMinor ?? 0);
+  const amountMinor = Number.isFinite(raw) && raw > 0 ? Math.round(raw) : 0;
+  const free = course.paymentType === "free" || amountMinor === 0;
+
+  return {
+    free,
+    paymentType: free ? null : course.paymentType ?? "one_time",
+    amountMinor,
+    currency: String(course.currency || "USD").toUpperCase(),
+    installmentsMax:
+      free || !course.installmentsEnabled
+        ? null
+        : Math.max(1, Math.round(Number(course.installmentsMax ?? 1))),
+  };
+}

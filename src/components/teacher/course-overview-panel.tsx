@@ -36,7 +36,9 @@ function formatMoney(amountMinor: number, currency: string) {
   );
 }
 
-function StatCard({
+// O mesmo tile do Painel serve o resumo de precos do hub: um numero grande por
+// card em vez de quatro linhas iguais.
+export function StatCard({
   label,
   value,
   hint,
