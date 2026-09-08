@@ -1624,7 +1624,8 @@
       "links": {
         "descriptionLive": "Share these anywhere you promote the course.",
         "descriptionDraft": "Links you'll share once the course is published. Until then the product page opens only for you.",
-        "checkout": "Checkout"
+        "checkout": "Checkout",
+        "storefront": "Storefront"
       },
       "basic": {
         "description": "Identity shown across the marketplace and product page. Edit these fields in the Builder.",

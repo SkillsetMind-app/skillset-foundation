@@ -1624,7 +1624,8 @@
       "links": {
         "descriptionLive": "Compártelos donde promociones el curso.",
         "descriptionDraft": "Enlaces que compartirás cuando el curso esté publicado. Hasta entonces, la página del producto solo se abre para ti.",
-        "checkout": "Checkout"
+        "checkout": "Checkout",
+        "storefront": "Tienda"
       },
       "basic": {
         "description": "Identidad que se muestra en el marketplace y en la página del producto. Edita estos campos en el Creador.",
