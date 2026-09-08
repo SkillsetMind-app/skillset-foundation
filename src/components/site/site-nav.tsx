@@ -166,9 +166,6 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
           })}
         </nav>
         <div className="site-header__actions">
-          {/* Language sits next to the entry actions on every width; the
-              footer keeps its own copy for people who scroll to the end. */}
-          <LocaleSwitcher />
           {isAuthenticated ? (
             <>
               <div className="hidden lg:block">
@@ -205,6 +202,10 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
               <Menu aria-hidden="true" size={18} strokeWidth={1.8} />
             )}
           </button>
+          {/* Idioma no extremo direito da barra, e não no meio das ações de
+              entrada: é lá que o olho procura. O rodapé mantém a cópia dele
+              para quem rola até o fim. */}
+          <LocaleSwitcher variant="compact" />
         </div>
 
         {mobileOpen ? (
