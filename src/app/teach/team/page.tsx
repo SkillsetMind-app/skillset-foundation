@@ -1,16 +1,19 @@
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import { TeacherComingSoonPanel } from "@/components/teacher/teacher-coming-soon-panel";
+import { getServerTranslation } from "@/lib/i18n/server";
 
-export default function TeacherTeamPage() {
+export default async function TeacherTeamPage() {
+  const { t } = await getServerTranslation();
+
   return (
     <ProtectedSurface permissions={["teacherStudio.access"]}>
-      <PlatformShell title="Team & roles" hideHeader>
+      <PlatformShell title={t("platform.nav.team")} hideHeader>
         <TeacherComingSoonPanel
-          eyebrow="Teacher Studio"
-          title="Team & roles are on the roadmap."
-          description="Invite teammates, assign editor or analyst roles, and share a course catalog across a team — it's on the SkillsetMind roadmap. Today, each Teacher Studio belongs to a single account."
-          notifyFeature="Team & roles"
+          eyebrow={t("teach.page.eyebrow")}
+          title={t("teach.teamPage.title")}
+          description={t("teach.teamPage.description")}
+          notifyFeature={t("platform.nav.team")}
         />
       </PlatformShell>
     </ProtectedSurface>

@@ -1,18 +1,21 @@
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import { TeacherComingSoonPanel } from "@/components/teacher/teacher-coming-soon-panel";
+import { getServerTranslation } from "@/lib/i18n/server";
 
-export default function TeacherIntegrationsPage() {
+export default async function TeacherIntegrationsPage() {
+  const { t } = await getServerTranslation();
+
   return (
     <ProtectedSurface permissions={["teacherStudio.access"]}>
-      <PlatformShell title="Integrations" hideHeader>
+      <PlatformShell title={t("platform.nav.integrations")} hideHeader>
         <TeacherComingSoonPanel
-          eyebrow="Teacher Studio"
-          title="Integrations are on the roadmap."
-          description="Connect email tools, webhooks, and analytics destinations — it's on the SkillsetMind roadmap. Stripe is already connected, so you can open your own Stripe account from Payouts & tax anytime."
+          eyebrow={t("teach.page.eyebrow")}
+          title={t("teach.integrationsPage.title")}
+          description={t("teach.integrationsPage.description")}
           primaryHref="/account/payments"
-          primaryLabel="Open Payouts & tax"
-          notifyFeature="Integrations"
+          primaryLabel={t("platform.nav.payoutsTax")}
+          notifyFeature={t("platform.nav.integrations")}
         />
       </PlatformShell>
     </ProtectedSurface>

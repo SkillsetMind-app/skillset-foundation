@@ -1,5 +1,7 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 
 // A pagina de relatorios mostrava menos relatorio que a home: 3 tiles de
 // todo-o-sempre, sem periodo, sem grafico e sem visao por produto. Aqui o
@@ -18,6 +20,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({ user: { uid: "teacher-1" } }),
 }));
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 vi.mock("@/lib/data/orders", () => ({
   subscribeToTeacherOrders: (_uid: string, onData: (rows: unknown[]) => void) => {
@@ -170,7 +174,10 @@ beforeEach(() => {
   ];
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe("Relatorios do professor", () => {
   it("os 4 KPIs contam so o periodo aberto, e o reembolso vira taxa", async () => {
@@ -235,5 +242,67 @@ describe("Relatorios do professor", () => {
 
     expect(await screen.findByRole("button", { name: /Export/ })).toBeDisabled();
     expect(screen.getByText("No charged orders in this period.")).toBeInTheDocument();
+  });
+});
+
+function ChangeLanguage() {
+  const { setLocale } = useTranslation();
+  return <button onClick={() => setLocale("es")}>Cambiar a español</button>;
+}
+
+describe("datas dos gráficos no idioma da pessoa", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 8, 8, 12));
+    mocks.orders = [order({
+      id: "paid-september", status: "paid", courseId: "c1", courseTitle: "Deep Hypnosis",
+      amountMinor: 20_000, createdAt: new Date(2026, 8, 6, 12).toISOString(),
+    })];
+    mocks.ledgers = [];
+    mocks.subscriptions = [];
+  });
+
+  const charts = [
+    { name: "relatório diário", Component: CreatorOpsHub, period: "30d", englishLabel: "Aug 10", spanishLabel: "10 ago" },
+    { name: "relatório mensal", Component: CreatorOpsHub, period: "12m", englishLabel: "Oct", spanishLabel: "oct" },
+    { name: "home mensal", Component: TeacherStudioInsights, period: "12m", englishLabel: "Oct", spanishLabel: "oct" },
+  ];
+
+  it.each(charts)("$name já abre com datas em espanhol", ({ Component, period, spanishLabel, englishLabel }) => {
+    render(<I18nProvider initialLocale="es"><Component /></I18nProvider>);
+    fireEvent.click(screen.getByRole("button", { name: period }));
+
+    const chart = screen.getByRole("img");
+    expect(within(chart).getByText(spanishLabel)).toBeInTheDocument();
+    expect(within(chart).queryByText(englishLabel)).not.toBeInTheDocument();
+    expect(chart.querySelector("g")).toHaveTextContent("$200");
+  });
+
+  it.each(charts)("$name acompanha EN→ES sem trocar período, dados ou total", ({ Component, period, spanishLabel, englishLabel }) => {
+    render(<I18nProvider initialLocale="en"><ChangeLanguage /><Component /></I18nProvider>);
+    fireEvent.click(screen.getByRole("button", { name: period }));
+
+    const chart = screen.getByRole("img");
+    expect(within(chart).getByText(englishLabel)).toBeInTheDocument();
+    const geometry = [...chart.querySelectorAll("path")].map((path) => path.getAttribute("d"));
+    const points = chart.querySelectorAll("circle").length;
+    fireEvent.click(screen.getByRole("button", { name: "Cambiar a español" }));
+
+    expect(within(chart).getByText(spanishLabel)).toBeInTheDocument();
+    expect(within(chart).queryByText(englishLabel)).not.toBeInTheDocument();
+    expect(chart.querySelector("g")).toHaveTextContent("$200");
+    expect(screen.getByRole("button", { name: period })).toHaveAttribute("aria-pressed", "true");
+    expect([...chart.querySelectorAll("path")].map((path) => path.getAttribute("d"))).toEqual(geometry);
+    expect(chart.querySelectorAll("circle")).toHaveLength(points);
+    expect(screen.getAllByText("Deep Hypnosis").length).toBeGreaterThan(0);
+  });
+
+  it("mantém os acentos nas orientações do relatório em espanhol", () => {
+    mocks.orders = [];
+    render(<I18nProvider initialLocale="es"><CreatorOpsHub /></I18nProvider>);
+
+    expect(screen.getByText("Últimos 30 días - todos los productos")).toBeInTheDocument();
+    expect(screen.getByText("Después de las comisiones de la plataforma y de Stripe, registrado en tu propia cuenta de Stripe.")).toBeInTheDocument();
+    expect(screen.getByText("Elige un periodo más largo o comprueba que tus pedidos pagados llegaron.")).toBeInTheDocument();
   });
 });

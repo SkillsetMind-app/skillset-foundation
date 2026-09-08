@@ -43,8 +43,6 @@ const money = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
 
-const monthFormatter = new Intl.DateTimeFormat("en-US", { month: "short" });
-
 type ActivityItem = {
   title: string;
   detail: string;
@@ -55,7 +53,7 @@ type ActivityItem = {
 
 export function TeacherStudioInsights() {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { locale, t } = useTranslation();
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [payoutsReady, setPayoutsReady] = useState(false);
@@ -108,13 +106,15 @@ export function TeacherStudioInsights() {
   const hasSales = paidOrders.length > 0;
   const grossMinor = paidOrders.reduce((sum, order) => sum + order.amountMinor, 0);
   const monthlyRevenue = useMemo(
-    () =>
-      buildRevenueSeries(
+    () => {
+      const monthFormatter = new Intl.DateTimeFormat(locale, { month: "short" });
+      return buildRevenueSeries(
         paidOrders,
         resolveRevenueRangeWindow(paidOrders, revenueRange),
         (date) => monthFormatter.format(date),
-      ),
-    [paidOrders, revenueRange],
+      );
+    },
+    [paidOrders, revenueRange, locale],
   );
   const topCourses = useMemo(
     () => buildTopCourses(courses, paidOrders),

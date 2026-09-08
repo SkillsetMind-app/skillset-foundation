@@ -1571,7 +1571,31 @@
         "planned": "Planned"
       }
     },
+    "integrationsPage": {
+      "title": "Integrations are on the roadmap.",
+      "description": "Connect email tools, webhooks, and analytics destinations — it's on the SkillsetMind roadmap. Stripe is already connected, so you can open your own Stripe account from Payouts & tax anytime."
+    },
+    "messagesPage": {
+      "title": "Answer your students.",
+      "description": "Private per-course threads from enrolled students. Replies land in the student's classroom and notification bell."
+    },
+    "saleDetailPage": {
+      "title": "Sale detail.",
+      "description": "Review a single transaction, payment trail, course context, and operational actions."
+    },
+    "subscriptionsPage": {
+      "description": "Recurring revenue, subscriber health, cancellation signals, and every renewal in one operational view."
+    },
+    "teamPage": {
+      "title": "Team & roles are on the roadmap.",
+      "description": "Invite teammates, assign editor or analyst roles, and share a course catalog across a team — it's on the SkillsetMind roadmap. Today, each Teacher Studio belongs to a single account."
+    },
+    "comingSoon": {
+      "openBuilder": "Open Course Builder"
+    },
     "storefrontPage": {
+      "title": "Your storefront.",
+      "description": "Brand the public page that showcases you and every course you publish.",
       "previewLabel": "Live storefront preview",
       "openPublicPage": "Open public page",
       "published": "Published",
