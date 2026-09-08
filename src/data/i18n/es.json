@@ -1,4 +1,27 @@
 {
+  "advisor": {
+    "title": "Asesor del estudio",
+    "trigger": "Asesor",
+    "open": "Abrir el asesor del estudio",
+    "close": "Cerrar el asesor",
+    "closeLabel": "Cerrar",
+    "greeting": "Hola, soy tu asesor del estudio. Pregúntame cómo estructurar un curso, si conviene insertar videos de YouTube o subir los tuyos, cómo fijar precios o cómo conseguir tus primeras ventas.",
+    "loading": "Cargando tu conversación…",
+    "thinking": "El asesor está pensando…",
+    "placeholder": "Escribe tu pregunta…",
+    "messageLabel": "Mensaje al asesor del estudio",
+    "send": "Enviar mensaje",
+    "notReady": "Estamos preparando el asesor. Estará disponible en breve.",
+    "tooManyMessages": "Has enviado muchos mensajes. Espera un momento y vuelve a intentarlo.",
+    "sessionExpired": "Tu sesión ha caducado. Actualiza la página e inicia sesión de nuevo.",
+    "somethingWrong": "Algo salió mal. Vuelve a intentarlo.",
+    "unreachable": "No se pudo contactar con el asesor. Revisa tu conexión y vuelve a intentarlo.",
+    "suggestions": {
+      "video": "¿Debería insertar videos de YouTube o subir los míos?",
+      "price": "¿Cómo debería fijar el precio de mi primer curso?",
+      "outline": "Ayúdame a estructurar un curso desde cero."
+    }
+  },
   "locale": {
     "label": "Idioma"
   },

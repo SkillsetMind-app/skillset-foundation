@@ -68,6 +68,9 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
         "platform.help.replyTime": "We aim to reply within 24 hours.",
         "platform.help.openMenu": "Open help menu",
         "platform.opensInNewTab": "Opens in a new tab",
+        "advisor.open": "Open studio advisor",
+        "advisor.close": "Close advisor",
+        "advisor.title": "Studio advisor",
       })[key] ?? key,
   }),
 }));
@@ -194,18 +197,19 @@ describe("creator shell regressions", () => {
     );
   });
 
-  it("uses the advisor as the only global support action", () => {
+  it("uses the advisor as the only global support action", async () => {
     render(<AdvisorSidebar />);
 
     expect(screen.queryByRole("button", { name: "Open help menu" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Open studio advisor" }));
     expect(screen.getByRole("dialog", { name: "Studio advisor" })).toBeInTheDocument();
+    await screen.findByRole("button", { name: "advisor.suggestions.price" });
 
     fireEvent.keyDown(window, { key: "Escape" });
     expect(screen.queryByRole("dialog", { name: "Studio advisor" })).not.toBeInTheDocument();
   });
 
-  it("places the advisor in the single global floating slot", () => {
+  it("keeps the floating fallback when no header is mounted", () => {
     render(<AdvisorSidebar />);
 
     expect(screen.getByRole("button", { name: "Open studio advisor" }).parentElement).toHaveClass(

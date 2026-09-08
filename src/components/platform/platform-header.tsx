@@ -12,6 +12,7 @@ import { PlatformSearch } from "@/components/platform/platform-search";
 import { AccountMenu } from "@/components/site/account-menu";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
+import { AdvisorHeaderSlot } from "@/components/teacher/advisor-sidebar";
 import { platformNav } from "@/data/site";
 import { getWorkspaceHomeHref } from "@/lib/auth/routing";
 
@@ -78,6 +79,7 @@ export function PlatformHeader({ currentNavigationHref, searchHref }: {
               w-[min(380px,100vw-32px)], so it was built for small screens and
               then hidden. ThemeToggle stays hidden: it is a preference, not a
               signal, and it is wider. */}
+          <AdvisorHeaderSlot />
           <NotificationBell />
           {status === "authenticated" && user ? (
             <AccountMenu user={user} onSignOut={signOut} />

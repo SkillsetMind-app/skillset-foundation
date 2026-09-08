@@ -1,4 +1,27 @@
 {
+  "advisor": {
+    "title": "Studio advisor",
+    "trigger": "Advisor",
+    "open": "Open studio advisor",
+    "close": "Close advisor",
+    "closeLabel": "Close",
+    "greeting": "Hi, I'm your studio advisor. Ask me about structuring a course, whether to embed from YouTube or upload your video, pricing, or how to get your first sales.",
+    "loading": "Loading your conversation…",
+    "thinking": "Advisor is thinking…",
+    "placeholder": "Ask about your course…",
+    "messageLabel": "Message to studio advisor",
+    "send": "Send message",
+    "notReady": "The advisor is being set up and will be available shortly.",
+    "tooManyMessages": "You've sent a lot of messages. Please wait a moment and try again.",
+    "sessionExpired": "Your session expired. Refresh the page and sign in again.",
+    "somethingWrong": "Something went wrong. Please try again.",
+    "unreachable": "Couldn't reach the advisor. Check your connection and try again.",
+    "suggestions": {
+      "video": "Should I embed from YouTube or upload my videos?",
+      "price": "How should I price my first course?",
+      "outline": "Help me outline a course from scratch."
+    }
+  },
   "locale": {
     "label": "Language"
   },
