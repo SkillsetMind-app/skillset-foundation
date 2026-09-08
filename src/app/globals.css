@@ -2717,6 +2717,39 @@ select:focus-visible {
   scrollbar-width: thin;
 }
 
+/* A barra de rolagem do menu lateral sumia: sem cor propria, ela herdava a
+   barra global (--color-line-strong = rgba(16,42,67,.4) no tema claro), ou
+   seja, azul-marinho translucido desenhado sobre o trilho navy. E o trilho
+   fica navy nos DOIS temas, entao o token que vira claro no escuro nao
+   resolvia. Branco translucido e a unica cor que aparece nesse fundo.
+   Escopado em .platform-sidebar de proposito: o mesmo PlatformNav tambem
+   e renderizado dentro da gaveta mobile, que e branca, e la o polegar
+   branco sumiria. */
+.platform-sidebar .platform-sidebar-nav {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+}
+
+.platform-sidebar .platform-sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.platform-sidebar .platform-sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.platform-sidebar .platform-sidebar-nav::-webkit-scrollbar-thumb {
+  /* border: 0 anula os 2px transparentes da barra global, que numa barra de
+     6px deixariam 2px visiveis de polegar. */
+  border: 0;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.35);
+}
+
+.platform-sidebar .platform-sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
 /* "Members & communities" saía cortado no meio da palavra: o link media 228px e
    terminava em x=250, o nav terminava em x=245 com overflow-x:hidden, e não
    havia text-overflow — a barra tem 260px de largura para 277px de conteúdo.

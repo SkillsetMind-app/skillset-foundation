@@ -213,4 +213,15 @@ describe("creator shell regressions", () => {
       "floating-action--advisor"
     );
   });
+
+  // O CSS pinta a barra de rolagem em .platform-sidebar .platform-sidebar-nav
+  // (ver sidebar-frame.test.tsx). Se a classe sair daqui, a regra fica orfa e
+  // a barra volta a sumir no navy, sem ninguem reclamar.
+  it("mantem a classe que o CSS usa para pintar a barra de rolagem do menu", () => {
+    render(<PlatformNav />);
+
+    expect(screen.getByRole("navigation", { name: "Workspace" })).toHaveClass(
+      "platform-sidebar-nav"
+    );
+  });
 });
