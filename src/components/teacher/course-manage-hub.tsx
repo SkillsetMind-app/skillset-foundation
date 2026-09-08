@@ -406,7 +406,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   // A mesma lista que o construtor mostra no chip, na barra e no rodape. Antes
   // o Manage tinha regra propria (titulo+resumo num item so, sem parcelas) e
   // o mesmo curso aparecia com tres porcentagens diferentes.
-  const readiness = getCourseReadiness(course, account);
+  const readiness = getCourseReadiness(course, account, t);
   const pricing = getCoursePricingShape(course);
   const paid = !pricing.free;
   const published = course.status === "published";
