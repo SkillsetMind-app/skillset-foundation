@@ -409,7 +409,7 @@ describe("security headers across proxy response paths", () => {
       incoming.headers = { ...forwardedHeaders };
       const renderStore = createRequestStoreForRender(
         new NodeNextRequest(incoming), undefined, request.nextUrl, {}, implicitTags,
-        undefined, undefined, false, undefined, null, null,
+        undefined, undefined, false, undefined, null, null, undefined,
       );
       expect(renderStore.cookies.get("audit-session")?.value ?? "").toBe(sessionValue);
     } finally {
@@ -419,7 +419,7 @@ describe("security headers across proxy response paths", () => {
     // App Route uses a NextRequest, not Node's headers object. Its cookies()
     // reader must receive the renewed/cleared session in this same request.
     const routeRequest = new NextRequest(request.url, { headers: forwardedHeaders });
-    const routeStore = createRequestStoreForAPI(routeRequest, routeRequest.nextUrl, implicitTags, undefined, undefined);
+    const routeStore = createRequestStoreForAPI(routeRequest, routeRequest.nextUrl, implicitTags, undefined, undefined, undefined);
     const routeCookies = routeStore.userspaceMutableCookies.getAll();
     expect(routeCookies.find(({ name }) => name === "audit-session")?.value).toBe(sessionValue);
     expect(routeCookies).toEqual(expect.arrayContaining([
