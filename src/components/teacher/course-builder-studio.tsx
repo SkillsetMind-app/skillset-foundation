@@ -498,6 +498,7 @@ export function CourseBuilderStudio() {
   const [isModuleFormRequested, setIsModuleFormOpen] = useState(false);
   const [lessonFormModuleId, setLessonFormModuleId] = useState("");
   const [expandedModuleIds, setExpandedModuleIds] = useState<string[]>([]);
+  const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
   const [error, setError] = useState<BuilderError | null>(null);
   const [success, setSuccess] = useState<"lessonAdded" | "draftSaved" | "published" | null>(null);
   const errorMessage = error
@@ -2883,9 +2884,24 @@ export function CourseBuilderStudio() {
           </div>
         </section>
 
+        {/* A biblioteca inteira (upload de capa + lista de arquivos) vinha
+            aberta embaixo de toda aba e sozinha respondia por boa parte dos
+            3.138 px da aba de conteudo. Agora e um clique de quem precisa. */}
         {course ? (
-          <div className="course-builder-footer__full">
-            <CourseAssetUploader course={course} isEditable={isEditable} />
+          <div className="course-builder-footer__full grid gap-3">
+            <button
+              type="button"
+              onClick={() => setIsMediaLibraryOpen((current) => !current)}
+              className="button-outline inline-flex w-fit items-center gap-2 px-4 py-2.5 text-sm"
+            >
+              <ImageIcon aria-hidden="true" size={14} strokeWidth={1.9} />
+              {t(isMediaLibraryOpen
+                ? "creatorEditor.builder.curriculum.closeMediaLibrary"
+                : "creatorEditor.builder.curriculum.openMediaLibrary")}
+            </button>
+            {isMediaLibraryOpen ? (
+              <CourseAssetUploader course={course} isEditable={isEditable} />
+            ) : null}
           </div>
         ) : null}
       </div>
