@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { StudentMessagesInbox } from "@/components/learn/student-messages-inbox";
 import { platformNav } from "@/data/site";
 import type { CourseMessage } from "@/domain/course-message";
@@ -149,6 +150,23 @@ describe("caixa de mensagens do aluno", () => {
 
     expect(screen.getByText("No conversations yet")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Back/ })).toHaveAttribute("href", "/learn");
+  });
+
+  // A lista e a conversa chamavam o formatador de hora sem `t` nem `locale`:
+  // em espanhol a hora saia em ingles ("5m ago").
+  it("mostra a hora da conversa no idioma da pessoa", () => {
+    mocks.searchParams = new URLSearchParams("course=course-1");
+    mocks.messages = [
+      message({ id: "m-es", createdAt: new Date(Date.now() - 5 * 60_000).toISOString() }),
+    ];
+    render(
+      <I18nProvider initialLocale="es">
+        <StudentMessagesInbox />
+      </I18nProvider>,
+    );
+
+    // Uma vez na lista de conversas, outra na mensagem aberta.
+    expect(screen.getAllByText(/Hace 5 min/)).toHaveLength(2);
   });
 });
 

@@ -43,7 +43,7 @@ const kindIcon = {
 
 export function StudioRecentActivity({ courses }: { courses: TeacherCourse[] }) {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [orders, setOrders] = useState<Order[]>([]);
   const [students, setStudents] = useState<CourseStudent[]>([]);
   const [reviews, setReviews] = useState<CourseReview[]>([]);
@@ -214,7 +214,7 @@ export function StudioRecentActivity({ courses }: { courses: TeacherCourse[] }) 
                   </span>
                   <span className="min-w-0 flex-1 text-[var(--color-ink)]">{event.text}</span>
                   <span className="shrink-0 text-xs text-[var(--color-ink-muted)]">
-                    {formatNotificationTime(new Date(event.at).toISOString())}
+                    {formatNotificationTime(new Date(event.at).toISOString(), t, locale)}
                   </span>
                 </Link>
               </li>

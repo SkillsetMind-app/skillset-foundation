@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { StudioRecentActivity } from "@/components/teacher/studio-recent-activity";
 import type { TeacherCourse } from "@/domain/teacher-course";
+import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
 // "O que aconteceu enquanto eu nao olhava?" nao tinha resposta na Home: havia
 // proximos passos, produtos e metricas, e nenhuma linha do tempo. Aqui as
@@ -14,14 +15,18 @@ const mocks = vi.hoisted(() => ({
   students: [] as unknown[],
   reviews: [] as unknown[],
   questions: [] as unknown[],
+  locale: "en" as "en" | "es",
 }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({ user: { uid: "teacher-1" } }),
 }));
 
+// As frases da atividade ficam fixas em ingles; o resto (a hora relativa)
+// vem do dicionario do idioma escolhido, como no provider de verdade.
 vi.mock("@/components/i18n/i18n-provider", () => ({
   useTranslation: () => ({
+    locale: mocks.locale,
     t: (key: string) =>
       ({
         "teach.activity.title": "Recent activity",
@@ -30,7 +35,7 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
         "teach.activity.review": "New {rating}-star review in {course}",
         "teach.activity.question": "{name} asked a question in {course}",
         "teach.activity.emptyTitle": "Nothing has happened yet.",
-      })[key] ?? key,
+      })[key] ?? translate(getDictionary(mocks.locale), key),
   }),
 }));
 
@@ -66,6 +71,7 @@ beforeEach(() => {
   mocks.students = [];
   mocks.reviews = [];
   mocks.questions = [];
+  mocks.locale = "en";
 });
 
 afterEach(cleanup);
@@ -185,5 +191,25 @@ describe("Recent activity na Home do professor", () => {
     const items = await screen.findAllByRole("listitem");
     expect(items).toHaveLength(1);
     expect(items[0].textContent).toContain("Bruno enrolled in Hypnosis Basics");
+  });
+
+  // A linha chamava o formatador de hora sem `t` nem `locale`: em espanhol a
+  // hora de cada evento saia em ingles ("1d ago").
+  it("mostra a hora de cada evento no idioma da pessoa", async () => {
+    mocks.locale = "es";
+    mocks.students = [
+      {
+        enrollmentId: "enr-1",
+        courseId: "course-1",
+        courseTitle: "Hypnosis Basics",
+        displayName: "Ana",
+        enrolledAt: isoDaysAgo(1),
+      },
+    ];
+
+    render(<StudioRecentActivity courses={courses} />);
+
+    const [item] = await screen.findAllByRole("listitem");
+    expect(item).toHaveTextContent("Hace 1 d");
   });
 });
