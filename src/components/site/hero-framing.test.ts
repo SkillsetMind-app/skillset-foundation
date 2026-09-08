@@ -11,14 +11,21 @@ describe("hero portrait framing", () => {
     });
   });
 
-  it("fits the desktop portrait to the full hero height without cropping its head", () => {
+  // f0be6ff (05/09) dimensionava o quadro pela proporcao da foto para nunca
+  // cortar — e deixava 439px de gradiente vazio a 1920px, com a foto parada
+  // como um retangulo a direita ("desencaixada do canvas", Patrick 07/09).
+  // O quadro agora e o proprio hero; a imagem cobre e ancora o topo, entao a
+  // cabeca sobrevive ao corte e o corte, quando ha, e embaixo.
+  it("covers the whole desktop hero instead of standing as a photo-shaped box on the right", () => {
     const declarations: Record<string, string> = {};
     css.walkRules(".hero-portrait-frame", (rule) => {
       rule.walkDecls((decl) => { declarations[decl.prop] = decl.value; });
     });
-    expect(declarations.height).toBe("100%");
-    expect(declarations["aspect-ratio"]).toBe("1672 / 941");
-    expect(declarations.width).toBe("auto");
-    expect(declarations.right).toBe("0");
+    expect(declarations["aspect-ratio"]).toBeUndefined();
+    expect(declarations.width).toBeUndefined();
+
+    const hero = readFileSync("src/components/site/marketing-hero.tsx", "utf8");
+    expect(hero).toMatch(/hero-portrait-frame[^"]*\bw-full\b/);
+    expect(hero).toMatch(/hero-portrait-image[^"]*\blg:object-\[center_top\]/);
   });
 });

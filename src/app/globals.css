@@ -337,15 +337,12 @@ html {
 }
 
 @media (min-width: 1024px) {
-  /* Size by height: both photo edges meet the hero, without a vertical crop.
-     The wider background remains behind the copy on ultrawide screens. */
-  .hero-portrait-frame {
-    height: 100%;
-    aspect-ratio: 1672 / 941;
-    width: auto;
-    right: 0;
-  }
-
+  /* A foto cobre o hero inteiro: o quadro é o próprio hero (w-full no JSX) e a
+     imagem ancora o topo (lg:object-[center_top]) para o rosto sobreviver ao
+     corte. Dimensionar o quadro pela proporção da foto (f0be6ff) deixava 439px
+     de gradiente vazio a 1920px, com a foto parada como um retângulo à direita
+     ("desencaixada do canvas", Patrick, 07/09). Em tela ultralarga o corte é
+     embaixo, nunca na cabeça. */
   .hero-portrait-layer {
     background-color: #05101f;
   }

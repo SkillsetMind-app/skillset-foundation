@@ -23,7 +23,7 @@ export async function MarketingHero() {
           <div className="hero-portrait-frame absolute inset-y-0 right-0 w-full">
             <BrandPortrait
               rotate
-              imageClassName="hero-portrait-image object-cover object-[78%_center] sm:object-[74%_center] md:object-[68%_center] lg:object-center"
+              imageClassName="hero-portrait-image object-cover object-[78%_center] sm:object-[74%_center] md:object-[68%_center] lg:object-[center_top]"
               sizes="100vw"
               priority
             />
