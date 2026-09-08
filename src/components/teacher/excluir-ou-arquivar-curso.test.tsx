@@ -183,6 +183,51 @@ describe("hub do curso — entrada de excluir/arquivar", () => {
   });
 });
 
+describe("o menu abre para dentro da tela", () => {
+  // jsdom nao mede layout: o retangulo do gatilho e simulado. O que importa e
+  // a decisao — com o gatilho encostado na borda esquerda (lista em cartao a
+  // 390/768 px), um menu de 224 px ancorado a direita dele nasceria em x < 0.
+  function retangulo(left: number, width: number): DOMRect {
+    return {
+      left,
+      right: left + width,
+      top: 0,
+      bottom: 44,
+      x: left,
+      y: 0,
+      width,
+      height: 44,
+      toJSON: () => ({}),
+    } as DOMRect;
+  }
+
+  it("no celular, com o gatilho na borda esquerda, ancora o menu à esquerda", async () => {
+    const medida = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockReturnValue(retangulo(95, 44));
+    try {
+      const menu = await abreMenuDoHub();
+      expect(menu).toHaveClass("left-0");
+      expect(menu).not.toHaveClass("right-0");
+    } finally {
+      medida.mockRestore();
+    }
+  });
+
+  it("no desktop, com o gatilho na borda direita, continua ancorado à direita", async () => {
+    const medida = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockReturnValue(retangulo(1337, 44));
+    try {
+      const menu = await abreMenuDoHub();
+      expect(menu).toHaveClass("right-0");
+      expect(menu).not.toHaveClass("left-0");
+    } finally {
+      medida.mockRestore();
+    }
+  });
+});
+
 describe("modal de excluir/arquivar — o texto segue o dado", () => {
   it("sem comprador, avisa que a exclusão é permanente", async () => {
     const dialog = await abreModalDoHub();
