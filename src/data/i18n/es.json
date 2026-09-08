@@ -1333,19 +1333,19 @@
   "teach": {
     "reports": {
       "periodLabel": "Periodo del informe",
-      "range7d": "Ultimos 7 dias - todos los productos",
-      "range30d": "Ultimos 30 dias - todos los productos",
-      "range90d": "Ultimos 90 dias - todos los productos",
+      "range7d": "Últimos 7 días - todos los productos",
+      "range30d": "Últimos 30 días - todos los productos",
+      "range90d": "Últimos 90 días - todos los productos",
       "kpiSales": "Ventas",
       "kpiSalesDetail": "Pedidos pagados en este periodo.",
       "kpiNet": "Ingreso neto",
-      "kpiNetDetail": "Despues de las comisiones de la plataforma y de Stripe, registrado en tu propia cuenta de Stripe.",
+      "kpiNetDetail": "Después de las comisiones de la plataforma y de Stripe, registrado en tu propia cuenta de Stripe.",
       "kpiRefund": "Tasa de reembolso",
       "kpiRefundDetail": "{refunded} reembolsados de {collected} pedidos cobrados.",
       "kpiMrr": "MRR",
       "kpiMrrDetail": "Ingreso recurrente de hoy: no se filtra por periodo.",
       "noRevenueInPeriod": "Sin ingresos en este periodo",
-      "noRevenueInPeriodDetail": "Elige un periodo mas largo o comprueba que tus pedidos pagados llegaron.",
+      "noRevenueInPeriodDetail": "Elige un periodo más largo o comprueba que tus pedidos pagados llegaron.",
       "byProduct": "Por producto",
       "byProductEmpty": "Sin pedidos cobrados en este periodo.",
       "colProduct": "Producto",
@@ -1571,7 +1571,31 @@
         "planned": "Planificado"
       }
     },
+    "integrationsPage": {
+      "title": "Las integraciones están previstas.",
+      "description": "Conecta herramientas de correo, webhooks y servicios de análisis: está previsto en SkillsetMind. Stripe ya está conectado, así que puedes abrir tu propia cuenta de Stripe desde Pagos e impuestos en cualquier momento."
+    },
+    "messagesPage": {
+      "title": "Responde a tus alumnos.",
+      "description": "Conversaciones privadas por curso con los alumnos inscritos. Las respuestas llegan al aula y a la campana de notificaciones del alumno."
+    },
+    "saleDetailPage": {
+      "title": "Detalle de la venta.",
+      "description": "Revisa una transacción, su historial de pago, el curso y las acciones de gestión."
+    },
+    "subscriptionsPage": {
+      "description": "Ingresos recurrentes, estado de las suscripciones, señales de cancelación y cada renovación en una sola vista de operaciones."
+    },
+    "teamPage": {
+      "title": "Los equipos y roles están previstos.",
+      "description": "Invita a colaboradores, asigna roles de editor o analista y comparte un catálogo de cursos con tu equipo: está previsto en SkillsetMind. Actualmente, cada estudio del profesor pertenece a una sola cuenta."
+    },
+    "comingSoon": {
+      "openBuilder": "Abre el constructor de cursos"
+    },
     "storefrontPage": {
+      "title": "Tu tienda.",
+      "description": "Personaliza la página pública que te presenta a ti y a cada curso que publicas.",
       "previewLabel": "Vista previa de la tienda",
       "openPublicPage": "Abrir página pública",
       "published": "Publicada",

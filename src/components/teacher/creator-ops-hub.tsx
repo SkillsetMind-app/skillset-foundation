@@ -46,12 +46,6 @@ const chartMoney = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
 
-const monthFormatter = new Intl.DateTimeFormat("en-US", { month: "short" });
-const dayFormatter = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-});
-
 function money(amountMinor: number, currency: string): string {
   try {
     const formatted = new Intl.NumberFormat(undefined, {
@@ -65,7 +59,7 @@ function money(amountMinor: number, currency: string): string {
 
 export function CreatorOpsHub() {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { locale, t } = useTranslation();
   const [orders, setOrders] = useState<Order[]>([]);
   const [ledgers, setLedgers] = useState<PayoutLedgerEntry[]>([]);
   const [subscriptions, setSubscriptions] = useState<CourseSubscription[]>([]);
@@ -114,6 +108,11 @@ export function CreatorOpsHub() {
       : t("teach.reports.noActivity");
 
   const report = useMemo(() => {
+    const monthFormatter = new Intl.DateTimeFormat(locale, { month: "short" });
+    const dayFormatter = new Intl.DateTimeFormat(locale, {
+      month: "short",
+      day: "numeric",
+    });
     const paidOrders = orders.filter((order) => isPaidOrder(order.status));
     // A janela sai dos pedidos pagos porque "All" precisa saber onde a loja
     // comecou; os KPIs e o grafico usam a MESMA janela, entao a linha e o
@@ -150,7 +149,7 @@ export function CreatorOpsHub() {
       ),
       products: buildReportProductRows(ordersInPeriod),
     };
-  }, [orders, ledgers, subscriptions, period]);
+  }, [orders, ledgers, subscriptions, period, locale]);
 
   const { snap, refund, series, products } = report;
   const chartTotalMinor = series.reduce((sum, point) => sum + point.grossMinor, 0);

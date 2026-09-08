@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
 
 // Single source for the support inbox a roadmap page routes interest to. Kept
@@ -32,16 +35,18 @@ export function TeacherComingSoonPanel({
   title,
   description,
   primaryHref = "/teach",
-  primaryLabel = "Back to Studio",
+  primaryLabel,
   notifyFeature,
 }: TeacherComingSoonPanelProps) {
+  const { t } = useTranslation();
+
   return (
     <section className="overflow-hidden rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-10">
       <div className="flex flex-wrap items-center gap-3">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {eyebrow}
         </p>
-        <StatusChip status="pending" label="Planned" />
+        <StatusChip status="pending" label={t("teach.marketing.state.planned")} />
       </div>
       <h3 className="display-title mt-4 max-w-3xl text-4xl leading-tight text-[var(--color-primary)]">
         {title}
@@ -51,22 +56,22 @@ export function TeacherComingSoonPanel({
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
         <Link href={primaryHref} className="button-solid px-4 py-2.5 text-sm">
-          {primaryLabel}
+          {primaryLabel ?? t("creatorEditor.builder.navigation.studio")}
           <ArrowRight aria-hidden="true" size={14} strokeWidth={1.8} />
         </Link>
         {notifyFeature ? (
           <a
             href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
-              `Notify me when ${notifyFeature} ships`,
+              t("creatorPanel.hub.roadmap.notifySubject").replace("{feature}", () => notifyFeature),
             )}`}
             className="button-outline px-4 py-2.5 text-sm"
           >
-            Notify me
+            {t("creatorPanel.hub.roadmap.notify")}
           </a>
         ) : null}
         {primaryHref !== "/teach/builder" ? (
           <Link href="/teach/builder" className="button-outline px-4 py-2.5 text-sm">
-            Open Course Builder
+            {t("teach.comingSoon.openBuilder")}
           </Link>
         ) : null}
       </div>
