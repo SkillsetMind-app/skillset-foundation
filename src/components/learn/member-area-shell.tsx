@@ -5,6 +5,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { NotificationBell } from "@/components/platform/notification-bell";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
+import { AdvisorHeaderSlot } from "@/components/teacher/advisor-sidebar";
 import type { MembersTheme } from "@/domain/teacher-course";
 import { isStorefrontHexColor } from "@/domain/user-profile";
 import { ThemeProvider } from "@/lib/theme/theme-provider";
@@ -84,8 +85,10 @@ export function MemberAreaShell({
               </span>
             )
           ) : (
-            <>
-              <LogoWordmark href="/" nav />
+            <LogoWordmark href="/" nav />
+          )}
+          <div className="flex shrink-0 items-center gap-2 empty:hidden">
+            <AdvisorHeaderSlot />
               {/* O sino da plataforma, aqui também. A sala de aula usa esta
                   casca (sem barra lateral) e ela não tinha sino: o painel de
                   mensagens dizia "a resposta cai no sino" numa tela onde o
@@ -99,9 +102,8 @@ export function MemberAreaShell({
                   to My Learning" na lateral). A sala agora tem UMA: "← My
                   courses", na capa (página inicial) ou no cabeçalho curto
                   (em aula). */}
-              <NotificationBell />
-            </>
-          )}
+            {brand ? null : <NotificationBell />}
+          </div>
         </header>
         <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
           {children}
