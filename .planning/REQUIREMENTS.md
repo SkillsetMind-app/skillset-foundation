@@ -1,15 +1,57 @@
 # Requirements: SkillsetMind Launch
 
-**Updated:** 2026-07-15
+**Updated:** 2026-09-07
 **Core value:** The practitioner owns the audience, data, and commercial relationship; financial behavior must be auditable and predictable.
 
-## Completed
+## Milestone v1.1 - Hotmart parity v2 (opened 2026-09-07, issue #243)
 
-### Hybrid video
+### Parity coverage
+
+- [x] **PAR-01:** A closed checklist gives one row to every Hotmart producer menu item, course-center tab and header action, Club menu item, learner screen and commercial flow, and marks what the existing captures already cover. (Phase 7, done 2026-09-07)
+- [ ] **PAR-02:** Every checklist row is visited on Hotmart, read-only, with desktop 1440, mobile 390 and full-page captures, the real destination URL and the list of buttons with their destinations, or an explicit blocked reason. (Phase 8)
+- [ ] **PAR-03:** Every checklist row is visited on SkillsetMind production with the same columns; rows without an equivalent are marked `NÃO EXISTE`; empty states caused by empty data are marked as such. (Phase 9)
+- [ ] **PAR-04:** Every row has a verdict (equal / adopt / adapt / skip) with a one-line reason; adopt/adapt rows carry measurements from the captures; the list is ordered by value and names the files touched. (Phase 10)
+
+### Parity delivery
+
+- [ ] **PAR-05:** A teacher can archive (unpublish) a published course and an admin can delete any course from a discoverable place in the UI; drafts keep the existing delete path; courses with enrollments follow the deactivate-instead-of-delete rule confirmed on Hotmart. (Phase 11, first PR)
+- [ ] **PAR-06:** Every parity PR follows the house pattern (PT-BR title "fix/feat: what the person suffered"; body sofria/muda/fora/prova; proof by reversal; tsc and eslint clean; draft promoted for the Porteiro; squash; visual QA at 390/768/1440) and is reviewed by the session owner before merge. (Phase 11)
+- [ ] **PAR-07:** The founder confirms each merged flow in the visible browser on desktop and mobile; remaining differences are listed as skip-with-reason or backlog. (Phase 12)
+
+### Out of scope for v1.1
+
+| Feature | Reason |
+|---|---|
+| Affiliates, co-productions | Pay a third party out of the sale; impossible under direct charges (see GRW-02/03) |
+| QR code and link shortener | Cost without demand |
+| Gamification and ranking | Founder decision |
+| Cross-sell panel inside the classroom | Not decided; it is marketplace inside the classroom |
+| Own checkout page | Against the Stripe Checkout direct-charge model |
+| Creator-chosen accent color for the members area | Members area is dark by decision; backlog |
+| Per-lesson star rating | Course rating exists; a second rating engine is not worth it |
+| Hotmart's paid AI sales agent | Our AI advises the creator for free; it is not a product |
+
+### Traceability (v1.1)
+
+| Requirement | Phase | Status |
+|---|---|---|
+| PAR-01 | Phase 7 | Done |
+| PAR-02 | Phase 8 | Pending |
+| PAR-03 | Phase 9 | In progress |
+| PAR-04 | Phase 10 | Pending |
+| PAR-05 | Phase 11 | Pending |
+| PAR-06 | Phase 11 | Pending |
+| PAR-07 | Phase 12 | Pending |
+
+## Milestone v1.0 - Launch program (paused 2026-07-15)
+
+### Completed
+
+#### Hybrid video
 
 - [x] **VID-01..VID-07:** Explicit YouTube/upload source, compatible persistence, playback, and creator UX.
 
-## Phase 2 - Commerce integrity
+### Phase 2 - Commerce integrity
 
 - [x] **COM-01:** Creation exposes course, subscription, and free as distinct product formats.
 - [x] **COM-02:** Subscription creation supports monthly/yearly interval and routes paid products to pricing.
@@ -20,14 +62,14 @@
 - [ ] **SUB-03:** Creator has a subscriber center with status, period, delinquency, cancellation, and recovery state.
 - [ ] **SUB-04:** Reports include recurring revenue, MRR, churn, active subscribers, and renewal history.
 
-## Phase 3 - Products and offers
+### Phase 3 - Products and offers
 
 - [ ] **OFF-01:** Product and offer are separate entities; subscription is a product format, not an offer toggle.
 - [ ] **OFF-02:** A product supports multiple simultaneous one-time/monthly/annual offers.
 - [ ] **OFF-03:** Offer includes price, currency, interval, trial, refund window, optional billing count, dunning, status, and code.
 - [ ] **OFF-04:** Checkout resolves an offer and snapshots its terms without breaking legacy course prices.
 
-## Phase 4 - Creator operations
+### Phase 4 - Creator operations
 
 - [ ] **OPS-01:** Global sales view is separate from the per-product management center.
 - [ ] **OPS-02:** Global subscription management supports cancel-at-period-end and recovery operations.
@@ -37,7 +79,7 @@
 - [ ] **WAL-02:** Balance holds and availability rules are predictable and visible.
 - [ ] **WAL-03:** Payout reconciliation is based on a canonical financial ledger.
 
-## Phase 5 - Growth engines
+### Phase 5 - Growth engines
 
 - [ ] **GRW-01:** Coupons are validated and applied in checkout and settlement.
 - [~] **GRW-02:** ~~Affiliate attribution affects settlement and reporting.~~ **Revoked** with the move to Stripe Connect direct charges. Paying an affiliate means paying a third party out of the buyer's payment, which requires the platform to receive the money first. It does not.
@@ -46,7 +88,7 @@
 - [ ] **GRW-04:** Tax configuration affects checkout totals and records.
 - [ ] **GRW-05:** Commercial links, QR code, widget, sales pages, and automations use real offers.
 
-## Phase 6 - Relaunch experience
+### Phase 6 - Relaunch experience
 
 - [ ] **EXP-01:** Creator advisor is grounded in current product, sales, and knowledge data.
 - [ ] **EXP-02:** Messages and creator onboarding are complete.
@@ -54,7 +96,7 @@
 - [ ] **EXP-04:** Member-area content/customization workflow is complete and tested.
 - [ ] **EXP-05:** Creator storefront and per-course learning area remain distinct surfaces.
 
-## Out of scope for this milestone
+### Out of scope for v1.0
 
 | Feature | Reason |
 |---|---|
