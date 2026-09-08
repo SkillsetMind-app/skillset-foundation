@@ -32,16 +32,14 @@ import {
   refreshTeacherStripeAccountStatus,
 } from "@/lib/payments/connect";
 
-// Shown (as a calm info message, never error styling) when the PLATFORM hasn't
-// enabled Stripe Connect yet — a SkillsetMind-side configuration state, not a
-// failure and not something the teacher can fix.
-const PAYOUTS_UNAVAILABLE_MESSAGE =
-  "Paid selling isn't open on SkillsetMind yet — Stripe Connect is still being " +
-  "configured on our side. No Stripe account is connected yet, so buyers have " +
-  "nowhere to pay you; onboarding will open on this page automatically once " +
-  "it's ready.";
+// Mostrado (como aviso calmo, nunca com cara de erro) quando a PLATAFORMA ainda
+// nao habilitou o Stripe Connect — estado de configuracao do lado da
+// SkillsetMind, nao falha e nada que o professor possa resolver.
+const PAYOUTS_UNAVAILABLE_KEY = "teach.earnings.payoutsUnavailable";
 
 type LedgerReadState = "loading" | "ready" | "error";
+
+type Translate = (key: string) => string;
 
 export function TeacherWalletPanel() {
   const { user } = useAuth();
@@ -91,11 +89,11 @@ export function TeacherWalletPanel() {
         setIsLoading(false);
       },
       () => {
-        setError("We could not load your payout profile.");
+        setError(t("teach.earnings.profileError"));
         setIsLoading(false);
       },
     );
-  }, [user]);
+  }, [user, t]);
 
   useEffect(() => {
     if (!user) {
@@ -110,10 +108,10 @@ export function TeacherWalletPanel() {
       },
       () => {
         setLedgerState("error");
-        setError("We could not load your earnings record.");
+        setError(t("teach.earnings.ledgerReadError"));
       },
     );
-  }, [user]);
+  }, [user, t]);
 
   function handleOnboardingComplete() {
     void refreshStripeStatus();
@@ -151,21 +149,21 @@ export function TeacherWalletPanel() {
       if (status.payoutsUnavailable) {
         // Platform-side Connect configuration gap — calm info, not an error.
         setPlatformPayoutsUnavailable(true);
-        setMessage(PAYOUTS_UNAVAILABLE_MESSAGE);
+        setMessage(t(PAYOUTS_UNAVAILABLE_KEY));
         return;
       }
       setPlatformPayoutsUnavailable(false);
       setMessage(
         status.chargesEnabled && status.payoutsEnabled
-          ? "Stripe charges and payouts are ready for this teacher account."
-          : "Stripe still requires more information before paid checkout and payouts are enabled.",
+          ? t("teach.earnings.stripeReady")
+          : t("teach.earnings.stripeNeedsInfo"),
       );
     } catch (cause) {
       // Same platform gap reported by an older deployed function as a thrown
       // precondition — keep it calm rather than error-styled.
       if (isConnectNotEnabledError(cause)) {
         setPlatformPayoutsUnavailable(true);
-        setMessage(PAYOUTS_UNAVAILABLE_MESSAGE);
+        setMessage(t(PAYOUTS_UNAVAILABLE_KEY));
         return;
       }
       // Surface the real reason (e.g. missing STRIPE_SECRET_KEY secret or a
@@ -174,8 +172,8 @@ export function TeacherWalletPanel() {
       const detail = cause instanceof Error ? cause.message.trim() : "";
       setError(
         detail
-          ? `We could not refresh Stripe payout status: ${detail}`
-          : "We could not refresh Stripe payout status.",
+          ? t("teach.earnings.refreshErrorDetail").replace("{detail}", detail)
+          : t("teach.earnings.refreshError"),
       );
     } finally {
       setIsRefreshingStripe(false);
@@ -197,7 +195,7 @@ export function TeacherWalletPanel() {
     ledgerState === "ready"
       ? formatCurrencyBreakdown(values)
       : ledgerState === "error"
-        ? "Unavailable"
+        ? t("teach.earnings.unavailable")
         : "—";
   const connected = Boolean(profile?.stripeConnectedAccountId);
   // The Connect routes now answer 402 activation_required for an unpaid
@@ -217,29 +215,24 @@ export function TeacherWalletPanel() {
       && profile?.stripeConnectPayoutsEnabled,
     );
   const statusLabel = platformPayoutsUnavailable
-    ? "Not available yet"
+    ? t("teach.earnings.statusNotAvailable")
     : ready
-      ? "Ready"
+      ? t("teach.earnings.statusReady")
       : connected
-        ? "Onboarding required"
-        : "Not connected";
+        ? t("teach.earnings.statusOnboarding")
+        : t("teach.earnings.statusNotConnected");
 
   return (
     <section className="payouts-shell">
       <header className="payouts-head">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Payouts & tax
+            {t("account.payoutsTax")}
           </p>
           <h2 className="display-title mt-3 flex items-center gap-2 text-4xl leading-tight text-[var(--color-primary)]">
-            Your earnings, your payout setup.
-            <InlineHelp topic="Payout schedule" href="/help#payouts">
-              Buyers pay your Stripe account directly, so there is no platform
-              hold. Stripe then settles and pays out to your bank on its own
-              timing, which depends on your country and the payment method, and
-              a new account waits on verification before its first payout.
-              Stripe Connect must have both charges and payouts enabled before
-              a paid product can go live.
+            {t("teach.earnings.title")}
+            <InlineHelp topic={t("teach.earnings.helpTopic")} href="/help#payouts">
+              {t("teach.earnings.helpBody")}
             </InlineHelp>
           </h2>
           {/* Uma frase, e o resto recolhido. `details` nativo: sem estado, sem
@@ -256,7 +249,7 @@ export function TeacherWalletPanel() {
         </div>
         <p className="flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
           <Download aria-hidden="true" size={14} strokeWidth={2} />
-          Stripe issues your tax forms
+          {t("teach.earnings.taxForms")}
         </p>
       </header>
 
@@ -274,7 +267,7 @@ export function TeacherWalletPanel() {
       <div className="payouts-grid">
         <article className="payout-balance-card">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[rgba(255,255,255,0.66)]">
-            Creator net estimate
+            {t("teach.earnings.netEstimate")}
           </p>
           <p className="display-title mt-3 break-words text-3xl leading-tight text-white sm:text-4xl">
             {money(financials.teacherNetByCurrency)}
@@ -286,7 +279,10 @@ export function TeacherWalletPanel() {
           </p>
 
           <div className="mt-6 grid gap-3">
-            <BalanceRow label="Refunded" value={money(financials.refundedByCurrency)} />
+            <BalanceRow
+              label={t("teach.earnings.refunded")}
+              value={money(financials.refundedByCurrency)}
+            />
           </div>
 
           <div className="mt-6 flex flex-wrap gap-2">
@@ -297,15 +293,17 @@ export function TeacherWalletPanel() {
                 disabled={isRefreshingStripe}
                 className="button-solid-light px-4 py-2.5 text-sm disabled:opacity-60"
               >
-                {isRefreshingStripe ? "Refreshing..." : "Refresh Stripe status"}
+                {isRefreshingStripe
+                  ? t("teach.earnings.refreshing")
+                  : t("teach.earnings.refreshStripe")}
               </button>
             ) : (
               <a href="#stripe-connect" className="button-solid-light px-4 py-2.5 text-sm">
-                Complete payout setup
+                {t("teach.earnings.completeSetup")}
               </a>
             )}
             <Link href="/teach/sales" className="button-outline-light px-4 py-2.5 text-sm">
-              View sales
+              {t("teach.earnings.viewSales")}
             </Link>
           </div>
         </article>
@@ -314,7 +312,7 @@ export function TeacherWalletPanel() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                Payout destination
+                {t("teach.earnings.destination")}
               </p>
               <h3 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
                 Stripe Connect
@@ -330,49 +328,48 @@ export function TeacherWalletPanel() {
                       ? "pending"
                       : "draft"
               }
-              label={isLoading ? "Loading" : statusLabel}
+              label={isLoading ? t("teach.earnings.loadingStatus") : statusLabel}
             />
           </div>
           <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-            SkillsetMind never stores full bank details. Stripe collects identity,
-            tax, and bank information inside the embedded onboarding flow.
+            {t("teach.earnings.bankNote")}
           </p>
 
           <div className="mt-5 grid gap-3">
             <PayoutStatusRow
               icon={Banknote}
-              label="Connected account"
+              label={t("teach.earnings.connectedAccount")}
               value={
                 platformPayoutsUnavailable
                   // A stored id can't be verified (or used) while the platform
                   // has Connect off — presenting it as "Connected" reads like
                   // a finished setup that never happened.
-                  ? "Not active yet"
+                  ? t("teach.earnings.notActiveYet")
                   : profile?.stripeConnectedAccountId
                     ? maskStripeId(profile.stripeConnectedAccountId)
-                    : "Not created"
+                    : t("teach.earnings.notCreated")
               }
             />
             <PayoutStatusRow
               icon={ShieldCheck}
-              label="Charges"
+              label={t("teach.earnings.charges")}
               value={
                 platformPayoutsUnavailable
-                  ? "Unavailable"
+                  ? t("teach.earnings.unavailable")
                   : profile?.stripeConnectChargesEnabled
-                    ? "Enabled"
-                    : "Pending"
+                    ? t("teach.earnings.enabled")
+                    : t("teach.earnings.pending")
               }
             />
             <PayoutStatusRow
               icon={CheckCircle2}
-              label="Payouts"
+              label={t("teach.earnings.payouts")}
               value={
                 platformPayoutsUnavailable
-                  ? "Unavailable"
+                  ? t("teach.earnings.unavailable")
                   : profile?.stripeConnectPayoutsEnabled
-                    ? "Enabled"
-                    : "Pending"
+                    ? t("teach.earnings.enabled")
+                    : t("teach.earnings.pending")
               }
             />
           </div>
@@ -384,7 +381,9 @@ export function TeacherWalletPanel() {
             className="button-outline mt-5 w-full justify-center px-4 py-2.5 text-sm disabled:opacity-60"
           >
             <RefreshCw aria-hidden="true" size={14} strokeWidth={2} />
-            {isRefreshingStripe ? "Refreshing..." : "Refresh account status"}
+            {isRefreshingStripe
+              ? t("teach.earnings.refreshing")
+              : t("teach.earnings.refreshAccount")}
           </button>
         </aside>
       </div>
@@ -393,37 +392,43 @@ export function TeacherWalletPanel() {
           linha. 2x2 no tablet, 4 colunas no desktop — nenhum orfao. */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          label="Paid sales"
+          label={t("teach.earnings.paidSales")}
           value={financialsReady
             ? String(financials.salesCount)
             : ledgerState === "error"
-              ? "Unavailable"
+              ? t("teach.earnings.unavailable")
               : "—"}
         />
-        <MetricCard label="Gross sales" value={money(financials.grossPaidByCurrency)} />
-        <MetricCard label="Platform fee est." value={money(financials.platformFeeByCurrency)} />
-        <MetricCard label="Stripe fee est." value={money(financials.stripeFeeByCurrency)} />
+        <MetricCard
+          label={t("teach.earnings.grossSales")}
+          value={money(financials.grossPaidByCurrency)}
+        />
+        <MetricCard
+          label={t("teach.earnings.platformFee")}
+          value={money(financials.platformFeeByCurrency)}
+        />
+        <MetricCard
+          label={t("teach.earnings.stripeFee")}
+          value={money(financials.stripeFeeByCurrency)}
+        />
       </div>
 
       {ready || !activationBlocked ? null : (
         <section id="stripe-connect" className="scroll-mt-24 rounded-[18px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            Activate your creator account
+            {t("teach.earnings.activateEyebrow")}
           </p>
           <h3 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
-            Pay the one-time activation fee to start selling.
+            {t("teach.earnings.activateTitle")}
           </h3>
           <p className="mt-2 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            Activation is charged once and unlocks course creation, publishing
-            and payouts. After it clears you finish Stripe onboarding here, and
-            buyers pay your Stripe account directly — SkillsetMind never holds
-            your money.
+            {t("teach.earnings.activateBody")}
           </p>
           <Link
             href="/teach/activate"
             className="button-solid mt-5 inline-flex px-4 py-2.5 text-sm"
           >
-            Activate my account
+            {t("teach.earnings.activateCta")}
             <ArrowRight aria-hidden="true" size={14} strokeWidth={2} />
           </Link>
         </section>
@@ -434,20 +439,15 @@ export function TeacherWalletPanel() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                {connected ? "Continue payout setup" : "Set up payouts"}
+                {connected
+                  ? t("teach.earnings.connectContinue")
+                  : t("teach.earnings.connectStart")}
               </p>
               <h3 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
-                Complete Stripe onboarding before selling paid courses.
+                {t("teach.earnings.connectTitle")}
               </h3>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-                You stay on SkillsetMind the whole time. Stripe collects the
-                legally required identity, tax, and bank details in this
-                embedded step so your payout account meets payment
-                regulations. After that, buyers pay your Stripe account directly:
-                SkillsetMind never holds your money and there is no platform
-                waiting period. Stripe pays out to your bank on your account&apos;s
-                payout schedule — note that Stripe verifies new accounts before
-                the very first payout.
+                {t("teach.earnings.connectBody")}
               </p>
             </div>
           </div>
@@ -464,36 +464,32 @@ export function TeacherWalletPanel() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-              Statements
+              {t("teach.earnings.statements")}
             </p>
             <h3 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
-              Recent earnings record.
+              {t("teach.earnings.statementsTitle")}
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-              One line per paid order — a record, not a wallet. The payouts
-              themselves are made by Stripe out of your own balance, on your
-              account&apos;s payout schedule.
+              {t("teach.earnings.statementsBody")}
             </p>
           </div>
           <button type="button" disabled className="button-outline px-4 py-2.5 text-sm opacity-60">
-            Export after first payout
+            {t("teach.earnings.export")}
           </button>
         </div>
 
         <div className="mt-5 overflow-hidden rounded-[14px] border border-[var(--color-line)]">
           {ledgerState === "loading" ? (
             <div className="bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink-soft)]">
-              Loading your earnings record…
+              {t("teach.earnings.ledgerLoading")}
             </div>
           ) : ledgerState === "error" ? (
             <div className="bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink-soft)]">
-              Your earnings record is unavailable.
+              {t("teach.earnings.ledgerError")}
             </div>
           ) : ledgerEntries.length === 0 ? (
             <div className="bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink-soft)]">
-              No entries yet. Each paid order adds a line here after checkout
-              succeeds — and the money for it goes straight to your own Stripe
-              balance, not to a SkillsetMind account.
+              {t("teach.earnings.ledgerEmpty")}
             </div>
           ) : (
             <div className="divide-y divide-[var(--color-line)]">
@@ -513,7 +509,7 @@ export function TeacherWalletPanel() {
                 })
                 .slice(0, 6)
                 .map((entry) => (
-                  <LedgerRow key={entry.id} entry={entry} />
+                  <LedgerRow key={entry.id} entry={entry} t={t} />
                 ))}
             </div>
           )}
@@ -526,12 +522,10 @@ export function TeacherWalletPanel() {
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="display-title text-2xl text-[var(--color-primary)]">
-            Tax center
+            {t("teach.earnings.taxCenter")}
           </h3>
           <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
-            Tax forms appear once you have real payout volume. Stripe Connect
-            collects your tax details, and SkillsetMind keeps the payout ledger
-            fully transparent.
+            {t("teach.earnings.taxCenterBody")}
           </p>
         </div>
       </section>
@@ -587,24 +581,27 @@ function PayoutStatusRow({
   );
 }
 
-function LedgerRow({ entry }: { entry: PayoutLedgerEntry }) {
+function LedgerRow({ entry, t }: { entry: PayoutLedgerEntry; t: Translate }) {
   return (
     <Link
       href={`/teach/sales/${entry.orderId}`}
       className="grid gap-3 bg-white p-4 transition hover:bg-[var(--color-surface-soft)] md:grid-cols-[140px_1fr_150px_120px_auto]"
     >
       <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
-        {formatDate(entry.createdAt ?? entry.releaseAt)}
+        {formatDate(entry.createdAt ?? entry.releaseAt, t("teach.earnings.datePending"))}
       </span>
       <span className="min-w-0">
         <span className="block truncate text-sm font-bold text-[var(--color-ink)]">
-          Order {entry.orderId}
+          {t("teach.earnings.orderLabel").replace("{id}", entry.orderId)}
         </span>
         <span className="mt-1 block truncate text-xs text-[var(--color-ink-soft)]">
-          Payment {entry.paymentId}
+          {t("teach.earnings.paymentLabel").replace("{id}", entry.paymentId)}
         </span>
       </span>
-      <StatusChip status={mapLedgerStatus(entry.status)} label={formatLedgerStatus(entry.status)} />
+      <StatusChip
+        status={mapLedgerStatus(entry.status)}
+        label={t(ledgerStatusKey(entry.status))}
+      />
       <span className="text-right text-sm font-black text-[var(--color-primary)] md:text-left">
         {formatMoney(entry.netAmountMinor, entry.currency)}
       </span>
@@ -627,10 +624,10 @@ function formatCurrencyBreakdown(values: CurrencyAmount[]): string {
     .join(" + ");
 }
 
-function formatDate(value: unknown) {
+function formatDate(value: unknown, pendingLabel: string) {
   const date = toDate(value);
   if (!date) {
-    return "Pending";
+    return pendingLabel;
   }
 
   return new Intl.DateTimeFormat("en", {
@@ -641,19 +638,19 @@ function formatDate(value: unknown) {
 // Every non-refunded, non-disputed row is money the buyer already paid into the
 // teacher's own Stripe balance, so none of them is "pending" on anything of
 // ours. The four release-model values only ever appear on historical rows.
-const LEDGER_STATUS_LABELS: Record<PayoutLedgerEntry["status"], string> = {
-  settled: "Recorded",
-  in_release: "Recorded",
-  releasing: "Recorded",
-  released: "Recorded",
-  released_advance: "Recorded",
-  disputed: "Disputed",
-  refunded: "Refunded",
-  partially_refunded: "Partially refunded",
+const LEDGER_STATUS_KEYS: Record<PayoutLedgerEntry["status"], string> = {
+  settled: "teach.earnings.statusRecorded",
+  in_release: "teach.earnings.statusRecorded",
+  releasing: "teach.earnings.statusRecorded",
+  released: "teach.earnings.statusRecorded",
+  released_advance: "teach.earnings.statusRecorded",
+  disputed: "teach.earnings.statusDisputed",
+  refunded: "teach.earnings.statusRefunded",
+  partially_refunded: "teach.earnings.statusPartiallyRefunded",
 };
 
-function formatLedgerStatus(status: PayoutLedgerEntry["status"]) {
-  return LEDGER_STATUS_LABELS[status] ?? "Recorded";
+function ledgerStatusKey(status: PayoutLedgerEntry["status"]) {
+  return LEDGER_STATUS_KEYS[status] ?? "teach.earnings.statusRecorded";
 }
 
 function mapLedgerStatus(status: PayoutLedgerEntry["status"]) {
