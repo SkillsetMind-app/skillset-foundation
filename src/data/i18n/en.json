@@ -1466,6 +1466,38 @@
     }
   },
   "creatorPanel": {
+    "sales": {
+      "loading": "Loading your sales...",
+      "error": "We could not load your sales. Refresh to try again.",
+      "periodLabel": "Filter by period",
+      "period": {
+        "7d": "Last 7 days",
+        "30d": "Last 30 days",
+        "90d": "Last 90 days",
+        "12m": "Last 12 months",
+        "all": "All time"
+      },
+      "searchLabel": "Search sales by course or order id",
+      "searchPlaceholder": "Search by course or order id",
+      "statusLabel": "Filter by status",
+      "status": {
+        "all": "All statuses",
+        "paid": "Paid",
+        "refunded": "Refunded"
+      },
+      "count": "{count} orders between {from} and {to}",
+      "countOne": "1 order between {from} and {to}",
+      "countAll": "{count} orders, all time",
+      "countAllOne": "1 order, all time",
+      "emptyTitle": "No sales in this period.",
+      "emptyBody": "When a learner completes checkout, the order appears here.",
+      "emptyCta": "Go to your courses",
+      "datePending": "Date pending",
+      "refundInStripe": "Refund in Stripe",
+      "showMore": "Show {count} more",
+      "stripeNote": "Buyers pay your Stripe account directly — SkillsetMind never holds your money.",
+      "learnMore": "Learn more"
+    },
     "newProduct": "New product",
     "createProduct": "Create product",
     "untitledProduct": "Untitled product",
