@@ -131,6 +131,16 @@ describe("rail recolhido: um quadrado por item, sem chip e sem corte", () => {
     // O destaque nao mora mais no chip.
     expect(css).not.toMatch(/\.sidebar-collapsed[^{]*\.platform-nav-icon-chip[^{]*\{[^}]*background: (?!transparent)/);
   });
+
+  // A marca no topo do rail ficava encostada a esquerda (flex sem justify,
+  // 4px de padding) enquanto os icones abaixo eram quadrados centrados:
+  // parecia deslocada. No rail ela centra no mesmo eixo.
+  it("no CSS, a marca do rail recolhido centra no mesmo eixo dos icones", () => {
+    const css = readFileSync(path.join(process.cwd(), "src/app/globals.css"), "utf8");
+    expect(css).toMatch(
+      /\.platform-sidebar\.sidebar-collapsed \.platform-sidebar-brand\s*\{[^}]*justify-content: center;[^}]*padding-inline: 0;/,
+    );
+  });
 });
 
 describe("o botao de recolher/expandir", () => {
