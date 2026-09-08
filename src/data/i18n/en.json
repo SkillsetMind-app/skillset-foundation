@@ -898,7 +898,8 @@
       }
     },
     "events": {
-      "datePending": "Date pending"
+      "datePending": "Date pending",
+      "linkUnavailable": "Session link unavailable. Contact your instructor."
     },
     "notifications": {
       "open": "Open notifications",

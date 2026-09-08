@@ -898,7 +898,8 @@
       }
     },
     "events": {
-      "datePending": "Fecha pendiente"
+      "datePending": "Fecha pendiente",
+      "linkUnavailable": "El enlace de la sesión no está disponible. Contacta a tu instructor."
     },
     "notifications": {
       "open": "Abrir notificaciones",

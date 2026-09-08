@@ -550,6 +550,34 @@ describe("feed da comunidade (rodada 11)", () => {
 
     expect(screen.queryByText("New here? Say hi 👋")).toBeNull();
   });
+
+  it.each(["javascript:void(0)", "data:text/plain,not-a-session", "ftp://example.com/live", "not a URL", ""])(
+    "keeps the live details without a join link for invalid URL %j",
+    async (externalUrl) => {
+      await renderFeed({}, "en");
+      act(() => mocks.eventsCallback?.([{
+        id: "live-link", title: "Live Q&A", startsAt: new Date(NOW - 60_000).toISOString(), externalUrl,
+      }]));
+      const live = screen.getByRole("region", { name: "Next live" });
+      expect(live).toHaveTextContent("Live Q&A");
+      expect(within(live).queryByRole("link")).not.toBeInTheDocument();
+      expect(live).toHaveTextContent("Session link unavailable. Contact your instructor.");
+      fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+      expect(live).toHaveTextContent("El enlace de la sesión no está disponible. Contacta a tu instructor.");
+    },
+  );
+
+  it("preserves a valid HTTP live link and trims surrounding whitespace", async () => {
+    await renderFeed();
+    act(() => mocks.eventsCallback?.([{
+      id: "live-link", title: "Live Q&A", startsAt: new Date(NOW - 60_000).toISOString(),
+      externalUrl: "  http://example.com/live  ",
+    }]));
+    const join = within(screen.getByRole("region", { name: "Next live" })).getByRole("link", { name: "Join" });
+    expect(join).toHaveAttribute("href", "http://example.com/live");
+    expect(join).toHaveAttribute("target", "_blank");
+    expect(join).toHaveAttribute("rel", "noopener noreferrer");
+  });
 });
 
 /**

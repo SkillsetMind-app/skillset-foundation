@@ -25,6 +25,7 @@ import {
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
 import type { CourseEvent } from "@/domain/course-event";
 import type { Enrollment } from "@/domain/enrollment";
+import { getSafeExternalUrl } from "@/domain/external-url";
 import type { CommunitySpace } from "@/domain/learning";
 import {
   createCommunityComment,
@@ -952,6 +953,7 @@ function LiveCard({ live, now, locale }: { live: CourseEvent | null; now: number
   }
   const startsAt = Date.parse(live.startsAt);
   const running = startsAt <= now;
+  const safeJoinUrl = getSafeExternalUrl(live.externalUrl);
   return (
     <section
       aria-label={t("learn.community.live.next")}
@@ -968,9 +970,9 @@ function LiveCard({ live, now, locale }: { live: CourseEvent | null; now: number
       <p className="mt-0.5 text-xs text-[var(--color-ink-muted)]">
         {new Date(startsAt).toLocaleString(locale, { weekday: "short", hour: "2-digit", minute: "2-digit" })}
       </p>
-      {running ? (
+      {running && safeJoinUrl ? (
         <a
-          href={live.externalUrl}
+          href={safeJoinUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="button-solid mt-3 inline-flex min-h-11 items-center px-4 text-sm"
@@ -978,7 +980,9 @@ function LiveCard({ live, now, locale }: { live: CourseEvent | null; now: number
           {t("learn.community.live.join")}
         </a>
       ) : (
-        <p className="mt-3 text-xs text-[var(--color-ink-muted)]">{t("learn.community.live.joinLater")}</p>
+        <p className="mt-3 text-xs text-[var(--color-ink-muted)]">
+          {t(safeJoinUrl ? "learn.community.live.joinLater" : "platform.events.linkUnavailable")}
+        </p>
       )}
     </section>
   );

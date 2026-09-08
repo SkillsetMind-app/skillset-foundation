@@ -359,6 +359,28 @@ describe("LearnDashboard", () => {
     expect(screen.getByText("1 course in progress")).toBeInTheDocument();
   });
 
+  it.each(["javascript:void(0)", "data:text/plain,not-a-session", "ftp://example.com/live", "not a URL", ""])(
+    "keeps the upcoming live details without a join link for invalid URL %j",
+    async (externalUrl) => {
+      fixtures.events = [{ ...fixtures.liveEvent, externalUrl }];
+      render(<I18nProvider initialLocale="es"><LearnDashboard /></I18nProvider>);
+      const lives = await screen.findByRole("region", { name: "Próximas sesiones en vivo" });
+      expect(lives).toHaveTextContent("Live Q&A");
+      expect(within(lives).queryByRole("link")).not.toBeInTheDocument();
+      expect(lives).toHaveTextContent("El enlace de la sesión no está disponible. Contacta a tu instructor.");
+    },
+  );
+
+  it("preserves a valid HTTP upcoming link and trims surrounding whitespace", async () => {
+    fixtures.events = [{ ...fixtures.liveEvent, externalUrl: "  http://example.com/live  " }];
+    render(<LearnDashboard />);
+    const lives = await screen.findByRole("region", { name: "Upcoming lives" });
+    const join = within(lives).getByRole("link", { name: "Join" });
+    expect(join).toHaveAttribute("href", "http://example.com/live");
+    expect(join).toHaveAttribute("target", "_blank");
+    expect(join).toHaveAttribute("rel", "noreferrer");
+  });
+
   it("a data da proxima live sai no idioma da pessoa", async () => {
     render(<I18nProvider initialLocale="es"><LearnDashboard /></I18nProvider>);
 
