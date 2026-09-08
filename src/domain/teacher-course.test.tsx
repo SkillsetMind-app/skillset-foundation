@@ -14,7 +14,6 @@ import {
   MAX_MEMBERS_TITLE_LENGTH,
   normalizeTeacherCourseModules,
   isCoursePubliclySellable,
-  teacherCanDeleteCourse,
   teacherCanEditCourse,
   teacherCanPublishCourse,
   type TeacherCourseModule,
@@ -67,12 +66,6 @@ describe("teacher course domain", () => {
     expect(teacherCanPublishCourse("needs_changes")).toBe(true);
     expect(teacherCanPublishCourse("inactive")).toBe(true);
     expect(teacherCanPublishCourse("published")).toBe(false);
-
-    expect(teacherCanDeleteCourse("draft")).toBe(true);
-    expect(teacherCanDeleteCourse("needs_changes")).toBe(true);
-    expect(teacherCanDeleteCourse("in_review")).toBe(false);
-    expect(teacherCanDeleteCourse("published")).toBe(false);
-    expect(teacherCanDeleteCourse("inactive")).toBe(false);
   });
 
   it("gates admin marketplace controls by status", () => {

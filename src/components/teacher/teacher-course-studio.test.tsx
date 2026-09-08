@@ -9,7 +9,8 @@ const authState = vi.hoisted(() => ({
 }));
 
 const mocks = vi.hoisted(() => ({
-  deleteTeacherCourse: vi.fn(),
+  deleteOrArchiveCourse: vi.fn(),
+  getCourseAudience: vi.fn(),
   push: vi.fn(),
   subscribeCalls: 0,
 }));
@@ -63,7 +64,8 @@ vi.mock("@/components/auth/auth-provider", () => ({
 }));
 
 vi.mock("@/lib/data/teacher-courses", () => ({
-  deleteTeacherCourse: mocks.deleteTeacherCourse,
+  deleteOrArchiveCourse: mocks.deleteOrArchiveCourse,
+  getCourseAudience: mocks.getCourseAudience,
   subscribeToTeacherCourses: (
     _ownerId: string,
     onData: (nextCourses: TeacherCourse[]) => void,
@@ -84,8 +86,10 @@ async function renderStudio() {
 
 describe("TeacherCourseStudio — lista de produtos", () => {
   beforeEach(() => {
-    mocks.deleteTeacherCourse.mockReset();
-    mocks.deleteTeacherCourse.mockResolvedValue(undefined);
+    mocks.deleteOrArchiveCourse.mockReset();
+    mocks.deleteOrArchiveCourse.mockResolvedValue({ outcome: "deleted" });
+    mocks.getCourseAudience.mockReset();
+    mocks.getCourseAudience.mockResolvedValue({ enrollments: 0, orders: 0 });
     mocks.push.mockReset();
     mocks.subscribeCalls = 0;
   });

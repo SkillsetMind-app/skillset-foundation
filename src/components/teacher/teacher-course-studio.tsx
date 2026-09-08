@@ -13,20 +13,22 @@ import {
   UsersRound,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ListingSearchBar } from "@/components/shared/listing-search-bar";
 import { StatusChip } from "@/components/shared/status-chip";
+import {
+  CourseActionsMenu,
+  DeleteOrArchiveCourseDialog,
+} from "@/components/teacher/course-actions";
 import { CreateCourseStart } from "@/components/teacher/create-course-start";
 import type { TeacherCourse, TeacherCourseProductFormat } from "@/domain/teacher-course";
-import { teacherCanDeleteCourse } from "@/domain/teacher-course";
-import { useModalFocus } from "@/lib/a11y/use-modal-focus";
-import { deleteTeacherCourse, subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
+import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 
-type ProductFilter = "all" | "draft" | "in_review" | "published" | "attention";
+type ProductFilter = "all" | "draft" | "in_review" | "published" | "inactive" | "attention";
 
 // Labels are dictionary keys resolved at render, so the list follows a locale
 // switch; the ids stay the data codes the filter compares against.
@@ -35,6 +37,10 @@ const productFilters: Array<{ id: ProductFilter; labelKey: string }> = [
   { id: "draft", labelKey: "creatorPanel.filters.drafts" },
   { id: "in_review", labelKey: "creatorPanel.products.filterLegacyReview" },
   { id: "published", labelKey: "creatorPanel.products.filterLive" },
+  // O modal de arquivar promete "voce pode restaurar depois em Archived". Sem
+  // esta entrada a promessa nao tinha onde ser cumprida: 'inactive' so aparecia
+  // dentro de "Needs attention", que e outra coisa.
+  { id: "inactive", labelKey: "creatorPanel.products.filterArchived" },
   { id: "attention", labelKey: "creatorPanel.filters.needsAttention" },
 ];
 
@@ -81,168 +87,38 @@ function ProductActionsMenu({
   onRequestDelete: () => void;
 }) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
   const courseTitle = course.title || t("creatorPanel.untitledProduct");
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    function handlePointerDown(event: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
+  const itemClass =
+    "flex min-h-11 items-center rounded-[6px] px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]";
 
   return (
-    <div ref={wrapperRef} className="relative">
+    <CourseActionsMenu courseTitle={courseTitle} icon={MoreHorizontal}>
+      <Link
+        href={`/teach/builder?courseId=${encodeURIComponent(course.id)}`}
+        role="menuitem"
+        className={itemClass}
+      >
+        {t("creatorPanel.products.actions.edit")}
+      </Link>
+      <Link
+        href={`/teach/builder/${encodeURIComponent(course.id)}/preview`}
+        role="menuitem"
+        className={itemClass}
+      >
+        {t("creatorPanel.products.actions.viewAsStudent")}
+      </Link>
+      {/* Sem porteiro de status: a mesma acao do hub, e o servidor decide se o
+          curso some ou vai para o arquivo. Antes o item sumia para tudo que
+          nao fosse rascunho, e o professor ficava sem saida. */}
       <button
-        ref={triggerRef}
         type="button"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={t("creatorPanel.products.actions.more").replace("{title}", () => courseTitle)}
-        onClick={() => setOpen((current) => !current)}
-        className="grid min-h-11 min-w-11 place-items-center rounded-[7px] border border-[var(--color-line-strong)] bg-white text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+        role="menuitem"
+        onClick={onRequestDelete}
+        className="flex min-h-11 w-full items-center rounded-[6px] border-t border-[var(--color-line)] px-3 text-left text-sm font-semibold text-[var(--color-danger-fg)] hover:bg-[var(--color-danger-soft)]"
       >
-        <MoreHorizontal aria-hidden="true" size={19} strokeWidth={2} />
+        {t("creatorPanel.products.actions.delete")}
       </button>
-
-      {open ? (
-        <div
-          role="menu"
-          aria-label={t("creatorPanel.products.actions.menu").replace("{title}", () => courseTitle)}
-          className="absolute right-0 top-[calc(100%+8px)] z-40 w-48 rounded-[8px] border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
-        >
-          <Link
-            href={`/teach/builder?courseId=${encodeURIComponent(course.id)}`}
-            role="menuitem"
-            onClick={() => setOpen(false)}
-            className="flex min-h-11 items-center rounded-[6px] px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
-          >
-            {t("creatorPanel.products.actions.edit")}
-          </Link>
-          <Link
-            href={`/teach/builder/${encodeURIComponent(course.id)}/preview`}
-            role="menuitem"
-            onClick={() => setOpen(false)}
-            className="flex min-h-11 items-center rounded-[6px] px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
-          >
-            {t("creatorPanel.products.actions.viewAsStudent")}
-          </Link>
-          {teacherCanDeleteCourse(course.status) ? (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                triggerRef.current?.focus();
-                onRequestDelete();
-              }}
-              className="flex min-h-11 w-full items-center rounded-[6px] border-t border-[var(--color-line)] px-3 text-left text-sm font-semibold text-[var(--color-danger-fg)] hover:bg-[var(--color-danger-soft)]"
-            >
-              {t("creatorPanel.products.actions.delete")}
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function DeleteCourseDialog({
-  course,
-  busy,
-  onCancel,
-  onConfirm,
-}: {
-  course: TeacherCourse;
-  busy: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  const { t } = useTranslation();
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const courseTitle = course.title || t("creatorPanel.untitledProduct");
-  useModalFocus(dialogRef, true);
-
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !busy) {
-        onCancel();
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [busy, onCancel]);
-
-  return (
-    <div
-      className="fixed inset-0 z-[70] grid place-items-center bg-[rgba(7,9,13,0.55)] p-4"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !busy) {
-          onCancel();
-        }
-      }}
-    >
-      <div
-        ref={dialogRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t("creatorPanel.products.delete.aria").replace("{title}", () => courseTitle)}
-        className="modal-panel modal-panel-scroll w-full max-w-md rounded-[16px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
-      >
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-danger-fg)]">
-          {t("creatorPanel.products.delete.eyebrow")}
-        </p>
-        <h2 className="mt-2 text-2xl font-semibold text-[var(--color-primary)]">
-          {t("creatorPanel.products.delete.title").replace("{title}", () => courseTitle)}
-        </h2>
-        <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-          {t("creatorPanel.products.delete.description")}
-        </p>
-        <div className="mt-6 flex flex-wrap justify-end gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={busy}
-            className="button-outline px-4 text-sm disabled:opacity-60"
-          >
-            {t("creatorPanel.products.delete.cancel")}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={busy}
-            className="button-danger px-4 text-sm disabled:opacity-60"
-          >
-            {busy
-              ? t("creatorPanel.products.delete.busy")
-              : t("creatorPanel.products.delete.confirm")}
-          </button>
-        </div>
-      </div>
-    </div>
+    </CourseActionsMenu>
   );
 }
 
@@ -264,7 +140,6 @@ export function TeacherCourseStudio({
   // Kept as a dictionary key so the message follows a locale switch.
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
-  const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const normalizedCourseQuery = courseQuery.toLowerCase().trim();
   const visibleCourses = courses.filter((course) => {
@@ -297,20 +172,6 @@ export function TeacherCourseStudio({
       },
     );
   }, [user]);
-
-  async function handleDeleteCourse(courseId: string) {
-    setErrorKey(null);
-    setDeletingCourseId(courseId);
-
-    try {
-      await deleteTeacherCourse(courseId);
-    } catch {
-      setErrorKey("creatorPanel.products.deleteError");
-    } finally {
-      setDeletingCourseId(null);
-      setConfirmingDeleteId(null);
-    }
-  }
 
   if (autoOpenCreate) {
     return user ? (
@@ -621,11 +482,13 @@ export function TeacherCourseStudio({
       </nav>
 
       {confirmingDeleteCourse ? (
-        <DeleteCourseDialog
-          course={confirmingDeleteCourse}
-          busy={deletingCourseId === confirmingDeleteCourse.id}
+        <DeleteOrArchiveCourseDialog
+          courseId={confirmingDeleteCourse.id}
+          courseTitle={confirmingDeleteCourse.title || t("creatorPanel.untitledProduct")}
           onCancel={() => setConfirmingDeleteId(null)}
-          onConfirm={() => void handleDeleteCourse(confirmingDeleteCourse.id)}
+          // A lista ja escuta `courses` em tempo real: o curso apagado sai
+          // sozinho e o arquivado troca de chip. So o modal precisa fechar.
+          onDone={() => setConfirmingDeleteId(null)}
         />
       ) : null}
     </div>

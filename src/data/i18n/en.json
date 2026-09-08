@@ -1509,7 +1509,12 @@
         "coverAlt": "{title} cover",
         "courseFallback": "Course",
         "noCover": "No cover",
-        "switchCourse": "Switch course"
+        "switchCourse": "Switch course",
+        "newProduct": "New product",
+        "previewAsStudent": "Preview as a student",
+        "deleteCourse": "Delete course",
+        "archivedNotice": "This course is archived: it is off the store, and everyone who bought it keeps access.",
+        "publishAgain": "Publish again"
       },
       "editInBuilder": "Edit in Builder",
       "checklist": {
@@ -1658,12 +1663,21 @@
       "delete": {
         "aria": "Delete {title}",
         "eyebrow": "Delete product",
-        "title": "Delete {title}?",
-        "description": "This permanently removes the draft and its course content. This action cannot be undone.",
+        "title": "Delete this course?",
+        "description": "This permanently deletes the course and all its content. It can't be undone.",
         "cancel": "Cancel",
         "busy": "Deleting...",
-        "confirm": "Confirm delete"
+        "confirm": "Yes, delete"
       },
+      "archive": {
+        "eyebrow": "Archive product",
+        "title": "This course has students",
+        "description": "Instead of deleting, it will be archived: it leaves the store and your product list, and everyone who bought it keeps full access, as in their original purchase. You can restore it later from Archived.",
+        "callout": "Students who already bought this course keep their access exactly as it is today.",
+        "busy": "Archiving...",
+        "confirm": "Archive course"
+      },
+      "filterArchived": "Archived",
       "shortcuts": {
         "label": "Product workspace shortcuts",
         "membersDetail": "Customize delivery and learner spaces",

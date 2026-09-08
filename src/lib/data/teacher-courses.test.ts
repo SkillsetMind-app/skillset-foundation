@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { UpdateTeacherCourseBuilderInput } from "@/domain/teacher-course";
-import { subscribeToTeacherCourse, updateTeacherCourseBuilder } from "@/lib/data/teacher-courses";
+import {
+  deleteOrArchiveCourse,
+  subscribeToTeacherCourse,
+  updateTeacherCourseBuilder,
+} from "@/lib/data/teacher-courses";
 
 const mocks = vi.hoisted(() => ({
   course: vi.fn(),
@@ -92,5 +96,33 @@ describe("the teacher reopens the gated lesson content", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(onCourse).toHaveBeenCalledTimes(2);
     expect(mocks.removeChannel).toHaveBeenCalledOnce();
+  });
+});
+
+describe("uma acao, dois destinos", () => {
+  // O app deixou de chamar `delete_teacher_course_draft`: ela so aceitava
+  // rascunho, e era por isso que o professor de um curso publicado nao tinha
+  // saida. Quem decide entre apagar e arquivar agora e a RPC nova.
+  it("chama delete_or_archive_own_course com o id e devolve o destino do servidor", async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: { outcome: "archived", enrollments: 2, orders: 2 },
+      error: null,
+    });
+
+    await expect(deleteOrArchiveCourse("course")).resolves.toEqual({
+      outcome: "archived",
+      enrollments: 2,
+      orders: 2,
+    });
+    expect(mocks.rpc).toHaveBeenCalledWith("delete_or_archive_own_course", {
+      p_course_id: "course",
+    });
+    expect(mocks.rpc).not.toHaveBeenCalledWith("delete_teacher_course_draft", expect.anything());
+  });
+
+  it("propaga o erro do servidor em vez de fingir que apagou", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: new Error("Course not found.") });
+
+    await expect(deleteOrArchiveCourse("course")).rejects.toThrow("Course not found.");
   });
 });

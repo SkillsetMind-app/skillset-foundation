@@ -58,7 +58,8 @@ vi.mock("@/lib/data/teacher-courses", () => ({
     onData([mocks.course]);
     return () => undefined;
   },
-  deleteTeacherCourse: vi.fn(),
+  deleteOrArchiveCourse: vi.fn(),
+  getCourseAudience: () => Promise.resolve({ enrollments: 0, orders: 0 }),
   setOwnCourseFeatured: vi.fn(),
 }));
 

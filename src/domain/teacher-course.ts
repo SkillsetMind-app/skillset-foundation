@@ -367,15 +367,9 @@ export function isCoursePubliclySellable(status: string | null | undefined): boo
   return status === "published";
 }
 
-/**
- * A teacher may permanently delete a course only while it is fully under their
- * own control and has never reached the marketplace: drafts and
- * needs-changes courses. Legacy in-review, published, and inactive courses may
- * carry marketplace state, enrollments, or sales and must not be hard-deleted here.
- */
-export function teacherCanDeleteCourse(status: TeacherCourseStatus): boolean {
-  return ["draft", "needs_changes"].includes(status);
-}
+// `teacherCanDeleteCourse` morreu aqui: quem decide entre apagar e arquivar
+// nao e mais o status, e sim ter ou nao comprador — pergunta que so o banco
+// responde, dentro de `delete_or_archive_own_course`.
 
 /**
  * Admin-only marketplace controls for courses that have left the review

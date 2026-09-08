@@ -1509,7 +1509,12 @@
         "coverAlt": "Portada de {title}",
         "courseFallback": "Curso",
         "noCover": "Sin portada",
-        "switchCourse": "Cambiar de curso"
+        "switchCourse": "Cambiar de curso",
+        "newProduct": "Nuevo producto",
+        "previewAsStudent": "Previsualizar como alumno",
+        "deleteCourse": "Eliminar curso",
+        "archivedNotice": "Este curso está archivado: está fuera de la tienda y todas las personas que lo compraron conservan el acceso.",
+        "publishAgain": "Publicar de nuevo"
       },
       "editInBuilder": "Editar en el Creador",
       "checklist": {
@@ -1658,12 +1663,21 @@
       "delete": {
         "aria": "Eliminar {title}",
         "eyebrow": "Eliminar producto",
-        "title": "¿Eliminar {title}?",
-        "description": "Esto elimina de forma permanente el borrador y el contenido del curso. Esta acción no se puede deshacer.",
+        "title": "¿Eliminar este curso?",
+        "description": "Esto elimina de forma permanente el curso y todo su contenido. No se puede deshacer.",
         "cancel": "Cancelar",
         "busy": "Eliminando...",
-        "confirm": "Confirmar eliminación"
+        "confirm": "Sí, eliminar"
       },
+      "archive": {
+        "eyebrow": "Archivar producto",
+        "title": "Este curso tiene alumnos",
+        "description": "En lugar de eliminarlo, se archivará: sale de la tienda y de tu lista de productos, y todas las personas que lo compraron conservan el acceso completo, tal como en su compra original. Puedes restaurarlo más tarde desde Archivados.",
+        "callout": "Los alumnos que ya compraron este curso conservan su acceso exactamente como está hoy.",
+        "busy": "Archivando...",
+        "confirm": "Archivar curso"
+      },
+      "filterArchived": "Archivados",
       "shortcuts": {
         "label": "Atajos del espacio de productos",
         "membersDetail": "Personaliza la entrega y los espacios de los alumnos",

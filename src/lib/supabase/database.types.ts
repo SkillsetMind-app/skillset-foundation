@@ -2548,6 +2548,10 @@ export type Database = {
       }
       delete_course_as_admin: { Args: { p_course_id: string }; Returns: Json }
       delete_course_coupon: { Args: { p_coupon_id: string }; Returns: Json }
+      delete_or_archive_own_course: {
+        Args: { p_course_id: string }
+        Returns: Json
+      }
       delete_teacher_course_draft: {
         Args: { p_course_id: string }
         Returns: Json
