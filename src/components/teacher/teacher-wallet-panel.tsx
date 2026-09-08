@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { InlineHelp } from "@/components/shared/inline-help";
 import { StatusChip } from "@/components/shared/status-chip";
 import { TeacherConnectOnboarding } from "@/components/teacher/teacher-connect-onboarding";
@@ -44,6 +45,7 @@ type LedgerReadState = "loading" | "ready" | "error";
 
 export function TeacherWalletPanel() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -240,11 +242,17 @@ export function TeacherWalletPanel() {
               a paid product can go live.
             </InlineHelp>
           </h2>
+          {/* Uma frase, e o resto recolhido. `details` nativo: sem estado, sem
+              portal, e o texto longo so ocupa a tela de quem pediu por ele. */}
           <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            This is your earnings record: paid orders, what SkillsetMind
-            charged, and your Stripe Connect status. Profile and security stay
-            in Settings.
+            {t("teach.earnings.intro")}
           </p>
+          <details className="mt-2 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
+            <summary className="cursor-pointer font-semibold text-[var(--color-primary)]">
+              {t("teach.earnings.learnMore")}
+            </summary>
+            <p className="mt-2">{t("teach.earnings.details")}</p>
+          </details>
         </div>
         <p className="flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
           <Download aria-hidden="true" size={14} strokeWidth={2} />
@@ -271,11 +279,10 @@ export function TeacherWalletPanel() {
           <p className="display-title mt-3 break-words text-3xl leading-tight text-white sm:text-4xl">
             {money(financials.teacherNetByCurrency)}
           </p>
+          {/* Uma linha ao lado do numero grande. O resto (cobranca na conta do
+              professor, timing de repasse da Stripe) esta no "Learn more". */}
           <p className="mt-2 text-sm text-[rgba(255,255,255,0.72)]">
-            Net across one-time and subscription sales, after SkillsetMind commission
-            and Stripe fees. Every charge was created on your own Stripe account —
-            SkillsetMind never holds it. Stripe&apos;s own settlement timing then
-            decides when it is available to pay out.
+            {t("teach.earnings.netHint")}
           </p>
 
           <div className="mt-6 grid gap-3">
@@ -382,7 +389,9 @@ export function TeacherWalletPanel() {
         </aside>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Sao QUATRO tiles: em `md:grid-cols-3` o quarto sobrava sozinho numa
+          linha. 2x2 no tablet, 4 colunas no desktop — nenhum orfao. */}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Paid sales"
           value={financialsReady

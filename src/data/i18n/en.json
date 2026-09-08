@@ -1400,6 +1400,12 @@
       "emptyTitle": "Nothing has happened yet.",
       "emptyDescription": "Enrollments, sales, reviews and community questions land here as soon as they happen."
     },
+    "earnings": {
+      "intro": "Buyers pay your Stripe account directly — SkillsetMind never holds your money.",
+      "learnMore": "Learn more",
+      "details": "This page is your earnings record: paid orders, what SkillsetMind charged, and your Stripe Connect status. Payout timing is Stripe's own and depends on your country, the payment method, and your Stripe account's payout schedule; a new account waits on verification before its first payout. Stripe Connect must have both charges and payouts enabled before a paid product can go live. Profile and security settings stay in Settings.",
+      "netHint": "Net across one-time and subscription sales, after SkillsetMind commission and Stripe fees."
+    },
     "storefrontCard": {
       "eyebrow": "Where people buy",
       "title": "Your storefront",
