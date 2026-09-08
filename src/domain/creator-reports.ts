@@ -29,11 +29,6 @@ export type RevenuePoint = {
   grossMinor: number;
 };
 
-export type CurrencyTotal = {
-  currency: string;
-  amountMinor: number;
-};
-
 export type ReportProductRow = {
   courseId: string;
   courseTitle: string;
@@ -43,12 +38,12 @@ export type ReportProductRow = {
   refunds: number;
 };
 
-export type ReportSalesSummary = {
-  salesCount: number;
+export type RefundRate = {
   refundedCount: number;
+  /** Pagos + reembolsados: tudo que um dia cobrou. */
+  collectedCount: number;
   /** Em pontos percentuais, uma casa. 0 quando ninguem pagou nada ainda. */
-  refundRate: number;
-  grossByCurrency: CurrencyTotal[];
+  rate: number;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -180,29 +175,19 @@ export function buildRevenueSeries(
   return points;
 }
 
-export function summarizeReportSales(orders: Order[]): ReportSalesSummary {
-  const paid = orders.filter((order) => isPaidOrder(order.status));
-  const refunded = orders.filter((order) => isRefundedOrder(order.status));
-  const collected = paid.length + refunded.length;
-  const grossByCurrency = new Map<string, number>();
-
-  for (const order of paid) {
-    const currency = String(order.currency || "USD").toUpperCase();
-    grossByCurrency.set(
-      currency,
-      (grossByCurrency.get(currency) ?? 0) + order.amountMinor,
-    );
-  }
+export function calculateRefundRate(orders: Order[]): RefundRate {
+  const paidCount = orders.filter((order) => isPaidOrder(order.status)).length;
+  const refundedCount = orders.filter((order) =>
+    isRefundedOrder(order.status),
+  ).length;
+  const collectedCount = paidCount + refundedCount;
 
   return {
-    salesCount: paid.length,
-    refundedCount: refunded.length,
-    refundRate: collected
-      ? Number(((refunded.length / collected) * 100).toFixed(1))
+    refundedCount,
+    collectedCount,
+    rate: collectedCount
+      ? Number(((refundedCount / collectedCount) * 100).toFixed(1))
       : 0,
-    grossByCurrency: [...grossByCurrency.entries()]
-      .map(([currency, amountMinor]) => ({ currency, amountMinor }))
-      .sort((left, right) => left.currency.localeCompare(right.currency)),
   };
 }
 
