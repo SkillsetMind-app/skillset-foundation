@@ -296,6 +296,20 @@ export const platformNav: PlatformNavItem[] = [
     sectionKey: "operations",
     permission: "platform.accessAdmin",
   },
+  // --- Criador-que-estuda: o caminho de volta ao estudio. Espelha o
+  // "My courses" do rodape do Teach; sem ele, quem e criador e cai no /learn
+  // so voltava pelo menu do avatar ou digitando a URL (a gaveta de celular ja
+  // tinha o atalho, o desktop nao). Fica DEPOIS do item /teach do professor
+  // porque getPageLabel resolve o titulo de /teach pelo primeiro da lista.
+  // O rotulo reaproveita a chave da gaveta: mesmo texto, mesmo destino. ---
+  {
+    href: "/teach",
+    labelKey: "platform.mobile.teach",
+    icon: "Presentation",
+    contexts: ["learner"],
+    sectionKey: "teach",
+    permission: "teacherStudio.access",
+  },
   // --- Shared across every workspace ---
   {
     href: "/courses",

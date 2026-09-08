@@ -26,6 +26,7 @@ import {
   PenTool,
   PackageOpen,
   Plug,
+  Presentation,
   Receipt,
   RefreshCw,
   Repeat2,
@@ -73,6 +74,7 @@ const iconMap: Record<string, LucideIcon> = {
   PenTool,
   PackageOpen,
   Plug,
+  Presentation,
   Receipt,
   RefreshCw,
   Repeat2,
@@ -101,8 +103,11 @@ const sectionOrder = [
   "learn",
   "operations",
   "account",
-  // Rodapé — ver `footerSections`.
+  // Rodapé — ver `footerSections`. "myLearning" e "teach" são o mesmo papel em
+  // cada lado (o pulo para a outra bancada) e nunca aparecem juntos: um é do
+  // professor, o outro do aluno.
   "myLearning",
+  "teach",
   "discover",
 ];
 
@@ -122,13 +127,14 @@ const directSections = new Set([
   "earnings",
   "reports",
   "myLearning",
+  "teach",
   "discover",
   "operations",
 ]);
 
 // Descoberta e "o que eu estudo" não são o trabalho de produzir: vão para o pé
 // da barra, separados por uma linha, em vez de disputar o topo com Produtos.
-const footerSections = new Set(["myLearning", "discover"]);
+const footerSections = new Set(["myLearning", "teach", "discover"]);
 
 const sectionIconMap: Record<string, LucideIcon> = {
   discover: ShoppingBag,
