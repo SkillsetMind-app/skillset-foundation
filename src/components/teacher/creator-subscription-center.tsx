@@ -284,7 +284,7 @@ export function CreatorSubscriptionCenterView({
               {t(`${copy}.renewals`)}
             </TabButton>
           </div>
-          <Link href="/teach/sales" className="text-sm font-semibold text-[var(--color-primary)] hover:underline">
+          <Link href="/teach/sales" className="inline-flex min-h-11 items-center text-sm font-semibold text-[var(--color-primary)] hover:underline">
             {t("teach.reports.linkSales")}
           </Link>
         </div>
@@ -362,7 +362,7 @@ export function CreatorSubscriptionCenterView({
                           </div>
                         </div>
                         <p className="text-xs text-[var(--color-ink-soft)]">
-                          {t(subscription.cancelAtPeriodEnd ? `${copy}.cancels` : `${copy}.renews`)} {formatDate(subscription.currentPeriodEnd, locale, t("creatorPanel.sales.datePending"))}
+                          {formatPeriodLabel(subscription, t)} {formatDate(subscription.currentPeriodEnd, locale, t("creatorPanel.sales.datePending"))}
                         </p>
                       </article>
                     );
@@ -402,7 +402,7 @@ export function CreatorSubscriptionCenterView({
                             {t(subscription.interval === "year" ? "publicPages.pricing.yearly" : "publicPages.pricing.monthly")}
                           </td>
                           <td className="px-3 py-4 text-sm text-[var(--color-ink-soft)]">
-                            {t(subscription.cancelAtPeriodEnd ? `${copy}.cancels` : `${copy}.renews`)} {formatDate(subscription.currentPeriodEnd, locale, t("creatorPanel.sales.datePending"))}
+                            {formatPeriodLabel(subscription, t)} {formatDate(subscription.currentPeriodEnd, locale, t("creatorPanel.sales.datePending"))}
                           </td>
                         </tr>
                       );
@@ -546,6 +546,13 @@ function formatStatus(status: string, t: Translate): string | undefined {
     case "disputed": return t("teach.earnings.statusDisputed");
     default: return undefined;
   }
+}
+
+function formatPeriodLabel(subscription: CourseSubscription, t: Translate): string {
+  if (subscription.status !== "active" && subscription.status !== "trialing") {
+    return t(`${copy}.periodEnd`);
+  }
+  return t(subscription.cancelAtPeriodEnd ? `${copy}.cancels` : `${copy}.renews`);
 }
 
 function formatDate(value: unknown, locale: Locale, fallback: string): string {
