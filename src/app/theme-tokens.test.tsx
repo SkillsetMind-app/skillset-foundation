@@ -159,6 +159,68 @@ function ratio(
   return (hi + 0.05) / (lo + 0.05);
 }
 
+describe("neutral dark actions", () => {
+  const primaryTokens = ["--color-primary", "--color-primary-dark", "--color-primary-light"];
+  const surfaces = ["--color-base", "--color-surface", "--color-surface-soft", "--color-surface-strong"];
+
+  it("uses neutral primary ink while retaining the dark canvas, gold and informational blue", () => {
+    for (const token of primaryTokens) {
+      const color = parseColor(`var(${token})`, dark);
+      expect(color, token).not.toBeNull();
+      const channels = color!.slice(0, 3);
+      expect(Math.max(...channels) - Math.min(...channels), token).toBeLessThanOrEqual(12);
+      for (const surface of surfaces) {
+        expect(ratio(`var(${token})`, `var(${surface})`, dark), `${token} on ${surface}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+    expect(surfaces.map((token) => dark[token])).toEqual(["#0a0f1a", "#0f1626", "#141d33", "#1c2841"]);
+    expect(dark["--color-info"]).toBe("#8fb4e4");
+    expect(dark["--color-accent"]).toBe(light["--color-accent"]);
+    expect(light["--color-primary"]).toBe("#102a43");
+  });
+
+  it("keeps primary labels and keyboard focus readable in both themes", () => {
+    for (const vars of [light, dark]) {
+      for (const token of primaryTokens) {
+        expect(ratio("var(--color-on-primary)", `var(${token})`, vars), token).toBeGreaterThanOrEqual(4.5);
+      }
+      for (const surface of surfaces) {
+        expect(ratio("var(--focus-ring)", `var(${surface})`, vars), surface).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
+  // These utility-only fills are outside the stylesheet's color/background
+  // guard below. Read the real classes, not a mocked component's styling.
+  it.each([
+    "teacher/teacher-members-area-hub.tsx",
+    "teacher/teacher-studio-dashboard.tsx",
+    "teacher/course-manage-hub.tsx",
+    "teacher/course-landing-editor.tsx",
+    "learn/learning-paths-rows.tsx",
+    "account/notifications-inbox.tsx",
+    "courses/course-landing-blocks.tsx",
+  ])("uses the primary foreground on filled controls in %s", (file) => {
+    const source = readFileSync(join(process.cwd(), "src/components", file), "utf8");
+    const fills = [...source.matchAll(/"([^"\n]*\bbg-\[var\(--color-primary\)\][^"\n]*)"/g)]
+      .map((match) => match[1])
+      .filter((classes) => classes.includes("text-"));
+    expect(fills.length, `${file}: no filled text control inspected`).toBeGreaterThan(0);
+    for (const classes of fills) {
+      expect(classes, file).toContain("text-[var(--color-on-primary)]");
+      expect(classes, file).not.toMatch(/\btext-white\b/);
+    }
+  });
+
+  it("keeps promotional panels dark instead of turning them into large white surfaces", () => {
+    const surface = block('[data-theme="dark"] .primary-fill-card');
+    expect(surface).toContain("background: var(--color-surface-strong)");
+    const foreground = block('[data-theme="dark"] .primary-fill-card *').match(/\scolor:\s*([^;]+);/)?.[1];
+    expect(foreground).toBeTruthy();
+    expect(ratio(foreground!, "var(--color-surface-strong)", dark)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
 describe.each([["light", light], ["dark", dark]] as const)("semantic success contrast — %s", (_theme, vars) => {
   it.each(["--color-base", "--color-surface", "--color-surface-soft", "--color-surface-strong"])(
     "keeps success text at AA on %s and its success tint",
@@ -336,6 +398,14 @@ function liveKey(part: string, courseTheme: string, platformDark: boolean): stri
 }
 
 describe.each(COMBOS)("member area contrast — %s", (_name, vars, courseTheme, platformDark) => {
+  it("keeps the selected lesson title readable independently of the platform theme", () => {
+    const selector = `.member-classroom[data-members-theme="${courseTheme}"] .member-lesson-card--active .member-lesson-card__title`;
+    const body = rules.find(([key]) => key === selector)?.[1] ?? "";
+    const foreground = body.match(/\scolor:\s*([^;]+);/)?.[1];
+    expect(foreground).toBeTruthy();
+    expect(ratio(foreground!, "var(--ma-surface)", vars, "--ma-bg")).toBeGreaterThanOrEqual(4.5);
+  });
+
   it("keeps review heading and body readable across the tinted panel", () => {
     // The generic check below skips gradients and cannot pair inherited text
     // with this panel, which let a white backdrop ship with dark-theme text.
