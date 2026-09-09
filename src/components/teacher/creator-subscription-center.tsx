@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
 import { buttonClasses, Card, InlineAlert } from "@/components/ui";
 import type { CourseSubscription } from "@/domain/course-subscription";
@@ -24,12 +25,16 @@ import {
   type SubscriberProfile,
 } from "@/lib/data/user-profiles";
 import { toDate } from "@/lib/format-date";
+import type { Locale } from "@/lib/i18n/config";
+import { countLabel, type Translate } from "@/lib/i18n/count-label";
 
 type SubscriberFilter = "all" | "active" | "attention" | "canceling" | "ended";
 type ReadState = "loading" | "ready" | "error";
+const copy = "teach.subscriptions";
 
 export function CreatorSubscriptionCenter() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [subscriptions, setSubscriptions] = useState<CourseSubscription[]>([]);
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -39,7 +44,7 @@ export function CreatorSubscriptionCenter() {
   const [failed, setFailed] = useState({ subscriptions: false, courses: false });
   const [ordersState, setOrdersState] = useState<ReadState>("loading");
   const [ledgersState, setLedgersState] = useState<ReadState>("loading");
-  const [error, setError] = useState("");
+  const [errorKey, setErrorKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -51,7 +56,7 @@ export function CreatorSubscriptionCenter() {
         setLoaded((current) => ({ ...current, subscriptions: true }));
       },
       () => {
-        setError("We could not load your subscribers.");
+        setErrorKey(`${copy}.subscribersError`);
         setFailed((current) => ({ ...current, subscriptions: true }));
         setLoaded((current) => ({ ...current, subscriptions: true }));
       },
@@ -68,7 +73,7 @@ export function CreatorSubscriptionCenter() {
         setLoaded((current) => ({ ...current, courses: true }));
       },
       () => {
-        setError("We could not load subscription products.");
+        setErrorKey(`${copy}.productsError`);
         setFailed((current) => ({ ...current, courses: true }));
         setLoaded((current) => ({ ...current, courses: true }));
       },
@@ -85,7 +90,7 @@ export function CreatorSubscriptionCenter() {
       },
       () => {
         setOrdersState("error");
-        setError("Renewal order details are temporarily unavailable.");
+        setErrorKey(`${copy}.ordersError`);
       },
     );
   }, [user]);
@@ -100,7 +105,7 @@ export function CreatorSubscriptionCenter() {
       },
       () => {
         setLedgersState("error");
-        setError("Renewal payout details are temporarily unavailable.");
+        setErrorKey(`${copy}.ledgersError`);
       },
     );
   }, [user]);
@@ -129,7 +134,7 @@ export function CreatorSubscriptionCenter() {
   if (failed.subscriptions || failed.courses) {
     return (
       <InlineAlert tone="error">
-        {error || "Subscription reporting is temporarily unavailable."}
+        {t(errorKey || `${copy}.reportingError`)}
       </InlineAlert>
     );
   }
@@ -143,9 +148,9 @@ export function CreatorSubscriptionCenter() {
 
   return (
     <>
-      {error ? (
+      {errorKey ? (
         <InlineAlert tone="error" className="mb-5">
-          {error}
+          {t(errorKey)}
         </InlineAlert>
       ) : null}
       <CreatorSubscriptionCenterView
@@ -175,6 +180,7 @@ export function CreatorSubscriptionCenterView({
   profiles: SubscriberProfile[];
   financialState?: ReadState;
 }) {
+  const { locale, t } = useTranslation();
   const [tab, setTab] = useState<"subscribers" | "renewals">("subscribers");
   const [filter, setFilter] = useState<SubscriberFilter>("all");
   const [query, setQuery] = useState("");
@@ -219,13 +225,13 @@ export function CreatorSubscriptionCenterView({
       <section className="border-y border-[var(--color-line)] py-12 text-center">
         <CalendarClock aria-hidden="true" size={30} className="mx-auto text-[var(--color-accent-fg)]" />
         <h2 className="mt-4 text-xl font-bold text-[var(--color-primary)]">
-          No subscription products yet.
+          {t(`${copy}.noProductsTitle`)}
         </h2>
         <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          Create a monthly or yearly product to start recurring billing and subscriber reporting.
+          {t(`${copy}.noProductsDetail`)}
         </p>
         <Link href="/teach/builder" className={buttonClasses({}, "mt-5")}>
-          Create subscription product
+          {t(`${copy}.createProduct`)}
         </Link>
       </section>
     );
@@ -233,37 +239,37 @@ export function CreatorSubscriptionCenterView({
 
   return (
     <div className="grid gap-6">
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Subscription metrics">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label={t(`${copy}.metricsLabel`)}>
         <MetricCard
-          label="Active subscribers"
-          value={`${metrics.activeCount} active`}
-          detail={`${metrics.cancelScheduledCount} scheduled to cancel`}
+          label={t(`${copy}.activeSubscribers`)}
+          value={countLabel(t, `${copy}.activeOne`, `${copy}.activeMany`, metrics.activeCount)}
+          detail={countLabel(t, `${copy}.scheduledOne`, `${copy}.scheduledMany`, metrics.cancelScheduledCount)}
           icon={Users}
         />
         <MetricCard
-          label="Monthly recurring revenue"
+          label={t(`${copy}.mrr`)}
           value={financialState === "ready"
-            ? formatMrr(metrics.mrrByCurrency)
+            ? formatMrr(metrics.mrrByCurrency, t(`${copy}.mrrEmpty`))
             : financialState === "error"
-              ? "Unavailable"
+              ? t("teach.reports.unavailable")
               : "—"}
           detail={financialState === "ready"
-            ? formatMrrDetail(metrics)
+            ? formatMrrDetail(metrics, t)
             : financialState === "error"
-              ? "Contract pricing snapshots could not be loaded"
-              : "Loading contract pricing snapshots"}
+              ? t(`${copy}.mrrError`)
+              : t(`${copy}.mrrLoading`)}
           icon={Receipt}
         />
         <MetricCard
-          label="Payment attention"
+          label={t(`${copy}.paymentAttention`)}
           value={String(metrics.pastDueCount)}
-          detail="Past-due subscribers needing recovery"
+          detail={t(`${copy}.pastDueDetail`)}
           icon={AlertTriangle}
         />
         <MetricCard
-          label="Observed 30-day churn"
+          label={t(`${copy}.churn`)}
           value={`${metrics.observedChurnRate}%`}
-          detail={`${metrics.canceledLast30Days} cancellations in the current mirror`}
+          detail={countLabel(t, `${copy}.canceledOne`, `${copy}.canceledMany`, metrics.canceledLast30Days)}
           icon={CalendarClock}
         />
       </section>
@@ -272,14 +278,14 @@ export function CreatorSubscriptionCenterView({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="inline-flex rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] p-1" role="tablist">
             <TabButton active={tab === "subscribers"} onClick={() => setTab("subscribers")}>
-              Subscribers
+              {t(`${copy}.subscribers`)}
             </TabButton>
             <TabButton active={tab === "renewals"} onClick={() => setTab("renewals")}>
-              Renewals
+              {t(`${copy}.renewals`)}
             </TabButton>
           </div>
           <Link href="/teach/sales" className="text-sm font-semibold text-[var(--color-primary)] hover:underline">
-            All sales
+            {t("teach.reports.linkSales")}
           </Link>
         </div>
 
@@ -287,27 +293,27 @@ export function CreatorSubscriptionCenterView({
           <div className="mt-5 grid gap-4">
             <div className="flex flex-col gap-3 sm:flex-row">
               <label className="relative flex-1">
-                <span className="sr-only">Search subscribers</span>
+                <span className="sr-only">{t(`${copy}.searchLabel`)}</span>
                 <Search aria-hidden="true" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-ink-muted)]" />
                 <input
-                  aria-label="Search subscribers"
+                  aria-label={t(`${copy}.searchLabel`)}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search subscriber or product"
+                  placeholder={t(`${copy}.searchPlaceholder`)}
                   className="min-h-11 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] py-2 pl-9 pr-3 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)]"
                 />
               </label>
               <select
-                aria-label="Filter subscriber status"
+                aria-label={t(`${copy}.filterLabel`)}
                 value={filter}
                 onChange={(event) => setFilter(event.target.value as SubscriberFilter)}
                 className="min-h-11 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 text-sm font-semibold text-[var(--color-primary)]"
               >
-                <option value="all">All statuses</option>
-                <option value="active">Active</option>
-                <option value="attention">Needs attention</option>
-                <option value="canceling">Canceling</option>
-                <option value="ended">Ended</option>
+                <option value="all">{t("creatorPanel.sales.status.all")}</option>
+                <option value="active">{t("statusChip.active")}</option>
+                <option value="attention">{t("creatorPanel.filters.needsAttention")}</option>
+                <option value="canceling">{t(`${copy}.canceling`)}</option>
+                <option value="ended">{t(`${copy}.ended`)}</option>
               </select>
             </div>
 
@@ -320,27 +326,27 @@ export function CreatorSubscriptionCenterView({
                     return (
                       <article
                         key={subscription.id}
-                        className="grid gap-3 border-b border-[var(--color-line)] py-4 last:border-0"
+                        className="grid grid-cols-1 gap-3 border-b border-[var(--color-line)] py-4 last:border-0"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-bold text-[var(--color-primary)]">
-                              {profile?.displayName || maskLearner(subscription.userId)}
+                              {profile?.displayName || maskLearner(subscription.userId, t("roles.learner"))}
                             </p>
                             <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
-                              {maskLearner(subscription.userId)}
+                              {maskLearner(subscription.userId, t("roles.learner"))}
                             </p>
                           </div>
                           <StatusChip
                             status={subscription.status}
-                            label={formatStatus(subscription.status)}
+                            label={formatStatus(subscription.status, t)}
                             className="shrink-0"
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-3 text-xs">
                           <div>
                             <p className="font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
-                              Product
+                              {t("creatorPanel.products.columns.product")}
                             </p>
                             <p className="mt-1 font-semibold text-[var(--color-ink)]">
                               {course?.title || subscription.courseId}
@@ -348,15 +354,15 @@ export function CreatorSubscriptionCenterView({
                           </div>
                           <div>
                             <p className="font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
-                              Billing
+                              {t("account.billing")}
                             </p>
                             <p className="mt-1 text-[var(--color-ink-soft)]">
-                              {subscription.interval === "year" ? "Yearly" : "Monthly"}
+                              {t(subscription.interval === "year" ? "publicPages.pricing.yearly" : "publicPages.pricing.monthly")}
                             </p>
                           </div>
                         </div>
                         <p className="text-xs text-[var(--color-ink-soft)]">
-                          {subscription.cancelAtPeriodEnd ? "Cancels" : "Renews"} {formatDate(subscription.currentPeriodEnd)}
+                          {t(subscription.cancelAtPeriodEnd ? `${copy}.cancels` : `${copy}.renews`)} {formatDate(subscription.currentPeriodEnd, locale, t("creatorPanel.sales.datePending"))}
                         </p>
                       </article>
                     );
@@ -367,11 +373,11 @@ export function CreatorSubscriptionCenterView({
                   <table className="w-full min-w-[760px] border-collapse text-left">
                   <thead>
                     <tr className="border-b border-[var(--color-line)] text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
-                      <th className="px-3 py-3">Subscriber</th>
-                      <th className="px-3 py-3">Product</th>
-                      <th className="px-3 py-3">Status</th>
-                      <th className="px-3 py-3">Cadence</th>
-                      <th className="px-3 py-3">Next event</th>
+                      <th className="px-3 py-3">{t(`${copy}.subscriber`)}</th>
+                      <th className="px-3 py-3">{t("creatorPanel.products.columns.product")}</th>
+                      <th className="px-3 py-3">{t("creatorPanel.products.status")}</th>
+                      <th className="px-3 py-3">{t(`${copy}.cadence`)}</th>
+                      <th className="px-3 py-3">{t(`${copy}.nextEvent`)}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -382,21 +388,21 @@ export function CreatorSubscriptionCenterView({
                         <tr key={subscription.id} className="border-b border-[var(--color-line)] last:border-0">
                           <td className="px-3 py-4">
                             <p className="text-sm font-bold text-[var(--color-primary)]">
-                              {profile?.displayName || maskLearner(subscription.userId)}
+                              {profile?.displayName || maskLearner(subscription.userId, t("roles.learner"))}
                             </p>
-                            <p className="mt-1 text-xs text-[var(--color-ink-muted)]">{maskLearner(subscription.userId)}</p>
+                            <p className="mt-1 text-xs text-[var(--color-ink-muted)]">{maskLearner(subscription.userId, t("roles.learner"))}</p>
                           </td>
                           <td className="px-3 py-4 text-sm font-semibold text-[var(--color-ink)]">
                             {course?.title || subscription.courseId}
                           </td>
                           <td className="px-3 py-4">
-                            <StatusChip status={subscription.status} label={formatStatus(subscription.status)} />
+                            <StatusChip status={subscription.status} label={formatStatus(subscription.status, t)} />
                           </td>
                           <td className="px-3 py-4 text-sm text-[var(--color-ink-soft)]">
-                            {subscription.interval === "year" ? "Yearly" : "Monthly"}
+                            {t(subscription.interval === "year" ? "publicPages.pricing.yearly" : "publicPages.pricing.monthly")}
                           </td>
                           <td className="px-3 py-4 text-sm text-[var(--color-ink-soft)]">
-                            {subscription.cancelAtPeriodEnd ? "Cancels" : "Renews"} {formatDate(subscription.currentPeriodEnd)}
+                            {t(subscription.cancelAtPeriodEnd ? `${copy}.cancels` : `${copy}.renews`)} {formatDate(subscription.currentPeriodEnd, locale, t("creatorPanel.sales.datePending"))}
                           </td>
                         </tr>
                       );
@@ -408,8 +414,8 @@ export function CreatorSubscriptionCenterView({
             ) : (
               <p className="border-y border-[var(--color-line)] py-8 text-center text-sm text-[var(--color-ink-soft)]">
                 {subscriptions.length === 0
-                  ? "No subscribers yet. Recurring checkout activity will appear here."
-                  : "No subscribers match these filters."}
+                  ? t(`${copy}.noSubscribers`)
+                  : t(`${copy}.noMatch`)}
               </p>
             )}
           </div>
@@ -417,33 +423,33 @@ export function CreatorSubscriptionCenterView({
           <div className="mt-5 grid gap-0">
             {financialState === "loading" ? (
               <p className="border-y border-[var(--color-line)] py-8 text-center text-sm text-[var(--color-ink-soft)]">
-                Loading renewal history...
+                {t(`${copy}.renewalsLoading`)}
               </p>
             ) : financialState === "error" ? (
               <p className="border-y border-[var(--color-line)] py-8 text-center text-sm text-[var(--color-ink-soft)]">
-                Renewal history is unavailable.
+                {t(`${copy}.renewalsError`)}
               </p>
             ) : renewals.length ? renewals.slice(0, 50).map((renewal) => {
               const profile = renewal.userId ? profilesById.get(renewal.userId) : null;
               return (
                 <article key={renewal.id} className="flex flex-col justify-between gap-3 border-b border-[var(--color-line)] py-4 sm:flex-row sm:items-center">
                   <div>
-                    <p className="text-sm font-bold text-[var(--color-primary)]">Renewal {renewal.id}</p>
+                    <p className="text-sm font-bold text-[var(--color-primary)]">{t(`${copy}.renewalLabel`).replace("{id}", () => renewal.id)}</p>
                     <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
-                      {profile?.displayName || (renewal.userId ? maskLearner(renewal.userId) : "Historical subscriber")} / {renewal.courseTitle} / {formatDate(renewal.createdAt)}
+                      {profile?.displayName || (renewal.userId ? maskLearner(renewal.userId, t("roles.learner")) : t(`${copy}.historicalSubscriber`))} / {renewal.courseTitle} / {formatDate(renewal.createdAt, locale, t("creatorPanel.sales.datePending"))}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <StatusChip status={renewal.status} />
+                    <StatusChip status={renewal.status} label={formatStatus(renewal.status, t)} />
                     <p className="text-sm font-bold text-[var(--color-primary)]">
-                      Gross {renewal.currency} {(renewal.grossAmountMinor / 100).toFixed(2)}
+                      {t("publicPages.pricing.gross")} {renewal.currency} {(renewal.grossAmountMinor / 100).toFixed(2)}
                     </p>
                   </div>
                 </article>
               );
             }) : (
               <p className="border-y border-[var(--color-line)] py-8 text-center text-sm text-[var(--color-ink-soft)]">
-                Renewal history appears after the first recurring invoice is paid.
+                {t(`${copy}.renewalsEmpty`)}
               </p>
             )}
           </div>
@@ -473,7 +479,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`min-h-11 rounded-[var(--radius-xs)] px-4 text-sm font-bold ${active ? "bg-[var(--color-primary)] text-white" : "text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"}`}
+      className={`min-h-11 rounded-[var(--radius-xs)] px-3 text-sm font-bold sm:px-4 ${active ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]" : "text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"}`}
     >
       {children}
     </button>
@@ -481,8 +487,9 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 }
 
 function SubscriptionCenterLoading() {
+  const { t } = useTranslation();
   return (
-    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Loading subscriptions">
+    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label={t(`${copy}.loading`)}>
       {[0, 1, 2, 3].map((item) => (
         <div key={item} className="h-32 animate-pulse rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)]" />
       ))}
@@ -502,38 +509,53 @@ function isRecurringCourse(course: TeacherCourse): boolean {
   return course.paymentType === "subscription_monthly" || course.paymentType === "subscription_yearly";
 }
 
-function formatMrr(values: Array<{ currency: string; amountMinor: number }>): string {
-  if (!values.length) return "No MRR yet";
+function formatMrr(values: Array<{ currency: string; amountMinor: number }>, emptyLabel: string): string {
+  if (!values.length) return emptyLabel;
   return values.map((value) => `${value.currency} ${(value.amountMinor / 100).toFixed(2)}`).join(" + ");
 }
 
-function formatMrrDetail(metrics: ReturnType<typeof calculateCreatorSubscriptionMetrics>): string {
-  const details = ["Annual contracts normalized to one month"];
+function formatMrrDetail(metrics: ReturnType<typeof calculateCreatorSubscriptionMetrics>, t: Translate): string {
+  const details = [t(`${copy}.mrrNormalized`)];
   if (metrics.mrrLegacyFallbackCount > 0) {
     details.push(
-      `${metrics.mrrLegacyFallbackCount} legacy contract priced from invoice history`,
+      countLabel(t, `${copy}.mrrLegacyOne`, `${copy}.mrrLegacyMany`, metrics.mrrLegacyFallbackCount),
     );
   }
   if (metrics.mrrSnapshotMissingCount > 0) {
     details.push(
-      `${metrics.mrrSnapshotMissingCount} contract pricing snapshot missing`,
+      countLabel(t, `${copy}.mrrMissingOne`, `${copy}.mrrMissingMany`, metrics.mrrSnapshotMissingCount),
     );
   }
   return details.join(" · ");
 }
 
-function formatStatus(status: string): string {
-  return status.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+function formatStatus(status: string, t: Translate): string | undefined {
+  switch (status) {
+    case "canceled": return t("statusChip.cancelled");
+    case "trialing": return t(`${copy}.statusTrialing`);
+    case "past_due": return t(`${copy}.statusPastDue`);
+    case "unpaid": return t(`${copy}.statusUnpaid`);
+    case "incomplete": return t(`${copy}.statusIncomplete`);
+    case "incomplete_expired": return t(`${copy}.statusIncompleteExpired`);
+    case "paused": return t(`${copy}.statusPaused`);
+    case "settled":
+    case "in_release":
+    case "releasing":
+    case "released":
+    case "released_advance": return t("teach.earnings.statusRecorded");
+    case "disputed": return t("teach.earnings.statusDisputed");
+    default: return undefined;
+  }
 }
 
-function formatDate(value: unknown): string {
+function formatDate(value: unknown, locale: Locale, fallback: string): string {
   const date = toDate(value);
-  if (!date) return "date pending";
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(date);
+  if (!date) return fallback;
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(date);
 }
 
-function maskLearner(userId: string): string {
-  return `Learner ...${userId.slice(-6)}`;
+function maskLearner(userId: string, label: string): string {
+  return `${label} ...${userId.slice(-6)}`;
 }
 
 function toMillis(value: unknown): number {
