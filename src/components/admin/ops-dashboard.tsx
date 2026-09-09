@@ -67,7 +67,7 @@ export function OpsDashboard() {
             </Link>
           </section>
         ) : activeTab === "access" ? (
-          <section className="grid gap-5">
+          <section className="grid min-w-0 grid-cols-1 gap-5">
             <h2 className="text-base font-bold text-[var(--color-ink)]">
               {t("platform.ops.accessLevels")}
             </h2>

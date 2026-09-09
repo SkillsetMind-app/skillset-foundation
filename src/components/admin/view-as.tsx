@@ -49,7 +49,7 @@ export function ViewAsSwitcher() {
             aria-pressed={viewAsRole === entry.role}
             className={`min-h-11 rounded-[10px] px-4 py-2 text-sm font-bold transition ${
               viewAsRole === entry.role
-                ? "bg-[var(--color-primary)] text-white"
+                ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
                 : "border border-[var(--color-line)] text-[var(--color-ink-soft)]"
             }`}
           >
@@ -92,7 +92,7 @@ export function ViewAsBanner() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed inset-x-0 top-0 z-[60] flex flex-wrap items-center justify-center gap-3 bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white"
+      className="fixed inset-x-0 top-0 z-[60] flex flex-wrap items-center justify-center gap-3 bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-on-primary)]"
     >
       <span>{t(`${copy}.preview.banner`).replace("{role}", () => label)}</span>
       <button

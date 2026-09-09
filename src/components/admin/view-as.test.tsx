@@ -91,6 +91,13 @@ afterEach(() => {
 });
 
 describe("view-as preview", () => {
+  it("uses the theme's on-primary foreground for the selected level and reminder", () => {
+    window.sessionStorage.setItem("skillsetmind.viewAs", "student");
+    renderWith(["admin", "teacher"]);
+    expect(screen.getByRole("button", { name: "Learner" })).toHaveClass("text-[var(--color-on-primary)]");
+    expect(screen.getByRole("status")).toHaveClass("text-[var(--color-on-primary)]");
+  });
+
   it("does nothing for a non-admin, even with a preview already stored", () => {
     // The whole safety argument is that a preview can only narrow. A stored
     // value left behind by a demoted account must not turn into a role grant.
