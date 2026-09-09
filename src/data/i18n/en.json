@@ -1784,6 +1784,7 @@
       },
       "errors": {
         "load": "We could not load your domains.",
+        "refresh": "Could not refresh domains. The list may be out of date.",
         "add": "Could not add that domain.",
         "recheck": "Could not check that domain again.",
         "remove": "Could not remove that domain.",

@@ -1784,6 +1784,7 @@
       },
       "errors": {
         "load": "No pudimos cargar tus dominios.",
+        "refresh": "No pudimos actualizar los dominios. La lista puede estar desactualizada.",
         "add": "No pudimos añadir ese dominio.",
         "recheck": "No pudimos volver a comprobar ese dominio.",
         "remove": "No pudimos desconectar ese dominio.",
