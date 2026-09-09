@@ -85,4 +85,9 @@ describe("creator activation gate", () => {
     // action proceed as if the creator were activated.
     await expect(assertCreatorActivated()).rejects.toThrow("boom");
   });
+
+  it.each([null, undefined, 0, "false", { value: false }])("does not treat malformed verdict %j as authorization", async (data) => {
+    serverRpc.mockResolvedValue({ data, error: null });
+    await expect(assertCreatorActivated()).rejects.toThrow("Activation status unavailable.");
+  });
 });

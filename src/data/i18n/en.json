@@ -1811,6 +1811,18 @@
     }
   },
   "creatorPanel": {
+    "activationGate": {
+      "title": "Activate your storefront",
+      "fee": "A one-time ${amount} fee unlocks the creator studio. It is charged once, never per course.",
+      "plan": "Your Free plan stays $0 per month. The activation fee opens the studio; your plan sets the commission per sale.",
+      "pay": "Pay ${amount} and unlock the studio",
+      "leave": "Not now — leave the studio",
+      "checking": "Checking your activation",
+      "checkingBody": "Confirming your access before opening the creator studio.",
+      "errorTitle": "We could not confirm your access",
+      "errorBody": "Try again to check your activation. You will not be charged by retrying.",
+      "retry": "Try again"
+    },
     "sales": {
       "loading": "Loading your sales...",
       "error": "We could not load your sales. Refresh to try again.",

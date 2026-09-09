@@ -1,16 +1,19 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ActivationGate } from "@/components/teacher/activation-gate";
+import TeachLayout from "@/app/teach/layout";
+vi.mock("@/lib/advisor/config", () => ({ isAdvisorEnabled: true }));
 
 // Mutable so a test can change viewer or route without a fresh module graph.
 const state = vi.hoisted(() => ({
   roles: ["teacher"] as string[],
   pathname: "/teach/courses",
+  uid: "teacher-1",
 }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
-  useAuth: () => ({ user: { uid: "teacher-1", roles: state.roles } }),
+  useAuth: () => ({ user: { uid: state.uid, roles: state.roles } }),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -32,6 +35,7 @@ async function renderGate() {
 describe("ActivationGate", () => {
   beforeEach(() => {
     state.roles = ["teacher"];
+    state.uid = "teacher-1";
     state.pathname = "/teach/courses";
     blockedMock.mockReset();
     blockedMock.mockResolvedValue(false);
@@ -79,6 +83,16 @@ describe("ActivationGate", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it.each(["/teach/activate", "/teach/activate/return"])("allows %s without mounting the real Advisor", async (pathname) => {
+    state.pathname = pathname;
+    blockedMock.mockResolvedValue(true);
+    render(<TeachLayout><p>Secure checkout</p></TeachLayout>);
+    await act(async () => {});
+    expect(screen.getByText("Secure checkout")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /advisor/i })).toBeNull();
+    expect(blockedMock).not.toHaveBeenCalled();
+  });
+
   it("does not ask a learner to pay for a studio they never requested", async () => {
     state.roles = ["student"];
     blockedMock.mockResolvedValue(true);
@@ -107,13 +121,65 @@ describe("ActivationGate", () => {
     expect(document.body.style.overflow).not.toBe("hidden");
   });
 
-  it("fails open when the verdict cannot be read", async () => {
-    // A network blip must not lock a creator who already paid out of their own
-    // studio. Publishing stays gated in SQL by the courses trigger regardless.
+  it("keeps the studio unmounted on failure and retries without asking for another payment", async () => {
     blockedMock.mockRejectedValue(new Error("offline"));
+    render(<ActivationGate><p>Private studio</p></ActivationGate>);
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByText("Private studio")).toBeNull();
+    expect(screen.queryByRole("link", { name: "Pay $25 and unlock the studio" })).toBeNull();
+    blockedMock.mockResolvedValue(false);
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Private studio")).toBeInTheDocument();
+    expect(blockedMock).toHaveBeenCalledTimes(2);
+  });
 
-    await renderGate();
+  it("does not mount the real layout children while checking or when unpaid", async () => {
+    let resolve!: (blocked: boolean) => void;
+    blockedMock.mockImplementation(() => new Promise<boolean>((done) => { resolve = done; }));
+    const mounted = vi.fn();
+    function Studio() { mounted(); return <p>Private studio</p>; }
+    render(<TeachLayout><Studio /></TeachLayout>);
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(mounted).not.toHaveBeenCalled();
+    await act(async () => resolve(true));
+    expect(screen.getByRole("dialog", { name: "Activate your storefront" })).toBeInTheDocument();
+    expect(mounted).not.toHaveBeenCalled();
+  });
 
-    expect(screen.queryByRole("dialog")).toBeNull();
+  it("does not reuse another account's allowance while its own verdict is pending", async () => {
+    const { rerender } = render(<ActivationGate><p>Private studio</p></ActivationGate>);
+    expect(await screen.findByText("Private studio")).toBeInTheDocument();
+    state.uid = "teacher-2";
+    let resolve!: (blocked: boolean) => void;
+    blockedMock.mockImplementation(() => new Promise<boolean>((done) => { resolve = done; }));
+    rerender(<ActivationGate><p>Private studio</p></ActivationGate>);
+    expect(screen.queryByText("Private studio")).toBeNull();
+    await act(async () => resolve(true));
+    expect(screen.queryByText("Private studio")).toBeNull();
+  });
+
+  it("rechecks after returning from checkout even if an older visit was allowed", async () => {
+    const { rerender } = render(<ActivationGate><p>Private studio</p></ActivationGate>);
+    expect(await screen.findByText("Private studio")).toBeInTheDocument();
+    state.pathname = "/teach/activate/return";
+    rerender(<ActivationGate><p>Stripe return</p></ActivationGate>);
+    expect(screen.getByText("Stripe return")).toBeInTheDocument();
+    blockedMock.mockResolvedValue(true);
+    state.pathname = "/teach/courses";
+    rerender(<ActivationGate><p>Private studio</p></ActivationGate>);
+    expect(screen.queryByText("Private studio")).toBeNull();
+    await waitFor(() => expect(screen.getByRole("dialog", { name: "Activate your storefront" })).toBeInTheDocument());
+    expect(screen.queryByText("Private studio")).toBeNull();
+  });
+
+  it("preserves the allowed studio subtree and draft during ordinary page navigation", async () => {
+    const view = render(<TeachLayout><input aria-label="Advisor draft" /></TeachLayout>);
+    const draft = await screen.findByLabelText("Advisor draft");
+    fireEvent.change(draft, { target: { value: "Unsent question" } });
+    state.pathname = "/teach/events";
+    view.rerender(<TeachLayout><input aria-label="Advisor draft" /></TeachLayout>);
+    expect(screen.getByLabelText("Advisor draft")).toBe(draft);
+    expect(draft).toHaveValue("Unsent question");
+    expect(blockedMock).toHaveBeenCalledTimes(1);
   });
 });

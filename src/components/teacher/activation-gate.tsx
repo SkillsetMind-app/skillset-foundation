@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
+import { AdvisorSidebar } from "@/components/teacher/advisor-sidebar";
 import { activationFeeUsd } from "@/data/plans";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { fetchCreatorActivationBlocked } from "@/lib/data/creator-verification";
@@ -13,10 +15,8 @@ import { hasAnyPermission } from "@/lib/permissions";
 /**
  * The wall an unactivated creator hits on arrival in the studio.
  *
- * Until this existed the gate was reactive: a creator could browse every
- * /teach page and fill in the whole new-product form before the SQL trigger
- * refused the insert. This puts the refusal up front — the studio is visible
- * but not navigable until the one-time fee is paid.
+ * Studio children mount only after the shared predicate allows access. Network
+ * failures keep a retryable gate, not a mounted studio behind an overlay.
  *
  * Non-dismissible on purpose: no close button, no backdrop click, no Escape.
  * useModalFocus leaves Escape to each dialog precisely because close semantics
@@ -26,49 +26,52 @@ import { hasAnyPermission } from "@/lib/permissions";
  * the Stripe session — same split as CourseUnlockModal handing off to
  * /courses/[id].
  */
-export function ActivationGate() {
+export function ActivationGate({ children }: { children?: ReactNode }) {
   const { user } = useAuth();
   const pathname = usePathname();
-  const [blocked, setBlocked] = useState(false);
-  const dialogRef = useRef<HTMLDivElement>(null);
 
   // The layout mounts outside each page's ProtectedSurface, so repeat the
   // teacher check here — a signed-in learner who lands on /teach is already
   // refused by the page, and stacking this dialog on top of that refusal would
   // tell them to pay for a studio they were never asking for.
-  const uid = user?.uid ?? null;
   const isTeacher = Boolean(
     user && hasAnyPermission({ roles: user.roles }, ["teacherStudio.access"]),
   );
   // /teach/activate is the checkout itself and /teach/activate/return is where
   // Stripe sends them back. Gating those traps the creator with no way to pay.
-  const onActivationRoute = Boolean(pathname?.startsWith("/teach/activate"));
+  const onActivationRoute = pathname === "/teach/activate"
+    || pathname?.startsWith("/teach/activate/") === true;
+  if (!isTeacher || onActivationRoute) return children;
+
+  // Account changes and leaving for checkout reset the check. Ordinary studio
+  // navigation preserves the mounted advisor and its unsent draft.
+  return <ActivationCheck key={user?.uid}><AdvisorSidebar>{children}</AdvisorSidebar></ActivationCheck>;
+}
+
+function ActivationCheck({ children }: { children?: ReactNode }) {
+  const { t } = useTranslation();
+  const [attempt, setAttempt] = useState(0);
+  const [phase, setPhase] = useState<"loading" | "allowed" | "blocked" | "error">("loading");
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // No synchronous reset here: `blocked` holds the fetch result only, and the
-    // render guard below applies isTeacher/onActivationRoute. Resetting state in
-    // the effect body made those two jobs one, and cost a cascading render.
-    if (!isTeacher || onActivationRoute) return;
     let active = true;
     fetchCreatorActivationBlocked()
       .then((value) => {
-        if (active) setBlocked(value);
+        if (active) setPhase(value ? "blocked" : "allowed");
       })
-      // ponytail: fail open. A network blip must not lock a creator who already
-      // paid out of their own studio; publishing stays gated in SQL either way.
-      // Tighten to a retry + blocking error state if this ever hides a real gate.
       .catch(() => {
-        if (active) setBlocked(false);
+        if (active) setPhase("error");
       });
     return () => {
       active = false;
     };
-  }, [isTeacher, onActivationRoute, uid]);
+  }, [attempt]);
 
   // Focus trap and scroll lock follow what is on screen, not what the fetch
   // returned: a stale `blocked` on the checkout route would otherwise lock the
   // page scroll with no dialog rendered to explain it.
-  const visible = blocked && isTeacher && !onActivationRoute;
+  const visible = phase !== "allowed";
 
   useModalFocus(dialogRef, visible);
 
@@ -81,7 +84,7 @@ export function ActivationGate() {
     };
   }, [visible]);
 
-  if (!visible) return null;
+  if (!visible) return children;
 
   return (
     <div
@@ -101,27 +104,38 @@ export function ActivationGate() {
           id="activation-gate-title"
           className="text-xl font-semibold text-[var(--color-ink)]"
         >
-          Activate your storefront
+          {t(`creatorPanel.activationGate.${phase === "loading" ? "checking" : phase === "error" ? "errorTitle" : "title"}`)}
         </h2>
+        {phase === "blocked" ? <>
         <p className="mt-3 text-sm leading-relaxed text-[var(--color-ink-soft)]">
-          A one-time ${activationFeeUsd} fee unlocks the creator studio. It is
-          charged once — never again, and never per course.
+          {t("creatorPanel.activationGate.fee").replace("{amount}", () => String(activationFeeUsd))}
         </p>
         <p className="mt-2 text-sm leading-relaxed text-[var(--color-ink-soft)]">
-          Your Free plan stays $0 per month after this. The fee opens the
-          studio; the plan is what sets your commission per sale.
+          {t("creatorPanel.activationGate.plan")}
         </p>
         <Link
           href="/teach/activate"
           className="button-solid mt-6 inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 text-sm"
         >
-          Pay ${activationFeeUsd} and unlock the studio
+          {t("creatorPanel.activationGate.pay").replace("{amount}", () => String(activationFeeUsd))}
         </Link>
+        </> : phase === "error" ? <>
+          <p role="alert" className="mt-3 text-sm leading-relaxed text-[var(--color-ink-soft)]">
+            {t("creatorPanel.activationGate.errorBody")}
+          </p>
+          <button type="button" onClick={() => { setPhase("loading"); setAttempt((value) => value + 1); }} className="button-solid mt-6 min-h-11 px-4 py-2.5 text-sm">
+            {t("creatorPanel.activationGate.retry")}
+          </button>
+        </> : (
+          <p role="status" className="mt-3 text-sm text-[var(--color-ink-soft)]">
+            {t("creatorPanel.activationGate.checkingBody")}
+          </p>
+        )}
         <Link
           href="/"
           className="mt-3 inline-flex w-full items-center justify-center text-xs text-[var(--color-ink-soft)] underline underline-offset-4"
         >
-          Not now — leave the studio
+          {t("creatorPanel.activationGate.leave")}
         </Link>
       </div>
     </div>
