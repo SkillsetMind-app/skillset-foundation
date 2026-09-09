@@ -86,20 +86,21 @@ describe.each([
 
   it("does not repeat a remotely seen tour in an empty browser", async () => {
     rpc.mockResolvedValueOnce({ data: false, error: null });
-    render(<Tour userId="already-seen" firstName="Ana" />);
+    await act(async () => { render(<Tour userId="already-seen" firstName="Ana" />); });
     await waitFor(() => expect(rpc).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("shares the pending claim during StrictMode and closes with Escape", async () => {
-    render(<StrictMode><Tour userId="strict" firstName="Ana" /></StrictMode>);
+    // Flush the claim and passive keyboard effect before simulating a keypress.
+    await act(async () => { render(<StrictMode><Tour userId="strict" firstName="Ana" /></StrictMode>); });
     await screen.findByRole("dialog");
     expect(rpc).toHaveBeenCalledTimes(1);
     fireEvent.keyDown(window, { key: "Escape" });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     cleanup();
     rpc.mockResolvedValueOnce({ data: false, error: null });
-    render(<Tour userId="strict" firstName="Ana" />);
+    await act(async () => { render(<Tour userId="strict" firstName="Ana" />); });
     await waitFor(() => expect(rpc).toHaveBeenCalledTimes(2));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
@@ -125,8 +126,8 @@ describe.each([
       : { data: "true", error: null });
     render(<Tour userId={`failed-${failure}`} firstName="Ana" />);
     await waitFor(() => expect(rpc).toHaveBeenCalledTimes(1));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     await act(async () => {});
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(JSON.stringify(warn.mock.calls)).not.toContain("private backend detail");
     cleanup();
     render(<Tour userId={`failed-${failure}`} firstName="Ana" />);
