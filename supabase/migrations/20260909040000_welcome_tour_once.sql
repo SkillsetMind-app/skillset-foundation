@@ -1,5 +1,8 @@
 -- Existing accounts must not receive a new first-run interruption. PostgreSQL
 -- fills existing rows with this default; later signups start with NULL.
+-- One statement stays atomic even when the caller uses psql autocommit.
+DO $migration$
+BEGIN
 ALTER TABLE public.users ADD COLUMN welcome_tour_seen_at timestamptz DEFAULT now();
 ALTER TABLE public.users ALTER COLUMN welcome_tour_seen_at DROP DEFAULT;
 
@@ -30,3 +33,5 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.claim_welcome_tour(text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.claim_welcome_tour(text, text) TO authenticated;
+END;
+$migration$;

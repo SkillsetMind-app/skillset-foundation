@@ -39,6 +39,9 @@ SELECT pg_temp.tour_denied($q$SELECT public.claim_welcome_tour(null,'student')$q
 SELECT pg_temp.tour_denied($q$SELECT public.claim_welcome_tour('99999999-9999-4999-8999-999999999991','ops')$q$, '22023');
 UPDATE public.users SET onboarding_completed = true, preferences = '{"learning":{"autoCaptions":true}}' WHERE uid = auth.uid()::text;
 SELECT pg_temp.check_tour(public.claim_welcome_tour('99999999-9999-4999-8999-999999999991', 'student'), 'new learner needs the first tour without activation payment');
+-- now() is constant inside a transaction. A historical value catches an
+-- accidental timestamp rewrite that two calls using now() would hide.
+UPDATE public.users SET welcome_tour_seen_at = '2020-01-01T00:00:00Z' WHERE uid = auth.uid()::text;
 SELECT set_config('smoke.tour_seen', (SELECT welcome_tour_seen_at::text FROM public.users WHERE uid = auth.uid()::text), true);
 SELECT pg_temp.check_tour(NOT public.claim_welcome_tour('99999999-9999-4999-8999-999999999991', 'student'), 'second visit repeated the tour');
 SELECT pg_temp.check_tour(NOT public.claim_welcome_tour('99999999-9999-4999-8999-999999999991', 'teacher'), 'switching workspace repeated the tour');
@@ -65,10 +68,11 @@ UPDATE public.users SET activation_fee_paid_at = now() WHERE uid = '99999999-999
 SELECT set_config('skillset.trusted_write', 'off', true);
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.check_tour(public.claim_welcome_tour('99999999-9999-4999-8999-999999999992', 'teacher'), 'activated creator cannot see first tour');
+SELECT pg_temp.check_tour(NOT public.claim_welcome_tour('99999999-9999-4999-8999-999999999992', 'student'), 'activated creator receives a second tour in the learner workspace');
 SELECT pg_temp.check_tour(NOT public.claim_welcome_tour('99999999-9999-4999-8999-999999999992', 'teacher'), 'creator tour repeated');
 RESET ROLE;
 
-SELECT pg_temp.tour_actor('');
+SELECT pg_temp.tour_actor(null);
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.tour_denied($q$SELECT public.claim_welcome_tour('99999999-9999-4999-8999-999999999991','student')$q$, '42501');
 RESET ROLE;
