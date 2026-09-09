@@ -299,11 +299,15 @@ describe("CustomDomainsPanel", () => {
     expect(screen.getByRole("button", { name: "Intentar de nuevo" })).toBeEnabled();
     expect(requestCount()).toBe(1);
     await changeLocale("en");
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    const retryButton = screen.getByRole("button", { name: "Try again" });
+    retryButton.focus();
+    fireEvent.click(retryButton);
     expect(screen.getByRole("status")).toHaveTextContent("Loading your domains…");
     expect(screen.getByRole("status").closest("section")).toHaveAttribute("aria-busy", "true");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBe(retryButton);
+    expect(retryButton).toHaveFocus();
+    expect(retryButton).toHaveAttribute("aria-disabled", "true");
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(requestCount()).toBe(2);
     await changeLocale("es");
@@ -686,5 +690,340 @@ describe("CustomDomainsPanel", () => {
       expect(requestCount()).toBe(1);
       expect(requestCount(method)).toBe(1);
     }
+  });
+
+  describe("atualização da lista após resposta de domínio", () => {
+    const refreshCopy = {
+      en: "Could not refresh domains. The list may be out of date.",
+      es: "No pudimos actualizar los dominios. La lista puede estar desactualizada.",
+    };
+    type Mutation = { url: string; method: "POST" | "DELETE"; body?: string };
+
+    function expectDomainTraffic(reads: number, writes: Mutation[]) {
+      const calls = fetchMock.mock.calls.map(([url, init]) => ({
+        url,
+        method: init?.method ?? "GET",
+        body: init?.body ?? null,
+      }));
+      expect(calls.filter((call) => call.method === "GET"))
+        .toEqual(Array.from({ length: reads }, () => ({ url: "/api/teach/domains", method: "GET", body: null })));
+      expect(calls.filter((call) => call.method !== "GET"))
+        .toEqual(writes.map((write) => ({ ...write, body: write.body ?? null })));
+    }
+
+    it.each(([
+      { operation: "add", method: "POST", action: "Connect" },
+      { operation: "recheck", method: "POST", action: "Check again" },
+      { operation: "remove", method: "DELETE", action: "Disconnect" },
+    ] as const).flatMap((scenario) => (["HTTP", "rede"] as const).map((failure) => ({ ...scenario, failure }))))(
+      "recupera GET com falha $failure após $operation aceito sem repetir a mutação em EN↔ES",
+      async ({ operation, method, action, failure }) => {
+        const mutation = deferredResponse();
+        const failedRead = deferredResponse();
+        const retry = deferredResponse();
+        const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+        const verificationValue = "TXT literal $$ $& {hostname} local-qa";
+        const target: DomainFixture = {
+          ...domains[0], status: "pending_verification",
+          verification_name: "_verify.aulas.exemplo.com", verification_value: verificationValue,
+        };
+        const saved: DomainFixture = { ...domains[0], id: "dom-new", hostname: "miescuela.example.com" };
+        const updated: DomainFixture = {
+          ...target, status: "error", verification_name: null, verification_value: null,
+          error_reason: "The domain could not be set up. Check the spelling and try again.",
+        };
+        const finalRows = operation === "add" ? [target, domains[1], saved]
+          : operation === "remove" ? [domains[1]] : [updated, domains[1]];
+        const write: Mutation = operation === "add"
+          ? { url: "/api/teach/domains", method, body: JSON.stringify({ hostname: saved.hostname }) }
+          : { url: `/api/teach/domains/${target.id}`, method };
+        fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([target, domains[1]])));
+        fetchMock.mockReturnValueOnce(mutation.promise);
+        fetchMock.mockReturnValueOnce(failedRead.promise);
+        fetchMock.mockReturnValueOnce(retry.promise);
+        renderWithLocale();
+        const hostname = await screen.findByRole("textbox", { name: "Add a domain" });
+        const form = hostname.closest("form")!;
+        const draft = operation === "add" ? "  HTTPS://MiEscuela.Example.COM./  " : "draft.local-qa.example";
+        const retainedDraft = operation === "add" ? "" : draft;
+        expect(hostname).toBeEnabled();
+        fireEvent.change(hostname, { target: { value: draft } });
+        fireEvent.click(operation === "add"
+          ? screen.getByRole("button", { name: action })
+          : domainCard(target.hostname).getByRole("button", { name: action }));
+        expectDomainTraffic(1, [write]);
+        const accepted = operation === "add" ? saved
+          : operation === "remove" ? { ok: true, hostname: target.hostname }
+            : { id: target.id, status: "error", errorReason: updated.error_reason };
+        await act(async () => mutation.resolve(jsonResponse(accepted, operation === "add" ? 201 : 200)));
+        await waitFor(() => expect(requestCount()).toBe(2));
+        expect(hostname).toHaveValue(retainedDraft);
+        await act(async () => {
+          if (failure === "HTTP") failedRead.resolve(jsonResponse({ error: "local-qa-read-refused" }, 503));
+          else failedRead.reject(new Error("local-qa-read-unreachable"));
+        });
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent(refreshCopy.en);
+        expect(form).not.toContainElement(alert);
+
+        for (const locale of ["en", "es"] as const) {
+          await changeLocale(locale);
+          expect(screen.getByRole("alert")).toHaveTextContent(refreshCopy[locale]);
+          expect(within(form).queryByRole("alert")).not.toBeInTheDocument();
+          expect(hostname).toHaveValue(retainedDraft);
+          expect(hostname).not.toHaveAttribute("aria-invalid", "true");
+          expect(hostname).not.toHaveAccessibleDescription();
+          expect(screen.getByText(locale === "es" ? "2 de 3 utilizados" : "2 of 3 used")).toBeInTheDocument();
+          expect(domainCard(target.hostname).getByText(locale === "es" ? "Esperando verificación" : "Waiting for verification")).toBeInTheDocument();
+          expect(domainCard(target.hostname).getByText(verificationValue, { selector: "code" })).toBeInTheDocument();
+          expect(domainCard(target.hostname).queryByRole("alert")).not.toBeInTheDocument();
+          expect(screen.queryByText(saved.hostname)).not.toBeInTheDocument();
+          expect(screen.queryByText(/local-qa-read-(refused|unreachable)/)).not.toBeInTheDocument();
+          expectDomainTraffic(2, [write]);
+        }
+
+        fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
+        await waitFor(() => expect(requestCount()).toBe(3));
+        for (const locale of ["en", "es"] as const) {
+          await changeLocale(locale);
+          expect(screen.getByRole("status")).toHaveTextContent(locale === "es" ? "Cargando tus dominios…" : "Loading your domains…");
+          expect(hostname.closest("section")).toHaveAttribute("aria-busy", "true");
+          expect(screen.getByRole("textbox", { name: locale === "es" ? "Añadir un dominio" : "Add a domain" })).toBe(hostname);
+          expect(hostname).toHaveValue(retainedDraft);
+          expect(screen.getByText(locale === "es" ? "2 de 3 utilizados" : "2 of 3 used")).toBeInTheDocument();
+          expect(domainCard(target.hostname).getByText(verificationValue, { selector: "code" })).toBeInTheDocument();
+          const retryButton = screen.getByRole("button", { name: locale === "es" ? "Intentar de nuevo" : "Try again" });
+          expect(retryButton).toHaveAttribute("aria-disabled", "true");
+          fireEvent.click(retryButton);
+          expectDomainTraffic(3, [write]);
+        }
+        await act(async () => retry.resolve(jsonResponse(domainPayload(finalRows))));
+        await waitFor(() => expect(hostname.closest("section")).toHaveAttribute("aria-busy", "false"));
+        for (const locale of ["en", "es"] as const) {
+          await changeLocale(locale);
+          expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+          expect(hostname).toHaveValue(retainedDraft);
+          expect(hostname).not.toHaveAttribute("aria-invalid", "true");
+          expect(screen.getByText(locale === "es" ? `${finalRows.length} de 3 utilizados` : `${finalRows.length} of 3 used`)).toBeInTheDocument();
+          if (operation === "add") expect(screen.getByText(saved.hostname)).toBeInTheDocument();
+          else if (operation === "remove") expect(screen.queryByText(target.hostname)).not.toBeInTheDocument();
+          else expect(domainCard(target.hostname).getByText(locale === "es" ? "Problema" : "Problem")).toBeInTheDocument();
+          expectDomainTraffic(3, [write]);
+        }
+        expect(confirmSpy).toHaveBeenCalledTimes(operation === "remove" ? 1 : 0);
+      },
+    );
+
+    it.each(["en", "es"] as const)("preserva foco do Retry na espera e falha em %s e devolve contexto após sucesso", async (locale) => {
+      const failedRetry = deferredResponse();
+      const finalRetry = deferredResponse();
+      const write: Mutation = { url: `/api/teach/domains/${domains[0].id}`, method: "POST" };
+      fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([domains[0]])));
+      fetchMock.mockResolvedValueOnce(jsonResponse({ status: "active" }));
+      fetchMock.mockResolvedValueOnce(jsonResponse({}, 503));
+      fetchMock.mockReturnValueOnce(failedRetry.promise);
+      fetchMock.mockReturnValueOnce(finalRetry.promise);
+      renderWithLocale(locale);
+      const hostname = await screen.findByRole("textbox", { name: locale === "es" ? "Añadir un dominio" : "Add a domain" });
+      const panel = hostname.closest("section")!;
+      fireEvent.change(hostname, { target: { value: "draft.example.com" } });
+      fireEvent.click(domainCard(domains[0].hostname).getByRole("button", { name: locale === "es" ? "Comprobar de nuevo" : "Check again" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent(refreshCopy[locale]);
+      const retryName = locale === "es" ? "Intentar de nuevo" : "Try again";
+      const retryButton = screen.getByRole("button", { name: retryName });
+      retryButton.focus();
+      fireEvent.click(retryButton);
+      expect(screen.getByRole("button", { name: retryName })).toBe(retryButton);
+      expect(retryButton).toHaveFocus();
+      expect(retryButton).not.toBeDisabled();
+      expect(retryButton).toHaveAttribute("aria-disabled", "true");
+      expect(panel).toHaveAttribute("aria-busy", "true");
+      expect(screen.getByRole("status")).toHaveTextContent(locale === "es" ? "Cargando tus dominios…" : "Loading your domains…");
+      fireEvent.click(retryButton);
+      fireEvent.click(retryButton);
+      expectDomainTraffic(3, [write]);
+
+      await act(async () => failedRetry.resolve(jsonResponse({}, 503)));
+      expect(await screen.findByRole("alert")).toHaveTextContent(refreshCopy[locale]);
+      expect(screen.getByRole("button", { name: retryName })).toBe(retryButton);
+      expect(retryButton).toHaveFocus();
+      expect(retryButton).toHaveAttribute("aria-disabled", "false");
+      expect(panel).toHaveAttribute("aria-busy", "false");
+      expect(hostname).toHaveValue("draft.example.com");
+      expectDomainTraffic(3, [write]);
+
+      fireEvent.click(retryButton);
+      expect(retryButton).toHaveFocus();
+      await act(async () => finalRetry.resolve(jsonResponse(domainPayload([{ ...domains[0], status: "active" }]))));
+      expect(screen.queryByRole("button", { name: retryName })).not.toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(panel).toHaveFocus();
+      expect(panel).toHaveAttribute("aria-busy", "false");
+      expect(hostname).toHaveValue("draft.example.com");
+      expect(domainCard(domains[0].hostname).getByText(locale === "es" ? "Activo" : "Live")).toBeInTheDocument();
+      expectDomainTraffic(4, [write]);
+    });
+
+    it("preserva foco que saiu do Retry para o rascunho antes de recuperar a leitura", async () => {
+      const retry = deferredResponse();
+      const write: Mutation = { url: `/api/teach/domains/${domains[0].id}`, method: "POST" };
+      fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([domains[0]])));
+      fetchMock.mockResolvedValueOnce(jsonResponse({ status: "active" }));
+      fetchMock.mockResolvedValueOnce(jsonResponse({}, 503));
+      fetchMock.mockReturnValueOnce(retry.promise);
+      renderWithLocale();
+      const hostname = await screen.findByRole("textbox", { name: "Add a domain" });
+      fireEvent.click(domainCard(domains[0].hostname).getByRole("button", { name: "Check again" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent(refreshCopy.en);
+      const retryButton = screen.getByRole("button", { name: "Try again" });
+      retryButton.focus();
+      fireEvent.click(retryButton);
+      hostname.focus();
+      fireEvent.change(hostname, { target: { value: "draft.example.com" } });
+      await act(async () => retry.resolve(jsonResponse(domainPayload([{ ...domains[0], status: "active" }]))));
+      expect(hostname).toHaveFocus();
+      expect(hostname).toHaveValue("draft.example.com");
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+      expectDomainTraffic(3, [write]);
+    });
+
+    it("libera quota cheia somente após o GET de recuperação de DELETE aceito", async () => {
+      const retry = deferredResponse();
+      const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+      const write: Mutation = { url: `/api/teach/domains/${domains[0].id}`, method: "DELETE" };
+      fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([domains[0]], { used: 1, limit: 1 })));
+      fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true, hostname: domains[0].hostname }));
+      fetchMock.mockResolvedValueOnce(jsonResponse({}, 503));
+      fetchMock.mockReturnValueOnce(retry.promise);
+      renderWithLocale();
+      const hostname = await screen.findByRole("textbox", { name: "Add a domain" });
+      expect(hostname).toBeDisabled();
+      expect(hostname).toHaveValue("");
+      fireEvent.click(domainCard(domains[0].hostname).getByRole("button", { name: "Disconnect" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent(refreshCopy.en);
+      expect(hostname).not.toHaveAttribute("aria-invalid", "true");
+      expect(screen.getByText("1 of 1 used")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      expect(hostname).toBeDisabled();
+      expect(hostname).toHaveValue("");
+      expect(screen.getByText(domains[0].hostname)).toBeInTheDocument();
+      await act(async () => retry.resolve(jsonResponse(domainPayload([], { used: 0, limit: 1 }))));
+      await waitFor(() => expect(hostname).toBeEnabled());
+      expect(screen.getByText("0 of 1 used")).toBeInTheDocument();
+      expect(screen.queryByText(domains[0].hostname)).not.toBeInTheDocument();
+      fireEvent.change(hostname, { target: { value: "next.example.com" } });
+      expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
+      expectDomainTraffic(3, [write]);
+      expect(confirmSpy).toHaveBeenCalledOnce();
+    });
+
+    it("mantém snapshot e rascunho quando o retry falha antes da leitura seguinte recuperar", async () => {
+      const failedRetry = deferredResponse();
+      const finalRetry = deferredResponse();
+      const write: Mutation = { url: `/api/teach/domains/${domains[0].id}`, method: "POST" };
+      fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([domains[0]])));
+      fetchMock.mockResolvedValueOnce(jsonResponse({ status: "active" }));
+      fetchMock.mockResolvedValueOnce(jsonResponse({}, 503));
+      fetchMock.mockReturnValueOnce(failedRetry.promise);
+      fetchMock.mockReturnValueOnce(finalRetry.promise);
+      renderWithLocale();
+      const hostname = await screen.findByRole("textbox", { name: "Add a domain" });
+      fireEvent.change(hostname, { target: { value: "draft.example.com" } });
+      fireEvent.click(domainCard(domains[0].hostname).getByRole("button", { name: "Check again" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent(refreshCopy.en);
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      expect(screen.getByRole("status")).toHaveTextContent("Loading your domains…");
+      expectDomainTraffic(3, [write]);
+      await act(async () => failedRetry.reject(new Error("local-qa-retry-unreachable")));
+      expect(await screen.findByRole("alert")).toHaveTextContent(refreshCopy.en);
+      expect(hostname).toHaveValue("draft.example.com");
+      expect(hostname).not.toHaveAttribute("aria-invalid", "true");
+      expect(screen.getByText("1 of 3 used")).toBeInTheDocument();
+      expect(domainCard(domains[0].hostname).getByText("Waiting for DNS")).toBeInTheDocument();
+      await changeLocale("es");
+      expect(screen.getByRole("alert")).toHaveTextContent(refreshCopy.es);
+      expectDomainTraffic(3, [write]);
+      fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
+      await act(async () => finalRetry.resolve(jsonResponse(domainPayload([{ ...domains[0], status: "active" }]))));
+      expect(await screen.findByText("Activo")).toBeInTheDocument();
+      expect(hostname).toHaveValue("draft.example.com");
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expectDomainTraffic(4, [write]);
+    });
+
+    it("limpa só a falha de leitura no retry sem apagar validação legítima de Add", async () => {
+      const retry = deferredResponse();
+      const write: Mutation = { url: `/api/teach/domains/${domains[0].id}`, method: "POST" };
+      fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([domains[0]])));
+      fetchMock.mockResolvedValueOnce(jsonResponse({ status: "active" }));
+      fetchMock.mockResolvedValueOnce(jsonResponse({}, 503));
+      fetchMock.mockReturnValueOnce(retry.promise);
+      renderWithLocale();
+      const hostname = await screen.findByRole("textbox", { name: "Add a domain" });
+      const form = hostname.closest("form")!;
+      fireEvent.click(domainCard(domains[0].hostname).getByRole("button", { name: "Check again" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent(refreshCopy.en);
+      fireEvent.change(hostname, { target: { value: "localhost" } });
+      fireEvent.click(screen.getByRole("button", { name: "Connect" }));
+      expect(within(form).getByRole("alert")).toHaveTextContent(domainRejectionMessage.single_label);
+      expect(screen.getByText(refreshCopy.en)).toBeInTheDocument();
+      expect(screen.getAllByRole("alert")).toHaveLength(2);
+      expect(hostname).toHaveAttribute("aria-invalid", "true");
+      expectDomainTraffic(2, [write]);
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      await act(async () => retry.resolve(jsonResponse(domainPayload([{ ...domains[0], status: "active" }]))));
+      await screen.findByText("Live");
+      expect(screen.queryByText(refreshCopy.en)).not.toBeInTheDocument();
+      expect(screen.getAllByRole("alert")).toHaveLength(1);
+      expect(within(form).getByRole("alert")).toHaveTextContent(domainRejectionMessage.single_label);
+      expect(hostname).toHaveAccessibleDescription(domainRejectionMessage.single_label);
+      expect(hostname).toHaveValue("localhost");
+      await changeLocale("es");
+      expect(within(form).getByRole("alert")).toHaveTextContent("Incluye la terminación, por ejemplo tunombre.com en lugar de tunombre");
+      expect(hostname).toHaveAttribute("aria-invalid", "true");
+      expect(hostname).toHaveValue("localhost");
+      expectDomainTraffic(3, [write]);
+    });
+
+    it.each([
+      { method: "POST", action: "Check again" },
+      { method: "DELETE", action: "Disconnect" },
+    ] as const)("recupera a leitura após $method 404 sem sucesso ou mutação repetida", async ({ method, action }) => {
+      const retry = deferredResponse();
+      const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+      const write: Mutation = { url: `/api/teach/domains/${domains[0].id}`, method };
+      fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([domains[0]], { used: 1, limit: 1 })));
+      fetchMock.mockResolvedValueOnce(jsonResponse({ error: "Domain not found." }, 404));
+      fetchMock.mockResolvedValueOnce(jsonResponse({}, 503));
+      fetchMock.mockReturnValueOnce(retry.promise);
+      renderWithLocale();
+      const hostname = await screen.findByRole("textbox", { name: "Add a domain" });
+      const form = hostname.closest("form")!;
+      expect(hostname).toBeDisabled();
+      fireEvent.click(domainCard(domains[0].hostname).getByRole("button", { name: action }));
+      await screen.findByText(refreshCopy.en);
+      for (const locale of ["en", "es"] as const) {
+        await changeLocale(locale);
+        expect(domainCard(domains[0].hostname).getByRole("alert")).toHaveTextContent(locale === "es" ? "No se encontró el dominio." : "Domain not found.");
+        expect(screen.getByText(refreshCopy[locale])).toBeInTheDocument();
+        expect(screen.getAllByRole("alert")).toHaveLength(2);
+        expect(within(form).queryByRole("alert")).not.toBeInTheDocument();
+        expect(hostname).not.toHaveAttribute("aria-invalid", "true");
+        expect(hostname).toBeDisabled();
+        expect(hostname).toHaveValue("");
+        expectDomainTraffic(2, [write]);
+      }
+      fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
+      await act(async () => retry.resolve(jsonResponse(domainPayload([], { used: 0, limit: 1 }))));
+      await waitFor(() => expect(screen.queryByText(domains[0].hostname)).not.toBeInTheDocument());
+      expect(screen.getByText("0 de 1 utilizados")).toBeInTheDocument();
+      expect(hostname).toBeEnabled();
+      expect(hostname).toHaveValue("");
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      expectDomainTraffic(3, [write]);
+      expect(confirmSpy).toHaveBeenCalledTimes(method === "DELETE" ? 1 : 0);
+    });
   });
 });

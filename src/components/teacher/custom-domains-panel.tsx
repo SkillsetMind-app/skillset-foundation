@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Copy, Globe, Loader2, RefreshCw, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
@@ -201,6 +201,8 @@ function DomainCard({
 
 export function CustomDomainsPanel() {
   const { t } = useTranslation();
+  const panelRef = useRef<HTMLElement>(null);
+  const retryTrigger = useRef<HTMLButtonElement | null>(null);
   const [domains, setDomains] = useState<DomainRow[]>([]);
   const [quota, setQuota] = useState<Quota>({ used: 0, limit: 0 });
   const [configured, setConfigured] = useState(true);
@@ -208,6 +210,7 @@ export function CustomDomainsPanel() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [hostname, setHostname] = useState("");
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState(false);
   const [actionError, setActionError] = useState<{ id: string; key: string } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -221,8 +224,13 @@ export function CustomDomainsPanel() {
       setQuota(payload.quota ?? { used: 0, limit: 0 });
       setConfigured(payload.configured !== false);
       setHasLoaded(true);
+      // Keep a stable destination before Retry disappears, without stealing focus.
+      if (document.activeElement === retryTrigger.current) {
+        panelRef.current?.focus({ preventScroll: true });
+      }
+      setLoadError(false);
     } catch {
-      setError("teach.customDomains.errors.load");
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -312,34 +320,44 @@ export function CustomDomainsPanel() {
   const lockedOnPlan = quota.limit === 0;
 
   return (
-    <section className="settings-section-card" aria-busy={loading}>
+    <section ref={panelRef} tabIndex={-1} className="settings-section-card" aria-label={t("teach.customDomains.title")} aria-busy={loading}>
       <SectionHeader
         eyebrow={t("teach.page.eyebrow")}
         title={t("teach.customDomains.title")}
         description={t("teach.customDomains.description")}
       />
 
-      {loading ? (
-        <p role="status" className="mt-6 flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          {t("teach.customDomains.loading")}
-        </p>
-      ) : !hasLoaded ? (
+      {loading || loadError ? (
         <div className="mt-6 grid gap-3">
-          <InlineAlert tone="error">{t(error)}</InlineAlert>
-          <Button
-            variant="outline"
-            className="justify-self-start"
-            onClick={() => {
-              setError("");
-              setLoading(true);
-              void load();
-            }}
-          >
-            {t("authFlow.loading.retry")}
-          </Button>
+          {loading ? (
+            <p role="status" className="flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {t("teach.customDomains.loading")}
+            </p>
+          ) : (
+            <InlineAlert tone="error">
+              {t(hasLoaded ? "teach.customDomains.errors.refresh" : "teach.customDomains.errors.load")}
+            </InlineAlert>
+          )}
+          {loadError ? (
+            <Button
+              variant="outline"
+              className="justify-self-start aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+              aria-disabled={loading}
+              onClick={(event) => {
+                if (loading) return;
+                retryTrigger.current = event.currentTarget;
+                setLoading(true);
+                void load();
+              }}
+            >
+              {t("authFlow.loading.retry")}
+            </Button>
+          ) : null}
         </div>
-      ) : !configured ? (
+      ) : null}
+
+      {!hasLoaded ? null : !configured ? (
         <InlineAlert tone="info" className="mt-6">
           {t("teach.customDomains.notConfigured")}
         </InlineAlert>
