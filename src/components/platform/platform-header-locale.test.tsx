@@ -97,7 +97,7 @@ describe("idioma na barra do topo da plataforma", () => {
       const sheet = postcss.parse(readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8"));
       const fixedSelectors: string[] = [];
       sheet.walkRules((rule) => {
-        if (!rule.selector.includes(".platform-topbar__actions")) return;
+        if (!rule.selector.includes(".platform-topbar__actions") || !rule.selector.includes("> button")) return;
         rule.walkDecls("width", (declaration) => {
           if (declaration.value === "44px" && declaration.important) fixedSelectors.push(rule.selector);
         });
@@ -112,6 +112,36 @@ describe("idioma na barra do topo da plataforma", () => {
       }
     },
   );
+
+  it("keeps the account avatar compact on mobile without clipping its contents", () => {
+    const { actions } = renderHeader("/teach");
+    const account = actions.querySelector(".account-menu-trigger")!;
+    const sheet = postcss.parse(readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8"));
+    const accountRules: Record<string, string>[] = [];
+    const hiddenSelectors: string[] = [];
+    sheet.walkAtRules("media", (media) => {
+      if (media.params !== "(max-width: 640px)") return;
+      media.walkRules((rule) => {
+        if (rule.selector === ".platform-topbar__actions .account-menu-trigger") {
+          const declarations: Record<string, string> = {};
+          rule.walkDecls((d) => { declarations[d.prop] = d.value; });
+          accountRules.push(declarations);
+        }
+        rule.walkDecls("display", (d) => {
+          if (d.value === "none") hiddenSelectors.push(rule.selector);
+        });
+      });
+    });
+    expect(accountRules).toContainEqual(expect.objectContaining({
+      width: "44px", height: "44px", padding: "0", gap: "0", "justify-content": "center",
+    }));
+    const chevron = account.querySelector(":scope > svg")!;
+    const avatar = account.querySelector(".avatar-fallback")!;
+    expect(hiddenSelectors.some((selector) => chevron.matches(selector))).toBe(true);
+    expect(hiddenSelectors.some((selector) => avatar.matches(selector))).toBe(false);
+    expect(account).toHaveAttribute("aria-expanded", "false");
+    expect(account.getAttribute("aria-label")).toBeTruthy();
+  });
 
   it("usa a variante discreta: alvo 44px sem moldura permanente ou seta", () => {
     const { trigger } = renderHeader("/teach");
