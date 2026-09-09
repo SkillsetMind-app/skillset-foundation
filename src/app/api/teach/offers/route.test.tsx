@@ -3,10 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getAdmin: vi.fn(),
   requireUserId: vi.fn(),
+  activationRpc: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
   getSupabaseAdminClient: mocks.getAdmin,
+}));
+
+vi.mock("@/lib/supabase/server", () => ({
+  createSupabaseServerClient: vi.fn(async () => ({ rpc: mocks.activationRpc })),
 }));
 
 vi.mock("@/lib/payments/server/auth", async (importOriginal) => ({
@@ -50,6 +55,7 @@ describe("atomic product offer creation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.requireUserId.mockResolvedValue("teacher");
+    mocks.activationRpc.mockReset().mockResolvedValue({ data: false, error: null });
   });
 
   it("creates offer, price and default state in one database transaction", async () => {
@@ -74,6 +80,7 @@ describe("atomic product offer creation", () => {
     }));
 
     expect(response.status).toBe(200);
+    expect(mocks.activationRpc).toHaveBeenCalledWith("creator_activation_blocked");
     expect(offerCalls(rpc)).toHaveLength(1);
     expect(rpc).toHaveBeenCalledWith(
       "enforce_rate_limit",
@@ -198,6 +205,33 @@ describe("atomic product offer creation", () => {
 
     expect(response.status).toBe(429);
     expect(admin.from).not.toHaveBeenCalled();
+    expect(offerCalls(rpc)).toHaveLength(0);
+  });
+
+  it.each([true, "rpc-error"])("does not write an offer when activation is %s", async (verdict) => {
+    mocks.activationRpc.mockResolvedValue(verdict === true
+      ? { data: true, error: null }
+      : { data: null, error: { message: "private activation diagnostic" } });
+    const rpc = vi.fn(async () => ({ data: null, error: null }));
+    mocks.getAdmin.mockReturnValue({ from: vi.fn(() => courseQuery()), rpc });
+
+    const response = await POST(request({ courseId: "course", amountMinor: 1000 }));
+
+    expect(response.status).toBe(verdict === true ? 402 : 500);
+    const body = await response.json();
+    if (verdict === true) expect(body.code).toBe("activation_required");
+    expect(JSON.stringify(body)).not.toContain("private activation diagnostic");
+    expect(offerCalls(rpc)).toHaveLength(0);
+  });
+
+  it("does not replace course ownership with activation permission", async () => {
+    const query = courseQuery();
+    query.maybeSingle.mockResolvedValue({ data: { id: "course", owner_id: "someone-else" }, error: null });
+    const rpc = vi.fn(async () => ({ data: null, error: null }));
+    mocks.getAdmin.mockReturnValue({ from: vi.fn(() => query), rpc });
+
+    expect((await POST(request({ courseId: "course", amountMinor: 1000 }))).status).toBe(403);
+    expect(mocks.activationRpc).not.toHaveBeenCalled();
     expect(offerCalls(rpc)).toHaveLength(0);
   });
 });
