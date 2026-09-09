@@ -2409,8 +2409,8 @@ select:focus-visible {
   }
 }
 
-.platform-topbar__actions > div > button:not(.locale-switcher-compact):not(.account-menu-trigger),
-.platform-topbar__actions > button:not(.locale-switcher-compact):not(.account-menu-trigger) {
+.platform-topbar__actions > div > button:not(.locale-switcher-compact),
+.platform-topbar__actions > button:not(.locale-switcher-compact) {
   width: 44px !important;
   height: 44px !important;
   border-color: var(--color-line) !important;
@@ -2420,8 +2420,8 @@ select:focus-visible {
   box-shadow: 0 8px 18px rgba(15, 39, 68, 0.06);
 }
 
-.platform-topbar__actions > div > button:not(.locale-switcher-compact):not(.account-menu-trigger):hover,
-.platform-topbar__actions > button:not(.locale-switcher-compact):not(.account-menu-trigger):hover {
+.platform-topbar__actions > div > button:not(.locale-switcher-compact):hover,
+.platform-topbar__actions > button:not(.locale-switcher-compact):hover {
   border-color: var(--color-line-strong) !important;
   background: var(--color-surface-soft) !important;
   color: var(--color-primary-dark) !important;
@@ -2436,8 +2436,8 @@ select:focus-visible {
   box-shadow: 0 8px 18px rgba(15, 39, 68, 0.06);
 }
 
-[data-theme="dark"] .platform-topbar__actions > div > button:not(.locale-switcher-compact):not(.account-menu-trigger),
-[data-theme="dark"] .platform-topbar__actions > button:not(.locale-switcher-compact):not(.account-menu-trigger),
+[data-theme="dark"] .platform-topbar__actions > div > button:not(.locale-switcher-compact),
+[data-theme="dark"] .platform-topbar__actions > button:not(.locale-switcher-compact),
 [data-theme="dark"] .platform-topbar__actions .account-menu-trigger {
   background: var(--color-surface) !important;
   color: var(--color-ink) !important;
