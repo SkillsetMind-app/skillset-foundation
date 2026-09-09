@@ -26,9 +26,12 @@ vi.mock("@/components/auth/protected-surface", () => ({
   },
 }));
 vi.mock("@/components/platform/platform-shell", () => ({
+  // Espelha a casca real: o `title` SO existe dentro do cabecalho. Com
+  // `hideHeader` ele nao vai para lugar nenhum — nada de aria-label inventado,
+  // senao o teste passa a provar algo que o produto nao faz.
   PlatformShell: ({ children, eyebrow, title, description, hideHeader }: {
     children: ReactNode; eyebrow?: string; title: string; description?: string; hideHeader?: boolean;
-  }) => createElement("main", { "aria-label": title },
+  }) => createElement("main", null,
     hideHeader ? null : createElement("header", null,
       createElement("p", null, eyebrow),
       createElement("h1", null, title),
@@ -44,9 +47,11 @@ vi.mock("@/components/teacher/custom-domains-panel", () => ({ CustomDomainsPanel
 vi.mock("@/components/teacher/creator-subscription-center", () => ({ CreatorSubscriptionCenter: () => null }));
 vi.mock("@/components/teacher/stripe-connect-notice", () => ({ StripeConnectNotice: () => null }));
 vi.mock("@/components/teacher/teacher-wallet-panel", () => ({
-  // O painel real abre com o proprio cabecalho traduzido; aqui basta saber que
-  // ele entra na tela e que a casca nao acrescenta um segundo titulo.
-  TeacherWalletPanel: () => createElement("p", null, "PAINEL DA CARTEIRA"),
+  // Espelha o que o painel real faz depois desta mudanca: ele carrega o <h1>
+  // da pagina. O mock precisa disso para que a prova do cabecalho unico seja
+  // sobre a arvore real, e nao sobre um marcador inventado.
+  TeacherWalletPanel: () =>
+    createElement("section", null, createElement("h1", null, "Tus ganancias, tu configuración de pagos.")),
 }));
 
 import AccountPaymentsPage from "../account/payments/page";
@@ -99,21 +104,19 @@ describe("pagamentos não repete o cabeçalho do painel", () => {
     expect(source).toContain("getServerTranslation");
   });
 
-  it.each(["es", "en"] as const)("em %s deixa o título só com o painel", async (locale) => {
+  it.each(["es", "en"] as const)("em %s a página tem UM cabeçalho, o do painel", async (locale) => {
     mocks.locale = locale;
     render(
       <I18nProvider initialLocale={locale}>{await AccountPaymentsPage()}</I18nProvider>,
     );
 
-    expect(screen.getByText("PAINEL DA CARTEIRA")).toBeInTheDocument();
-    // A casca nao desenha cabecalho nenhum: nada de h1 acima do painel.
-    expect(screen.queryByRole("heading")).toBeNull();
-    // E o rotulo da regiao segue o idioma da sessao.
-    expect(
-      screen.getByRole("main", {
-        name: translate(getDictionary(locale), "account.payoutsTax"),
-      }),
-    ).toBeInTheDocument();
+    // Um h1 so — o do painel. A casca nao acrescenta o dela (era o terceiro
+    // titulo da mesma tela), e a pagina nao fica sem cabecalho de nivel 1.
+    const titulos = screen.getAllByRole("heading", { level: 1 });
+    expect(titulos).toHaveLength(1);
+    expect(titulos[0]).toHaveTextContent("Tus ganancias, tu configuración de pagos.");
+    // O titulo fixo em ingles da casca nao aparece em nenhum idioma.
+    expect(screen.queryByText("Payouts & tax")).toBeNull();
     expect(mocks.permissions).toEqual(["teacherStudio.access"]);
   });
 });

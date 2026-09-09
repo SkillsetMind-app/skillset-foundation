@@ -14,7 +14,8 @@ export default async function AccountPaymentsPage() {
           `hideHeader`: o painel ja abre com "PAYOUTS & TAX" + "Your earnings,
           your payout setup." — o titulo da casca repetia isso uma terceira vez,
           e em ingles fixo mesmo com a sessao em espanhol (QA visual em
-          producao, 08/09). O titulo fica so para o rotulo da regiao. */}
+          producao, 08/09). Quem carrega o <h1> da pagina agora e o painel; a
+          casca ainda exige `title`, entao ele vem do dicionario. */}
       <PlatformShell title={t("account.payoutsTax")} compact hideHeader>
         <TeacherWalletPanel />
       </PlatformShell>

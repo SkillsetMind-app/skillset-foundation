@@ -236,12 +236,17 @@ export function TeacherWalletPanel() {
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {t("account.payoutsTax")}
           </p>
-          <h2 className="display-title mt-3 flex items-center gap-2 text-4xl leading-tight text-[var(--color-primary)]">
+          {/* h1, nao h2: este painel e o cabecalho da unica pagina que o usa
+              (/account/payments), e a casca esconde o titulo dela para nao
+              repetir a mesma frase tres vezes. Sem isto a pagina ficaria sem
+              cabecalho de nivel 1 e a navegacao por titulos comecaria no 2
+              (revisao do Codex). */}
+          <h1 className="display-title mt-3 flex items-center gap-2 text-4xl leading-tight text-[var(--color-primary)]">
             {t("teach.earnings.title")}
             <InlineHelp topic={t("teach.earnings.helpTopic")} href="/help#payouts">
               {t("teach.earnings.helpBody")}
             </InlineHelp>
-          </h2>
+          </h1>
           {/* Uma frase, e o resto recolhido. `details` nativo: sem estado, sem
               portal, e o texto longo so ocupa a tela de quem pediu por ele. */}
           <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
