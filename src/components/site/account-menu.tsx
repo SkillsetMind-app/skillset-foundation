@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { UserAvatar } from "@/components/shared/user-avatar";
@@ -35,6 +35,7 @@ type AccountMenuProps = {
 
 function useDismissableLayer(
   ref: RefObject<HTMLElement | null>,
+  triggerRef: RefObject<HTMLButtonElement | null>,
   isOpen: boolean,
   onDismiss: () => void,
 ) {
@@ -52,17 +53,22 @@ function useDismissableLayer(
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         onDismiss();
+        if (ref.current?.contains(event.target as Node)) {
+          event.preventDefault();
+          event.stopPropagation();
+          triggerRef.current?.focus({ preventScroll: true });
+        }
       }
     }
 
     document.addEventListener("mousedown", handleMouseDown);
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown, true);
 
     return () => {
       document.removeEventListener("mousedown", handleMouseDown);
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", handleKeyDown, true);
     };
-  }, [isOpen, onDismiss, ref]);
+  }, [isOpen, onDismiss, ref, triggerRef]);
 }
 
 export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
@@ -70,6 +76,8 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentPlanId, setCurrentPlanId] = useState<PlanId>("free");
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname() ?? "";
   const moneyHref = user.roles.includes("teacher")
     ? "/account/payments"
@@ -120,7 +128,52 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
         icon: Presentation,
       };
 
-  useDismissableLayer(wrapperRef, isOpen, () => setIsOpen(false));
+  useDismissableLayer(wrapperRef, triggerRef, isOpen, () => setIsOpen(false));
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const wrapper = wrapperRef.current;
+    const panel = panelRef.current;
+    if (!wrapper || !panel) return;
+
+    // Same viewport clamp as ExportTableButton, but keep the panel beside
+    // its trigger in the DOM so links retain their native Tab order.
+    function position() {
+      const viewport = window.visualViewport;
+      const width = viewport?.width ?? (document.documentElement.clientWidth || window.innerWidth);
+      const height = viewport?.height ?? window.innerHeight;
+      const leftEdge = (viewport?.offsetLeft ?? 0) + 8;
+      const topEdge = (viewport?.offsetTop ?? 0) + 8;
+      const rightEdge = leftEdge + width - 16;
+      const bottomEdge = topEdge + height - 16;
+      const anchor = wrapper!.getBoundingClientRect();
+      const top = Math.max(topEdge, Math.min(anchor.bottom + 8, bottomEdge - 44));
+      panel!.style.maxWidth = `${Math.max(1, width - 16)}px`;
+      panel!.style.maxHeight = `${Math.max(1, bottomEdge - top)}px`;
+      panel!.style.overflowY = "auto";
+      const bounds = panel!.getBoundingClientRect();
+      const left = Math.max(leftEdge, Math.min(anchor.right - bounds.width, rightEdge - bounds.width));
+      panel!.style.right = "auto";
+      panel!.style.left = `${left - anchor.left}px`;
+      panel!.style.top = `${top - anchor.top}px`;
+    }
+    position();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(position);
+    observer?.observe(wrapper);
+    observer?.observe(panel);
+    const viewport = window.visualViewport;
+    window.addEventListener("resize", position);
+    window.addEventListener("scroll", position, true);
+    viewport?.addEventListener("resize", position);
+    viewport?.addEventListener("scroll", position);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", position);
+      window.removeEventListener("scroll", position, true);
+      viewport?.removeEventListener("resize", position);
+      viewport?.removeEventListener("scroll", position);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     return subscribeToUserProfile(
@@ -137,6 +190,7 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
   return (
     <div ref={wrapperRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         aria-expanded={isOpen}
         aria-controls="account-menu-panel"
@@ -166,7 +220,7 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
       </button>
 
       {isOpen ? (
-        <div id="account-menu-panel" className="account-menu-panel">
+        <div ref={panelRef} id="account-menu-panel" className="account-menu-panel">
           <div className="account-menu-head">
             <UserAvatar
               name={user.displayName || user.email}
