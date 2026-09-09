@@ -8,6 +8,7 @@ import { I18nProvider } from "@/components/i18n/i18n-provider";
 
 const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
 vi.mock("@/lib/supabase/client", () => ({ getSupabaseBrowserClient: () => ({ rpc }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 // P-24: o tour cobre a tela inteira no primeiro login e oferece duas saídas
 // explícitas — o X (16px de ícone + 4px de padding = 24px) e o "Skip" (texto
