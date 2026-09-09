@@ -119,7 +119,7 @@ export function CourseUnlockModal({
           <button
             type="button"
             onClick={onClose}
-            className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-[rgba(15,39,68,0.62)] text-white transition hover:bg-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-[rgba(15,39,68,0.62)] text-white transition hover:bg-[#102a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             aria-label={t("learn.paths.close")}
           >
             <X aria-hidden="true" size={18} strokeWidth={1.8} />

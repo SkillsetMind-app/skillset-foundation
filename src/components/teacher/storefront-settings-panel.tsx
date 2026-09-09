@@ -549,7 +549,7 @@ export function StorefrontSettingsPanel() {
         aria-label={t("teach.storefrontPage.previewLabel")}
         className="mt-6 overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] shadow-[var(--shadow-soft)]"
       >
-        <div className="relative flex min-h-32 items-center gap-4 overflow-hidden bg-[var(--color-primary)] px-5 py-6 sm:px-7">
+        <div className="relative flex min-h-32 items-center gap-4 overflow-hidden bg-[#102a43] px-5 py-6 sm:px-7">
           {heroImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={heroImageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />

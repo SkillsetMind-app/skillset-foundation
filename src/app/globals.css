@@ -158,9 +158,9 @@
   /* Hover lifts one step above the soft card surface (no white flash). */
   --color-surface-hover: #1c2841;
   --color-brand: #d9e5ef;
-  --color-primary: #8fb4e4;
-  --color-primary-dark: #d9e8fb;
-  --color-primary-light: #b8d2f0;
+  --color-primary: #eef0f3;
+  --color-primary-dark: #ffffff;
+  --color-primary-light: #cbd0d7;
   /* Sobre fundo escuro o navy some; o anel vira claro para manter contraste. */
   --focus-ring: var(--color-primary-light);
   --color-ink: #e8edf5;
@@ -182,8 +182,7 @@
   --color-warning-soft: rgba(192, 123, 10, 0.18);
   /* Dark mode never redefined this; #14182b is 1.03:1 on base — invisible. */
   --color-ink-indigo: #dfe5f5;
-  /* --color-primary inverts to a light blue in dark, so white-on-primary drops
-     to 2.14:1. Flip the on-primary foreground to the dark base instead. */
+  /* Light primary fills need dark labels; informational blue stays separate. */
   --color-on-primary: var(--color-base);
   --color-warning-fg: #e6b24f;
   --color-info: #8fb4e4;
@@ -608,14 +607,7 @@ p {
   border-color: var(--color-line);
 }
 
-/* Primary CTA in dark mode: --color-primary inverts to a LIGHT blue (#8fb4e4),
-   but .button-solid hardcodes a white label → white-on-#8fb4e4 is only
-   2.14:1 (the "primary CTA fails AA in dark" audit finding). Drop the label to
-   dark ink on the light fill — 6.1–9.0:1 — matching how
-   .account-settings-tab--active and .course-upload-preset--active already
-   render dark text on the inverted primary. Dark-scoped so light mode (navy
-   fill, white text) is untouched. The :hover bg is --color-primary-dark, which
-   in dark mode is lighter still (#d9e8fb), so dark ink stays correct there too. */
+/* Keep labels dark on light primary fills, including descendants and hover. */
 [data-theme="dark"] .button-solid,
 [data-theme="dark"] .button-solid:hover,
 [data-theme="dark"] .button-solid *,
@@ -623,16 +615,14 @@ p {
   color: var(--color-base) !important;
 }
 
-/* Solid primary-fill promo cards with mixed white + white/NN child text and NO
-   navy overlay (creator-course-detail intro, for-creators aside). In dark mode
-   --color-primary inverts to light blue, so the white descendants drop to
-   ~2.14:1. Flip ALL descendant text to dark ink — same remedy as .button-solid,
-   scoped to a marker class so the overlay-backed marketing hero/band (where
-   white text is correct over the navy gradient) is never touched. Light mode
-   keeps the white-on-navy design. */
+/* Promo panels remain dark surfaces; only action-sized fills invert. */
+[data-theme="dark"] .primary-fill-card {
+  background: var(--color-surface-strong);
+}
+
 [data-theme="dark"] .primary-fill-card,
 [data-theme="dark"] .primary-fill-card * {
-  color: var(--color-base) !important;
+  color: var(--color-ink) !important;
 }
 
 /* The opaque gold CTA keeps its own dark label inside the inverted promo card,
@@ -878,7 +868,7 @@ p {
 
 .status-chip--info {
   background: var(--color-surface-strong);
-  color: var(--color-primary-light);
+  color: var(--color-info);
   border-color: rgba(44, 82, 130, 0.22);
 }
 
@@ -5586,9 +5576,9 @@ body:has([aria-label="Course categories"])
 
 .member-classroom[data-members-theme="light"] .member-lesson-card:hover,
 .member-classroom[data-members-theme="light"] .member-lesson-card--active {
-  border-color: var(--color-primary);
+  border-color: var(--ma-ink);
   background: linear-gradient(180deg, rgba(26, 54, 93, 0.04), rgba(26, 54, 93, 0.01));
-  box-shadow: inset 0 0 0 1px var(--color-primary);
+  box-shadow: inset 0 0 0 1px var(--ma-ink);
 }
 
 .member-classroom[data-members-theme="dark"] .member-lesson-card:hover,
@@ -5617,7 +5607,7 @@ body:has([aria-label="Course categories"])
 .member-classroom[data-members-theme="light"]
   .member-lesson-card--active
   .member-lesson-card__title {
-  color: var(--color-primary);
+  color: var(--ma-ink);
 }
 
 .member-classroom[data-members-theme="dark"]
