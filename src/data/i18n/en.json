@@ -1728,6 +1728,7 @@
       "formIntro": "Add a live class, mentorship, masterclass, office hour, webinar, or deadline. Learners enrolled in that course see it in their own agenda.",
       "courseLabel": "Course",
       "courseEmptyOption": "Create a course first",
+      "courseUnavailableOption": "Choose an available course",
       "typeLabel": "Session type",
       "startsAtLabel": "Date and time",
       "titleLabel": "Session title",

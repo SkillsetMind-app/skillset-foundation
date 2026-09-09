@@ -129,6 +129,24 @@ describe("agenda de eventos no padrao da casa", () => {
     expect(screen.getByRole("combobox", { name: "Course" })).toBeInTheDocument();
   });
 
+  it("resumo compacto e formulario sem molduras empilhadas preservam os controles", () => {
+    const { container } = renderStudio();
+    const summary = container.querySelector("dl");
+    expect(summary).toHaveClass("grid-cols-3");
+    expect(summary?.querySelectorAll("dt")).toHaveLength(3);
+    expect(container.querySelector(".studio-kpi-card")).toBeNull();
+    expect(container.querySelector(".settings-section-card")).toBeNull();
+    const trigger = screen.getByRole("button", { name: "New session" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(trigger);
+    const panel = document.getElementById(trigger.getAttribute("aria-controls")!);
+    expect(panel).toContainElement(screen.getByLabelText("Session title"));
+    expect(panel).toHaveClass("border-b");
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByLabelText("Session title")).not.toBeInTheDocument();
+  });
+
   it("tres tiles contam o que vem, o que passou e o que foi cancelado", () => {
     mocks.events = [
       makeEvent({ id: "a", startsAt: new Date(Date.now() + 24 * HOUR).toISOString() }),

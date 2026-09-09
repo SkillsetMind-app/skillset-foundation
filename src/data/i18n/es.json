@@ -1728,6 +1728,7 @@
       "formIntro": "Agrega una clase en vivo, mentoría, masterclass, hora de consulta, webinar o fecha límite. Quienes están inscritos en ese curso la ven en su propia agenda.",
       "courseLabel": "Curso",
       "courseEmptyOption": "Crea un curso primero",
+      "courseUnavailableOption": "Elige un curso disponible",
       "typeLabel": "Tipo de sesión",
       "startsAtLabel": "Fecha y hora",
       "titleLabel": "Título de la sesión",

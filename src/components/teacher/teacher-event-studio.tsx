@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
+import { CalendarDays, Plus, X } from "lucide-react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -139,7 +140,7 @@ export function TeacherEventStudio() {
   }, [user]);
 
   const selectedCourse = useMemo(
-    () => courses.find((course) => course.id === courseId) ?? courses[0],
+    () => courseId ? courses.find((course) => course.id === courseId) : courses[0],
     [courseId, courses],
   );
 
@@ -339,45 +340,46 @@ export function TeacherEventStudio() {
     .replace("{filter}", () => t(`${copy}.filter.${filter}`));
 
   return (
-    <section className="grid gap-5">
-      <div className="grid gap-4 sm:grid-cols-3">
+    <section className="grid min-w-0 gap-5">
+      <dl className="grid grid-cols-3 divide-x divide-[var(--color-line)] border-y border-[var(--color-line)] py-4">
         {tiles.map((tile) => (
           <div
             key={tile.key}
-            className="studio-kpi-card dash-card dash-card--strong p-5"
+            className="min-w-0 px-3 first:pl-0 last:pr-0 sm:px-6"
           >
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-ink-muted)]">
+            <dt className="break-words text-xs font-semibold text-[var(--color-ink-soft)]">
               {tile.label}
-            </p>
+            </dt>
             {eventsLoaded ? (
-              <p className="mt-2 text-4xl font-bold tracking-[-0.04em] text-[var(--color-primary)]">
+              <dd className="mt-1 text-2xl font-semibold text-[var(--color-ink)]">
                 {tile.value}
-              </p>
+              </dd>
             ) : (
-              <div className="mt-3 h-8 w-16 animate-pulse rounded bg-[var(--color-surface-strong)]" />
+              <dd className="mt-1 h-8 w-10 animate-pulse rounded bg-[var(--color-surface-strong)]" />
             )}
-            <p className="mt-2 max-w-[13rem] text-xs leading-5 text-[var(--color-ink-soft)]">
+            <dd className="sr-only">
               {tile.hint}
-            </p>
+            </dd>
           </div>
         ))}
-      </div>
+      </dl>
 
-      <div className="settings-section-card">
+      <div className="min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-line)] pb-4">
-          <div className="flex items-baseline gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <CalendarDays aria-hidden="true" className="size-4 shrink-0 text-[var(--color-ink-soft)]" />
             <h3 className="text-base font-bold text-[var(--color-ink)]">
               {t(`${copy}.sectionTitle`)}
             </h3>
-            <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
-              {t(`${copy}.sectionEyebrow`)}
-            </span>
           </div>
           <button
             type="button"
+            aria-expanded={isFormOpen}
+            aria-controls="event-session-form"
             onClick={() => (isFormOpen ? closeForm() : setIsFormOpen(true))}
-            className={`${isFormOpen ? "button-outline" : "button-solid"} px-4 py-2.5 text-sm`}
+            className={`${isFormOpen ? "button-outline" : "button-solid"} min-h-11 gap-2 px-4 py-2.5 text-sm`}
           >
+            {isFormOpen ? <X aria-hidden="true" size={16} /> : <Plus aria-hidden="true" size={16} />}
             {isFormOpen ? t(`${copy}.closeForm`) : t(`${copy}.newSession`)}
           </button>
         </div>
@@ -385,21 +387,18 @@ export function TeacherEventStudio() {
         {/* Erro fora do formulario: cancelar e excluir tambem falham, e com o
             formulario fechado a mensagem ficava invisivel. */}
         {error ? (
-          <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p role="alert" className="mt-4 rounded-[8px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t(`${copy}.errors.${error}`)}
           </p>
         ) : null}
 
         {isFormOpen ? (
-          <div className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-5">
+          <div id="event-session-form" className="border-b border-[var(--color-line)] py-5">
             <h4 className="text-sm font-bold text-[var(--color-ink)]">
               {editingEventId
                 ? t(`${copy}.formTitleEdit`)
                 : t(`${copy}.formTitleNew`)}
             </h4>
-            <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
-              {t(`${copy}.formIntro`)}
-            </p>
 
             <form className="mt-5 grid gap-4" onSubmit={handleSubmit}>
               <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -408,17 +407,16 @@ export function TeacherEventStudio() {
                   value={selectedCourse?.id ?? ""}
                   onChange={(event) => setCourseId(event.target.value)}
                   disabled={courses.length === 0 || isLoading || Boolean(editingEventId)}
-                  className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:opacity-60"
+                  className="min-w-0 w-full rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:opacity-60"
                 >
-                  {courses.length === 0 ? (
-                    <option value="">{t(`${copy}.courseEmptyOption`)}</option>
-                  ) : (
-                    courses.map((course) => (
+                  {!selectedCourse ? (
+                    <option value="" disabled>{t(`${copy}.${courses.length ? "courseUnavailableOption" : "courseEmptyOption"}`)}</option>
+                  ) : null}
+                  {courses.map((course) => (
                       <option key={course.id} value={course.id}>
                         {course.title}
                       </option>
-                    ))
-                  )}
+                  ))}
                 </select>
               </label>
 
@@ -508,7 +506,7 @@ export function TeacherEventStudio() {
                 ) : null}
                 {!editingEventId && !selectedCourse && !isLoading ? (
                   <p className="w-full text-xs text-[var(--color-ink-soft)]">
-                    {t(`${copy}.needCourse`)}
+                    {t(`${copy}.${courses.length ? "courseUnavailableOption" : "needCourse"}`)}
                   </p>
                 ) : null}
               </div>

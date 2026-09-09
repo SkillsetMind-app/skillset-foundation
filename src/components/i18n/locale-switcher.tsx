@@ -16,10 +16,8 @@ import { LOCALES, LOCALE_LABELS, LOCALE_SHORT_LABELS, type Locale } from "@/lib/
 // clique não foca o botão, e o blur fecharia o menu antes do click da opção.
 //
 // `variant="compact"` é para dentro de uma barra de ícones (topo da plataforma,
-// barra do site): o pill de 44px com seta era grande demais e não parecia da
-// mesma família dos vizinhos. Compacto = a mesma caixa dos botões de busca,
-// tema e sino (size-10, moldura quadrada de cantos suaves), só a sigla, sem a
-// seta. O menu, o teclado e o rótulo continuam idênticos nas duas variantes.
+// barra do site): sigla sem moldura permanente; alvo de toque permanece 44px.
+// O menu, o teclado e o rótulo continuam idênticos nas duas variantes.
 export function LocaleSwitcher({
   dropUp = false,
   variant = "default",
@@ -94,7 +92,7 @@ export function LocaleSwitcher({
         }}
         className={
           compact
-            ? "grid size-10 place-items-center rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[11px] font-bold tracking-[0.08em] text-[var(--color-ink)] transition-colors hover:bg-[var(--color-surface-strong)]"
+            ? "locale-switcher-compact grid size-11 shrink-0 place-items-center rounded-md bg-transparent text-[11px] font-semibold text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]"
             : "inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-2.5 text-[11px] font-bold tracking-[0.08em] text-[var(--color-ink)] transition-colors hover:border-[var(--color-line-strong)]"
         }
       >

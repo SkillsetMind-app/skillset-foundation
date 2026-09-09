@@ -1,21 +1,25 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { TeacherEventStudio } from "@/components/teacher/teacher-event-studio";
 import type { CourseEvent } from "@/domain/course-event";
+import { createCourseEvent } from "@/lib/data/course-events";
 
 const authState = vi.hoisted(() => ({
   user: { uid: "teacher-1", roles: ["teacher"] },
 }));
 // A agenda que a inscricao entrega; cada teste decide o que ha nela.
-const agenda = vi.hoisted(() => ({ events: [] as CourseEvent[] }));
+const agenda = vi.hoisted(() => ({
+  events: [] as CourseEvent[],
+  params: "courseId=event-product-1&newEvent=1",
+}));
 
 // O I18nProvider chama useRouter() para o refresh ao trocar de idioma.
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
-  useSearchParams: () => new URLSearchParams("courseId=event-product-1&newEvent=1"),
+  useSearchParams: () => new URLSearchParams(agenda.params),
 }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
@@ -68,6 +72,32 @@ vi.mock("@/lib/data/course-events", () => ({
 describe("TeacherEventStudio", () => {
   afterEach(() => {
     agenda.events = [];
+    agenda.params = "courseId=event-product-1&newEvent=1";
+    vi.clearAllMocks();
+  });
+
+  it("does not silently schedule against another course when the requested course is unavailable", async () => {
+    agenda.params = "courseId=deleted-course&newEvent=1";
+    render(<TeacherEventStudio />);
+    const course = screen.getByRole("combobox", { name: "Course" });
+    expect(course).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Schedule session" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Date and time"), { target: { value: "2027-03-14T15:30" } });
+    fireEvent.change(screen.getByLabelText("External class link"), { target: { value: "https://meet.example.com/live" } });
+    const form = course.closest("form");
+    if (!form) throw new Error("Event form not found");
+    fireEvent.submit(form);
+    await waitFor(() => expect(createCourseEvent).not.toHaveBeenCalled());
+    fireEvent.change(course, { target: { value: "event-product-1" } });
+    expect(course).toHaveValue("event-product-1");
+    expect(screen.getByRole("button", { name: "Schedule session" })).toBeEnabled();
+  });
+
+  it("still defaults to the first course when no course was requested", () => {
+    agenda.params = "newEvent=1";
+    render(<TeacherEventStudio />);
+    expect(screen.getByRole("combobox", { name: "Course" })).toHaveValue("course-1");
+    expect(screen.getByRole("button", { name: "Schedule session" })).toBeEnabled();
   });
 
   it("preselects the product created by the event workflow", async () => {
