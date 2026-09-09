@@ -85,9 +85,10 @@ describe("idioma na barra do topo da plataforma", () => {
     },
   );
 
-  it("usa a variante compacta: 40px, moldura quadrada, sem a seta", () => {
+  it("usa a variante discreta: alvo 44px sem moldura permanente ou seta", () => {
     const { trigger } = renderHeader("/teach");
-    expect(trigger).toHaveClass("size-10", "rounded-[10px]");
+    expect(trigger).toHaveClass("size-11", "locale-switcher-compact", "bg-transparent");
+    expect(trigger).not.toHaveClass("border");
     expect(trigger).not.toHaveClass("rounded-full");
     expect(trigger).toHaveTextContent("EN");
     expect(trigger.querySelector("svg")).toBeNull();

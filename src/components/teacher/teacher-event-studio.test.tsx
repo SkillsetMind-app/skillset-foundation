@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { TeacherEventStudio } from "@/components/teacher/teacher-event-studio";
 import type { CourseEvent } from "@/domain/course-event";
-import { createCourseEvent } from "@/lib/data/course-events";
+import { createCourseEvent, updateCourseEvent } from "@/lib/data/course-events";
 
 const authState = vi.hoisted(() => ({
   user: { uid: "teacher-1", roles: ["teacher"] },
@@ -81,23 +81,51 @@ describe("TeacherEventStudio", () => {
     render(<TeacherEventStudio />);
     const course = screen.getByRole("combobox", { name: "Course" });
     expect(course).toHaveValue("");
-    expect(screen.getByRole("button", { name: "Schedule session" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Date and time"), { target: { value: "2027-03-14T15:30" } });
-    fireEvent.change(screen.getByLabelText("External class link"), { target: { value: "https://meet.example.com/live" } });
     const form = course.closest("form");
     if (!form) throw new Error("Event form not found");
     fireEvent.submit(form);
     await waitFor(() => expect(createCourseEvent).not.toHaveBeenCalled());
     fireEvent.change(course, { target: { value: "event-product-1" } });
     expect(course).toHaveValue("event-product-1");
-    expect(screen.getByRole("button", { name: "Schedule session" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
   });
 
   it("still defaults to the first course when no course was requested", () => {
     agenda.params = "newEvent=1";
     render(<TeacherEventStudio />);
     expect(screen.getByRole("combobox", { name: "Course" })).toHaveValue("course-1");
-    expect(screen.getByRole("button", { name: "Schedule session" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
+  });
+
+  it("reveals details only after a valid date, preserves both steps, and saves only at the end", async () => {
+    render(<TeacherEventStudio />);
+    expect(screen.queryByLabelText("Session title")).not.toBeInTheDocument();
+    const date = screen.getByLabelText("Date and time");
+    const form = date.closest("form")!;
+    fireEvent.submit(form);
+    expect(screen.queryByLabelText("Session title")).not.toBeInTheDocument();
+    expect(createCourseEvent).not.toHaveBeenCalled();
+    fireEvent.change(date, { target: { value: "2027-03-14T15:30" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByRole("heading", { name: "Session details" })).toHaveFocus();
+    expect(screen.queryByLabelText("Date and time")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Session title"), { target: { value: "Live workshop" } });
+    fireEvent.change(screen.getByLabelText("External class link"), { target: { value: "https://meet.example.com/live" } });
+    fireEvent.change(screen.getByLabelText("Session description"), { target: { value: "Practical exercises together." } });
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByLabelText("Date and time")).toHaveValue("2027-03-14T15:30");
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByLabelText("Session title")).toHaveValue("Live workshop");
+    expect(createCourseEvent).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Schedule session" }));
+    await waitFor(() => expect(createCourseEvent).toHaveBeenCalledTimes(1));
+    expect(createCourseEvent).toHaveBeenCalledWith(expect.objectContaining({
+      courseId: "event-product-1", title: "Live workshop", externalUrl: "https://meet.example.com/live",
+      startsAt: new Date("2027-03-14T15:30").toISOString(),
+    }));
+    await waitFor(() => expect(screen.queryByLabelText("Session title")).not.toBeInTheDocument());
   });
 
   it("preselects the product created by the event workflow", async () => {
@@ -106,6 +134,29 @@ describe("TeacherEventStudio", () => {
     await waitFor(() => {
       expect(screen.getByRole("combobox", { name: "Course" })).toHaveValue("event-product-1");
     });
+  });
+
+  it("keeps edit values and failed saves on the details step for retry", async () => {
+    agenda.params = "";
+    agenda.events = [{
+      id: "event-edit", courseId: "course-1", courseSlug: "course-1", courseTitle: "Existing course",
+      ownerId: "teacher-1", title: "Existing session", description: "An existing description.",
+      type: "live_class", status: "scheduled", startsAt: "2027-03-14T15:30:00.000Z",
+      externalUrl: "https://meet.example.com/live", recordingAssetId: null,
+    }];
+    vi.mocked(updateCourseEvent).mockRejectedValueOnce(new Error("Save unavailable"));
+    render(<TeacherEventStudio />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getByRole("combobox", { name: "Course" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByLabelText("Session title")).toHaveValue("Existing session");
+    fireEvent.click(screen.getByRole("button", { name: "Update session" }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.getByLabelText("Session title")).toHaveValue("Existing session");
+    expect(createCourseEvent).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Update session" }));
+    await waitFor(() => expect(updateCourseEvent).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByLabelText("Session title")).not.toBeInTheDocument());
   });
 
   // O estudio inteiro ainda fala ingles; so a data passou a seguir o idioma da

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
-import { CalendarDays, Plus, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, Plus, X } from "lucide-react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -99,9 +99,15 @@ export function TeacherEventStudio() {
   const [isFormOpen, setIsFormOpen] = useState(
     searchParams.get("newEvent") === "1",
   );
+  const [formStep, setFormStep] = useState<1 | 2>(1);
+  const stepHeading = useRef<HTMLHeadingElement>(null);
   const [filter, setFilter] = useState<EventFilter>("upcoming");
   const [search, setSearch] = useState("");
   const [now] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (isFormOpen) stepHeading.current?.focus();
+  }, [formStep, isFormOpen]);
 
   useEffect(() => {
     if (!user) {
@@ -185,6 +191,7 @@ export function TeacherEventStudio() {
   );
 
   function resetForm() {
+    setFormStep(1);
     setEditingEventId(null);
     setTitle("");
     setStartsAt("");
@@ -199,6 +206,7 @@ export function TeacherEventStudio() {
   }
 
   function startEditing(event: CourseEvent) {
+    setFormStep(1);
     setEditingEventId(event.id);
     setCourseId(event.courseId);
     setType(event.type);
@@ -213,17 +221,29 @@ export function TeacherEventStudio() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!user) {
+    if (!user || isSaving || !event.currentTarget.reportValidity()) {
+      return;
+    }
+
+    if (!editingEventId && !selectedCourse) {
+      setError("noCourse");
+      return;
+    }
+
+    if (!startsAt || !Number.isFinite(new Date(startsAt).getTime())) {
+      setError("startsAt");
+      setFormStep(1);
+      return;
+    }
+
+    if (formStep === 1) {
+      setError("");
+      setFormStep(2);
       return;
     }
 
     if (!isValidExternalEventUrl(externalUrl)) {
       setError("url");
-      return;
-    }
-
-    if (!startsAt) {
-      setError("startsAt");
       return;
     }
 
@@ -377,6 +397,7 @@ export function TeacherEventStudio() {
             aria-expanded={isFormOpen}
             aria-controls="event-session-form"
             onClick={() => (isFormOpen ? closeForm() : setIsFormOpen(true))}
+            disabled={isSaving}
             className={`${isFormOpen ? "button-outline" : "button-solid"} min-h-11 gap-2 px-4 py-2.5 text-sm`}
           >
             {isFormOpen ? <X aria-hidden="true" size={16} /> : <Plus aria-hidden="true" size={16} />}
@@ -394,13 +415,25 @@ export function TeacherEventStudio() {
 
         {isFormOpen ? (
           <div id="event-session-form" className="border-b border-[var(--color-line)] py-5">
-            <h4 className="text-sm font-bold text-[var(--color-ink)]">
+            <p className="text-sm font-semibold text-[var(--color-ink-soft)]">
               {editingEventId
                 ? t(`${copy}.formTitleEdit`)
                 : t(`${copy}.formTitleNew`)}
+            </p>
+            <ol className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--color-ink-soft)]">
+              <li aria-current={formStep === 1 ? "step" : undefined} className={formStep === 1 ? "font-semibold text-[var(--color-ink)]" : undefined}>
+                1. {t(`${copy}.stepSchedule`)}
+              </li>
+              <li aria-current={formStep === 2 ? "step" : undefined} className={formStep === 2 ? "font-semibold text-[var(--color-ink)]" : undefined}>
+                2. {t(`${copy}.stepDetails`)}
+              </li>
+            </ol>
+            <h4 ref={stepHeading} tabIndex={-1} className="mt-5 text-base font-semibold text-[var(--color-ink)]">
+              {t(`${copy}.${formStep === 1 ? "stepSchedule" : "stepDetails"}`)}
             </h4>
 
             <form className="mt-5 grid gap-4" onSubmit={handleSubmit}>
+              {formStep === 1 ? <>
               <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                 {t(`${copy}.courseLabel`)}
                 <select
@@ -446,7 +479,10 @@ export function TeacherEventStudio() {
                   />
                 </label>
               </div>
-
+              </> : <>
+              <p className="break-words text-sm text-[var(--color-ink-soft)]">
+                {selectedCourse?.title} · {t(`${copy}.type.${type}`)} · {formatEventDateTime(startsAt, locale, t("platform.events.datePending"))}
+              </p>
               <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                 {t(`${copy}.titleLabel`)}
                 <input
@@ -482,23 +518,33 @@ export function TeacherEventStudio() {
                   className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
                 />
               </label>
+              </>}
 
               <div className="flex flex-wrap items-center gap-3">
+                {formStep === 2 ? (
+                  <button type="button" disabled={isSaving} onClick={() => { setError(""); setFormStep(1); }} className="button-outline min-h-11 gap-2 px-4 py-2.5 text-sm">
+                    <ArrowLeft aria-hidden="true" size={16} />{t(`${copy}.back`)}
+                  </button>
+                ) : null}
                 <button
                   type="submit"
-                  disabled={isSaving || (!editingEventId && !selectedCourse)}
-                  className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+                  disabled={isSaving || isLoading || (!editingEventId && !selectedCourse)}
+                  className="button-solid min-h-11 gap-2 px-4 py-2.5 text-sm disabled:opacity-60"
                 >
                   {isSaving
                     ? t(`${copy}.saving`)
-                    : editingEventId
-                      ? t(`${copy}.submitEdit`)
-                      : t(`${copy}.submitNew`)}
+                    : formStep === 1
+                      ? t(`${copy}.continue`)
+                      : editingEventId
+                        ? t(`${copy}.submitEdit`)
+                        : t(`${copy}.submitNew`)}
+                  {formStep === 1 ? <ArrowRight aria-hidden="true" size={16} /> : null}
                 </button>
                 {editingEventId ? (
                   <button
                     type="button"
                     onClick={closeForm}
+                    disabled={isSaving}
                     className="button-outline px-4 py-2.5 text-sm"
                   >
                     {t(`${copy}.cancelEdit`)}

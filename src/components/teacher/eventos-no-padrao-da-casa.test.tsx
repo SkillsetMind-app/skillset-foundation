@@ -125,7 +125,7 @@ describe("agenda de eventos no padrao da casa", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "New session" }));
 
-    expect(screen.getByLabelText("Session title")).toBeInTheDocument();
+    expect(screen.getByLabelText("Date and time")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Course" })).toBeInTheDocument();
   });
 
@@ -140,7 +140,7 @@ describe("agenda de eventos no padrao da casa", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(trigger);
     const panel = document.getElementById(trigger.getAttribute("aria-controls")!);
-    expect(panel).toContainElement(screen.getByLabelText("Session title"));
+    expect(panel).toContainElement(screen.getByLabelText("Date and time"));
     expect(panel).toHaveClass("border-b");
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
@@ -203,6 +203,6 @@ describe("agenda de eventos no padrao da casa", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Schedule a session" }));
 
-    expect(screen.getByLabelText("Session title")).toBeInTheDocument();
+    expect(screen.getByLabelText("Date and time")).toBeInTheDocument();
   });
 });
