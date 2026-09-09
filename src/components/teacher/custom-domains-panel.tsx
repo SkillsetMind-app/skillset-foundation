@@ -3,6 +3,7 @@
 import { Check, Copy, Globe, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
 import {
   Button,
@@ -16,7 +17,6 @@ import type { CustomDomainStatus } from "@/domain/custom-domain";
 import {
   dnsInstructionFor,
   domainRejectionMessage,
-  nextActionFor,
   parseCustomDomain,
 } from "@/domain/custom-domain";
 
@@ -31,12 +31,32 @@ type DomainRow = {
 
 type Quota = { used: number; limit: number };
 
-const statusLabel: Record<CustomDomainStatus, string> = {
-  pending_dns: "Waiting for DNS",
-  pending_verification: "Waiting for verification",
-  active: "Live",
-  error: "Problem",
-};
+// These API messages predate localized UI. Keep the mapping here, without
+// changing their contract or treating every HTTP 403 as a plan restriction.
+const apiErrorKeys = new Map<string, string>([
+  ["You must be signed in.", "signIn"],
+  ["Custom domains are not available yet. Support has been notified.", "unavailable"],
+  ["You have used every domain your plan includes. Upgrade to add another.", "quota"],
+  ["Custom domains are not included on your plan.", "plan"],
+  ["That domain is already connected.", "duplicate"],
+  ["Could not add that domain.", "add"],
+  ["Could not remove that domain.", "remove"],
+  ["Domain not found.", "notFound"],
+  ["That domain is already connected somewhere else.", "connectedElsewhere"],
+  ["Too many domain changes right now. Try again in a few minutes.", "tooManyChanges"],
+  ["The platform could not reach the domain provider. Support has been notified.", "providerUnavailable"],
+  ["The domain could not be set up. Check the spelling and try again.", "setup"],
+]);
+
+function domainErrorKey(message: unknown, fallback: "add" | "recheck" | "remove" | "setup") {
+  if (typeof message === "string") {
+    const rejection = Object.entries(domainRejectionMessage).find(([, text]) => text === message);
+    if (rejection) return `teach.customDomains.rejections.${rejection[0]}`;
+    const known = apiErrorKeys.get(message);
+    if (known) return `teach.customDomains.errors.${known}`;
+  }
+  return `teach.customDomains.errors.${fallback}`;
+}
 
 /**
  * A DNS record is copied into another website's form, character by character.
@@ -45,10 +65,24 @@ const statusLabel: Record<CustomDomainStatus, string> = {
  * single most likely reason a teacher's domain never goes live.
  */
 function CopyableRecord({ label, value }: { label: string; value: string }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
+
+  async function copyValue() {
+    setCopied(false);
+    setCopyFailed(false);
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopyFailed(true);
+    }
+  }
 
   return (
-    <div className="grid gap-1">
+    <div className="relative grid grid-cols-1 gap-1">
       <Eyebrow as="span" tone="muted">
         {label}
       </Eyebrow>
@@ -58,18 +92,19 @@ function CopyableRecord({ label, value }: { label: string; value: string }) {
         </code>
         <button
           type="button"
-          onClick={() => {
-            void navigator.clipboard.writeText(value).then(() => {
-              setCopied(true);
-              window.setTimeout(() => setCopied(false), 2000);
-            });
-          }}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-[8px] border border-[var(--color-line)] bg-white text-[var(--color-ink-soft)] transition hover:text-[var(--color-ink)]"
-          aria-label={`Copy ${label}`}
+          onClick={() => void copyValue()}
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-[8px] border border-[var(--color-line)] bg-white text-[var(--color-ink-soft)] transition hover:text-[var(--color-ink)]"
+          aria-label={t("teach.customDomains.copyAria").replace("{label}", () => label)}
         >
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         </button>
       </div>
+      {copied ? <span role="status" className="sr-only">{t("teach.customDomains.copied")}</span> : null}
+      {copyFailed ? (
+        <p role="alert" className="text-xs text-[var(--color-danger-fg)]">
+          {t("teach.customDomains.copyError")}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -79,17 +114,20 @@ function DomainCard({
   onRemove,
   onRecheck,
   busy,
+  errorMessage,
 }: {
   domain: DomainRow;
   onRemove: (id: string) => void;
   onRecheck: (id: string) => void;
   busy: boolean;
+  errorMessage?: string;
 }) {
-  const action = nextActionFor(domain);
+  const { t } = useTranslation();
+  const action = domain.status === "active" ? null : t(`teach.customDomains.nextAction.${domain.status}`);
   const dns = dnsInstructionFor(domain.hostname);
 
   return (
-    <Card tone="soft" padding="sm" shadow={false} className="grid gap-3">
+    <Card tone="soft" padding="sm" shadow={false} className="grid grid-cols-1 gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <Globe className="h-4 w-4 shrink-0 text-[var(--color-ink-soft)]" />
         <span className="min-w-0 flex-1 truncate font-semibold text-[var(--color-ink)]">
@@ -98,11 +136,11 @@ function DomainCard({
         {/* O chip da casa: a cor carrega a mesma informação do rótulo, no
             mesmo vocabulário do resto do estúdio, e acompanha o tema escuro —
             a paleta crua do Tailwind (bg-amber-100...) não acompanhava. */}
-        <StatusChip status={domain.status} label={statusLabel[domain.status]} />
+        <StatusChip status={domain.status} label={t(`teach.customDomains.status.${domain.status}`)} className="max-w-full whitespace-normal!" />
       </div>
 
       {domain.status === "error" && domain.error_reason ? (
-        <p className="text-sm text-[var(--color-danger-fg)]">{domain.error_reason}</p>
+        <p className="text-sm text-[var(--color-danger-fg)]">{t(domainErrorKey(domain.error_reason, "setup"))}</p>
       ) : null}
 
       {action ? (
@@ -110,28 +148,30 @@ function DomainCard({
       ) : null}
 
       {domain.status === "pending_dns" ? (
-        <div className="grid gap-3 sm:grid-cols-3">
-          <CopyableRecord label="Type" value={dns.type} />
-          <CopyableRecord label="Name" value={dns.name} />
-          <CopyableRecord label="Value" value={dns.value} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <CopyableRecord label={t("teach.customDomains.record.type")} value={dns.type} />
+          <CopyableRecord label={t("teach.customDomains.record.name")} value={dns.name} />
+          <CopyableRecord label={t("teach.customDomains.record.value")} value={dns.value} />
         </div>
       ) : null}
 
       {domain.status === "pending_verification" &&
       domain.verification_name &&
       domain.verification_value ? (
-        <div className="grid gap-3 sm:grid-cols-3">
-          <CopyableRecord label="Type" value="TXT" />
-          <CopyableRecord label="Name" value={domain.verification_name} />
-          <CopyableRecord label="Value" value={domain.verification_value} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <CopyableRecord label={t("teach.customDomains.record.type")} value="TXT" />
+          <CopyableRecord label={t("teach.customDomains.record.name")} value={domain.verification_name} />
+          <CopyableRecord label={t("teach.customDomains.record.value")} value={domain.verification_value} />
         </div>
       ) : null}
+
+      {errorMessage ? <InlineAlert tone="error">{errorMessage}</InlineAlert> : null}
 
       <div className="flex flex-wrap gap-2">
         {domain.status !== "active" ? (
           <Button variant="outline" disabled={busy} onClick={() => onRecheck(domain.id)}>
             <RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} />
-            Check again
+            {t("teach.customDomains.recheck")}
           </Button>
         ) : null}
         {/* Confirmação + folga do vizinho (mesmo remédio do #129). Este botão
@@ -143,7 +183,7 @@ function DomainCard({
           disabled={busy}
           onClick={() => {
             const confirmed = window.confirm(
-              `Disconnect ${domain.hostname}? Students go back to the platform address, and the DNS setup starts over if you reconnect it.`,
+              t("teach.customDomains.confirmDisconnect").replace("{hostname}", () => domain.hostname),
             );
             if (confirmed) {
               onRemove(domain.id);
@@ -152,7 +192,7 @@ function DomainCard({
           className="ml-auto"
         >
           <Trash2 className="h-4 w-4" />
-          Disconnect
+          {t("teach.customDomains.disconnect")}
         </Button>
       </div>
     </Card>
@@ -160,12 +200,15 @@ function DomainCard({
 }
 
 export function CustomDomainsPanel() {
+  const { t } = useTranslation();
   const [domains, setDomains] = useState<DomainRow[]>([]);
   const [quota, setQuota] = useState<Quota>({ used: 0, limit: 0 });
   const [configured, setConfigured] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [hostname, setHostname] = useState("");
   const [error, setError] = useState("");
+  const [actionError, setActionError] = useState<{ id: string; key: string } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
 
@@ -177,8 +220,9 @@ export function CustomDomainsPanel() {
       setDomains(payload.domains ?? []);
       setQuota(payload.quota ?? { used: 0, limit: 0 });
       setConfigured(payload.configured !== false);
+      setHasLoaded(true);
     } catch {
-      setError("We could not load your domains.");
+      setError("teach.customDomains.errors.load");
     } finally {
       setLoading(false);
     }
@@ -201,7 +245,7 @@ export function CustomDomainsPanel() {
     // full web address — is answered instantly rather than after a round trip.
     const parsed = parseCustomDomain(hostname);
     if (!parsed.ok) {
-      setError(domainRejectionMessage[parsed.reason]);
+      setError(`teach.customDomains.rejections.${parsed.reason}`);
       return;
     }
 
@@ -214,33 +258,51 @@ export function CustomDomainsPanel() {
       });
       const payload = await response.json();
       if (!response.ok) {
-        setError(payload.error ?? "Could not add that domain.");
+        setError(domainErrorKey(payload.error ?? payload.errorReason, "add"));
         return;
       }
       setHostname("");
       await load();
     } catch {
-      setError("Could not add that domain.");
+      setError("teach.customDomains.errors.add");
     } finally {
       setAdding(false);
     }
   }
 
   async function handleRecheck(id: string) {
+    setActionError(null);
     setBusyId(id);
     try {
-      await fetch(`/api/teach/domains/${id}`, { method: "POST" });
+      const response = await fetch(`/api/teach/domains/${id}`, { method: "POST" });
+      if (!response.ok) {
+        const payload = await response.json();
+        setActionError({ id, key: domainErrorKey(payload.error ?? payload.errorReason, "recheck") });
+        if (response.status === 404) await load();
+        return;
+      }
       await load();
+    } catch {
+      setActionError({ id, key: "teach.customDomains.errors.recheck" });
     } finally {
       setBusyId(null);
     }
   }
 
   async function handleRemove(id: string) {
+    setActionError(null);
     setBusyId(id);
     try {
-      await fetch(`/api/teach/domains/${id}`, { method: "DELETE" });
+      const response = await fetch(`/api/teach/domains/${id}`, { method: "DELETE" });
+      if (!response.ok) {
+        const payload = await response.json();
+        setActionError({ id, key: domainErrorKey(payload.error, "remove") });
+        if (response.status === 404) await load();
+        return;
+      }
       await load();
+    } catch {
+      setActionError({ id, key: "teach.customDomains.errors.remove" });
     } finally {
       setBusyId(null);
     }
@@ -250,67 +312,81 @@ export function CustomDomainsPanel() {
   const lockedOnPlan = quota.limit === 0;
 
   return (
-    <section className="settings-section-card">
+    <section className="settings-section-card" aria-busy={loading}>
       <SectionHeader
-        eyebrow="Teacher Studio"
-        title="Your own domain"
-        description="Point a domain you own at your storefront, so students arrive at your address instead of ours. You keep the domain; we handle the certificate."
+        eyebrow={t("teach.page.eyebrow")}
+        title={t("teach.customDomains.title")}
+        description={t("teach.customDomains.description")}
       />
 
-      {!configured ? (
+      {loading ? (
+        <p role="status" className="mt-6 flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          {t("teach.customDomains.loading")}
+        </p>
+      ) : !hasLoaded ? (
+        <div className="mt-6 grid gap-3">
+          <InlineAlert tone="error">{t(error)}</InlineAlert>
+          <Button
+            variant="outline"
+            className="justify-self-start"
+            onClick={() => {
+              setError("");
+              setLoading(true);
+              void load();
+            }}
+          >
+            {t("authFlow.loading.retry")}
+          </Button>
+        </div>
+      ) : !configured ? (
         <InlineAlert tone="info" className="mt-6">
-          Custom domains are not switched on yet. Nothing is wrong with your
-          account — check back shortly.
+          {t("teach.customDomains.notConfigured")}
         </InlineAlert>
       ) : lockedOnPlan ? (
         <InlineAlert tone="info" className="mt-6">
-          Your plan does not include a custom domain. Upgrade to Starter to
-          connect one.
+          {t("teach.customDomains.planLocked")}
         </InlineAlert>
       ) : (
         <>
           <p className="mt-6 text-sm font-semibold text-[var(--color-ink)]">
-            {quota.used} of {quota.limit} used
+            {t("teach.customDomains.quota")
+              .replace("{used}", () => String(quota.used))
+              .replace("{limit}", () => String(quota.limit))}
           </p>
 
-          {loading ? (
-            <p className="mt-4 flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading your domains…
-            </p>
-          ) : (
-            <div className="mt-4 grid gap-3">
-              {domains.map((domain) => (
-                <DomainCard
-                  key={domain.id}
-                  domain={domain}
-                  busy={busyId === domain.id}
-                  onRecheck={handleRecheck}
-                  onRemove={handleRemove}
-                />
-              ))}
-            </div>
-          )}
+          <div className="mt-4 grid grid-cols-1 gap-3">
+            {domains.map((domain) => (
+              <DomainCard
+                key={domain.id}
+                domain={domain}
+                busy={busyId === domain.id}
+                errorMessage={actionError?.id === domain.id ? t(actionError.key) : undefined}
+                onRecheck={handleRecheck}
+                onRemove={handleRemove}
+              />
+            ))}
+          </div>
 
           <form className="mt-5 grid gap-2" onSubmit={handleAdd}>
             {/* O erro do domínio recusado era um <p> solto no fim do
                 formulário: sem ligação com o campo e sem anúncio nenhum. Quem
                 usa leitor de tela digitava "https://meusite.com", apertava
                 Connect e não recebia absolutamente nada. */}
-            <Field id="custom-domain-hostname" label="Add a domain" error={error}>
+            <Field id="custom-domain-hostname" label={t("teach.customDomains.addLabel")} error={error ? t(error) : undefined}>
               {(a11y) => (
                 <div className="flex flex-wrap items-center gap-2">
                   <input
                     {...a11y}
                     value={hostname}
                     onChange={(event) => setHostname(event.target.value)}
-                    placeholder="yourname.com"
+                    placeholder={t("teach.customDomains.hostnamePlaceholder")}
                     disabled={atQuota || adding}
                     className="min-w-0 flex-1 rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2.5 font-mono text-sm text-[var(--color-ink)] disabled:opacity-50"
                   />
                   <Button type="submit" disabled={atQuota || adding || !hostname.trim()}>
                     {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                    Connect
+                    {t("teach.customDomains.connect")}
                   </Button>
                 </div>
               )}
@@ -318,8 +394,7 @@ export function CustomDomainsPanel() {
 
             {atQuota ? (
               <p className="text-sm text-[var(--color-ink-soft)]">
-                You have connected every domain your plan includes. Upgrade to add
-                another.
+                {t("teach.customDomains.quotaFull")}
               </p>
             ) : null}
           </form>

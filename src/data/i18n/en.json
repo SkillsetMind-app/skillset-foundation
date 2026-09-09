@@ -1747,6 +1747,65 @@
         "cleanup": "The storefront was saved, but an old image could not be removed. Save again to retry cleanup.",
         "save": "We could not save your storefront. Try again, and contact support if it keeps failing."
       }
+    },
+    "customDomains": {
+      "title": "Your own domain",
+      "description": "Point a domain you own at your storefront, so students arrive at your address instead of ours. You keep the domain; we handle the certificate.",
+      "loading": "Loading your domains…",
+      "notConfigured": "Custom domains are not switched on yet. Nothing is wrong with your account — check back shortly.",
+      "planLocked": "Your plan does not include a custom domain. Upgrade to Starter to connect one.",
+      "quota": "{used} of {limit} used",
+      "quotaFull": "You have connected every domain your plan includes. Upgrade to add another.",
+      "addLabel": "Add a domain",
+      "hostnamePlaceholder": "yourname.com",
+      "connect": "Connect",
+      "recheck": "Check again",
+      "disconnect": "Disconnect",
+      "confirmDisconnect": "Disconnect {hostname}? Students go back to the platform address, and the DNS setup starts over if you reconnect it.",
+      "copyAria": "Copy {label}",
+      "copyError": "Could not copy. Copy the value above manually.",
+      "copied": "Value copied.",
+      "record": {
+        "type": "Type",
+        "name": "Name",
+        "value": "Value"
+      },
+      "status": {
+        "pending_dns": "Waiting for DNS",
+        "pending_verification": "Waiting for verification",
+        "active": "Live",
+        "error": "Problem"
+      },
+      "nextAction": {
+        "pending_dns": "Add the DNS records below at your registrar. DNS changes can take up to 48 hours to reach everyone.",
+        "pending_verification": "Add the TXT record below to prove you own this domain, then check again.",
+        "error": "Something went wrong with this domain. Remove it and add it again, or contact support."
+      },
+      "errors": {
+        "load": "We could not load your domains.",
+        "add": "Could not add that domain.",
+        "recheck": "Could not check that domain again.",
+        "remove": "Could not remove that domain.",
+        "signIn": "You must be signed in.",
+        "unavailable": "Custom domains are not available yet. Support has been notified.",
+        "quota": "You have used every domain your plan includes. Upgrade to add another.",
+        "plan": "Custom domains are not included on your plan.",
+        "duplicate": "That domain is already connected.",
+        "notFound": "Domain not found.",
+        "connectedElsewhere": "That domain is already connected somewhere else.",
+        "tooManyChanges": "Too many domain changes right now. Try again in a few minutes.",
+        "providerUnavailable": "The platform could not reach the domain provider. Support has been notified.",
+        "setup": "The domain could not be set up. Check the spelling and try again."
+      },
+      "rejections": {
+        "empty": "Enter a domain, for example yourname.com",
+        "too_long": "That domain is too long to be valid.",
+        "has_scheme_or_path": "Enter only the domain — yourname.com, not a full web address with a path.",
+        "non_ascii": "Enter the domain in its ASCII form. If it uses accents or non-Latin characters, your registrar shows a version starting with xn--.",
+        "malformed": "That does not look like a domain. Example: yourname.com",
+        "single_label": "Include the ending, for example yourname.com rather than yourname",
+        "reserved": "That domain belongs to the platform and cannot be claimed."
+      }
     }
   },
   "creatorPanel": {

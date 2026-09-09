@@ -1747,6 +1747,65 @@
         "cleanup": "La tienda se guardó, pero no se pudo eliminar una imagen anterior. Guarda de nuevo para reintentar la limpieza.",
         "save": "No pudimos guardar tu tienda. Inténtalo de nuevo y contacta con soporte si el problema continúa."
       }
+    },
+    "customDomains": {
+      "title": "Tu propio dominio",
+      "description": "Apunta un dominio que te pertenezca a tu tienda para que los estudiantes lleguen a tu dirección. Tú conservas el dominio y nosotros nos encargamos del certificado.",
+      "loading": "Cargando tus dominios…",
+      "notConfigured": "Los dominios propios todavía no están activados. No hay ningún problema con tu cuenta; vuelve a consultar pronto.",
+      "planLocked": "Tu plan no incluye un dominio propio. Mejora a Starter para conectar uno.",
+      "quota": "{used} de {limit} utilizados",
+      "quotaFull": "Ya has conectado todos los dominios incluidos en tu plan. Mejora tu plan para añadir otro.",
+      "addLabel": "Añadir un dominio",
+      "hostnamePlaceholder": "tunombre.com",
+      "connect": "Conectar",
+      "recheck": "Comprobar de nuevo",
+      "disconnect": "Desconectar",
+      "confirmDisconnect": "¿Desconectar {hostname}? Los estudiantes volverán a la dirección de la plataforma y tendrás que configurar el DNS de nuevo si lo reconectas.",
+      "copyAria": "Copiar {label}",
+      "copyError": "No se pudo copiar. Copia el valor de arriba manualmente.",
+      "copied": "Valor copiado.",
+      "record": {
+        "type": "Tipo",
+        "name": "Nombre",
+        "value": "Valor"
+      },
+      "status": {
+        "pending_dns": "Esperando DNS",
+        "pending_verification": "Esperando verificación",
+        "active": "Activo",
+        "error": "Problema"
+      },
+      "nextAction": {
+        "pending_dns": "Añade los registros DNS de abajo en tu registrador. Los cambios de DNS pueden tardar hasta 48 horas en propagarse.",
+        "pending_verification": "Añade el registro TXT de abajo para demostrar que el dominio te pertenece y vuelve a comprobarlo.",
+        "error": "Hubo un problema con este dominio. Elimínalo y añádelo de nuevo, o contacta con soporte."
+      },
+      "errors": {
+        "load": "No pudimos cargar tus dominios.",
+        "add": "No pudimos añadir ese dominio.",
+        "recheck": "No pudimos volver a comprobar ese dominio.",
+        "remove": "No pudimos desconectar ese dominio.",
+        "signIn": "Debes iniciar sesión.",
+        "unavailable": "Los dominios propios todavía no están disponibles. Se ha avisado a soporte.",
+        "quota": "Has utilizado todos los dominios incluidos en tu plan. Mejora tu plan para añadir otro.",
+        "plan": "Tu plan no incluye dominios propios.",
+        "duplicate": "Ese dominio ya está conectado.",
+        "notFound": "No se encontró el dominio.",
+        "connectedElsewhere": "Ese dominio ya está conectado en otro lugar.",
+        "tooManyChanges": "Hay demasiados cambios de dominio en este momento. Inténtalo de nuevo en unos minutos.",
+        "providerUnavailable": "La plataforma no pudo contactar con el proveedor de dominios. Se ha avisado a soporte.",
+        "setup": "No se pudo configurar el dominio. Comprueba la escritura e inténtalo de nuevo."
+      },
+      "rejections": {
+        "empty": "Introduce un dominio, por ejemplo tunombre.com",
+        "too_long": "Ese dominio es demasiado largo para ser válido.",
+        "has_scheme_or_path": "Introduce solo el dominio: tunombre.com, no una dirección web completa con una ruta.",
+        "non_ascii": "Introduce el dominio en formato ASCII. Si tiene acentos o caracteres no latinos, tu registrador muestra una versión que empieza por xn--.",
+        "malformed": "Eso no parece un dominio. Ejemplo: tunombre.com",
+        "single_label": "Incluye la terminación, por ejemplo tunombre.com en lugar de tunombre",
+        "reserved": "Ese dominio pertenece a la plataforma y no se puede registrar."
+      }
     }
   },
   "creatorPanel": {
