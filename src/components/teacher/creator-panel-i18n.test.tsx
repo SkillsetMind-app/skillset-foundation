@@ -64,6 +64,7 @@ vi.mock("@/lib/data/teacher-courses", () => ({
 }));
 
 vi.mock("@/lib/data/user-profiles", () => ({
+  claimWelcomeTour: vi.fn(async () => false),
   subscribeToUserProfile: (_uid: string, onData: (profile: unknown) => void) => {
     onData({ creatorVerificationStatus: "none", currentPlanId: "free" });
     return () => undefined;

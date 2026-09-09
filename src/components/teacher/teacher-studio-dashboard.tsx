@@ -80,7 +80,7 @@ export function TeacherStudioDashboard() {
 
   return (
     <div className="grid gap-8">
-      {user ? <TeacherWelcomeTour userId={user.uid} firstName={firstName} /> : null}
+      {user ? <TeacherWelcomeTour key={user.uid} userId={user.uid} firstName={firstName} /> : null}
       <header className="flex flex-wrap items-end justify-between gap-5 border-b border-[var(--color-line)] pb-5">
         <div>
           {/* Uma manchete por tela. O olho da pagina era "Producer home" em

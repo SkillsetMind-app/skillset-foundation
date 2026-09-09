@@ -53,6 +53,7 @@ vi.mock("@/lib/data/payout-ledger", () => ({
 }));
 
 vi.mock("@/lib/data/user-profiles", () => ({
+  claimWelcomeTour: vi.fn(async () => false),
   subscribeToUserProfile: (_uid: string, onData: (profile: unknown) => void) => {
     onData({ creatorVerificationStatus: "none" });
     return () => undefined;

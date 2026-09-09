@@ -1,22 +1,11 @@
 "use client";
 
 import { LayoutDashboard, PenTool, Store, Wallet, X, type LucideIcon } from "lucide-react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
-
-// First-run welcome tour for the creator studio. Mirrors the members-area
-// WelcomeTour (self-contained modal, no backend, no tour library) but teaches
-// the four things a new producer needs: build, sell, get paid, get help.
-//
-// ponytail: strings are hardcoded English to match the rest of the producer
-// dashboard (which is English-first, not i18n'd, unlike the /learn surface).
-// Move to a `teach.tour` i18n block when the studio gets localized — not worth
-// three-file JSON surgery while the surrounding surface is still hardcoded.
-//
-// ponytail: "seen" state is localStorage (per-device), same trade-off as the
-// learner tour. Upgrade to a user_profiles column only if cross-device
-// suppression ever matters.
+import { useWelcomeTour } from "@/lib/ui/use-welcome-tour";
 
 type TourStep = {
   icon: LucideIcon;
@@ -24,56 +13,41 @@ type TourStep = {
   body: string;
 };
 
-function buildSteps(firstName: string): TourStep[] {
-  const welcomeTitle = firstName ? `Welcome to your studio, ${firstName}` : "Welcome to your studio";
+function buildSteps(firstName: string, t: (key: string) => string): TourStep[] {
+  const welcomeTitle = firstName
+    ? t("teach.tour.welcomeNamed").replace("{name}", () => firstName)
+    : t("teach.tour.welcome");
 
   return [
     {
       icon: LayoutDashboard,
       title: welcomeTitle,
-      body: "This is your creator studio — build products, sell them, and get paid, all in one place. Your next steps are always waiting for you right here on this home.",
+      body: t("teach.tour.step1Body"),
     },
     {
       icon: PenTool,
-      title: "Create your first product",
-      body: "Open the builder to add lessons. For each lesson video you can upload a file or paste a YouTube / Vimeo link — both work out of the box, so start with whatever you already have.",
+      title: t("teach.tour.step2Title"),
+      body: t("teach.tour.step2Body"),
     },
     {
       icon: Store,
-      title: "Publish and sell",
-      body: "Set your price, publish to your storefront, and students enroll instantly. Private per-course messages and the community keep them engaged after they buy.",
+      title: t("teach.tour.step3Title"),
+      body: t("teach.tour.step3Body"),
     },
     {
       icon: Wallet,
-      title: "Get paid — and get help",
-      body: "Connect Stripe once, and from then on every buyer pays your Stripe account directly: the charge is created on your own Stripe account and SkillsetMind never holds it. Stripe then settles the funds into your balance on its own timing — that depends on your country and the buyer's payment method — and pays them out to your bank on your connected account's payout schedule (new accounts are verified before the first payout). And your studio advisor, down in the bottom-right corner, is here whenever you want a second opinion.",
+      title: t("teach.tour.step4Title"),
+      body: t("teach.tour.step4Body"),
     },
   ];
 }
 
-const SEEN_KEY_PREFIX = "skillset:teacher-welcome-tour:seen:";
-const EMPTY_SUBSCRIBE = () => () => {};
-
-// Read the localStorage "seen" flag without a set-state-in-effect (which the
-// codebase lints against) and without a hydration mismatch: the server snapshot
-// is `true` so nothing renders during SSR, and React reconciles the real client
-// value after hydration. No subscription — the flag only changes via dismiss().
-function useHasSeenTour(seenKey: string) {
-  return useSyncExternalStore(
-    EMPTY_SUBSCRIBE,
-    () => window.localStorage.getItem(seenKey) !== null,
-    () => true,
-  );
-}
-
 export function TeacherWelcomeTour({ userId, firstName }: { userId: string; firstName: string }) {
-  const seenKey = `${SEEN_KEY_PREFIX}${userId}`;
-  const hasSeen = useHasSeenTour(seenKey);
-  const [dismissed, setDismissed] = useState(false);
+  const { t } = useTranslation();
+  const { open, dismiss } = useWelcomeTour(userId, "teacher");
   const [stepIndex, setStepIndex] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const steps = buildSteps(firstName);
-  const open = !hasSeen && !dismissed;
+  const steps = buildSteps(firstName, t);
 
   useModalFocus(dialogRef, open);
 
@@ -83,18 +57,12 @@ export function TeacherWelcomeTour({ userId, firstName }: { userId: string; firs
     }
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        window.localStorage.setItem(seenKey, "1");
-        setDismissed(true);
+        dismiss();
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, seenKey]);
-
-  function dismiss() {
-    window.localStorage.setItem(seenKey, "1");
-    setDismissed(true);
-  }
+  }, [open, dismiss]);
 
   if (!open) {
     return null;
@@ -126,7 +94,7 @@ export function TeacherWelcomeTour({ userId, firstName }: { userId: string; firs
           <button
             type="button"
             onClick={dismiss}
-            aria-label="Skip the tour"
+            aria-label={t("learn.tour.skipTour")}
             className="grid h-11 w-11 place-items-center rounded-full text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]"
           >
             <X className="h-4 w-4" aria-hidden="true" />
@@ -163,7 +131,7 @@ export function TeacherWelcomeTour({ userId, firstName }: { userId: string; firs
             onClick={dismiss}
             className="-ml-3 inline-flex min-h-11 items-center rounded-[8px] px-3 text-sm font-medium text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
           >
-            Skip
+            {t("learn.tour.skip")}
           </button>
           <div className="flex items-center gap-2">
             {stepIndex > 0 ? (
@@ -172,12 +140,12 @@ export function TeacherWelcomeTour({ userId, firstName }: { userId: string; firs
                 onClick={() => setStepIndex((index) => Math.max(0, index - 1))}
                 className="button-outline px-4 py-2 text-sm"
               >
-                Back
+                {t("learn.tour.back")}
               </button>
             ) : null}
             {isLast ? (
               <button type="button" onClick={dismiss} className="button-solid px-4 py-2 text-sm">
-                Open your studio
+                {t("teach.tour.openStudio")}
               </button>
             ) : (
               <button
@@ -185,7 +153,7 @@ export function TeacherWelcomeTour({ userId, firstName }: { userId: string; firs
                 onClick={() => setStepIndex((index) => Math.min(steps.length - 1, index + 1))}
                 className="button-solid px-4 py-2 text-sm"
               >
-                Next
+                {t("learn.tour.next")}
               </button>
             )}
           </div>

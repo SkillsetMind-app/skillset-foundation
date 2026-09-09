@@ -2382,6 +2382,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_welcome_tour: {
+        Args: { p_uid: string; p_surface: string }
+        Returns: boolean
+      }
       fulfill_paid_course_access: {
         Args: { p_user_id: string; p_course_id: string; p_source: string; p_subscription_id?: string }
         Returns: undefined

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { WelcomeTour } from "@/components/learn/welcome-tour";
 import { TeacherWelcomeTour } from "@/components/teacher/teacher-welcome-tour";
+import { I18nProvider } from "@/components/i18n/i18n-provider";
 
 const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
 vi.mock("@/lib/supabase/client", () => ({ getSupabaseBrowserClient: () => ({ rpc }) }));
@@ -50,6 +51,15 @@ describe("saídas do tour de boas-vindas", () => {
     render(<WelcomeTour userId="student-1" firstName="Mc$&Donald" />);
 
     expect(await screen.findByRole("heading", { name: "Welcome, Mc$&Donald" })).toBeInTheDocument();
+  });
+
+  it.each(["en", "es"] as const)("localizes the creator steps and current help location (%s)", async (locale) => {
+    render(<I18nProvider initialLocale={locale}><TeacherWelcomeTour userId={`locale-${locale}`} firstName="Mc$&Donald" /></I18nProvider>);
+    expect(await screen.findByRole("heading", { name: locale === "en" ? "Welcome to your studio, Mc$&Donald" : "Bienvenido a tu espacio, Mc$&Donald" })).toBeInTheDocument();
+    for (let step = 0; step < 3; step += 1) fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Next" : "Siguiente" }));
+    expect(screen.getByText(locale === "en" ? /Advisor in the top bar/ : /Advisor en la barra superior/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Open your studio" : "Abrir mi espacio" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
 
