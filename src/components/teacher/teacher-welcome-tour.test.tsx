@@ -74,6 +74,15 @@ describe.each([
   });
   afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
+  it("lets narrow footer actions wrap instead of squeezing their labels", async () => {
+    await act(async () => { render(<Tour userId="narrow-footer" firstName="Ana" />); });
+    for (let step = 0; step < 3; step += 1) fireEvent.click(screen.getByRole("button", { name: "Next", exact: true }));
+    const actions = screen.getByRole("button", { name: "Back", exact: true }).parentElement!;
+    expect(actions.parentElement).toHaveClass("flex-wrap");
+    expect(actions).toHaveClass("flex-wrap", "max-w-full");
+    for (const button of within(actions).getAllByRole("button")) expect(button).toHaveClass("shrink-0");
+  });
+
   it("waits for the account claim before interrupting the page", async () => {
     let resolve!: (result: { data: boolean; error: null }) => void;
     rpc.mockReturnValueOnce(new Promise((done) => { resolve = done; }));
