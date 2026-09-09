@@ -175,6 +175,23 @@ describe("checklist de publicacao em tres blocos e faixa de rascunho", () => {
     expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
   });
 
+  it.each([
+    ["builder", "mt-5", "gap-6"],
+    ["hub", "mt-4", "gap-5"],
+  ] as const)("%s: groups and item lists have shrinkable tracks while keeping caller spacing", async (surface, margin, gap) => {
+    render(surface === "builder" ? <CourseBuilderStudio /> : <CourseManageHub courseId="course-1" />);
+    await screen.findByRole("heading", { name: mocks.course.title });
+    const groups = document.querySelectorAll<HTMLElement>("[data-readiness-group]");
+    expect(groups).toHaveLength(3);
+    // Structural guard, not a jsdom geometry claim: both nested grids must
+    // have a zero minimum while each caller keeps its own margin and gap.
+    expect(groups[0].parentElement).toHaveClass("grid", "grid-cols-1", margin, gap);
+    for (const group of groups) {
+      expect(within(group).getByRole("list")).toHaveClass("grid", "grid-cols-1", "gap-3");
+    }
+    expect(document.querySelectorAll("[data-readiness-group] li")).toHaveLength(9);
+  });
+
   it("curso publicado: os blocos ficam, a faixa some", async () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({ ...mocks.course, status: "published" });

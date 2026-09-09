@@ -45,6 +45,7 @@ const mocks = vi.hoisted(() => {
   return {
     fused,
     resetSubscriptionCounts: () => subscriptionCounts.clear(),
+    getSubscriptionCounts: () => new Map(subscriptionCounts),
     course,
     // O MESMO objeto em todo render: um usuario novo por render reinscreve
     // os efeitos e entra em laco.
@@ -857,6 +858,76 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(screen.getAllByText("Add at least one lesson.").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("Set a paid price greater than $0, or choose Free.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Publish product" })).toBeDisabled();
+  });
+
+  it.each(["en", "es"] as const)("localizes the real manage checklist from %s without changing publication gates or edit destinations", async (initialLocale) => {
+    const paidCourse = {
+      ...mocks.course,
+      title: "Curso $$ y $& de autoría",
+      priceAmountMinor: 12000,
+      installmentsEnabled: true,
+      installmentsMax: 3,
+    };
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit(paidCourse);
+      return () => {};
+    });
+    const { container } = render(
+      <I18nProvider initialLocale={initialLocale}>
+        <SwitchLanguage />
+        <CourseManageHub courseId="course-1" />
+      </I18nProvider>,
+    );
+    await screen.findByRole("heading", { name: paidCourse.title });
+    const subscriptions = mocks.getSubscriptionCounts();
+    const rows = () => [...container.querySelectorAll<HTMLElement>("[data-readiness-item]")];
+    const state = () => rows().map((row) => ({
+      id: row.dataset.readinessItem,
+      done: row.classList.contains("bg-[var(--color-success-soft)]"),
+      hrefs: [...row.querySelectorAll("a")].map((link) => link.getAttribute("href")),
+    }));
+    const initialState = state();
+    expect(rows()).toHaveLength(11);
+    expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({ width: "75%" });
+    if (initialLocale === "en") {
+      expect(screen.getByRole("link", { name: "Edit Course title" })).toBeInTheDocument();
+      expect(screen.getByText("6 of 8 required steps done · 75% ready")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    }
+
+    const card = screen.getByText("Lista de publicación").closest("section")!;
+    for (const [id, label, hint, optional, done, href] of [
+      ["title", "Título del curso", "Dale al curso un título de al menos 3 caracteres.", false, true, "/teach/builder?courseId=course-1&tab=details"],
+      ["summary", "Resumen", "Escribe un resumen de al menos 20 caracteres.", false, true, "/teach/builder?courseId=course-1&tab=details"],
+      ["category", "Categoría del marketplace", "Elige al menos una categoría del marketplace.", false, true, "/teach/builder?courseId=course-1&tab=details"],
+      ["cover", "Imagen de portada", "Sube una portada. Aparece en la página del producto y en las tarjetas del marketplace.", true, false, "/teach/builder?courseId=course-1&tab=details"],
+      ["module", "Módulo", "Añade al menos un módulo.", false, true, "/teach/builder?courseId=course-1&tab=content"],
+      ["lesson", "Lección", "Añade al menos una lección.", false, false, "/teach/builder?courseId=course-1&tab=content"],
+      ["pricing", "Precios", "Define un precio mayor que $0 o elige Gratis.", false, true, "/teach/builder?courseId=course-1&tab=pricing"],
+      ["outcomes", "Resultados de aprendizaje", "Añade resultados de aprendizaje. Ayudan a vender en la página del producto.", true, false, "/teach/courses/course-1/manage?section=page"],
+      ["installments", "Cuotas", "Define un límite de cuotas válido.", false, true, "/teach/builder?courseId=course-1&tab=pricing"],
+      ["payouts", "Cobros de Stripe", "Completa la configuración de cobros de Stripe antes de publicar un curso de pago.", false, false, "/account/payments#stripe-connect"],
+      ["verification", "Verificación profesional", "Hoy es opcional; será obligatoria cuando se abra la admisión profesional.", true, false, "/teach/verification"],
+    ] as const) {
+      const row = card.querySelector<HTMLElement>(`[data-readiness-item="${id}"]`)!;
+      expect(within(row).getByText(label)).toBeInTheDocument();
+      expect(within(row).getByText(hint)).toBeInTheDocument();
+      expect(Boolean(within(row).queryByText("Opcional"))).toBe(optional);
+      expect(row.classList.contains("bg-[var(--color-success-soft)]")).toBe(done);
+      expect(within(row).getByRole("link", {
+        name: id === "verification" ? "Abrir verificación" : `Editar ${label}`,
+      })).toHaveAttribute("href", href);
+      expect(within(row).getAllByRole("link")).toHaveLength(1);
+    }
+    expect(within(card).getByText("6 de 8 pasos obligatorios listos · 75% listo")).toBeInTheDocument();
+    expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({ width: "75%" });
+    expect(state()).toEqual(initialState);
+    expect(screen.getByRole("heading", { name: paidCourse.title })).toBeInTheDocument();
+    expect(mocks.getSubscriptionCounts()).toEqual(subscriptions);
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+    expect(publishTeacherCourse).not.toHaveBeenCalled();
+    expect(mocks.router.push).not.toHaveBeenCalled();
+    expect(mocks.router.replace).not.toHaveBeenCalled();
   });
 
   it("Manage: barra e contagem mostram os mesmos 67% e as mesmas pendencias", async () => {
