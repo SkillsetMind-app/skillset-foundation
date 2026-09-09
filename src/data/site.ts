@@ -147,7 +147,7 @@ export const platformNav: PlatformNavItem[] = [
   {
     href: "/teach/members",
     labelKey: "platform.nav.membersArea",
-    icon: "Image",
+    icon: "Users",
     contexts: ["teacher"],
     sectionKey: "products",
     permission: "teacherStudio.manageCourses",

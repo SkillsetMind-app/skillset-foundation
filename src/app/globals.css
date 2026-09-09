@@ -5856,8 +5856,9 @@ body:has([aria-label="Course categories"])
   padding-inline-start: 0.5rem;
 }
 
-.platform-sidebar.sidebar-collapsed .platform-nav-section {
-  display: block;
+.platform-sidebar.sidebar-collapsed .platform-nav-section,
+.platform-sidebar.sidebar-collapsed .platform-nav-footer {
+  gap: inherit;
 }
 
 /* Marketplace e "o que eu estudo" no pé da barra: são outra intenção que
