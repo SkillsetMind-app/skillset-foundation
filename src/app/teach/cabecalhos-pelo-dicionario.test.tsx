@@ -43,7 +43,13 @@ vi.mock("@/components/teacher/storefront-settings-panel", () => ({ StorefrontSet
 vi.mock("@/components/teacher/custom-domains-panel", () => ({ CustomDomainsPanel: () => null }));
 vi.mock("@/components/teacher/creator-subscription-center", () => ({ CreatorSubscriptionCenter: () => null }));
 vi.mock("@/components/teacher/stripe-connect-notice", () => ({ StripeConnectNotice: () => null }));
+vi.mock("@/components/teacher/teacher-wallet-panel", () => ({
+  // O painel real abre com o proprio cabecalho traduzido; aqui basta saber que
+  // ele entra na tela e que a casca nao acrescenta um segundo titulo.
+  TeacherWalletPanel: () => createElement("p", null, "PAINEL DA CARTEIRA"),
+}));
 
+import AccountPaymentsPage from "../account/payments/page";
 import TeacherIntegrationsPage from "./integrations/page";
 import TeacherMessagesPage from "./messages/page";
 import TeacherSaleDetailPage from "./sales/[orderId]/page";
@@ -79,6 +85,36 @@ describe("cabecalhos das paginas do estudio", () => {
     }
     expect(es.teach[key].title).not.toBe(en.teach[key].title);
     expect(es.teach[key].description).not.toBe(en.teach[key].description);
+  });
+});
+
+describe("pagamentos não repete o cabeçalho do painel", () => {
+  // O que a pessoa sofria: /account/payments mostrava "Payouts & tax" (fixo em
+  // ingles, mesmo em espanhol) e logo abaixo o painel repetia "PAYOUTS & TAX" +
+  // "Your earnings, your payout setup." — a mesma coisa tres vezes.
+  it("nao carrega texto fixo no cabeçalho", () => {
+    const source = readFileSync("src/app/account/payments/page.tsx", "utf8");
+
+    expect(source).not.toMatch(/\b(eyebrow|title|description)="/);
+    expect(source).toContain("getServerTranslation");
+  });
+
+  it.each(["es", "en"] as const)("em %s deixa o título só com o painel", async (locale) => {
+    mocks.locale = locale;
+    render(
+      <I18nProvider initialLocale={locale}>{await AccountPaymentsPage()}</I18nProvider>,
+    );
+
+    expect(screen.getByText("PAINEL DA CARTEIRA")).toBeInTheDocument();
+    // A casca nao desenha cabecalho nenhum: nada de h1 acima do painel.
+    expect(screen.queryByRole("heading")).toBeNull();
+    // E o rotulo da regiao segue o idioma da sessao.
+    expect(
+      screen.getByRole("main", {
+        name: translate(getDictionary(locale), "account.payoutsTax"),
+      }),
+    ).toBeInTheDocument();
+    expect(mocks.permissions).toEqual(["teacherStudio.access"]);
   });
 });
 
