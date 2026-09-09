@@ -345,6 +345,103 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
   });
 });
 
+describe("data do ciclo em CreatorSubscriptionCenterView", () => {
+  function expectCycleInBothLayouts(text: string) {
+    const articles = screen.getAllByRole("article")
+      .filter((article) => within(article).queryByText("Maria Silva"));
+    expect(articles).toHaveLength(1);
+    expect(within(articles[0]).getByText(text)).toBeInTheDocument();
+    const row = within(screen.getByRole("table")).getByRole("row", { name: /Maria Silva/ });
+    expect(within(row).getByRole("cell", { name: text })).toBeInTheDocument();
+  }
+
+  const cycleCases = [
+    { status: "active", cancelAtPeriodEnd: false, english: "Renews", spanish: "Se renueva" },
+    { status: "active", cancelAtPeriodEnd: true, english: "Cancels", spanish: "Se cancela" },
+    { status: "trialing", cancelAtPeriodEnd: false, english: "Renews", spanish: "Se renueva" },
+    { status: "trialing", cancelAtPeriodEnd: true, english: "Cancels", spanish: "Se cancela" },
+    ...["past_due", "unpaid", "canceled", "incomplete", "incomplete_expired", "paused", "future_mode"]
+      .flatMap((status) => [false, true].map((cancelAtPeriodEnd) => ({
+        status, cancelAtPeriodEnd, english: "Period end", spanish: "Fin del período",
+      }))),
+  ];
+
+  it.each(cycleCases)("apresenta $status com cancelAtPeriodEnd=$cancelAtPeriodEnd nos dois layouts em EN→ES", ({ status, cancelAtPeriodEnd, english, spanish }) => {
+    const { container } = mountView({ subscriptions: [{ ...subscription, status, cancelAtPeriodEnd }] }, "en");
+    expectCycleInBothLayouts(`${english} Aug 15, 2026`);
+    if (english === "Period end") {
+      expect(screen.queryAllByText(/^(Renews|Cancels) /)).toHaveLength(0);
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Cambiar a español" }));
+    expectCycleInBothLayouts(`${spanish} 15 ago 2026`);
+    if (spanish === "Fin del período") {
+      expect(screen.queryAllByText(/^(Se renueva|Se cancela) /)).toHaveLength(0);
+    }
+    expect(screen.getAllByText("Maria Silva")).toHaveLength(2);
+    expect(screen.getAllByText("Clinical Focus")).toHaveLength(2);
+    expect([...container.querySelectorAll("[data-status]")].map((chip) => chip.getAttribute("data-status")))
+      .toEqual([status, status]);
+  });
+
+  it("usa cabeçalho neutro para a data do ciclo, inclusive em contratos encerrados", () => {
+    mountView({ subscriptions: [{ ...subscription, status: "canceled", cancelAtPeriodEnd: true }] }, "en");
+    expect(screen.getByRole("columnheader", { name: "Cycle date" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Next event" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cambiar a español" }));
+    expect(screen.getByRole("columnheader", { name: "Fecha del ciclo" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Próximo evento" })).not.toBeInTheDocument();
+  });
+
+  it.each([null, "not-a-date"])("preserva o fallback da data %s sem inventar renovação ou término", (currentPeriodEnd) => {
+    mountView({ subscriptions: [{ ...subscription, status: "canceled", cancelAtPeriodEnd: true, currentPeriodEnd }] }, "en");
+    expectCycleInBothLayouts("Period end Date pending");
+    expect(screen.queryAllByText(/^(Renews|Cancels) /)).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Cambiar a español" }));
+    expectCycleInBothLayouts("Fin del período Fecha pendiente");
+    expect(screen.queryAllByText(/^(Se renueva|Se cancela) /)).toHaveLength(0);
+    expect(screen.queryByText(/Aug 15, 2026|15 ago 2026/)).not.toBeInTheDocument();
+  });
+
+  it("conserva contratos, métricas, busca e filtro ao traduzir a data final sem novas leituras", async () => {
+    const contracts: CreatorCourseSubscription[] = [
+      { ...subscription, priceAmountMinor: 9900, currency: "BRL" },
+      { ...subscription, id: "sub-ended-$&", status: "canceled", cancelAtPeriodEnd: true, updatedAt: "2026-09-07T15:00:00Z" },
+    ];
+    const originalContracts = contracts.map((contract) => ({ ...contract }));
+    reads.subscriptions.mockImplementation((_uid, next) => { next(contracts); return reads.closeSubscriptions; });
+    await mountCenter();
+    await waitFor(() => expect(screen.getAllByText("Maria Silva")).toHaveLength(4));
+    const counts = readCounts();
+
+    fireEvent.change(screen.getByLabelText("Search subscribers"), { target: { value: "Maria" } });
+    fireEvent.change(screen.getByLabelText("Filter subscriber status"), { target: { value: "ended" } });
+    expectCycleInBothLayouts("Period end Aug 15, 2026");
+    expect(screen.getByText("BRL 99.00")).toBeVisible();
+    expect(screen.getByText("1 active")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cambiar a español" }));
+    expectCycleInBothLayouts("Fin del período 15 ago 2026");
+    expect(screen.getByLabelText("Buscar suscriptores")).toHaveValue("Maria");
+    expect(screen.getByLabelText("Filtrar el estado de los suscriptores")).toHaveValue("ended");
+    expect(screen.getByRole("tab", { name: "Suscriptores" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("BRL 99.00")).toBeVisible();
+    expect(screen.getByText("1 activo")).toBeVisible();
+    expect(screen.getAllByText("Cancelado")).toHaveLength(2);
+    expect(readCounts()).toEqual(counts);
+
+    fireEvent.click(screen.getByRole("button", { name: "Switch to English" }));
+    expectCycleInBothLayouts("Period end Aug 15, 2026");
+    expect(screen.getByLabelText("Search subscribers")).toHaveValue("Maria");
+    expect(screen.getByLabelText("Filter subscriber status")).toHaveValue("ended");
+    expect(screen.getByText("BRL 99.00")).toBeVisible();
+    expect(contracts).toEqual(originalContracts);
+    expect(readCounts()).toEqual(counts);
+  });
+});
+
 describe("troca de idioma sem novas leituras de assinaturas", () => {
   it("conserva as subscriptions e a leitura de perfis depois de carregar", async () => {
     await mountCenter();
