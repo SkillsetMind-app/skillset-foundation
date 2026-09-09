@@ -72,4 +72,18 @@ SELECT pg_temp.tour_actor('');
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.tour_denied($q$SELECT public.claim_welcome_tour('99999999-9999-4999-8999-999999999991','student')$q$, '42501');
 RESET ROLE;
+
+-- Replay the actual upgrade with pre-existing profiles, inside this rollback.
+-- This destructive schema exercise is only for CI's disposable database.
+DROP FUNCTION public.claim_welcome_tour(text, text);
+ALTER TABLE public.users DROP COLUMN welcome_tour_seen_at;
+\ir ../migrations/20260909040000_welcome_tour_once.sql
+SELECT pg_temp.check_tour((SELECT count(*) = 2 FROM public.users WHERE uid IN ('99999999-9999-4999-8999-999999999991','99999999-9999-4999-8999-999999999992') AND welcome_tour_seen_at IS NOT NULL), 'upgrade reopens the tour for existing accounts');
+SELECT pg_temp.tour_actor('99999999-9999-4999-8999-999999999991');
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.check_tour(NOT public.claim_welcome_tour('99999999-9999-4999-8999-999999999991', 'student'), 'legacy account receives a new interruption');
+RESET ROLE;
+INSERT INTO auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+VALUES ('99999999-9999-4999-8999-999999999993', 'authenticated', 'authenticated', 'tour-after-upgrade@example.test', now(), '{}', '{}', now(), now());
+SELECT pg_temp.check_tour((SELECT welcome_tour_seen_at IS NULL FROM public.users WHERE uid = '99999999-9999-4999-8999-999999999993'), 'upgrade default suppresses future signups');
 ROLLBACK;
