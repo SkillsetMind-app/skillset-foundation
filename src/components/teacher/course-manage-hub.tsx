@@ -674,7 +674,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                         aria-hidden
                         className={`mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
                           item.done
-                            ? "bg-[var(--color-primary)] text-white"
+                            ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
                             : "border fine-rule bg-white text-[var(--color-ink-muted)]"
                         }`}
                       >

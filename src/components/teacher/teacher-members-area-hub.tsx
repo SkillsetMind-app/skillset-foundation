@@ -85,7 +85,7 @@ export function TeacherMembersAreaHub() {
               }
               className={`min-h-11 rounded-[var(--radius-xs)] px-4 text-sm font-semibold transition-colors ${
                 view === nextView
-                  ? "bg-[var(--color-primary)] text-white"
+                  ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
                   : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
               }`}
             >
