@@ -1686,6 +1686,18 @@
     }
   },
   "creatorPanel": {
+    "activationGate": {
+      "title": "Activa tu escaparate",
+      "fee": "Un pago único de ${amount} desbloquea el estudio del creador. Se cobra una sola vez, nunca por curso.",
+      "plan": "Tu plan Free sigue costando $0 al mes. La activación abre el estudio; tu plan determina la comisión por venta.",
+      "pay": "Pagar ${amount} y desbloquear el estudio",
+      "leave": "Ahora no — salir del estudio",
+      "checking": "Verificando tu activación",
+      "checkingBody": "Confirmando tu acceso antes de abrir el estudio del creador.",
+      "errorTitle": "No pudimos confirmar tu acceso",
+      "errorBody": "Inténtalo de nuevo para verificar tu activación. Reintentar no genera ningún cobro.",
+      "retry": "Intentar de nuevo"
+    },
     "sales": {
       "loading": "Cargando tus ventas...",
       "error": "No pudimos cargar tus ventas. Actualiza para intentarlo de nuevo.",

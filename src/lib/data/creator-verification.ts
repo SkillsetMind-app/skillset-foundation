@@ -118,7 +118,8 @@ export async function fetchCreatorActivationBlocked(): Promise<boolean> {
 
   // creator_activation_blocked returns a plain boolean, not a flag row: reading
   // data?.value here yields undefined and silently unblocks every creator.
-  return data === true;
+  if (typeof data !== "boolean") throw new Error("Activation status unavailable.");
+  return data;
 }
 
 export function subscribeToMyVerificationCase(

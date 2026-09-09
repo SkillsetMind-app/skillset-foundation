@@ -96,6 +96,7 @@ export async function assertCreatorActivated(): Promise<void> {
   if (error) {
     throw new Error(error.message);
   }
+  if (typeof blocked !== "boolean") throw new Error("Activation status unavailable.");
   if (blocked) {
     throw new PaymentError(
       "Pay the one-time activation fee to activate your creator account.",

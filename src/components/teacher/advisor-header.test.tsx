@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import TeachLayout from "@/app/teach/layout";
+import { AdvisorSidebar } from "@/components/teacher/advisor-sidebar";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import { MemberAreaShell } from "@/components/learn/member-area-shell";
 import { PlatformHeader } from "@/components/platform/platform-header";
@@ -27,7 +28,9 @@ vi.mock("@/components/auth/auth-provider", () => ({
   }),
 }));
 vi.mock("@/lib/advisor/config", () => ({ get isAdvisorEnabled() { return viewer.enabled; } }));
-vi.mock("@/components/teacher/activation-gate", () => ({ ActivationGate: () => null }));
+// This suite exercises the already-activated studio. The real gate's waiting,
+// refusal and subtree lifecycle are covered in activation-gate.test.tsx.
+vi.mock("@/components/teacher/activation-gate", () => ({ ActivationGate: ({ children }: { children: ReactNode }) => <AdvisorSidebar>{children}</AdvisorSidebar> }));
 vi.mock("@/components/platform/platform-search", () => ({ PlatformSearch: () => null }));
 vi.mock("@/components/platform/notification-bell", () => ({ NotificationBell: () => <button>Notifications</button> }));
 vi.mock("@/components/site/account-menu", () => ({ AccountMenu: () => <button>Account</button> }));
