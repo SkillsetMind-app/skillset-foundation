@@ -219,6 +219,36 @@ describe("neutral dark actions", () => {
     expect(foreground).toBeTruthy();
     expect(ratio(foreground!, "var(--color-surface-strong)", dark)).toBeGreaterThanOrEqual(4.5);
   });
+
+  it("keeps informational chips blue rather than inheriting neutral action ink", () => {
+    const foreground = block(".status-chip--info").match(/\scolor:\s*([^;]+);/)?.[1];
+    expect(foreground).toBeTruthy();
+    for (const vars of [light, dark]) {
+      expect(parseColor(foreground!, vars)).toEqual(parseColor("var(--color-info)", vars));
+      expect(ratio(foreground!, "var(--color-surface-strong)", vars)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("keeps translucent storefront preview copy readable without an uploaded banner", () => {
+    const source = readFileSync(join(process.cwd(), "src/components/teacher/storefront-settings-panel.tsx"), "utf8");
+    const header = /className="([^"\n]*\bmin-h-32\b[^"\n]*)"/.exec(source);
+    expect(header).not.toBeNull();
+    const preview = source.slice(header!.index, source.indexOf("</section>", header!.index));
+    const background = /\bbg-\[([^\]]+)\]/.exec(header![1])?.[1] ?? "";
+    const overlay = /bg-\[(rgba\([^\]]+\))\]/.exec(preview)?.[1] ?? "";
+    const opacities = [...preview.matchAll(/\btext-white\/(\d+)\b/g)].map((match) => Number(match[1]) / 100);
+    expect(opacities.length).toBeGreaterThan(0);
+    for (const vars of [light, dark]) {
+      const base = parseColor(background, vars);
+      const tint = parseColor(overlay, vars);
+      expect(base).not.toBeNull();
+      expect(tint).not.toBeNull();
+      const composite = `rgb(${over(tint!, base!).join(", ")})`;
+      for (const opacity of opacities) {
+        expect(ratio(`rgba(255, 255, 255, ${opacity})`, composite, vars)).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
 });
 
 describe.each([["light", light], ["dark", dark]] as const)("semantic success contrast — %s", (_theme, vars) => {
@@ -381,6 +411,18 @@ const COMBOS = [
   ["course dark / platform light", { ...light, ...maDark }, "dark", false],
   ["course dark / platform dark", { ...dark, ...maDark }, "dark", true],
 ] as const;
+
+it("keeps a visible selection outline in a light course under either platform theme", () => {
+  const selected = block('.member-classroom[data-members-theme="light"] .member-lesson-card--active');
+  const border = /border-color:\s*([^;]+);/.exec(selected)?.[1];
+  expect(border).toBeTruthy();
+  for (const platform of [light, dark]) {
+    const vars = { ...platform, ...maLight };
+    for (const surface of ["--ma-surface", "--ma-surface-2"]) {
+      expect(ratio(border!, `var(${surface})`, vars, "--ma-bg")).toBeGreaterThanOrEqual(3);
+    }
+  }
+});
 
 /** The key this selector part collapses to, or null if it is dead in this combo. */
 function liveKey(part: string, courseTheme: string, platformDark: boolean): string | null {
