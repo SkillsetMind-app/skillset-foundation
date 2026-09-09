@@ -326,7 +326,7 @@ export function CreatorSubscriptionCenterView({
                     return (
                       <article
                         key={subscription.id}
-                        className="grid gap-3 border-b border-[var(--color-line)] py-4 last:border-0"
+                        className="grid grid-cols-1 gap-3 border-b border-[var(--color-line)] py-4 last:border-0"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -479,7 +479,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`min-h-11 rounded-[var(--radius-xs)] px-4 text-sm font-bold ${active ? "bg-[var(--color-primary)] text-white" : "text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"}`}
+      className={`min-h-11 rounded-[var(--radius-xs)] px-3 text-sm font-bold sm:px-4 ${active ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]" : "text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"}`}
     >
       {children}
     </button>
