@@ -26,9 +26,12 @@ vi.mock("@/components/auth/protected-surface", () => ({
   },
 }));
 vi.mock("@/components/platform/platform-shell", () => ({
+  // Espelha a casca real: o `title` SO existe dentro do cabecalho. Com
+  // `hideHeader` ele nao vai para lugar nenhum — nada de aria-label inventado,
+  // senao o teste passa a provar algo que o produto nao faz.
   PlatformShell: ({ children, eyebrow, title, description, hideHeader }: {
     children: ReactNode; eyebrow?: string; title: string; description?: string; hideHeader?: boolean;
-  }) => createElement("main", { "aria-label": title },
+  }) => createElement("main", null,
     hideHeader ? null : createElement("header", null,
       createElement("p", null, eyebrow),
       createElement("h1", null, title),
@@ -43,7 +46,15 @@ vi.mock("@/components/teacher/storefront-settings-panel", () => ({ StorefrontSet
 vi.mock("@/components/teacher/custom-domains-panel", () => ({ CustomDomainsPanel: () => null }));
 vi.mock("@/components/teacher/creator-subscription-center", () => ({ CreatorSubscriptionCenter: () => null }));
 vi.mock("@/components/teacher/stripe-connect-notice", () => ({ StripeConnectNotice: () => null }));
+vi.mock("@/components/teacher/teacher-wallet-panel", () => ({
+  // Espelha o que o painel real faz depois desta mudanca: ele carrega o <h1>
+  // da pagina. O mock precisa disso para que a prova do cabecalho unico seja
+  // sobre a arvore real, e nao sobre um marcador inventado.
+  TeacherWalletPanel: () =>
+    createElement("section", null, createElement("h1", null, "Tus ganancias, tu configuración de pagos.")),
+}));
 
+import AccountPaymentsPage from "../account/payments/page";
 import TeacherIntegrationsPage from "./integrations/page";
 import TeacherMessagesPage from "./messages/page";
 import TeacherSaleDetailPage from "./sales/[orderId]/page";
@@ -79,6 +90,34 @@ describe("cabecalhos das paginas do estudio", () => {
     }
     expect(es.teach[key].title).not.toBe(en.teach[key].title);
     expect(es.teach[key].description).not.toBe(en.teach[key].description);
+  });
+});
+
+describe("pagamentos não repete o cabeçalho do painel", () => {
+  // O que a pessoa sofria: /account/payments mostrava "Payouts & tax" (fixo em
+  // ingles, mesmo em espanhol) e logo abaixo o painel repetia "PAYOUTS & TAX" +
+  // "Your earnings, your payout setup." — a mesma coisa tres vezes.
+  it("nao carrega texto fixo no cabeçalho", () => {
+    const source = readFileSync("src/app/account/payments/page.tsx", "utf8");
+
+    expect(source).not.toMatch(/\b(eyebrow|title|description)="/);
+    expect(source).toContain("getServerTranslation");
+  });
+
+  it.each(["es", "en"] as const)("em %s a página tem UM cabeçalho, o do painel", async (locale) => {
+    mocks.locale = locale;
+    render(
+      <I18nProvider initialLocale={locale}>{await AccountPaymentsPage()}</I18nProvider>,
+    );
+
+    // Um h1 so — o do painel. A casca nao acrescenta o dela (era o terceiro
+    // titulo da mesma tela), e a pagina nao fica sem cabecalho de nivel 1.
+    const titulos = screen.getAllByRole("heading", { level: 1 });
+    expect(titulos).toHaveLength(1);
+    expect(titulos[0]).toHaveTextContent("Tus ganancias, tu configuración de pagos.");
+    // O titulo fixo em ingles da casca nao aparece em nenhum idioma.
+    expect(screen.queryByText("Payouts & tax")).toBeNull();
+    expect(mocks.permissions).toEqual(["teacherStudio.access"]);
   });
 });
 

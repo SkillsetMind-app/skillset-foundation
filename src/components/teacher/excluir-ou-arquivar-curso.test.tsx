@@ -183,6 +183,71 @@ describe("hub do curso — entrada de excluir/arquivar", () => {
   });
 });
 
+describe("o menu abre para dentro da tela", () => {
+  // jsdom nao mede layout: o retangulo do gatilho e a largura da janela sao
+  // simulados. O que se prova e a conta — um menu de 224 px nunca nasce fora
+  // da janela, por nenhum dos dois lados, e no desktop alinha a direita do
+  // gatilho como sempre alinhou.
+  const MENU = 224;
+  const GATILHO = 44;
+
+  function simula(left: number, viewport: number) {
+    const janela = window.innerWidth;
+    window.innerWidth = viewport;
+    const medida = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      left,
+      right: left + GATILHO,
+      top: 0,
+      bottom: 44,
+      x: left,
+      y: 0,
+      width: GATILHO,
+      height: 44,
+      toJSON: () => ({}),
+    } as DOMRect);
+    return () => {
+      medida.mockRestore();
+      window.innerWidth = janela;
+    };
+  }
+
+  // Borda esquerda do menu em coordenadas da janela: o gatilho esta em `left`
+  // e o menu e posicionado em relacao a ele.
+  async function bordaEsquerdaDoMenu(left: number) {
+    const menu = await abreMenuDoHub();
+    return left + Number.parseFloat(menu.style.left);
+  }
+
+  it("no celular, com o gatilho na borda esquerda, o menu começa a 8 px da borda", async () => {
+    const desfaz = simula(95, 390);
+    try {
+      expect(await bordaEsquerdaDoMenu(95)).toBe(8);
+    } finally {
+      desfaz();
+    }
+  });
+
+  it("no celular, com o gatilho na borda direita, o menu não passa da janela", async () => {
+    const desfaz = simula(340, 390);
+    try {
+      const x = await bordaEsquerdaDoMenu(340);
+      expect(x + MENU).toBeLessThanOrEqual(390 - 8);
+      expect(x).toBeGreaterThanOrEqual(8);
+    } finally {
+      desfaz();
+    }
+  });
+
+  it("no desktop, com o gatilho na borda direita, o menu alinha à direita dele", async () => {
+    const desfaz = simula(1337, 1440);
+    try {
+      expect((await bordaEsquerdaDoMenu(1337)) + MENU).toBe(1337 + GATILHO);
+    } finally {
+      desfaz();
+    }
+  });
+});
+
 describe("modal de excluir/arquivar — o texto segue o dado", () => {
   it("sem comprador, avisa que a exclusão é permanente", async () => {
     const dialog = await abreModalDoHub();
