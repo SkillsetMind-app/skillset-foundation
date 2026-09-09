@@ -26,28 +26,37 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 
 export async function GET() {
-  const supabase = await createSupabaseServerClient();
+  try {
+    const supabase = await createSupabaseServerClient();
 
-  const { data: auth, error: authError } = await supabase.auth.getUser();
-  if (authError || !auth.user) {
-    return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    const { data: auth, error: authError } = await supabase.auth.getUser();
+    if (authError || !auth.user) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    const [{ data: domains, error: domainsError }, { data: quota, error: quotaError }] = await Promise.all([
+      supabase
+        .from("custom_domains")
+        .select("id, hostname, status, verification_name, verification_value, error_reason, created_at, verified_at")
+        .order("created_at", { ascending: true }),
+      supabase.rpc("get_my_custom_domain_quota").single(),
+    ]);
+
+    if (domainsError || quotaError) throw new Error("Domain read failed.");
+
+    return NextResponse.json({
+      domains: domains ?? [],
+      quota: quota ?? { used: 0, limit: 0 },
+      // Lets the panel explain itself instead of showing an add button that
+      // always fails, when the platform side is not configured yet.
+      configured: vercelDomainsConfig() !== null,
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "Could not load your domains. Please try again." },
+      { status: 500 },
+    );
   }
-
-  const [{ data: domains }, { data: quota }] = await Promise.all([
-    supabase
-      .from("custom_domains")
-      .select("id, hostname, status, verification_name, verification_value, error_reason, created_at, verified_at")
-      .order("created_at", { ascending: true }),
-    supabase.rpc("get_my_custom_domain_quota").single(),
-  ]);
-
-  return NextResponse.json({
-    domains: domains ?? [],
-    quota: quota ?? { used: 0, limit: 0 },
-    // Lets the panel explain itself instead of showing an add button that
-    // always fails, when the platform side is not configured yet.
-    configured: vercelDomainsConfig() !== null,
-  });
 }
 
 export async function POST(request: Request) {
