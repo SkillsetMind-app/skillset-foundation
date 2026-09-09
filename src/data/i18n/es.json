@@ -2024,6 +2024,7 @@
         "on": "Destacado en el marketplace",
         "off": "No destacado",
         "usage": "{used} de {limit} destacados usados en el plan {plan}",
+        "notIncluded": "El plan {plan} no incluye destacados en el marketplace.",
         "saving": "Guardando...",
         "remove": "Quitar destacado",
         "add": "Destacar este curso",

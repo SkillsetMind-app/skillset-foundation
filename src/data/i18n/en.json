@@ -2024,6 +2024,7 @@
         "on": "Highlighted in the marketplace",
         "off": "Not highlighted",
         "usage": "{used} of {limit} highlights used on the {plan} plan",
+        "notIncluded": "Marketplace highlights are not included in the {plan} plan.",
         "saving": "Saving...",
         "remove": "Remove highlight",
         "add": "Highlight this course",
