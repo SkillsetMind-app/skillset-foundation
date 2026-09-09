@@ -1164,6 +1164,23 @@
         "threadMismatch": "This enrollment does not match the thread.",
         "inactiveEnrollment": "This enrollment cannot send messages.",
         "rateLimit": "Too many attempts. Wait before trying again."
+      },
+      "subscription": {
+        "title": "Subscription",
+        "monthlyAccess": "Monthly access",
+        "yearlyAccess": "Yearly access",
+        "recurringAccess": "Recurring access",
+        "loading": "Loading subscription...",
+        "empty": "No subscription details are available yet.",
+        "loadError": "We could not load your subscription details.",
+        "paymentAttention": "Payment needs attention. Review your payment details.",
+        "renews": "Renews {date}.",
+        "scheduled": "Cancellation scheduled. Period end: {date}.",
+        "cancel": "Cancel subscription",
+        "undo": "Undo scheduled cancellation",
+        "working": "Working...",
+        "cancelError": "We could not cancel your subscription. Please try again.",
+        "undoError": "We could not undo the scheduled cancellation. Please try again."
       }
     },
     "page": {

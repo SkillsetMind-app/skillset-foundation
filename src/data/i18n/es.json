@@ -1164,6 +1164,23 @@
         "threadMismatch": "Esta inscripción no corresponde a la conversación.",
         "inactiveEnrollment": "Esta inscripción no permite enviar mensajes.",
         "rateLimit": "Demasiados intentos. Espera antes de volver a intentarlo."
+      },
+      "subscription": {
+        "title": "Suscripción",
+        "monthlyAccess": "Acceso mensual",
+        "yearlyAccess": "Acceso anual",
+        "recurringAccess": "Acceso recurrente",
+        "loading": "Cargando suscripción...",
+        "empty": "Todavía no hay detalles de la suscripción.",
+        "loadError": "No pudimos cargar los detalles de tu suscripción.",
+        "paymentAttention": "El pago necesita atención. Revisa tus datos de pago.",
+        "renews": "Se renueva {date}.",
+        "scheduled": "Cancelación programada. Fin del período: {date}.",
+        "cancel": "Cancelar suscripción",
+        "undo": "Deshacer cancelación programada",
+        "working": "Procesando...",
+        "cancelError": "No pudimos cancelar tu suscripción. Inténtalo de nuevo.",
+        "undoError": "No pudimos deshacer la cancelación programada. Inténtalo de nuevo."
       }
     },
     "page": {
