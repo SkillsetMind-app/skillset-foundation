@@ -96,7 +96,7 @@ export function PhoneInput({ value, onChange, label = "Phone" }: PhoneInputProps
   }
 
   return (
-    <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+    <label className="grid grid-cols-1 gap-2 text-sm font-semibold text-[var(--color-ink)]">
       {label}
       <div
         ref={wrapperRef}
@@ -126,7 +126,7 @@ export function PhoneInput({ value, onChange, label = "Phone" }: PhoneInputProps
         />
 
         {open ? (
-          <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-72 rounded-[12px] border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]">
+          <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-72 max-w-full rounded-[12px] border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]">
             {countries.map((country) => (
               <button
                 key={country.code}

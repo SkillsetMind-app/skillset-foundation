@@ -300,7 +300,7 @@ export function ProfileSettingsPanel() {
         Keep your SkillsetMind identity clear for learning, teaching, communities, and future public profiles.
       </p>
 
-      <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
+      <form className="mt-6 grid grid-cols-1 gap-4" onSubmit={handleSubmit}>
         <div className="flex flex-col gap-4 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 sm:flex-row sm:items-center">
           <UserAvatar
             name={displayName || user?.email}
@@ -316,7 +316,7 @@ export function ProfileSettingsPanel() {
               it, SkillsetMind shows a neutral person icon instead of a letter badge.
             </p>
             <label
-              className={`mt-3 inline-flex w-fit cursor-pointer items-center gap-2 rounded-[10px] border border-dashed border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] ${
+              className={`relative mt-3 inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-[10px] border border-dashed border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
                 isUploadingAvatar ? "pointer-events-none opacity-60" : ""
               }`}
             >
@@ -336,7 +336,7 @@ export function ProfileSettingsPanel() {
                   event.target.value = "";
                   void handleAvatarChange(file);
                 }}
-                className="hidden"
+                className="sr-only"
               />
             </label>
             {avatarProgress ? (
@@ -352,7 +352,7 @@ export function ProfileSettingsPanel() {
           <input
             value={displayName}
             onChange={(event) => setDisplayName(event.target.value)}
-            className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+            className="min-w-0 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
           />
         </label>
 
@@ -376,7 +376,7 @@ export function ProfileSettingsPanel() {
             value={bio}
             onChange={(event) => setBio(event.target.value)}
             rows={4}
-            className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+            className="min-w-0 resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
           />
           <span className="text-xs font-normal text-[var(--color-ink-soft)]">
             {bio.trim().length}/280 characters
@@ -462,7 +462,7 @@ export function ProfileSettingsPanel() {
                 your name is printed instead.
               </p>
               <label
-                className={`mt-3 inline-flex w-fit cursor-pointer items-center gap-2 rounded-[10px] border border-dashed border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] ${
+                className={`relative mt-3 inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-[10px] border border-dashed border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
                   isUploadingSignature ? "pointer-events-none opacity-60" : ""
                 }`}
               >
@@ -482,7 +482,7 @@ export function ProfileSettingsPanel() {
                     event.target.value = "";
                     void handleSignatureChange(file);
                   }}
-                  className="hidden"
+                  className="sr-only"
                 />
               </label>
               {signatureProgress ? (
@@ -506,7 +506,7 @@ export function ProfileSettingsPanel() {
           <select
             value={timezone}
             onChange={(event) => setTimezone(event.target.value)}
-            className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+            className="min-w-0 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
           >
             {safeTimezoneOptions.map((option) => (
               <option key={option} value={option}>
