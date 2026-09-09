@@ -453,7 +453,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
 
   const expected = getCourseReadiness(mocks.course);
 
-  it("constrains a menu that mounts after the course recovers from an initial load failure", async () => {
+  it("observes navigation that mounts after the course recovers from an initial load failure", async () => {
     let recover: (course: TeacherCourse | null) => void = () => {};
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, onCourse, onError) => {
       recover = onCourse;
@@ -478,11 +478,11 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
 
     await act(async () => recover(mocks.course));
     const menu = screen.getByRole("navigation", { name: "Course management sections" });
-    expect(menu.style.getPropertyValue("--course-nav-height")).toBe("348px");
+    expect(menu.style.getPropertyValue("--course-nav-height")).toBe("");
     expect(observe).toHaveBeenCalledWith(menu.closest(".platform-content"));
   });
 
-  it("keeps the management menu inside its own scrollport when the available height changes", async () => {
+  it("lets the entire desktop management list grow with the page instead of clipping Sales", async () => {
     let resize = () => {};
     const disconnect = vi.fn();
     vi.stubGlobal("ResizeObserver", class {
@@ -500,13 +500,14 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       </section>,
     );
     const menu = await screen.findByRole("navigation", { name: "Course management sections" });
-    expect(menu.style.getPropertyValue("--course-nav-height")).toBe("348px");
-    expect(menu.className).toContain("lg:overflow-y-auto");
-    expect(menu.className).toContain("lg:max-h-[var(--course-nav-height)]");
+    // jsdom structural guard; real geometry is checked in the browser harness.
+    expect(menu.style.getPropertyValue("--course-nav-height")).toBe("");
+    expect(menu.className).not.toMatch(/overflow-y|max-h|sticky/);
+    expect(within(menu).getByRole("button", { name: "Sales" })).toBeInTheDocument();
 
     height.mockReturnValue(500);
     act(() => resize());
-    expect(menu.style.getPropertyValue("--course-nav-height")).toBe("248px");
+    expect(menu.style.getPropertyValue("--course-nav-height")).toBe("");
     unmount();
     expect(disconnect).toHaveBeenCalledOnce();
   });
@@ -526,7 +527,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ offers: [] }) }));
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
       if (this.classList.contains("platform-content")) return new DOMRect(0, 65, width + 56, 600);
-      if (this.tagName === "NAV") return new DOMRect(28, 269, vertical ? 240 : width, vertical ? 250 : 54);
+      if (this.tagName === "NAV") return new DOMRect(28, 269, vertical ? 240 : width, vertical ? 720 : 54);
       const menu = this.closest("nav");
       const row = this.tagName === "BUTTON" ? this.parentElement : this;
       if (menu && row?.parentElement === menu) {
@@ -630,7 +631,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const hiddenScroll = row.scrollLeft;
     layout.resize(1200, true);
     expectSectionVisible("Sales assistant", true);
-    expect(menu.scrollTop).toBeGreaterThan(0);
+    expect(menu.scrollTop).toBe(0);
     expect(row.scrollLeft).toBe(hiddenScroll);
     mocks.searchParams.delete("section");
     rerender(navigationFixture());
@@ -642,6 +643,45 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const previousDisconnects = layout.disconnect.mock.calls.length;
     unmount();
     expect(layout.disconnect).toHaveBeenCalledTimes(previousDisconnects + 1);
+  });
+
+  it.each([
+    ["en", "Scroll to previous sections", "Scroll to more sections"],
+    ["es", "Desplazar a secciones anteriores", "Desplazar a más secciones"],
+  ] as const)("%s: scroll controls expose both directions and stop at the ends without navigating", async (locale, previousLabel, nextLabel) => {
+    const layout = managementScrollports();
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(200);
+    vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(600);
+    render(<I18nProvider initialLocale={locale}>{navigationFixture()}</I18nProvider>);
+    const next = await screen.findByRole("button", { name: nextLabel });
+    const previous = screen.getByRole("button", { name: previousLabel });
+    const menu = screen.getByRole("navigation");
+    const row = menu.querySelector<HTMLElement>(".overflow-x-auto")!;
+    // Model only the browser's scroll operation; the real component owns the controls.
+    row.scrollBy = vi.fn((options?: ScrollToOptions | number) => {
+      const left = typeof options === "number" ? options : options?.left ?? 0;
+      row.scrollLeft = Math.max(0, Math.min(400, row.scrollLeft + left));
+      fireEvent.scroll(row);
+    });
+    expect(previous).toBeDisabled();
+    expect(next).toBeEnabled();
+    fireEvent.click(next);
+    expect(row.scrollLeft).toBe(200);
+    expect(previous).toBeEnabled();
+    fireEvent.click(next);
+    expect(row.scrollLeft).toBe(400);
+    expect(next).toBeDisabled();
+    fireEvent.click(previous);
+    expect(row.scrollLeft).toBe(200);
+    expect(next).toBeEnabled();
+    row.scrollLeft = 0;
+    fireEvent.scroll(row);
+    expect(previous).toBeDisabled();
+    vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(200);
+    layout.resize(1200, true);
+    expect(next).toBeDisabled();
+    expect(mocks.router.push).not.toHaveBeenCalled();
+    expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
   });
 
   it("keeps pricing visible through ES to EN and back without a URL change or resize", async () => {
