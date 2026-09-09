@@ -1740,6 +1740,7 @@
       },
       "errors": {
         "load": "We could not load your storefront settings.",
+        "courses": "We could not load your published courses. Try again before saving.",
         "signIn": "Sign in again to update your storefront.",
         "accent": "Accent color must be a 6-digit hex like #183a5e.",
         "tagline": "Tagline must be {max} characters or fewer.",

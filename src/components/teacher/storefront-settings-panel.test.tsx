@@ -467,14 +467,201 @@ describe("StorefrontSettingsPanel", () => {
       expect(mocks.getUserProfile).toHaveBeenCalledOnce();
     });
 
-    it("traduz uma falha de carga existente sem recarregar o perfil ao trocar idioma", async () => {
-      mocks.getUserProfile.mockRejectedValueOnce(new Error("LOCAL TEST: unavailable"));
-      renderWithLocale();
-      expect(await screen.findByRole("alert")).toHaveTextContent("We could not load your storefront settings.");
+    it("bloqueia alterações após falha de carga e recupera os dados salvos só no retry, preservando EN↔ES", async () => {
+      const savedProfile = {
+        displayName: "Autoria $$ e $&",
+        storefront: {
+          branding: {
+            accentColor: "#2468ab",
+            logoUrl: "https://media.example/saved-logo.png?v=1",
+            heroImageUrl: "https://media.example/saved-hero.png?v=1",
+            themePreset: "warm",
+          },
+          showcase: {
+            tagline: "Texto salvo $$ e $&",
+            orderedCourseIds: ["second", "first"],
+            featuredCourseId: "first",
+          },
+        },
+      };
+      let rejectInitial: (reason: Error) => void = () => undefined;
+      let finishRetry: (profile: typeof savedProfile) => void = () => undefined;
+      const initialLoad = new Promise<typeof savedProfile>((_resolve, reject) => { rejectInitial = reject; });
+      const retryLoad = new Promise<typeof savedProfile>((resolve) => { finishRetry = resolve; });
+      mocks.getUserProfile.mockReturnValueOnce(initialLoad).mockReturnValueOnce(retryLoad);
+      mocks.subscribeToTeacherCourses.mockImplementation((_uid, onData) => {
+        onData([
+          { id: "first", ownerId: "teacher-1", title: "Curso $$ e $&", status: "published", modules: [] },
+          { id: "second", ownerId: "teacher-1", title: "Outro curso salvo", status: "published", modules: [] },
+        ]);
+        return vi.fn();
+      });
+      const expectNoWrites = () => {
+        expect(mocks.updateUserStorefront).not.toHaveBeenCalled();
+        expect(mocks.uploadUserStorefrontImage).not.toHaveBeenCalled();
+        expect(mocks.removeUserStorefrontImage).not.toHaveBeenCalled();
+      };
+      const expectNoStorefrontActions = () => {
+        expect(screen.queryByRole("button", { name: /^(Save storefront|Guardar tienda)$/ })).not.toBeInTheDocument();
+        expect(screen.queryAllByLabelText(/^(Upload storefront|Subir .* de la tienda)/)).toHaveLength(0);
+        expect(screen.queryAllByRole("button", { name: /^(Remove storefront|Eliminar .* de la tienda)/ })).toHaveLength(0);
+        expect(screen.queryAllByRole("button", { name: /^(Move .+ (up|down)|Mover .+ hacia (arriba|abajo))$/ })).toHaveLength(0);
+        expect(screen.queryAllByRole("button", { name: /^(Feature|Featured|Destacar|Destacado)$/ })).toHaveLength(0);
+        expectNoWrites();
+      };
+
+      const { container } = renderWithLocale();
+      expect(screen.getByText("Loading storefront settings...")).toBeInTheDocument();
+      expectNoStorefrontActions();
+      fireEvent.click(screen.getByRole("button", { name: "Use ES" }));
+      expect(screen.getByText("Cargando la configuración de la tienda...")).toBeInTheDocument();
+      expect(mocks.getUserProfile).toHaveBeenCalledOnce();
+      await act(async () => {
+        rejectInitial(new Error("LOCAL TEST: unavailable"));
+        await initialLoad.catch(() => undefined);
+      });
+      expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos cargar la configuración de tu tienda.");
+      expectNoStorefrontActions();
+      fireEvent.click(screen.getByRole("button", { name: "Use EN" }));
+      expect(screen.getByRole("alert")).toHaveTextContent("We could not load your storefront settings.");
+      expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
+      expectNoStorefrontActions();
       fireEvent.click(screen.getByRole("button", { name: "Use ES" }));
       expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar la configuración de tu tienda.");
       expect(mocks.getUserProfile).toHaveBeenCalledOnce();
+
+      fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
+      await waitFor(() => expect(mocks.getUserProfile).toHaveBeenCalledTimes(2));
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.getByText("Cargando la configuración de la tienda...")).toBeInTheDocument();
+      expectNoStorefrontActions();
+      fireEvent.click(screen.getByRole("button", { name: "Use EN" }));
+      expect(screen.getByText("Loading storefront settings...")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Use ES" }));
+      expect(screen.getByText("Cargando la configuración de la tienda...")).toBeInTheDocument();
+      expectNoStorefrontActions();
+      expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
+      await act(async () => { finishRetry(savedProfile); await retryLoad; });
+
+      expect(await screen.findByLabelText("Frase de presentación")).toHaveValue(savedProfile.storefront.showcase.tagline);
+      expect(screen.getByLabelText("Color de acento")).toHaveValue(savedProfile.storefront.branding.accentColor);
+      expect(screen.getByRole("combobox", { name: "Estilo de la tienda" })).toHaveValue("warm");
+      expect(within(screen.getByRole("region", { name: "Vista previa de la tienda" })).getByText(savedProfile.displayName)).toBeInTheDocument();
+      expect(Array.from(container.querySelectorAll("img"), (image) => image.getAttribute("src"))).toEqual(expect.arrayContaining([
+        savedProfile.storefront.branding.logoUrl,
+        savedProfile.storefront.branding.heroImageUrl,
+      ]));
+      const courseRows = screen.getAllByRole("listitem");
+      expect(courseRows).toHaveLength(2);
+      expect(courseRows[0]).toHaveTextContent("Outro curso salvo");
+      expect(courseRows[1]).toHaveTextContent("Curso $$ e $&");
+      expect(within(courseRows[1]).getByRole("button", { name: "Destacado" })).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByLabelText("Subir logotipo de la tienda")).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Eliminar logotipo de la tienda" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Guardar tienda" })).toBeEnabled();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Intentar de nuevo" })).not.toBeInTheDocument();
+      expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
       expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledOnce();
+      expectNoWrites();
+    });
+
+    it("não salva uma lista de cursos desconhecida e recupera só a subscription sem perder o rascunho", async () => {
+      const savedBranding = {
+        accentColor: "#2468ab",
+        logoUrl: "https://media.example/saved-logo.png?v=1",
+        heroImageUrl: "https://media.example/saved-hero.png?v=1",
+        themePreset: "warm",
+      };
+      const savedShowcase = {
+        tagline: "Texto salvo $$ e $&",
+        orderedCourseIds: ["second", "first"],
+        featuredCourseId: "first",
+      };
+      const draft = { accentColor: "#13579b", tagline: "Rascunho $$ e $& preservado", themePreset: "cool" };
+      mocks.getUserProfile.mockResolvedValueOnce({
+        displayName: "Autoria $$ e $&",
+        storefront: { branding: savedBranding, showcase: savedShowcase },
+      });
+      let deliverCourses: (courses: unknown[]) => void = () => undefined;
+      let failCourses: (error: Error) => void = () => undefined;
+      const unsubscribeCourses = vi.fn();
+      mocks.subscribeToTeacherCourses.mockImplementation((_uid, onData, onError) => {
+        deliverCourses = onData;
+        failCourses = onError;
+        return unsubscribeCourses;
+      });
+      const expectDraftIntact = () => {
+        expect(screen.getByLabelText(/^(Accent color|Color de acento)$/)).toHaveValue(draft.accentColor);
+        expect(screen.getByLabelText(/^(Tagline|Frase de presentación)$/)).toHaveValue(draft.tagline);
+        expect(screen.getByRole("combobox", { name: /^(Theme preset|Estilo de la tienda)$/ })).toHaveValue(draft.themePreset);
+      };
+      const expectNoWrites = () => {
+        expect(mocks.updateUserStorefront).not.toHaveBeenCalled();
+        expect(mocks.uploadUserStorefrontImage).not.toHaveBeenCalled();
+        expect(mocks.removeUserStorefrontImage).not.toHaveBeenCalled();
+      };
+      renderWithLocale();
+      const tagline = await screen.findByLabelText("Tagline");
+      const save = screen.getByRole("button", { name: "Save storefront" });
+      expect(save).toBeDisabled();
+      expect(screen.getByText("Loading courses...")).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText("Accent color"), { target: { value: draft.accentColor } });
+      fireEvent.change(tagline, { target: { value: draft.tagline } });
+      fireEvent.change(screen.getByRole("combobox", { name: "Theme preset" }), { target: { value: draft.themePreset } });
+      // The submit handler must reject an unknown list as well as disabling Save.
+      fireEvent.submit(save.closest("form")!);
+      expectNoWrites();
+      fireEvent.click(screen.getByRole("button", { name: "Use ES" }));
+      expect(screen.getByText("Cargando cursos...")).toBeInTheDocument();
+      expectDraftIntact();
+      expect(mocks.getUserProfile).toHaveBeenCalledOnce();
+      expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledOnce();
+
+      act(() => failCourses(new Error("LOCAL TEST: courses unavailable")));
+      expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar tus cursos publicados. Inténtalo de nuevo antes de guardar.");
+      expect(screen.getByRole("button", { name: "Guardar tienda" })).toBeDisabled();
+      fireEvent.submit(screen.getByRole("button", { name: "Guardar tienda" }).closest("form")!);
+      expectNoWrites();
+      expectDraftIntact();
+      fireEvent.click(screen.getByRole("button", { name: "Use EN" }));
+      expect(screen.getByRole("alert")).toHaveTextContent("We could not load your published courses. Try again before saving.");
+      expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
+      fireEvent.click(screen.getByRole("button", { name: "Use ES" }));
+      expect(mocks.getUserProfile).toHaveBeenCalledOnce();
+      expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledOnce();
+
+      fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
+      await waitFor(() => expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledTimes(2));
+      expect(unsubscribeCourses).toHaveBeenCalledOnce();
+      expect(mocks.getUserProfile).toHaveBeenCalledOnce();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.getByText("Cargando cursos...")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Guardar tienda" })).toBeDisabled();
+      expectDraftIntact();
+      expectNoWrites();
+      act(() => deliverCourses([
+        { id: "first", ownerId: "teacher-1", title: "Curso $$ e $&", status: "published", modules: [] },
+        { id: "second", ownerId: "teacher-1", title: "Outro curso salvo", status: "published", modules: [] },
+      ]));
+      expect(screen.getByRole("button", { name: "Guardar tienda" })).toBeEnabled();
+      expectDraftIntact();
+      const courseRows = screen.getAllByRole("listitem");
+      expect(courseRows).toHaveLength(2);
+      expect(courseRows[0]).toHaveTextContent("Outro curso salvo");
+      expect(courseRows[1]).toHaveTextContent("Curso $$ e $&");
+      expect(within(courseRows[1]).getByRole("button", { name: "Destacado" })).toHaveAttribute("aria-pressed", "true");
+      expectNoWrites();
+      fireEvent.click(screen.getByRole("button", { name: "Guardar tienda" }));
+      await waitFor(() => expect(mocks.updateUserStorefront).toHaveBeenCalledWith("teacher-1", {
+        branding: { ...savedBranding, accentColor: draft.accentColor, themePreset: draft.themePreset },
+        showcase: { ...savedShowcase, tagline: draft.tagline },
+      }));
+      expect(mocks.updateUserStorefront).toHaveBeenCalledOnce();
+      expect(mocks.getUserProfile).toHaveBeenCalledOnce();
+      expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledTimes(2);
+      expect(mocks.uploadUserStorefrontImage).not.toHaveBeenCalled();
+      expect(mocks.removeUserStorefrontImage).not.toHaveBeenCalled();
     });
 
     it("traduz remoção e limpeza posterior sem apagar o objeto antes da persistência", async () => {

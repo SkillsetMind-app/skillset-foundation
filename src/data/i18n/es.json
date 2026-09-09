@@ -1740,6 +1740,7 @@
       },
       "errors": {
         "load": "No pudimos cargar la configuración de tu tienda.",
+        "courses": "No pudimos cargar tus cursos publicados. Inténtalo de nuevo antes de guardar.",
         "signIn": "Vuelve a iniciar sesión para actualizar tu tienda.",
         "accent": "El color de acento debe ser un código hexadecimal de 6 dígitos, como #183a5e.",
         "tagline": "La frase de presentación debe tener {max} caracteres o menos.",

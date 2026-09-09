@@ -116,7 +116,7 @@ function StorefrontImageUpload({
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <label
-            className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] ${
+            className={`relative inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
               isUploading ? "pointer-events-none opacity-60" : ""
             }`}
           >
@@ -132,7 +132,7 @@ function StorefrontImageUpload({
                 event.target.value = "";
                 onChange(file);
               }}
-              className="hidden"
+              className="sr-only"
             />
           </label>
           {imageUrl ? (
@@ -181,8 +181,12 @@ export function StorefrontSettingsPanel() {
   const [featuredCourseId, setFeaturedCourseId] = useState<string | null>(null);
 
   const [publishedCourses, setPublishedCourses] = useState<TeacherCourse[]>([]);
+  const [courseLoadState, setCourseLoadState] = useState<"loading" | "ready" | "error">("loading");
+  const [courseRetryKey, setCourseRetryKey] = useState(0);
+  const coursesReady = courseLoadState === "ready";
 
   const [isLoading, setIsLoading] = useState(true);
+  const [retryKey, setRetryKey] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingImages, setUploadingImages] = useState<
     ReadonlySet<StorefrontImageKind>
@@ -252,7 +256,7 @@ export function StorefrontSettingsPanel() {
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [user, retryKey]);
 
   // Live list of this teacher's courses to drive the showcase ordering.
   useEffect(() => {
@@ -266,14 +270,15 @@ export function StorefrontSettingsPanel() {
         setPublishedCourses(
           courses.filter((course) => course.status === "published"),
         );
+        setCourseLoadState("ready");
       },
       () => {
-        setPublishedCourses([]);
+        setCourseLoadState("error");
       },
     );
 
     return unsubscribe;
-  }, [user]);
+  }, [user, courseRetryKey]);
 
   // The showcase is an ordered VIEW over the teacher's published courses:
   // saved order first (dropping courses no longer published), then any newly
@@ -379,6 +384,10 @@ export function StorefrontSettingsPanel() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    if (!coursesReady) {
+      return;
+    }
+
     if (!user) {
       setError("signIn");
       return;
@@ -458,10 +467,30 @@ export function StorefrontSettingsPanel() {
 
   if (isLoading) {
     return (
-      <section className="settings-section-card">
-        <p className="text-sm text-[var(--color-ink-soft)]">
+      <section className="settings-section-card" aria-busy="true">
+        <p role="status" className="text-sm text-[var(--color-ink-soft)]">
           {t("teach.storefrontEditor.loading")}
         </p>
+      </section>
+    );
+  }
+
+  // A failed read is not an empty configuration the teacher can overwrite.
+  if (error === "load") {
+    return (
+      <section className="settings-section-card">
+        <InlineAlert tone="error">{t("teach.storefrontEditor.errors.load")}</InlineAlert>
+        <Button
+          variant="outline"
+          className="mt-3"
+          onClick={() => {
+            setIsLoading(true);
+            setError("");
+            setRetryKey((current) => current + 1);
+          }}
+        >
+          {t("authFlow.loading.retry")}
+        </Button>
       </section>
     );
   }
@@ -483,11 +512,11 @@ export function StorefrontSettingsPanel() {
         eyebrow={t("teach.page.eyebrow")}
         title={t("teach.storefrontEditor.title")}
         description={`${t("teach.storefrontEditor.description")}${
-          isPublished ? "" : ` ${t("teach.storefrontPage.laterStep")}`
+          !coursesReady || isPublished ? "" : ` ${t("teach.storefrontPage.laterStep")}`
         }`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <span
+            {coursesReady ? <span
               className={`status-chip ${isPublished ? "status-chip--success" : "status-chip--draft"}`}
             >
               <span className="status-chip__dot" aria-hidden="true" />
@@ -496,13 +525,13 @@ export function StorefrontSettingsPanel() {
                   ? "teach.storefrontPage.published"
                   : "teach.storefrontPage.notPublished",
               )}
-            </span>
+            </span> : null}
             {publicPath ? (
               <Link
                 href={publicPath}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={buttonClasses({ variant: "outline", size: "sm" })}
+                className={buttonClasses({ variant: "outline", size: "sm" }, "relative")}
               >
                 {t("teach.storefrontPage.openPublicPage")}
                 <ExternalLink aria-hidden="true" size={14} strokeWidth={1.9} />
@@ -547,7 +576,7 @@ export function StorefrontSettingsPanel() {
             </span>
             {/* A previa mentia por omissao: mostrava marca e nada do catalogo,
                 que e o que o comprador realmente ve na vitrine. */}
-            <span className="mt-2 block max-w-md truncate text-xs text-white/60">
+            {coursesReady ? <span className="mt-2 block max-w-md truncate text-xs text-white/60">
               {orderedCourses.length === 0
                 ? t("teach.storefrontPage.previewNoCourse")
                 : `${t(
@@ -558,7 +587,7 @@ export function StorefrontSettingsPanel() {
                     .slice(0, 3)
                     .map((course) => course.title)
                     .join(", ")}`}
-            </span>
+            </span> : null}
           </span>
         </div>
         <div className="h-1.5" style={{ background: previewAccent }} />
@@ -671,12 +700,30 @@ export function StorefrontSettingsPanel() {
             </span>
           </div>
 
-          {orderedCourses.length === 0 ? (
+          {courseLoadState === "loading" ? (
+            <p role="status" className="text-xs leading-5 text-[var(--color-ink-soft)]">
+              {t("publicCourses.loadingCourses")}
+            </p>
+          ) : courseLoadState === "error" ? (
+            <div>
+              <InlineAlert tone="error">{t("teach.storefrontEditor.errors.courses")}</InlineAlert>
+              <Button
+                variant="outline"
+                className="mt-3"
+                onClick={() => {
+                  setCourseLoadState("loading");
+                  setCourseRetryKey((current) => current + 1);
+                }}
+              >
+                {t("authFlow.loading.retry")}
+              </Button>
+            </div>
+          ) : orderedCourses.length === 0 ? (
             <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
               {t("teach.storefrontEditor.noCourses")}
             </p>
           ) : (
-            <ol className="grid gap-2">
+            <ol className="grid grid-cols-1 gap-2">
               {orderedCourses.map((course, index) => {
                 const isFeatured = featuredCourseId === course.id;
                 return (
@@ -687,7 +734,7 @@ export function StorefrontSettingsPanel() {
                     <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--color-surface-soft)] text-xs font-semibold text-[var(--color-ink-soft)]">
                       {index + 1}
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[var(--color-ink)]">
+                    <span className="min-w-0 flex-1 basis-[calc(100%_-_2.25rem)] truncate text-sm font-semibold text-[var(--color-ink)] sm:basis-0">
                       {course.title}
                     </span>
                     <button
@@ -696,7 +743,7 @@ export function StorefrontSettingsPanel() {
                         setFeaturedCourseId(isFeatured ? null : course.id)
                       }
                       aria-pressed={isFeatured}
-                      className={`shrink-0 rounded-[var(--radius-sm)] border px-2.5 py-1.5 text-xs font-semibold ${
+                      className={`min-h-11 shrink-0 rounded-[var(--radius-sm)] border px-2.5 py-1.5 text-xs font-semibold ${
                         isFeatured
                           ? "border-[var(--color-primary)] bg-[rgba(24,58,94,0.08)] text-[var(--color-primary)]"
                           : "border-[var(--color-line)] text-[var(--color-ink-soft)]"
@@ -710,7 +757,7 @@ export function StorefrontSettingsPanel() {
                         onClick={() => reorder(index, -1)}
                         disabled={index === 0}
                         aria-label={t("teach.storefrontEditor.moveUp").replace("{title}", () => course.title)}
-                        className="rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40"
+                        className="min-h-11 min-w-11 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40"
                       >
                         ↑
                       </button>
@@ -719,7 +766,7 @@ export function StorefrontSettingsPanel() {
                         onClick={() => reorder(index, 1)}
                         disabled={index === orderedCourses.length - 1}
                         aria-label={t("teach.storefrontEditor.moveDown").replace("{title}", () => course.title)}
-                        className="rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40"
+                        className="min-h-11 min-w-11 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40"
                       >
                         ↓
                       </button>
@@ -742,7 +789,7 @@ export function StorefrontSettingsPanel() {
 
         <Button
           type="submit"
-          disabled={isSaving || uploadingImages.size > 0}
+          disabled={isSaving || uploadingImages.size > 0 || !coursesReady}
           className="justify-self-start"
         >
           {t(`teach.storefrontEditor.${isSaving ? "saving" : "save"}`)}
