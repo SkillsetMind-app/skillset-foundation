@@ -125,7 +125,7 @@ export function TeacherWelcomeTour({ userId, firstName }: { userId: string; firs
           ))}
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-[var(--color-line)] px-6 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] px-6 py-4">
           <button
             type="button"
             onClick={dismiss}
@@ -133,25 +133,25 @@ export function TeacherWelcomeTour({ userId, firstName }: { userId: string; firs
           >
             {t("learn.tour.skip")}
           </button>
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
             {stepIndex > 0 ? (
               <button
                 type="button"
                 onClick={() => setStepIndex((index) => Math.max(0, index - 1))}
-                className="button-outline px-4 py-2 text-sm"
+                className="button-outline shrink-0 px-4 py-2 text-sm"
               >
                 {t("learn.tour.back")}
               </button>
             ) : null}
             {isLast ? (
-              <button type="button" onClick={dismiss} className="button-solid px-4 py-2 text-sm">
+              <button type="button" onClick={dismiss} className="button-solid shrink-0 px-4 py-2 text-sm">
                 {t("teach.tour.openStudio")}
               </button>
             ) : (
               <button
                 type="button"
                 onClick={() => setStepIndex((index) => Math.min(steps.length - 1, index + 1))}
-                className="button-solid px-4 py-2 text-sm"
+                className="button-solid shrink-0 px-4 py-2 text-sm"
               >
                 {t("learn.tour.next")}
               </button>
