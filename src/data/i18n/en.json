@@ -1815,6 +1815,8 @@
       "nav": {
         "label": "Course management sections",
         "manage": "Manage",
+        "previous": "Scroll to previous sections",
+        "next": "Scroll to more sections",
         "roadmap": "On the roadmap"
       },
       "roadmap": {

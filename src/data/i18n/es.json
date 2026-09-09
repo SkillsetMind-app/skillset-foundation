@@ -1815,6 +1815,8 @@
       "nav": {
         "label": "Secciones de gestión del curso",
         "manage": "Gestionar",
+        "previous": "Desplazar a secciones anteriores",
+        "next": "Desplazar a más secciones",
         "roadmap": "En el roadmap"
       },
       "roadmap": {

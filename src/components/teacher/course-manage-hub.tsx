@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ChevronDown } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
@@ -304,6 +304,16 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   };
   const menuRef = useRef<HTMLElement>(null);
   const activeSectionRef = useRef<HTMLButtonElement>(null);
+  const sectionRowRef = useRef<HTMLDivElement>(null);
+  const [scrollEdges, setScrollEdges] = useState({ previous: false, next: false });
+  const updateScrollEdges = useCallback(() => {
+    const row = sectionRowRef.current;
+    if (!row) return;
+    const previous = row.scrollLeft > 1;
+    const next = row.scrollLeft + row.clientWidth < row.scrollWidth - 1;
+    setScrollEdges((current) => current.previous === previous && current.next === next
+      ? current : { previous, next });
+  }, []);
 
   useEffect(() => {
     return subscribeToTeacherCourse(
@@ -328,15 +338,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     const viewport = menu?.closest<HTMLElement>(".platform-content");
     if (!menu || !viewport) return;
 
-    // Both platform and course headers consume space. Measure the menu's
-    // normal-flow row so even its bottom fits before the outer page scrolls.
     const updateLayout = () => {
-      const style = getComputedStyle(viewport);
-      const rowTop = menu.parentElement!.getBoundingClientRect().top;
-      const offset = rowTop - viewport.getBoundingClientRect().top + viewport.scrollTop;
-      const height = viewport.clientHeight - offset - parseFloat(style.paddingBottom);
-      menu.style.setProperty("--course-nav-height", `${Math.max(0, height)}px`);
-
+      updateScrollEdges();
       const active = activeSectionRef.current;
       const row = active?.parentElement;
       if (!active || !row) return;
@@ -350,20 +353,16 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
       } else if (buttonBounds.right > rowBounds.right) {
         row.scrollLeft += buttonBounds.right - rowBounds.right;
       }
-      const menuBounds = menu.getBoundingClientRect();
-      if (buttonBounds.top < menuBounds.top) {
-        menu.scrollTop += buttonBounds.top - menuBounds.top;
-      } else if (buttonBounds.bottom > menuBounds.bottom) {
-        menu.scrollTop += buttonBounds.bottom - menuBounds.bottom;
-      }
+      updateScrollEdges();
     };
     updateLayout();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateLayout);
     observer?.observe(viewport);
+    if (sectionRowRef.current) observer?.observe(sectionRowRef.current);
     const courseHeader = menu.parentElement?.previousElementSibling;
     if (courseHeader) observer?.observe(courseHeader);
     return () => observer?.disconnect();
-  }, [courseLoaded, course?.id, section, locale]);
+  }, [courseLoaded, course?.id, section, locale, updateScrollEdges]);
 
   useEffect(() => {
     if (!user) {
@@ -563,12 +562,31 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
         <nav
           ref={menuRef}
           aria-label={t("creatorPanel.hub.nav.label")}
-          className="min-w-0 border-b border-[var(--color-line)] bg-white pb-2 lg:sticky lg:top-4 lg:max-h-[var(--course-nav-height)] lg:overflow-y-auto lg:overscroll-contain lg:rounded-[8px] lg:border lg:p-2"
+          className="relative min-w-0 border-b border-[var(--color-line)] bg-white pb-2 lg:rounded-[8px] lg:border lg:p-2"
         >
           <p className="hidden px-2 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)] lg:block">
             {t("creatorPanel.hub.nav.manage")}
           </p>
-          <div className="flex gap-1 overflow-x-auto lg:grid">
+          {([
+            ["previous", ChevronLeft, -1],
+            ["next", ChevronRight, 1],
+          ] as const).map(([direction, Icon, sign]) => (
+            <button
+              key={direction}
+              type="button"
+              aria-label={t(`creatorPanel.hub.nav.${direction}`)}
+              title={t(`creatorPanel.hub.nav.${direction}`)}
+              disabled={!scrollEdges[direction]}
+              onClick={() => {
+                const row = sectionRowRef.current;
+                if (row) row.scrollBy({ left: sign * row.clientWidth, behavior: "auto" });
+              }}
+              className={`absolute top-0 flex h-11 w-11 items-center justify-center text-[var(--color-primary)] disabled:opacity-30 lg:hidden ${direction === "previous" ? "left-0" : "right-0"}`}
+            >
+              <Icon size={18} aria-hidden="true" />
+            </button>
+          ))}
+          <div ref={sectionRowRef} onScroll={updateScrollEdges} className="mx-11 flex gap-1 overflow-x-auto lg:mx-0 lg:grid">
             {manageSections.map((item) => (
               <button
                 key={item.id}
