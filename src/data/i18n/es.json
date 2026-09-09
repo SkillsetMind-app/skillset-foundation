@@ -1683,6 +1683,70 @@
       "previewNoCourse": "Todavía no hay ningún curso publicado",
       "previewCoursesOne": "1 curso publicado",
       "previewCoursesMany": "{count} cursos publicados"
+    },
+    "storefrontEditor": {
+      "title": "Marca de la tienda",
+      "description": "Personaliza tu página pública de profesor: logotipo, imagen de portada, color de acento y orden de los cursos.",
+      "loading": "Cargando la configuración de la tienda...",
+      "brand": "Marca",
+      "previewName": "Tu página de profesor",
+      "accentLabel": "Color de acento",
+      "accentHint": "Código hexadecimal de 6 dígitos. Déjalo vacío para usar el color de la plataforma.",
+      "accentPicker": "Selector del color de acento",
+      "themeLabel": "Estilo de la tienda",
+      "taglineLabel": "Frase de presentación",
+      "taglinePlaceholder": "Una frase que resuma lo que enseñas.",
+      "characters": "{count}/{max} caracteres",
+      "courseOrder": "Orden de los cursos",
+      "publishedOnly": "Solo cursos publicados",
+      "noCourses": "Todavía no tienes cursos publicados. Cuando publiques uno, aparecerá aquí para que elijas su orden.",
+      "feature": "Destacar",
+      "featured": "Destacado",
+      "moveUp": "Mover {title} hacia arriba",
+      "moveDown": "Mover {title} hacia abajo",
+      "save": "Guardar tienda",
+      "saving": "Guardando...",
+      "presets": {
+        "default": "Predeterminado de la plataforma",
+        "warm": "Cálido",
+        "cool": "Frío",
+        "mono": "Monocromático"
+      },
+      "image": {
+        "logoLabel": "Logotipo de la tienda",
+        "logoDescription": "Usa una imagen cuadrada con fondo transparente o sencillo. En los planes de pago también aparece en los certificados que emites.",
+        "heroLabel": "Portada de la tienda",
+        "heroDescription": "Usa una imagen horizontal cuyo contenido se vea bien en computadoras y celulares.",
+        "requirements": "JPG, PNG o WebP de hasta 5 MB",
+        "previewAlt": "Vista previa del logotipo de la tienda",
+        "uploadLogo": "Subir logotipo de la tienda",
+        "uploadHero": "Subir imagen de portada de la tienda",
+        "removeLogo": "Eliminar logotipo de la tienda",
+        "removeHero": "Eliminar imagen de portada de la tienda",
+        "upload": "Subir",
+        "uploading": "Subiendo...",
+        "replace": "Reemplazar",
+        "remove": "Eliminar",
+        "errors": {
+          "invalid": "Usa una imagen {requirements}.",
+          "upload": "No pudimos subir esta imagen. Inténtalo de nuevo."
+        }
+      },
+      "feedback": {
+        "logoUploaded": "Logotipo subido. Guarda la tienda para publicarlo.",
+        "heroUploaded": "Imagen de portada subida. Guarda la tienda para publicarla.",
+        "removalPending": "Guarda la tienda para publicar esta eliminación.",
+        "saved": "Tienda guardada."
+      },
+      "errors": {
+        "load": "No pudimos cargar la configuración de tu tienda.",
+        "courses": "No pudimos cargar tus cursos publicados. Inténtalo de nuevo antes de guardar.",
+        "signIn": "Vuelve a iniciar sesión para actualizar tu tienda.",
+        "accent": "El color de acento debe ser un código hexadecimal de 6 dígitos, como #183a5e.",
+        "tagline": "La frase de presentación debe tener {max} caracteres o menos.",
+        "cleanup": "La tienda se guardó, pero no se pudo eliminar una imagen anterior. Guarda de nuevo para reintentar la limpieza.",
+        "save": "No pudimos guardar tu tienda. Inténtalo de nuevo y contacta con soporte si el problema continúa."
+      }
     }
   },
   "creatorPanel": {
