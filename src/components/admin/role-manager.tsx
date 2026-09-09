@@ -1,9 +1,10 @@
 "use client";
 
+import { RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Field, InlineAlert } from "@/components/ui";
+import { Button, Field, InlineAlert } from "@/components/ui";
 import {
   listPlatformUsers,
   setUserRoles,
@@ -157,7 +158,7 @@ export function RoleManager() {
   ];
 
   return (
-    <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+    <section className="min-w-0 rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-center gap-2">
         {tabs.map((entry) => (
           <button
@@ -167,7 +168,7 @@ export function RoleManager() {
             aria-pressed={tab === entry.id}
             className={`min-h-11 rounded-[10px] px-4 py-2 text-sm font-bold transition ${
               tab === entry.id
-                ? "bg-[var(--color-primary)] text-white"
+                ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
                 : "border border-[var(--color-line)] text-[var(--color-ink-soft)]"
             }`}
           >
@@ -176,8 +177,16 @@ export function RoleManager() {
         ))}
       </div>
 
-      {error ? (
-        <InlineAlert tone="error" className="mt-5">{t(`${copy}.errors.${error.key}`)}</InlineAlert>
+      {tab === "people" && error ? (
+        <InlineAlert tone="error" className="mt-5 flex flex-wrap items-center justify-between gap-3">
+          <span>{t(`${copy}.errors.${error.key}`)}</span>
+          {error.scope === "load" ? (
+            <Button variant="outline" className="min-h-11" onClick={() => void load(search)}>
+              <RotateCcw size={16} aria-hidden />
+              {t("authFlow.loading.retry")}
+            </Button>
+          ) : null}
+        </InlineAlert>
       ) : null}
 
       {tab === "people" ? (

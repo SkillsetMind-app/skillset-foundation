@@ -84,6 +84,19 @@ function ChangeAuditLanguage() {
 }
 
 describe("filas de Operações na barra", () => {
+  it("contains the access matrix in its own keyboard-scrollable region", () => {
+    mocks.query = "tab=access";
+    render(<OpsPage />);
+    fireEvent.click(screen.getByRole("button", { name: "What each level can do" }));
+    const matrix = screen.getByRole("region", { name: "What each level can do" });
+    expect(matrix).toHaveAttribute("tabindex", "0");
+    expect(matrix).toHaveClass("overflow-x-auto");
+    expect(within(matrix).getByRole("table")).toHaveClass("min-w-[640px]");
+    const card = matrix.closest("section")!;
+    expect(card).toHaveClass("min-w-0");
+    expect(card.parentElement).toHaveClass("grid-cols-1", "min-w-0");
+  });
+
   it.each(["access", "catalog", "payments", "community", "users", "audit"])("does not offer a global search without a consumer in %s", tab => {
     mocks.query = `tab=${tab}&q=old`;
     const { container } = render(<OpsPage />);

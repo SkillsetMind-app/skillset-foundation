@@ -35,7 +35,7 @@ function translatedRoster() {
 
 afterEach(() => {
   cleanup();
-  vi.clearAllMocks();
+  vi.resetAllMocks();
 });
 
 function roster(roles: string[]) {
@@ -52,6 +52,49 @@ function roster(roles: string[]) {
 }
 
 describe("RoleManager", () => {
+  it("uses the theme's on-primary foreground for the selected tab", () => {
+    mocks.listPlatformUsers.mockResolvedValue([]);
+    render(translatedRoster());
+    expect(screen.getByRole("button", { name: "People" })).toHaveClass("text-[var(--color-on-primary)]");
+    fireEvent.click(screen.getByRole("button", { name: "What each level can do" }));
+    expect(screen.getByRole("button", { name: "What each level can do" })).toHaveClass("text-[var(--color-on-primary)]");
+  });
+
+  it("retries a failed roster read with the current search without writing roles", async () => {
+    mocks.listPlatformUsers.mockReset().mockResolvedValueOnce([]).mockRejectedValueOnce(new Error("Private roster detail"));
+    render(translatedRoster());
+    await screen.findByText("No one matches that search.");
+    fireEvent.change(screen.getByRole("searchbox", { name: "Find someone" }), { target: { value: "Test Person" } });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load the roster.");
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    const retry = translate(getDictionary("es"), "authFlow.loading.retry");
+    let finish!: (people: ReturnType<typeof roster>) => void;
+    mocks.listPlatformUsers.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    fireEvent.click(screen.getByRole("button", { name: retry }));
+    expect(mocks.listPlatformUsers).toHaveBeenLastCalledWith("Test Person");
+    expect(screen.getByRole("status")).toHaveTextContent(translate(getDictionary("es"), "platform.ops.accessPanel.loading"));
+    expect(screen.getByRole("searchbox", { name: "Buscar a una persona" })).toHaveValue("Test Person");
+    await act(async () => finish(roster(["student"])));
+    expect(await screen.findByText("Test Person")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(mocks.listPlatformUsers).toHaveBeenCalledTimes(3);
+    expect(mocks.setUserRoles).not.toHaveBeenCalled();
+  });
+
+  it("does not attach a failed roster read to the independent permission matrix", async () => {
+    mocks.listPlatformUsers.mockRejectedValue(new Error("Private roster detail"));
+    render(translatedRoster());
+    await screen.findByRole("alert");
+    fireEvent.click(screen.getByRole("button", { name: "What each level can do" }));
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("button", { name: translate(getDictionary("en"), "authFlow.loading.retry") })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "People" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not load the roster.");
+    expect(mocks.listPlatformUsers).toHaveBeenCalledTimes(1);
+    expect(mocks.setUserRoles).not.toHaveBeenCalled();
+  });
+
   it("writes all three staff roles when Team is switched on", async () => {
     // Team is one checkbox over three roles. If the mapping ever collapses to a
     // single role, this user silently loses two thirds of their access.
