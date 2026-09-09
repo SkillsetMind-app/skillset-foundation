@@ -88,8 +88,8 @@ describe("account menu viewport and dismissal", () => {
     viewport.height = 260;
     viewport.offsetLeft = 40;
     viewport.offsetTop = 30;
-    fireEvent(viewport, new Event("resize"));
-    fireEvent(viewport, new Event("scroll"));
+    viewport.dispatchEvent(new Event("resize"));
+    viewport.dispatchEvent(new Event("scroll"));
     const bounds = panel.getBoundingClientRect();
     expect(201.6 + parseFloat(panel.style.left)).toBeGreaterThanOrEqual(48);
     expect(201.6 + parseFloat(panel.style.left) + bounds.width).toBeLessThanOrEqual(232);
