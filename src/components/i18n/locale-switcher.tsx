@@ -96,7 +96,7 @@ export function LocaleSwitcher({
             : "inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-2.5 text-[11px] font-bold tracking-[0.08em] text-[var(--color-ink)] transition-colors hover:border-[var(--color-line-strong)]"
         }
       >
-        <span aria-hidden="true">{LOCALE_SHORT_LABELS[locale]}</span>
+        <span aria-hidden="true" className={compact ? "text-[11px] font-semibold tracking-normal" : undefined}>{LOCALE_SHORT_LABELS[locale]}</span>
         {compact ? null : (
           <ChevronDown
             aria-hidden="true"

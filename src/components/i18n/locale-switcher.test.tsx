@@ -58,6 +58,7 @@ describe("LocaleSwitcher", () => {
     expect(trigger).not.toHaveClass("border", "bg-[var(--color-surface-soft)]");
     expect(trigger).not.toHaveClass("rounded-full", "min-w-11");
     expect(trigger).toHaveTextContent("EN");
+    expect(trigger.querySelector("span")).toHaveClass("text-[11px]", "font-semibold");
     expect(trigger.querySelector("svg")).toBeNull();
     expect(trigger).toHaveAttribute("aria-haspopup", "listbox");
     expect(trigger.className).not.toMatch(/outline-none/);
