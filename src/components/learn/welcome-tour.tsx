@@ -1,19 +1,11 @@
 "use client";
 
 import { Award, GraduationCap, LifeBuoy, PlayCircle, X, type LucideIcon } from "lucide-react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
-
-// First-run welcome tour for the members area. Self-contained: no backend, no
-// tour library — a small multi-step modal that teaches the four things a new
-// student needs, then remembers it's been seen.
-//
-// ponytail: "seen" state is localStorage, so it's per-device (a student on a
-// second device sees it once more). Upgrade to a user_profiles.welcome_seen_at
-// column if cross-device suppression ever matters — not worth a migration for a
-// one-time dismissible intro.
+import { useWelcomeTour } from "@/lib/ui/use-welcome-tour";
 
 type TourStep = {
   icon: LucideIcon;
@@ -55,30 +47,12 @@ function buildSteps(
   ];
 }
 
-const SEEN_KEY_PREFIX = "skillset:welcome-tour:seen:";
-const EMPTY_SUBSCRIBE = () => () => {};
-
-// Read the localStorage "seen" flag without a set-state-in-effect (which the
-// codebase lints against) and without a hydration mismatch: the server snapshot
-// is `true` so nothing renders during SSR, and React reconciles the real client
-// value after hydration. No subscription — the flag only changes via dismiss().
-function useHasSeenTour(seenKey: string) {
-  return useSyncExternalStore(
-    EMPTY_SUBSCRIBE,
-    () => window.localStorage.getItem(seenKey) !== null,
-    () => true,
-  );
-}
-
 export function WelcomeTour({ userId, firstName }: { userId: string; firstName: string }) {
   const { t } = useTranslation();
-  const seenKey = `${SEEN_KEY_PREFIX}${userId}`;
-  const hasSeen = useHasSeenTour(seenKey);
-  const [dismissed, setDismissed] = useState(false);
+  const { open, dismiss } = useWelcomeTour(userId, "student");
   const [stepIndex, setStepIndex] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
   const steps = buildSteps(firstName, t);
-  const open = !hasSeen && !dismissed;
 
   useModalFocus(dialogRef, open);
 
@@ -88,18 +62,12 @@ export function WelcomeTour({ userId, firstName }: { userId: string; firstName: 
     }
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        window.localStorage.setItem(seenKey, "1");
-        setDismissed(true);
+        dismiss();
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, seenKey]);
-
-  function dismiss() {
-    window.localStorage.setItem(seenKey, "1");
-    setDismissed(true);
-  }
+  }, [open, dismiss]);
 
   if (!open) {
     return null;
