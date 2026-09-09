@@ -433,7 +433,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   );
 
   return (
-    <div className="grid grid-cols-1 gap-5">
+    <div className="grid gap-5">
       <section className="border-b border-[var(--color-line)] bg-white pb-5">
         <Link
           href="/teach/builder"
@@ -559,7 +559,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
         />
       ) : null}
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start">
+      <div className="grid gap-5 lg:grid-cols-[240px_1fr] lg:items-start">
         <nav
           ref={menuRef}
           aria-label={t("creatorPanel.hub.nav.label")}
@@ -607,7 +607,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
           </div>
         </nav>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid gap-4">
           {/* A ordem depende do estado do produto. PUBLICADO: o painel vem
               primeiro, porque quem abre esta tela abre para saber como o
               produto esta indo. AINDA NAO PUBLICADO: os numeros sao todos
