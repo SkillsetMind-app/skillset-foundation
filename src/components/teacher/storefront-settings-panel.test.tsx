@@ -9,6 +9,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import { StorefrontSettingsPanel } from "@/components/teacher/storefront-settings-panel";
 
 const mocks = vi.hoisted(() => ({
@@ -17,8 +18,11 @@ const mocks = vi.hoisted(() => ({
   subscribeToTeacherCourses: vi.fn(),
   updateUserStorefront: vi.fn(),
   uploadUserStorefrontImage: vi.fn(),
+  router: { refresh: vi.fn() },
   user: { uid: "teacher-1" },
 }));
+
+vi.mock("next/navigation", () => ({ useRouter: () => mocks.router }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({ user: mocks.user }),
@@ -37,15 +41,34 @@ vi.mock("@/lib/data/profile-media", () => ({
   allowedAvatarTypes: ["image/jpeg", "image/png", "image/webp"],
   isAllowedAvatarFile: (file: File) =>
     ["image/jpeg", "image/png", "image/webp"].includes(file.type) &&
+    file.size > 0 &&
     file.size <= 5 * 1024 * 1024,
   storefrontImageRequirementLabel: "JPG, PNG, or WebP under 5 MB",
   removeUserStorefrontImage: mocks.removeUserStorefrontImage,
   uploadUserStorefrontImage: mocks.uploadUserStorefrontImage,
 }));
 
+function LanguageControls() {
+  const { setLocale } = useTranslation();
+  return <>
+    <button onClick={() => setLocale("en")}>Use EN</button>
+    <button onClick={() => setLocale("es")}>Use ES</button>
+  </>;
+}
+
+function renderWithLocale(locale: "en" | "es" = "en") {
+  return render(
+    <I18nProvider initialLocale={locale}>
+      <LanguageControls />
+      <StorefrontSettingsPanel />
+    </I18nProvider>,
+  );
+}
+
 describe("StorefrontSettingsPanel", () => {
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
   });
 
   beforeEach(() => {
@@ -69,6 +92,7 @@ describe("StorefrontSettingsPanel", () => {
     mocks.removeUserStorefrontImage.mockReset();
     mocks.removeUserStorefrontImage.mockResolvedValue(undefined);
     mocks.uploadUserStorefrontImage.mockReset();
+    mocks.router.refresh.mockReset();
   });
 
   it("uses native file controls instead of asking teachers for image URLs", async () => {
@@ -277,7 +301,8 @@ describe("StorefrontSettingsPanel", () => {
     });
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Storage is offline");
+    expect(alert).toHaveTextContent("We could not upload this image. Please try again.");
+    expect(alert).not.toHaveTextContent("Storage is offline");
     const themeSelect = screen.getByRole("combobox", { name: "Theme preset" });
     expect(
       alert.compareDocumentPosition(themeSelect) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -315,6 +340,376 @@ describe("StorefrontSettingsPanel", () => {
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent("Sending...");
     expect(status).not.toHaveTextContent("%");
+  });
+
+  describe("idioma real da vitrine", () => {
+    it.each(["en", "es"] as const)("traduz o formulário desde %s e preserva rascunho, ordem, destaque e dados autorais", async (initialLocale) => {
+      const author = "Autoria $$ e $&";
+      const firstTitle = "Curso $$ e $& de autoria";
+      const secondTitle = "Outro curso autoral";
+      const draft = "Rascunho $$ e $& que permanece";
+      mocks.getUserProfile.mockResolvedValueOnce({
+        displayName: author,
+        storefront: {
+          branding: { themePreset: "default" },
+          showcase: { tagline: "Texto salvo", orderedCourseIds: ["second", "first", "old"] },
+        },
+      });
+      mocks.subscribeToTeacherCourses.mockImplementation((_uid, onData) => {
+        onData([
+          { id: "first", ownerId: "teacher-1", title: firstTitle, status: "published", modules: [] },
+          { id: "second", ownerId: "teacher-1", title: secondTitle, status: "published", modules: [] },
+          { id: "draft", ownerId: "teacher-1", title: "Curso ainda privado", status: "draft", modules: [] },
+        ]);
+        return vi.fn();
+      });
+      renderWithLocale(initialLocale);
+      const initial = initialLocale === "en"
+        ? { heading: "Storefront branding", accent: "Accent color", tagline: "Tagline", theme: "Theme preset", feature: "Feature", move: `Move ${firstTitle} up` }
+        : { heading: "Marca de la tienda", accent: "Color de acento", tagline: "Frase de presentación", theme: "Estilo de la tienda", feature: "Destacar", move: `Mover ${firstTitle} hacia arriba` };
+      await screen.findByRole("heading", { name: initial.heading });
+      fireEvent.change(screen.getByLabelText(initial.accent), { target: { value: "#2468ab" } });
+      fireEvent.change(screen.getByLabelText(initial.tagline), { target: { value: draft } });
+      fireEvent.change(screen.getByRole("combobox", { name: initial.theme }), { target: { value: "warm" } });
+      const firstRow = screen.getByText(firstTitle).closest("li")!;
+      fireEvent.click(within(firstRow).getByRole("button", { name: initial.feature }));
+      fireEvent.click(screen.getByRole("button", { name: initial.move }));
+      const profileCalls = mocks.getUserProfile.mock.calls.length;
+      const courseCalls = mocks.subscribeToTeacherCourses.mock.calls.length;
+      if (initialLocale === "en") fireEvent.click(screen.getByRole("button", { name: "Use ES" }));
+
+      expect(screen.getByRole("heading", { name: "Marca de la tienda" })).toBeInTheDocument();
+      expect(screen.getByLabelText("Color de acento")).toHaveValue("#2468ab");
+      expect(screen.getByLabelText("Frase de presentación")).toHaveValue(draft);
+      expect(screen.getByRole("combobox", { name: "Estilo de la tienda" })).toHaveValue("warm");
+      for (const label of ["Predeterminado de la plataforma", "Cálido", "Frío", "Monocromático"]) {
+        expect(screen.getByRole("option", { name: label })).toBeInTheDocument();
+      }
+      expect(screen.getByText("Orden de los cursos")).toBeInTheDocument();
+      expect(screen.getByText("Solo cursos publicados")).toBeInTheDocument();
+      expect(screen.queryByText("Curso aún privado")).not.toBeInTheDocument();
+      expect(screen.queryByText("Curso ainda privado")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Subir logotipo de la tienda")).toHaveAttribute("type", "file");
+      expect(screen.getByLabelText("Subir imagen de portada de la tienda")).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
+      expect(screen.getByRole("button", { name: `Mover ${firstTitle} hacia arriba` })).toBeDisabled();
+      expect(within(firstRow).getByRole("button", { name: "Destacado" })).toHaveAttribute("aria-pressed", "true");
+      const preview = screen.getByRole("region", { name: "Vista previa de la tienda" });
+      expect(within(preview).getByText(author)).toBeInTheDocument();
+      expect(within(preview).getByText(draft)).toBeInTheDocument();
+      expect(within(preview).getByText(`2 cursos publicados: ${firstTitle}, ${secondTitle}`)).toBeInTheDocument();
+      const publicLink = screen.getByRole("link", { name: /Abrir página pública/ });
+      expect(publicLink).toHaveAttribute("href", "/instructors/teacher-1");
+      expect(publicLink).toHaveAttribute("rel", "noopener noreferrer");
+      expect(mocks.getUserProfile).toHaveBeenCalledTimes(profileCalls);
+      expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledTimes(courseCalls);
+      expect(mocks.updateUserStorefront).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", { name: "Guardar tienda" }));
+      await waitFor(() => expect(mocks.updateUserStorefront).toHaveBeenCalledWith("teacher-1", {
+        branding: { accentColor: "#2468ab", logoUrl: null, heroImageUrl: null, themePreset: "warm" },
+        showcase: { tagline: draft, orderedCourseIds: ["first", "second"], featuredCourseId: "first" },
+      }));
+    });
+
+    it("mantém os uploads concorrentes e traduz a conclusão após EN↔ES", async () => {
+      let finishLogo: (url: string) => void = () => undefined;
+      let finishHero: (url: string) => void = () => undefined;
+      const logoUpload = new Promise<string>((resolve) => { finishLogo = resolve; });
+      const heroUpload = new Promise<string>((resolve) => { finishHero = resolve; });
+      mocks.uploadUserStorefrontImage.mockImplementation((_uid, kind, file, onProgress) => {
+        onProgress({ bytesTransferred: 0, totalBytes: file.size, percent: null, state: "running" });
+        return kind === "logo" ? logoUpload : heroUpload;
+      });
+      renderWithLocale();
+      fireEvent.change(await screen.findByLabelText("Upload storefront logo"), {
+        target: { files: [new File(["logo"], "logo.png", { type: "image/png" })] },
+      });
+      fireEvent.change(screen.getByLabelText("Upload storefront hero image"), {
+        target: { files: [new File(["hero"], "hero.webp", { type: "image/webp" })] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Use ES" }));
+      expect(screen.getByRole("button", { name: "Guardar tienda" })).toBeDisabled();
+      for (const status of screen.getAllByRole("status")) {
+        expect(status).toHaveTextContent("Enviando...");
+        expect(status).not.toHaveTextContent("%");
+      }
+      await act(async () => { finishLogo("https://media.example/logo.png?v=1"); await logoUpload; });
+      expect(screen.getByText("Logotipo subido. Guarda la tienda para publicarlo.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Guardar tienda" })).toBeDisabled();
+      fireEvent.click(screen.getByRole("button", { name: "Use EN" }));
+      expect(screen.getByText("Logo uploaded. Save the storefront to publish it.")).toBeInTheDocument();
+      await act(async () => { finishHero("https://media.example/hero.webp?v=1"); await heroUpload; });
+      fireEvent.click(screen.getByRole("button", { name: "Use ES" }));
+      expect(screen.getByText("Imagen de portada subida. Guarda la tienda para publicarla.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Guardar tienda" })).toBeEnabled();
+      expect(mocks.uploadUserStorefrontImage).toHaveBeenCalledTimes(2);
+      expect(mocks.getUserProfile).toHaveBeenCalledOnce();
+      expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledOnce();
+      expect(mocks.updateUserStorefront).not.toHaveBeenCalled();
+    });
+
+    it("retraduz erros visíveis e preserva os limites de arquivo, cor e tagline", async () => {
+      renderWithLocale();
+      fireEvent.change(await screen.findByLabelText("Upload storefront logo"), {
+        target: { files: [new File([], "empty.png", { type: "image/png" })] },
+      });
+      expect(await screen.findByRole("alert")).toHaveTextContent("Use a JPG, PNG, or WebP under 5 MB image.");
+      fireEvent.click(screen.getByRole("button", { name: "Use ES" }));
+      expect(screen.getByRole("alert")).toHaveTextContent("Usa una imagen JPG, PNG o WebP de hasta 5 MB.");
+      expect(mocks.uploadUserStorefrontImage).not.toHaveBeenCalled();
+      fireEvent.change(screen.getByLabelText("Color de acento"), { target: { value: "#abc" } });
+      fireEvent.click(screen.getByRole("button", { name: "Guardar tienda" }));
+      expect(screen.getByText("El color de acento debe ser un código hexadecimal de 6 dígitos, como #183a5e.")).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText("Color de acento"), { target: { value: "#123456" } });
+      fireEvent.change(screen.getByLabelText("Frase de presentación"), { target: { value: "x".repeat(201) } });
+      fireEvent.click(screen.getByRole("button", { name: "Guardar tienda" }));
+      expect(screen.getByText("La frase de presentación debe tener 200 caracteres o menos.")).toBeInTheDocument();
+      expect(mocks.updateUserStorefront).not.toHaveBeenCalled();
+      expect(mocks.getUserProfile).toHaveBeenCalledOnce();
+    });
+
+    it("bloqueia alterações após falha de carga e recupera os dados salvos só no retry, preservando EN↔ES", async () => {
+      const savedProfile = {
+        displayName: "Autoria $$ e $&",
+        storefront: {
+          branding: {
+            accentColor: "#2468ab",
+            logoUrl: "https://media.example/saved-logo.png?v=1",
+            heroImageUrl: "https://media.example/saved-hero.png?v=1",
+            themePreset: "warm",
+          },
+          showcase: {
+            tagline: "Texto salvo $$ e $&",
+            orderedCourseIds: ["second", "first"],
+            featuredCourseId: "first",
+          },
+        },
+      };
+      let rejectInitial: (reason: Error) => void = () => undefined;
+      let finishRetry: (profile: typeof savedProfile) => void = () => undefined;
+      const initialLoad = new Promise<typeof savedProfile>((_resolve, reject) => { rejectInitial = reject; });
+      const retryLoad = new Promise<typeof savedProfile>((resolve) => { finishRetry = resolve; });
+      mocks.getUserProfile.mockReturnValueOnce(initialLoad).mockReturnValueOnce(retryLoad);
+      mocks.subscribeToTeacherCourses.mockImplementation((_uid, onData) => {
+        onData([
+          { id: "first", ownerId: "teacher-1", title: "Curso $$ e $&", status: "published", modules: [] },
+          { id: "second", ownerId: "teacher-1", title: "Outro curso salvo", status: "published", modules: [] },
+        ]);
+        return vi.fn();
+      });
+      const expectNoWrites = () => {
+        expect(mocks.updateUserStorefront).not.toHaveBeenCalled();
+        expect(mocks.uploadUserStorefrontImage).not.toHaveBeenCalled();
+        expect(mocks.removeUserStorefrontImage).not.toHaveBeenCalled();
+      };
+      const expectNoStorefrontActions = () => {
+        expect(screen.queryByRole("button", { name: /^(Save storefront|Guardar tienda)$/ })).not.toBeInTheDocument();
+        expect(screen.queryAllByLabelText(/^(Upload storefront|Subir .* de la tienda)/)).toHaveLength(0);
+        expect(screen.queryAllByRole("button", { name: /^(Remove storefront|Eliminar .* de la tienda)/ })).toHaveLength(0);
+        expect(screen.queryAllByRole("button", { name: /^(Move .+ (up|down)|Mover .+ hacia (arriba|abajo))$/ })).toHaveLength(0);
+        expect(screen.queryAllByRole("button", { name: /^(Feature|Featured|Destacar|Destacado)$/ })).toHaveLength(0);
+        expectNoWrites();
+      };
+
+      const { container } = renderWithLocale();
+      expect(screen.getByText("Loading storefront settings...")).toBeInTheDocument();
+      expectNoStorefrontActions();
+      fireEvent.click(screen.getByRole("button", { name: "Use ES" }));
+      expect(screen.getByText("Cargando la configuración de la tienda...")).toBeInTheDocument();
+      expect(mocks.getUserProfile).toHaveBeenCalledOnce();
+      await act(async () => {
+        rejectInitial(new Error("LOCAL TEST: unavailable"));
+        await initialLoad.catch(() => undefined);
+      });
+      expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos cargar la configuración de tu tienda.");
+      expectNoStorefrontActions();
+      fireEvent.click(screen.getByRole("button", { name: "Use EN" }));
+      expect(screen.getByRole("alert")).toHaveTextContent("We could not load your storefront settings.");
+      expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
+      expectNoStorefrontActions();
+      fireEvent.click(screen.getByRole("button", { name: "Use ES" }));
+      expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar la configuración de tu tienda.");
+      expect(mocks.getUserProfile).toHaveBeenCalledOnce();
+
+      fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
+      await waitFor(() => expect(mocks.getUserProfile).toHaveBeenCalledTimes(2));
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.getByText("Cargando la configuración de la tienda...")).toBeInTheDocument();
+      expectNoStorefrontActions();
+      fireEvent.click(screen.getByRole("button", { name: "Use EN" }));
+      expect(screen.getByText("Loading storefront settings...")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Use ES" }));
+      expect(screen.getByText("Cargando la configuración de la tienda...")).toBeInTheDocument();
+      expectNoStorefrontActions();
+      expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
+      await act(async () => { finishRetry(savedProfile); await retryLoad; });
+
+      expect(await screen.findByLabelText("Frase de presentación")).toHaveValue(savedProfile.storefront.showcase.tagline);
+      expect(screen.getByLabelText("Color de acento")).toHaveValue(savedProfile.storefront.branding.accentColor);
+      expect(screen.getByRole("combobox", { name: "Estilo de la tienda" })).toHaveValue("warm");
+      expect(within(screen.getByRole("region", { name: "Vista previa de la tienda" })).getByText(savedProfile.displayName)).toBeInTheDocument();
+      expect(Array.from(container.querySelectorAll("img"), (image) => image.getAttribute("src"))).toEqual(expect.arrayContaining([
+        savedProfile.storefront.branding.logoUrl,
+        savedProfile.storefront.branding.heroImageUrl,
+      ]));
+      const courseRows = screen.getAllByRole("listitem");
+      expect(courseRows).toHaveLength(2);
+      expect(courseRows[0]).toHaveTextContent("Outro curso salvo");
+      expect(courseRows[1]).toHaveTextContent("Curso $$ e $&");
+      expect(within(courseRows[1]).getByRole("button", { name: "Destacado" })).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByLabelText("Subir logotipo de la tienda")).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Eliminar logotipo de la tienda" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Guardar tienda" })).toBeEnabled();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Intentar de nuevo" })).not.toBeInTheDocument();
+      expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
+      expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledOnce();
+      expectNoWrites();
+    });
+
+    it("não salva uma lista de cursos desconhecida e recupera só a subscription sem perder o rascunho", async () => {
+      const savedBranding = {
+        accentColor: "#2468ab",
+        logoUrl: "https://media.example/saved-logo.png?v=1",
+        heroImageUrl: "https://media.example/saved-hero.png?v=1",
+        themePreset: "warm",
+      };
+      const savedShowcase = {
+        tagline: "Texto salvo $$ e $&",
+        orderedCourseIds: ["second", "first"],
+        featuredCourseId: "first",
+      };
+      const draft = { accentColor: "#13579b", tagline: "Rascunho $$ e $& preservado", themePreset: "cool" };
+      mocks.getUserProfile.mockResolvedValueOnce({
+        displayName: "Autoria $$ e $&",
+        storefront: { branding: savedBranding, showcase: savedShowcase },
+      });
+      let deliverCourses: (courses: unknown[]) => void = () => undefined;
+      let failCourses: (error: Error) => void = () => undefined;
+      const unsubscribeCourses = vi.fn();
+      mocks.subscribeToTeacherCourses.mockImplementation((_uid, onData, onError) => {
+        deliverCourses = onData;
+        failCourses = onError;
+        return unsubscribeCourses;
+      });
+      const expectDraftIntact = () => {
+        expect(screen.getByLabelText(/^(Accent color|Color de acento)$/)).toHaveValue(draft.accentColor);
+        expect(screen.getByLabelText(/^(Tagline|Frase de presentación)$/)).toHaveValue(draft.tagline);
+        expect(screen.getByRole("combobox", { name: /^(Theme preset|Estilo de la tienda)$/ })).toHaveValue(draft.themePreset);
+      };
+      const expectNoWrites = () => {
+        expect(mocks.updateUserStorefront).not.toHaveBeenCalled();
+        expect(mocks.uploadUserStorefrontImage).not.toHaveBeenCalled();
+        expect(mocks.removeUserStorefrontImage).not.toHaveBeenCalled();
+      };
+      renderWithLocale();
+      const tagline = await screen.findByLabelText("Tagline");
+      const save = screen.getByRole("button", { name: "Save storefront" });
+      expect(save).toBeDisabled();
+      expect(screen.getByText("Loading courses...")).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText("Accent color"), { target: { value: draft.accentColor } });
+      fireEvent.change(tagline, { target: { value: draft.tagline } });
+      fireEvent.change(screen.getByRole("combobox", { name: "Theme preset" }), { target: { value: draft.themePreset } });
+      // The submit handler must reject an unknown list as well as disabling Save.
+      fireEvent.submit(save.closest("form")!);
+      expectNoWrites();
+      fireEvent.click(screen.getByRole("button", { name: "Use ES" }));
+      expect(screen.getByText("Cargando cursos...")).toBeInTheDocument();
+      expectDraftIntact();
+      expect(mocks.getUserProfile).toHaveBeenCalledOnce();
+      expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledOnce();
+
+      act(() => failCourses(new Error("LOCAL TEST: courses unavailable")));
+      expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar tus cursos publicados. Inténtalo de nuevo antes de guardar.");
+      expect(screen.getByRole("button", { name: "Guardar tienda" })).toBeDisabled();
+      fireEvent.submit(screen.getByRole("button", { name: "Guardar tienda" }).closest("form")!);
+      expectNoWrites();
+      expectDraftIntact();
+      fireEvent.click(screen.getByRole("button", { name: "Use EN" }));
+      expect(screen.getByRole("alert")).toHaveTextContent("We could not load your published courses. Try again before saving.");
+      expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
+      fireEvent.click(screen.getByRole("button", { name: "Use ES" }));
+      expect(mocks.getUserProfile).toHaveBeenCalledOnce();
+      expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledOnce();
+
+      fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
+      await waitFor(() => expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledTimes(2));
+      expect(unsubscribeCourses).toHaveBeenCalledOnce();
+      expect(mocks.getUserProfile).toHaveBeenCalledOnce();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.getByText("Cargando cursos...")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Guardar tienda" })).toBeDisabled();
+      expectDraftIntact();
+      expectNoWrites();
+      act(() => deliverCourses([
+        { id: "first", ownerId: "teacher-1", title: "Curso $$ e $&", status: "published", modules: [] },
+        { id: "second", ownerId: "teacher-1", title: "Outro curso salvo", status: "published", modules: [] },
+      ]));
+      expect(screen.getByRole("button", { name: "Guardar tienda" })).toBeEnabled();
+      expectDraftIntact();
+      const courseRows = screen.getAllByRole("listitem");
+      expect(courseRows).toHaveLength(2);
+      expect(courseRows[0]).toHaveTextContent("Outro curso salvo");
+      expect(courseRows[1]).toHaveTextContent("Curso $$ e $&");
+      expect(within(courseRows[1]).getByRole("button", { name: "Destacado" })).toHaveAttribute("aria-pressed", "true");
+      expectNoWrites();
+      fireEvent.click(screen.getByRole("button", { name: "Guardar tienda" }));
+      await waitFor(() => expect(mocks.updateUserStorefront).toHaveBeenCalledWith("teacher-1", {
+        branding: { ...savedBranding, accentColor: draft.accentColor, themePreset: draft.themePreset },
+        showcase: { ...savedShowcase, tagline: draft.tagline },
+      }));
+      expect(mocks.updateUserStorefront).toHaveBeenCalledOnce();
+      expect(mocks.getUserProfile).toHaveBeenCalledOnce();
+      expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledTimes(2);
+      expect(mocks.uploadUserStorefrontImage).not.toHaveBeenCalled();
+      expect(mocks.removeUserStorefrontImage).not.toHaveBeenCalled();
+    });
+
+    it("traduz remoção e limpeza posterior sem apagar o objeto antes da persistência", async () => {
+      mocks.getUserProfile.mockResolvedValueOnce({
+        displayName: "Autor $$ e $&",
+        storefront: { branding: { themePreset: "default", logoUrl: "https://media.example/logo.png" }, showcase: {} },
+      });
+      let finishSave: () => void = () => undefined;
+      const saving = new Promise<void>((resolve) => { finishSave = resolve; });
+      mocks.updateUserStorefront.mockReturnValueOnce(saving);
+      mocks.removeUserStorefrontImage.mockRejectedValueOnce(new Error("LOCAL TEST: cleanup failed"));
+      renderWithLocale();
+      fireEvent.click(await screen.findByRole("button", { name: "Remove storefront logo" }));
+      fireEvent.click(screen.getByRole("button", { name: "Use ES" }));
+      expect(screen.getByText("Guarda la tienda para publicar esta eliminación.")).toBeInTheDocument();
+      expect(mocks.removeUserStorefrontImage).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", { name: "Guardar tienda" }));
+      expect(screen.getByRole("button", { name: "Guardando..." })).toBeDisabled();
+      expect(mocks.removeUserStorefrontImage).not.toHaveBeenCalled();
+      await act(async () => { finishSave(); await saving; });
+      expect(await screen.findByText("Tienda guardada.")).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent("La tienda se guardó, pero no se pudo eliminar una imagen anterior. Guarda de nuevo para reintentar la limpieza.");
+      expect(mocks.updateUserStorefront.mock.invocationCallOrder[0]).toBeLessThan(mocks.removeUserStorefrontImage.mock.invocationCallOrder[0]);
+      fireEvent.click(screen.getByRole("button", { name: "Use EN" }));
+      expect(screen.getByRole("alert")).toHaveTextContent("The storefront was saved, but an old image could not be removed.");
+      fireEvent.click(screen.getByRole("button", { name: "Save storefront" }));
+      await waitFor(() => expect(mocks.removeUserStorefrontImage).toHaveBeenCalledTimes(2));
+      expect(mocks.removeUserStorefrontImage).toHaveBeenLastCalledWith("teacher-1", "logo");
+      expect(mocks.getUserProfile).toHaveBeenCalledOnce();
+    });
+
+    it("traduz falha ao salvar e usa fallback de upload sem vazar texto técnico", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      mocks.uploadUserStorefrontImage.mockRejectedValueOnce(new Error("LOCAL TEST: storage backend detail"));
+      mocks.updateUserStorefront.mockRejectedValueOnce(new Error("LOCAL TEST: save failed"));
+      renderWithLocale("es");
+      fireEvent.change(await screen.findByLabelText("Subir imagen de portada de la tienda"), {
+        target: { files: [new File(["hero"], "hero.png", { type: "image/png" })] },
+      });
+      expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos subir esta imagen. Inténtalo de nuevo.");
+      expect(screen.queryByText(/storage backend detail/)).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Guardar tienda" }));
+      expect(await screen.findByText("No pudimos guardar tu tienda. Inténtalo de nuevo y contacta con soporte si el problema continúa.")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Use EN" }));
+      expect(screen.getByText("We could not save your storefront. Try again, and contact support if it keeps failing.")).toBeInTheDocument();
+      expect(mocks.getUserProfile).toHaveBeenCalledOnce();
+      expect(mocks.updateUserStorefront).toHaveBeenCalledOnce();
+    });
   });
 
   // O que a pessoa sofria: nao havia caminho daqui para a vitrine publica, a

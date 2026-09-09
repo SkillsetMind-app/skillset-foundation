@@ -29,7 +29,6 @@ import {
   allowedAvatarTypes,
   isAllowedAvatarFile,
   removeUserStorefrontImage,
-  storefrontImageRequirementLabel,
   uploadUserStorefrontImage,
   type StorefrontImageKind,
   type UploadAvatarProgress,
@@ -38,12 +37,9 @@ import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 import { getUserProfile, updateUserStorefront } from "@/lib/data/user-profiles";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
 
-const themePresetLabels: Record<StorefrontThemePreset, string> = {
-  default: "Platform default",
-  warm: "Warm",
-  cool: "Cool",
-  mono: "Monochrome",
-};
+type StorefrontImageError = "" | "invalid" | "upload";
+type StorefrontError = "" | "load" | "signIn" | "accent" | "tagline" | "cleanup" | "save";
+type StorefrontSuccess = "" | "logoUploaded" | "heroUploaded" | "removalPending" | "saved";
 
 const defaultAccentColor = "#183a5e";
 
@@ -84,7 +80,9 @@ function StorefrontImageUpload({
   onChange: (file: File | null) => void;
   onRemove: () => void;
 }) {
-  const uploadLabel = `Upload storefront ${kind === "logo" ? "logo" : "hero image"}`;
+  const { t } = useTranslation();
+  const uploadLabel = t(`teach.storefrontEditor.image.${kind === "logo" ? "uploadLogo" : "uploadHero"}`);
+  const removeLabel = t(`teach.storefrontEditor.image.${kind === "logo" ? "removeLogo" : "removeHero"}`);
 
   return (
     <div className="grid gap-3 border-t border-[var(--color-line)] pt-4 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-center">
@@ -114,16 +112,16 @@ function StorefrontImageUpload({
       <div className="min-w-0">
         <p className="text-sm font-semibold text-[var(--color-ink)]">{label}</p>
         <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
-          {description} {storefrontImageRequirementLabel}.
+          {description} {t("teach.storefrontEditor.image.requirements")}.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <label
-            className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] ${
+            className={`relative inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
               isUploading ? "pointer-events-none opacity-60" : ""
             }`}
           >
             <UploadCloud aria-hidden="true" size={16} />
-            {isUploading ? "Uploading..." : imageUrl ? "Replace" : "Upload"}
+            {t(`teach.storefrontEditor.image.${isUploading ? "uploading" : imageUrl ? "replace" : "upload"}`)}
             <input
               type="file"
               accept={allowedAvatarTypes.join(",")}
@@ -134,7 +132,7 @@ function StorefrontImageUpload({
                 event.target.value = "";
                 onChange(file);
               }}
-              className="hidden"
+              className="sr-only"
             />
           </label>
           {imageUrl ? (
@@ -142,12 +140,12 @@ function StorefrontImageUpload({
               type="button"
               onClick={onRemove}
               disabled={isUploading}
-              aria-label={`Remove storefront ${kind === "logo" ? "logo" : "hero image"}`}
-              title={`Remove ${label.toLowerCase()}`}
+              aria-label={removeLabel}
+              title={removeLabel}
               className="inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] disabled:opacity-60"
             >
               <Trash2 aria-hidden="true" size={15} />
-              Remove
+              {t("teach.storefrontEditor.image.remove")}
             </button>
           ) : null}
         </div>
@@ -183,8 +181,12 @@ export function StorefrontSettingsPanel() {
   const [featuredCourseId, setFeaturedCourseId] = useState<string | null>(null);
 
   const [publishedCourses, setPublishedCourses] = useState<TeacherCourse[]>([]);
+  const [courseLoadState, setCourseLoadState] = useState<"loading" | "ready" | "error">("loading");
+  const [courseRetryKey, setCourseRetryKey] = useState(0);
+  const coursesReady = courseLoadState === "ready";
 
   const [isLoading, setIsLoading] = useState(true);
+  const [retryKey, setRetryKey] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingImages, setUploadingImages] = useState<
     ReadonlySet<StorefrontImageKind>
@@ -197,13 +199,21 @@ export function StorefrontSettingsPanel() {
   >(() => new Set());
   // Falha de imagem fica no campo dela; `error` é só para carregar/salvar.
   const [imageErrors, setImageErrors] = useState<
-    Partial<Record<StorefrontImageKind, string>>
+    Partial<Record<StorefrontImageKind, StorefrontImageError>>
   >({});
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState<StorefrontError>("");
+  const [success, setSuccess] = useState<StorefrontSuccess>("");
 
-  function setImageError(kind: StorefrontImageKind, message: string) {
+  function setImageError(kind: StorefrontImageKind, message: StorefrontImageError) {
     setImageErrors((current) => ({ ...current, [kind]: message }));
+  }
+
+  function imageErrorText(kind: StorefrontImageKind) {
+    const code = imageErrors[kind];
+    return code
+      ? t(`teach.storefrontEditor.image.errors.${code}`)
+          .replace("{requirements}", () => t("teach.storefrontEditor.image.requirements"))
+      : "";
   }
 
   // Load the saved storefront config.
@@ -234,7 +244,7 @@ export function StorefrontSettingsPanel() {
       })
       .catch(() => {
         if (mounted) {
-          setError("We could not load your storefront settings.");
+          setError("load");
         }
       })
       .finally(() => {
@@ -246,7 +256,7 @@ export function StorefrontSettingsPanel() {
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [user, retryKey]);
 
   // Live list of this teacher's courses to drive the showcase ordering.
   useEffect(() => {
@@ -260,14 +270,15 @@ export function StorefrontSettingsPanel() {
         setPublishedCourses(
           courses.filter((course) => course.status === "published"),
         );
+        setCourseLoadState("ready");
       },
       () => {
-        setPublishedCourses([]);
+        setCourseLoadState("error");
       },
     );
 
     return unsubscribe;
-  }, [user]);
+  }, [user, courseRetryKey]);
 
   // The showcase is an ordered VIEW over the teacher's published courses:
   // saved order first (dropping courses no longer published), then any newly
@@ -309,7 +320,7 @@ export function StorefrontSettingsPanel() {
     }
 
     if (!isAllowedAvatarFile(file)) {
-      setImageError(kind, `Use a ${storefrontImageRequirementLabel} image.`);
+      setImageError(kind, "invalid");
       return;
     }
 
@@ -341,15 +352,10 @@ export function StorefrontSettingsPanel() {
         next.delete(kind);
         return next;
       });
-      setSuccess(`${kind === "logo" ? "Logo" : "Hero image"} uploaded. Save the storefront to publish it.`);
+      setSuccess(kind === "logo" ? "logoUploaded" : "heroUploaded");
     } catch (uploadError) {
       console.error("Storefront image upload failed", { uid: user.uid, kind }, uploadError);
-      setImageError(
-        kind,
-        uploadError instanceof Error && uploadError.message
-          ? uploadError.message
-          : "We could not upload this image. Please try again.",
-      );
+      setImageError(kind, "upload");
     } finally {
       setUploadingImages((current) => {
         const next = new Set(current);
@@ -372,14 +378,18 @@ export function StorefrontSettingsPanel() {
     }
     setPendingImageRemovals((current) => new Set(current).add(kind));
     setImageError(kind, "");
-    setSuccess("Save the storefront to publish this removal.");
+    setSuccess("removalPending");
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    if (!coursesReady) {
+      return;
+    }
+
     if (!user) {
-      setError("Sign in again to update your storefront.");
+      setError("signIn");
       return;
     }
 
@@ -388,12 +398,12 @@ export function StorefrontSettingsPanel() {
     const trimmedHero = heroImageUrl.trim();
     const trimmedTagline = tagline.trim();
 
-    const validationError =
+    const validationError: StorefrontError =
       (trimmedAccent && !isStorefrontHexColor(trimmedAccent)
-        ? "Accent color must be a 6-digit hex like #183a5e."
+        ? "accent"
         : "") ||
       (trimmedTagline.length > maxStorefrontTaglineLength
-        ? `Tagline must be ${maxStorefrontTaglineLength} characters or fewer.`
+        ? "tagline"
         : "");
 
     if (validationError) {
@@ -444,16 +454,12 @@ export function StorefrontSettingsPanel() {
         });
       }
 
-      setSuccess("Storefront saved.");
+      setSuccess("saved");
       if (cleanupFailed) {
-        setError(
-          "The storefront was saved, but an old image could not be removed. Save again to retry cleanup.",
-        );
+        setError("cleanup");
       }
     } catch {
-      setError(
-        "We could not save your storefront. Try again, and contact support if it keeps failing.",
-      );
+      setError("save");
     } finally {
       setIsSaving(false);
     }
@@ -461,10 +467,30 @@ export function StorefrontSettingsPanel() {
 
   if (isLoading) {
     return (
-      <section className="settings-section-card">
-        <p className="text-sm text-[var(--color-ink-soft)]">
-          Loading storefront settings...
+      <section className="settings-section-card" aria-busy="true">
+        <p role="status" className="text-sm text-[var(--color-ink-soft)]">
+          {t("teach.storefrontEditor.loading")}
         </p>
+      </section>
+    );
+  }
+
+  // A failed read is not an empty configuration the teacher can overwrite.
+  if (error === "load") {
+    return (
+      <section className="settings-section-card">
+        <InlineAlert tone="error">{t("teach.storefrontEditor.errors.load")}</InlineAlert>
+        <Button
+          variant="outline"
+          className="mt-3"
+          onClick={() => {
+            setIsLoading(true);
+            setError("");
+            setRetryKey((current) => current + 1);
+          }}
+        >
+          {t("authFlow.loading.retry")}
+        </Button>
       </section>
     );
   }
@@ -483,14 +509,14 @@ export function StorefrontSettingsPanel() {
   return (
     <section className="settings-section-card">
       <SectionHeader
-        eyebrow="Teacher Studio"
-        title="Storefront branding"
-        description={`Brand your public instructor page — logo, hero image, accent color, and the order your courses appear in.${
-          isPublished ? "" : ` ${t("teach.storefrontPage.laterStep")}`
+        eyebrow={t("teach.page.eyebrow")}
+        title={t("teach.storefrontEditor.title")}
+        description={`${t("teach.storefrontEditor.description")}${
+          !coursesReady || isPublished ? "" : ` ${t("teach.storefrontPage.laterStep")}`
         }`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <span
+            {coursesReady ? <span
               className={`status-chip ${isPublished ? "status-chip--success" : "status-chip--draft"}`}
             >
               <span className="status-chip__dot" aria-hidden="true" />
@@ -499,13 +525,13 @@ export function StorefrontSettingsPanel() {
                   ? "teach.storefrontPage.published"
                   : "teach.storefrontPage.notPublished",
               )}
-            </span>
+            </span> : null}
             {publicPath ? (
               <Link
                 href={publicPath}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={buttonClasses({ variant: "outline", size: "sm" })}
+                className={buttonClasses({ variant: "outline", size: "sm" }, "relative")}
               >
                 {t("teach.storefrontPage.openPublicPage")}
                 <ExternalLink aria-hidden="true" size={14} strokeWidth={1.9} />
@@ -534,7 +560,7 @@ export function StorefrontSettingsPanel() {
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={logoUrl}
-                alt="Storefront logo preview"
+                alt={t("teach.storefrontEditor.image.previewAlt")}
                 className="h-full w-full object-contain p-1"
               />
             ) : (
@@ -543,25 +569,25 @@ export function StorefrontSettingsPanel() {
           </span>
           <span className="relative min-w-0">
             <span className="block truncate text-base font-bold text-white">
-              {displayName.trim() || "Your instructor page"}
+              {displayName.trim() || t("teach.storefrontEditor.previewName")}
             </span>
             <span className="mt-1 block max-w-md truncate text-sm text-white/70">
-              {tagline.trim() || "One line that sums up what you teach."}
+              {tagline.trim() || t("teach.storefrontEditor.taglinePlaceholder")}
             </span>
             {/* A previa mentia por omissao: mostrava marca e nada do catalogo,
                 que e o que o comprador realmente ve na vitrine. */}
-            <span className="mt-2 block max-w-md truncate text-xs text-white/60">
+            {coursesReady ? <span className="mt-2 block max-w-md truncate text-xs text-white/60">
               {orderedCourses.length === 0
                 ? t("teach.storefrontPage.previewNoCourse")
                 : `${t(
                     orderedCourses.length === 1
                       ? "teach.storefrontPage.previewCoursesOne"
                       : "teach.storefrontPage.previewCoursesMany",
-                  ).replace("{count}", String(orderedCourses.length))}: ${orderedCourses
+                   ).replace("{count}", () => String(orderedCourses.length))}: ${orderedCourses
                     .slice(0, 3)
                     .map((course) => course.title)
                     .join(", ")}`}
-            </span>
+            </span> : null}
           </span>
         </div>
         <div className="h-1.5" style={{ background: previewAccent }} />
@@ -570,13 +596,13 @@ export function StorefrontSettingsPanel() {
       <form className="mt-6 grid gap-5" onSubmit={handleSubmit}>
         <Card tone="soft" padding="sm" shadow={false} className="grid gap-4">
           <p className="text-sm font-semibold text-[var(--color-ink)]">
-            Brand
+            {t("teach.storefrontEditor.brand")}
           </p>
 
           <Field
             id="storefront-accent-color"
-            label="Accent color"
-            hint="6-digit hex. Leave blank to use the platform default."
+            label={t("teach.storefrontEditor.accentLabel")}
+            hint={t("teach.storefrontEditor.accentHint")}
           >
             {(a11y) => (
               <div className="flex items-center gap-3">
@@ -584,7 +610,7 @@ export function StorefrontSettingsPanel() {
                   type="color"
                   value={previewAccent}
                   onChange={(event) => setAccentColor(event.target.value)}
-                  aria-label="Accent color picker"
+                  aria-label={t("teach.storefrontEditor.accentPicker")}
                   className="h-11 w-14 shrink-0 cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] p-1"
                 />
                 <input
@@ -601,10 +627,10 @@ export function StorefrontSettingsPanel() {
 
           <StorefrontImageUpload
             kind="logo"
-            label="Storefront logo"
-            description="Use a square image with a transparent or simple background. On paid plans it is also printed on the certificates you issue."
+            label={t("teach.storefrontEditor.image.logoLabel")}
+            description={t("teach.storefrontEditor.image.logoDescription")}
             imageUrl={logoUrl}
-            error={imageErrors.logo ?? ""}
+            error={imageErrorText("logo")}
             isUploading={uploadingImages.has("logo")}
             progress={uploadProgress.logo ?? null}
             onChange={(file) => void handleStorefrontImageChange("logo", file)}
@@ -613,17 +639,17 @@ export function StorefrontSettingsPanel() {
 
           <StorefrontImageUpload
             kind="hero"
-            label="Storefront cover"
-            description="Use a wide image that keeps its subject clear on desktop and mobile."
+            label={t("teach.storefrontEditor.image.heroLabel")}
+            description={t("teach.storefrontEditor.image.heroDescription")}
             imageUrl={heroImageUrl}
-            error={imageErrors.hero ?? ""}
+            error={imageErrorText("hero")}
             isUploading={uploadingImages.has("hero")}
             progress={uploadProgress.hero ?? null}
             onChange={(file) => void handleStorefrontImageChange("hero", file)}
             onRemove={() => handleStorefrontImageRemove("hero")}
           />
 
-          <Field id="storefront-theme-preset" label="Theme preset">
+          <Field id="storefront-theme-preset" label={t("teach.storefrontEditor.themeLabel")}>
             {(a11y) => (
               <select
                 {...a11y}
@@ -635,14 +661,14 @@ export function StorefrontSettingsPanel() {
               >
                 {storefrontThemePresets.map((preset) => (
                   <option key={preset} value={preset}>
-                    {themePresetLabels[preset]}
+                    {t(`teach.storefrontEditor.presets.${preset}`)}
                   </option>
                 ))}
               </select>
             )}
           </Field>
 
-          <Field id="storefront-tagline" label="Tagline">
+          <Field id="storefront-tagline" label={t("teach.storefrontEditor.taglineLabel")}>
             {(a11y) => (
               <>
                 <textarea
@@ -651,11 +677,13 @@ export function StorefrontSettingsPanel() {
                   onChange={(event) => setTagline(event.target.value)}
                   rows={2}
                   maxLength={maxStorefrontTaglineLength}
-                  placeholder="One line that sums up what you teach."
+                  placeholder={t("teach.storefrontEditor.taglinePlaceholder")}
                   className="resize-none rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
                 />
                 <span className="text-xs font-normal text-[var(--color-ink-soft)]">
-                  {tagline.trim().length}/{maxStorefrontTaglineLength} characters
+                  {t("teach.storefrontEditor.characters")
+                    .replace("{count}", () => String(tagline.trim().length))
+                    .replace("{max}", () => String(maxStorefrontTaglineLength))}
                 </span>
               </>
             )}
@@ -665,20 +693,37 @@ export function StorefrontSettingsPanel() {
         <Card tone="soft" padding="sm" shadow={false} className="grid gap-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <p className="text-sm font-semibold text-[var(--color-ink)]">
-              Course showcase order
+              {t("teach.storefrontEditor.courseOrder")}
             </p>
             <span className="text-xs font-normal text-[var(--color-ink-soft)]">
-              Published courses only
+              {t("teach.storefrontEditor.publishedOnly")}
             </span>
           </div>
 
-          {orderedCourses.length === 0 ? (
+          {courseLoadState === "loading" ? (
+            <p role="status" className="text-xs leading-5 text-[var(--color-ink-soft)]">
+              {t("publicCourses.loadingCourses")}
+            </p>
+          ) : courseLoadState === "error" ? (
+            <div>
+              <InlineAlert tone="error">{t("teach.storefrontEditor.errors.courses")}</InlineAlert>
+              <Button
+                variant="outline"
+                className="mt-3"
+                onClick={() => {
+                  setCourseLoadState("loading");
+                  setCourseRetryKey((current) => current + 1);
+                }}
+              >
+                {t("authFlow.loading.retry")}
+              </Button>
+            </div>
+          ) : orderedCourses.length === 0 ? (
             <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
-              You have no published courses yet. Once a course is published it
-              shows up here for ordering.
+              {t("teach.storefrontEditor.noCourses")}
             </p>
           ) : (
-            <ol className="grid gap-2">
+            <ol className="grid grid-cols-1 gap-2">
               {orderedCourses.map((course, index) => {
                 const isFeatured = featuredCourseId === course.id;
                 return (
@@ -689,7 +734,7 @@ export function StorefrontSettingsPanel() {
                     <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--color-surface-soft)] text-xs font-semibold text-[var(--color-ink-soft)]">
                       {index + 1}
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[var(--color-ink)]">
+                    <span className="min-w-0 flex-1 basis-[calc(100%_-_2.25rem)] truncate text-sm font-semibold text-[var(--color-ink)] sm:basis-0">
                       {course.title}
                     </span>
                     <button
@@ -698,21 +743,21 @@ export function StorefrontSettingsPanel() {
                         setFeaturedCourseId(isFeatured ? null : course.id)
                       }
                       aria-pressed={isFeatured}
-                      className={`shrink-0 rounded-[var(--radius-sm)] border px-2.5 py-1.5 text-xs font-semibold ${
+                      className={`min-h-11 shrink-0 rounded-[var(--radius-sm)] border px-2.5 py-1.5 text-xs font-semibold ${
                         isFeatured
                           ? "border-[var(--color-primary)] bg-[rgba(24,58,94,0.08)] text-[var(--color-primary)]"
                           : "border-[var(--color-line)] text-[var(--color-ink-soft)]"
                       }`}
                     >
-                      {isFeatured ? "Featured" : "Feature"}
+                      {t(`teach.storefrontEditor.${isFeatured ? "featured" : "feature"}`)}
                     </button>
                     <div className="flex shrink-0 gap-1">
                       <button
                         type="button"
                         onClick={() => reorder(index, -1)}
                         disabled={index === 0}
-                        aria-label={`Move ${course.title} up`}
-                        className="rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40"
+                        aria-label={t("teach.storefrontEditor.moveUp").replace("{title}", () => course.title)}
+                        className="min-h-11 min-w-11 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40"
                       >
                         ↑
                       </button>
@@ -720,8 +765,8 @@ export function StorefrontSettingsPanel() {
                         type="button"
                         onClick={() => reorder(index, 1)}
                         disabled={index === orderedCourses.length - 1}
-                        aria-label={`Move ${course.title} down`}
-                        className="rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40"
+                        aria-label={t("teach.storefrontEditor.moveDown").replace("{title}", () => course.title)}
+                        className="min-h-11 min-w-11 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40"
                       >
                         ↓
                       </button>
@@ -733,16 +778,21 @@ export function StorefrontSettingsPanel() {
           )}
         </Card>
 
-        {error ? <InlineAlert tone="error">{error}</InlineAlert> : null}
+        {error ? (
+          <InlineAlert tone="error">
+            {t(`teach.storefrontEditor.errors.${error}`)
+              .replace("{max}", () => String(maxStorefrontTaglineLength))}
+          </InlineAlert>
+        ) : null}
 
-        {success ? <p className="info-notice">{success}</p> : null}
+        {success ? <p className="info-notice">{t(`teach.storefrontEditor.feedback.${success}`)}</p> : null}
 
         <Button
           type="submit"
-          disabled={isSaving || uploadingImages.size > 0}
+          disabled={isSaving || uploadingImages.size > 0 || !coursesReady}
           className="justify-self-start"
         >
-          {isSaving ? "Saving..." : "Save storefront"}
+          {t(`teach.storefrontEditor.${isSaving ? "saving" : "save"}`)}
         </Button>
       </form>
     </section>

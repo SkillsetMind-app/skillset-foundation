@@ -48,7 +48,7 @@ export function Field({
   const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
 
   return (
-    <div className={cn("grid gap-2", className)}>
+    <div className={cn("grid grid-cols-1 gap-2", className)}>
       <label htmlFor={id} className="text-sm font-semibold text-[var(--color-ink)]">
         {label}
         {required ? (
