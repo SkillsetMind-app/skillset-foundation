@@ -18,6 +18,12 @@ import {
 // tinha acao nenhuma, e apagar era privilegio de rascunho. Uma acao so, no
 // mesmo lugar da Hotmart, precisa de um componente so.
 
+// Largura do menu (w-56). Fixa de proposito: medir o DOM depois de abrir
+// custaria um segundo render so para descobrir um numero que nao muda.
+const MENU_WIDTH_PX = 224;
+// Folga minima entre o menu e a borda da janela.
+const MENU_MARGIN_PX = 8;
+
 /**
  * Casca do menu de acoes: gatilho so-icone, fecha no Escape e no clique fora,
  * devolve o foco ao gatilho. Os ITENS vem de quem chama — a lista oferece
@@ -35,6 +41,13 @@ export function CourseActionsMenu({
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  // No celular e no tablet a lista vira cartao e o gatilho fica encostado na
+  // borda ESQUERDA; um menu ancorado a direita dele nascia com o lado esquerdo
+  // fora da tela (QA visual em producao, 08/09). Ao abrir, o menu e posto onde
+  // cabe: alinhado a direita do gatilho quando da (desktop), senao empurrado
+  // para dentro da janela — pelos DOIS lados, porque a 390 px com titulo longo
+  // ou em espanhol o gatilho pode cair no meio da linha (revisao do Codex).
+  const [menuLeftPx, setMenuLeftPx] = useState<number | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -72,7 +85,18 @@ export function CourseActionsMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t("creatorPanel.products.actions.more").replace("{title}", () => courseTitle)}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          const box = wrapperRef.current?.getBoundingClientRect();
+          if (box) {
+            const wanted = box.right - MENU_WIDTH_PX;
+            const maxLeft = Math.max(
+              MENU_MARGIN_PX,
+              window.innerWidth - MENU_WIDTH_PX - MENU_MARGIN_PX,
+            );
+            setMenuLeftPx(Math.min(Math.max(wanted, MENU_MARGIN_PX), maxLeft) - box.left);
+          }
+          setOpen((current) => !current);
+        }}
         className="grid min-h-11 min-w-11 place-items-center rounded-[7px] border border-[var(--color-line-strong)] bg-white text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
       >
         <Icon aria-hidden="true" size={19} strokeWidth={2} />
@@ -89,7 +113,8 @@ export function CourseActionsMenu({
             setOpen(false);
             triggerRef.current?.focus();
           }}
-          className="absolute right-0 top-[calc(100%+8px)] z-40 w-56 rounded-[8px] border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
+          style={menuLeftPx === null ? undefined : { left: menuLeftPx }}
+          className={`absolute top-[calc(100%+8px)] z-40 w-56 rounded-[8px] border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)] ${menuLeftPx === null ? "right-0" : ""}`}
         >
           {children}
         </div>
