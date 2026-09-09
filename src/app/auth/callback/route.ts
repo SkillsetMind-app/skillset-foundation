@@ -5,6 +5,7 @@ import {
   attachRecoveryCookie,
 } from "@/lib/auth/recovery-cookie";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAuthErrorRoute } from "@/lib/auth/routing";
 
 // OAuth (Google) landing, plus recovery links minted before the email template
 // moved to /auth/confirm. Supabase redirects here with a short-lived `code`
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
 
   if (!code) {
     return NextResponse.redirect(
-      `${origin}/login?error=${encodeURIComponent(providerError ?? "missing_code")}`,
+      `${origin}${getAuthErrorRoute(providerError ?? "missing_code", next)}`,
     );
   }
 
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
   if (error) {
     // Overwhelmingly this is the PKCE verifier missing because the link was
     // opened in a different browser than the one that requested it.
-    return NextResponse.redirect(`${origin}/login?error=auth_callback`);
+    return NextResponse.redirect(`${origin}${getAuthErrorRoute("auth_callback", next)}`);
   }
 
   const response = NextResponse.redirect(`${origin}${safeNext}`);

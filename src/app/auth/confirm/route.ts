@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import type { EmailOtpType } from "@supabase/supabase-js";
-import { getSafeReturnTo } from "@/lib/auth/routing";
+import { getAuthErrorRoute, getSafeReturnTo } from "@/lib/auth/routing";
 
 import {
   RESET_PASSWORD_PATH,
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
 
   const reason = providerError ?? "confirm";
   return NextResponse.redirect(
-    `${origin}/login?error=${encodeURIComponent(reason)}`,
+    `${origin}${getAuthErrorRoute(reason, next)}`,
   );
 }
 
