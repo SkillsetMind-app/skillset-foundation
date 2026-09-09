@@ -1627,6 +1627,69 @@
       "previewNoCourse": "No published course yet",
       "previewCoursesOne": "1 published course",
       "previewCoursesMany": "{count} published courses"
+    },
+    "storefrontEditor": {
+      "title": "Storefront branding",
+      "description": "Brand your public instructor page — logo, hero image, accent color, and the order your courses appear in.",
+      "loading": "Loading storefront settings...",
+      "brand": "Brand",
+      "previewName": "Your instructor page",
+      "accentLabel": "Accent color",
+      "accentHint": "6-digit hex. Leave blank to use the platform default.",
+      "accentPicker": "Accent color picker",
+      "themeLabel": "Theme preset",
+      "taglineLabel": "Tagline",
+      "taglinePlaceholder": "One line that sums up what you teach.",
+      "characters": "{count}/{max} characters",
+      "courseOrder": "Course showcase order",
+      "publishedOnly": "Published courses only",
+      "noCourses": "You have no published courses yet. Once a course is published it shows up here for ordering.",
+      "feature": "Feature",
+      "featured": "Featured",
+      "moveUp": "Move {title} up",
+      "moveDown": "Move {title} down",
+      "save": "Save storefront",
+      "saving": "Saving...",
+      "presets": {
+        "default": "Platform default",
+        "warm": "Warm",
+        "cool": "Cool",
+        "mono": "Monochrome"
+      },
+      "image": {
+        "logoLabel": "Storefront logo",
+        "logoDescription": "Use a square image with a transparent or simple background. On paid plans it is also printed on the certificates you issue.",
+        "heroLabel": "Storefront cover",
+        "heroDescription": "Use a wide image that keeps its subject clear on desktop and mobile.",
+        "requirements": "JPG, PNG, or WebP under 5 MB",
+        "previewAlt": "Storefront logo preview",
+        "uploadLogo": "Upload storefront logo",
+        "uploadHero": "Upload storefront hero image",
+        "removeLogo": "Remove storefront logo",
+        "removeHero": "Remove storefront hero image",
+        "upload": "Upload",
+        "uploading": "Uploading...",
+        "replace": "Replace",
+        "remove": "Remove",
+        "errors": {
+          "invalid": "Use a {requirements} image.",
+          "upload": "We could not upload this image. Please try again."
+        }
+      },
+      "feedback": {
+        "logoUploaded": "Logo uploaded. Save the storefront to publish it.",
+        "heroUploaded": "Hero image uploaded. Save the storefront to publish it.",
+        "removalPending": "Save the storefront to publish this removal.",
+        "saved": "Storefront saved."
+      },
+      "errors": {
+        "load": "We could not load your storefront settings.",
+        "signIn": "Sign in again to update your storefront.",
+        "accent": "Accent color must be a 6-digit hex like #183a5e.",
+        "tagline": "Tagline must be {max} characters or fewer.",
+        "cleanup": "The storefront was saved, but an old image could not be removed. Save again to retry cleanup.",
+        "save": "We could not save your storefront. Try again, and contact support if it keeps failing."
+      }
     }
   },
   "creatorPanel": {
