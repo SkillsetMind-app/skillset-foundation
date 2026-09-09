@@ -4,7 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ client: vi.fn(), admin: vi.fn(), limit: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: mocks.client }));
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdminClient: mocks.admin }));
-vi.mock("@/lib/payments/server/auth", () => ({ enforceRateLimit: mocks.limit }));
+vi.mock("@/lib/payments/server/auth", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/payments/server/auth")>()),
+  enforceRateLimit: mocks.limit,
+}));
 import { GET, POST } from "./route";
 
 const grant = { id: "11111111-1111-4111-8111-111111111111", course_id: "course-1", learner_email: "learner@example.com", access_status: "pending", revoked_at: null };
@@ -14,7 +17,7 @@ let query: Record<string, ReturnType<typeof vi.fn>>;
 function request(body: unknown) { return new Request("https://www.skillsetmind.com/api/teach/course-access", { method: "POST", body: JSON.stringify(body) }); }
 beforeEach(() => {
   vi.clearAllMocks();
-  rpc = vi.fn().mockResolvedValue({ data: grant, error: null });
+  rpc = vi.fn(async (name: string) => ({ data: name === "creator_activation_blocked" ? false : grant, error: null }));
   send = vi.fn().mockResolvedValue({ error: null });
   query = { select: vi.fn(), eq: vi.fn(), order: vi.fn(), limit: vi.fn(), single: vi.fn() };
   for (const key of ["select", "eq", "order"]) query[key].mockReturnValue(query);
@@ -41,7 +44,9 @@ describe("manual course access route", () => {
     expect(mocks.admin).not.toHaveBeenCalled();
   });
   it("does not send if the owner RPC refuses or fails", async () => {
-    rpc.mockResolvedValue({ data: null, error: { code: "42501" } });
+    rpc.mockImplementation(async (name: string) => name === "creator_activation_blocked"
+      ? { data: false, error: null }
+      : { data: null, error: { code: "42501" } });
     expect((await POST(request({ courseId: "course-1", email: grant.learner_email }))).status).toBe(403);
     expect(send).not.toHaveBeenCalled();
   });
@@ -61,9 +66,30 @@ describe("manual course access route", () => {
     expect((await GET(new Request("https://www.skillsetmind.com/api/teach/course-access?courseId=course-1"))).status).toBe(500);
   });
   it("revokes through the owner RPC without sending email", async () => {
-    rpc.mockResolvedValue({ data: { ...grant, access_status: "revoked" }, error: null });
+    rpc.mockImplementation(async (name: string) => ({ data: name === "creator_activation_blocked" ? false : { ...grant, access_status: "revoked" }, error: null }));
     expect((await POST(request({ action: "revoke", grantId: grant.id }))).status).toBe(200);
     expect(rpc).toHaveBeenCalledWith("revoke_course_access", { p_grant_id: grant.id });
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it.each(["grant", "resend", "revoke"])("blocks %s before changing access or sending mail when activation is unpaid", async (action) => {
+    rpc.mockImplementation(async (name: string) => ({ data: name === "creator_activation_blocked" ? true : grant, error: null }));
+    const response = await POST(request(action === "grant"
+      ? { courseId: "course-1", email: grant.learner_email }
+      : { action, grantId: grant.id }));
+    expect(response.status).toBe(402);
+    expect(await response.json()).toMatchObject({ code: "activation_required" });
+    expect(rpc.mock.calls.map(([name]) => name)).toEqual(["creator_activation_blocked"]);
+    expect(query.single).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("fails closed on an unavailable activation verdict without leaking diagnostics", async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: "private activation diagnostic" } });
+    const response = await POST(request({ courseId: "course-1", email: grant.learner_email }));
+    expect(response.status).toBe(500);
+    expect(JSON.stringify(await response.json())).not.toContain("private activation diagnostic");
+    expect(rpc.mock.calls.map(([name]) => name)).toEqual(["creator_activation_blocked"]);
     expect(send).not.toHaveBeenCalled();
   });
 });
