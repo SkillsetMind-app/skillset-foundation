@@ -588,7 +588,8 @@ export function EnrolledCourseWorkspace({
           (asset) =>
             !asset.lessonId
             && !asset.moduleId
-            && asset.kind !== "course_cover",
+            && asset.kind !== "course_cover"
+            && asset.kind !== "members_cover",
         )
       : [];
   const assetCountByLessonId = new Map<string, number>();
