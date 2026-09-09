@@ -99,6 +99,34 @@ export function getSafeReturnTo(
   return raw;
 }
 
+export function getAuthErrorRoute(reason: string, next: string): string {
+  const params = new URLSearchParams({ error: reason });
+  if (next === "/" || !next.startsWith("/") || next.startsWith("//") || /[\\\t\n\r]/.test(next)) {
+    return `/login?${params}`;
+  }
+
+  const destination = new URL(next, "https://auth.invalid");
+  const isEntry = ["/loading", "/welcome"].includes(destination.pathname);
+  if (isEntry) {
+    const intent = getAuthPathIntentFromSearchParams(destination.searchParams);
+    if (intent) params.set("path", intent);
+  }
+
+  const returnTo = getSafeReturnTo(isEntry
+    ? destination.searchParams
+    : new URLSearchParams({ returnTo: next }));
+  if (returnTo) {
+    const target = new URL(returnTo, destination.origin);
+    const normalized = target.pathname + target.search + target.hash;
+    // A failed recovery link must not send a normal login to the reset form.
+    if (target.origin === destination.origin && !/^\/reset-password(?:\/|$)/.test(target.pathname)
+      && getSafeReturnTo(new URLSearchParams({ returnTo: target.pathname }))) {
+      params.set("returnTo", normalized);
+    }
+  }
+  return `/login?${params}`;
+}
+
 export function getLoadingRoute(
   next: "route" | "welcome",
   intent: AuthPathIntent | null = null,
