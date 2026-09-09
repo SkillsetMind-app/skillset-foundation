@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import postcss from "postcss";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -11,8 +14,8 @@ import { PlatformHeader } from "@/components/platform/platform-header";
 // onde o olho procura.
 //
 // I18nProvider é o de verdade, não um mock: o rótulo do botão vem do dicionário
-// pelo mesmo caminho que a página inteira usa. Os vizinhos são mocks porque
-// abrem assinatura de notificações e menu de conta, que não são o assunto.
+// pelo mesmo caminho que a página inteira usa. AccountMenu tambem e real:
+// sua largura precisa sobreviver aos estilos genericos dos botoes de icone.
 
 const mocks = vi.hoisted(() => ({ pathname: "/teach" }));
 
@@ -40,8 +43,8 @@ vi.mock("@/components/platform/notification-bell", () => ({
   NotificationBell: () => <div data-testid="bell" />,
 }));
 
-vi.mock("@/components/site/account-menu", () => ({
-  AccountMenu: () => <div data-testid="account" />,
+vi.mock("@/lib/data/user-profiles", () => ({
+  subscribeToUserProfile: () => () => {},
 }));
 
 vi.mock("@/components/shared/theme-toggle", () => ({
@@ -80,10 +83,65 @@ describe("idioma na barra do topo da plataforma", () => {
       // absoluto). É esse embrulho que precisa ser o último filho.
       expect(actions.lastElementChild).toBe(trigger.parentElement);
       // Depois do menu da conta: mais para a direita que tudo.
-      expect(screen.getByTestId("account").compareDocumentPosition(trigger))
+      expect(actions.querySelector(".account-menu-trigger")!.compareDocumentPosition(trigger))
         .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     },
   );
+
+  it.each(["/teach", "/learn", "/ops", "/account"])(
+    "%s keeps the real account menu out of fixed-width icon rules",
+    (pathname) => {
+      const { actions, trigger } = renderHeader(pathname);
+      const account = actions.querySelector(".account-menu-trigger")!;
+      expect(account).toHaveTextContent("Teacher");
+      const sheet = postcss.parse(readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8"));
+      const fixedSelectors: string[] = [];
+      sheet.walkRules((rule) => {
+        if (!rule.selector.includes(".platform-topbar__actions") || !rule.selector.includes("> button")) return;
+        rule.walkDecls("width", (declaration) => {
+          if (declaration.value === "44px" && declaration.important) fixedSelectors.push(rule.selector);
+        });
+      });
+      expect(fixedSelectors.length).toBeGreaterThan(0);
+      const icon = document.createElement("button");
+      actions.append(icon);
+      for (const selector of fixedSelectors) {
+        expect(icon.matches(selector), "icon actions retain their fixed target").toBe(true);
+        expect(trigger.matches(selector), "compact language keeps its own style").toBe(false);
+        expect(account.matches(selector), "account must retain its intrinsic width").toBe(false);
+      }
+    },
+  );
+
+  it("keeps the account avatar compact on mobile without clipping its contents", () => {
+    const { actions } = renderHeader("/teach");
+    const account = actions.querySelector(".account-menu-trigger")!;
+    const sheet = postcss.parse(readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8"));
+    const accountRules: Record<string, string>[] = [];
+    const hiddenSelectors: string[] = [];
+    sheet.walkAtRules("media", (media) => {
+      if (media.params !== "(max-width: 640px)") return;
+      media.walkRules((rule) => {
+        if (rule.selector === ".platform-topbar__actions .account-menu-trigger") {
+          const declarations: Record<string, string> = {};
+          rule.walkDecls((d) => { declarations[d.prop] = d.value; });
+          accountRules.push(declarations);
+        }
+        rule.walkDecls("display", (d) => {
+          if (d.value === "none") hiddenSelectors.push(rule.selector);
+        });
+      });
+    });
+    expect(accountRules).toContainEqual(expect.objectContaining({
+      width: "44px", height: "44px", padding: "0", gap: "0", "justify-content": "center",
+    }));
+    const chevron = account.querySelector(":scope > svg")!;
+    const avatar = account.querySelector(".avatar-fallback")!;
+    expect(hiddenSelectors.some((selector) => chevron.matches(selector))).toBe(true);
+    expect(hiddenSelectors.some((selector) => avatar.matches(selector))).toBe(false);
+    expect(account).toHaveAttribute("aria-expanded", "false");
+    expect(account.getAttribute("aria-label")).toBeTruthy();
+  });
 
   it("usa a variante discreta: alvo 44px sem moldura permanente ou seta", () => {
     const { trigger } = renderHeader("/teach");
