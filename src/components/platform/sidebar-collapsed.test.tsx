@@ -75,6 +75,26 @@ describe("barra lateral recolhida", () => {
       screen.queryByRole("button", { name: /operations/i }),
     ).not.toBeInTheDocument();
   });
+
+  it("Members usa Users no rail e expandida, sem trocar Image da biblioteca de midia", () => {
+    mocks.roles = ["teacher"];
+    mocks.pathname = "/teach/members";
+    const { rerender } = render(<PlatformNav collapsed initialSection="marketing" />);
+
+    const members = screen.getByRole("link", { name: "membersArea" });
+    expect(members).toHaveAttribute("href", "/teach/members");
+    expect(members).toHaveAttribute("title", "membersArea");
+    expect(members).toHaveAttribute("aria-current", "page");
+    expect(members.querySelector("svg.lucide-users")).toBeInTheDocument();
+
+    rerender(<PlatformNav initialSection="marketing" />);
+    const expandedMembers = screen.getByRole("link", { name: "membersArea" });
+    expect(expandedMembers.querySelector("svg.lucide-users")).toBeInTheDocument();
+    expect(expandedMembers).not.toHaveAttribute("title");
+    const media = screen.getByRole("link", { name: "mediaLibrary" });
+    expect(media).toHaveAttribute("href", "/teach/media");
+    expect(media.querySelector("svg.lucide-image")).toBeInTheDocument();
+  });
 });
 
 // Itens extra da onda 3 (capturas do Patrick, 02/09): no rail, o gatilho de
@@ -130,6 +150,18 @@ describe("rail recolhido: um quadrado por item, sem chip e sem corte", () => {
 
     // O destaque nao mora mais no chip.
     expect(css).not.toMatch(/\.sidebar-collapsed[^{]*\.platform-nav-icon-chip[^{]*\{[^}]*background: (?!transparent)/);
+  });
+
+  it("no CSS, secoes e rodape do rail herdam o mesmo gap do nav sem perder grid ou separador", () => {
+    const css = readFileSync(path.join(process.cwd(), "src/app/globals.css"), "utf8");
+    expect(css).toMatch(/\.platform-sidebar-nav\s*\{\s*gap: 0\.35rem;/);
+    expect(css).toMatch(/\.platform-nav-section\s*\{\s*display: grid;\s*gap: 0\.25rem;/);
+    expect(css).toMatch(
+      /\.platform-nav-footer\s*\{\s*display: grid;\s*gap: 0\.25rem;\s*margin-top: auto;\s*border-top: 1px solid[^;]+;\s*padding-top: 0\.5rem;/,
+    );
+    expect(css).toMatch(
+      /\.platform-sidebar\.sidebar-collapsed \.platform-nav-section,\s*\.platform-sidebar\.sidebar-collapsed \.platform-nav-footer\s*\{\s*gap: inherit;\s*\}/,
+    );
   });
 
   // A marca no topo do rail ficava encostada a esquerda (flex sem justify,
