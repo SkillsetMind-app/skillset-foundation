@@ -40,6 +40,14 @@ const periodSubtitleKey: Record<ReportPeriod, string> = {
   all: "teach.insights.rangeAll",
 };
 
+// Chart totals stay in en-US, like the shared chart's "$...k" axis and the home
+// revenue chart; KPIs and the table follow the interface language.
+const chartMoney = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
+
 function money(amountMinor: number, currency: string, locale: string): string {
   try {
     const formatted = new Intl.NumberFormat(locale, {
@@ -54,11 +62,6 @@ function money(amountMinor: number, currency: string, locale: string): string {
 export function CreatorOpsHub() {
   const { user } = useAuth();
   const { locale, t } = useTranslation();
-  const chartMoney = new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  });
   const [orders, setOrders] = useState<Order[]>([]);
   const [ledgers, setLedgers] = useState<PayoutLedgerEntry[]>([]);
   const [subscriptions, setSubscriptions] = useState<CourseSubscription[]>([]);

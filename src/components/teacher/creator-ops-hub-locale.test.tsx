@@ -50,10 +50,11 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("report currency follows the provider without changing amounts or exports", () => {
-  it.each(["en", "es"] as const)("formats KPIs, product revenue and the real chart in %s", locale => {
+  it.each(["en", "es"] as const)("formats KPIs and product revenue in %s and keeps the chart total in en-US", locale => {
     render(hub(locale));
     const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
-    const chart = new Intl.NumberFormat(locale, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+    // Same as creator-reports.test: the chart total matches the shared chart's en-US axis.
+    const chart = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
     expect(screen.getAllByText(`USD ${number.format(12345.67)}`)).toHaveLength(2);
     expect(screen.getByText(`USD ${number.format(11011.10)}`)).toBeInTheDocument();
     expect(screen.getByText(`EUR ${number.format(23456.78)}`)).toBeInTheDocument();
@@ -62,14 +63,14 @@ describe("report currency follows the provider without changing amounts or expor
     expect(within(screen.getByRole("table")).getByText("Course title $&")).toBeInTheDocument();
   });
 
-  it("relocalizes all money surfaces without restarting the streams or localizing numeric CSV cells", () => {
+  it("relocalizes KPI and table money without restarting the streams or localizing numeric CSV cells", () => {
     render(hub("en"));
     expect(screen.getAllByText("USD 12,346")).toHaveLength(2);
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getAllByText("USD 12.346")).toHaveLength(2);
     expect(screen.getByText("USD 11.011")).toBeInTheDocument();
     expect(screen.getByText("EUR 23.457")).toBeInTheDocument();
-    expect(screen.queryByText("$12,346")).toBeNull();
+    expect(screen.getByText("$12,346", { selector: "strong" })).toBeInTheDocument();
     const props = mocks.exportTable.mock.lastCall?.[0];
     expect(props).toMatchObject({
       filename: "skillset-reports",
