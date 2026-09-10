@@ -73,7 +73,7 @@ begin
   end loop;
 end $guard$;
 
--- The co-producer RPCs call this owner helper from their DECLARE block, before
+-- Course-commerce RPCs call this owner helper from their DECLARE block, before
 -- any ordinary BEGIN guard. Close that shared boundary as well.
 do $guard$
 declare f text := pg_get_functiondef('public.assert_course_owner(text)'::regprocedure); body text;

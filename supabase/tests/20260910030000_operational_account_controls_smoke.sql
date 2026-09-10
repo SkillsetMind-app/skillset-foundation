@@ -136,7 +136,12 @@ reset role;
 -- Synthetic fixture only: prove the tombstone survives deletion of Auth identity.
 delete from auth.users where id = pg_temp.uid(5);
 \if :{?without_account_email_guard}
-alter table auth.users disable trigger account_email_guard;
+-- The migration owns this function, not the Supabase-managed auth.users table.
+-- Remove only our guard body; the transaction restores it after the RED proof.
+create or replace function public.guard_blocked_account_email() returns trigger
+language plpgsql security definer set search_path = public, pg_temp as $$
+begin return new; end;
+$$;
 \endif
 do $$
 begin
