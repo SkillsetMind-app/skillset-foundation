@@ -375,6 +375,36 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(within(card).queryByRole("textbox")).not.toBeInTheDocument();
   });
 
+  // O banco recusa com RATE_LIMIT quando a pessoa passa do teto por hora
+  // (P2-9): a tela pede para esperar, em vez de mandar tentar de novo na hora.
+  it("asks the member to wait when the database refuses a post over the hourly cap, keeping the draft", async () => {
+    await renderFeed({}, "en");
+    vi.mocked(createCommunityPost).mockRejectedValueOnce({ code: "P0001", message: "RATE_LIMIT" });
+    fireEvent.click(screen.getByRole("button", { name: "Ask a question" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Your question" }), { target: { value: "Question literal $$50 $&" } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Post question" })); });
+    expect(screen.getByText("You've posted a lot in the last hour. Wait a little and try again.")).toBeInTheDocument();
+    expect(screen.queryByText("We could not publish your post.")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByText("Publicaste mucho en la última hora. Espera un poco y vuelve a intentarlo.")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Tu pregunta" })).toHaveValue("Question literal $$50 $&");
+    expect(screen.queryByText("RATE_LIMIT")).toBeNull();
+  });
+
+  it("asks the member to wait when the database refuses an inline reply over the hourly cap", async () => {
+    await renderFeed({}, "en");
+    vi.mocked(createCommunityComment).mockRejectedValueOnce({ code: "P0001", message: "RATE_LIMIT" });
+    const card = screen.getByRole("article", { name: /Portuguese version/ });
+    fireEvent.click(within(card).getByRole("button", { name: "Reply" }));
+    fireEvent.change(within(card).getByRole("textbox", { name: "Your reply" }), { target: { value: "Reply literal $$50 $&" } });
+    await act(async () => { fireEvent.click(within(card).getByRole("button", { name: "Post reply" })); });
+    expect(within(card).getByText("You've posted a lot in the last hour. Wait a little and try again.")).toBeInTheDocument();
+    expect(within(card).queryByText("We could not publish your reply.")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(within(card).getByText("Publicaste mucho en la última hora. Espera un poco y vuelve a intentarlo.")).toBeInTheDocument();
+    expect(within(card).getByRole("textbox", { name: "Tu respuesta" })).toHaveValue("Reply literal $$50 $&");
+  });
+
   it("localizes the live state, member panel and rules without changing the scheduled session", async () => {
     await renderFeed({ instructorName: "Pat $$ $&" }, "en");
     act(() => {
@@ -652,6 +682,18 @@ describe("gaveta da pergunta (11b)", () => {
     expect(within(drawer).getByRole("alert")).toHaveTextContent("No pudimos guardar la respuesta marcada. Inténtalo de nuevo.");
     expect(within(drawer).getByRole("button", { name: "Quitar marca de respuesta" })).toBeInTheDocument();
     expect(setCommunityPostAcceptedAnswer).toHaveBeenCalledExactlyOnceWith("answered", null);
+  });
+
+  it("asks the member to wait when the database refuses a drawer reply over the hourly cap", async () => {
+    await renderFeed({ openPostId: "answered" }, "en");
+    const drawer = screen.getByRole("dialog", { name: /real deadline/ });
+    vi.mocked(createCommunityComment).mockRejectedValueOnce({ code: "P0001", message: "RATE_LIMIT" });
+    fireEvent.change(within(drawer).getByRole("textbox", { name: "Add your reply" }), { target: { value: "Draft $$ $&" } });
+    await act(async () => { fireEvent.click(within(drawer).getByRole("button", { name: "Reply" })); });
+    expect(within(drawer).getByRole("alert")).toHaveTextContent("You've posted a lot in the last hour. Wait a little and try again.");
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(within(drawer).getByRole("alert")).toHaveTextContent("Publicaste mucho en la última hora. Espera un poco y vuelve a intentarlo.");
+    expect(within(drawer).getByRole("textbox", { name: "Añade tu respuesta" })).toHaveValue("Draft $$ $&");
   });
 
   it("o titulo e 'View N replies' abrem a gaveta pelo endereco, sem trocar de pagina", async () => {

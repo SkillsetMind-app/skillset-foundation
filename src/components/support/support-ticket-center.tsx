@@ -10,6 +10,7 @@ import {
   type SupportTicket,
   type SupportTicketCategory,
 } from "@/domain/support-ticket";
+import { isRateLimitError } from "@/lib/data/rate-limit-error";
 import {
   createSupportTicket,
   subscribeToUserSupportTickets,
@@ -27,7 +28,7 @@ export function SupportTicketCenter() {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<"" | "loadError" | "validationError" | "createError">("");
+  const [error, setError] = useState<"" | "loadError" | "validationError" | "createError" | "rateLimit">("");
   const [success, setSuccess] = useState<"" | "created">("");
 
   useEffect(() => {
@@ -77,8 +78,8 @@ export function SupportTicketCenter() {
       setMessage("");
       setCategory("course");
       setSuccess("created");
-    } catch {
-      setError("createError");
+    } catch (failure) {
+      setError(isRateLimitError(failure) ? "rateLimit" : "createError");
     } finally {
       setIsSubmitting(false);
     }

@@ -12,6 +12,7 @@ import {
   createCommunityComment,
   setCommunityPostAcceptedAnswer,
 } from "@/lib/data/community-posts";
+import { isRateLimitError } from "@/lib/data/rate-limit-error";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 
 // A gaveta da pergunta (mockup 5, 11b).
@@ -104,8 +105,8 @@ export function CommunityPostDrawer({
         user: currentUser,
       });
       setBody("");
-    } catch {
-      setError("learn.community.card.replyError");
+    } catch (failure) {
+      setError(isRateLimitError(failure) ? "learn.community.rateLimit" : "learn.community.card.replyError");
     } finally {
       setIsSending(false);
     }

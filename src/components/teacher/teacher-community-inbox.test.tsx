@@ -234,6 +234,39 @@ describe("caixa de entrada da comunidade (professor)", () => {
     expect(oldest).toHaveTextContent("1 respuesta de alumnos hasta ahora");
     expect(oldest).toHaveTextContent("Hace 30 min");
   });
+
+  // O banco recusa a gravacao com RATE_LIMIT (teto por hora, P2-9). A caixa
+  // pede para esperar, em vez do "tente de novo" generico que falharia de novo.
+  it("teto por hora do banco na resposta: pede para esperar e nao marca nada", async () => {
+    vi.mocked(createCommunityComment).mockRejectedValueOnce({ code: "P0001", message: "RATE_LIMIT" });
+    await renderInbox("en");
+
+    const card = screen.getByRole("article", { name: "How do you set a real deadline?" });
+    fireEvent.click(within(card).getByRole("button", { name: "Answer" }));
+    fireEvent.change(within(card).getByPlaceholderText("Write the answer here…"), {
+      target: { value: "Show the constraint, not the pressure." },
+    });
+    fireEvent.click(within(card).getByRole("button", { name: "Post answer" }));
+
+    expect(await screen.findByText("You've posted a lot in the last hour. Wait a little and try again.")).toBeInTheDocument();
+    expect(screen.queryByText("We could not post your answer. Try again.")).toBeNull();
+    expect(setCommunityPostAcceptedAnswer).not.toHaveBeenCalled();
+  });
+
+  it("teto por hora do banco no aviso: a mesma mensagem, em espanhol, sem fixar nada", async () => {
+    vi.mocked(createCommunityPost).mockRejectedValueOnce({ code: "P0001", message: "RATE_LIMIT" });
+    await renderInbox("es");
+
+    fireEvent.click(screen.getByRole("button", { name: "Publicar una novedad" }));
+    fireEvent.change(screen.getByPlaceholderText("¿Qué debería saber el grupo esta semana?"), {
+      target: { value: "This week: persuasion you can defend." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Publicar novedad" }));
+
+    expect(await screen.findByText("Publicaste mucho en la última hora. Espera un poco y vuelve a intentarlo.")).toBeInTheDocument();
+    expect(screen.queryByText("No pudimos publicar la novedad.")).toBeNull();
+    expect(setCommunityPostPinned).not.toHaveBeenCalled();
+  });
 });
 
 describe("mediana de resposta do professor", () => {
