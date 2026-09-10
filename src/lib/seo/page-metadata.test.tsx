@@ -97,4 +97,14 @@ describe("privatePageMetadata — cabeçalho de página logada", () => {
       robots: { index: false, follow: false },
     });
   });
+
+  // O cabeçalho termina em ponto por estilo ("Reports."); na aba, o ponto antes
+  // do separador parece erro de digitação.
+  it.each([
+    ["en", "Reports | SkillsetMind"],
+    ["es", "Informes | SkillsetMind"],
+  ])("tira o ponto final do cabeçalho no título da aba (%s)", async (locale, title) => {
+    state.locale = locale as "en" | "es";
+    expect((await privatePageMetadata("teach.reportsPage.title")).title).toBe(title);
+  });
 });

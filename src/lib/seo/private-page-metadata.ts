@@ -17,7 +17,9 @@ import { getServerTranslation } from "@/lib/i18n/server";
 export async function privatePageMetadata(titleKey: string): Promise<Metadata> {
   const { t } = await getServerTranslation();
   return {
-    title: `${t(titleKey)} | ${brand.name}`,
+    // Page headers end with a period by house style ("Reports."); in the tab
+    // the period before the separator reads as a typo, so it is dropped here.
+    title: `${t(titleKey).replace(/\.$/, "")} | ${brand.name}`,
     robots: { index: false, follow: false },
   };
 }
