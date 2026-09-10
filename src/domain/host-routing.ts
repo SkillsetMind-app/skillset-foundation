@@ -28,7 +28,7 @@
 export const PLATFORM_ORIGIN = "https://skillsetmind.com";
 
 /**
- * The three short entry hosts and the area each one opens. One table serves
+ * The short entry hosts and the area each one opens. One table serves
  * both directions: the proxy asks "which area does this host open?" and the
  * public links ask "which host publishes this area?". Nothing else in the
  * codebase spells these hostnames out.
@@ -37,6 +37,7 @@ const ENTRIES = {
   app: { host: "app.skillsetmind.com", path: "/teach" },
   consumer: { host: "consumer.skillsetmind.com", path: "/learn" },
   pay: { host: "pay.skillsetmind.com", path: "/courses" },
+  sso: { host: "sso.skillsetmind.com", path: "/login" },
 } as const;
 
 export type EntryKind = keyof typeof ENTRIES;

@@ -14,24 +14,18 @@ const outPath = process.argv[2] ?? join(ROOT, "email-preview.html");
 
 const SHEET = [
   { file: "recovery.html", tab: "Reset password", subject: "Reset your SkillsetMind password", variable: "{{ .TokenHash }}", note: "Rebuilt to use token_hash — the fix for the cross-browser reset failure." },
-  { file: "confirmation.html", tab: "Confirm sign up", subject: "Welcome to SkillsetMind — confirm your email", variable: "{{ .ConfirmationURL }}", note: "Sent the moment someone signs up." },
-  { file: "magic_link.html", tab: "Magic link or OTP", subject: "Your SkillsetMind sign-in link", variable: "{{ .ConfirmationURL }}", note: "Passwordless sign-in link." },
-  { file: "invite.html", tab: "Invite user", subject: "You're invited to SkillsetMind", variable: "{{ .ConfirmationURL }}", note: "Sent when an admin invites someone." },
+  { file: "confirmation.html", tab: "Confirm sign up", subject: "Welcome to SkillsetMind — confirm your email", variable: "{{ .TokenHash }}", note: "Signup, including operational invitations to new accounts." },
+  { file: "magic_link.html", tab: "Magic link or OTP", subject: "Your SkillsetMind sign-in link", variable: "{{ .TokenHash }}", note: "Passwordless sign-in, including operational invitations to confirmed accounts." },
+  { file: "invite.html", tab: "Invite user", subject: "You're invited to SkillsetMind", variable: "{{ .ConfirmationURL }}", note: "Supabase native invitations; not the operational invitation flow." },
   { file: "email_change.html", tab: "Change email address", subject: "Confirm your new email for SkillsetMind", variable: "{{ .ConfirmationURL }}", note: "Confirms the new address, not the old one." },
   { file: "reauthentication.html", tab: "Reauthentication", subject: "Your SkillsetMind verification code", variable: "{{ .Token }}", note: "A 6-digit code, not a link." },
 ];
 
-// The logo URL in the templates points at production, where the new artwork
-// isn't deployed yet. Inline the local file so the preview shows the real thing
-// instead of a broken image.
-const LOGO_FILE = join(ROOT, "public", "brand", "logo-lockup-on-navy.png");
-const LOGO_DATA_URI =
-  "data:image/png;base64," + readFileSync(LOGO_FILE).toString("base64");
-
-// Stand-in values so previews read like a real delivered email.
+// Keep the production image URL: an embedded copy would hide delivery failures.
+// Dummy tokens are only for visual review, never an authentication test.
 const SAMPLE = [
-  [/https:\/\/www\.skillsetmind\.com\/brand\/logo-lockup-on-navy\.png/g, LOGO_DATA_URI],
   [/\{\{ \.SiteURL \}\}/g, "https://www.skillsetmind.com"],
+  [/\{\{ \.RedirectTo \| urlquery \}\}/g, encodeURIComponent("https://www.skillsetmind.com/auth/confirm?next=/invitations/81000000-0000-4000-8000-000000000001")],
   [/\{\{ \.TokenHash \}\}/g, "pkce_a41f9c6b2e7d"],
   [/\{\{ \.ConfirmationURL \}\}/g, "https://www.skillsetmind.com/auth/confirm?token_hash=pkce_a41f9c6b2e7d&amp;type=signup"],
   [/\{\{ \.Token \}\}/g, "418302"],
@@ -73,7 +67,10 @@ const rows = cards
   )
   .join("\n");
 
-const page = `<title>SkillsetMind Auth Emails</title>
+const page = `<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SkillsetMind Auth Emails</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
   :root {
@@ -219,9 +216,9 @@ const page = `<title>SkillsetMind Auth Emails</title>
 ${rows}
 
   <footer>
-    <strong>Not live yet.</strong> Only <code>recovery.html</code> is in the
-    dashboard. The other five still need pasting into
-    Authentication → Emails. Regenerate any of them with
+    <strong>Visual review only.</strong> Dummy links do not sign anyone in.
+    Production templates live in Supabase Authentication → Emails;
+    this page does not confirm delivery to an inbox. Regenerate with
     <code>node scripts/build-email-templates.mjs</code>.
   </footer>
 </div>
