@@ -10,7 +10,7 @@ import { CookieConsent } from "@/components/site/cookie-consent";
 import { PostHogProvider } from "@/app/posthog-provider";
 import { brand } from "@/data/brand";
 import { LOCALE_HTML_LANG } from "@/lib/i18n/config";
-import { getServerLocale } from "@/lib/i18n/server";
+import { getServerLocale, getServerTranslation } from "@/lib/i18n/server";
 import { SITE_URL } from "@/lib/seo/page-metadata";
 import "./globals.css";
 
@@ -47,16 +47,21 @@ const themeInitScript = `
 })();
 `;
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: brand.title,
-  description: brand.description,
-  icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon.ico",
-    apple: brand.faviconUrl,
-  },
-};
+// Título padrão de toda página sem título próprio (a sala de aula e o estúdio
+// inteiros): segue o idioma, como o <html lang> logo abaixo.
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerTranslation();
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: t("siteMetadata.title"),
+    description: t("siteMetadata.description"),
+    icons: {
+      icon: "/favicon.ico",
+      shortcut: "/favicon.ico",
+      apple: brand.faviconUrl,
+    },
+  };
+}
 
 export default async function RootLayout({
   children,

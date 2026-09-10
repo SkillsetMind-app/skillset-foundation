@@ -202,7 +202,7 @@ describe("auth flow follows the selected language without resetting state", () =
   it("updates a signup validation already shown without another submission", async () => {
     const { container } = renderSpanish(<SignupForm />);
     fireEvent.submit(container.querySelector("form")!);
-    expect(screen.getByRole("alert")).toHaveTextContent("Acepta los Términos del Servicio");
+    expect(screen.getByRole("alert")).toHaveTextContent("Acepta las Condiciones de servicio");
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Accept the Terms of Service");
     expect(mocks.signUpWithEmail).not.toHaveBeenCalled();

@@ -5432,5 +5432,9 @@
         "many": "waiting {count} days"
       }
     }
+  },
+  "siteMetadata": {
+    "title": "SkillsetMind | Coaching, Personal Development & Human Potential",
+    "description": "A vertical business and learning platform for coaching, personal development and human potential."
   }
 }
