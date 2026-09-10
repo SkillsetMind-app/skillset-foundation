@@ -1829,6 +1829,9 @@
   },
   "creatorPanel": {
     "activationGate": {
+      "verificationTitle": "Completa tu verificación profesional",
+      "verificationBody": "Tus datos profesionales deben aprobarse antes de pagar la activación. Envía o revisa tus datos. Si ya están en revisión, espera la decisión antes de pagar.",
+      "verificationAction": "Ver verificación profesional",
       "title": "Activa tu escaparate",
       "fee": "Un pago único de ${amount} desbloquea el estudio del creador. Se cobra una sola vez, nunca por curso.",
       "plan": "Tu plan Free sigue costando $0 al mes. La activación abre el estudio; tu plan determina la comisión por venta.",

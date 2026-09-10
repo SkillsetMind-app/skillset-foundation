@@ -21,9 +21,14 @@ vi.mock("next/navigation", () => ({
 }));
 
 const blockedMock = vi.hoisted(() => vi.fn());
+const verificationMock = vi.hoisted(() => vi.fn());
+const profileMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/data/user-profiles", () => ({ getUserProfile: profileMock }));
 
 vi.mock("@/lib/data/creator-verification", () => ({
   fetchCreatorActivationBlocked: blockedMock,
+  fetchRequireCreatorVerification: verificationMock,
 }));
 
 /** Renders and lets the activation verdict settle before asserting. */
@@ -39,6 +44,55 @@ describe("ActivationGate", () => {
     state.pathname = "/teach/courses";
     blockedMock.mockReset();
     blockedMock.mockResolvedValue(false);
+    verificationMock.mockReset().mockResolvedValue(false);
+    profileMock.mockReset().mockResolvedValue({ creatorVerificationStatus: "approved" });
+  });
+
+  it.each(["none", "pending", "needs_changes", "rejected"])("directs %s verification to its prerequisite instead of offering an impossible payment", async (status) => {
+    blockedMock.mockResolvedValue(true);
+    verificationMock.mockResolvedValue(true);
+    profileMock.mockResolvedValue({ creatorVerificationStatus: status });
+    render(<ActivationGate><p>Private studio</p></ActivationGate>);
+    expect(await screen.findByRole("link", { name: "View professional verification" })).toHaveAttribute("href", "/teach/verification");
+    expect(screen.queryByRole("link", { name: /Pay \$25/ })).toBeNull();
+    expect(screen.queryByText("Private studio")).toBeNull();
+  });
+
+  it("offers payment after required verification is approved", async () => {
+    blockedMock.mockResolvedValue(true);
+    verificationMock.mockResolvedValue(true);
+    await renderGate();
+    expect(screen.getByRole("link", { name: /Pay \$25/ })).toBeInTheDocument();
+    expect(profileMock).toHaveBeenCalledWith("teacher-1");
+  });
+
+  it("lets an unpaid creator reach verification and rechecks approval on return", async () => {
+    state.pathname = "/teach/verification";
+    blockedMock.mockResolvedValue(true);
+    verificationMock.mockResolvedValue(true);
+    const view = render(<ActivationGate><p>Verification form</p></ActivationGate>);
+    expect(screen.getByText("Verification form")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(blockedMock).not.toHaveBeenCalled();
+    state.pathname = "/teach";
+    view.rerender(<ActivationGate><p>Private studio</p></ActivationGate>);
+    expect(await screen.findByRole("link", { name: /Pay \$25/ })).toBeInTheDocument();
+    expect(screen.queryByText("Private studio")).toBeNull();
+  });
+
+  it("preserves admin/paid exemptions without consulting verification", async () => {
+    await renderGate();
+    expect(verificationMock).not.toHaveBeenCalled();
+    expect(profileMock).not.toHaveBeenCalled();
+  });
+
+  it("does not offer payment when required verification cannot be read", async () => {
+    blockedMock.mockResolvedValue(true);
+    verificationMock.mockResolvedValue(true);
+    profileMock.mockResolvedValue(null);
+    await renderGate();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Pay \$25/ })).toBeNull();
   });
 
   it("walls off the studio and sends the creator to checkout when the fee is unpaid", async () => {

@@ -1829,6 +1829,9 @@
   },
   "creatorPanel": {
     "activationGate": {
+      "verificationTitle": "Complete your professional verification",
+      "verificationBody": "Your professional details must be approved before you can pay for activation. Submit or review your details. If they are already under review, wait for the decision before paying.",
+      "verificationAction": "View professional verification",
       "title": "Activate your storefront",
       "fee": "A one-time ${amount} fee unlocks the creator studio. It is charged once, never per course.",
       "plan": "Your Free plan stays $0 per month. The activation fee opens the studio; your plan sets the commission per sale.",
