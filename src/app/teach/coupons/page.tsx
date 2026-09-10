@@ -4,6 +4,11 @@ import { ArrowRight } from "lucide-react";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import { getServerTranslation } from "@/lib/i18n/server";
+import { privatePageMetadata } from "@/lib/seo/page-metadata";
+
+export async function generateMetadata() {
+  return privatePageMetadata("teach.marketing.coupons.title");
+}
 
 // Coupons live inside each course's management central now — this route stays
 // as a signpost for old links.

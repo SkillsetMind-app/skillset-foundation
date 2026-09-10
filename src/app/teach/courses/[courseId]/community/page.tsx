@@ -4,6 +4,11 @@ import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import { TeacherCommunityInbox } from "@/components/teacher/teacher-community-inbox";
 import { getServerTranslation } from "@/lib/i18n/server";
+import { privatePageMetadata } from "@/lib/seo/page-metadata";
+
+export async function generateMetadata() {
+  return privatePageMetadata("teacherCommunity.title");
+}
 
 type CourseCommunityPageProps = {
   params: Promise<{

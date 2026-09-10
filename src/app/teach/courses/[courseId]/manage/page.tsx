@@ -4,6 +4,11 @@ import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import { CourseManageHub } from "@/components/teacher/course-manage-hub";
 import { getServerTranslation } from "@/lib/i18n/server";
+import { privatePageMetadata } from "@/lib/seo/page-metadata";
+
+export async function generateMetadata() {
+  return privatePageMetadata("creatorPanel.hub.header.eyebrow");
+}
 
 type CourseManagePageProps = {
   params: Promise<{

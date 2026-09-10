@@ -1,6 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { buildPageMetadata, SITE_URL } from "@/lib/seo/page-metadata";
+import { LOCALE_COOKIE } from "@/lib/i18n/config";
+import { buildPageMetadata, privatePageMetadata, SITE_URL } from "@/lib/seo/page-metadata";
+
+const state = vi.hoisted(() => ({ locale: "en" as "en" | "es" }));
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    get: (name: string) => (name === LOCALE_COOKIE ? { value: state.locale } : undefined),
+  }),
+}));
 
 describe("buildPageMetadata — host canônico", () => {
   // Produção serve `www`: o apex responde 301 para cá. Enquanto SITE_URL
@@ -69,5 +77,23 @@ describe("buildPageMetadata — imagem do card", () => {
 
     expect(semImagem.openGraph?.images).toEqual(comNull.openGraph?.images);
     expect(JSON.stringify(semImagem.openGraph?.images)).toContain(SITE_URL);
+  });
+});
+
+describe("privatePageMetadata — cabeçalho de página logada", () => {
+  // As páginas atrás de login (/account, /learn, /teach) não têm título
+  // próprio: a aba do navegador cai no título genérico do layout raiz. O
+  // helper reusa o MESMO rótulo que a página já mostra via
+  // `PlatformShell title={t(chave)}`, no idioma do cookie, com o sufixo da
+  // marca — nada de canonical/Open Graph, a página exige login.
+  it.each([
+    ["en", "Settings | SkillsetMind"],
+    ["es", "Configuración | SkillsetMind"],
+  ])("traduz o rótulo e acrescenta o sufixo da marca (%s)", async (locale, title) => {
+    state.locale = locale as "en" | "es";
+    expect(await privatePageMetadata("accountSettings.label")).toEqual({
+      title,
+      robots: { index: false, follow: false },
+    });
   });
 });

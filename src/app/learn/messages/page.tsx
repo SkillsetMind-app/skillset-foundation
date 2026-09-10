@@ -4,6 +4,11 @@ import { Suspense } from "react";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { StudentMessagesInbox } from "@/components/learn/student-messages-inbox";
 import { PlatformShell } from "@/components/platform/platform-shell";
+import { privatePageMetadata } from "@/lib/seo/page-metadata";
+
+export async function generateMetadata() {
+  return privatePageMetadata("learnWave2.messagesPage.title");
+}
 
 // A caixa de entrada do aluno: uma conversa por curso, no molde da que o
 // professor ja tem em /teach/messages. Antes o aluno so respondia ao professor
