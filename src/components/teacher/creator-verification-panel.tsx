@@ -206,8 +206,8 @@ export function CreatorVerificationPanel() {
             In review
           </h2>
           <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
-            Your application is with the review team. You can keep building
-            courses while you wait.
+            Your application is with the review team. Check this page for the
+            decision or any requested changes before continuing activation.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <DetailRow label="Profession" value={verificationCase.profession} />

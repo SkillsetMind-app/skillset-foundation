@@ -9,7 +9,8 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { AdvisorSidebar } from "@/components/teacher/advisor-sidebar";
 import { activationFeeUsd } from "@/data/plans";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
-import { fetchCreatorActivationBlocked } from "@/lib/data/creator-verification";
+import { fetchCreatorActivationBlocked, fetchRequireCreatorVerification } from "@/lib/data/creator-verification";
+import { getUserProfile } from "@/lib/data/user-profiles";
 import { hasAnyPermission } from "@/lib/permissions";
 
 /**
@@ -41,7 +42,8 @@ export function ActivationGate({ children }: { children?: ReactNode }) {
   // Stripe sends them back. Gating those traps the creator with no way to pay.
   const onActivationRoute = pathname === "/teach/activate"
     || pathname?.startsWith("/teach/activate/") === true;
-  if (!isTeacher || onActivationRoute) return children;
+  // Verification must remain reachable before the approval required by checkout.
+  if (!isTeacher || onActivationRoute || pathname === "/teach/verification") return children;
 
   // Account changes and leaving for checkout reset the check. Ordinary studio
   // navigation preserves the mounted advisor and its unsent draft.
@@ -49,16 +51,27 @@ export function ActivationGate({ children }: { children?: ReactNode }) {
 }
 
 function ActivationCheck({ children }: { children?: ReactNode }) {
+  const { user } = useAuth();
+  const uid = user?.uid;
   const { t } = useTranslation();
   const [attempt, setAttempt] = useState(0);
-  const [phase, setPhase] = useState<"loading" | "allowed" | "blocked" | "error">("loading");
+  const [phase, setPhase] = useState<"loading" | "allowed" | "blocked" | "verification" | "error">("loading");
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let active = true;
     fetchCreatorActivationBlocked()
-      .then((value) => {
-        if (active) setPhase(value ? "blocked" : "allowed");
+      .then(async (value) => {
+        if (!active) return;
+        if (!value) {
+          setPhase("allowed");
+          return;
+        }
+        // Approval is a prerequisite of checkout, not a Stripe failure.
+        const required = await fetchRequireCreatorVerification();
+        const profile = required && uid ? await getUserProfile(uid) : null;
+        if (required && !profile) throw new Error("Verification status unavailable.");
+        if (active) setPhase(required && profile?.creatorVerificationStatus !== "approved" ? "verification" : "blocked");
       })
       .catch(() => {
         if (active) setPhase("error");
@@ -66,7 +79,7 @@ function ActivationCheck({ children }: { children?: ReactNode }) {
     return () => {
       active = false;
     };
-  }, [attempt]);
+  }, [attempt, uid]);
 
   // Focus trap and scroll lock follow what is on screen, not what the fetch
   // returned: a stale `blocked` on the checkout route would otherwise lock the
@@ -104,7 +117,7 @@ function ActivationCheck({ children }: { children?: ReactNode }) {
           id="activation-gate-title"
           className="text-xl font-semibold text-[var(--color-ink)]"
         >
-          {t(`creatorPanel.activationGate.${phase === "loading" ? "checking" : phase === "error" ? "errorTitle" : "title"}`)}
+          {t(`creatorPanel.activationGate.${phase === "loading" ? "checking" : phase === "error" ? "errorTitle" : phase === "verification" ? "verificationTitle" : "title"}`)}
         </h2>
         {phase === "blocked" ? <>
         <p className="mt-3 text-sm leading-relaxed text-[var(--color-ink-soft)]">
@@ -119,6 +132,13 @@ function ActivationCheck({ children }: { children?: ReactNode }) {
         >
           {t("creatorPanel.activationGate.pay").replace("{amount}", () => String(activationFeeUsd))}
         </Link>
+        </> : phase === "verification" ? <>
+          <p className="mt-3 text-sm leading-relaxed text-[var(--color-ink-soft)]">
+            {t("creatorPanel.activationGate.verificationBody")}
+          </p>
+          <Link href="/teach/verification" className="button-solid mt-6 inline-flex min-h-11 w-full items-center justify-center px-4 py-2.5 text-sm">
+            {t("creatorPanel.activationGate.verificationAction")}
+          </Link>
         </> : phase === "error" ? <>
           <p role="alert" className="mt-3 text-sm leading-relaxed text-[var(--color-ink-soft)]">
             {t("creatorPanel.activationGate.errorBody")}
