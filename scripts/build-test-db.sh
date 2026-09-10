@@ -162,6 +162,14 @@ for arquivo in supabase/migrations/*.sql; do
         -f "supabase/tests/fixtures/20260906020000_before.sql" \
         -f "$arquivo" \
         -f "supabase/tests/fixtures/20260906020000_after.sql"
+    elif [[ "$nome" == "20260910061000_as_travas_de_producao_nascem_com_o_banco.sql" ]]; then
+      # O baseline já traz estas travas; sem derrubá-las antes, o ramo que cria
+      # cada trigger não rodaria em lugar nenhum. Aqui a migration recebe um
+      # banco sem elas e tem de reconstruí-las (a asserção dela falha se não).
+      echo "  $arquivo (sobre um banco sem as travas do snapshot)"
+      psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q --single-transaction \
+        -f "supabase/tests/fixtures/20260910061000_sem_as_travas.sql" \
+        -f "$arquivo"
     else
       aplica "$arquivo"
     fi
@@ -196,5 +204,12 @@ prova_red "recadastro sem guarda de email" \
   'ACCOUNT_CONTROL_REGRESSION: blocked email registered again' -- \
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v without_account_email_guard=1 -q \
     -f "supabase/tests/20260910030000_operational_account_controls_smoke.sql"
+
+prova_red "banco sem as travas de producao" 'PRODUCTION_GUARD_REGRESSION: *' \
+  'client cannot insert payments' \
+  'owner cannot publish by writing status' \
+  'student cannot change the status of the own enrollment through RLS' -- \
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v without_production_guards=1 -q \
+    -f "supabase/tests/20260910061000_as_travas_de_producao_nascem_com_o_banco_smoke.sql"
 
 echo "Banco de teste pronto: baseline + $aplicadas migrations + seed."
