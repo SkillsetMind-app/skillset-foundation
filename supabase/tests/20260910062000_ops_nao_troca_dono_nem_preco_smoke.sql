@@ -74,8 +74,10 @@ select pg_temp.check_course('ops cannot make the course free',
 select pg_temp.check_course('ops cannot change the platform fee',
   pg_temp.refused($q$update public.courses set platform_fee_bps = 0 where id = 'owner-price-course'$q$,
     'courses: owner_id and platform_fee_bps are privileged (admin/service only)'));
-select pg_temp.check_course('ops can still take a course down',
-  pg_temp.accepted($q$update public.courses set status = 'inactive', review_note = 'Synthetic moderation note.' where id = 'owner-price-course'$q$));
+-- Status que continua visível para ops: num UPDATE com WHERE, o RLS exige que
+-- a linha nova também passe nas policies de SELECT.
+select pg_temp.check_course('ops can still send a course back to review',
+  pg_temp.accepted($q$update public.courses set status = 'in_review', review_note = 'Synthetic moderation note.' where id = 'owner-price-course'$q$));
 reset role;
 
 -- Dono muda o próprio preço, e isso não vira linha de auditoria.
