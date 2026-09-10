@@ -2388,6 +2388,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_welcome_tour: {
+        Args: { p_uid: string; p_surface: string }
+        Returns: boolean
+      }
       admin_create_platform_invite: {
         Args: { p_email: string; p_access_level: string; p_waive_activation?: boolean }
         Returns: Json

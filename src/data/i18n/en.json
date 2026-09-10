@@ -1449,6 +1449,18 @@
     }
   },
   "teach": {
+    "tour": {
+      "welcome": "Welcome to your studio",
+      "welcomeNamed": "Welcome to your studio, {name}",
+      "step1Body": "Create courses and programs, manage your learners, and follow sales here. Your home shows the next steps for getting started.",
+      "step2Title": "Create your first product",
+      "step2Body": "Choose a product format, then add lessons, videos, and learning materials in the builder.",
+      "step3Title": "Publish and sell",
+      "step3Body": "Set your pricing, review the content and access rules, then publish. Share your sales link when the product is ready.",
+      "step4Title": "Payments and help",
+      "step4Body": "Connect your Stripe account in Payments to receive sales. Stripe handles verification and payout timing. Open Advisor in the top bar when you need help.",
+      "openStudio": "Open your studio"
+    },
     "reports": {
       "periodLabel": "Report period",
       "range7d": "Last 7 days - all products",

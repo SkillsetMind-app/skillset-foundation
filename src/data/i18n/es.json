@@ -1449,6 +1449,18 @@
     }
   },
   "teach": {
+    "tour": {
+      "welcome": "Bienvenido a tu espacio",
+      "welcomeNamed": "Bienvenido a tu espacio, {name}",
+      "step1Body": "Crea cursos y programas, gestiona a tus alumnos y consulta tus ventas aquí. El inicio muestra los próximos pasos para comenzar.",
+      "step2Title": "Crea tu primer producto",
+      "step2Body": "Elige un formato de producto y añade lecciones, vídeos y materiales de aprendizaje en el editor.",
+      "step3Title": "Publica y vende",
+      "step3Body": "Define el precio, revisa el contenido y las reglas de acceso, y publica. Comparte el enlace de venta cuando el producto esté listo.",
+      "step4Title": "Cobros y ayuda",
+      "step4Body": "Conecta tu cuenta de Stripe en Pagos para recibir ventas. Stripe gestiona la verificación y los plazos de pago. Abre Advisor en la barra superior cuando necesites ayuda.",
+      "openStudio": "Abrir mi espacio"
+    },
     "reports": {
       "periodLabel": "Periodo del informe",
       "range7d": "Últimos 7 días - todos los productos",

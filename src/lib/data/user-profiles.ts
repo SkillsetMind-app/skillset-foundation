@@ -396,6 +396,15 @@ export async function updateUserIdentity(uid: string, input: UserIdentityInput) 
   }
 }
 
+export async function claimWelcomeTour(uid: string, surface: "student" | "teacher"): Promise<boolean> {
+  const { data, error } = await getSupabaseBrowserClient().rpc("claim_welcome_tour", {
+    p_uid: uid,
+    p_surface: surface,
+  });
+  if (error || typeof data !== "boolean") throw new Error("Welcome tour unavailable.");
+  return data;
+}
+
 export async function updateUserPreferences(
   uid: string,
   preferences: UserPreferences,

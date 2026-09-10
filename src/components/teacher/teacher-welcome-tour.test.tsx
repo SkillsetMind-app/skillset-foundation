@@ -1,8 +1,14 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { StrictMode } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { WelcomeTour } from "@/components/learn/welcome-tour";
 import { TeacherWelcomeTour } from "@/components/teacher/teacher-welcome-tour";
+import { I18nProvider } from "@/components/i18n/i18n-provider";
+
+const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
+vi.mock("@/lib/supabase/client", () => ({ getSupabaseBrowserClient: () => ({ rpc }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 // P-24: o tour cobre a tela inteira no primeiro login e oferece duas saídas
 // explícitas — o X (16px de ícone + 4px de padding = 24px) e o "Skip" (texto
@@ -11,6 +17,7 @@ import { TeacherWelcomeTour } from "@/components/teacher/teacher-welcome-tour";
 // jsdom não mede layout, então o que dá para morder é a classe de tamanho.
 describe("saídas do tour de boas-vindas", () => {
   beforeEach(() => {
+    rpc.mockReset().mockResolvedValue({ data: true, error: null });
     window.localStorage.clear();
   });
 
@@ -18,15 +25,19 @@ describe("saídas do tour de boas-vindas", () => {
     cleanup();
   });
 
-  it("no tour do professor, X e Skip têm alvo de 44px", () => {
+  it("no tour do professor, X e Skip têm alvo de 44px", async () => {
     render(<TeacherWelcomeTour userId="teacher-1" firstName="Ana" />);
+
+    await screen.findByRole("dialog");
 
     expect(screen.getByRole("button", { name: "Skip the tour" })).toHaveClass("h-11", "w-11");
     expect(screen.getByRole("button", { name: "Skip" })).toHaveClass("min-h-11");
   });
 
-  it("no tour do aluno, X e Skip têm alvo de 44px", () => {
+  it("no tour do aluno, X e Skip têm alvo de 44px", async () => {
     render(<WelcomeTour userId="student-1" firstName="Ana" />);
+
+    await screen.findByRole("dialog");
 
     // Ordem no DOM: o X no cabeçalho, depois o Skip no rodapé, antes de Next.
     const [close, skip] = within(screen.getByRole("dialog")).getAllByRole("button");
@@ -35,11 +46,110 @@ describe("saídas do tour de boas-vindas", () => {
     expect(skip).toHaveClass("min-h-11");
   });
 
-  it("no tour do aluno, um nome com $& aparece literal, sem virar '{name}'", () => {
+  it("no tour do aluno, um nome com $& aparece literal, sem virar '{name}'", async () => {
     // Num replace sem callback, "$&" vira o trecho casado ("{name}") e "$'" o
     // resto da frase. O nome vem do cadastro: é texto da pessoa, não nosso.
     render(<WelcomeTour userId="student-1" firstName="Mc$&Donald" />);
 
-    expect(screen.getByRole("heading", { name: "Welcome, Mc$&Donald" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome, Mc$&Donald" })).toBeInTheDocument();
+  });
+
+  it.each(["en", "es"] as const)("localizes the creator steps and current help location (%s)", async (locale) => {
+    render(<I18nProvider initialLocale={locale}><TeacherWelcomeTour userId={`locale-${locale}`} firstName="Mc$&Donald" /></I18nProvider>);
+    expect(await screen.findByRole("heading", { name: locale === "en" ? "Welcome to your studio, Mc$&Donald" : "Bienvenido a tu espacio, Mc$&Donald" })).toBeInTheDocument();
+    for (let step = 0; step < 3; step += 1) fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Next" : "Siguiente" }));
+    expect(screen.getByText(locale === "en" ? /Advisor in the top bar/ : /Advisor en la barra superior/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Open your studio" : "Abrir mi espacio" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe.each([
+  ["teacher", TeacherWelcomeTour],
+  ["student", WelcomeTour],
+] as const)("first welcome for %s", (surface, Tour) => {
+  beforeEach(() => {
+    rpc.mockReset().mockResolvedValue({ data: true, error: null });
+    localStorage.clear();
+  });
+  afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+
+  it("lets narrow footer actions wrap instead of squeezing their labels", async () => {
+    await act(async () => { render(<Tour userId="narrow-footer" firstName="Ana" />); });
+    for (let step = 0; step < 3; step += 1) fireEvent.click(screen.getByRole("button", { name: /^Next$/ }));
+    const actions = screen.getByRole("button", { name: /^Back$/ }).parentElement!;
+    expect(actions.parentElement).toHaveClass("flex-wrap");
+    expect(actions).toHaveClass("flex-wrap", "max-w-full");
+    for (const button of within(actions).getAllByRole("button")) expect(button).toHaveClass("shrink-0");
+  });
+
+  it("waits for the account claim before interrupting the page", async () => {
+    let resolve!: (result: { data: boolean; error: null }) => void;
+    rpc.mockReturnValueOnce(new Promise((done) => { resolve = done; }));
+    render(<Tour userId="pending" firstName="Ana" />);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(rpc).toHaveBeenCalledWith("claim_welcome_tour", { p_uid: "pending", p_surface: surface }));
+    await act(async () => resolve({ data: true, error: null }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("does not repeat a remotely seen tour in an empty browser", async () => {
+    rpc.mockResolvedValueOnce({ data: false, error: null });
+    await act(async () => { render(<Tour userId="already-seen" firstName="Ana" />); });
+    await waitFor(() => expect(rpc).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("shares the pending claim during StrictMode and closes with Escape", async () => {
+    // Flush the claim and passive keyboard effect before simulating a keypress.
+    await act(async () => { render(<StrictMode><Tour userId="strict" firstName="Ana" /></StrictMode>); });
+    await screen.findByRole("dialog");
+    expect(rpc).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    cleanup();
+    rpc.mockResolvedValueOnce({ data: false, error: null });
+    await act(async () => { render(<Tour userId="strict" firstName="Ana" />); });
+    await waitFor(() => expect(rpc).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("ignores a late claim after switching accounts", async () => {
+    let resolve!: (result: { data: boolean; error: null }) => void;
+    rpc.mockReturnValueOnce(new Promise((done) => { resolve = done; }))
+      .mockResolvedValueOnce({ data: false, error: null });
+    const { rerender } = render(<Tour key="a" userId="a" firstName="Ana" />);
+    await waitFor(() => expect(rpc).toHaveBeenCalledTimes(1));
+    rerender(<Tour key="b" userId="b" firstName="Bea" />);
+    await waitFor(() => expect(rpc).toHaveBeenCalledTimes(2));
+    await act(async () => resolve({ data: true, error: null }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(rpc).toHaveBeenLastCalledWith("claim_welcome_tour", { p_uid: "b", p_surface: surface });
+  });
+
+  it.each(["transport", "server", "malformed"])("does not open on a %s failure and permits a later retry", async (failure) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    if (failure === "transport") rpc.mockRejectedValueOnce(new Error("private backend detail"));
+    else rpc.mockResolvedValueOnce(failure === "server"
+      ? { data: null, error: { message: "private backend detail" } }
+      : { data: "true", error: null });
+    render(<Tour userId={`failed-${failure}`} firstName="Ana" />);
+    await waitFor(() => expect(rpc).toHaveBeenCalledTimes(1));
+    await act(async () => {});
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("private backend detail");
+    cleanup();
+    render(<Tour userId={`failed-${failure}`} firstName="Ana" />);
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it("works without browser storage access", async () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("storage unavailable"); });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("storage unavailable"); });
+    render(<Tour userId="no-storage" firstName="Ana" />);
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "Skip the tour" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

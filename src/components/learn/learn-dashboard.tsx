@@ -223,7 +223,7 @@ export function LearnDashboard() {
   if (enrollments.length === 0) {
     return (
       <div className="grid gap-8">
-        {user ? <WelcomeTour userId={user.uid} firstName={firstName} /> : null}
+        {user ? <WelcomeTour key={user.uid} userId={user.uid} firstName={firstName} /> : null}
         {greeting}
         <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
           <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
@@ -322,7 +322,7 @@ export function LearnDashboard() {
 
   return (
     <div className="grid gap-8">
-      {user ? <WelcomeTour userId={user.uid} firstName={firstName} /> : null}
+      {user ? <WelcomeTour key={user.uid} userId={user.uid} firstName={firstName} /> : null}
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--color-line)] pb-5">
         <div>
           {greeting}
