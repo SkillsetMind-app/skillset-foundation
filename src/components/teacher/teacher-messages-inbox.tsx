@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { courseMessageErrorKey } from "@/components/teacher/course-student-roster";
 import type { CourseMessage } from "@/domain/course-message";
 import {
   COURSE_MESSAGE_MAX_CHARS,
@@ -37,7 +38,7 @@ export function TeacherMessagesInbox() {
       user.uid,
       setMessages,
       () => {
-        setNotice("We could not load your student messages.");
+        setNotice("teacherMessages.loadError");
       },
     );
   }, [user]);
@@ -64,12 +65,8 @@ export function TeacherMessagesInbox() {
         body: draft,
       });
       setDraft("");
-    } catch (error) {
-      setNotice(
-        error instanceof Error && error.message
-          ? error.message
-          : "We could not send your reply. Try again.",
-      );
+    } catch (sendError) {
+      setNotice(courseMessageErrorKey(sendError, "teacherMessages.sendError"));
     } finally {
       setIsSending(false);
     }
@@ -84,15 +81,14 @@ export function TeacherMessagesInbox() {
           size={28}
         />
         <h3 className="mt-3 text-lg font-semibold text-[var(--color-primary)]">
-          No student messages yet
+          {t("teacherMessages.emptyTitle")}
         </h3>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
-          When an enrolled student writes to you from inside a course, the
-          thread appears here and in your notification bell.
+          {t("teacherMessages.emptyDescription")}
         </p>
         {notice ? (
           <p className="mt-4 text-xs font-semibold text-[var(--color-primary)]">
-            {notice}
+            {t(notice)}
           </p>
         ) : null}
       </section>
@@ -101,7 +97,7 @@ export function TeacherMessagesInbox() {
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(240px,320px)_1fr]">
-      <nav aria-label="Student threads" className="grid content-start gap-2">
+      <nav aria-label={t("teacherMessages.threads")} className="grid content-start gap-2">
         {threads.map((thread) => {
           const isActive = selectedThread?.key === thread.key;
           return (
@@ -156,7 +152,7 @@ export function TeacherMessagesInbox() {
                   }`}
                 >
                   <p className="text-xs font-semibold text-[var(--color-ink-muted)]">
-                    {isMine ? "You" : selectedThread.studentName} ·{" "}
+                    {isMine ? t("teacherMessages.you") : selectedThread.studentName} ·{" "}
                     {formatNotificationTime(message.createdAt, t, locale)}
                   </p>
                   <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-[var(--color-ink)]">
@@ -175,11 +171,12 @@ export function TeacherMessagesInbox() {
               maxLength={COURSE_MESSAGE_MAX_CHARS}
               rows={3}
               className="min-h-20 rounded-[12px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)]"
-              placeholder={`Reply to ${selectedThread.studentName}...`}
+              aria-label={t("teacherMessages.replyTo").replace("{name}", () => selectedThread.studentName)}
+              placeholder={t("teacherMessages.replyTo").replace("{name}", () => selectedThread.studentName)}
             />
             {notice ? (
               <p className="rounded-[10px] bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-primary)]">
-                {notice}
+                {t(notice)}
               </p>
             ) : null}
             <button
@@ -188,7 +185,7 @@ export function TeacherMessagesInbox() {
               className="button-solid inline-flex w-fit items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-60"
             >
               <Send size={15} aria-hidden="true" />
-              {isSending ? "Sending..." : "Send reply"}
+              {t(isSending ? "teacherMessages.sending" : "teacherMessages.send")}
             </button>
           </form>
         </section>
