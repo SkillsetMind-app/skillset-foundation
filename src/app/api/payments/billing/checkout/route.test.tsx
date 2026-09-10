@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   createSession: vi.fn(),
   listSessions: vi.fn(),
   expireSession: vi.fn(),
+  getLocale: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -38,6 +39,8 @@ vi.mock("@/lib/payments/server/stripe-helpers", () => ({
   getOrCreateBillingStripeCustomer: mocks.getCustomer,
   resolvePriceId: mocks.resolvePriceId,
 }));
+
+vi.mock("@/lib/i18n/server", () => ({ getServerLocale: mocks.getLocale }));
 
 import { POST } from "@/app/api/payments/billing/checkout/route";
 
@@ -88,6 +91,7 @@ function request(body: Record<string, unknown>) {
 describe("POST /api/payments/billing/checkout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getLocale.mockResolvedValue("en");
     mocks.requireUserId.mockResolvedValue("teacher-1");
     mocks.enforceRateLimit.mockResolvedValue(undefined);
     mocks.getUserRow.mockResolvedValue({ email: "teacher@example.com" });
@@ -365,6 +369,17 @@ describe("POST /api/payments/billing/checkout", () => {
     } finally {
       now.mockRestore();
     }
+  });
+
+  it("opens the plan checkout in the visitor's language", async () => {
+    mocks.getAdmin.mockImplementation(adminReturning(null));
+    mocks.listSubscriptions.mockResolvedValue({ data: [] });
+    mocks.getLocale.mockResolvedValue("es");
+
+    const response = await POST(request({ planId: "pro", cycle: "monthly" }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.createSession.mock.calls[0][0]).toMatchObject({ locale: "es" });
   });
 
   it("creates a session when neither our table nor Stripe knows of a plan", async () => {

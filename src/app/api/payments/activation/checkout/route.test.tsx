@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   listDisputes: vi.fn(),
   waiver: vi.fn(),
   expireSession: vi.fn(),
+  getLocale: vi.fn(),
 }));
 
 vi.mock("@/lib/payments/server/auth", async (importOriginal) => ({
@@ -44,6 +45,8 @@ vi.mock("@/lib/payments/server/stripe-helpers", async (importOriginal) => ({
   getUserRow: mocks.getUserRow,
   getOrCreateBillingStripeCustomer: mocks.getCustomer,
 }));
+
+vi.mock("@/lib/i18n/server", () => ({ getServerLocale: mocks.getLocale }));
 
 import { POST } from "@/app/api/payments/activation/checkout/route";
 
@@ -122,6 +125,7 @@ function activationIntent(charge: Record<string, unknown> = {}, intent: Record<s
 describe("storefront activation checkout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getLocale.mockResolvedValue("en");
     mocks.requireUserId.mockResolvedValue("teacher-1");
     mocks.enforceRateLimit.mockResolvedValue(undefined);
     mocks.getAdmin.mockReturnValue(createAdmin());
@@ -456,6 +460,15 @@ describe("storefront activation checkout", () => {
     } finally {
       errorLog.mockRestore();
     }
+  });
+
+  it("opens the activation checkout in the visitor's language", async () => {
+    mocks.getLocale.mockResolvedValue("es");
+
+    const response = await POST();
+
+    expect(response.status).toBe(200);
+    expect(mocks.createSession.mock.calls[0][0]).toMatchObject({ locale: "es" });
   });
 
   it("creates one session with a stable creator-and-price idempotency key", async () => {
