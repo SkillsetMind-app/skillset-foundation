@@ -4,6 +4,11 @@ import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import { CreatorVerificationPanel } from "@/components/teacher/creator-verification-panel";
 import { getServerTranslation } from "@/lib/i18n/server";
+import { privatePageMetadata } from "@/lib/seo/private-page-metadata";
+
+export async function generateMetadata() {
+  return privatePageMetadata("professionalBadge.title");
+}
 
 export default async function CreatorVerificationPage() {
   const { t } = await getServerTranslation();

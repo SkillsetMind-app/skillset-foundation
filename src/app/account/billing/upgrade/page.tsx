@@ -6,6 +6,11 @@ import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import type { PlanBillingCycle, PlanId } from "@/data/plans";
 import { getServerTranslation } from "@/lib/i18n/server";
+import { privatePageMetadata } from "@/lib/seo/private-page-metadata";
+
+export async function generateMetadata() {
+  return privatePageMetadata("billingCheckout.pageTitle");
+}
 
 type SearchParamValue = string | string[] | undefined;
 

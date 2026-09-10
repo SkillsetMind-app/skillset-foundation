@@ -2,6 +2,11 @@ import { PlatformShell } from "@/components/platform/platform-shell";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { LearnDashboard } from "@/components/learn/learn-dashboard";
 import { getServerTranslation } from "@/lib/i18n/server";
+import { privatePageMetadata } from "@/lib/seo/private-page-metadata";
+
+export async function generateMetadata() {
+  return privatePageMetadata("learn.page.title");
+}
 
 export default async function LearnPage() {
   const { t } = await getServerTranslation();

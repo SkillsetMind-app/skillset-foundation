@@ -2,6 +2,11 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { LearnerWishlist } from "@/components/learn/learner-wishlist";
 import { PlatformShell } from "@/components/platform/platform-shell";
+import { privatePageMetadata } from "@/lib/seo/private-page-metadata";
+
+export async function generateMetadata() {
+  return privatePageMetadata("learnWave2.wishlist.title");
+}
 
 export default async function LearnWishlistPage() {
   const { t } = await getServerTranslation();

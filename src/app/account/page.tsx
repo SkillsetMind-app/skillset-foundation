@@ -4,6 +4,11 @@ import { AccountSettingsHub } from "@/components/account/account-settings-hub";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import { getServerTranslation } from "@/lib/i18n/server";
+import { privatePageMetadata } from "@/lib/seo/private-page-metadata";
+
+export async function generateMetadata() {
+  return privatePageMetadata("accountSettings.label");
+}
 
 export default async function AccountPage() {
   const { t } = await getServerTranslation();

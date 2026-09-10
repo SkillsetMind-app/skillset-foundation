@@ -4,6 +4,11 @@ import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import { TeacherBuilderHub } from "@/components/teacher/teacher-builder-hub";
 import { getServerTranslation } from "@/lib/i18n/server";
+import { privatePageMetadata } from "@/lib/seo/private-page-metadata";
+
+export async function generateMetadata() {
+  return privatePageMetadata("platform.nav.courseBuilder");
+}
 
 export default async function TeacherBuilderPage() {
   const { t } = await getServerTranslation();
