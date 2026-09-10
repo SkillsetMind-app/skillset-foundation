@@ -2476,6 +2476,12 @@ export type Database = {
         Args: { p_roles: Json; p_target_uid: string }
         Returns: Json
       }
+      account_session_allowed: { Args: Record<PropertyKey, never>; Returns: boolean }
+      admin_get_account_control: { Args: { p_target_uid: string }; Returns: Json }
+      admin_set_account_control: {
+        Args: { p_target_uid: string; p_action: string; p_reason: string }
+        Returns: Json
+      }
       assert_course_owner: { Args: { p_course_id: string }; Returns: string }
       claim_checkout_lock: {
         Args: {
