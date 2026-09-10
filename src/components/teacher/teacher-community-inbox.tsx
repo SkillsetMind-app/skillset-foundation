@@ -40,6 +40,8 @@ import { subscribeToTeacherCourse } from "@/lib/data/teacher-courses";
 
 export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
   const { user } = useAuth();
+  const { t, locale } = useTranslation();
+  const number = (value: number) => new Intl.NumberFormat(locale).format(value);
   const [course, setCourse] = useState<TeacherCourse | null>(null);
   const [courseReady, setCourseReady] = useState(false);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
@@ -55,7 +57,7 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
         setCourseReady(true);
       },
       () => {
-        setError("We could not load this course.");
+        setError("teacherCommunity.courseError");
         setCourseReady(true);
       },
     );
@@ -66,7 +68,7 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
       return;
     }
     return subscribeToCommunityPosts(course.id, setPosts, () => {
-      setError("We could not load community posts.");
+      setError("teacherCommunity.postsError");
     });
   }, [course]);
 
@@ -94,14 +96,14 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
   );
 
   if (!courseReady) {
-    return <p className="text-sm text-[var(--color-ink-soft)]">Loading community...</p>;
+    return <p className="text-sm text-[var(--color-ink-soft)]">{t("teacherCommunity.loading")}</p>;
   }
 
   if (!course || !user) {
     return (
       <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
         <p className="text-sm text-[var(--color-ink-soft)]">
-          {error || "Course not found."}
+          {t(error || "teacherCommunity.notFound")}
         </p>
       </section>
     );
@@ -116,19 +118,19 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
         className="inline-flex min-h-11 w-fit items-center gap-2 text-sm font-semibold text-[var(--color-primary)]"
       >
         <ArrowLeft size={16} aria-hidden="true" />
-        Back to {course.title}
+        {t("teacherCommunity.back").replace("{title}", () => course.title)}
       </Link>
 
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            Community
+            {t("teacherCommunity.title")}
           </p>
           <h1 className="display-title mt-1 text-3xl text-[var(--color-ink)]">{course.title}</h1>
           <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-            {memberCount !== null ? `${memberCount} members · ` : ""}
-            {week.activeMembers} active this week
-            {medianReplyHours !== null ? ` · your median reply ${formatHours(medianReplyHours)}` : ""}
+            {memberCount !== null ? t(memberCount === 1 ? "teacherCommunity.memberOne" : "teacherCommunity.memberMany").replace("{count}", () => number(memberCount)) + " · " : ""}
+            {t("teacherCommunity.activeWeek").replace("{count}", () => number(week.activeMembers))}
+            {medianReplyHours !== null ? " · " + t("teacherCommunity.medianReply").replace("{time}", () => formatHours(medianReplyHours, locale)) : ""}
           </p>
         </div>
         <UpdateComposer courseId={course.id} user={user} onError={setError} />
@@ -136,22 +138,22 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
 
       {error ? (
         <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {error}
+          {t(error)}
         </p>
       ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
         <section aria-labelledby="waiting-heading" className="grid gap-3">
           <h2 id="waiting-heading" className="text-lg font-semibold text-[var(--color-ink)]">
-            Waiting for an answer
+            {t("teacherCommunity.waitingTitle")}
             <span className="ml-2 inline-flex min-w-7 items-center justify-center rounded-full bg-[var(--color-primary)] px-2 text-xs font-bold text-[var(--color-base)]">
-              {queue.length}
+              {number(queue.length)}
             </span>
           </h2>
 
           {queue.length === 0 ? (
             <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-              Nothing waiting. Every question has an answer.
+              {t("teacherCommunity.empty")}
             </p>
           ) : (
             queue.map((post) => (
@@ -171,18 +173,16 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
         <aside className="grid gap-3">
           <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-              This week
+              {t("teacherCommunity.week")}
             </p>
             <p className="mt-2 text-2xl font-bold text-[var(--color-ink)]">
-              {week.posts} post{week.posts === 1 ? "" : "s"}
+              {t(week.posts === 1 ? "teacherCommunity.postOne" : "teacherCommunity.postMany").replace("{count}", () => number(week.posts))}
             </p>
             <p className="text-sm text-[var(--color-ink-soft)]">
-              {week.questions} question{week.questions === 1 ? "" : "s"} · {week.shares} share
-              {week.shares === 1 ? "" : "s"}
+              {t(week.questions === 1 ? "teacherCommunity.questionOne" : "teacherCommunity.questionMany").replace("{count}", () => number(week.questions))} · {t(week.shares === 1 ? "teacherCommunity.shareOne" : "teacherCommunity.shareMany").replace("{count}", () => number(week.shares))}
             </p>
             <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
-              {week.activeMembers}
-              {memberCount !== null ? ` of ${memberCount}` : ""} active
+              {t(memberCount !== null ? "teacherCommunity.activeOf" : "teacherCommunity.active").replace(/\{count\}|\{total\}/g, (token) => number(token === "{count}" ? week.activeMembers : memberCount ?? 0))}
             </p>
           </section>
         </aside>
@@ -219,7 +219,7 @@ function WaitingCard({
     event.preventDefault();
     const next = body.trim();
     if (next.length < 3) {
-      onError("Write your answer first.");
+      onError("teacherCommunity.shortAnswer");
       return;
     }
     onError("");
@@ -237,7 +237,7 @@ function WaitingCard({
       setBody("");
       setOpen(false);
     } catch {
-      onError("We could not post your answer. Try again.");
+      onError("teacherCommunity.answerError");
     } finally {
       setIsSaving(false);
     }
@@ -258,7 +258,7 @@ function WaitingCard({
         {post.lessonTitle ? ` · ${post.lessonTitle}` : ""}
         {" · "}
         <span className={waiting.overdue ? "font-bold text-[var(--color-danger-fg)]" : ""}>
-          {waiting.label}
+          {formatWaiting(post, now, t, locale)}
         </span>
       </p>
       {post.title && post.body ? (
@@ -266,7 +266,7 @@ function WaitingCard({
       ) : null}
       {otherReplies.length > 0 ? (
         <p className="mt-2 text-xs text-[var(--color-ink-muted)]">
-          {otherReplies.length} student repl{otherReplies.length === 1 ? "y" : "ies"} so far —{" "}
+          {t(otherReplies.length === 1 ? "teacherCommunity.replyOne" : "teacherCommunity.replyMany").replace("{count}", () => new Intl.NumberFormat(locale).format(otherReplies.length))} —{" "}
           {formatNotificationTime(otherReplies[otherReplies.length - 1].createdAt, t, locale)}
         </p>
       ) : null}
@@ -274,13 +274,13 @@ function WaitingCard({
       {open ? (
         <form onSubmit={handleSubmit} className="mt-3 grid gap-2">
           <label className="grid gap-1 text-sm">
-            <span className="sr-only">Your answer</span>
+            <span className="sr-only">{t("teacherCommunity.yourAnswer")}</span>
             <textarea
               value={body}
               onChange={(event) => setBody(event.target.value)}
               rows={3}
               autoFocus
-              placeholder="Write the answer here…"
+              placeholder={t("teacherCommunity.answerPlaceholder")}
               className="field-input min-h-[88px] resize-y"
             />
           </label>
@@ -292,14 +292,14 @@ function WaitingCard({
                 onChange={(event) => setMarkAsAnswer(event.target.checked)}
               />
               <CheckCircle2 size={14} aria-hidden className="text-[rgb(21,128,61)]" />
-              Mark as the answer
+              {t("teacherCommunity.markAnswer")}
             </label>
             <div className="flex gap-2">
               <button type="button" onClick={() => setOpen(false)} className="button-outline min-h-11 px-3 text-sm">
-                Cancel
+                {t("teacherCommunity.cancel")}
               </button>
               <button type="submit" disabled={isSaving} className="button-solid min-h-11 px-4 text-sm disabled:opacity-60">
-                {isSaving ? "Posting…" : "Post answer"}
+                {t(isSaving ? "teacherCommunity.posting" : "teacherCommunity.postAnswer")}
               </button>
             </div>
           </div>
@@ -310,7 +310,7 @@ function WaitingCard({
           onClick={() => setOpen(true)}
           className="button-solid mt-3 min-h-11 px-4 text-sm"
         >
-          Answer
+          {t("teacherCommunity.answer")}
         </button>
       )}
     </article>
@@ -328,6 +328,7 @@ function UpdateComposer({
   user: NonNullable<ReturnType<typeof useAuth>["user"]>;
   onError: (message: string) => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState("");
   const [pin, setPin] = useState(true);
@@ -337,7 +338,7 @@ function UpdateComposer({
     event.preventDefault();
     const next = body.trim();
     if (next.length < 8) {
-      onError("Write a little more before posting the update.");
+      onError("teacherCommunity.shortUpdate");
       return;
     }
     onError("");
@@ -355,7 +356,7 @@ function UpdateComposer({
       setBody("");
       setOpen(false);
     } catch {
-      onError("We could not post the update.");
+      onError("teacherCommunity.updateError");
     } finally {
       setIsSaving(false);
     }
@@ -364,7 +365,7 @@ function UpdateComposer({
   if (!open) {
     return (
       <button type="button" onClick={() => setOpen(true)} className="button-solid min-h-11 px-4 text-sm">
-        Post an update
+        {t("teacherCommunity.newUpdate")}
       </button>
     );
   }
@@ -372,17 +373,17 @@ function UpdateComposer({
   return (
     <form
       onSubmit={handleSubmit}
-      aria-label="Post an update"
+      aria-label={t("teacherCommunity.newUpdate")}
       className="grid w-full gap-2 rounded-[14px] border border-[var(--color-primary)] bg-white p-4 shadow-[var(--shadow-soft)] lg:max-w-[560px]"
     >
       <label className="grid gap-1 text-sm">
-        <span className="sr-only">Your update</span>
+        <span className="sr-only">{t("teacherCommunity.yourUpdate")}</span>
         <textarea
           value={body}
           onChange={(event) => setBody(event.target.value)}
           rows={3}
           autoFocus
-          placeholder="What should the cohort know this week?"
+          placeholder={t("teacherCommunity.updatePlaceholder")}
           className="field-input min-h-[88px] resize-y"
         />
       </label>
@@ -390,14 +391,14 @@ function UpdateComposer({
         <label className="inline-flex items-center gap-2 text-sm text-[var(--color-ink)]">
           <input type="checkbox" checked={pin} onChange={(event) => setPin(event.target.checked)} />
           <Pin size={14} aria-hidden />
-          Pin to the top
+          {t("teacherCommunity.pin")}
         </label>
         <div className="flex gap-2">
           <button type="button" onClick={() => setOpen(false)} className="button-outline min-h-11 px-3 text-sm">
-            Cancel
+            {t("teacherCommunity.cancel")}
           </button>
           <button type="submit" disabled={isSaving} className="button-solid min-h-11 px-4 text-sm disabled:opacity-60">
-            {isSaving ? "Posting…" : "Post update"}
+            {t(isSaving ? "teacherCommunity.posting" : "teacherCommunity.postUpdate")}
           </button>
         </div>
       </div>
@@ -429,8 +430,16 @@ export function medianInstructorReplyHours(
   return hours.length % 2 ? hours[mid] : (hours[mid - 1] + hours[mid]) / 2;
 }
 
-function formatHours(hours: number): string {
-  if (hours < 1) return `${Math.max(1, Math.round(hours * 60))} min`;
-  if (hours < 48) return `${Math.round(hours)}h`;
-  return `${Math.round(hours / 24)}d`;
+function formatHours(hours: number, locale: string): string {
+  const unit = hours < 1 ? "minute" : hours < 48 ? "hour" : "day";
+  const value = hours < 1 ? Math.max(1, Math.round(hours * 60)) : hours < 48 ? Math.round(hours) : Math.round(hours / 24);
+  return new Intl.NumberFormat(locale, { style: "unit", unit, unitDisplay: "narrow" }).format(value);
+}
+
+function formatWaiting(post: CommunityPost, now: number, t: (key: string) => string, locale: string): string {
+  const hours = Math.max(0, now - toMillis(post.createdAt)) / 3_600_000;
+  const unit = hours < 1 ? "minutes" : hours < 24 ? "hours" : "days";
+  const count = Math.max(1, Math.floor(hours < 1 ? hours * 60 : hours < 24 ? hours : hours / 24));
+  return t(`teacherCommunity.waiting.${unit}.${count === 1 ? "one" : "many"}`)
+    .replace("{count}", () => new Intl.NumberFormat(locale).format(count));
 }

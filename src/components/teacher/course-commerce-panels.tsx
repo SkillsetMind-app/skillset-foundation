@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
@@ -37,6 +38,14 @@ import { logSubscriptionError } from "@/lib/data/subscription-error";
 // charges: the buyer pays the teacher's account directly, so the platform never
 // holds the money and cannot split it with a third party.
 
+const taxRegionKeys: Record<TaxRegion, string> = {
+  "United States": "courseCommerce.regionus",
+  Brazil: "courseCommerce.regionbr",
+  "European Union": "courseCommerce.regioneu",
+  "United Kingdom": "courseCommerce.regionuk",
+  Other: "courseCommerce.regionother",
+};
+
 const inputClass =
   "rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
 
@@ -62,16 +71,16 @@ export function PanelCard({
   );
 }
 
-function GateNotice({ action }: { action: string }) {
+function GateNotice() {
+  const { t } = useTranslation();
   return (
     <InlineAlert tone="warning" className="mt-3 font-normal leading-6">
-      Professional verification must be approved before {action}. You can
-      prepare everything now — approval unlocks the switch.{" "}
+      {t("courseCommerce.gate")}{" "}
       <Link
         href="/teach/verification"
         className="font-semibold text-[var(--color-primary)] underline"
       >
-        Open verification
+        {t("courseCommerce.openVerification")}
       </Link>
     </InlineAlert>
   );
@@ -89,25 +98,45 @@ function FeedbackText({
   error: string;
   notice: string;
 }) {
+  const { t } = useTranslation();
   if (error) {
     return (
       <InlineAlert tone="error" className="mt-3">
-        {error}
+        {t(error)}
       </InlineAlert>
     );
   }
   if (notice) {
     return (
       <InlineAlert tone="success" className="mt-3">
-        {notice}
+        {t(notice)}
       </InlineAlert>
     );
   }
   return null;
 }
 
-function toMessage(error: unknown, fallback: string): string {
-  return error instanceof Error && error.message ? error.message : fallback;
+const commerceErrorKeys: Record<string, string> = {
+  "Coupon codes use 3-24 letters, numbers, or dashes.": "courseCommerce.invalidCode",
+  "Redemption limit must be between 1 and 100000, or blank for unlimited.": "courseCommerce.invalidLimit",
+  "Discount must be between 5% and 90%.": "courseCommerce.invalidDiscount",
+  "The expiry date must be in the future.": "courseCommerce.expiryPast",
+  "This course already has 50 coupons — remove one first.": "courseCommerce.couponLimit",
+  "That coupon code already exists for this course.": "courseCommerce.duplicateCode",
+  "Coupon not found.": "courseCommerce.notFound",
+  "This coupon has expired — create a new one instead.": "courseCommerce.expiredError",
+  "Professional verification must be approved before a coupon can be activated.": "courseCommerce.verificationError",
+  "Only the course owner can manage its coupons.": "courseCommerce.ownerError",
+  "Tax regions must be a list.": "courseCommerce.regionsList",
+  "Pick at most 5 tax regions.": "courseCommerce.regionsLimit",
+  "Unknown tax region.": "courseCommerce.regionUnknown",
+  "Keep the tax registration under 80 characters.": "courseCommerce.registrationLong",
+};
+
+function toMessageKey(error: unknown, fallback: string): string {
+  const message = error && typeof error === "object" && "message" in error
+    && typeof error.message === "string" ? error.message : "";
+  return Object.hasOwn(commerceErrorKeys, message) ? commerceErrorKeys[message] : fallback;
 }
 
 /**
@@ -134,6 +163,7 @@ export function CouponsPanel({
   courseId: string;
   activationBlocked: boolean;
 }) {
+  const { t, locale } = useTranslation();
   const [coupons, setCoupons] = useState<CourseCoupon[]>([]);
   const [code, setCode] = useState("");
   const [percentOff, setPercentOff] = useState(10);
@@ -164,7 +194,7 @@ export function CouponsPanel({
     setError("");
     setNotice("");
     if (!isValidCouponCode(code)) {
-      setError("Coupon codes use 3-24 letters, numbers, or dashes.");
+      setError("courseCommerce.invalidCode");
       return;
     }
     // Blank == unlimited. Number("") is 0, so the emptiness check has to come
@@ -175,7 +205,7 @@ export function CouponsPanel({
       maxRedemptions !== null
       && (!Number.isInteger(maxRedemptions) || maxRedemptions < 1 || maxRedemptions > 100000)
     ) {
-      setError("Redemption limit must be between 1 and 100000, or blank for unlimited.");
+      setError("courseCommerce.invalidLimit");
       return;
     }
     setSaving(true);
@@ -193,9 +223,9 @@ export function CouponsPanel({
       });
       setCode("");
       setExpiresOn("");
-      setNotice("Coupon created — it starts paused until you activate it.");
+      setNotice("courseCommerce.created");
     } catch (createError) {
-      setError(toMessage(createError, "Could not create the coupon."));
+      setError(toMessageKey(createError, "courseCommerce.createError"));
     } finally {
       setSaving(false);
     }
@@ -207,7 +237,7 @@ export function CouponsPanel({
     try {
       await setCourseCouponActive(coupon.id, !coupon.active);
     } catch (toggleError) {
-      setError(toMessage(toggleError, "Could not update the coupon."));
+      setError(toMessageKey(toggleError, "courseCommerce.updateError"));
     }
   };
 
@@ -219,7 +249,7 @@ export function CouponsPanel({
       await deleteCourseCoupon(coupon.id);
       setConfirmingDeleteId(null);
     } catch (removeError) {
-      setError(toMessage(removeError, "Could not remove the coupon."));
+      setError(toMessageKey(removeError, "courseCommerce.removeError"));
     } finally {
       setRemovingId(null);
     }
@@ -231,23 +261,23 @@ export function CouponsPanel({
   // forever would be unremovable for subscribers already on it.
   return (
     <PanelCard
-      title="Coupons"
-      description="Create discount codes for this course. New coupons start paused until you activate them. On a subscription course the discount applies to the first payment only."
+      title={t("courseCommerce.coupons")}
+      description={t("courseCommerce.couponsHelp")}
     >
-      {activationBlocked ? <GateNotice action="a coupon can be activated" /> : null}
+      {activationBlocked ? <GateNotice /> : null}
       <form onSubmit={handleCreate} className="mt-4 grid gap-3 sm:grid-cols-2">
-        <Field id="coupon-code" label="Code" required>
+        <Field id="coupon-code" label={t("courseCommerce.code")} required>
           {(a11y) => (
             <input
               {...a11y}
               value={code}
               onChange={(event) => setCode(normalizeCouponCode(event.target.value))}
-              placeholder="e.g. LAUNCH-25"
+              placeholder={t("courseCommerce.codePlaceholder")}
               className={inputClass}
             />
           )}
         </Field>
-        <Field id="coupon-discount" label="Discount">
+        <Field id="coupon-discount" label={t("courseCommerce.discount")}>
           {(a11y) => (
             <select
               {...a11y}
@@ -257,7 +287,7 @@ export function CouponsPanel({
             >
               {COUPON_PERCENT_OPTIONS.map((option) => (
                 <option key={option} value={option}>
-                  {option}% off
+                  {t("courseCommerce.percentOff").replace("{percent}", () => String(option))}
                 </option>
               ))}
             </select>
@@ -265,7 +295,7 @@ export function CouponsPanel({
         </Field>
         <Field
           id="coupon-max-redemptions"
-          label="Redemption limit (optional)"
+          label={t("courseCommerce.limit")}
         >
           {(a11y) => (
             <input
@@ -275,12 +305,12 @@ export function CouponsPanel({
               max={100000}
               value={maxRedemptionsText}
               onChange={(event) => setMaxRedemptionsText(event.target.value)}
-              placeholder="Unlimited"
+              placeholder={t("courseCommerce.unlimited")}
               className={inputClass}
             />
           )}
         </Field>
-        <Field id="coupon-expires-on" label="Expires (optional)">
+        <Field id="coupon-expires-on" label={t("courseCommerce.expires")}>
           {(a11y) => (
             <input
               {...a11y}
@@ -293,7 +323,7 @@ export function CouponsPanel({
         </Field>
         <div className="sm:col-span-2">
           <Button type="submit" disabled={saving}>
-            {saving ? "Creating..." : "Create coupon"}
+            {saving ? t("courseCommerce.creating") : t("courseCommerce.create")}
           </Button>
         </div>
       </form>
@@ -311,18 +341,18 @@ export function CouponsPanel({
                   <p className="text-sm font-semibold text-[var(--color-ink)]">
                     {coupon.code}
                     <span className="ml-2 text-xs font-normal text-[var(--color-ink-soft)]">
-                      {coupon.percentOff}% off
+                      {t("courseCommerce.percentOff").replace("{percent}", () => String(coupon.percentOff))}
                     </span>
                   </p>
                   <p className="text-xs text-[var(--color-ink-muted)]">
                     {coupon.maxRedemptions === null
-                      ? "Unlimited uses"
-                      : `Limit ${coupon.maxRedemptions} uses`}
+                      ? t("courseCommerce.unlimitedUses")
+                      : t("courseCommerce.uses").replace("{count}", () => String(coupon.maxRedemptions))}
                     {coupon.expiresAt
-                      ? ` - expires ${new Date(coupon.expiresAt).toLocaleDateString("en-US", { timeZone: "UTC" })}`
-                      : " - no expiry"}
+                      ? t("courseCommerce.expiresAt").replace("{date}", () => new Date(coupon.expiresAt!).toLocaleDateString(locale, { timeZone: "UTC" }))
+                      : t("courseCommerce.noExpiry")}
                     {" - "}
-                    {expired ? "Expired" : coupon.active ? "Active" : "Paused"}
+                    {expired ? t("courseCommerce.expired") : coupon.active ? t("courseCommerce.active") : t("courseCommerce.paused")}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -332,7 +362,7 @@ export function CouponsPanel({
                       size="sm"
                       onClick={() => void handleToggle(coupon)}
                     >
-                      {coupon.active ? "Pause" : "Activate"}
+                      {coupon.active ? t("courseCommerce.pause") : t("courseCommerce.activate")}
                     </Button>
                   ) : null}
                   {confirmingDeleteId === coupon.id ? (
@@ -343,7 +373,7 @@ export function CouponsPanel({
                         disabled={removingId === coupon.id}
                         className="button-accent px-3 py-1.5 text-xs disabled:opacity-60"
                       >
-                        {removingId === coupon.id ? "Removing..." : "Confirm remove"}
+                        {removingId === coupon.id ? t("courseCommerce.removing") : t("courseCommerce.confirmRemove")}
                       </button>
                       <Button
                         variant="outline"
@@ -351,7 +381,7 @@ export function CouponsPanel({
                         onClick={() => setConfirmingDeleteId(null)}
                         disabled={removingId === coupon.id}
                       >
-                        Cancel
+                        {t("courseCommerce.cancel")}
                       </Button>
                     </>
                   ) : (
@@ -360,7 +390,7 @@ export function CouponsPanel({
                       size="sm"
                       onClick={() => setConfirmingDeleteId(coupon.id)}
                     >
-                      Remove
+                      {t("courseCommerce.remove")}
                     </Button>
                   )}
                 </div>
@@ -370,7 +400,7 @@ export function CouponsPanel({
         </ul>
       ) : (
         <p className="mt-4 text-sm text-[var(--color-ink-soft)]">
-          No coupons yet.
+          {t("courseCommerce.empty")}
         </p>
       )}
     </PanelCard>
@@ -378,6 +408,7 @@ export function CouponsPanel({
 }
 
 export function TaxPanel({ courseId }: { courseId: string }) {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<CourseCommerceSettings | null>(null);
   // Saving before the first snapshot arrives would write defaults over the
   // stored row, so block the form until it has loaded.
@@ -430,9 +461,9 @@ export function TaxPanel({ courseId }: { courseId: string }) {
         taxRegions: regions,
         taxRegistrationId: registrationId.trim() || undefined,
       });
-      setNotice("Tax settings saved.");
+      setNotice("courseCommerce.saved");
     } catch (saveError) {
-      setError(toMessage(saveError, "Could not save the tax settings."));
+      setError(toMessageKey(saveError, "courseCommerce.saveError"));
     } finally {
       setSaving(false);
     }
@@ -440,8 +471,8 @@ export function TaxPanel({ courseId }: { courseId: string }) {
 
   return (
     <PanelCard
-      title="Tax collection"
-      description="Record where you're registered to collect tax for this course. Automatic tax calculation at checkout ships with the tax engine — until then this is your declaration, kept with the course."
+      title={t("courseCommerce.tax")}
+      description={t("courseCommerce.taxHelp")}
     >
       <form onSubmit={handleSave} className="mt-4 grid gap-3">
         <label className="flex items-center gap-3">
@@ -452,12 +483,12 @@ export function TaxPanel({ courseId }: { courseId: string }) {
             className="size-4 accent-[var(--color-primary)]"
           />
           <span className="text-sm font-semibold text-[var(--color-ink)]">
-            I collect tax on sales of this course
+            {t("courseCommerce.collect")}
           </span>
         </label>
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-            Regions
+            {t("courseCommerce.regions")}
           </p>
           <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
             {TAX_REGIONS.map((region) => (
@@ -468,26 +499,26 @@ export function TaxPanel({ courseId }: { courseId: string }) {
                   onChange={() => toggleRegion(region)}
                   className="size-4 accent-[var(--color-primary)]"
                 />
-                <span className="text-sm text-[var(--color-ink)]">{region}</span>
+                <span className="text-sm text-[var(--color-ink)]">{t(taxRegionKeys[region])}</span>
               </label>
             ))}
           </div>
         </div>
-        <Field id="tax-registration-id" label="Tax registration ID (optional)">
+        <Field id="tax-registration-id" label={t("courseCommerce.registration")}>
           {(a11y) => (
             <input
               {...a11y}
               value={registrationId}
               onChange={(event) => setRegistrationId(event.target.value)}
               maxLength={80}
-              placeholder="e.g. VAT or EIN reference"
+              placeholder={t("courseCommerce.registrationPlaceholder")}
               className={`${inputClass} sm:max-w-sm`}
             />
           )}
         </Field>
         <div>
           <Button type="submit" disabled={saving || !settingsLoaded}>
-            {saving ? "Saving..." : "Save tax settings"}
+            {saving ? t("courseCommerce.saving") : t("courseCommerce.save")}
           </Button>
         </div>
       </form>

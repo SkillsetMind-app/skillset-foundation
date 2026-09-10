@@ -40,15 +40,17 @@ const periodSubtitleKey: Record<ReportPeriod, string> = {
   all: "teach.insights.rangeAll",
 };
 
+// Chart totals stay in en-US, like the shared chart's "$...k" axis and the home
+// revenue chart; KPIs and the table follow the interface language.
 const chartMoney = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
   maximumFractionDigits: 0,
 });
 
-function money(amountMinor: number, currency: string): string {
+function money(amountMinor: number, currency: string, locale: string): string {
   try {
-    const formatted = new Intl.NumberFormat(undefined, {
+    const formatted = new Intl.NumberFormat(locale, {
       maximumFractionDigits: 0,
     }).format(amountMinor / 100);
     return `${currency} ${formatted}`;
@@ -104,7 +106,7 @@ export function CreatorOpsHub() {
 
   const moneyBreakdown = (values: CurrencyAmount[]): string =>
     values.length
-      ? values.map((value) => money(value.amountMinor, value.currency)).join(" + ")
+      ? values.map((value) => money(value.amountMinor, value.currency, locale)).join(" + ")
       : t("teach.reports.noActivity");
 
   const report = useMemo(() => {
@@ -284,7 +286,7 @@ export function CreatorOpsHub() {
                       {row.orders}
                     </td>
                     <td className="py-2 pr-4 text-right font-semibold tabular-nums">
-                      {money(row.grossMinor, row.currency)}
+                      {money(row.grossMinor, row.currency, locale)}
                     </td>
                     <td className="py-2 text-right tabular-nums">{row.refunds}</td>
                   </tr>

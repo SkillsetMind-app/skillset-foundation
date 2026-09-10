@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
 import type { DripStrategy } from "@/domain/drip-policy";
@@ -17,6 +18,7 @@ const DEFAULT_DRIP: DripStrategy = "instant";
  * Full drag-drop page builder remains P2; this covers the critical producer path.
  */
 export function SalesPageEditor({ course }: { course: TeacherCourse }) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState(course.title ?? "");
   const [summary, setSummary] = useState(course.summary ?? "");
   const [outcomesText, setOutcomesText] = useState(
@@ -61,11 +63,15 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
         membersDescription: course.membersDescription ?? null,
         communityEnabled: Boolean(course.communityEnabled),
       });
-      setNotice("Sales page copy saved. Open the public product page to preview.");
+      setNotice("teacherSalesCopy.saved");
     } catch (saveError) {
-      setError(
-        saveError instanceof Error ? saveError.message : "Could not save sales page.",
-      );
+      const reasons: Record<string, string> = {
+        "This course status cannot be edited from the builder.": "teacherSalesCopy.statusError",
+        "Course title is not specific enough.": "teacherSalesCopy.titleError",
+        "A course with this title already exists. Choose a more specific name.": "courseCreation.duplicateError",
+      };
+      const message = saveError instanceof Error ? saveError.message : "";
+      setError(Object.hasOwn(reasons, message) ? reasons[message] : "teacherSalesCopy.saveError");
     } finally {
       setSaving(false);
     }
@@ -73,13 +79,13 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
 
   return (
     <PanelCard
-      title="Sales page editor"
-      description="Edit the headline, promise, and outcomes buyers see. This is a focused editor — not a full drag-and-drop page builder (that stays on the roadmap)."
+      title={t("teacherSalesCopy.title")}
+      description={t("teacherSalesCopy.description")}
     >
       <form className="mt-4 grid gap-4" onSubmit={handleSave}>
         <label className="grid gap-1.5 text-sm">
           <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-            Product title
+            {t("teacherSalesCopy.productTitle")}
           </span>
           <input
             className="rounded-[10px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
@@ -91,7 +97,7 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
         </label>
         <label className="grid gap-1.5 text-sm">
           <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-            Sales promise / summary
+            {t("teacherSalesCopy.summary")}
           </span>
           <textarea
             className="min-h-[120px] rounded-[10px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
@@ -103,28 +109,28 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
         </label>
         <label className="grid gap-1.5 text-sm">
           <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-            Outcomes (one per line)
+            {t("teacherSalesCopy.outcomes")}
           </span>
           <textarea
             className="min-h-[100px] rounded-[10px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
             value={outcomesText}
             onChange={(e) => setOutcomesText(e.target.value)}
-            placeholder={"Clarify your offer&#10;Ship a first session&#10;Track client progress"}
+            placeholder={t("teacherSalesCopy.outcomesPlaceholder")}
           />
         </label>
         {error ? (
           <p className="text-sm text-[var(--color-danger,#b91c1c)]" role="alert">
-            {error}
+            {t(error)}
           </p>
         ) : null}
         {notice ? (
           <p className="text-sm text-[var(--color-ink-soft)]" role="status">
-            {notice}
+            {t(notice)}
           </p>
         ) : null}
         <div className="flex flex-wrap gap-2">
           <button type="submit" className="button-solid px-4 py-2 text-xs" disabled={saving}>
-            {saving ? "Saving…" : "Save sales page"}
+            {t(saving ? "teacherSalesCopy.saving" : "teacherSalesCopy.save")}
           </button>
           <a
             href={`/courses/${encodeURIComponent(course.id)}`}
@@ -132,7 +138,7 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
             target="_blank"
             rel="noreferrer"
           >
-            Preview public page
+            {t("teacherSalesCopy.preview")}
           </a>
         </div>
       </form>

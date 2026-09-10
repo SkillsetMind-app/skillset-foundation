@@ -5217,7 +5217,9 @@
     "saveError": "Could not save sales page.",
     "saving": "Saving…",
     "save": "Save sales page",
-    "preview": "Preview public page"
+    "preview": "Preview public page",
+    "statusError": "This course status cannot be edited from the builder.",
+    "titleError": "Course title is not specific enough."
   },
   "teacherMessages": {
     "loadError": "We could not load your student messages.",

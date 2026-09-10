@@ -5,10 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import type { CourseAsset, CourseAssetKind } from "@/domain/course-asset";
-import {
-  courseAssetKindLabels,
-  formatCourseAssetSize,
-} from "@/domain/course-asset";
+import { useTranslation } from "@/components/i18n/i18n-provider";
+import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToCourseAssets } from "@/lib/data/course-assets";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
@@ -30,8 +28,18 @@ const assetKindFilters = [
   "live_recording",
 ] as const satisfies Array<CourseAssetKind | "all">;
 
+function formatAssetSize(size: number, locale: string): string {
+  const unit = size < 1024 ? 0 : size < 1024 ** 2 ? 1 : size < 1024 ** 3 ? 2 : 3;
+  const decimals = unit === 0 || (unit === 3 && size % 1024 ** 3 === 0) ? 0 : 1;
+  return `${new Intl.NumberFormat(locale, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(size / 1024 ** unit)} ${["B", "KB", "MB", "GB"][unit]}`;
+}
+
 export function TeacherMediaLibrary() {
   const { user } = useAuth();
+  const { t, locale } = useTranslation();
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [assets, setAssets] = useState<CourseAsset[]>([]);
@@ -56,7 +64,7 @@ export function TeacherMediaLibrary() {
         }
       },
       () => {
-        setError("We could not load your courses.");
+        setError("teacherMedia.coursesError");
         setIsLoadingCourses(false);
       },
     );
@@ -73,25 +81,25 @@ export function TeacherMediaLibrary() {
         setAssets(nextAssets);
       },
       () => {
-        setError("We could not load assets for this course.");
+        setError("teacherMedia.assetsError");
       },
     );
   }, [selectedCourseId]);
 
   const selectedCourse = courses.find((course) => course.id === selectedCourseId) ?? null;
   const filteredAssets = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
+    const normalizedSearch = search.trim().toLocaleLowerCase(locale);
 
     return assets.filter((asset) => {
       const matchesKind = kindFilter === "all" || asset.kind === kindFilter;
       const matchesSearch =
         !normalizedSearch ||
-        asset.fileName.toLowerCase().includes(normalizedSearch) ||
-        courseAssetKindLabels[asset.kind].toLowerCase().includes(normalizedSearch);
+        asset.fileName.toLocaleLowerCase(locale).includes(normalizedSearch) ||
+        getCourseAssetKindLabel(asset.kind, t).toLocaleLowerCase(locale).includes(normalizedSearch);
 
       return matchesKind && matchesSearch;
     });
-  }, [assets, kindFilter, search]);
+  }, [assets, kindFilter, search, t, locale]);
 
   return (
     <section className="settings-section-card">
@@ -99,12 +107,12 @@ export function TeacherMediaLibrary() {
         <div>
           <SectionHeader
             as="h3"
-            eyebrow="Media library"
-            title="Course files and lesson assets"
-            description="Review assets uploaded through the builder. Private lesson files stay protected; this library is for organization and course production control."
+            eyebrow={t("teacherMedia.eyebrow")}
+            title={t("teacherMedia.title")}
+            description={t("teacherMedia.description")}
           />
           <p className="mt-3 max-w-2xl rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold leading-6 text-[var(--color-ink)]">
-            Lesson videos live in the course builder
+            {t("teacherMedia.videosInBuilder")}
             {selectedCourse ? (
               <>
                 {" — "}
@@ -112,11 +120,11 @@ export function TeacherMediaLibrary() {
                   href={`/teach/builder?courseId=${selectedCourse.id}&tab=content`}
                   className="underline underline-offset-2"
                 >
-                  Open builder
+                  {t("teacherMedia.openBuilder")}
                 </Link>
               </>
             ) : (
-              ". Create or open a course to add them."
+              t("teacherMedia.createToAdd")
             )}
           </p>
         </div>
@@ -125,27 +133,27 @@ export function TeacherMediaLibrary() {
             href={`/teach/builder?courseId=${selectedCourse.id}`}
             className={buttonClasses()}
           >
-            Upload in builder
+            {t("teacherMedia.upload")}
           </Link>
         ) : null}
       </div>
 
       {courses.length > 0 ? (
         <div className="mt-6 grid gap-3 lg:grid-cols-[1fr_180px_220px]">
-          <Field id="media-search" label="Search assets">
+          <Field id="media-search" label={t("teacherMedia.search")}>
             {(a11y) => (
               <input
                 {...a11y}
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search by filename or type"
+                placeholder={t("teacherMedia.searchPlaceholder")}
                 className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
               />
             )}
           </Field>
 
-          <Field id="media-kind" label="Type">
+          <Field id="media-kind" label={t("teacherMedia.type")}>
             {(a11y) => (
               <select
                 {...a11y}
@@ -155,14 +163,14 @@ export function TeacherMediaLibrary() {
               >
                 {assetKindFilters.map((kind) => (
                   <option key={kind} value={kind}>
-                    {kind === "all" ? "All files" : courseAssetKindLabels[kind]}
+                    {kind === "all" ? t("teacherMedia.all") : getCourseAssetKindLabel(kind, t)}
                   </option>
                 ))}
               </select>
             )}
           </Field>
 
-          <Field id="media-course" label="Course">
+          <Field id="media-course" label={t("teacherMedia.course")}>
             {(a11y) => (
               <select
                 {...a11y}
@@ -183,43 +191,43 @@ export function TeacherMediaLibrary() {
 
       {error ? (
         <InlineAlert tone="error" className="mt-5">
-          {error}
+          {t(error)}
         </InlineAlert>
       ) : null}
 
       <div className="mt-6 grid gap-3">
         {isLoadingCourses ? (
           <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-            Loading media library...
+            {t("teacherMedia.loading")}
           </p>
         ) : courses.length === 0 ? (
           <EmptyState
-            eyebrow="No course container yet"
-            title="Create a course before uploading files."
-            description="Media uploads stay attached to a course, module, or lesson. That keeps access rules clean for videos, PDFs, slides, docs, and private learner materials."
+            eyebrow={t("teacherMedia.noCourse")}
+            title={t("teacherMedia.createFirst")}
+            description={t("teacherMedia.noCourseDescription")}
             action={
               <>
                 <Link href="/teach/builder?newCourse=1" className={buttonClasses()}>
-                  Create first course
+                  {t("teacherMedia.create")}
                 </Link>
                 <Link href="/teach" className={buttonClasses({ variant: "outline" })}>
-                  Back to Studio
+                  {t("teacherMedia.back")}
                 </Link>
               </>
             }
           />
         ) : filteredAssets.length === 0 ? (
           <EmptyState
-            eyebrow="Library is ready"
-            title="Upload from the builder."
-            description="Add a course cover, module cover, lesson video, PDF, slide deck, worksheet, audio file, or replay from the selected course builder."
+            eyebrow={t("teacherMedia.ready")}
+            title={t("teacherMedia.emptyTitle")}
+            description={t("teacherMedia.emptyDescription")}
             action={
               selectedCourse ? (
                 <Link
                   href={`/teach/builder?courseId=${selectedCourse.id}`}
                   className={buttonClasses()}
                 >
-                  Open builder upload area
+                  {t("teacherMedia.openUploads")}
                 </Link>
               ) : null
             }
@@ -238,11 +246,11 @@ export function TeacherMediaLibrary() {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={asset.downloadUrl}
-                    alt={`${courseAssetKindLabels[asset.kind]}: ${asset.fileName}`}
+                    alt={`${getCourseAssetKindLabel(asset.kind, t)}: ${asset.fileName}`}
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  asset.contentType.split("/")[0] || "file"
+                  t(`teacherMedia.fileTypes.${["image", "video", "audio", "application", "text"].includes(asset.contentType.split("/")[0]) ? asset.contentType.split("/")[0] : "file"}`)
                 )}
               </div>
               <div className="min-w-0">
@@ -250,16 +258,16 @@ export function TeacherMediaLibrary() {
                   {asset.fileName}
                 </p>
                 <p className="mt-1 text-xs uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                  {courseAssetKindLabels[asset.kind]} - {formatCourseAssetSize(asset.size)}
+                  {getCourseAssetKindLabel(asset.kind, t)} - {formatAssetSize(asset.size, locale)}
                 </p>
               </div>
               <div className="flex flex-wrap items-start gap-2 md:justify-end">
                 <span className="rounded-[8px] bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
-                  {asset.isPreview ? "Preview" : "Private"}
+                  {t(asset.isPreview ? "teacherMedia.preview" : "teacherMedia.private")}
                 </span>
                 {asset.lessonId ? (
                   <span className="rounded-[8px] bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                    Lesson asset
+                    {t("teacherMedia.lessonAsset")}
                   </span>
                 ) : null}
               </div>

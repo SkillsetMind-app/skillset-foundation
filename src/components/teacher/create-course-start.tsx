@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import {
   ArrowLeft,
   ArrowRight,
@@ -18,7 +19,6 @@ import { useState, type FormEvent } from "react";
 import { CourseCategorySelect } from "@/components/teacher/course-category-select";
 import { InlineHelp } from "@/components/shared/inline-help";
 import {
-  ACTIVATION_REQUIRED_MESSAGE,
   isActivationRequiredError,
 } from "@/domain/creator-verification";
 import {
@@ -42,15 +42,16 @@ type CreateCourseStartProps = {
 // sabia se tinha terminado. Formato e basico acontecem nesta tela; o resto
 // continua no construtor, e o rail diz isso em vez de fingir que acaba aqui.
 const creationStages = [
-  { id: "format", label: "Format", detail: "Delivery model", where: "here" },
-  { id: "basics", label: "Basics", detail: "Title, promise, categories", where: "here" },
-  { id: "pricing", label: "Pricing", detail: "Price and access model", where: "builder" },
-  { id: "lessons", label: "Lessons", detail: "Modules and lessons", where: "builder" },
-  { id: "publish", label: "Publish", detail: "Final checks", where: "builder" },
+  { id: "format", label: "courseCreation.format", detail: "courseCreation.formatDetail", where: "here" },
+  { id: "basics", label: "courseCreation.basics", detail: "courseCreation.basicsDetail", where: "here" },
+  { id: "pricing", label: "courseCreation.pricing", detail: "courseCreation.pricingDetail", where: "builder" },
+  { id: "lessons", label: "courseCreation.lessons", detail: "courseCreation.lessonsDetail", where: "builder" },
+  { id: "publish", label: "courseCreation.publish", detail: "courseCreation.publishDetail", where: "builder" },
 ] as const;
 
 export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateCourseStartProps) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [productFormat, setProductFormat] = useState<TeacherCourseProductFormat>(initialFormat);
   const [subscriptionInterval, setSubscriptionInterval] =
     useState<TeacherCourseSubscriptionInterval>("monthly");
@@ -65,11 +66,11 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
   // 20 caracteres) não aparecem em lugar nenhum. Quem escrevia um resumo de 15
   // caracteres via um botão morto sem motivo.
   const submitBlockers = [
-    title.trim().length >= 3 ? null : "Give the course a title (3+ characters).",
+    title.trim().length >= 3 ? null : t("courseCreation.titleRequired"),
     summary.trim().length >= 20
       ? null
-      : "Write a summary with at least 20 characters.",
-    selectedCategories.length > 0 ? null : "Choose a marketplace category.",
+      : t("courseCreation.summaryRequired"),
+    selectedCategories.length > 0 ? null : t("courseCreation.categoryRequired"),
   ].filter((item): item is string => item !== null);
   const canSubmit = submitBlockers.length === 0 && !isSaving;
   const courseType: NonNullable<CreateTeacherCourseInput["paymentType"]> =
@@ -77,10 +78,10 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
   const nextBuilderTab = productFormat === "free" ? "content" : "pricing";
   const submitLabel =
     productFormat === "event"
-      ? "Create and schedule event"
+      ? t("courseCreation.createEvent")
       : productFormat === "free"
-        ? "Create and add content"
-        : "Create and set pricing";
+        ? t("courseCreation.createFree")
+        : t("courseCreation.createPaid");
   // Um formato vem pre-selecionado, entao o estagio Format ja nasce feito;
   // Basics acende quando as tres condicoes acima estao satisfeitas.
   const stageDone: Record<(typeof creationStages)[number]["id"], boolean> = {
@@ -115,7 +116,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
       const categories = normalizeCourseCategories(selectedCategories);
       const primaryCategory = categories[0];
       if (!primaryCategory) {
-        setError("Choose at least one marketplace category.");
+        setError("courseCreation.categoryError");
         setIsSaving(false);
         return;
       }
@@ -140,17 +141,17 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
       const message = caughtError instanceof Error ? caughtError.message : "";
       setError(
         message.toLowerCase().includes("already")
-          ? "A course with this title already exists. Choose a more specific name."
+          ? "courseCreation.duplicateError"
           : // The activation trigger fires on INSERT, so this is the very first
             // wall a brand-new creator hits — before it was answered with
             // "Please try again", which is advice that can never work.
             isActivationRequiredError(message)
-            ? ACTIVATION_REQUIRED_MESSAGE
+            ? "courseCreation.activationError"
             : message.toLowerCase().includes("permission")
-              ? "Course creation is blocked until creator setup is complete. Verify your email and accept Teacher Terms first."
+              ? "courseCreation.permissionError"
               : message.toLowerCase().includes("summary")
-                ? "Add a course summary with at least 20 characters."
-                : "We could not create this course. Please try again."
+                ? "courseCreation.summaryError"
+                : "courseCreation.createError"
       );
       setIsSaving(false);
     }
@@ -161,23 +162,22 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
       <aside className="create-course-screen__intro">
         <Link href="/teach/builder" className="create-course-screen__back">
           <ArrowLeft aria-hidden="true" size={15} strokeWidth={1.9} />
-          My products
+          {t("courseCreation.products")}
         </Link>
 
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent)]">
-          New product
+          {t("courseCreation.newProduct")}
         </p>
         <h1 className="display-title mt-3 text-3xl leading-[1.08] text-white sm:text-4xl">
-          Build the product foundation.
+          {t("courseCreation.title")}
         </h1>
         <p className="create-course-screen__intro-copy mt-4 max-w-md text-sm leading-6">
-          Pick the access model and the essential information here. Pricing, lessons, and
-          publication continue in the builder.
+          {t("courseCreation.intro")}
         </p>
 
         <ol
           className="create-course-screen__progress mt-8 grid gap-2"
-          aria-label="Product creation progress"
+          aria-label={t("courseCreation.progress")}
         >
           {creationStages.map((stage, index) => {
             const done = stageDone[stage.id];
@@ -197,8 +197,8 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                   )}
                 </span>
                 <div>
-                  <strong>{stage.label}</strong>
-                  <small>{here ? stage.detail : `${stage.detail} · continues in the builder`}</small>
+                  <strong>{t(stage.label)}</strong>
+                  <small>{here ? t(stage.detail) : t("courseCreation.continues").replace("{detail}", () => t(stage.detail))}</small>
                 </div>
               </li>
             );
@@ -209,61 +209,59 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
       <form onSubmit={handleSubmit} className="create-course-screen__form">
         <div>
           <h2 className="text-3xl font-semibold leading-tight text-[var(--color-primary)]">
-            Set up the product
+            {t("courseCreation.setup")}
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-            This creates a private draft. Nothing becomes visible or sellable before
-            professional verification and publication.
+            {t("courseCreation.privateDraft")}
           </p>
         </div>
 
         <fieldset className="mt-6">
-          <legend className="text-sm font-semibold text-[var(--color-ink)]">Product format</legend>
+          <legend className="text-sm font-semibold text-[var(--color-ink)]">{t("courseCreation.productFormat")}</legend>
           <p className="mt-1 text-xs leading-5 text-[var(--color-ink-muted)]">
-            The format defines how learners receive access. Commercial terms remain editable in
-            Pricing and offers.
+            {t("courseCreation.formatHelp")}
           </p>
           <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-3">
             <PaymentChoice
               active={productFormat === "course"}
-              detail="One-time purchase with permanent or managed access."
+              detail={t("courseCreation.courseHelp")}
               icon="course"
-              label="Online course"
+              label={t("courseCreation.courseLabel")}
               onClick={() => setProductFormat("course")}
             />
             <PaymentChoice
               active={productFormat === "program"}
-              detail="A sequenced pathway combining learning, practice, and optional live touchpoints."
+              detail={t("courseCreation.programHelp")}
               icon="program"
-              label="Guided program"
+              label={t("courseCreation.programLabel")}
               onClick={() => setProductFormat("program")}
             />
             <PaymentChoice
               active={productFormat === "event"}
-              detail="Live workshops, cohorts, and scheduled group sessions."
+              detail={t("courseCreation.eventHelp")}
               icon="event"
-              label="Online event"
+              label={t("courseCreation.eventLabel")}
               onClick={() => setProductFormat("event")}
             />
             <PaymentChoice
               active={productFormat === "subscription"}
-              detail="Ongoing access billed on a recurring schedule."
+              detail={t("courseCreation.subscriptionHelp")}
               icon="subscription"
-              label="Subscription"
+              label={t("courseCreation.subscriptionLabel")}
               onClick={() => setProductFormat("subscription")}
             />
             <PaymentChoice
               active={productFormat === "community"}
-              detail="A recurring members space built for posts and peer exchange."
+              detail={t("courseCreation.communityHelp")}
               icon="community"
-              label="Community"
+              label={t("courseCreation.communityLabel")}
               onClick={() => setProductFormat("community")}
             />
             <PaymentChoice
               active={productFormat === "free"}
-              detail="Open enrollment with no checkout or payment."
+              detail={t("courseCreation.freeHelp")}
               icon="free"
-              label="Free program"
+              label={t("courseCreation.freeLabel")}
               onClick={() => setProductFormat("free")}
             />
           </div>
@@ -272,7 +270,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
         {productFormat === "subscription" || productFormat === "community" ? (
           <fieldset className="mt-5">
             <legend className="text-sm font-semibold text-[var(--color-ink)]">
-              Initial billing interval
+              {t("courseCreation.interval")}
             </legend>
             <div className="mt-2 grid grid-cols-2 gap-1 rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
               {(["monthly", "yearly"] as const).map((interval) => (
@@ -287,7 +285,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                       : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
                   }`}
                 >
-                  {interval === "monthly" ? "Monthly" : "Yearly"}
+                  {interval === "monthly" ? t("courseCreation.monthly") : t("courseCreation.yearly")}
                 </button>
               ))}
             </div>
@@ -296,40 +294,38 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
 
         <div className="mt-6 grid gap-5">
           <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Product title
+            {t("courseCreation.productTitle")}
             <input
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               minLength={3}
               maxLength={120}
-              placeholder="e.g. Peak Performance Foundations"
+              placeholder={t("courseCreation.titlePlaceholder")}
               className="min-h-11 rounded-[8px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
             />
           </label>
 
           <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Product promise
+            {t("courseCreation.promise")}
             <textarea
               value={summary}
               onChange={(event) => setSummary(event.target.value)}
               minLength={20}
               maxLength={1200}
               rows={4}
-              placeholder="Describe the practical outcome learners can expect."
+              placeholder={t("courseCreation.promisePlaceholder")}
               className="resize-none rounded-[8px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal leading-6 outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
             />
             <span className="text-xs font-normal text-[var(--color-ink-muted)]">
-              {summary.trim().length}/1200 characters. Minimum 20.
+              {t("courseCreation.characterCount").replace("{count}", () => String(summary.trim().length))}
             </span>
           </label>
 
           <div className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
             <span className="flex items-center gap-2">
-              Categories
-              <InlineHelp topic="Course categories" href="/help#course-categories">
-                Categories determine where buyers discover the product and how SkillsetMind
-                groups related expertise. Choose the most specific fit first; that first
-                selection becomes the primary marketplace category.
+              {t("courseCreation.categories")}
+              <InlineHelp topic={t("courseCreation.categoryTopic")} href="/help#course-categories">
+                {t("courseCreation.categoryHelp")}
               </InlineHelp>
             </span>
             <CourseCategorySelect
@@ -339,7 +335,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
               disabled={isSaving}
             />
             <span className="text-xs font-normal text-[var(--color-ink-muted)]">
-              The first selection is the primary marketplace category.
+              {t("courseCreation.primaryCategory")}
             </span>
           </div>
         </div>
@@ -349,13 +345,13 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
             role="alert"
             className="mt-5 rounded-[8px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
           >
-            <p>{error}</p>
-            {error === ACTIVATION_REQUIRED_MESSAGE ? (
+            <p>{t(error)}</p>
+            {error === "courseCreation.activationError" ? (
               <Link
                 href="/teach/activate"
                 className="button-solid mt-3 inline-flex px-4 py-2 text-xs"
               >
-                Activate storefront
+                {t("courseCreation.activate")}
               </Link>
             ) : null}
           </div>
@@ -367,7 +363,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
             className="mt-5 text-xs leading-5 text-[var(--color-ink-soft)]"
           >
             <span className="font-semibold text-[var(--color-ink)]">
-              Before you continue:
+              {t("courseCreation.beforeContinue")}
             </span>{" "}
             {submitBlockers.join(" ")}
           </p>
@@ -382,7 +378,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
             }
             className="button-solid px-4 text-sm disabled:opacity-60"
           >
-            {isSaving ? "Creating..." : submitLabel}
+            {isSaving ? t("courseCreation.creating") : submitLabel}
             <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
           </button>
         </div>

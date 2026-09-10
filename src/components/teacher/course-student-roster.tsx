@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
+import type { Locale } from "@/lib/i18n/config";
 import { MessageSquare } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -34,32 +36,53 @@ const sourceLabels: Record<string, string> = {
 };
 
 const progressFilters = [
-  { value: "all", label: "Any progress" },
-  { value: "not_started", label: "Not started (0%)" },
-  { value: "in_progress", label: "In progress" },
-  { value: "completed", label: "Completed" },
+  { value: "all", label: "courseRoster.progressAll" },
+  { value: "not_started", label: "courseRoster.notStarted" },
+  { value: "in_progress", label: "courseRoster.inProgress" },
+  { value: "completed", label: "courseRoster.completed" },
 ] as const;
 
 const statusFilters = [
-  { value: "all", label: "Any access" },
-  { value: "active", label: "Active" },
-  { value: "completed", label: "Completed" },
-  { value: "refunded", label: "Refunded" },
-  { value: "revoked", label: "Revoked" },
-  { value: "expired", label: "Expired" },
+  { value: "all", label: "courseRoster.accessAll" },
+  { value: "active", label: "courseRoster.active" },
+  { value: "completed", label: "courseRoster.completed" },
+  { value: "refunded", label: "courseRoster.refunded" },
+  { value: "revoked", label: "courseRoster.revoked" },
+  { value: "expired", label: "courseRoster.expired" },
 ] as const;
 
 type ProgressFilter = (typeof progressFilters)[number]["value"];
 type StatusFilter = (typeof statusFilters)[number]["value"];
 
+const messageErrorKeys: Record<string, string> = {
+  "Sign in before sending a message.": "courseRoster.signInError",
+  "A valid course id is required.": "courseRoster.courseIdError",
+  "A valid student id is required.": "courseRoster.studentIdError",
+  "Message cannot be empty.": "courseRoster.emptyMessage",
+  "Course not found.": "courseRoster.courseNotFound",
+  "You can only send messages in your own thread.": "courseRoster.ownThread",
+  "You cannot message yourself.": "courseRoster.selfMessage",
+  "Only enrolled students can use course messages.": "courseRoster.enrolledOnly",
+  "This enrollment does not match the thread.": "courseRoster.threadMismatch",
+  "This enrollment cannot send messages.": "courseRoster.inactiveMessage",
+};
+
+/** Translated reason for a failed course message; shared with the teacher inbox. */
+export function courseMessageErrorKey(error: unknown, fallback: string): string {
+  const message = error && typeof error === "object" && "message" in error
+    && typeof error.message === "string" ? error.message : "";
+  if (message.startsWith("RATE_LIMIT")) return "courseRoster.rateError";
+  return Object.hasOwn(messageErrorKeys, message) ? messageErrorKeys[message] : fallback;
+}
+
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
-function formatDate(value: string): string {
+function formatDate(value: string, locale: Locale): string {
   if (!value) return "--";
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? "--"
-    : date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    : date.toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" });
 }
 
 function matchesProgress(student: CourseStudent, filter: ProgressFilter): boolean {
@@ -90,6 +113,7 @@ function MessageComposer({
   student: CourseStudent;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
@@ -103,11 +127,7 @@ function MessageComposer({
       setSent(true);
       setBody("");
     } catch (sendError) {
-      setError(
-        sendError instanceof Error && sendError.message
-          ? sendError.message
-          : "Could not send the message.",
-      );
+      setError(courseMessageErrorKey(sendError, "courseRoster.sendError"));
     } finally {
       setSending(false);
     }
@@ -115,9 +135,9 @@ function MessageComposer({
 
   if (sent) {
     return (
-      <InlineAlert tone="success" title={`Message sent to ${student.displayName || "the student"}.`}>
+      <InlineAlert tone="success" title={t("courseRoster.sent").replace("{name}", () => student.displayName || t("courseRoster.theStudent"))}>
         <Button variant="outline" size="sm" onClick={onClose}>
-          Close
+          {t("courseRoster.close")}
         </Button>
       </InlineAlert>
     );
@@ -129,7 +149,7 @@ function MessageComposer({
         htmlFor={`message-${student.enrollmentId}`}
         className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]"
       >
-        Message {student.displayName || "student"}
+        {t("courseRoster.messageLabel").replace("{name}", () => student.displayName || t("courseRoster.student"))}
       </label>
       <textarea
         id={`message-${student.enrollmentId}`}
@@ -137,11 +157,11 @@ function MessageComposer({
         onChange={(event) => setBody(event.target.value)}
         rows={3}
         className="w-full rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
-        placeholder="They get it in their course inbox and as a notification."
+        placeholder={t("courseRoster.messagePlaceholder")}
       />
       {error ? (
         <p role="alert" className="text-xs font-semibold text-[var(--color-danger-fg)]">
-          {error}
+          {t(error)}
         </p>
       ) : null}
       <div className="flex flex-wrap gap-2">
@@ -150,10 +170,10 @@ function MessageComposer({
           onClick={() => void handleSend()}
           disabled={sending || !body.trim()}
         >
-          {sending ? "Sending..." : "Send message"}
+          {sending ? t("courseRoster.sending") : t("courseRoster.send")}
         </Button>
         <Button variant="outline" size="sm" onClick={onClose}>
-          Cancel
+          {t("courseRoster.cancel")}
         </Button>
       </div>
     </div>
@@ -171,6 +191,7 @@ export function CourseStudentRosterView({
   courseId: string;
   now?: Date;
 }) {
+  const { t, locale } = useTranslation();
   const [search, setSearch] = useState("");
   const [progress, setProgress] = useState<ProgressFilter>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -229,17 +250,17 @@ export function CourseStudentRosterView({
 
   if (state === "loading") {
     return (
-      <PanelCard title="Students" description="Everyone enrolled in this course.">
-        <p className="mt-5 text-sm text-[var(--color-ink-soft)]">Loading students...</p>
+      <PanelCard title={t("courseRoster.title")} description={t("courseRoster.description")}>
+        <p className="mt-5 text-sm text-[var(--color-ink-soft)]">{t("courseRoster.loading")}</p>
       </PanelCard>
     );
   }
 
   if (state === "error") {
     return (
-      <PanelCard title="Students" description="Everyone enrolled in this course.">
+      <PanelCard title={t("courseRoster.title")} description={t("courseRoster.description")}>
         <p className="mt-5 text-sm text-[var(--color-ink-soft)]">
-          We could not load the roster. Reload the page — if it keeps failing, contact support.
+          {t("courseRoster.loadError")}
         </p>
       </PanelCard>
     );
@@ -247,10 +268,9 @@ export function CourseStudentRosterView({
 
   if (students.length === 0) {
     return (
-      <PanelCard title="Students" description="Everyone enrolled in this course.">
+      <PanelCard title={t("courseRoster.title")} description={t("courseRoster.description")}>
         <p className="mt-5 text-sm leading-6 text-[var(--color-ink-soft)]">
-          No one is enrolled yet. Buyers show up here the moment a purchase clears, with their
-          name, e-mail, and progress — so you can support them without leaving the studio.
+          {t("courseRoster.empty")}
         </p>
       </PanelCard>
     );
@@ -260,22 +280,23 @@ export function CourseStudentRosterView({
 
   return (
     <PanelCard
-      title="Students"
-      description={`${students.length} enrolled · ${active} with active access`}
+      title={t("courseRoster.title")}
+      description={t("courseRoster.count")
+        .replace("{total}", () => String(students.length)).replace("{active}", () => String(active))}
     >
       <dl data-testid="roster-summary" className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: "Enrolled", value: String(stats.total) },
-          { label: "New this week", value: String(stats.newThisWeek) },
-          { label: "Completed", value: String(stats.completed) },
-          { label: "Average progress", value: `${stats.averageProgress}%` },
+          { label: "courseRoster.enrolled", value: String(stats.total) },
+          { label: "courseRoster.new", value: String(stats.newThisWeek) },
+          { label: "courseRoster.completed", value: String(stats.completed) },
+          { label: "courseRoster.average", value: `${stats.averageProgress}%` },
         ].map((stat) => (
           <div
-            key={stat.label}
+            key={t(stat.label)}
             className="rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3"
           >
             <dt className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
-              {stat.label}
+              {t(stat.label)}
             </dt>
             <dd className="mt-1 text-2xl font-bold tracking-[-0.03em] text-[var(--color-primary)]">
               {stat.value}
@@ -286,18 +307,18 @@ export function CourseStudentRosterView({
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <label htmlFor="roster-search" className="sr-only">
-          Search students by name or e-mail
+          {t("courseRoster.search")}
         </label>
         <input
           id="roster-search"
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by name or e-mail"
+          placeholder={t("courseRoster.searchPlaceholder")}
           className="min-h-11 min-w-0 flex-1 rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
         />
         <label htmlFor="roster-progress" className="sr-only">
-          Filter by progress
+          {t("courseRoster.progressFilter")}
         </label>
         <select
           id="roster-progress"
@@ -307,12 +328,12 @@ export function CourseStudentRosterView({
         >
           {progressFilters.map((option) => (
             <option key={option.value} value={option.value}>
-              {option.label}
+              {t(option.label)}
             </option>
           ))}
         </select>
         <label htmlFor="roster-status" className="sr-only">
-          Filter by access
+          {t("courseRoster.accessFilter")}
         </label>
         <select
           id="roster-status"
@@ -322,7 +343,7 @@ export function CourseStudentRosterView({
         >
           {statusFilters.map((option) => (
             <option key={option.value} value={option.value}>
-              {option.label}
+              {t(option.label)}
             </option>
           ))}
         </select>
@@ -331,20 +352,20 @@ export function CourseStudentRosterView({
 
       {visible.length === 0 ? (
         <p className="mt-5 text-sm leading-6 text-[var(--color-ink-soft)]">
-          No student matches this search and filter. Clear them to see the whole roster.
+          {t("courseRoster.noMatches")}
         </p>
       ) : (
         <div className="mt-5 overflow-x-auto">
           <table className="w-full min-w-[720px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b fine-rule">
-                {["Student", "Access", "Progress", "Certificate", "How", "Joined", ""].map(
+                {[t("courseRoster.studentHead"), t("courseRoster.access"), t("courseRoster.progress"), t("courseRoster.certificate"), t("courseRoster.source"), t("courseRoster.joined"), ""].map(
                   (head, index) => (
                     <th
                       key={head || `actions-${index}`}
                       className="py-2 pr-4 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]"
                     >
-                      {head || <span className="sr-only">Actions</span>}
+                      {head || <span className="sr-only">{t("courseRoster.actions")}</span>}
                     </th>
                   ),
                 )}
@@ -355,7 +376,7 @@ export function CourseStudentRosterView({
                 <tr key={student.enrollmentId} className="border-b fine-rule last:border-b-0">
                   <td className="py-3 pr-4">
                     <strong className="block font-medium text-[var(--color-ink)]">
-                      {student.displayName || "Unnamed student"}
+                      {student.displayName || t("courseRoster.unnamed")}
                     </strong>
                     {student.email ? (
                       <a
@@ -385,13 +406,13 @@ export function CourseStudentRosterView({
                       so e legivel pelo dono do certificado. Isto e elegibilidade,
                       a mesma regra do fluxo de emissao, e o rotulo diz isso. */}
                   <td className="py-3 pr-4 text-xs text-[var(--color-ink-soft)]">
-                    {isCourseStudentComplete(student) ? "Ready to issue" : "In progress"}
+                    {isCourseStudentComplete(student) ? t("courseRoster.ready") : t("courseRoster.inProgress")}
                   </td>
                   <td className="py-3 pr-4 text-xs text-[var(--color-ink-soft)]">
-                    {sourceLabels[student.source] ?? student.source}
+                    {Object.hasOwn(sourceLabels, student.source) ? t(`courseRoster.source_${student.source}`) : student.source}
                   </td>
                   <td className="py-3 pr-4 text-xs text-[var(--color-ink-soft)]">
-                    {formatDate(student.enrolledAt)}
+                    {formatDate(student.enrolledAt, locale)}
                   </td>
                   <td className="py-3 pr-4">
                     <Button
@@ -400,7 +421,7 @@ export function CourseStudentRosterView({
                       // O nome do aluno entra no rotulo, nao no texto visivel:
                       // numa lista de 40 linhas, "Message" sozinho deixa 40
                       // botoes com o mesmo nome acessivel.
-                      aria-label={`Message ${student.displayName || "student"}`}
+                      aria-label={t("courseRoster.messageLabel").replace("{name}", () => student.displayName || t("courseRoster.student"))}
                       onClick={() =>
                         setOpenThread((current) =>
                           current === student.enrollmentId ? null : student.enrollmentId,
@@ -408,7 +429,7 @@ export function CourseStudentRosterView({
                       }
                     >
                       <MessageSquare aria-hidden="true" size={14} strokeWidth={1.9} />
-                      Message
+                      {t("courseRoster.message")}
                     </Button>
                   </td>
                 </tr>
