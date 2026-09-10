@@ -27,6 +27,7 @@ import {
   currentTermsVersion,
 } from "@/lib/legal/versions";
 import { ViewAsBanner } from "@/components/admin/view-as";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { isRole, type Role } from "@/lib/permissions";
 import { identifyUser, resetUser } from "@/lib/posthog/client";
 
@@ -153,6 +154,7 @@ export function useAuth() {
 }
 
 function LegalAcceptanceGate() {
+  const { t } = useTranslation();
   const { status, user } = useAuth();
   const pathname = usePathname() ?? "";
   // Keyed by uid so a stale verdict from a previous account can never gate the
@@ -229,7 +231,7 @@ function LegalAcceptanceGate() {
       await acceptUserTerms(user.uid, profile?.marketingConsent ?? false);
       setAcceptance({ uid: user.uid, needsAcceptance: false });
     } catch {
-      setError("Could not update your legal acceptance. Please try again.");
+      setError("legalAcceptance.error");
     } finally {
       setIsSaving(false);
     }
@@ -243,14 +245,13 @@ function LegalAcceptanceGate() {
     <div className="fixed inset-0 z-50 grid place-items-center bg-[rgba(12,25,39,0.62)] px-4 backdrop-blur-sm">
       <div className="modal-panel modal-panel-scroll w-full max-w-xl rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
-          Legal update
+          {t("legalAcceptance.eyebrow")}
         </p>
         <h2 className="display-title mt-3 text-4xl text-[var(--color-primary)]">
-          Review SkillsetMind terms to continue.
+          {t("legalAcceptance.title")}
         </h2>
         <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-          SkillsetMind updated its legal terms. Accept the current Terms of Service
-          and Privacy Policy to continue using your account.
+          {t("legalAcceptance.body")}
         </p>
 
         <div className="mt-5 grid gap-3">
@@ -262,12 +263,12 @@ function LegalAcceptanceGate() {
               className="mt-1 size-4 accent-[var(--color-primary)]"
             />
             <span>
-              I agree to the current SkillsetMind{" "}
+              {t("legalAcceptance.agreeTerms")}{" "}
               <Link
                 href="/legal/terms"
                 className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
               >
-                Terms of Service
+                {t("legalAcceptance.terms")}
               </Link>
               .
             </span>
@@ -281,12 +282,12 @@ function LegalAcceptanceGate() {
               className="mt-1 size-4 accent-[var(--color-primary)]"
             />
             <span>
-              I agree to the current SkillsetMind{" "}
+              {t("legalAcceptance.agreePrivacy")}{" "}
               <Link
                 href="/legal/privacy"
                 className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
               >
-                Privacy Policy
+                {t("legalAcceptance.privacy")}
               </Link>
               .
             </span>
@@ -295,7 +296,7 @@ function LegalAcceptanceGate() {
 
         {error ? (
           <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {error}
+            {t(error)}
           </p>
         ) : null}
 
@@ -305,7 +306,7 @@ function LegalAcceptanceGate() {
           onClick={handleAccept}
           className="button-solid mt-5 w-full px-4 py-2.5 text-sm disabled:opacity-60"
         >
-          {isSaving ? "Saving..." : "Accept and continue"}
+          {t(isSaving ? "legalAcceptance.saving" : "legalAcceptance.accept")}
         </button>
       </div>
     </div>

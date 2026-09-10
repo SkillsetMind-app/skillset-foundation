@@ -141,12 +141,12 @@ describe("rodapé", () => {
 });
 
 describe("documentos longos usam a mesma moldura das outras páginas públicas", () => {
-  it("a política de reembolso monta o PublicPage em modo leitura", () => {
+  it("a política de reembolso monta o PublicPage em modo leitura", async () => {
     expect(readSource("src/components/site/legal-article.tsx")).toContain(
       "<PublicPage",
     );
 
-    render(<RefundPolicyPage />);
+    render(await RefundPolicyPage());
 
     // Mesmo h1 do resto do site (.page-title), e não o text-6xl fixo do
     // molde antigo.
