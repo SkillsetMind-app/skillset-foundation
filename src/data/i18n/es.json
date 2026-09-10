@@ -4321,7 +4321,8 @@
     "globalBody": "El problema se ha registrado. Intenta recargar la página o vuelve al inicio.",
     "retry": "Intentar de nuevo",
     "home": "Ir al inicio",
-    "preparingAccess": "Preparando el acceso a tu cuenta..."
+    "preparingAccess": "Preparando el acceso a tu cuenta...",
+    "preparingMetadataTitle": "Preparando tu espacio de trabajo | SkillsetMind"
   },
   "supportCenter": {
     "eyebrow": "Soporte",
@@ -4348,11 +4349,11 @@
   "promiseChangelog": {
     "eyebrow": "Historial de cambios de la Promesa",
     "title": "Cada cambio en la Promesa debe ser público.",
-    "description": "La Promesa de SkillsetMind para creadores se publicó con un historial público de cambios para que los creadores puedan revisar cualquier cambio futuro de las políticas antes de que afecte a su negocio.",
+    "description": "La promesa de SkillsetMind a los creadores se publicó con un historial público de cambios para que los creadores puedan revisar cualquier cambio futuro de las políticas antes de que afecte a su negocio.",
     "publishedOn": "Publicado el {date}",
-    "publication": "La Promesa de SkillsetMind para creadores se publicó el {date}. Desde su publicación se ha realizado un cambio, registrado a continuación. Cualquier cambio futuro se documentará aquí con su fecha, diferencias y motivo al menos 90 días antes de entrar en vigor para los creadores existentes.",
+    "publication": "La promesa de SkillsetMind a los creadores se publicó el {date}. Desde su publicación se ha realizado un cambio, registrado a continuación. Cualquier cambio futuro se documentará aquí con su fecha, diferencias y motivo al menos 90 días antes de entrar en vigor para los creadores existentes.",
     "changeTitle": "Promesa 05 sustituida: “Protección de fondos por contrato” pasó a ser “Nunca retenemos tu dinero”",
-    "whatChanged": "Qué cambió: los pagos de cursos pasaron a utilizar cargos directos de Stripe. Ahora se cobra al comprador en la propia cuenta de Stripe del instructor, el instructor es el comerciante responsable de la venta y SkillsetMind cobra su comisión de plataforma en el momento del cargo. Se eliminó el periodo anterior de liquidación de 30 días de la plataforma, porque SkillsetMind ya no recibe ni retiene los ingresos de las ventas. También se eliminaron los repartos de ingresos entre afiliados y coproductores: una plataforma que nunca toca el dinero no puede repartirlo.",
+    "whatChanged": "Qué cambió: los pagos de cursos pasaron a utilizar cargos directos de Stripe. Ahora se cobra al comprador en la propia cuenta de Stripe del instructor, el instructor es el comerciante registrado (merchant of record) y SkillsetMind cobra su comisión de plataforma en el momento del cargo. Se eliminó el periodo anterior de liquidación de 30 días de la plataforma, porque SkillsetMind ya no recibe ni retiene en absoluto los ingresos de las ventas. También se eliminaron los repartos de ingresos con afiliados y coproductores: una plataforma que nunca toca el dinero no puede repartirlo.",
     "why": "Por qué: prometer proteger fondos retenidos por SkillsetMind es menos sólido que no retenerlos. Eliminar la custodia elimina el riesgo que la promesa anterior buscaba cubrir.",
     "effectiveNew": "En vigor desde: {date} para nuevos creadores.",
     "effectiveExisting": "En vigor para creadores existentes: {date}. El plazo de aviso de 90 días no se aplicó porque el cambio entró en vigor cuando ningún creador vendía bajo la promesa anterior y porque eliminó una retención de la plataforma en lugar de añadirla.",
@@ -4824,7 +4825,7 @@
       "view": "Ver certificado",
       "verify": "Verificar credencial",
       "fullName": "Nombre completo en el certificado",
-      "namePlaceholder": "p. ej., María Aparecida da Silva",
+      "namePlaceholder": "p. ej., María Fernanda López García",
       "immutable": "Este nombre se imprimirá en tu certificado y no se podrá cambiar después de emitirlo.",
       "issuing": "Emitiendo...",
       "confirm": "Confirmar y emitir",

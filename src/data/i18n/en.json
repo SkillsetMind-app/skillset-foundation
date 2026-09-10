@@ -4321,7 +4321,8 @@
     "globalBody": "The issue has been logged. Try reloading, or head back to the homepage.",
     "retry": "Try again",
     "home": "Go home",
-    "preparingAccess": "Preparing account access..."
+    "preparingAccess": "Preparing account access...",
+    "preparingMetadataTitle": "Preparing your workspace | SkillsetMind"
   },
   "supportCenter": {
     "eyebrow": "Support",

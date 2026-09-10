@@ -17,6 +17,15 @@ type ReviewDecision = "approved" | "needs_changes" | "rejected";
 const decisions: ReviewDecision[] = ["approved", "needs_changes", "rejected"];
 const copy = "platform.ops.verificationQueue";
 
+function professionLabel(verificationCase: CreatorVerificationCase, t: (key: string) => string) {
+  const kind = verificationCase.verificationKind;
+  // Only application-generated values are labels; custom and legacy text stays literal.
+  const canonical = { psychologist: "Psychologist", coach: "Coach", holistic: "Holistic practitioner" };
+  return kind && kind !== "other" && kind !== "legacy" && verificationCase.profession === canonical[kind]
+    ? t(`professionalBadge.professions.${kind}`)
+    : verificationCase.profession;
+}
+
 function EvidenceDocument({ path }: { path: string }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -63,11 +72,12 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
     () => cases.filter((verificationCase) => [
       verificationCase.id, verificationCase.creatorId, verificationCase.applicantName,
       verificationCase.applicantEmail, verificationCase.profession,
+      professionLabel(verificationCase, t),
       verificationCase.registrationType, verificationCase.registrationId,
       verificationCase.registrationRegion, verificationCase.note,
       ...verificationCase.evidenceLinks,
     ].join(" ").toLowerCase().includes(normalizedQuery)),
-    [cases, normalizedQuery],
+    [cases, normalizedQuery, t],
   );
 
   useEffect(() => {
@@ -154,7 +164,7 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                    {verificationCase.profession}
+                    {professionLabel(verificationCase, t)}
                   </p>
                   <h4 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
                     {verificationCase.applicantName

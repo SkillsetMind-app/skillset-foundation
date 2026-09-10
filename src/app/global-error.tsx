@@ -1,8 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
 import { captureException } from "@/lib/posthog/client";
+import { DEFAULT_LOCALE, LOCALE_COOKIE, LOCALE_HTML_LANG, normalizeLocale } from "@/lib/i18n/config";
+import { getDictionary, translate } from "@/lib/i18n/dictionaries";
+
+const subscribe = () => () => {};
+const serverLocale = () => DEFAULT_LOCALE;
+function crashLocale() {
+  const cookie = document.cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${LOCALE_COOKIE}=`));
+  return normalizeLocale(cookie?.slice(LOCALE_COOKIE.length + 1));
+}
 
 // global-error.tsx replaces the root layout when an error escapes it, so global
 // CSS and design tokens are NOT available here — styles must be inline. That
@@ -40,12 +49,16 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // Root provider may have crashed. Read the existing preference without relying
+  // on its context; server snapshot keeps initial hydration consistent.
+  const locale = useSyncExternalStore(subscribe, crashLocale, serverLocale);
+  const t = (key: string) => translate(getDictionary(locale), key);
   useEffect(() => {
     captureException(error, { boundary: "global", digest: error.digest });
   }, [error]);
 
   return (
-    <html lang="en">
+    <html lang={LOCALE_HTML_LANG[locale]}>
       <body
         style={{
           margin: 0,
@@ -72,13 +85,13 @@ export default function GlobalError({
               margin: 0,
             }}
           >
-            Something went wrong
+            {t("appErrors.eyebrow")}
           </p>
           <h1 style={{ marginTop: 16, fontSize: 32, fontWeight: 700, lineHeight: 1.2 }}>
-            The app hit an unexpected error.
+            {t("appErrors.globalTitle")}
           </h1>
           <p style={{ marginTop: 16, fontSize: 14, lineHeight: 1.7, color: "var(--ge-muted)" }}>
-            The issue has been logged. Try reloading, or head back to the homepage.
+            {t("appErrors.globalBody")}
           </p>
           <div
             style={{
@@ -103,7 +116,7 @@ export default function GlobalError({
                 cursor: "pointer",
               }}
             >
-              Try again
+              {t("appErrors.retry")}
             </button>
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- global-error renders outside the App Router provider tree; a plain <a> does a full reload that reliably recovers from a corrupted root, where next/link's client router may be unavailable. */}
             <a
@@ -118,7 +131,7 @@ export default function GlobalError({
                 textDecoration: "none",
               }}
             >
-              Go home
+              {t("appErrors.home")}
             </a>
           </div>
         </div>
