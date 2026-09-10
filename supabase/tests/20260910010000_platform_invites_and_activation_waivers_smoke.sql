@@ -472,6 +472,8 @@ set local role authenticated;
 select pg_temp.denied($q$update public.users set roles='["teacher","support","ops","moderator"]' where uid=auth.uid()::text$q$);
 -- An INSERT ... ON CONFLICT path must not accept privileged client roles either.
 select pg_temp.denied($q$insert into public.users(uid,roles) values(auth.uid()::text,'["ops"]') on conflict(uid) do nothing$q$);
+-- Omitted roles use the existing guest default, not a privileged role.
+insert into public.users(uid) values(auth.uid()::text) on conflict(uid) do nothing;
 reset role;
 
 -- Existing MFA RLS remains effective for direct profile onboarding updates.

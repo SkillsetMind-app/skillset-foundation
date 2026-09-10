@@ -20,10 +20,10 @@ begin
     end if;
     select coalesce(jsonb_agg(distinct value order by value), '[]'::jsonb)
       into v_previous_privileged from jsonb_array_elements(coalesce(old.roles, '[]'::jsonb)) r(value)
-      where value not in ('"student"'::jsonb, '"teacher"'::jsonb);
+      where value not in ('"guest"'::jsonb, '"student"'::jsonb, '"teacher"'::jsonb);
     select coalesce(jsonb_agg(distinct value order by value), '[]'::jsonb)
       into v_next_privileged from jsonb_array_elements(new.roles) r(value)
-      where value not in ('"student"'::jsonb, '"teacher"'::jsonb);
+      where value not in ('"guest"'::jsonb, '"student"'::jsonb, '"teacher"'::jsonb);
     if old.uid = auth.uid()::text then
       if v_next_privileged = '[]'::jsonb then
         select coalesce(jsonb_agg(distinct value order by value), '[]'::jsonb)
@@ -43,7 +43,7 @@ begin
       raise exception 'Roles must be a JSON array.' using errcode = '22023';
     end if;
     if exists (select 1 from jsonb_array_elements(coalesce(new.roles, '[]'::jsonb)) r(value)
-      where value not in ('"student"'::jsonb, '"teacher"'::jsonb)) then
+      where value not in ('"guest"'::jsonb, '"student"'::jsonb, '"teacher"'::jsonb)) then
       raise exception 'users: privileged roles are server-controlled' using errcode = '42501';
     end if;
     if coalesce(new.creator_verification_status, 'none') <> 'none'
