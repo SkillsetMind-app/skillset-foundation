@@ -1,4 +1,7 @@
+"use client";
+
 import Image from "next/image";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 
 type UserAvatarProps = {
   name?: string | null;
@@ -19,7 +22,8 @@ export function UserAvatar({
   size = "md",
   className = "",
 }: UserAvatarProps) {
-  const label = name ? `${name}'s profile picture` : "Profile picture";
+  const { t } = useTranslation();
+  const label = name ? t("userAvatar.named").replace("{name}", () => name) : t("userAvatar.default");
 
   return (
     <span

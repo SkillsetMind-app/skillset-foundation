@@ -33,8 +33,9 @@ const passwordRequirements: PasswordRequirement[] = [
   },
   {
     id: "special",
-    label: "At least one special character (!@#$%^&*)",
-    test: (password) => /[!@#$%^&*]/.test(password),
+    label: "At least one special character (e.g. . - _ ! @)",
+    // Printable ASCII punctuation only; whitespace is not a special character.
+    test: (password) => /[\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e]/.test(password),
   },
 ];
 

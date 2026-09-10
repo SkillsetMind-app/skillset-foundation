@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
 import {
   buttonClasses,
@@ -27,12 +28,25 @@ import {
 import { logSubscriptionError } from "@/lib/data/subscription-error";
 
 const MAX_EVIDENCE_LINKS = 6;
+const copy = "professionalBadge";
+// Canonical persisted values, independent of the interface language.
 const professionLabels = {
   psychologist: "Psychologist",
   coach: "Coach",
   holistic: "Holistic practitioner",
   other: "Other",
 };
+
+const validationErrorKeys = new Map([
+  ["Choose your profession.", "chooseProfession"],
+  ["Describe your profession (2-120 characters).", "professionLength"],
+  ["Add your license number and issuing country or state.", "registrationRequired"],
+  ["Shorten the registration details or note.", "detailsTooLong"],
+  ["Add a professional link or a certificate to request a badge.", "evidenceRequired"],
+  ["Attach at most 6 evidence links.", "tooManyLinks"],
+  ["Use a valid https:// professional link.", "invalidLink"],
+  ["Use a valid https:// professional link (max 300 characters).", "invalidSecureLink"],
+]);
 
 const inputClass =
   "rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
@@ -50,6 +64,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 export function CreatorVerificationPanel() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [verificationCase, setVerificationCase] =
     useState<CreatorVerificationCase | null>(null);
   const [caseLoaded, setCaseLoaded] = useState(false);
@@ -142,7 +157,7 @@ export function CreatorVerificationPanel() {
       || file.size === 0
       || file.size > 10 * 1024 * 1024
     )) {
-      setSubmitError("Choose a non-empty JPG, PNG, WebP or PDF file up to 10 MB. Convert HEIC photos to JPG or PNG.");
+      setSubmitError("invalidFile");
       return;
     }
     if (documentPath && uploadedPathRef.current === documentPath) {
@@ -153,7 +168,7 @@ export function CreatorVerificationPanel() {
         await removeVerificationEvidence(documentPath);
         uploadedPathRef.current = null;
       } catch {
-        setSubmitError("Could not remove the uploaded document. Please try again before replacing or removing it.");
+        setSubmitError("removeFailed");
         return;
       } finally {
         operationRef.current = false;
@@ -169,7 +184,7 @@ export function CreatorVerificationPanel() {
     event.preventDefault();
     if (operationRef.current) return;
     if (!verificationKind) {
-      setSubmitError("Choose your profession.");
+      setSubmitError("chooseProfession");
       return;
     }
     const links = evidenceLinksText
@@ -189,8 +204,8 @@ export function CreatorVerificationPanel() {
     try {
       validateProfessionalEvidence(input, Boolean(evidenceFile || documentPath));
     } catch (error) {
-      // Only local domain validation messages are shown; transport errors stay generic.
-      setSubmitError(error instanceof Error ? error.message : "Check your professional details and evidence before submitting.");
+      // Keep keys in state so existing feedback follows a language change.
+      setSubmitError(error instanceof Error ? validationErrorKeys.get(error.message) ?? "invalidEvidence" : "invalidEvidence");
       return;
     }
 
@@ -211,7 +226,7 @@ export function CreatorVerificationPanel() {
       uploadedPathRef.current = null;
       // The realtime subscription flips the panel to "in review".
     } catch {
-      setSubmitError("Could not submit verification. Please try again.");
+      setSubmitError("submitFailed");
     } finally {
       operationRef.current = false;
       setSubmitting(false);
@@ -223,25 +238,21 @@ export function CreatorVerificationPanel() {
       <Card as="section" padding="lg">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <Eyebrow>Teacher studio</Eyebrow>
+            <Eyebrow>{t(`${copy}.eyebrow`)}</Eyebrow>
             <h1 className="display-title mt-1 text-2xl text-[var(--color-primary)]">
-              Professional verification
+              {t(`${copy}.title`)}
             </h1>
           </div>
           {caseLoaded && verificationCase ? (
-            <StatusChip status={verificationCase.status} />
+            <StatusChip status={verificationCase.status} label={t(`${copy}.status.${verificationCase.status}`)} />
           ) : null}
         </div>
         <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-          Verify your professional credentials to earn reviewed-instructor
-          standing.{" "}
-          {requireVerification
-            ? "Verification is required before you can publish a course."
-            : "Verification is optional. Request a professional badge, or continue without one."}
+          {t(`${copy}.description`)}{" "}
+          {t(`${copy}.${requireVerification ? "required" : "optional"}`)}
         </p>
         <p className="mt-2 text-xs text-[var(--color-ink-soft)]">
-          Share a professional profile, social link, diploma or certificate.
-          Documents are private and used for review.
+          {t(`${copy}.privacy`)}
         </p>
         {caseLoaded && status !== "approved" ? (
           <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -251,13 +262,11 @@ export function CreatorVerificationPanel() {
                 aria-controls="professional-badge-form"
                 onClick={() => setFormRequested(true)}
               >
-                {status === "needs_changes" || status === "rejected"
-                  ? "Edit application"
-                  : "Request professional badge"}
+                {t(`${copy}.${status === "needs_changes" || status === "rejected" ? "edit" : "request"}`)}
               </Button>
             ) : null}
             <Link href="/teach" className={buttonClasses({ variant: "outline" })}>
-              Not now
+              {t(`${copy}.notNow`)}
             </Link>
           </div>
         ) : null}
@@ -266,7 +275,7 @@ export function CreatorVerificationPanel() {
       {!caseLoaded ? (
         <Card as="section" padding="lg">
           <p className="text-sm text-[var(--color-ink-soft)]">
-            Loading your verification status...
+            {t(`${copy}.loading`)}
           </p>
         </Card>
       ) : null}
@@ -276,17 +285,16 @@ export function CreatorVerificationPanel() {
           <h2 className="flex items-center gap-2 text-base font-semibold text-[var(--color-ink)]">
             <BadgeCheck className="h-5 w-5 shrink-0" aria-hidden="true" />
             {verificationCase?.verificationKind === "psychologist"
-              ? "Professional credential verified"
+              ? t(`${copy}.credentialVerified`)
               : verificationCase?.verificationKind && verificationCase.verificationKind !== "legacy"
-                ? "Professional evidence reviewed"
-                : "Professional verification approved"}
+                ? t(`${copy}.evidenceReviewed`)
+                : t(`${copy}.verificationApproved`)}
           </h2>
           <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
-            Your professional verification is approved. It applies to every
-            course you publish — nothing else to do here.
+            {t(`${copy}.approvedDescription`)}
           </p>
           <Link href="/teach" className={buttonClasses({ size: "sm" }, "mt-4")}>
-            Back to studio
+            {t(`${copy}.backToStudio`)}
           </Link>
         </Card>
       ) : null}
@@ -294,35 +302,39 @@ export function CreatorVerificationPanel() {
       {caseLoaded && status === "pending" && verificationCase ? (
         <Card as="section" padding="lg">
           <h2 className="text-base font-semibold text-[var(--color-ink)]">
-            In review
+            {t(`${copy}.inReview`)}
           </h2>
           <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
-            {requireVerification
-              ? "Your application is with the review team. Check this page for the decision or any requested changes before continuing activation."
-              : "Your professional badge request is with the review team. You can continue without a badge while it is reviewed."}
+            {t(`${copy}.${requireVerification ? "pendingRequired" : "pendingOptional"}`)}
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <DetailRow label="Profession" value={verificationCase.profession} />
+            <DetailRow label={t(`${copy}.profession`)} value={
+              verificationCase.verificationKind && verificationCase.verificationKind !== "legacy"
+                && verificationCase.verificationKind !== "other"
+                && verificationCase.profession === professionLabels[verificationCase.verificationKind]
+                ? t(`${copy}.professions.${verificationCase.verificationKind}`)
+                : verificationCase.profession
+            } />
             {verificationCase.registrationType ? <DetailRow
-              label="Registry / license"
+              label={t(`${copy}.registry`)}
               value={verificationCase.registrationType}
             /> : null}
             {verificationCase.registrationId ? <DetailRow
-              label="Registration number"
+              label={t(`${copy}.registrationNumber`)}
               value={verificationCase.registrationId}
             /> : null}
             {verificationCase.registrationRegion ? <DetailRow
-              label="Issuing region"
+              label={t(`${copy}.issuingRegion`)}
               value={verificationCase.registrationRegion}
             /> : null}
           </div>
           {verificationCase.documentPath ? (
-            <p className="mt-3 text-sm text-[var(--color-ink-soft)]">Private document submitted</p>
+            <p className="mt-3 text-sm text-[var(--color-ink-soft)]">{t(`${copy}.documentSubmitted`)}</p>
           ) : null}
           {verificationCase.evidenceLinks.length > 0 ? (
             <div className="mt-3">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                Evidence links
+                {t(`${copy}.evidenceLinks`)}
               </span>
               <ul className="mt-1 grid gap-1">
                 {verificationCase.evidenceLinks.map((link) => (
@@ -344,17 +356,13 @@ export function CreatorVerificationPanel() {
       && verificationCase?.reviewNote ? (
         <Card as="section" tone="soft" padding="lg" shadow={false}>
           <h2 className="text-base font-semibold text-[var(--color-ink)]">
-            {status === "needs_changes"
-              ? "The review team asked for changes"
-              : "Your application was rejected"}
+            {t(`${copy}.${status === "needs_changes" ? "changesRequested" : "applicationRejected"}`)}
           </h2>
           <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--color-ink)]">
             {verificationCase.reviewNote}
           </p>
           <p className="mt-2 text-xs text-[var(--color-ink-soft)]">
-            {status === "needs_changes"
-              ? "Edit your application to update your details and resubmit."
-              : "Edit your application to submit it again."}
+            {t(`${copy}.${status === "needs_changes" ? "changesDescription" : "rejectedDescription"}`)}
           </p>
         </Card>
       ) : null}
@@ -363,14 +371,12 @@ export function CreatorVerificationPanel() {
         <Card as="section" padding="lg">
           <form id="professional-badge-form" onSubmit={handleSubmit} className="grid gap-4">
             <h2 className="text-base font-semibold text-[var(--color-ink)]">
-              {status === "needs_changes"
-                ? "Resubmit your application"
-                : "Apply for verification"}
+              {t(`${copy}.${status === "needs_changes" ? "resubmitTitle" : "applyTitle"}`)}
             </h2>
             <fieldset disabled={submitting || cleaningDocument} className="grid min-w-0 gap-4">
-              <legend className="sr-only">Professional evidence</legend>
+              <legend className="sr-only">{t(`${copy}.evidenceLegend`)}</legend>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="verification-kind" label="Profession" required>
+              <Field id="verification-kind" label={t(`${copy}.profession`)} required>
                 {(a11y) => (
                   <select
                     {...a11y}
@@ -378,14 +384,14 @@ export function CreatorVerificationPanel() {
                     onChange={(event) => setVerificationKind(event.target.value as ProfessionalVerificationKind | "")}
                     className={inputClass}
                   >
-                    <option value="" disabled>Choose your profession</option>
-                    {Object.entries(professionLabels).map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
+                    <option value="" disabled>{t(`${copy}.chooseProfession`)}</option>
+                    {Object.keys(professionLabels).map((value) => (
+                      <option key={value} value={value}>{t(`${copy}.professions.${value}`)}</option>
                     ))}
                   </select>
                 )}
               </Field>
-              {verificationKind === "other" ? <Field id="verification-profession" label="Your profession" required>
+              {verificationKind === "other" ? <Field id="verification-profession" label={t(`${copy}.yourProfession`)} required>
                 {(a11y) => (
                   <input
                     {...a11y}
@@ -400,7 +406,7 @@ export function CreatorVerificationPanel() {
               {verificationKind === "psychologist" ? <>
               <Field
                 id="verification-registration-id"
-                label="Registration number"
+                label={t(`${copy}.registrationNumber`)}
                 required
               >
                 {(a11y) => (
@@ -416,7 +422,7 @@ export function CreatorVerificationPanel() {
               </Field>
               <Field
                 id="verification-region"
-                label="Issuing country or state"
+                label={t(`${copy}.issuingCountry`)}
                 required
               >
                 {(a11y) => (
@@ -434,8 +440,8 @@ export function CreatorVerificationPanel() {
             </div>
             <Field
               id="verification-evidence"
-              label="Evidence links"
-              hint={`One https:// link per line, up to ${MAX_EVIDENCE_LINKS}. A professional profile or social link is welcome.`}
+              label={t(`${copy}.evidenceLinks`)}
+              hint={t(`${copy}.evidenceHint`).replace("{max}", () => String(MAX_EVIDENCE_LINKS))}
             >
               {(a11y) => (
                 <textarea
@@ -447,14 +453,14 @@ export function CreatorVerificationPanel() {
                 />
               )}
             </Field>
-            <Field id="verification-document" label="Document or diploma" hint="JPEG, PNG, WebP or PDF. Add a document or at least one evidence link.">
+            <Field id="verification-document" label={t(`${copy}.document`)} hint={t(`${copy}.documentHint`)}>
               {(a11y) => (
                 <input {...a11y} ref={documentInputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf"
                   onChange={(event) => { if (event.target.files?.[0]) selectFile(event.target.files[0]); }}
                   className={`${inputClass} min-w-0 w-full`} />
               )}
             </Field>
-            <Field id="verification-photo" label="Take photo">
+            <Field id="verification-photo" label={t(`${copy}.takePhoto`)}>
               {(a11y) => (
                 <input {...a11y} ref={cameraInputRef} type="file" accept="image/*" capture="environment"
                   onChange={(event) => { if (event.target.files?.[0]) selectFile(event.target.files[0]); }}
@@ -463,13 +469,13 @@ export function CreatorVerificationPanel() {
             </Field>
             {evidenceFile || documentPath ? (
               <div className="flex min-w-0 flex-wrap items-center gap-3">
-                <span className="min-w-0 break-all text-sm">{evidenceFile?.name ?? "Private document attached"}</span>
-                <Button variant="ghost" onClick={() => selectFile(null)}>Remove document</Button>
+                <span className="min-w-0 break-all text-sm">{evidenceFile?.name ?? t(`${copy}.documentAttached`)}</span>
+                <Button variant="ghost" onClick={() => selectFile(null)}>{t(`${copy}.removeDocument`)}</Button>
               </div>
             ) : null}
             <Field
               id="verification-note"
-              label="Note to the review team (optional)"
+              label={t(`${copy}.note`)}
             >
               {(a11y) => (
                 <textarea
@@ -478,7 +484,7 @@ export function CreatorVerificationPanel() {
                   onChange={(event) => setNote(event.target.value)}
                   rows={3}
                   maxLength={2000}
-                  placeholder="Anything that helps us verify you faster."
+                  placeholder={t(`${copy}.notePlaceholder`)}
                   className={`resize-none ${inputClass}`}
                 />
               )}
@@ -487,17 +493,17 @@ export function CreatorVerificationPanel() {
             {/* O erro do envio era um <p> vermelho solto: quem usa leitor de
                 tela mandava o formulário e não ouvia nada. */}
             {submitError ? (
-              <InlineAlert tone="error">{submitError}</InlineAlert>
+              <InlineAlert tone="error">{t(`${copy}.errors.${submitError}`)}</InlineAlert>
             ) : null}
             <div>
               <Button type="submit" disabled={submitting || cleaningDocument}>
-                {cleaningDocument
-                  ? "Removing document..."
+                {t(`${copy}.${cleaningDocument
+                  ? "removingDocument"
                   : submitting
-                  ? "Submitting..."
+                  ? "submitting"
                   : status === "needs_changes"
-                    ? "Resubmit for review"
-                    : "Submit for review"}
+                    ? "resubmit"
+                    : "submit"}`)}
               </Button>
             </div>
           </form>

@@ -41,9 +41,9 @@ describe("ProfileSettingsPanel - narrow layouts", () => {
     for (const field of ["Public name", "Bio", "Timezone"]) {
       expect(screen.getByLabelText(field, { exact: field !== "Bio" })).toHaveClass("min-w-0");
     }
-    const phone = screen.getByPlaceholderText("Phone number");
-    expect(phone.closest("label")).toHaveClass("grid-cols-1");
-    fireEvent.click(screen.getByText("US +1"));
+    const phone = screen.getByRole("textbox", { name: "Phone number" });
+    expect(phone.parentElement?.parentElement).toHaveClass("grid-cols-1");
+    fireEvent.click(screen.getByRole("button", { name: "Country code: US +1 (United States)" }));
     expect(screen.getByText("United States").closest("button")?.parentElement)
       .toHaveClass("max-w-full");
   });

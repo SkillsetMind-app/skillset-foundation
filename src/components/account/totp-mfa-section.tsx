@@ -3,6 +3,7 @@
 import { ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import {
   type EnrolledFactor,
   finishTotpEnrollment,
@@ -28,12 +29,15 @@ type SetupState = {
  * this on never locks anyone out.
  */
 export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
+  const { t, locale } = useTranslation();
   const mfaEnabled = isPublicFeatureEnabled("auth.mfa");
   const [factors, setFactors] = useState<EnrolledFactor[]>([]);
   const [setup, setSetup] = useState<SetupState | null>(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<
+    { key: string } | { cause: unknown } | null
+  >(null);
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
   // Remover o segundo fator é irreversível sem refazer o cadastro inteiro, e o
@@ -68,13 +72,13 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
 
   async function handleStart() {
     setBusy(true);
-    setError("");
+    setError(null);
     setMessage("");
     try {
       setSetup(await startTotpEnrollment());
       setCode("");
     } catch (caught) {
-      setError(getAuthErrorMessage(caught));
+      setError({ cause: caught });
     } finally {
       setBusy(false);
     }
@@ -82,20 +86,20 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
 
   async function handleConfirm() {
     if (!setup || code.trim().length < 6) {
-      setError("Enter the 6-digit code from your authenticator app.");
+      setError({ key: "accountSecurity.mfa.codeRequired" });
       return;
     }
     setBusy(true);
-    setError("");
+    setError(null);
     setMessage("");
     try {
       await finishTotpEnrollment(setup.secret, code, "Authenticator app");
       setFactors(await listEnrolledTotpFactors());
       setSetup(null);
       setCode("");
-      setMessage("Two-factor authentication is on. Your account is protected.");
+      setMessage("accountSecurity.mfa.enabled");
     } catch (caught) {
-      setError(getAuthErrorMessage(caught));
+      setError({ cause: caught });
     } finally {
       setBusy(false);
     }
@@ -103,14 +107,14 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
 
   async function handleDisable(factorUid: string) {
     setBusy(true);
-    setError("");
+    setError(null);
     setMessage("");
     try {
       await unenrollTotpFactor(factorUid);
       setFactors(await listEnrolledTotpFactors());
-      setMessage("Two-factor authentication turned off.");
+      setMessage("accountSecurity.mfa.disabled");
     } catch (caught) {
-      setError(getAuthErrorMessage(caught));
+      setError({ cause: caught });
     } finally {
       setBusy(false);
     }
@@ -136,10 +140,10 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-semibold text-[var(--color-ink)]">
-            Two-factor authentication
+            {t("accountSecurity.mfa.title")}
           </p>
           <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
-            Add a code from an authenticator app on top of your password.
+            {t("accountSecurity.mfa.description")}
           </p>
         </div>
         <span
@@ -150,20 +154,18 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
           }`}
         >
           {isEnrolled ? <ShieldCheck size={12} aria-hidden /> : null}
-          {isEnrolled ? "On" : "Off"}
+          {t(isEnrolled ? "accountSecurity.mfa.on" : "accountSecurity.mfa.off")}
         </span>
       </div>
 
       {/* Flag off: honest unavailable state, never a fake setup. */}
       {!mfaEnabled ? (
         <p className="mt-4 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-          Two-factor authentication isn&rsquo;t enabled on this workspace yet.
-          Once it&rsquo;s switched on, you&rsquo;ll set up an authenticator app
-          right here.
+          {t("accountSecurity.mfa.unavailable")}
         </p>
       ) : !emailVerified && !isEnrolled ? (
         <p className="mt-4 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-          Verify your email above before enabling two-factor authentication.
+          {t("accountSecurity.mfa.verifyEmail")}
         </p>
       ) : isEnrolled ? (
         <div className="mt-4 grid gap-3">
@@ -174,21 +176,24 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
             >
               <div className="text-sm">
                 <p className="font-semibold text-[var(--color-ink)]">
-                  {factor.displayName || "Authenticator app"}
+                  {!factor.displayName || factor.displayName === "Authenticator app"
+                    ? t("accountSecurity.mfa.authenticator")
+                    : factor.displayName}
                 </p>
                 <p className="text-xs text-[var(--color-ink-soft)]">
-                  Enrolled{" "}
-                  {factor.enrolledAt
-                    ? new Intl.DateTimeFormat("en", {
-                        dateStyle: "medium",
-                      }).format(new Date(factor.enrolledAt))
-                    : ""}
+                  {t("accountSecurity.mfa.enrolled").replace("{date}", () =>
+                    factor.enrolledAt
+                      ? new Intl.DateTimeFormat(locale, {
+                          dateStyle: "medium",
+                        }).format(new Date(factor.enrolledAt))
+                      : "",
+                  )}
                 </p>
               </div>
               {confirmingDisable === factor.uid ? (
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-[var(--color-ink-soft)]">
-                    Turn off two-factor?
+                    {t("accountSecurity.mfa.disableConfirm")}
                   </span>
                   <button
                     type="button"
@@ -199,7 +204,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                     disabled={busy}
                     className="min-h-[32px] rounded-md border border-[var(--color-danger)] px-3 text-xs font-bold text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)] disabled:opacity-60"
                   >
-                    Yes, turn off
+                    {t("accountSecurity.mfa.confirmDisable")}
                   </button>
                   <button
                     type="button"
@@ -207,7 +212,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                     disabled={busy}
                     className="min-h-[32px] px-2 text-xs font-bold text-[var(--color-ink-soft)] underline-offset-2 hover:underline disabled:opacity-60"
                   >
-                    Keep it on
+                    {t("accountSecurity.mfa.keepEnabled")}
                   </button>
                 </div>
               ) : (
@@ -217,7 +222,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                   disabled={busy}
                   className="min-h-[32px] px-2 text-xs font-bold text-[var(--color-danger)] underline-offset-2 hover:underline disabled:opacity-60"
                 >
-                  Turn off
+                  {t("accountSecurity.mfa.disable")}
                 </button>
               )}
             </div>
@@ -227,29 +232,29 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
         <div className="mt-4 grid gap-4">
           <ol className="grid gap-2 text-sm leading-6 text-[var(--color-ink-soft)]">
             <li>
-              <strong className="text-[var(--color-ink)]">1.</strong> Open your
-              authenticator app (Google Authenticator, Authy, 1Password…).
+              <strong className="text-[var(--color-ink)]">1.</strong>{" "}
+              {t("accountSecurity.mfa.step1")}
             </li>
             <li>
-              <strong className="text-[var(--color-ink)]">2.</strong> Add an
-              account, then{" "}
+              <strong className="text-[var(--color-ink)]">2.</strong>{" "}
+              {t("accountSecurity.mfa.step2BeforeLink")}{" "}
               <a
                 href={setup.otpauthUrl}
                 className="font-semibold text-[var(--color-primary)] hover:underline"
               >
-                open this setup link
+                {t("accountSecurity.mfa.setupLink")}
               </a>{" "}
-              or enter the key below by hand.
+              {t("accountSecurity.mfa.step2AfterLink")}
             </li>
             <li>
-              <strong className="text-[var(--color-ink)]">3.</strong> Type the
-              6-digit code it shows.
+              <strong className="text-[var(--color-ink)]">3.</strong>{" "}
+              {t("accountSecurity.mfa.step3")}
             </li>
           </ol>
 
           <div className="rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] p-3">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
-              Setup key
+              {t("accountSecurity.mfa.setupKey")}
             </p>
             <div className="mt-1 flex items-center justify-between gap-3">
               <code className="break-all font-mono text-sm tracking-wide text-[var(--color-ink)]">
@@ -260,7 +265,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                 onClick={handleCopyKey}
                 className="shrink-0 text-xs font-bold text-[var(--color-primary)] hover:underline"
               >
-                {copied ? "Copied" : "Copy"}
+                {t(copied ? "accountSecurity.mfa.copied" : "accountSecurity.mfa.copy")}
               </button>
             </div>
           </div>
@@ -268,17 +273,17 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
           <div className="flex flex-wrap items-end gap-3">
             <label className="grid gap-1 text-sm">
               <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
-                6-digit code
+                {t("accountSecurity.mfa.code")}
               </span>
               <input
                 value={code}
                 onChange={(event) =>
                   setCode(event.target.value.replace(/\D/g, "").slice(0, 6))
                 }
-                placeholder="000000"
+                placeholder={t("accountSecurity.mfa.codePlaceholder")}
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                aria-label="Authenticator code"
+                aria-label={t("accountSecurity.mfa.codeLabel")}
                 className="w-32 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-center font-mono text-base tracking-[0.3em] outline-none focus:border-[var(--color-primary-light)]"
               />
             </label>
@@ -288,19 +293,19 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
               disabled={busy || code.length < 6}
               className="button-solid px-3.5 py-2.5 text-xs disabled:opacity-60"
             >
-              {busy ? "Verifying..." : "Turn on 2FA"}
+              {t(busy ? "accountSecurity.mfa.verifying" : "accountSecurity.mfa.enable")}
             </button>
             <button
               type="button"
               onClick={() => {
                 setSetup(null);
                 setCode("");
-                setError("");
+                setError(null);
               }}
               disabled={busy}
               className="text-xs font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] disabled:opacity-60"
             >
-              Cancel
+              {t("accountSecurity.mfa.cancel")}
             </button>
           </div>
         </div>
@@ -311,13 +316,13 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
           disabled={busy}
           className="button-outline mt-4 px-3.5 py-2 text-xs disabled:opacity-60"
         >
-          {busy ? "Preparing..." : "Set up authenticator"}
+          {t(busy ? "accountSecurity.mfa.preparing" : "accountSecurity.mfa.setup")}
         </button>
       )}
 
       {message ? (
         <p className="mt-3 text-sm font-semibold text-[var(--color-success-fg)]">
-          {message}
+          {t(message)}
         </p>
       ) : null}
       {error ? (
@@ -325,7 +330,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
           role="alert"
           className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
-          {error}
+          {"key" in error ? t(error.key) : getAuthErrorMessage(error.cause, t)}
         </p>
       ) : null}
     </div>

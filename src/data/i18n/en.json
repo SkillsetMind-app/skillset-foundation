@@ -2380,7 +2380,7 @@
   },
   "profileValidation": {
     "usernameRequired": "Choose a username for your SkillsetMind identity.",
-    "usernameInvalid": "Use 3-32 lowercase letters, numbers, or hyphens. Start with a letter or number.",
+    "usernameInvalid": "Use 3-32 lowercase letters, numbers, dots, hyphens, or underscores. Start with a letter or number.",
     "displayNameRequired": "Enter the name people should see on SkillsetMind.",
     "displayNameTooLong": "Keep your display name under 120 characters.",
     "bioTooLong": "Keep your bio under 280 characters.",
@@ -3204,7 +3204,7 @@
       "uppercase": "At least one uppercase letter (A-Z)",
       "lowercase": "At least one lowercase letter (a-z)",
       "number": "At least one number (0-9)",
-      "special": "At least one special character (!@#$%^&*)"
+      "special": "At least one special character (e.g. . - _ ! @)"
     },
     "pageTitle": "Sign in or create an account",
     "loadingForm": "Loading sign-in form"
@@ -3820,5 +3820,308 @@
       "learner": "{brandName} learner",
       "protectedPlayback": "protected playback"
     }
+  },
+  "accountSettings": {
+    "label": "Settings",
+    "title": "Your SkillsetMind preferences.",
+    "description": "Profile, login email, password, alerts, learning defaults, and privacy controls live here. Billing and creator payouts stay in their own money sections.",
+    "navigation": "Settings sections",
+    "saveError": "We could not save that change. Check your connection and try again.",
+    "tabs": {
+      "profile": {
+        "label": "Profile",
+        "description": "Name, photo, username, bio, phone, timezone."
+      },
+      "notifications": {
+        "label": "Notifications",
+        "description": "Course, billing, and support alerts."
+      },
+      "security": {
+        "label": "Security",
+        "description": "Login email, password, recovery, and sensitive access."
+      },
+      "learning": {
+        "label": "Learning",
+        "description": "Playback, captions, digest, and classroom defaults."
+      },
+      "privacy": {
+        "label": "Privacy & data",
+        "description": "Export data or request account deletion."
+      }
+    },
+    "notifications": {
+      "title": "Decide what gets your attention.",
+      "description": "Saved to your account and applied as each channel ships. Transactional security and payment emails stay enabled for account safety.",
+      "productEmails": {
+        "label": "Product emails",
+        "description": "Important product updates and weekly summaries."
+      },
+      "courseActivity": {
+        "label": "Course activity",
+        "description": "Course reviews, comments, lesson activity, and student milestones."
+      },
+      "billingAlerts": {
+        "label": "Billing and payout alerts",
+        "description": "Receipts, invoices, earnings, refund, and failed payment notices."
+      },
+      "marketingEmails": {
+        "label": "Marketing emails",
+        "description": "Launch announcements, promotions, and editorial campaigns."
+      }
+    },
+    "learning": {
+      "title": "Classroom defaults.",
+      "description": "Saved to your account so your classroom behaves the same on every device. Billing and creator payout setup stay in their own sections.",
+      "autoCaptions": {
+        "label": "Auto-show captions",
+        "description": "Show captions automatically when a lesson provides them."
+      },
+      "dailyDigest": {
+        "label": "Daily learning digest",
+        "description": "A lightweight daily reminder for unfinished lessons."
+      }
+    }
+  },
+  "accountData": {
+    "label": "Account and data",
+    "title": "Your data, your account",
+    "description": "Your data belongs to you. Export a copy or request account deletion at any time. These requests are handled manually and confirmed by our team.",
+    "requesting": "Requesting...",
+    "export": "Export everything",
+    "delete": "Delete account",
+    "confirmDelete": "Confirm delete request",
+    "cancel": "Cancel",
+    "processing": "Requests are currently processed manually within 72 hours. Automated one-click export and deletion are in development.",
+    "exportSuccess": "Data export request received. SkillsetMind will process it manually within 72 hours.",
+    "deleteSuccess": "Account deletion request received. SkillsetMind will process it manually within 72 hours.",
+    "exportError": "Could not request your data export. Try again in a moment.",
+    "deleteError": "Could not request account deletion. Try again in a moment."
+  },
+  "accountProfile": {
+    "loading": "Loading profile settings...",
+    "identity": "Account identity",
+    "title": "Profile settings",
+    "description": "Keep your SkillsetMind identity clear for learning, teaching, communities, and future public profiles.",
+    "publicName": "Public name",
+    "username": "Username",
+    "bio": "Bio",
+    "bioCount": "{count}/280 characters",
+    "phone": "Phone number",
+    "timezone": "Timezone",
+    "goalsTitle": "Goals",
+    "uploading": "Uploading...",
+    "saving": "Saving...",
+    "save": "Save profile",
+    "photo": {
+      "title": "Profile photo",
+      "hint": "Use a clear square image (JPG, PNG, or WebP under 5 MB). If you skip it, SkillsetMind shows a neutral person icon instead of a letter badge.",
+      "replace": "Replace photo",
+      "upload": "Upload photo",
+      "uploadAria": "Upload profile photo"
+    },
+    "credentials": {
+      "title": "Credentials",
+      "publicHint": "Shown on your public instructor profile",
+      "hint": "Short credibility lines — for example “Professor at University of São Paulo” or “15 years coaching sales teams”.",
+      "placeholder": "e.g. Professor at University of São Paulo",
+      "removeAria": "Remove credential {number}",
+      "remove": "Remove",
+      "add": "Add credential"
+    },
+    "signature": {
+      "alt": "Your certificate signature",
+      "empty": "No signature",
+      "title": "Certificate signature",
+      "hint": "Optional. Upload your handwritten signature (PNG, JPG, or WebP under 5 MB (transparent PNG looks best)). It prints on every certificate your students earn. Skip it and your name is printed instead.",
+      "replace": "Replace signature",
+      "upload": "Upload signature",
+      "uploadAria": "Upload certificate signature"
+    },
+    "goals": {
+      "career_growth": "Career growth",
+      "skill_certification": "Verified learning",
+      "teach_online": "Teach online",
+      "build_community": "Build a community",
+      "live_mentorship": "Live mentorship",
+      "business_training": "Team training"
+    },
+    "errors": {
+      "load": "We could not load your profile settings.",
+      "signIn": "Sign in again to update your profile.",
+      "phone": "Use a valid phone number.",
+      "timezone": "Choose your timezone.",
+      "save": "We could not save your profile. Try again, and contact support if it keeps failing.",
+      "avatarFile": "Use a JPG, PNG, or WebP under 5 MB profile image.",
+      "signatureFile": "Use a PNG, JPG, or WebP under 5 MB (transparent PNG looks best) image.",
+      "avatarUpload": "We could not upload your profile photo. Please try again. If it keeps failing, sign in again or contact support.",
+      "signatureUpload": "We could not upload your signature. Please try again. If it keeps failing, sign in again or contact support."
+    },
+    "success": {
+      "profile": "Profile updated.",
+      "photo": "Profile photo updated.",
+      "signature": "Certificate signature updated."
+    }
+  },
+  "accountSecurity": {
+    "label": "Security",
+    "title": "Account protection",
+    "description": "Verify your email before opening creator tools, keep your sign-in details current, and add two-factor authentication to protect your account.",
+    "verification": {
+      "title": "Email verification",
+      "description": "Required for creators before publishing tools are enabled.",
+      "verified": "Verified",
+      "required": "Required",
+      "send": "Send email",
+      "refresh": "Refresh status",
+      "sent": "Verification email sent. Check your inbox and return here.",
+      "sendError": "Could not send the verification email. Try again in a moment.",
+      "confirmed": "Email verified. Creator tools can now be enabled.",
+      "pending": "Email is not verified yet.",
+      "refreshError": "Could not refresh your email verification status."
+    },
+    "email": {
+      "title": "Change email",
+      "description": "Current email: {email}. We verify the new address before replacing it.",
+      "missing": "No email on file",
+      "placeholder": "new-email@example.com",
+      "label": "New email address",
+      "send": "Send change confirmation",
+      "sent": "Verification sent to the new email. Open it to confirm the email change."
+    },
+    "password": {
+      "title": "Change password",
+      "description": "Enter your current password before choosing a new one. Social-only accounts should use password recovery to add an email password.",
+      "current": "Current password",
+      "next": "New password",
+      "update": "Update password",
+      "forgot": "Forgot your current password? We'll email a secure reset link so you can set a new one without it.",
+      "sendReset": "Email me a reset link",
+      "requirementsError": "Use a password that meets every requirement.",
+      "updated": "Password updated.",
+      "mfaResetHint": "Two-step verification is on for this account. Use \"Email me a reset link\" below to set a new password without your current one.",
+      "noEmail": "This account signs in with Google and has no password to reset. Add an email password from your provider first.",
+      "resetSent": "Reset link sent to {email}. Open it to set a new password — you won't need your current one.",
+      "resetLimited": "We already sent a reset link to {email} a moment ago — check your inbox and your spam or promotions folder. You can request another in a few minutes."
+    },
+    "mfa": {
+      "title": "Two-factor authentication",
+      "description": "Add a code from an authenticator app on top of your password.",
+      "on": "On",
+      "off": "Off",
+      "unavailable": "Two-factor authentication isn’t enabled on this workspace yet. Once it’s switched on, you’ll set up an authenticator app right here.",
+      "verifyEmail": "Verify your email above before enabling two-factor authentication.",
+      "authenticator": "Authenticator app",
+      "enrolled": "Enrolled {date}",
+      "disableConfirm": "Turn off two-factor?",
+      "confirmDisable": "Yes, turn off",
+      "keepEnabled": "Keep it on",
+      "disable": "Turn off",
+      "step1": "Open your authenticator app (Google Authenticator, Authy, 1Password…).",
+      "step2BeforeLink": "Add an account, then",
+      "setupLink": "open this setup link",
+      "step2AfterLink": "or enter the key below by hand.",
+      "step3": "Type the 6-digit code it shows.",
+      "setupKey": "Setup key",
+      "copied": "Copied",
+      "copy": "Copy",
+      "code": "6-digit code",
+      "codePlaceholder": "000000",
+      "codeLabel": "Authenticator code",
+      "verifying": "Verifying...",
+      "enable": "Turn on 2FA",
+      "cancel": "Cancel",
+      "preparing": "Preparing...",
+      "setup": "Set up authenticator",
+      "codeRequired": "Enter the 6-digit code from your authenticator app.",
+      "enabled": "Two-factor authentication is on. Your account is protected.",
+      "disabled": "Two-factor authentication turned off."
+    }
+  },
+  "professionalBadge": {
+    "eyebrow": "Teacher studio",
+    "title": "Professional verification",
+    "description": "Verify your professional credentials to earn reviewed-instructor standing.",
+    "required": "Verification is required before you can publish a course.",
+    "optional": "Verification is optional. Request a professional badge, or continue without one.",
+    "privacy": "Share a professional profile, social link, diploma or certificate. Documents are private and used for review.",
+    "edit": "Edit application",
+    "request": "Request professional badge",
+    "notNow": "Not now",
+    "loading": "Loading your verification status...",
+    "credentialVerified": "Professional credential verified",
+    "evidenceReviewed": "Professional evidence reviewed",
+    "verificationApproved": "Professional verification approved",
+    "approvedDescription": "Your professional verification is approved. It applies to every course you publish — nothing else to do here.",
+    "backToStudio": "Back to studio",
+    "inReview": "In review",
+    "pendingRequired": "Your application is with the review team. Check this page for the decision or any requested changes before continuing activation.",
+    "pendingOptional": "Your professional badge request is with the review team. You can continue without a badge while it is reviewed.",
+    "profession": "Profession",
+    "registry": "Registry / license",
+    "registrationNumber": "Registration number",
+    "issuingRegion": "Issuing region",
+    "documentSubmitted": "Private document submitted",
+    "evidenceLinks": "Evidence links",
+    "changesRequested": "The review team asked for changes",
+    "applicationRejected": "Your application was rejected",
+    "changesDescription": "Edit your application to update your details and resubmit.",
+    "rejectedDescription": "Edit your application to submit it again.",
+    "resubmitTitle": "Resubmit your application",
+    "applyTitle": "Apply for verification",
+    "evidenceLegend": "Professional evidence",
+    "chooseProfession": "Choose your profession",
+    "yourProfession": "Your profession",
+    "issuingCountry": "Issuing country or state",
+    "evidenceHint": "One https:// link per line, up to {max}. A professional profile or social link is welcome.",
+    "document": "Document or diploma",
+    "documentHint": "JPEG, PNG, WebP or PDF. Add a document or at least one evidence link.",
+    "takePhoto": "Take photo",
+    "documentAttached": "Private document attached",
+    "removeDocument": "Remove document",
+    "note": "Note to the review team (optional)",
+    "notePlaceholder": "Anything that helps us verify you faster.",
+    "removingDocument": "Removing document...",
+    "submitting": "Submitting...",
+    "resubmit": "Resubmit for review",
+    "submit": "Submit for review",
+    "professions": {
+      "psychologist": "Psychologist",
+      "coach": "Coach",
+      "holistic": "Holistic practitioner",
+      "other": "Other"
+    },
+    "status": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "needs_changes": "Needs changes",
+      "rejected": "Rejected"
+    },
+    "errors": {
+      "chooseProfession": "Choose your profession.",
+      "professionLength": "Describe your profession (2-120 characters).",
+      "registrationRequired": "Add your license number and issuing country or state.",
+      "detailsTooLong": "Shorten the registration details or note.",
+      "evidenceRequired": "Add a professional link or a certificate to request a badge.",
+      "tooManyLinks": "Attach at most 6 evidence links.",
+      "invalidLink": "Use a valid https:// professional link.",
+      "invalidSecureLink": "Use a valid https:// professional link (max 300 characters).",
+      "invalidFile": "Choose a non-empty JPG, PNG, WebP or PDF file up to 10 MB. Convert HEIC photos to JPG or PNG.",
+      "removeFailed": "Could not remove the uploaded document. Please try again before replacing or removing it.",
+      "submitFailed": "Could not submit verification. Please try again.",
+      "invalidEvidence": "Check your professional details and evidence before submitting."
+    }
+  },
+  "phoneInput": {
+    "label": "Phone",
+    "placeholder": "Phone number",
+    "countryAria": "Country code: {code} {dialCode} ({country})",
+    "hint": "Stored in international E.164 format, such as +15551234567."
+  },
+  "userAvatar": {
+    "named": "{name}'s profile picture",
+    "default": "Profile picture"
+  },
+  "authCaptcha": {
+    "loadError": "The security check could not load, so sign-in is blocked. Turn off any ad blocker for this site or switch networks, then reload the page."
   }
 }

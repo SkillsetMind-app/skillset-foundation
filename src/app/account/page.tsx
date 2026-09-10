@@ -3,13 +3,15 @@ import { Suspense } from "react";
 import { AccountSettingsHub } from "@/components/account/account-settings-hub";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
+import { getServerTranslation } from "@/lib/i18n/server";
 
-export default function AccountPage() {
+export default async function AccountPage() {
+  const { t } = await getServerTranslation();
   return (
     <ProtectedSurface permissions={["auth.signOut"]}>
       <PlatformShell
-        title="Settings"
-        description="Profile, login, notifications, learning defaults, and privacy controls."
+        title={t("accountSettings.label")}
+        description={t("accountSettings.description")}
         compact
         hideHeader
       >
