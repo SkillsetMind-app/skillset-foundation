@@ -44,6 +44,7 @@ export function CreatorVerificationPanel() {
     useState<CreatorVerificationCase | null>(null);
   const [caseLoaded, setCaseLoaded] = useState(false);
   const [requireVerification, setRequireVerification] = useState(false);
+  const [formRequested, setFormRequested] = useState(false);
   const [profession, setProfession] = useState("");
   const [registrationType, setRegistrationType] = useState("");
   const [registrationId, setRegistrationId] = useState("");
@@ -104,11 +105,12 @@ export function CreatorVerificationPanel() {
   }, []);
 
   const status = verificationCase?.status;
-  const showForm =
+  const canRequest =
     caseLoaded
     && (!verificationCase
       || status === "needs_changes"
       || status === "rejected");
+  const showForm = canRequest && formRequested;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -168,13 +170,31 @@ export function CreatorVerificationPanel() {
           standing.{" "}
           {requireVerification
             ? "Verification is required before you can publish a course."
-            : "Verification is optional today — it becomes required to publish once professional admission opens."}
+            : "Verification is optional. Request a professional badge, or continue without one."}
         </p>
         <p className="mt-2 text-xs text-[var(--color-ink-soft)]">
           Share your registration details and public links that prove them
           (registry lookup page, license directory, professional profile).
           Document upload ships later — for now the review works from links.
         </p>
+        {caseLoaded && status !== "approved" ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            {canRequest ? (
+              <Button
+                aria-expanded={showForm}
+                aria-controls="professional-badge-form"
+                onClick={() => setFormRequested(true)}
+              >
+                {status === "needs_changes" || status === "rejected"
+                  ? "Edit application"
+                  : "Request professional badge"}
+              </Button>
+            ) : null}
+            <Link href="/teach" className={buttonClasses({ variant: "outline" })}>
+              Not now
+            </Link>
+          </div>
+        ) : null}
       </Card>
 
       {!caseLoaded ? (
@@ -206,8 +226,9 @@ export function CreatorVerificationPanel() {
             In review
           </h2>
           <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
-            Your application is with the review team. Check this page for the
-            decision or any requested changes before continuing activation.
+            {requireVerification
+              ? "Your application is with the review team. Check this page for the decision or any requested changes before continuing activation."
+              : "Your professional badge request is with the review team. You can continue without a badge while it is reviewed."}
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <DetailRow label="Profession" value={verificationCase.profession} />
@@ -258,15 +279,15 @@ export function CreatorVerificationPanel() {
           </p>
           <p className="mt-2 text-xs text-[var(--color-ink-soft)]">
             {status === "needs_changes"
-              ? "Update the form below and resubmit."
-              : "You can submit a new application below."}
+              ? "Edit your application to update your details and resubmit."
+              : "Edit your application to submit it again."}
           </p>
         </Card>
       ) : null}
 
       {showForm ? (
         <Card as="section" padding="lg">
-          <form onSubmit={handleSubmit} className="grid gap-4">
+          <form id="professional-badge-form" onSubmit={handleSubmit} className="grid gap-4">
             <h2 className="text-base font-semibold text-[var(--color-ink)]">
               {status === "needs_changes"
                 ? "Resubmit your application"
