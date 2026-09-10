@@ -119,6 +119,20 @@ export async function POST(request: Request) {
       throw new PaymentError("You can't purchase your own course.");
     }
 
+    // A suspended creator, or one whose activation was refunded while the
+    // platform requires it, stops selling now, not when they next edit the
+    // course. The service role cannot read account controls, so a server-only
+    // predicate answers.
+    const { data: ownerCanSell, error: sellerError } = await admin.rpc("course_owner_can_sell", {
+      p_owner_uid: course.owner_id,
+    });
+    if (sellerError) throw new Error(sellerError.message);
+    if (ownerCanSell !== true) {
+      throw new PaymentError(
+        "This course is not available for purchase right now.",
+      );
+    }
+
     // Dual-read: optional offer/price packages, else legacy course columns.
     const offers = await loadCourseProductOffers(courseId);
     const priced = normalizeCoursePrice(course, offers, {
