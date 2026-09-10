@@ -1,9 +1,5 @@
 import { redirect } from "next/navigation";
 
-export function generateStaticParams() {
-  return [];
-}
-
 // A comunidade do curso tem UMA cara: a aba "Community" da sala de aula, no
 // tema do curso, com a aula atual no endereco e um caminho de volta. Esta
 // pagina era a segunda cara — o mesmo feed num hub separado, com manchete

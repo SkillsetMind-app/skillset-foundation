@@ -3,10 +3,6 @@ import { notFound } from "next/navigation";
 import { LearnCoursePage } from "@/components/learn/learn-course-page";
 import { isClassroomTab } from "@/domain/classroom-tabs";
 
-export function generateStaticParams() {
-  return [];
-}
-
 // Uma aba da sala com endereco proprio: /learn/courses/<curso>/community,
 // /materials, /messages, /review, /about, /lives. Antes tudo isso morava na
 // mesma rolagem da aula, sem endereco — nao dava para compartilhar nem voltar.
