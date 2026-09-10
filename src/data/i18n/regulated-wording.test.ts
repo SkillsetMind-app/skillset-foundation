@@ -33,6 +33,15 @@ const REGULATED_AUDIENCE = [
 
 const LOCALES = ["en", "es"];
 
+// The legal pages name the regulated service in order to DENY it: the terms say
+// courses are "not psychotherapy" and the teacher terms forbid creating a
+// "therapist-client" relationship. That text was already public, written
+// straight into the page components, where this scan never looked; it only
+// reached the dictionary when the pages were translated. Denying the service is
+// the opposite of selling to a licensed audience, so these keys stay out of the
+// scan below and get a positive check instead: the denial must stay.
+const LEGAL_PREFIX = "legalPages.";
+
 function everyString(value: unknown, path = ""): [string, string][] {
   if (typeof value === "string") return [[path, value]];
   if (value && typeof value === "object") {
@@ -49,7 +58,9 @@ describe("interface copy names no regulated audience", () => {
       readFileSync(join(process.cwd(), "src", "data", "i18n", `${locale}.json`), "utf8"),
     );
 
-    const offenders = everyString(source).flatMap(([path, text]) => {
+    const offenders = everyString(source)
+      .filter(([path]) => !path.startsWith(LEGAL_PREFIX))
+      .flatMap(([path, text]) => {
       const lower = text.toLowerCase();
       const found = REGULATED_AUDIENCE.filter((term) => lower.includes(term));
       return found.length ? [`${path}: ${found.join(", ")} — "${text.slice(0, 90)}"`] : [];
@@ -59,5 +70,17 @@ describe("interface copy names no regulated audience", () => {
       offenders,
       `These strings address a licensed audience. Say coaches, facilitators, mentors or personal-development experts instead:\n  ${offenders.join("\n  ")}`,
     ).toEqual([]);
+  });
+
+  it.each([
+    ["en", "not psychotherapy", "you may not use"],
+    ["es", "no son psicoterapia", "no puedes utilizar"],
+  ])("keeps the %s legal pages denying the regulated service", (locale, termsDenial, teacherDenial) => {
+    const source = JSON.parse(
+      readFileSync(join(process.cwd(), "src", "data", "i18n", `${locale}.json`), "utf8"),
+    );
+
+    expect(source.legalPages.terms.text10.toLowerCase()).toContain(termsDenial);
+    expect(source.legalPages.teacherTerms.text11.toLowerCase()).toContain(teacherDenial);
   });
 });
