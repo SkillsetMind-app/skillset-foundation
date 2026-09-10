@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   createServerClient: vi.fn(),
   getUser: vi.fn(),
   getSession: vi.fn(),
+  rpc: vi.fn(),
 }));
 
 vi.mock("next/headers", () => ({
@@ -51,8 +52,10 @@ const withoutFactor = { id: "user-2", factors: [] };
 describe("createSupabaseServerClient — sessao aal1 de conta com TOTP nao e login", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.rpc.mockResolvedValue({ data: true, error: null });
     mocks.createServerClient.mockReturnValue({
       auth: { getUser: mocks.getUser, getSession: mocks.getSession },
+      rpc: mocks.rpc,
     });
   });
 
@@ -90,6 +93,7 @@ describe("createSupabaseServerClient — sessao aal1 de conta com TOTP nao e log
     expect(data.user).toEqual(withoutFactor);
     // Sem fator nao ha o que conferir: nem o token e lido.
     expect(mocks.getSession).not.toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenCalledWith("account_session_allowed");
   });
 
   it("resposta sem usuario passa intacta", async () => {
@@ -100,6 +104,7 @@ describe("createSupabaseServerClient — sessao aal1 de conta com TOTP nao e log
 
     await expect(supabase.auth.getUser()).resolves.toBe(refused);
     expect(mocks.getSession).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it("token que nao decodifica conta como aal1: em duvida, fecha", async () => {
@@ -111,5 +116,46 @@ describe("createSupabaseServerClient — sessao aal1 de conta com TOTP nao e log
 
     expect(data.user).toBeNull();
     expect(error).toMatchObject({ code: "mfa_required" });
+  });
+
+  it.each([withoutFactor, enrolled])("recusa uma sessao validada pelo Auth mas bloqueada no banco ($id)", async user => {
+    mocks.getUser.mockResolvedValue({ data: { user }, error: null });
+    mocks.getSession.mockResolvedValue(sessionWith(token({ aal: "aal2" })));
+    mocks.rpc.mockResolvedValue({ data: false, error: null });
+    const client = await createSupabaseServerClient();
+    const { data, error } = await client.auth.getUser();
+    expect(mocks.rpc).toHaveBeenCalledWith("account_session_allowed");
+    expect(data.user).toBeNull();
+    expect(error).toMatchObject({ status: 403, code: "account_access_denied" });
+  });
+
+  it.each([
+    { data: null, error: null },
+    { data: "true", error: null },
+    { data: true, error: { message: "private provider detail" } },
+  ])("falha fechada para veredicto indisponivel ou invalido %#", async verdict => {
+    mocks.getUser.mockResolvedValue({ data: { user: withoutFactor }, error: null });
+    mocks.rpc.mockResolvedValue(verdict);
+    const client = await createSupabaseServerClient();
+    expect((await client.auth.getUser()).data.user).toBeNull();
+  });
+
+  it("falha fechada em erro de transporte sem expor diagnostico", async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: withoutFactor }, error: null });
+    mocks.rpc.mockRejectedValue(new Error("private network detail"));
+    const client = await createSupabaseServerClient();
+    const response = await client.auth.getUser();
+    expect(response.data.user).toBeNull();
+    expect(response.error?.message).not.toContain("private");
+  });
+
+  it("confere exatamente o JWT explicito, nao o cookie de outra sessao", async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: withoutFactor }, error: null });
+    const query = Object.assign(Promise.resolve({ data: false, error: null }), { setHeader: vi.fn() });
+    mocks.rpc.mockReturnValue(query);
+    const client = await createSupabaseServerClient();
+    expect((await client.auth.getUser("synthetic-token")).data.user).toBeNull();
+    expect(query.setHeader).toHaveBeenCalledWith("Authorization", "Bearer synthetic-token");
+    expect(mocks.getSession).not.toHaveBeenCalled();
   });
 });

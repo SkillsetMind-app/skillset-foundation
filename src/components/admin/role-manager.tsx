@@ -1,10 +1,11 @@
 "use client";
 
-import { CircleDollarSign, RotateCcw } from "lucide-react";
+import { CircleDollarSign, RotateCcw, Shield } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { PlatformInviteManager } from "@/components/admin/platform-invite-manager";
+import { AccountControlDialog } from "@/components/admin/account-control-dialog";
 import { Button, Field, InlineAlert } from "@/components/ui";
 import { setActivationWaiver } from "@/lib/data/platform-invites";
 import {
@@ -108,6 +109,7 @@ export function RoleManager() {
   const [error, setError] = useState<{ scope: "load" | "save"; key: string } | null>(null);
   const [savingUid, setSavingUid] = useState("");
   const [waiverBusy, setWaiverBusy] = useState(false);
+  const [accountTarget, setAccountTarget] = useState<PlatformUser | null>(null);
   const [waiverFeedback, setWaiverFeedback] = useState<{ uid: string; key: string; failed: boolean } | null>(null);
 
   async function applyWaiver(user: PlatformUser, waived: boolean) {
@@ -182,6 +184,7 @@ export function RoleManager() {
 
   return (
     <section className="min-w-0 rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+      {accountTarget ? <AccountControlDialog key={accountTarget.uid} uid={accountTarget.uid} label={accountTarget.email || personLabel(accountTarget)} onClose={() => setAccountTarget(null)} /> : null}
       <div className="flex flex-wrap items-center gap-2">
         {tabs.map((entry) => (
           <button
@@ -280,6 +283,9 @@ export function RoleManager() {
                     ))}
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
+                    <Button variant="outline" disabled={waiverBusy || Boolean(savingUid)} className="min-h-11 max-w-full whitespace-normal" onClick={() => setAccountTarget(user)}>
+                      <Shield size={16} className="shrink-0" aria-hidden />{t("accountControls.title")}
+                    </Button>
                     <Button variant="outline" disabled={waiverBusy || Boolean(savingUid)} className="min-h-11 max-w-full whitespace-normal" onClick={() => void applyWaiver(user, true)}>
                       <CircleDollarSign size={16} className="shrink-0" aria-hidden />{t("platformInvites.waive")}
                     </Button>

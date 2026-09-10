@@ -69,24 +69,39 @@ function withSecondFactorGate(
   client.auth.getUser = async (jwt?: string) => {
     const response = await getUser(jwt);
 
-    if (!response.data.user || !hasVerifiedFactor(response.data.user)) {
+    if (!response.data.user) {
       return response;
     }
 
-    const accessToken =
-      jwt ?? (await client.auth.getSession()).data.session?.access_token;
-
-    if (assuranceLevel(accessToken) === "aal2") {
-      return response;
+    if (hasVerifiedFactor(response.data.user)) {
+      const accessToken =
+        jwt ?? (await client.auth.getSession()).data.session?.access_token;
+      if (assuranceLevel(accessToken) !== "aal2") {
+        return {
+          data: { user: null },
+          error: new AuthError(
+            "Finish signing in with the code from your authenticator app.",
+            401,
+            "mfa_required",
+          ),
+        };
+      }
     }
 
+    // Live database verdict, including previously issued sessions. All route
+    // callers (also those using service-role writes afterwards) pass here.
+    // Check the same explicit JWT as getUser, not a different cookie session.
+    try {
+      const check = client.rpc("account_session_allowed");
+      if (jwt) check.setHeader("Authorization", `Bearer ${jwt}`);
+      const { data: allowed, error } = await check;
+      if (!error && allowed === true) return response;
+    } catch {
+      // An unavailable status check is not permission to use the account.
+    }
     return {
       data: { user: null },
-      error: new AuthError(
-        "Finish signing in with the code from your authenticator app.",
-        401,
-        "mfa_required",
-      ),
+      error: new AuthError("Account access is unavailable.", 403, "account_access_denied"),
     };
   };
 
