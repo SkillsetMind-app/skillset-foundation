@@ -34,7 +34,7 @@ export function LessonListOverlay({
   onSelect,
   onClose,
 }: LessonListOverlayProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
 
@@ -143,10 +143,10 @@ export function LessonListOverlay({
           <p aria-live="polite" className="mt-2 break-words text-xs text-[var(--color-ink-soft)]">
             {normalizedQuery
               ? t(`learn.classroom.curriculum.${matchCount === 1 ? "matchOne" : "matchMany"}`)
-                .replace("{count}", () => String(matchCount))
+                .replace("{count}", () => new Intl.NumberFormat(locale).format(matchCount))
                 .replace("{query}", () => query.trim())
               : t(`learn.classroom.curriculum.${matchCount === 1 ? "countOne" : "countMany"}`)
-                .replace("{count}", () => String(matchCount))}
+                .replace("{count}", () => new Intl.NumberFormat(locale).format(matchCount))}
           </p>
         </div>
 
@@ -161,7 +161,7 @@ export function LessonListOverlay({
                 group.lessons.length === 0 ? null : (
                   <li key={group.module.id}>
                     <p className="break-words text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-                      {t("learn.classroom.curriculum.module").replace("{number}", () => String(moduleIndex + 1))} &middot; {group.module.title}
+                      {t("learn.classroom.curriculum.module").replace("{number}", () => new Intl.NumberFormat(locale).format(moduleIndex + 1))} &middot; {group.module.title}
                     </p>
                     <ul className="mt-2 grid grid-cols-1 gap-2">
                       {group.lessons.map(({ lesson, position }) => {
@@ -191,7 +191,7 @@ export function LessonListOverlay({
                                 ) : isSelected ? (
                                   <PlayCircle aria-hidden size={15} />
                                 ) : unlocked ? (
-                                  position
+                                  new Intl.NumberFormat(locale).format(position)
                                 ) : (
                                   <LockKeyhole aria-hidden size={14} />
                                 )}

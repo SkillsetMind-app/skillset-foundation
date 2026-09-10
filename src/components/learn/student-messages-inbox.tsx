@@ -47,7 +47,7 @@ export function StudentMessagesInbox() {
     }
 
     return subscribeToStudentMessages(user.uid, setMessages, () => {
-      setNotice("We could not load your messages.");
+      setNotice("learnWave2.messages.loadError");
     });
   }, [user]);
 
@@ -75,12 +75,8 @@ export function StudentMessagesInbox() {
         body: draft,
       });
       setDraft("");
-    } catch (error) {
-      setNotice(
-        error instanceof Error && error.message
-          ? error.message
-          : "We could not send your message. Try again.",
-      );
+    } catch {
+      setNotice("learnWave2.messages.sendError");
     } finally {
       setIsSending(false);
     }
@@ -89,7 +85,7 @@ export function StudentMessagesInbox() {
   // Voltar e sempre a seta no canto superior esquerdo, um nivel acima:
   // conversa -> lista -> painel.
   const backHref = selectedThread ? pathname : "/learn";
-  const backLabel = selectedThread ? "All conversations" : "Back";
+  const backLabel = selectedThread ? t("learnWave2.messages.all") : t("learnWave2.messages.back");
 
   return (
     <div className="grid gap-5">
@@ -109,21 +105,20 @@ export function StudentMessagesInbox() {
             size={28}
           />
           <h2 className="mt-3 text-lg font-semibold text-[var(--color-primary)]">
-            No conversations yet
+            {t("learnWave2.messages.empty")}
           </h2>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
-            Write to a teacher from the Messages tab inside any of your courses.
-            The thread appears here, and replies land in your notification bell.
+            {t("learnWave2.messages.emptyDetail")}
           </p>
           {notice ? (
-            <p className="mt-4 text-xs font-semibold text-[var(--color-primary)]">
-              {notice}
+            <p role="alert" className="mt-4 text-xs font-semibold text-[var(--color-primary)]">
+              {t(notice)}
             </p>
           ) : null}
         </section>
       ) : (
         <div className="grid gap-5 lg:grid-cols-[minmax(240px,320px)_1fr]">
-          <nav aria-label="Conversations" className="grid content-start gap-2">
+          <nav aria-label={t("learnWave2.messages.conversations")} className="grid content-start gap-2">
             {threads.map((thread) => {
               const isActive = selectedThread?.key === thread.key;
               const lastFromMe = user ? thread.lastMessage.senderId === user.uid : false;
@@ -143,7 +138,7 @@ export function StudentMessagesInbox() {
                     {thread.courseTitle}
                   </p>
                   <p className="mt-1 truncate text-xs leading-5 text-[var(--color-ink-soft)]">
-                    {lastFromMe ? "You: " : "Teacher: "}
+                    {lastFromMe ? t("learnWave2.messages.youPrefix") : t("learnWave2.messages.teacherPrefix")}
                     {thread.lastMessage.body}
                   </p>
                   <p className="mt-1 text-[11px] font-medium text-[var(--color-ink-muted)]">
@@ -156,7 +151,7 @@ export function StudentMessagesInbox() {
 
           {selectedThread ? (
             <section
-              aria-label={`Conversation: ${selectedThread.courseTitle}`}
+              aria-label={t("learnWave2.messages.conversation").replace("{course}", () => selectedThread.courseTitle)}
               className="rounded-[16px] border fine-rule bg-white p-5"
             >
               <div className="border-b fine-rule pb-3">
@@ -164,7 +159,7 @@ export function StudentMessagesInbox() {
                   {selectedThread.courseTitle}
                 </h2>
                 <p className="mt-0.5 text-xs font-semibold text-[var(--color-ink-muted)]">
-                  Private thread with the course teacher
+                  {t("learnWave2.messages.private")}
                 </p>
               </div>
 
@@ -181,7 +176,7 @@ export function StudentMessagesInbox() {
                       }`}
                     >
                       <p className="text-xs font-semibold text-[var(--color-ink-muted)]">
-                        {isMine ? "You" : "Teacher"} ·{" "}
+                        {isMine ? t("learnWave2.messages.you") : t("learnWave2.messages.teacher")} ·{" "}
                         {formatNotificationTime(message.createdAt, t, locale)}
                       </p>
                       <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-[var(--color-ink)]">
@@ -194,7 +189,7 @@ export function StudentMessagesInbox() {
 
               <form onSubmit={handleSend} className="mt-5 grid gap-3">
                 <label className="sr-only" htmlFor="student-message-draft">
-                  Your message
+                  {t("learnWave2.messages.message")}
                 </label>
                 <textarea
                   id="student-message-draft"
@@ -204,11 +199,11 @@ export function StudentMessagesInbox() {
                   maxLength={COURSE_MESSAGE_MAX_CHARS}
                   rows={3}
                   className="min-h-20 rounded-[12px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)]"
-                  placeholder="Write to your teacher..."
+                  placeholder={t("learnWave2.messages.placeholder")}
                 />
                 {notice ? (
-                  <p className="rounded-[10px] bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-primary)]">
-                    {notice}
+                  <p role="alert" className="rounded-[10px] bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-primary)]">
+                    {t(notice)}
                   </p>
                 ) : null}
                 <button
@@ -217,13 +212,13 @@ export function StudentMessagesInbox() {
                   className="button-solid inline-flex min-h-11 w-fit items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-60"
                 >
                   <Send size={15} aria-hidden="true" />
-                  {isSending ? "Sending..." : "Send"}
+                  {isSending ? t("learnWave2.messages.sending") : t("learnWave2.messages.send")}
                 </button>
               </form>
             </section>
           ) : (
             <section className="rounded-[16px] border fine-rule bg-white p-5 text-sm leading-6 text-[var(--color-ink-soft)]">
-              Pick a course on the left to read the conversation.
+              {t("learnWave2.messages.pick")}
             </section>
           )}
         </div>

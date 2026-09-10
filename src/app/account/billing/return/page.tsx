@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Clock } from "lucide-react";
 
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
+import { getServerTranslation } from "@/lib/i18n/server";
 
 type SearchParamValue = string | string[] | undefined;
 
@@ -19,10 +20,8 @@ function firstParam(value: SearchParamValue): string | undefined {
  * session, appending ?session_id=… The customer.subscription.created
  * webhook updates the profile's currentPlanId asynchronously, so by the
  * time the user lands here the plan change is usually — but not always —
- * already applied. We confirm that checkout finished (the session_id is
- * proof of that) without asserting the plan is live this instant, and we
- * refuse to claim success at all when the page is reached directly with
- * no session_id (a stale bookmark or manual navigation).
+ * already applied. A session_id in the URL is NOT proof of payment. This page
+ * only reports pending confirmation; the webhook remains authoritative.
  *
  * TODO(posthog): emit CHECKOUT_COMPLETED here once we expose a backend
  * endpoint to resolve the Stripe session_id → order doc (order_id,
@@ -35,57 +34,53 @@ function firstParam(value: SearchParamValue): string | undefined {
 export default async function BillingReturnPage({
   searchParams,
 }: BillingReturnPageProps) {
+  const { t } = await getServerTranslation();
   const params = (await searchParams) ?? {};
   const sessionId = firstParam(params.session_id);
-  const checkoutCompleted = Boolean(sessionId);
+  const hasSessionReference = Boolean(sessionId);
 
   return (
     <ProtectedSurface permissions={["auth.signOut"]}>
-      <PlatformShell title="Checkout status" compact>
-        {checkoutCompleted ? (
+      <PlatformShell title={t("billingCheckout.returnTitle")} compact>
+        {hasSessionReference ? (
           <div className="rounded-[14px] border fine-rule bg-white p-10 text-center shadow-[var(--shadow-soft)]">
             <div className="mx-auto grid size-12 place-items-center rounded-full bg-[var(--color-primary)] text-[var(--color-base)]">
-              <Check aria-hidden="true" size={24} strokeWidth={2.4} />
+              <Clock aria-hidden="true" size={24} strokeWidth={2.4} />
             </div>
             <h2 className="display-title mt-5 text-3xl text-[var(--color-primary)]">
-              Checkout complete.
+              {t("billingCheckout.confirming")}
             </h2>
             <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
-              Stripe finished your checkout. Your new plan and commission rate
-              activate as soon as the confirmation lands — usually within a few
-              moments. If billing still shows the old plan, refresh it shortly.
-              You can update your card or cancel from billing settings any time.
+              {t("billingCheckout.returnBody")}
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Link
                 href="/account/billing?tab=subscriptions"
                 className="button-outline px-4 py-2.5 text-sm"
               >
-                Back to billing
+                {t("billingCheckout.backToBilling")}
               </Link>
               <Link href="/teach" className="button-solid px-4 py-2.5 text-sm">
-                Open Teacher Studio
+                {t("billingCheckout.openStudio")}
               </Link>
             </div>
           </div>
         ) : (
           <div className="rounded-[14px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-8 text-center">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-              Nothing to confirm
+              {t("billingCheckout.nothingToConfirm")}
             </p>
             <h2 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
-              No recent checkout.
+              {t("billingCheckout.noCheckout")}
             </h2>
             <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
-              This page confirms a Stripe checkout right after you complete one.
-              We didn&apos;t find a checkout session for this visit — head back to
-              billing to review your plan or start an upgrade.
+              {t("billingCheckout.noCheckoutBody")}
             </p>
             <Link
               href="/account/billing?tab=subscriptions"
               className="button-solid mt-5 inline-flex px-4 py-2.5 text-sm"
             >
-              Go to billing
+              {t("billingCheckout.goToBilling")}
             </Link>
           </div>
         )}

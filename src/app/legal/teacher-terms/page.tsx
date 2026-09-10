@@ -1,288 +1,145 @@
-import Link from "next/link";
-
-import { LegalArticle, LegalSection } from "@/components/site/legal-article";
+import { LegalArticle, LegalSection, LegalText } from "@/components/site/legal-article";
 import { refundWindowDays } from "@/data/plans";
+import { getServerTranslation } from "@/lib/i18n/server";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
-export const metadata = buildPageMetadata({
-  title: "Teacher Terms",
-  description: "The terms that govern teaching and payouts on SkillsetMind.",
-  path: "/legal/teacher-terms",
-});
-
-const EFFECTIVE_DATE = "July 5, 2026";
-const SUPPORT_EMAIL = "support@skillsetmind.com";
-const LEGAL_EMAIL = "legal@skillsetmind.com";
-
-function SupportLink() {
-  return (
-    <a
-      className="font-semibold text-[var(--color-accent-fg)]"
-      href={`mailto:${SUPPORT_EMAIL}`}
-    >
-      {SUPPORT_EMAIL}
-    </a>
-  );
+export async function generateMetadata() {
+  const { t } = await getServerTranslation();
+  return buildPageMetadata({
+    title: t("legalPages.teacherTerms.title"),
+    description: t("legalPages.teacherTerms.description"),
+    path: "/legal/teacher-terms",
+  });
 }
 
-export default function TeacherTermsPage() {
+export default async function TeacherTermsPage() {
+  const { t } = await getServerTranslation();
   return (
     <LegalArticle
-      kicker="Legal"
-      title="Teacher Terms"
-      effectiveDate={EFFECTIVE_DATE}
+      kicker={t("legalPages.common.kicker")}
+      title={t("legalPages.teacherTerms.title")}
+      effectiveDate={t("legalPages.common.effectiveDate")}
+      effectiveLabel={t("legalPages.common.effectiveLabel")}
       intro={
         <>
           <p>
-            These Teacher Terms apply in addition to the{" "}
-            <Link className="font-semibold text-[var(--color-accent-fg)]" href="/legal/terms">
-              Terms of Service
-            </Link>{" "}
-            when you publish or sell courses on SkillsetMind (&quot;educator,&quot;
-            &quot;you&quot;). If these terms conflict with the Terms of
-            Service, these terms control for your educator activity.
+            <LegalText text={t("legalPages.teacherTerms.text1")} />
           </p>
           <p className="mt-3">
-            They exist to protect three parties at once: your students, your
-            work, and the trust of the marketplace. Our public commitments to
-            you are written in{" "}
-            <Link className="font-semibold text-[var(--color-accent-fg)]" href="/promise">
-              The Promise
-            </Link>
-            .
+            <LegalText text={t("legalPages.teacherTerms.text2")} />
           </p>
         </>
       }
     >
-      <LegalSection heading="1. Your relationship with SkillsetMind">
+      <LegalSection heading={t("legalPages.teacherTerms.heading1")}>
         <p>
-          You are an independent professional, not an employee, agent, or
-          partner of SkillsetMind. You decide what to teach, how to price it
-          (within the platform&apos;s supported options), and how to run your
-          courses. SkillsetMind provides the technology, checkout, and marketplace
-          — it does not supervise your professional practice.
+          <LegalText text={t("legalPages.teacherTerms.text3")} />
         </p>
       </LegalSection>
 
-      <LegalSection heading="2. Eligibility and accurate credentials">
+      <LegalSection heading={t("legalPages.teacherTerms.heading2")}>
         <p>
-          You must be at least 18 years old. Any credentials, licenses,
-          degrees, or professional experience you present on your profile or
-          in your course pages must be truthful and current. Misrepresenting
-          qualifications — especially regulated or clinical ones — is grounds
-          for immediate removal.
+          <LegalText text={t("legalPages.teacherTerms.text4")} />
         </p>
       </LegalSection>
 
-      <LegalSection heading="3. Your content stays yours">
+      <LegalSection heading={t("legalPages.teacherTerms.heading3")}>
         <p>
-          You retain full ownership of the intellectual property in the
-          content you create. By publishing on SkillsetMind you grant us a
-          non-exclusive, worldwide license to host, encode, display, and
-          deliver your content to your enrolled students, and to use your
-          course title, description, cover image, and public profile to
-          promote your course on and off the platform. This license ends for a
-          course when you remove it, except for students already enrolled, who
-          keep the access they paid for.
+          <LegalText text={t("legalPages.teacherTerms.text5")} />
         </p>
         <p>
-          There is no exclusivity. You may sell the same or similar content
-          anywhere else.
+          <LegalText text={t("legalPages.teacherTerms.text6")} />
         </p>
       </LegalSection>
 
-      <LegalSection heading="4. Content responsibility and compliance">
+      <LegalSection heading={t("legalPages.teacherTerms.heading4")}>
         <p>
-          You are solely responsible for the accuracy, originality, legality,
-          and student safety of everything you publish — videos, materials,
-          community posts, and live sessions. You must own or have the rights
-          to everything in your course, including music, images, and excerpts.
+          <LegalText text={t("legalPages.teacherTerms.text7")} />
         </p>
         <p>
-          You must complete professional verification before publishing.
-          SkillsetMind monitors live programs and may review reported content
-          for policy compliance; this does not transfer responsibility for your
-          content to SkillsetMind. Automated compliance signals do not
-          automatically unpublish a course. After a human operations decision,
-          courses may be paused or removed if they fail trust, payment, safety,
-          or content standards.
+          <LegalText text={t("legalPages.teacherTerms.text8")} />
         </p>
       </LegalSection>
 
-      <LegalSection heading="5. Training, not treatment">
+      <LegalSection heading={t("legalPages.teacherTerms.heading5")}>
         <p>
-          SkillsetMind serves coaches, facilitators, and personal-development
-          professionals. It is not a venue for licensed clinical practice, so
-          this boundary is strict:
+          <LegalText text={t("legalPages.teacherTerms.text9")} />
         </p>
         <ul className="list-disc space-y-2 pl-6">
           <li>
-            Courses must be instructional. A course may teach methods,
-            frameworks, and skills; it may not deliver individualized clinical
-            care, diagnosis, or treatment disguised as a course.
+            <LegalText text={t("legalPages.teacherTerms.text10")} />
           </li>
           <li>
-            You may not use courses, communities, or live sessions to create a
-            therapist-client, counselor-client, or practitioner-patient
-            relationship with students, nor present course participation as a
-            substitute for therapy or medical treatment.
+            <LegalText text={t("legalPages.teacherTerms.text11")} />
           </li>
           <li>
-            Courses touching wellbeing or mental-health topics must include a
-            clear disclaimer that the content is instructional and does not
-            replace professional care.
+            <LegalText text={t("legalPages.teacherTerms.text12")} />
           </li>
           <li>
-            If your professional regulations (licensing board, professional
-            council, or local law) restrict what you may offer online, you are
-            responsible for complying with them.
+            <LegalText text={t("legalPages.teacherTerms.text13")} />
           </li>
         </ul>
       </LegalSection>
 
-      <LegalSection heading="6. Your students and their data">
+      <LegalSection heading={t("legalPages.teacherTerms.heading6")}>
         <p>
-          Consistent with The Promise: your student list is yours. You can see
-          the name, email, enrollment date, and progress of students in your
-          courses, and you can export your content and your student data at
-          any time. If you leave SkillsetMind, you take them with you.
+          <LegalText text={t("legalPages.teacherTerms.text14")} />
         </p>
         <p>
-          In return, you must treat student data lawfully: use it to run and
-          support your courses and your own communication with your students,
-          never sell it, and honor applicable privacy law (GDPR, LGPD, CCPA)
-          for the data you export. Do not share one student&apos;s personal
-          information with other students.
+          <LegalText text={t("legalPages.teacherTerms.text15")} />
         </p>
       </LegalSection>
 
-      <LegalSection heading="7. Pricing, commission, and payouts">
+      <LegalSection heading={t("legalPages.teacherTerms.heading7")}>
         <ul className="list-disc space-y-2 pl-6">
           <li>
-            <strong className="text-[var(--color-ink)]">
-              You are the merchant of record
-            </strong>{" "}
-            — the buyer&apos;s payment is charged directly to your Stripe
-            account. SkillsetMind never receives, holds, or remits your sale
-            proceeds, and is not a party to the payment between you and your
-            buyer. As merchant of record you are responsible for delivering what
-            you sold, for your own refund and chargeback exposure, and for the
-            consumer-protection and tax obligations that apply to your sales.
+            <LegalText text={t("legalPages.teacherTerms.text16")} />
           </li>
           <li>
-            <strong className="text-[var(--color-ink)]">Checkout</strong> — all
-            sales of your courses on SkillsetMind go through the platform&apos;s
-            Stripe checkout, created against your connected account. Directing
-            platform buyers to an off-platform checkout for the same course is
-            prohibited.
+            <LegalText text={t("legalPages.teacherTerms.text17")} />
           </li>
           <li>
-            <strong className="text-[var(--color-ink)]">Commission</strong> —
-            SkillsetMind charges a platform fee on each sale according to your
-            subscription plan, as shown on the{" "}
-            <Link className="font-semibold text-[var(--color-accent-fg)]" href="/pricing">
-              pricing page
-            </Link>{" "}
-            at the time of sale. Stripe deducts it from the charge automatically;
-            we do not invoice you for it separately.
+            <LegalText text={t("legalPages.teacherTerms.text18")} />
           </li>
           <li>
-            <strong className="text-[var(--color-ink)]">Payouts</strong> — paid
-            by Stripe from your own account balance to your bank. Checkout can be
-            presented in 30 currencies; the currency your balance settles and
-            pays out in is set by Stripe on your connected account, and a
-            conversion may apply when the two differ. The payout schedule is the
-            one on your connected
-            Stripe account and is controlled by Stripe; SkillsetMind adds no
-            clearance period on top of it, because SkillsetMind holds nothing.
-            Stripe applies its own settlement and payout timing, which depends on
-            your country and payment method, and imposes a waiting period on a
-            new connected account&apos;s first payout — typically 7 to 14 days,
-            and up to 30 days in Brazil — that SkillsetMind cannot waive. The
-            absence of a SkillsetMind hold does not shorten Stripe&apos;s own
-            timeline. You must complete Stripe&apos;s identity verification to
-            receive payouts.
+            <LegalText text={t("legalPages.teacherTerms.text19")} />
           </li>
           <li>
-            <strong className="text-[var(--color-ink)]">Refunds and chargebacks</strong>{" "}
-            — student refunds within the {refundWindowDays}-day window, and any
-            chargebacks, are debited from your Stripe balance by Stripe. Our
-            platform fee on a refunded sale is returned to you with the refund.
-            Because you are the merchant of record, dispute liability is yours
-            and SkillsetMind cannot reverse a dispute on your behalf. Repeated
-            abnormal chargeback rates may lead to review of your account.
+            <LegalText text={t("legalPages.teacherTerms.text20").replaceAll("{days}", () => String(refundWindowDays))} />
           </li>
         </ul>
       </LegalSection>
 
-      <LegalSection heading="8. Taxes">
+      <LegalSection heading={t("legalPages.teacherTerms.heading8")}>
         <p>
-          You are responsible for your own taxes on your earnings, including
-          income tax and any VAT/GST or local obligations that apply to you as
-          an independent professional. SkillsetMind and Stripe may issue tax forms
-          or collect tax information where the law requires.
+          <LegalText text={t("legalPages.teacherTerms.text21")} />
         </p>
       </LegalSection>
 
-      <LegalSection heading="9. Marketing claims">
+      <LegalSection heading={t("legalPages.teacherTerms.heading9")}>
         <p>
-          Your course pages, testimonials, and promotions must be truthful.
-          Do not guarantee clinical outcomes, cures, or income results.
-          Testimonials must be genuine and may not imply results that are not
-          typical.
+          <LegalText text={t("legalPages.teacherTerms.text22")} />
         </p>
       </LegalSection>
 
-      <LegalSection heading="10. Suspension, removal, and leaving">
+      <LegalSection heading={t("legalPages.teacherTerms.heading10")}>
         <p>
-          We may pause or remove a course, or suspend an educator account,
-          for violation of these terms, with notice and a chance to fix the
-          issue where the violation is fixable. Fraud, credential
-          misrepresentation, or student-safety issues may lead to immediate
-          removal.
+          <LegalText text={t("legalPages.teacherTerms.text23")} />
         </p>
         <p>
-          If a course is removed or you close your account, students who
-          already bought it keep access to what they purchased (or receive a
-          refund handled per the refund policy), and you may export your content
-          and student data beforehand. SkillsetMind never receives or holds your
-          sale proceeds — they are paid into your own Stripe account — so there
-          is no SkillsetMind balance of yours to release. A refund we process on
-          your behalf under the refund policy is still debited from your Stripe
-          balance, as described in Section 7.
+          <LegalText text={t("legalPages.teacherTerms.text24")} />
         </p>
       </LegalSection>
 
-      <LegalSection heading="11. Indemnification and liability">
+      <LegalSection heading={t("legalPages.teacherTerms.heading11")}>
         <p>
-          You will indemnify SkillsetMind against claims arising from your
-          content, your professional conduct, your marketing claims, or your
-          handling of student data. The warranty disclaimers and liability
-          limits in the{" "}
-          <Link className="font-semibold text-[var(--color-accent-fg)]" href="/legal/terms">
-            Terms of Service
-          </Link>{" "}
-          apply equally to your educator activity.
+          <LegalText text={t("legalPages.teacherTerms.text25")} />
         </p>
       </LegalSection>
 
-      <LegalSection heading="12. Changes and contact">
+      <LegalSection heading={t("legalPages.teacherTerms.heading12")}>
         <p>
-          Material changes to these terms — especially to commission or payout
-          mechanics — will be announced before they take effect, and we will
-          update the effective date above. Questions: <SupportLink /> or{" "}
-          <a
-            className="font-semibold text-[var(--color-accent-fg)]"
-            href={`mailto:${LEGAL_EMAIL}`}
-          >
-            {LEGAL_EMAIL}
-          </a>
-          . Governing law
-          and dispute resolution follow the{" "}
-          <Link className="font-semibold text-[var(--color-accent-fg)]" href="/legal/terms">
-            Terms of Service
-          </Link>
-          .
+          <LegalText text={t("legalPages.teacherTerms.text26")} />
         </p>
       </LegalSection>
     </LegalArticle>

@@ -1,3 +1,4 @@
+import { getServerTranslation } from "@/lib/i18n/server";
 import { Suspense } from "react";
 
 import { ProtectedSurface } from "@/components/auth/protected-surface";
@@ -25,6 +26,7 @@ export async function LearnCoursePage({
   /** Um post da comunidade aberto na gaveta (rota .../community/q/<post>). */
   openPostId?: string | null;
 }) {
+  const { t } = await getServerTranslation();
   const course = getCourseBySlug(slug);
 
   if (!course) {
@@ -45,7 +47,7 @@ export async function LearnCoursePage({
               // flash of the wrong product.
               <section className="rounded-[14px] border border-[var(--ma-line)] bg-[var(--ma-surface)] p-6">
                 <p className="text-sm text-[var(--ma-ink-soft)]">
-                  Loading creator course...
+                  {t("learnWave2.workspace.suspense")}
                 </p>
               </section>
             }

@@ -40,15 +40,9 @@ const periodSubtitleKey: Record<ReportPeriod, string> = {
   all: "teach.insights.rangeAll",
 };
 
-const chartMoney = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
-
-function money(amountMinor: number, currency: string): string {
+function money(amountMinor: number, currency: string, locale: string): string {
   try {
-    const formatted = new Intl.NumberFormat(undefined, {
+    const formatted = new Intl.NumberFormat(locale, {
       maximumFractionDigits: 0,
     }).format(amountMinor / 100);
     return `${currency} ${formatted}`;
@@ -60,6 +54,11 @@ function money(amountMinor: number, currency: string): string {
 export function CreatorOpsHub() {
   const { user } = useAuth();
   const { locale, t } = useTranslation();
+  const chartMoney = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
   const [orders, setOrders] = useState<Order[]>([]);
   const [ledgers, setLedgers] = useState<PayoutLedgerEntry[]>([]);
   const [subscriptions, setSubscriptions] = useState<CourseSubscription[]>([]);
@@ -104,7 +103,7 @@ export function CreatorOpsHub() {
 
   const moneyBreakdown = (values: CurrencyAmount[]): string =>
     values.length
-      ? values.map((value) => money(value.amountMinor, value.currency)).join(" + ")
+      ? values.map((value) => money(value.amountMinor, value.currency, locale)).join(" + ")
       : t("teach.reports.noActivity");
 
   const report = useMemo(() => {
@@ -284,7 +283,7 @@ export function CreatorOpsHub() {
                       {row.orders}
                     </td>
                     <td className="py-2 pr-4 text-right font-semibold tabular-nums">
-                      {money(row.grossMinor, row.currency)}
+                      {money(row.grossMinor, row.currency, locale)}
                     </td>
                     <td className="py-2 text-right tabular-nums">{row.refunds}</td>
                   </tr>

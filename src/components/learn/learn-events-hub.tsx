@@ -7,9 +7,6 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { SkillsetUser } from "@/domain/auth";
 import {
-  courseEventRsvpStatusLabels,
-  courseEventStatusLabels,
-  courseEventTypeLabels,
   formatEventDateTime,
   type CourseEvent,
   type CourseEventRsvp,
@@ -27,6 +24,7 @@ import { subscribeToUserEnrollments } from "@/lib/data/enrollments";
 type EventBuckets = Record<string, CourseEvent[]>;
 
 export function LearnEventsHub() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [eventBuckets, setEventBuckets] = useState<EventBuckets>({});
@@ -46,7 +44,7 @@ export function LearnEventsHub() {
         setIsLoadingEnrollments(false);
       },
       () => {
-        setError("We could not load your enrolled courses.");
+        setError("learnWave2.eventsHub.loadError");
         setIsLoadingEnrollments(false);
       },
     );
@@ -76,7 +74,7 @@ export function LearnEventsHub() {
           );
         },
         () => {
-          setError("We could not load one or more course event schedules.");
+          setError("learnWave2.eventsHub.eventsError");
           setLoadedSlugs((currentSlugs) =>
             currentSlugs.includes(courseSlug)
               ? currentSlugs
@@ -107,7 +105,7 @@ export function LearnEventsHub() {
   if (isLoadingEnrollments || isLoadingEvents) {
     return (
       <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-sm text-[var(--color-ink-soft)]">Loading your event schedule...</p>
+        <p className="text-sm text-[var(--color-ink-soft)]">{t("learnWave2.eventsHub.loading")}</p>
       </section>
     );
   }
@@ -115,8 +113,8 @@ export function LearnEventsHub() {
   if (error) {
     return (
       <section className="rounded-[14px] border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {error}
+        <p role="alert" className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          {t(error)}
         </p>
       </section>
     );
@@ -126,18 +124,17 @@ export function LearnEventsHub() {
     return (
       <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          Live learning
+          {t("learnWave2.eventsHub.eyebrow")}
         </p>
         <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-          Events open after enrollment.
+          {t("learnWave2.eventsHub.emptyTitle")}
         </h2>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          Enroll in a course to see live classes, mentorship sessions, office
-          hours, webinars, and course deadlines.
+          {t("learnWave2.eventsHub.emptyDetail")}
         </p>
         <div className="mt-6">
           <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
-            Explore programs
+            {t("learnWave2.eventsHub.explore")}
           </Link>
         </div>
       </section>
@@ -148,14 +145,13 @@ export function LearnEventsHub() {
     return (
       <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          Your schedule
+          {t("learnWave2.eventsHub.schedule")}
         </p>
         <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-          No live sessions are scheduled yet.
+          {t("learnWave2.eventsHub.noSessions")}
         </h2>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          When instructors schedule live classes, mentorships, office hours, or
-          webinars for your enrolled courses, they will appear here.
+          {t("learnWave2.eventsHub.noSessionsDetail")}
         </p>
       </section>
     );
@@ -200,7 +196,7 @@ function LearnerEventCard({
         setIsLoadingRsvp(false);
       },
       () => {
-        setRsvpError("We could not load your RSVP for this session.");
+        setRsvpError("learnWave2.eventsHub.rsvpError");
         setIsLoadingRsvp(false);
       },
     );
@@ -222,13 +218,13 @@ function LearnerEventCard({
         user: currentUser,
       });
     } catch {
-      setRsvpError("We could not save your RSVP.");
+      setRsvpError("learnWave2.eventsHub.saveError");
     } finally {
       setIsSavingRsvp(false);
     }
   }
 
-  const rsvpLabel = rsvp ? courseEventRsvpStatusLabels[rsvp.status] : "No RSVP yet";
+  const rsvpLabel = rsvp ? t(`learnWave2.eventsHub.${rsvp.status}`) : t("learnWave2.eventsHub.noRsvp");
   const safeJoinUrl = getSafeExternalUrl(event.externalUrl);
 
   return (
@@ -236,14 +232,14 @@ function LearnerEventCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {courseEventTypeLabels[event.type]}
+            {t(`platform.events.type.${event.type}`)}
           </p>
           <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
             {event.title}
           </h2>
         </div>
         <span className="rounded-[8px] bg-[var(--color-surface-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
-          {courseEventStatusLabels[event.status]}
+          {t(`platform.events.status.${event.status}`)}
         </span>
       </div>
       <p className="mt-4 text-sm font-semibold text-[var(--color-ink)]">
@@ -258,18 +254,18 @@ function LearnerEventCard({
 
       <div className="mt-6 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-          Attendance
+          {t("learnWave2.eventsHub.attendance")}
         </p>
         <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
           {!currentUser
-            ? "Sign in to RSVP"
+            ? t("learnWave2.eventsHub.signIn")
             : isLoadingRsvp
-              ? "Checking your RSVP..."
+              ? t("learnWave2.eventsHub.checking")
               : rsvpLabel}
         </p>
         {rsvpError ? (
-          <p className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {rsvpError}
+          <p role="alert" className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
+            {t(rsvpError)}
           </p>
         ) : null}
         <div className="mt-4 flex flex-wrap gap-2">
@@ -279,7 +275,7 @@ function LearnerEventCard({
             onClick={() => handleRsvp("attending")}
             className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
           >
-            {isSavingRsvp ? "Saving..." : "I will attend"}
+            {isSavingRsvp ? t("learnWave2.eventsHub.saving") : t("learnWave2.eventsHub.attend")}
           </button>
           <button
             type="button"
@@ -287,7 +283,7 @@ function LearnerEventCard({
             onClick={() => handleRsvp("not_attending")}
             className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
           >
-            I cannot attend
+            {t("learnWave2.eventsHub.notAttend")}
           </button>
         </div>
       </div>
@@ -299,11 +295,11 @@ function LearnerEventCard({
           rel="noreferrer noopener"
           className="button-solid mt-6 inline-flex px-4 py-2.5 text-sm"
         >
-          Join external session
+          {t("learnWave2.eventsHub.join")}
         </a>
       ) : (
         <p className="mt-6 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm text-[var(--color-ink-soft)]">
-          A join link has not been added for this session yet.
+          {t("learnWave2.eventsHub.noLink")}
         </p>
       )}
     </article>

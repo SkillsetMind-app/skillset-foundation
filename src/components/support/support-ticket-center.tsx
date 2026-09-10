@@ -3,10 +3,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
 import {
   supportTicketCategoryLabels,
-  supportTicketStatusLabels,
   type SupportTicket,
   type SupportTicketCategory,
 } from "@/domain/support-ticket";
@@ -16,17 +16,19 @@ import {
 } from "@/lib/data/support-tickets";
 
 const categories = Object.keys(supportTicketCategoryLabels) as SupportTicketCategory[];
+const copy = "supportCenter";
 
 export function SupportTicketCenter() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [category, setCategory] = useState<SupportTicketCategory>("course");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState<"" | "loadError" | "validationError" | "createError">("");
+  const [success, setSuccess] = useState<"" | "created">("");
 
   useEffect(() => {
     if (!user) {
@@ -40,7 +42,7 @@ export function SupportTicketCenter() {
         setIsLoading(false);
       },
       () => {
-        setError("We could not load your support tickets.");
+        setError("loadError");
         setIsLoading(false);
       },
     );
@@ -54,7 +56,7 @@ export function SupportTicketCenter() {
     }
 
     if (subject.trim().length < 4 || message.trim().length < 12) {
-      setError("Add a clear subject and enough detail before sending.");
+      setError("validationError");
       return;
     }
 
@@ -74,9 +76,9 @@ export function SupportTicketCenter() {
       setSubject("");
       setMessage("");
       setCategory("course");
-      setSuccess("Support ticket created.");
+      setSuccess("created");
     } catch {
-      setError("We could not create this support ticket. Try again in a moment.");
+      setError("createError");
     } finally {
       setIsSubmitting(false);
     }
@@ -86,18 +88,17 @@ export function SupportTicketCenter() {
     <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
       <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          Support
+          {t(`${copy}.eyebrow`)}
         </p>
         <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-          Create a support ticket.
+          {t(`${copy}.title`)}
         </h3>
         <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-          Use this for account, course, payment, or technical questions. The
-          SkillsetMind support team reads every ticket and replies right here.
+          {t(`${copy}.description`)}
         </p>
         <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
           <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Category
+            {t(`${copy}.category`)}
             <select
               value={category}
               onChange={(event) => setCategory(event.target.value as SupportTicketCategory)}
@@ -105,38 +106,38 @@ export function SupportTicketCenter() {
             >
               {categories.map((item) => (
                 <option key={item} value={item}>
-                  {supportTicketCategoryLabels[item]}
+                  {t(`platform.ops.supportQueue.categories.${item}`)}
                 </option>
               ))}
             </select>
           </label>
           <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Subject
+            {t(`${copy}.subject`)}
             <input
               value={subject}
               onChange={(event) => setSubject(event.target.value)}
-              placeholder="Short summary"
+              placeholder={t(`${copy}.subjectPlaceholder`)}
               className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
             />
           </label>
           <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            Details
+            {t(`${copy}.details`)}
             <textarea
               value={message}
               onChange={(event) => setMessage(event.target.value)}
               rows={6}
-              placeholder="Explain what happened and what you need help with."
+              placeholder={t(`${copy}.detailsPlaceholder`)}
               className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
             />
           </label>
           {error ? (
-            <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-              {error}
+            <p role="alert" className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+              {t(`${copy}.${error}`)}
             </p>
           ) : null}
           {success ? (
-            <p className="info-notice">
-              {success}
+            <p role="status" className="info-notice">
+              {t(`${copy}.${success}`)}
             </p>
           ) : null}
           <button
@@ -144,21 +145,21 @@ export function SupportTicketCenter() {
             disabled={isSubmitting}
             className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
           >
-            {isSubmitting ? "Creating ticket..." : "Create ticket"}
+            {t(`${copy}.${isSubmitting ? "creating" : "create"}`)}
           </button>
         </form>
       </section>
 
       <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          Your tickets
+          {t(`${copy}.yourTickets`)}
         </p>
         <div className="mt-6 grid gap-3">
           {isLoading ? (
-            <p className="text-sm text-[var(--color-ink-soft)]">Loading tickets...</p>
+            <p role="status" className="text-sm text-[var(--color-ink-soft)]">{t(`${copy}.loading`)}</p>
           ) : tickets.length === 0 ? (
             <p className="rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-              No support tickets yet.
+              {t(`${copy}.empty`)}
             </p>
           ) : (
             tickets.map((ticket) => (
@@ -169,7 +170,7 @@ export function SupportTicketCenter() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                      {supportTicketCategoryLabels[ticket.category]}
+                      {t(`platform.ops.supportQueue.categories.${ticket.category}`)}
                     </p>
                     <h4 className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
                       {ticket.subject}
@@ -177,7 +178,6 @@ export function SupportTicketCenter() {
                   </div>
                   <StatusChip
                     status={ticket.status}
-                    label={supportTicketStatusLabels[ticket.status]}
                   />
                 </div>
                 <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -186,7 +186,7 @@ export function SupportTicketCenter() {
                 {ticket.adminResponse ? (
                   <div className="mt-3 rounded-[10px] border border-[rgba(26,54,93,0.14)] bg-white p-3">
                     <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
-                      SkillsetMind replied
+                      {t(`${copy}.replied`)}
                     </p>
                     <p className="mt-1 text-sm leading-6 text-[var(--color-ink)]">
                       {ticket.adminResponse}

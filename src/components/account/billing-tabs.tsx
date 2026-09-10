@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 
 import { PlansPanel } from "@/components/account/plans-panel";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import { StatusChip } from "@/components/shared/status-chip";
@@ -23,20 +24,20 @@ const billingTabs = [
   { value: "subscriptions", label: "Subscription" },
 ];
 
-function formatMoney(amountMinor: number, currency: string) {
-  return new Intl.NumberFormat("en", {
+function formatMoney(amountMinor: number, currency: string, locale: string) {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
   }).format(amountMinor / 100);
 }
 
-function formatDate(value: unknown) {
+function formatDate(value: unknown, locale: string, pending: string) {
   const date = toDate(value);
   if (!date) {
-    return "Date pending";
+    return pending;
   }
 
-  return new Intl.DateTimeFormat("en", {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
   }).format(date);
 }
@@ -46,6 +47,7 @@ function toMillis(value: unknown): number {
 }
 
 export function BillingTabs() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") ?? "overview";
@@ -82,7 +84,7 @@ export function BillingTabs() {
         setIsLoading(false);
       },
       () => {
-        setError("We could not load your purchases. Refresh to try again.");
+        setError("accountBilling.purchasesError");
         setIsLoading(false);
       },
     );
@@ -130,10 +132,10 @@ export function BillingTabs() {
   return (
     <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <HorizontalTabs
-        tabs={billingTabs}
+        tabs={billingTabs.map((tab) => ({ ...tab, label: t(`accountBilling.tabs.${tab.value}`) }))}
         activeValue={activeTab}
         onChange={handleTabChange}
-        ariaLabel="Billing sections"
+        ariaLabel={t("accountBilling.sections")}
       />
       <div className="mt-6">
         {activeTab === "subscriptions" ? (
@@ -221,18 +223,19 @@ function OverviewTab({
   profileStatus: "loading" | "ready" | "error";
   onSeePurchases: () => void;
 }) {
+  const { t, locale } = useTranslation();
   // Wait on the profile too, so the plan/portal block never renders a default
   // "Free" from a not-yet-loaded profile during the orders-vs-profile race.
   if (authResolving || isLoading || profileStatus === "loading") {
-    return <BillingNotice>Loading your billing overview...</BillingNotice>;
+    return <BillingNotice>{t("accountBilling.loadingOverview")}</BillingNotice>;
   }
 
   if (!isSignedIn) {
-    return <BillingNotice>Sign in to view your billing overview.</BillingNotice>;
+    return <BillingNotice>{t("accountBilling.signInOverview")}</BillingNotice>;
   }
 
   if (error) {
-    return <BillingNotice tone="error">{error}</BillingNotice>;
+    return <BillingNotice tone="error">{t(error)}</BillingNotice>;
   }
 
   const { courseCount, refundCount, spentMinor, currency } =
@@ -241,7 +244,7 @@ function OverviewTab({
   // rather than asserting "Free" (which would misstate a paying user's plan).
   const profileFailed = profileStatus === "error";
   const planId: PlanId = profile?.currentPlanId ?? "free";
-  const planName = profileFailed ? "Unavailable" : planById(planId).name;
+  const planName = profileFailed ? t("accountBilling.unavailable") : planById(planId).name;
   const hasCustomer = Boolean(profile?.stripeCustomerId);
 
   return (
@@ -249,21 +252,21 @@ function OverviewTab({
       {/* Lifetime summary */}
       <div className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-5">
         <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          Lifetime spend
+          {t("accountBilling.lifetimeSpend")}
         </p>
         <p className="display-title mt-2 text-4xl text-[var(--color-primary)]">
-          {formatMoney(spentMinor, currency)}
+          {formatMoney(spentMinor, currency, locale)}
         </p>
         <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-          {courseCount} {courseCount === 1 ? "course" : "courses"} purchased
-          {profileFailed ? "" : ` · ${planName} subscription`}
+          {t(courseCount === 1 ? "accountBilling.coursePurchased" : "accountBilling.coursesPurchased").replace("{count}", () => String(courseCount))}
+          {profileFailed ? "" : ` · ${t("accountBilling.planSubscription").replace("{plan}", () => planName)}`}
         </p>
 
         <dl className="mt-5 grid gap-px overflow-hidden rounded-[10px] border fine-rule bg-[var(--color-line)]">
           {[
-            ["Courses purchased", String(courseCount)],
-            ["Active subscription", planName],
-            ["Refunds", String(refundCount)],
+            [t("accountBilling.coursesLabel"), String(courseCount)],
+            [t("accountBilling.subscriptionLabel"), planName],
+            [t("accountBilling.refunds"), String(refundCount)],
           ].map(([label, value]) => (
             <div
               key={label}
@@ -280,34 +283,27 @@ function OverviewTab({
           onClick={onSeePurchases}
           className="button-outline mt-5 px-4 py-2 text-sm"
         >
-          See all purchases &rarr;
+          {t("accountBilling.seePurchases")} &rarr;
         </button>
       </div>
 
       {/* Payments & invoices via Stripe */}
       <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-5">
         <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          Payments & invoices
+          {t("accountBilling.paymentsInvoices")}
         </p>
         <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
-          Your payment method, subscription invoices, and billing history live
-          in the Stripe Customer Portal — the canonical record Stripe keeps in
-          sync with every charge.
+          {t("accountBilling.portalBody")}
         </p>
         {hasCustomer ? (
-          <PortalButton label="Open Stripe portal" />
+          <PortalButton label={t("accountBilling.openPortal")} />
         ) : (
           <p className="mt-3 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-            {profileFailed
-              ? "We couldn't load your billing details right now. Refresh to try again."
-              : "Your portal opens once you have a paid purchase or subscription."}
+            {t(profileFailed ? "accountBilling.detailsError" : "accountBilling.portalAfterPurchase")}
           </p>
         )}
         <p className="mt-4 text-xs leading-6 text-[var(--color-ink-soft)]">
-          All payments are processed by <strong>Stripe</strong>. Card details
-          are never stored on SkillsetMind. Course purchases are charged by the
-          educator&rsquo;s own Stripe account — your SkillsetMind subscription
-          is the only thing charged by us.
+          {t("accountBilling.processedBy")} <strong>Stripe</strong>. {t("accountBilling.cardDetails")}
         </p>
       </div>
     </div>
@@ -325,12 +321,13 @@ function PaymentMethodsTab({
   isSignedIn: boolean;
   authResolving: boolean;
 }) {
+  const { t } = useTranslation();
   if (authResolving) {
-    return <BillingNotice>Loading your payment methods...</BillingNotice>;
+    return <BillingNotice>{t("accountBilling.loadingMethods")}</BillingNotice>;
   }
 
   if (!isSignedIn) {
-    return <BillingNotice>Sign in to manage your payment methods.</BillingNotice>;
+    return <BillingNotice>{t("accountBilling.signInMethods")}</BillingNotice>;
   }
 
   const hasCustomer = Boolean(profile?.stripeCustomerId);
@@ -338,22 +335,19 @@ function PaymentMethodsTab({
   return (
     <div className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5">
       <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-        Payment methods
+        {t("accountBilling.tabs.payment-methods")}
       </p>
       <h3 className="display-title mt-2 text-2xl text-[var(--color-ink)]">
-        Managed securely by Stripe.
+        {t("accountBilling.managedStripe")}
       </h3>
       <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        SkillsetMind never stores your full card details. Add, replace, or remove a
-        card — and set your default — inside the Stripe Customer Portal, the same
-        secure surface that holds your invoices and billing history.
+        {t("accountBilling.methodsBody")}
       </p>
       {hasCustomer ? (
-        <PortalButton label="Manage payment methods" />
+        <PortalButton label={t("accountBilling.manageMethods")} />
       ) : (
         <p className="mt-3 rounded-[10px] border fine-rule bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-          You&rsquo;ll add your first card during checkout — Stripe stores it
-          securely and it appears here for management afterwards.
+          {t("accountBilling.firstCard")}
         </p>
       )}
     </div>
@@ -363,6 +357,7 @@ function PaymentMethodsTab({
 /** Opens the Stripe portal, owning its own busy/error state so both the
  * overview and payment-methods tabs can drop it in. */
 function PortalButton({ label }: { label: string }) {
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [portalError, setPortalError] = useState("");
 
@@ -373,12 +368,8 @@ function PortalButton({ label }: { label: string }) {
       await openBillingPortal();
       // openBillingPortal navigates away on success; leave it busy if it
       // resolves (the redirect is already in flight).
-    } catch (cause) {
-      setPortalError(
-        cause instanceof Error
-          ? cause.message
-          : "Could not open the Stripe billing portal.",
-      );
+    } catch {
+      setPortalError("accountBilling.portalError");
       setBusy(false);
     }
   }
@@ -391,14 +382,14 @@ function PortalButton({ label }: { label: string }) {
         disabled={busy}
         className="button-outline px-4 py-2 text-sm disabled:opacity-60"
       >
-        {busy ? "Opening Stripe..." : label}
+        {busy ? t("accountBilling.openingStripe") : label}
       </button>
       {portalError ? (
         <p
           role="alert"
           className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
-          {portalError}
+          {t(portalError)}
         </p>
       ) : null}
     </div>
@@ -413,22 +404,23 @@ function PurchasesTab({
   isSignedIn,
   authResolving,
 }: OrderTabProps & { userId: string | null }) {
+  const { t, locale } = useTranslation();
   const [refundFor, setRefundFor] = useState<Order | null>(null);
 
   if (authResolving) {
-    return <BillingNotice>Loading your purchases...</BillingNotice>;
+    return <BillingNotice>{t("accountBilling.loadingPurchases")}</BillingNotice>;
   }
 
   if (!isSignedIn) {
-    return <BillingNotice>Sign in to view your purchase history.</BillingNotice>;
+    return <BillingNotice>{t("accountBilling.signInPurchases")}</BillingNotice>;
   }
 
   if (isLoading) {
-    return <BillingNotice>Loading your purchases...</BillingNotice>;
+    return <BillingNotice>{t("accountBilling.loadingPurchases")}</BillingNotice>;
   }
 
   if (error) {
-    return <BillingNotice tone="error">{error}</BillingNotice>;
+    return <BillingNotice tone="error">{t(error)}</BillingNotice>;
   }
 
   // Empty state ONLY when the query genuinely returned zero rows — no
@@ -436,10 +428,10 @@ function PurchasesTab({
   if (orders.length === 0) {
     return (
       <BillingEmptyState
-        eyebrow="Purchases"
-        title="No purchases yet."
-        detail="Courses you buy will appear here with their value, payment status, date, and receipt as soon as Stripe confirms the checkout."
-        statusLabel="Empty"
+        eyebrow={t("accountBilling.tabs.purchases")}
+        title={t("accountBilling.noPurchases")}
+        detail={t("accountBilling.noPurchasesBody")}
+        statusLabel={t("accountBilling.empty")}
       />
     );
   }
@@ -447,7 +439,7 @@ function PurchasesTab({
   return (
     <div className="grid gap-3">
       <p className="text-sm text-[var(--color-ink-soft)]">
-        {orders.length} {orders.length === 1 ? "purchase" : "purchases"}
+        {t(orders.length === 1 ? "accountBilling.purchaseCount" : "accountBilling.purchasesCount").replace("{count}", () => String(orders.length))}
       </p>
       {/* Direct charges: each course order was charged on the educator's own
           connected account and we set no statement_descriptor override, so the
@@ -455,10 +447,7 @@ function PurchasesTab({
           statement line, it turns an unrecognised charge into a recognised one
           instead of a chargeback against the educator's balance. */}
       <p className="rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
-        Each course is sold by the educator who publishes it — SkillsetMind is
-        not the seller. Their Stripe account takes the payment, so the name on
-        your card statement is usually theirs. Where a receipt is available,
-        open it to see exactly who charged you.
+        {t("accountBilling.sellerBody")}
       </p>
       <ul className="grid gap-3">
         {orders.map((order) => (
@@ -473,12 +462,12 @@ function PurchasesTab({
                   {order.courseTitle}
                 </h4>
                 <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
-                  {formatDate(order.paidAt ?? order.createdAt)}
+                  {formatDate(order.paidAt ?? order.createdAt, locale, t("accountBilling.datePending"))}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-2">
                 <span className="rounded-[8px] bg-white px-3 py-1 text-sm font-bold text-[var(--color-primary)]">
-                  {formatMoney(order.amountMinor, order.currency)}
+                  {formatMoney(order.amountMinor, order.currency, locale)}
                 </span>
                 <div className="flex flex-wrap items-center justify-end gap-3">
                   {order.receiptUrl ? (
@@ -488,7 +477,7 @@ function PurchasesTab({
                       rel="noreferrer"
                       className="text-xs font-semibold text-[var(--color-primary)] hover:underline"
                     >
-                      View receipt &rarr;
+                      {t("accountBilling.receipt")} &rarr;
                     </a>
                   ) : null}
                   {order.status === "paid" && userId ? (
@@ -497,7 +486,7 @@ function PurchasesTab({
                       onClick={() => setRefundFor(order)}
                       className="text-xs font-semibold text-[var(--color-accent-fg)] hover:underline"
                     >
-                      Request a refund
+                      {t("accountBilling.requestRefund")}
                     </button>
                   ) : null}
                 </div>
@@ -519,8 +508,8 @@ function PurchasesTab({
 }
 
 /** Confirms and submits a self-serve refund. The server enforces every policy
- * gate (window, progress, certificate) and returns a precise message we show
- * verbatim — so this modal stays a thin, honest confirmation. We do not collect
+ * gate (window, progress, certificate). Known policy errors are translated
+ * without duplicating eligibility decisions. We do not collect
  * a reason the callable would silently drop. */
 function RefundModal({
   order,
@@ -531,6 +520,7 @@ function RefundModal({
   userId: string;
   onClose: () => void;
 }) {
+  const { t, locale } = useTranslation();
   // Este era o único diálogo do app que declarava `aria-modal="true"` e não
   // gerenciava foco nenhum. `aria-modal` promete ao leitor de tela que o resto
   // da página está inerte, e aqui a promessa era falsa nas três frentes: o foco
@@ -565,11 +555,7 @@ function RefundModal({
       await requestOrderRefund(`${userId}__${order.courseId}`);
       setDone(true);
     } catch (cause) {
-      setSubmitError(
-        cause instanceof Error
-          ? cause.message
-          : "We could not submit your refund request. Please try again.",
-      );
+      setSubmitError(refundErrorKey(cause));
     } finally {
       setBusy(false);
     }
@@ -582,7 +568,7 @@ function RefundModal({
       className="fixed inset-0 z-50 grid place-items-center bg-[rgba(7,9,13,0.55)] p-4 outline-none"
       role="dialog"
       aria-modal="true"
-      aria-label="Request a refund"
+      aria-label={t("accountBilling.requestRefund")}
       onClick={onClose}
     >
       <div
@@ -592,16 +578,13 @@ function RefundModal({
         {done ? (
           <>
             <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-success-fg)]">
-              Refund requested
+              {t("accountBilling.refundRequested")}
             </p>
             <h2 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
-              We&rsquo;re on it.
+              {t("accountBilling.refundReceived")}
             </h2>
             <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-              Your request for <strong>{order.courseTitle}</strong> was
-              submitted. Eligible refunds are returned from the
-              educator&rsquo;s Stripe account to your original payment method,
-              and the status here updates as soon as Stripe confirms it.
+              {t("accountBilling.refundFor")} <strong>{order.courseTitle}</strong> {t("accountBilling.refundSubmittedBody")}
             </p>
             <div className="mt-6 flex justify-end">
               <button
@@ -609,32 +592,27 @@ function RefundModal({
                 onClick={onClose}
                 className="button-solid px-4 py-2 text-sm"
               >
-                Done
+                {t("accountBilling.done")}
               </button>
             </div>
           </>
         ) : (
           <>
             <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              Refund request
+              {t("accountBilling.refundRequest")}
             </p>
             <h2 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
-              Request a refund.
+              {t("accountBilling.requestRefund")}.
             </h2>
             <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-              Course purchases are refundable within the refund window if you
-              have completed less than half the course and have not been issued
-              a certificate. Eligible requests are processed automatically: the
-              refund is issued from the educator&rsquo;s Stripe account — the
-              same account that charged you — straight back to your original
-              payment method.
+              {t("accountBilling.refundPolicy")}
             </p>
 
             <dl className="mt-4 grid gap-px overflow-hidden rounded-[10px] border fine-rule bg-[var(--color-line)]">
               {[
-                ["Course", order.courseTitle],
-                ["Purchased", formatDate(order.paidAt ?? order.createdAt)],
-                ["Amount", formatMoney(order.amountMinor, order.currency)],
+                [t("accountBilling.course"), order.courseTitle],
+                [t("accountBilling.purchased"), formatDate(order.paidAt ?? order.createdAt, locale, t("accountBilling.datePending"))],
+                [t("accountBilling.amount"), formatMoney(order.amountMinor, order.currency, locale)],
               ].map(([label, value]) => (
                 <div
                   key={label}
@@ -653,7 +631,7 @@ function RefundModal({
                 role="alert"
                 className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
               >
-                {submitError}
+                {t(submitError)}
               </p>
             ) : null}
 
@@ -664,7 +642,7 @@ function RefundModal({
                 disabled={busy}
                 className="button-outline px-4 py-2 text-sm disabled:opacity-60"
               >
-                Cancel
+                {t("accountBilling.cancel")}
               </button>
               <button
                 type="button"
@@ -672,7 +650,7 @@ function RefundModal({
                 disabled={busy}
                 className="button-solid px-4 py-2 text-sm disabled:opacity-60"
               >
-                {busy ? "Submitting..." : "Request refund"}
+                {t(busy ? "accountBilling.submitting" : "accountBilling.submitRefund")}
               </button>
             </div>
           </>
@@ -680,6 +658,22 @@ function RefundModal({
       </div>
     </div>
   );
+}
+
+function refundErrorKey(error: unknown): string {
+  const keys: Record<string, string> = {
+    "Enrollment not found.": "notFound",
+    "Paid order not found.": "notFound",
+    "You can only request refunds for your own enrollments.": "permission",
+    "Only paid enrollments can request a refund.": "paidOnly",
+    "This enrollment is not eligible for a refund.": "ineligible",
+    "Automatic refunds are unavailable after substantial course progress.": "progress",
+    "This enrollment already has an issued certificate.": "certificate",
+    "A refund was already issued for this course. Contact support for further help.": "previous",
+    "The automatic refund window has ended.": "window",
+    "This order has no connected account on record. Contact support.": "account",
+  };
+  return `accountBilling.refundErrors.${error instanceof Error ? keys[error.message] ?? "unknown" : "unknown"}`;
 }
 
 function BillingNotice({

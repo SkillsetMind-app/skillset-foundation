@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BookmarkX } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import type { WishlistItem } from "@/domain/wishlist";
 import { getFeaturedCourseCards, type CourseCard } from "@/lib/data/catalog";
@@ -19,6 +20,7 @@ import {
 import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
 export function LearnerWishlist() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [publishedCourses, setPublishedCourses] = useState<CourseCard[]>([]);
@@ -39,7 +41,7 @@ export function LearnerWishlist() {
         setIsLoading(false);
       },
       () => {
-        setError("We could not load your saved courses.");
+        setError("learnWave2.wishlistHub.loadError");
         setIsLoading(false);
       },
     );
@@ -55,7 +57,7 @@ export function LearnerWishlist() {
         setPublishedCourses(nextCourses.map(teacherCourseToCourseCard));
       },
       () => {
-        setError("Published courses could not load right now.");
+        setError("learnWave2.wishlistHub.publishedError");
       },
     );
   }, []);
@@ -83,7 +85,7 @@ export function LearnerWishlist() {
         courseSlug: item.courseSlug,
       });
     } catch {
-      setError("Could not update your wishlist. Please try again.");
+      setError("learnWave2.wishlistHub.removeError");
     } finally {
       setRemovingId("");
     }
@@ -92,7 +94,7 @@ export function LearnerWishlist() {
   if (isLoading) {
     return (
       <div className="dash-card dash-card--strong p-5 text-sm text-[var(--color-ink-soft)]">
-        Loading saved courses...
+        {t("learnWave2.wishlistHub.loading")}
       </div>
     );
   }
@@ -100,8 +102,8 @@ export function LearnerWishlist() {
   if (error) {
     return (
       <div className="dash-card dash-card--strong p-5">
-        <p className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {error}
+        <p role="alert" className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          {t(error)}
         </p>
       </div>
     );
@@ -111,17 +113,16 @@ export function LearnerWishlist() {
     return (
       <section className="dash-card dash-card--strong p-5 sm:p-7">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          Saved courses
+          {t("learnWave2.wishlistHub.eyebrow")}
         </p>
         <h2 className="display-title mt-3 max-w-2xl text-4xl leading-tight text-[var(--color-primary)]">
-          Build your shortlist before you enroll.
+          {t("learnWave2.wishlistHub.emptyTitle")}
         </h2>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          Save courses from the marketplace and return here when you are ready
-          to compare options or start learning.
+          {t("learnWave2.wishlistHub.emptyDetail")}
         </p>
         <Link href="/courses" className="button-solid mt-6 inline-flex px-4 py-2.5 text-sm">
-          Explore courses
+          {t("learnWave2.wishlistHub.explore")}
         </Link>
       </section>
     );
@@ -163,7 +164,7 @@ export function LearnerWishlist() {
                       href={course.href ?? `/courses/${course.slug}`}
                       className="button-solid px-4 py-2.5 text-sm"
                     >
-                      View course
+                      {t("learnWave2.wishlistHub.view")}
                     </Link>
                     <button
                       type="button"
@@ -171,7 +172,7 @@ export function LearnerWishlist() {
                       onClick={() => void handleRemove(item)}
                       className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
                     >
-                      {removingId === item.id ? "Removing..." : "Remove"}
+                      {removingId === item.id ? t("learnWave2.wishlistHub.removing") : t("learnWave2.wishlistHub.remove")}
                     </button>
                   </div>
                 </div>
@@ -182,11 +183,10 @@ export function LearnerWishlist() {
                   <BookmarkX aria-hidden="true" size={22} />
                 </div>
                 <h3 className="display-title mt-4 text-3xl text-[var(--color-primary)]">
-                  Saved course unavailable.
+                  {t("learnWave2.wishlistHub.unavailable")}
                 </h3>
                 <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-                  This saved course is not currently available in the catalog.
-                  You can remove it from your wishlist.
+                  {t("learnWave2.wishlistHub.unavailableDetail")}
                 </p>
                 <button
                   type="button"
@@ -194,7 +194,7 @@ export function LearnerWishlist() {
                   onClick={() => void handleRemove(item)}
                   className="button-outline mt-5 px-4 py-2.5 text-sm disabled:opacity-60"
                 >
-                  {removingId === item.id ? "Removing..." : "Remove"}
+                  {removingId === item.id ? t("learnWave2.wishlistHub.removing") : t("learnWave2.wishlistHub.remove")}
                 </button>
               </div>
             )}

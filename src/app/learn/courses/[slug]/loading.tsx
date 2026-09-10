@@ -1,3 +1,4 @@
+import { getServerTranslation } from "@/lib/i18n/server";
 /**
  * Stripe's success_url lands here, and the page awaits two Supabase queries
  * before it returns anything. Without this file Next keeps the *previous*
@@ -14,11 +15,12 @@
  * and the skeleton would paint light before flipping dark a beat later. The
  * literals are the same values as the dark palette in globals.css.
  */
-export default function LoadingCourse() {
+export default async function LoadingCourse() {
+  const { t } = await getServerTranslation();
   return (
     <div className="flex min-h-screen items-start justify-center bg-[#0a0d12] px-4 py-16">
       <section className="w-full max-w-3xl rounded-[14px] border border-[rgba(255,255,255,0.08)] bg-[#141923] p-6">
-        <p className="text-sm text-[#9aa6b6]">Loading course...</p>
+        <p className="text-sm text-[#9aa6b6]">{t("learnWave2.courseLoading.title")}</p>
       </section>
     </div>
   );

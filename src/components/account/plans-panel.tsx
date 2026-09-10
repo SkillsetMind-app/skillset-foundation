@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { UpgradeModal } from "@/components/account/upgrade-modal";
 import { StatusChip } from "@/components/shared/status-chip";
 import {
@@ -36,6 +37,8 @@ const billingCycles: ReadonlyArray<{
 ];
 
 export function PlansPanel() {
+  const { t, locale } = useTranslation();
+  const formatPrice = (amount: number) => locale === "en" ? formatUsdWhole(amount) : new Intl.NumberFormat(locale, { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(amount);
   const { user } = useAuth();
   const [cycle, setCycle] = useState<PlanBillingCycle>("monthly");
   // null = ainda não sabemos. Assumir "free" antes de carregar fazia um
@@ -95,10 +98,8 @@ export function PlansPanel() {
     setBusyAction("portal");
     try {
       await openBillingPortal();
-    } catch (cause) {
-      const message =
-        cause instanceof Error ? cause.message : "Could not open the billing portal.";
-      setError(message);
+    } catch {
+      setError("accountBilling.portalError");
       setBusyAction(null);
     }
   }
@@ -106,7 +107,7 @@ export function PlansPanel() {
   if (!user) {
     return (
       <div className="rounded-[14px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm text-[var(--color-ink-soft)]">
-        Sign in to view and manage your plan.
+        {t("accountPlans.signIn")}
       </div>
     );
   }
@@ -116,14 +117,10 @@ export function PlansPanel() {
       {!checkoutReady ? (
         <div className="rounded-[14px] border border-dashed border-[rgba(178,34,52,0.32)] bg-[rgba(178,34,52,0.04)] p-4 text-sm leading-6 text-[var(--color-ink)]">
           <p className="font-semibold text-[var(--color-accent-fg)]">
-            {priceIdsReady
-              ? "Card checkout activates soon."
-              : "Billing setup pending."}
+            {t(priceIdsReady ? "accountPlans.checkoutSoon" : "accountPlans.setupPending")}
           </p>
           <p className="mt-1 text-[var(--color-ink-soft)]">
-            {priceIdsReady
-              ? "Plans are ready, and card checkout is being switched on for this site. Free stays the default plan until then — no action is needed from you."
-              : "Paid plans can't be purchased here yet while billing setup finishes. Free still works as the default plan for every account."}
+            {t(priceIdsReady ? "accountPlans.checkoutSoonBody" : "accountPlans.setupPendingBody")}
           </p>
         </div>
       ) : null}
@@ -137,12 +134,12 @@ export function PlansPanel() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <p className="flex flex-wrap items-center gap-x-2 text-[13px] text-[var(--color-ink-soft)]">
           <span>
-            Current plan:{" "}
+            {t("accountPlans.currentPlan")}{" "}
             <strong className="font-bold text-[var(--color-primary)]">
               {currentPlanId === null
                 ? planLoadFailed
-                  ? "Unavailable"
-                  : "Loading…"
+                  ? t("accountBilling.unavailable")
+                  : t("accountPlans.loading")
                 : (plans.find((plan) => plan.id === currentPlanId)?.name ?? "Free")}
             </strong>
           </span>
@@ -155,14 +152,14 @@ export function PlansPanel() {
                 disabled={busyAction === "portal"}
                 className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline disabled:opacity-60"
               >
-                {busyAction === "portal" ? "Opening Stripe..." : "Manage subscription"}
+                {t(busyAction === "portal" ? "accountBilling.openingStripe" : "accountPlans.manage")}
               </button>
             </>
           ) : null}
         </p>
         <div
           role="radiogroup"
-          aria-label="Billing cycle"
+          aria-label={t("accountPlans.cycle")}
           className="inline-flex w-fit gap-1 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] p-1"
         >
           {billingCycles.map((option) => {
@@ -174,14 +171,14 @@ export function PlansPanel() {
                 role="radio"
                 aria-checked={active}
                 onClick={() => setCycle(option.value)}
-                title={option.hint}
+                title={t(`accountPlans.cycles.${option.value}.hint`)}
                 className={
                   active
                     ? "rounded-[8px] bg-[var(--color-primary)] px-3 py-1.5 text-[13px] font-semibold text-[var(--color-base)]"
                     : "rounded-[8px] px-3 py-1.5 text-[13px] font-semibold text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)]"
                 }
               >
-                {option.label}
+                {t(`accountPlans.cycles.${option.value}.label`)}
               </button>
             );
           })}
@@ -189,8 +186,7 @@ export function PlansPanel() {
       </header>
       {planLoadFailed ? (
         <p className="text-xs text-[var(--color-ink-soft)]">
-          We could not read your plan. Manage subscription still opens Stripe,
-          where your real plan is shown.
+          {t("accountPlans.planReadError")}
         </p>
       ) : null}
 
@@ -199,7 +195,7 @@ export function PlansPanel() {
           role="alert"
           className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
-          {error}
+          {t(error)}
         </p>
       ) : null}
 
@@ -235,34 +231,34 @@ export function PlansPanel() {
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                   {plan.name}
                 </p>
-                {isCurrent ? <StatusChip status="active" label="Current" /> : null}
+                {isCurrent ? <StatusChip status="active" label={t("accountPlans.current")} /> : null}
               </div>
               <div className="mt-3 flex items-baseline gap-1">
                 <span className="text-3xl font-extrabold tabular-nums tracking-[-0.02em] text-[var(--color-primary)]">
                   {isPaidPlan
-                    ? formatUsdWhole(Math.round(monthlyFigure))
-                    : "Free"}
+                    ? formatPrice(Math.round(monthlyFigure))
+                    : t("accountPlans.freePrice")}
                 </span>
                 {isPaidPlan ? (
                   <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
-                    /mo
+                    {t("accountPlans.perMonth")}
                   </span>
                 ) : null}
               </div>
               {isPaidPlan ? (
                 <p className="mt-1 text-[11px] font-medium tabular-nums text-[var(--color-ink-muted)]">
                   {isYearly
-                    ? `${formatUsdWhole(plan.yearlyUsd)} billed yearly`
-                    : "billed monthly"}
+                    ? t("accountPlans.billedYearly").replace("{price}", () => formatPrice(plan.yearlyUsd))
+                    : t("accountPlans.billedMonthly")}
                 </p>
               ) : null}
               <p className="mt-3 text-xs text-[var(--color-ink-soft)]">
-                {plan.tagline}
+                {t(`publicPages.plans.${plan.id}.tagline`)}
               </p>
 
               <div className="mt-4 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-3 py-2 text-center">
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
-                  Commission per sale
+                  {t("accountPlans.commission")}
                 </p>
                 <p className="mt-0.5 text-2xl font-extrabold tabular-nums text-[var(--color-primary)]">
                   {plan.commissionPercent}%
@@ -270,7 +266,7 @@ export function PlansPanel() {
               </div>
 
               <ul className="mt-4 grid gap-1.5 text-xs leading-5 text-[var(--color-ink-soft)]">
-                {plan.highlights.map((highlight) => (
+                {plan.highlights.map((highlight, index) => (
                   <li key={highlight} className="flex items-start gap-2">
                     <span className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full bg-[var(--color-success-soft)]">
                       <Check
@@ -280,7 +276,7 @@ export function PlansPanel() {
                         className="text-[var(--color-success-fg)]"
                       />
                     </span>
-                    <span>{highlight}</span>
+                    <span>{t(`publicPages.plans.${plan.id}.highlight${index}`)}</span>
                   </li>
                 ))}
               </ul>
@@ -290,7 +286,7 @@ export function PlansPanel() {
                   // O chip "Current" no topo do cartão já marca o plano; um
                   // botão desabilitado dizendo "Your plan" era a terceira vez.
                   <p className="text-center text-xs font-semibold text-[var(--color-ink-soft)]">
-                    Your plan
+                    {t("accountPlans.yourPlan")}
                   </p>
                 ) : isPaidPlan && currentPlanId !== "free" ? (
                   // Checkout only opens the FIRST paid plan — a second session
@@ -302,7 +298,7 @@ export function PlansPanel() {
                     disabled={busyAction === "portal"}
                     className="button-outline w-full justify-center px-3 py-2 text-xs disabled:opacity-60"
                   >
-                    {busyAction === "portal" ? "Opening..." : "Change plan"}
+                    {t(busyAction === "portal" ? "accountPlans.opening" : "accountPlans.change")}
                   </button>
                 ) : isPaidPlan ? (
                   <button
@@ -317,14 +313,14 @@ export function PlansPanel() {
                     title={
                       canPurchase
                         ? undefined
-                        : "Card checkout isn't available on this site yet. Check back soon."
+                        : t("accountPlans.unavailableHint")
                     }
                   >
-                    {canPurchase ? `Upgrade to ${plan.name}` : "Activating soon"}
+                    {canPurchase ? t("accountPlans.upgrade").replace("{plan}", () => plan.name) : t("accountPlans.activating")}
                   </button>
                 ) : (
                   <p className="text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                    Default tier
+                    {t("accountPlans.defaultTier")}
                   </p>
                 )}
               </div>
@@ -334,10 +330,7 @@ export function PlansPanel() {
       </div>
 
       <footer className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-xs leading-6 text-[var(--color-ink-soft)]">
-        Plan changes are processed by Stripe. Upgrades apply immediately and
-        Stripe Billing prorates the difference. Downgrades and cancellations
-        take effect at the end of the current billing period. You can update
-        your card or download invoices any time from the Stripe Customer Portal.
+        {t("accountPlans.footer")}
       </footer>
 
       <UpgradeModal

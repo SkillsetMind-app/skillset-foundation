@@ -9,9 +9,12 @@ import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { BrandName } from "@/components/shared/brand-name";
+import { useTranslation } from "@/components/i18n/i18n-provider";
+import type { Locale } from "@/lib/i18n/config";
 import { plans, type PlanBillingCycle, type PlanId } from "@/data/plans";
 import { formatUsdWhole } from "@/data/platform";
 import { createBillingCheckoutClientSecret } from "@/lib/payments/billing";
+import { PaymentRequestError } from "@/lib/payments/client-fetch";
 import { track } from "@/lib/posthog/events";
 
 /**
@@ -26,13 +29,10 @@ const publishableKey =
 
 // Stripe.js loader is cached at module scope so multiple checkouts
 // reuse the same Stripe instance instead of re-loading the SDK.
-let stripePromise: Promise<Stripe | null> | null = null;
-function getStripePromise(): Promise<Stripe | null> | null {
+const stripePromises: Partial<Record<Locale, Promise<Stripe | null>>> = {};
+function getStripePromise(locale: Locale): Promise<Stripe | null> | null {
   if (!publishableKey) return null;
-  if (!stripePromise) {
-    stripePromise = loadStripe(publishableKey);
-  }
-  return stripePromise;
+  return stripePromises[locale] ??= loadStripe(publishableKey, { locale });
 }
 
 /**
@@ -51,6 +51,7 @@ function BillingUnavailableNotice({
   detail: string;
   children?: ReactNode;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="rounded-[14px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink)]">
       <p className="font-semibold text-[var(--color-ink)]">{title}</p>
@@ -58,10 +59,10 @@ function BillingUnavailableNotice({
       {children}
       <div className="mt-5 flex flex-wrap gap-3">
         <Link href="/account/plans" className="button-solid px-4 py-2 text-sm">
-          Back to plans
+          {t("billingCheckout.backToPlans")}
         </Link>
         <Link href="/support" className="button-outline px-4 py-2 text-sm">
-          Contact support
+          {t("activationCheckout.support")}
         </Link>
       </div>
     </div>
@@ -77,9 +78,12 @@ export function EmbeddedCheckoutPanel({
   planId,
   cycle,
 }: EmbeddedCheckoutPanelProps) {
+  const { t, locale } = useTranslation();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const stripeLoader = getStripePromise();
+  const [error, setError] = useState<{ key: string; status?: number } | null>(null);
+  // No live locale setter in Embedded Checkout: preserve Stripe and card input
+  // for this mount, while the surrounding copy follows the current language.
+  const [stripeLoader] = useState(() => getStripePromise(locale));
   const plan = plans.find((candidate) => candidate.id === planId);
 
   // Stable options object — recreating it every render reboots the
@@ -119,17 +123,19 @@ export function EmbeddedCheckoutPanel({
         }
       } catch (cause) {
         if (!cancelled) {
-          const message =
-            cause instanceof Error
-              ? cause.message
-              : "Could not start checkout. Try again in a moment.";
-          setError(message);
+          const paymentError = cause instanceof PaymentRequestError ? cause : null;
+          const key = paymentError?.code === "payments_not_configured" ? "notConfigured"
+            : paymentError?.code === "unauthenticated" || paymentError?.status === 401 ? "signIn"
+            : paymentError?.code === "permission_denied" || paymentError?.status === 403 ? "permission"
+            : paymentError?.status === 409 ? "conflict"
+            : paymentError?.status === 429 ? "rateLimit" : "generic";
+          setError({ key, status: paymentError?.status });
           // CHECKOUT_FAILED — only fired in the catch path so PostHog
           // funnel stays clean (no false negatives on stripe-side errors
           // that surface via Stripe Elements directly).
           track.checkoutFailed({
             course_id: `plan:${planId}:${cycle}`,
-            reason: message,
+            reason: `billing_checkout_${key}`,
           });
         }
       }
@@ -145,8 +151,8 @@ export function EmbeddedCheckoutPanel({
   if (!plan) {
     return (
       <BillingUnavailableNotice
-        title="We couldn't find that plan."
-        detail={`The "${planId}" plan isn't available for purchase. Head back to plans to choose a current tier.`}
+        title={t("billingCheckout.unknownPlanTitle")}
+        detail={t("billingCheckout.unknownPlanBody").replace("{plan}", () => planId)}
       />
     );
   }
@@ -154,8 +160,8 @@ export function EmbeddedCheckoutPanel({
   if (!publishableKey) {
     return (
       <BillingUnavailableNotice
-        title="Card checkout isn't available here yet."
-        detail="Card payments for plan upgrades aren't available on this account just yet. Your current plan keeps working — head back to plans, or contact us and we'll switch it on."
+        title={t("activationCheckout.unavailableTitle")}
+        detail={t("billingCheckout.unavailableBody")}
       />
     );
   }
@@ -169,14 +175,15 @@ export function EmbeddedCheckoutPanel({
     <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
       <div className="overflow-hidden rounded-[14px] border fine-rule bg-white shadow-[var(--shadow-soft)]">
         {error ? (
-          <div className="p-6 text-sm text-[var(--color-accent-fg)]">
-            <p className="font-semibold">Checkout could not start.</p>
-            <p className="mt-2 text-[var(--color-ink-soft)]">{error}</p>
+          <div role="alert" className="p-6 text-sm text-[var(--color-accent-fg)]">
+            <p className="font-semibold">{t("activationCheckout.errorTitle")}</p>
+            <p className="mt-2 text-[var(--color-ink-soft)]">{t(`billingCheckout.error.${error.key}`)}</p>
+            {error.status ? <p className="mt-2 text-xs">{t("activationCheckout.reference")} HTTP {error.status}</p> : null}
             <Link
               href="/account/plans"
               className="button-outline mt-4 px-4 py-2 text-sm text-[var(--color-ink)]"
             >
-              Back to plans
+              {t("billingCheckout.backToPlans")}
             </Link>
           </div>
         ) : !options ? (
@@ -185,7 +192,7 @@ export function EmbeddedCheckoutPanel({
             aria-busy="true"
             aria-live="polite"
           >
-            Preparing secure checkout…
+            {t("activationCheckout.preparing")}
           </div>
         ) : (
           <EmbeddedCheckoutProvider stripe={stripeLoader!} options={options}>
@@ -196,46 +203,43 @@ export function EmbeddedCheckoutPanel({
 
       <aside className="h-fit rounded-[14px] border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-          You&apos;re subscribing to
+          {t("billingCheckout.subscribing")}
         </p>
         <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
           <BrandName /> {plan.name}
         </h2>
         <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
-          {plan.tagline}
+          {t(`publicPages.plans.${plan.id}.tagline`)}
         </p>
         <div className="mt-4 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
-            {isYearly ? "Yearly billing" : "Monthly billing"}
+            {t(isYearly ? "billingCheckout.yearly" : "billingCheckout.monthly")}
           </p>
           <div className="mt-1 flex items-baseline gap-1">
             <span className="display-title text-3xl tabular-nums text-[var(--color-primary)]">
               {formatUsdWhole(Math.round(monthlyFigure))}
             </span>
             <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
-              /mo
+              {t("billingCheckout.perMonth")}
             </span>
           </div>
           <p className="mt-1 text-[11px] tabular-nums text-[var(--color-ink-soft)]">
-            {isYearly
-              ? `Billed ${formatUsdWhole(plan.yearlyUsd)} yearly`
-              : `Billed ${formatUsdWhole(plan.monthlyUsd)} monthly`}
+            {t(isYearly ? "billingCheckout.billedYearly" : "billingCheckout.billedMonthly")
+              .replace("{amount}", () => formatUsdWhole(isYearly ? plan.yearlyUsd : plan.monthlyUsd))}
           </p>
         </div>
         <p className="mt-4 text-[11px] leading-5 text-[var(--color-ink-muted)]">
-          Commission per sale on {plan.name}:{" "}
+          {t("billingCheckout.commission").replace("{plan}", () => plan.name)}{" "}
           <strong className="text-[var(--color-ink)]">
             {plan.commissionPercent}%
           </strong>
-          . Stripe processing fee is passed through to you on every sale
-          (2.9% + $0.30 USD / 5.4% + $0.30 estimated non-USD).
+          {t("billingCheckout.processing")}
         </p>
         <p className="mt-2 text-[11px] leading-5 text-[var(--color-ink-muted)]">
-          Cancel anytime from your billing settings — you keep your plan
-          benefits until the end of the period.
+          {t("billingCheckout.cancel")}
         </p>
         <p className="mt-3 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
-          Powered by Stripe
+          {t("activationCheckout.poweredBy")}
         </p>
       </aside>
     </div>

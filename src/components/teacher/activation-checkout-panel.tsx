@@ -15,6 +15,7 @@ import { activationFeeUsd, plans } from "@/data/plans";
 import { formatUsdWhole } from "@/data/platform";
 import { createActivationCheckoutClientSecret } from "@/lib/payments/activation";
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
+import type { Locale } from "@/lib/i18n/config";
 import { track } from "@/lib/posthog/events";
 
 const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? null;
@@ -22,13 +23,10 @@ const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? null;
 // Module-scope loader so remounts reuse one Stripe instance. Deliberately not
 // shared with the billing panel's copy: extracting it would mean editing a
 // working checkout flow for no user-visible gain.
-let stripePromise: Promise<Stripe | null> | null = null;
-function getStripePromise(): Promise<Stripe | null> | null {
+const stripePromises: Partial<Record<Locale, Promise<Stripe | null>>> = {};
+function getStripePromise(locale: Locale): Promise<Stripe | null> | null {
   if (!publishableKey) return null;
-  if (!stripePromise) {
-    stripePromise = loadStripe(publishableKey);
-  }
-  return stripePromise;
+  return stripePromises[locale] ??= loadStripe(publishableKey, { locale });
 }
 
 /**
@@ -39,13 +37,16 @@ function getStripePromise(): Promise<Stripe | null> | null {
  * to strand one.
  */
 export function ActivationCheckoutPanel() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<{
-    message: string;
+    key: string;
+    status?: number;
     verificationRequired: boolean;
   } | null>(null);
-  const stripeLoader = getStripePromise();
+  // Embedded Checkout has no live locale update. Freeze the loader for this
+  // mount: changing language must not replace Stripe or lose entered card data.
+  const [stripeLoader] = useState(() => getStripePromise(locale));
 
   const freeCommission =
     plans.find((plan) => plan.id === "free")?.commissionPercent ?? 10;
@@ -76,18 +77,25 @@ export function ActivationCheckoutPanel() {
         if (!cancelled) setClientSecret(result.clientSecret);
       } catch (cause) {
         if (!cancelled) {
-          const message =
-            cause instanceof Error
-              ? cause.message
-              : "Could not start checkout. Try again in a moment.";
+          const paymentError = cause instanceof PaymentRequestError ? cause : null;
+          const code = paymentError?.code;
+          const key = code === "activation_not_required" ? "notRequired"
+            : code === "payments_not_configured" ? "notConfigured"
+            : code === "permission_denied" || paymentError?.status === 403 ? "permission"
+            : code === "unauthenticated" || paymentError?.status === 401 ? "signIn"
+            : paymentError?.status === 429 ? "rateLimit"
+            : paymentError?.status === 409 ? "conflict"
+            : "generic";
           setError({
-            message,
+            key,
+            status: paymentError?.status,
             verificationRequired: cause instanceof PaymentRequestError
               && cause.code === "creator_verification_required",
           });
           track.checkoutFailed({
             course_id: "activation_fee",
-            reason: message,
+            reason: code === "creator_verification_required"
+              ? "creator_verification_required" : `activation_checkout_${key}`,
           });
         }
       }
@@ -103,17 +111,16 @@ export function ActivationCheckoutPanel() {
   if (!publishableKey) {
     return (
       <div className="rounded-[14px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink)]">
-        <p className="font-semibold">Card checkout isn&apos;t available here yet.</p>
+        <p className="font-semibold">{t("activationCheckout.unavailableTitle")}</p>
         <p className="mt-2 text-[var(--color-ink-soft)]">
-          We can activate your storefront manually in the meantime — contact us
-          and we&apos;ll switch it on for your account.
+          {t("activationCheckout.unavailableBody")}
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Link href="/teach/builder" className={buttonClasses()}>
-            Back to studio
+            {t("activationCheckout.backToStudio")}
           </Link>
           <Link href="/support" className={buttonClasses({ variant: "outline" })}>
-            Contact support
+            {t("activationCheckout.support")}
           </Link>
         </div>
       </div>
@@ -124,21 +131,22 @@ export function ActivationCheckoutPanel() {
     <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
       <Card padding="none" className="overflow-hidden">
         {error ? (
-          <div className="p-6 text-sm text-[var(--color-accent-fg)]">
+          <div role="alert" className="p-6 text-sm text-[var(--color-accent-fg)]">
             <p className="font-semibold">
               {error.verificationRequired
                 ? t("creatorPanel.activationGate.verificationTitle")
-                : "Checkout could not start."}
+                : t("activationCheckout.errorTitle")}
             </p>
             <p className="mt-2 text-[var(--color-ink-soft)]">
               {error.verificationRequired
                 ? t("creatorPanel.activationGate.verificationBody")
-                : error.message}
+                : t(`activationCheckout.error.${error.key}`)}
             </p>
+            {error.status ? <p className="mt-2 text-xs">{t("activationCheckout.reference")} HTTP {error.status}</p> : null}
             <Link href={error.verificationRequired ? "/teach/verification" : "/teach/builder"} className={buttonClasses({ variant: "outline" }, "mt-4")}>
               {error.verificationRequired
                 ? t("creatorPanel.activationGate.verificationAction")
-                : "Back to studio"}
+                : t("activationCheckout.backToStudio")}
             </Link>
           </div>
         ) : !options ? (
@@ -147,7 +155,7 @@ export function ActivationCheckoutPanel() {
             aria-busy="true"
             aria-live="polite"
           >
-            Preparing secure checkout…
+            {t("activationCheckout.preparing")}
           </div>
         ) : (
           <EmbeddedCheckoutProvider stripe={stripeLoader!} options={options}>
@@ -157,37 +165,36 @@ export function ActivationCheckoutPanel() {
       </Card>
 
       <Card as="aside" padding="none" className="h-fit p-5">
-        <Eyebrow>You&apos;re activating</Eyebrow>
+        <Eyebrow>{t("activationCheckout.activating")}</Eyebrow>
         <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
-          Your <BrandName /> storefront
+          {t("activationCheckout.storefrontBefore")}<BrandName />{t("activationCheckout.storefrontAfter")}
         </h2>
         <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
-          Unlocks publishing. Paid once — never again.
+          {t("activationCheckout.unlocks")}
         </p>
         <Card tone="soft" padding="sm" shadow={false} className="mt-4">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
-            One-time fee
+            {t("activationCheckout.oneTimeFee")}
           </p>
           <div className="mt-1 flex items-baseline gap-1">
             <span className="display-title text-3xl tabular-nums text-[var(--color-primary)]">
               {formatUsdWhole(activationFeeUsd)}
             </span>
             <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
-              once
+              {t("activationCheckout.once")}
             </span>
           </div>
           <p className="mt-1 text-[11px] text-[var(--color-ink-soft)]">
-            No monthly subscription on Free
+            {t("activationCheckout.noSubscription")}
           </p>
         </Card>
         <p className="mt-4 text-[11px] leading-5 text-[var(--color-ink-muted)]">
-          After this, the Free plan still costs nothing per month and takes{" "}
+          {t("activationCheckout.commissionBefore")}{" "}
           <strong className="text-[var(--color-ink)]">{freeCommission}%</strong>{" "}
-          per sale. Stripe processing fee is passed through to you on every sale
-          (2.9% + $0.30 USD / 5.4% + $0.30 estimated non-USD).
+          {t("activationCheckout.commissionAfter")}
         </p>
         <p className="mt-3 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
-          Powered by Stripe
+          {t("activationCheckout.poweredBy")}
         </p>
       </Card>
     </div>

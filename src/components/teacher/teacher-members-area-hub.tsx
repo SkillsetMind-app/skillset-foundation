@@ -5,6 +5,7 @@ import { BookOpen, ExternalLink, Image as ImageIcon, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { StatusChip } from "@/components/shared/status-chip";
 import { buttonClasses, Eyebrow, InlineAlert } from "@/components/ui";
@@ -13,6 +14,8 @@ import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 
 export function TeacherMembersAreaHub() {
   const { user } = useAuth();
+  const { t, locale } = useTranslation();
+  const number = (value: number) => new Intl.NumberFormat(locale).format(value);
   const router = useRouter();
   const searchParams = useSearchParams();
   const view = searchParams.get("view") === "communities" ? "communities" : "members";
@@ -32,7 +35,7 @@ export function TeacherMembersAreaHub() {
         setIsLoading(false);
       },
       () => {
-        setError("We could not load your members areas. Please try again.");
+        setError("teacherMembers.loadError");
         setIsLoading(false);
       }
     );
@@ -49,28 +52,27 @@ export function TeacherMembersAreaHub() {
     <div className="grid gap-6">
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--color-line)] pb-5">
         <div>
-          <Eyebrow>Products</Eyebrow>
+          <Eyebrow>{t("teacherMembers.products")}</Eyebrow>
           <h1 className="mt-2 text-3xl font-semibold leading-tight text-[var(--color-primary)]">
-            Members & communities
+            {t("teacherMembers.title")}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-            Customize product delivery, manage learner spaces, and open the community attached to
-            each product.
+            {t("teacherMembers.description")}
           </p>
         </div>
         <Link href={createHref} className={buttonClasses()}>
           <Plus aria-hidden="true" size={16} strokeWidth={2} />
-          {view === "communities" ? "New community" : "New product"}
+          {t(view === "communities" ? "teacherMembers.newCommunity" : "teacherMembers.newProduct")}
         </Link>
       </header>
 
-      {error ? <InlineAlert tone="error">{error}</InlineAlert> : null}
+      {error ? <InlineAlert tone="error">{t(error)}</InlineAlert> : null}
 
       <section aria-labelledby="members-products-title">
         <div
           className="mb-5 inline-grid grid-cols-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1"
           role="radiogroup"
-          aria-label="Members content type"
+          aria-label={t("teacherMembers.contentType")}
         >
           {(["members", "communities"] as const).map((nextView) => (
             <button
@@ -89,18 +91,18 @@ export function TeacherMembersAreaHub() {
                   : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
               }`}
             >
-              {nextView === "members" ? "Product spaces" : "Communities"}
+              {t(nextView === "members" ? "teacherMembers.spaces" : "teacherMembers.communities")}
             </button>
           ))}
         </div>
 
         <div className="flex items-baseline justify-between gap-3">
           <h2 id="members-products-title" className="text-lg font-semibold text-[var(--color-ink)]">
-            {view === "communities" ? "Communities" : "Product spaces"}
+            {t(view === "communities" ? "teacherMembers.communities" : "teacherMembers.spaces")}
           </h2>
           {!isLoading ? (
             <span className="text-sm tabular-nums text-[var(--color-ink-muted)]">
-              {visibleCourses.length}
+              {number(visibleCourses.length)}
             </span>
           ) : null}
         </div>
@@ -116,12 +118,10 @@ export function TeacherMembersAreaHub() {
                 <BookOpen aria-hidden="true" size={20} strokeWidth={1.8} />
               </span>
               <h3 className="mt-4 text-lg font-semibold text-[var(--color-ink)]">
-                {view === "communities" ? "No community yet" : "No product space yet"}
+                {t(view === "communities" ? "teacherMembers.noCommunity" : "teacherMembers.noSpace")}
               </h3>
               <p className="mt-2 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
-                {view === "communities"
-                  ? "Create a recurring community product or enable community in an existing product's members settings."
-                  : "Every product gets its own members area as soon as the private draft is created."}
+                {t(view === "communities" ? "teacherMembers.noCommunityDescription" : "teacherMembers.noSpaceDescription")}
               </p>
             </div>
           ) : (
@@ -145,10 +145,10 @@ export function TeacherMembersAreaHub() {
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
-                      {course.title || "Untitled product"}
+                      {course.title || t("teacherMembers.untitled")}
                     </p>
                     <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
-                      {course.modules.length} modules · {course.lessonCount} lessons
+                      {t(course.modules.length === 1 ? "teacherMembers.moduleOne" : "teacherMembers.moduleMany").replace("{count}", () => number(course.modules.length))} · {t(course.lessonCount === 1 ? "teacherMembers.lessonOne" : "teacherMembers.lessonMany").replace("{count}", () => number(course.lessonCount))}
                     </p>
                     <div className="mt-2">
                       <StatusChip status={course.status} />
@@ -158,16 +158,16 @@ export function TeacherMembersAreaHub() {
 
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                    Presentation
+                    {t("teacherMembers.presentation")}
                   </p>
                   <p className="mt-1 text-sm font-semibold capitalize text-[var(--color-ink-soft)]">
-                    {course.membersTheme ?? "light"} theme
+                    {t(`teacherMembers.themes.${course.membersTheme ?? "light"}`)}
                   </p>
                   <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
-                    {course.membersTitle ? "Custom welcome" : "Default welcome"}
+                    {t(course.membersTitle ? "teacherMembers.customWelcome" : "teacherMembers.defaultWelcome")}
                   </p>
                   <p className="mt-1 text-xs font-semibold text-[var(--color-ink-soft)]">
-                    Community {course.communityEnabled ? "enabled" : "disabled"}
+                    {t(course.communityEnabled ? "teacherMembers.communityEnabled" : "teacherMembers.communityDisabled")}
                   </p>
                 </div>
 
@@ -177,19 +177,19 @@ export function TeacherMembersAreaHub() {
                     className={buttonClasses({ size: "sm" })}
                   >
                     <ExternalLink aria-hidden="true" size={14} strokeWidth={1.8} />
-                    Preview
+                    {t("teacherMembers.preview")}
                   </Link>
                   <Link
                     href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=members`}
                     className={buttonClasses({ variant: "outline", size: "sm" })}
                   >
-                    Customize
+                    {t("teacherMembers.customize")}
                   </Link>
                   <Link
                     href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=content`}
                     className={buttonClasses({ variant: "outline", size: "sm" })}
                   >
-                    Content
+                    {t("teacherMembers.content")}
                   </Link>
                 </div>
               </article>
@@ -201,16 +201,16 @@ export function TeacherMembersAreaHub() {
       <section className="border-t border-[var(--color-line)] pt-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-[var(--color-ink)]">Creator storefront</h2>
+            <h2 className="text-base font-semibold text-[var(--color-ink)]">{t("teacherMembers.storefront")}</h2>
             <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-              Manage the public profile that groups all published products.
+              {t("teacherMembers.storefrontDescription")}
             </p>
           </div>
           <Link
             href="/teach/storefront"
             className={buttonClasses({ variant: "outline" })}
           >
-            Open storefront settings
+            {t("teacherMembers.openStorefront")}
           </Link>
         </div>
       </section>

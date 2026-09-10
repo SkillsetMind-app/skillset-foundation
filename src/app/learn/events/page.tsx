@@ -1,14 +1,16 @@
+import { getServerTranslation } from "@/lib/i18n/server";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { LearnEventsHub } from "@/components/learn/learn-events-hub";
 import { PlatformShell } from "@/components/platform/platform-shell";
 
-export default function LearnEventsPage() {
+export default async function LearnEventsPage() {
+  const { t } = await getServerTranslation();
   return (
     <ProtectedSurface permissions={["courses.viewLearning"]}>
       <PlatformShell
-        eyebrow="Course agenda"
-        title="Your live learning schedule."
-        description="Classes, mentorships, masterclasses, office hours, webinars, and deadlines from your enrolled courses appear here."
+        eyebrow={t("learnWave2.events.eyebrow")}
+        title={t("learnWave2.events.title")}
+        description={t("learnWave2.events.description")}
       >
         <LearnEventsHub />
       </PlatformShell>

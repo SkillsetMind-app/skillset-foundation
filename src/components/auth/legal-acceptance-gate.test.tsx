@@ -8,6 +8,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthProvider } from "@/components/auth/auth-provider";
+import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import {
   currentPrivacyVersion,
   currentTermsVersion,
@@ -20,7 +21,10 @@ const mocks = vi.hoisted(() => ({
   acceptUserTerms: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({ usePathname: () => mocks.pathname }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => mocks.pathname,
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
 
 vi.mock("@/lib/auth/supabase-auth", () => ({
   listenToAuthState: mocks.listenToAuthState,
@@ -40,7 +44,12 @@ vi.mock("@/lib/posthog/client", () => ({
 
 const ACCEPT = "Accept and continue";
 
-function renderSignedIn() {
+function LocaleToggle() {
+  const { setLocale } = useTranslation();
+  return <button onClick={() => setLocale("en")}>English</button>;
+}
+
+function renderSignedIn(locale: "en" | "es" = "en") {
   mocks.listenToAuthState.mockImplementation(
     (setSession: (next: unknown) => void) => {
       setSession({
@@ -58,9 +67,12 @@ function renderSignedIn() {
     },
   );
   return render(
-    <AuthProvider>
-      <p>page</p>
-    </AuthProvider>,
+    <I18nProvider initialLocale={locale}>
+      <LocaleToggle />
+      <AuthProvider>
+        <p>page</p>
+      </AuthProvider>
+    </I18nProvider>,
   );
 }
 
@@ -76,6 +88,28 @@ describe("LegalAcceptanceGate as the signup recovery path", () => {
   });
 
   afterEach(cleanup);
+
+  it("translates legal consent and failed feedback without clearing consent on locale change", async () => {
+    mocks.getUserProfile.mockResolvedValue({ termsVersion: null, privacyVersion: null, marketingConsent: false });
+    mocks.acceptUserTerms.mockRejectedValue(new Error("transport details"));
+    renderSignedIn("es");
+    const accept = await screen.findByRole("button", { name: "Aceptar y continuar" });
+    expect(screen.getByRole("heading", { name: "Revisa los términos de SkillsetMind para continuar." })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Términos del servicio" }).getAttribute("href")).toBe("/legal/terms");
+    expect(screen.getByRole("link", { name: "Política de privacidad" }).getAttribute("href")).toBe("/legal/privacy");
+    expect(accept).toHaveProperty("disabled", true);
+    const [terms, privacy] = screen.getAllByRole("checkbox");
+    fireEvent.click(terms);
+    expect(accept).toHaveProperty("disabled", true);
+    fireEvent.click(privacy);
+    fireEvent.click(accept);
+    await screen.findByText("No pudimos guardar tu aceptación. Inténtalo de nuevo.");
+    expect(screen.queryByText("transport details")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "English" }));
+    expect(screen.getByText("Could not update your legal acceptance. Please try again.")).toBeTruthy();
+    expect(screen.getAllByRole("checkbox").every((input) => (input as HTMLInputElement).checked)).toBe(true);
+    expect(screen.getByRole("button", { name: ACCEPT })).toHaveProperty("disabled", false);
+  });
 
   it("asks for the terms again when the profile has none and records them", async () => {
     mocks.getUserProfile.mockResolvedValue({
