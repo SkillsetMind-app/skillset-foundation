@@ -4,6 +4,7 @@ import {
   domainRejectionMessage,
   parseCustomDomain,
 } from "@/domain/custom-domain";
+import { isActivationRequiredError } from "@/domain/creator-verification";
 import {
   addDomainToProject,
   vercelDomainsConfig,
@@ -114,6 +115,14 @@ export async function POST(request: Request) {
 
   if (claimError) {
     const message = claimError.message ?? "";
+    // The database refuses a creator whose activation is required and missing
+    // (P2-5). Same 402 the other studio routes answer for activation.
+    if (isActivationRequiredError(message)) {
+      return NextResponse.json(
+        { error: "Pay the one-time activation fee before connecting a custom domain." },
+        { status: 402 },
+      );
+    }
     if (/quota reached/i.test(message)) {
       return NextResponse.json(
         { error: "You have used every domain your plan includes. Upgrade to add another." },

@@ -393,6 +393,7 @@ describe("CustomDomainsPanel", () => {
     { status: 403, body: { error: "You have used every domain your plan includes. Upgrade to add another." }, en: "You have used every domain your plan includes. Upgrade to add another.", es: "Has utilizado todos los dominios incluidos en tu plan. Mejora tu plan para añadir otro." },
     { status: 403, body: { error: "Custom domains are not included on your plan." }, en: "Custom domains are not included on your plan.", es: "Tu plan no incluye dominios propios." },
     { status: 409, body: { error: "That domain is already connected." }, en: "That domain is already connected.", es: "Ese dominio ya está conectado." },
+    { status: 402, body: { error: "Pay the one-time activation fee before connecting a custom domain." }, en: "Pay the one-time activation fee before connecting a custom domain.", es: "Paga la tarifa única de activación antes de conectar un dominio propio." },
     { status: 400, body: { error: "Invalid request body." }, en: "Could not add that domain.", es: "No pudimos añadir ese dominio." },
     { status: 403, body: { error: "local-qa-unknown-permission-error" }, en: "Could not add that domain.", es: "No pudimos añadir ese dominio." },
     { status: 502, body: { status: "error", errorReason: "That domain is already connected somewhere else." }, en: "That domain is already connected somewhere else.", es: "Ese dominio ya está conectado en otro lugar." },

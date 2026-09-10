@@ -19,6 +19,7 @@ import {
   normalizeCouponCode,
   TAX_REGIONS,
 } from "@/domain/course-commerce";
+import { isActivationRequiredError } from "@/domain/creator-verification";
 import {
   createCourseCoupon,
   deleteCourseCoupon,
@@ -136,6 +137,7 @@ const commerceErrorKeys: Record<string, string> = {
 function toMessageKey(error: unknown, fallback: string): string {
   const message = error && typeof error === "object" && "message" in error
     && typeof error.message === "string" ? error.message : "";
+  if (isActivationRequiredError(message)) return "courseCommerce.activationError";
   return Object.hasOwn(commerceErrorKeys, message) ? commerceErrorKeys[message] : fallback;
 }
 

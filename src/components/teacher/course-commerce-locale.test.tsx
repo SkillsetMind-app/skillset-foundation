@@ -67,6 +67,8 @@ describe("commerce with real EN/ES dictionaries", () => {
     ["Coupon codes use 3-24 letters, numbers, or dashes.", "invalidCode"],
     ["That coupon code already exists for this course.", "duplicateCode"],
     ["The expiry date must be in the future.", "expiryPast"],
+    ["Pay the one-time activation fee before creating coupons.", "activationError"],
+    ["Pay the one-time activation fee before a coupon can be activated.", "activationError"],
     ["raw database detail", "createError"], ["toString", "createError"],
   ])("localizes %s from Error and RPC objects", async (message, key) => {
     mocks.create.mockRejectedValue({ message });

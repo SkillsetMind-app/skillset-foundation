@@ -38,6 +38,7 @@ const apiErrorKeys = new Map<string, string>([
   ["Custom domains are not available yet. Support has been notified.", "unavailable"],
   ["You have used every domain your plan includes. Upgrade to add another.", "quota"],
   ["Custom domains are not included on your plan.", "plan"],
+  ["Pay the one-time activation fee before connecting a custom domain.", "activation"],
   ["That domain is already connected.", "duplicate"],
   ["Could not add that domain.", "add"],
   ["Could not remove that domain.", "remove"],
