@@ -2521,6 +2521,7 @@ export type Database = {
         }
         Returns: Json
       }
+      course_owner_can_sell: { Args: { p_owner_uid: string }; Returns: boolean }
       course_title_key: { Args: { p_title: string }; Returns: string }
       create_course_coupon: {
         Args: {
