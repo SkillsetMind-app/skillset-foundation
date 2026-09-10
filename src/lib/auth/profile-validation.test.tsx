@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { maxCredentialEntries, maxCredentialLength } from "@/domain/user-profile";
@@ -21,10 +23,11 @@ describe("normalizeUsername", () => {
 });
 
 describe("validateUsername", () => {
-  it("accepts a normalizable handle", () => {
+  it.each(["  @Ana-Souza ", " @Ana.Souza_9-2 ", "123", "1._", "ana_", "ana."])("accepts a normalizable handle: %j", (username) => {
     // Validation runs on the normalized value, so the form can accept what the
     // user typed and store the canonical form.
-    expect(validateUsername("  @Ana-Souza ")).toBe("");
+    expect(validateUsername(username)).toBe("");
+    expect(normalizeUsername(username)).toMatch(/^[a-z0-9][a-z0-9._-]{2,31}$/);
   });
 
   it("rejects an empty handle", () => {
@@ -33,17 +36,39 @@ describe("validateUsername", () => {
 
   it("rejects handles outside the storefront-safe shape", () => {
     // These become part of a public URL, so the pattern is deliberately narrow:
-    // 3-32 chars, lowercase alnum + dash, never starting with a dash.
+    // 3-32 chars, lowercase alnum + dot/underscore/dash, starting with alnum.
     expect(validateUsername("ab")).toBe("profileValidation.usernameInvalid");
     expect(validateUsername("-ana")).toBe("profileValidation.usernameInvalid");
     expect(validateUsername("ana souza")).toBe("profileValidation.usernameInvalid");
-    expect(validateUsername("ana_souza")).toBe("profileValidation.usernameInvalid");
     expect(validateUsername("a".repeat(33))).toBe("profileValidation.usernameInvalid");
+  });
+
+  it.each([
+    ".ana", "_ana", "ana/name", "ana\\name", "ana@name", "ana?x", "ana#x",
+    "ana%2e", "ana+name", "ana\tname", "ana\nname", "ana\u0000name", "an\u00e1",
+  ])("rejects unsupported characters and non-alphanumeric starts: %j", (username) => {
+    expect(validateUsername(username)).toBe("profileValidation.usernameInvalid");
   });
 
   it("accepts the exact boundary lengths", () => {
     expect(validateUsername("abc")).toBe("");
     expect(validateUsername("a".repeat(32))).toBe("");
+    expect(validateUsername(`1${"._-".repeat(10)}9`)).toBe("");
+    expect(validateUsername(`1${"._-".repeat(10)}99`)).toBe("profileValidation.usernameInvalid");
+  });
+
+  it("replaces the database format constraint without dropping uniqueness or null support", () => {
+    // Source contract only; applying this SQL still needs a PostgreSQL smoke test.
+    const sql = readFileSync(resolve(
+      process.cwd(),
+      "supabase/migrations/20260910040000_username_punctuation.sql",
+    ), "utf8").replace(/--[^\n]*/g, "").replace(/\s+/g, " ").trim();
+
+    expect(sql).toBe(
+      "alter table public.users drop constraint if exists users_username_format, " +
+      "add constraint users_username_format " +
+      "check (username is null or username ~ '^[a-z0-9][a-z0-9._-]{2,31}$');",
+    );
   });
 });
 

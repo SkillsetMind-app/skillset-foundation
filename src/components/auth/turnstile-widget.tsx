@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
+
 // Cloudflare Turnstile — env-gated bot check for the auth forms (login, signup,
 // password reset). When NEXT_PUBLIC_TURNSTILE_SITE_KEY is unset the component
 // renders nothing and never reports a token, so the forms behave exactly as
@@ -73,6 +75,7 @@ export function TurnstileWidget({
   onToken: (token: string) => void;
   resetSignal?: number;
 }) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -127,8 +130,7 @@ export function TurnstileWidget({
         aria-live="assertive"
         className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
       >
-        The security check could not load, so sign-in is blocked. Turn off any ad
-        blocker for this site or switch networks, then reload the page.
+        {t("authCaptcha.loadError")}
       </p>
     );
   }

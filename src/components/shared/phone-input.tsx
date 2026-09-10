@@ -1,22 +1,23 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+
+import { useTranslation } from "@/components/i18n/i18n-provider";
 
 type CountryOption = {
   code: string;
-  label: string;
   dialCode: string;
   minDigits: number;
   maxDigits: number;
 };
 
 const countries: CountryOption[] = [
-  { code: "US", label: "United States", dialCode: "+1", minDigits: 10, maxDigits: 10 },
-  { code: "BR", label: "Brazil", dialCode: "+55", minDigits: 10, maxDigits: 11 },
-  { code: "GB", label: "United Kingdom", dialCode: "+44", minDigits: 10, maxDigits: 10 },
-  { code: "GY", label: "Guyana", dialCode: "+592", minDigits: 7, maxDigits: 7 },
-  { code: "MX", label: "Mexico", dialCode: "+52", minDigits: 10, maxDigits: 10 },
+  { code: "US", dialCode: "+1", minDigits: 10, maxDigits: 10 },
+  { code: "BR", dialCode: "+55", minDigits: 10, maxDigits: 11 },
+  { code: "GB", dialCode: "+44", minDigits: 10, maxDigits: 10 },
+  { code: "GY", dialCode: "+592", minDigits: 7, maxDigits: 7 },
+  { code: "MX", dialCode: "+52", minDigits: 10, maxDigits: 10 },
 ];
 
 type PhoneInputProps = {
@@ -52,7 +53,10 @@ export function isValidE164Phone(value: string) {
   );
 }
 
-export function PhoneInput({ value, onChange, label = "Phone" }: PhoneInputProps) {
+export function PhoneInput({ value, onChange, label }: PhoneInputProps) {
+  const { locale, t } = useTranslation();
+  const inputId = useId();
+  const countryNames = useMemo(() => new Intl.DisplayNames([locale], { type: "region" }), [locale]);
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const selectedCountry = findCountryForValue(value);
@@ -96,8 +100,8 @@ export function PhoneInput({ value, onChange, label = "Phone" }: PhoneInputProps
   }
 
   return (
-    <label className="grid grid-cols-1 gap-2 text-sm font-semibold text-[var(--color-ink)]">
-      {label}
+    <div className="grid grid-cols-1 gap-2 text-sm font-semibold text-[var(--color-ink)]">
+      <label htmlFor={inputId}>{label ?? t("phoneInput.label")}</label>
       <div
         ref={wrapperRef}
         className="relative flex h-11 rounded-[10px] border border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]"
@@ -105,6 +109,10 @@ export function PhoneInput({ value, onChange, label = "Phone" }: PhoneInputProps
         <button
           type="button"
           onClick={() => setOpen((current) => !current)}
+          aria-label={t("phoneInput.countryAria")
+            .replace("{code}", () => selectedCountry.code)
+            .replace("{country}", () => countryNames.of(selectedCountry.code) ?? selectedCountry.code)
+            .replace("{dialCode}", () => selectedCountry.dialCode)}
           aria-haspopup="menu"
           aria-expanded={open}
           className="flex w-24 shrink-0 items-center justify-center gap-1 border-r border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3 text-xs font-bold text-[var(--color-primary)] transition hover:bg-[var(--color-surface-strong)]"
@@ -118,10 +126,12 @@ export function PhoneInput({ value, onChange, label = "Phone" }: PhoneInputProps
           />
         </button>
         <input
+          id={inputId}
           type="tel"
+          aria-describedby={`${inputId}-hint`}
           value={nationalDigits}
           onChange={(event) => handleNumberChange(event.target.value)}
-          placeholder="Phone number"
+          placeholder={t("phoneInput.placeholder")}
           className="min-w-0 flex-1 border-0 px-4 text-sm font-normal outline-none"
         />
 
@@ -132,18 +142,19 @@ export function PhoneInput({ value, onChange, label = "Phone" }: PhoneInputProps
                 key={country.code}
                 type="button"
                 onClick={() => handleCountryChange(country)}
+                aria-label={`${countryNames.of(country.code) ?? country.code} ${country.dialCode}`}
                 className="flex w-full items-center justify-between rounded-[8px] px-3 py-2 text-left text-sm font-semibold text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
               >
-                <span>{country.label}</span>
+                <span>{countryNames.of(country.code) ?? country.code}</span>
                 <span>{country.dialCode}</span>
               </button>
             ))}
           </div>
         ) : null}
       </div>
-      <span className="text-xs font-normal leading-5 text-[var(--color-ink-soft)]">
-        Stored in international E.164 format, such as +15551234567.
+      <span id={`${inputId}-hint`} className="text-xs font-normal leading-5 text-[var(--color-ink-soft)]">
+        {t("phoneInput.hint")}
       </span>
-    </label>
+    </div>
   );
 }

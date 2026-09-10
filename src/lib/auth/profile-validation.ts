@@ -5,7 +5,7 @@ import {
   userGoalOptions,
 } from "@/domain/user-profile";
 
-const usernamePattern = /^[a-z0-9][a-z0-9-]{2,31}$/;
+const usernamePattern = /^[a-z0-9][a-z0-9._-]{2,31}$/;
 const userGoalSet = new Set<UserGoal>(userGoalOptions);
 
 // Validators return a dictionary key ("" when valid) so messages render in the
@@ -33,8 +33,8 @@ export function validateUsername(value: string) {
 /**
  * Best-effort handle from what signup already knows — the display name, then
  * the e-mail's local part — shaped to pass validateUsername, or null: the
- * username is optional and the member can pick one later. Spaces, underscores,
- * dots, emoji and anything else outside the handle alphabet collapse into one
+ * username is optional and the member can pick one later. Generated handles
+ * still collapse separators (including spaces, underscores and dots) into one
  * hyphen; accents are folded rather than dropped ("José" → "jose", not "jos").
  * Lives next to the pattern on purpose: the derivation used to sit in the
  * signup form on top of normalizeUsername, which only lowercases and strips the

@@ -53,6 +53,7 @@ import { GET, POST } from "@/app/api/teach/advisor/route";
 import { KimiConfigError, KimiError } from "@/lib/assistant/kimi";
 
 type Result = { data?: unknown; error?: unknown };
+type ResultSource = Result | (() => Result);
 
 // What the route hands askKimi. Only the shape the assertions read back.
 type KimiTurn = { role: string; content: string };
@@ -64,9 +65,10 @@ const chain: { table: string; method: string; args: unknown[] }[] = [];
 // A supabase-js query builder is chainable AND thenable: `await q.select().eq()`
 // resolves with no terminal method. Model both, so the route can await wherever
 // it likes without this stub caring about the exact chain.
-function query(table: string, result: Result) {
+function query(table: string, result: ResultSource) {
   const builder: Record<string, unknown> = {
-    then: (resolve: (value: Result) => unknown) => Promise.resolve(result).then(resolve),
+    then: (resolve: (value: Result) => unknown) =>
+      Promise.resolve(typeof result === "function" ? result() : result).then(resolve),
   };
   for (const method of ["select", "insert", "eq", "order", "limit", "single", "maybeSingle"]) {
     builder[method] = (...args: unknown[]) => {
@@ -77,7 +79,7 @@ function query(table: string, result: Result) {
   return builder;
 }
 
-function supabase(tables: Record<string, Result> = {}) {
+function supabase(tables: Record<string, ResultSource> = {}) {
   mocks.from.mockImplementation((table: string) =>
     query(table, tables[table] ?? { data: null, error: null }),
   );
@@ -103,7 +105,10 @@ beforeEach(() => {
   chain.length = 0;
 
   mocks.getUser.mockResolvedValue({ data: { user: { id: "teacher" } }, error: null });
-  mocks.rpc.mockResolvedValue({ data: true, error: null });
+  mocks.rpc.mockImplementation(async (name: string) => ({
+    data: name === "is_teacher" ? true : name === "creator_activation_blocked" ? false : null,
+    error: null,
+  }));
   mocks.runRateLimit.mockResolvedValue({ data: null, error: null });
   mocks.createServer.mockResolvedValue(supabase());
 
@@ -146,7 +151,7 @@ describe("advisor route guards", () => {
     expect(mocks.askKimi).not.toHaveBeenCalled();
   });
 
-  it("authenticates, then authorizes, then throttles", async () => {
+  it("authenticates, authorizes and checks activation before throttling", async () => {
     mocks.runRateLimit.mockResolvedValue({
       data: null,
       error: { message: "RATE_LIMIT exceeded" },
@@ -159,7 +164,8 @@ describe("advisor route guards", () => {
     expect(mocks.getUser.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.rpc.mock.invocationCallOrder[0],
     );
-    expect(mocks.rpc.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mocks.rpc.mock.calls).toEqual([["is_teacher"], ["creator_activation_blocked"]]);
+    expect(mocks.rpc.mock.invocationCallOrder[1]).toBeLessThan(
       mocks.runRateLimit.mock.invocationCallOrder[0],
     );
     expect(mocks.askKimi).not.toHaveBeenCalled();
@@ -275,6 +281,70 @@ describe("advisor route guards", () => {
 
     mocks.askKimi.mockResolvedValue("Here is one concrete next step.");
     expect((await ask()).status).toBe(200);
+  });
+});
+
+describe("advisor route activation", () => {
+  it.each([
+    ["blocked", { data: true, error: null }, 402],
+    ["RPC error", { data: false, error: { message: "private database detail" } }, 503],
+    ["null", { data: null, error: null }, 503],
+    ["missing", { error: null }, 503],
+    ["string false", { data: "false", error: null }, 503],
+    ["zero", { data: 0, error: null }, 503],
+  ])("refuses %s activation before quota, context, inference or persistence", async (_label, result, status) => {
+    mocks.rpc.mockResolvedValueOnce({ data: true, error: null }).mockResolvedValueOnce(result);
+
+    const response = await ask();
+
+    expect(response.status).toBe(status);
+    expect(await response.json()).toEqual(status === 402 ? {
+      error: "Pay the one-time activation fee to activate your creator account.",
+      code: "activation_required",
+    } : { error: "Could not verify creator activation. Please try again." });
+    expect(mocks.runRateLimit).not.toHaveBeenCalled();
+    expect(mocks.buildTeacherContext).not.toHaveBeenCalled();
+    expect(mocks.retrieveKnowledge).not.toHaveBeenCalled();
+    expect(mocks.askKimi).not.toHaveBeenCalled();
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it("fails closed without exposing a rejected activation lookup", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: true, error: null })
+      .mockRejectedValueOnce(new Error("private transport detail"));
+
+    const response = await ask();
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "Could not verify creator activation. Please try again." });
+    expect(mocks.runRateLimit).not.toHaveBeenCalled();
+    expect(mocks.buildTeacherContext).not.toHaveBeenCalled();
+    expect(mocks.retrieveKnowledge).not.toHaveBeenCalled();
+    expect(mocks.askKimi).not.toHaveBeenCalled();
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it("waits for the shared verdict and accepts false without reimplementing its exceptions", async () => {
+    let release!: (result: Result) => void;
+    mocks.rpc.mockResolvedValueOnce({ data: true, error: null })
+      .mockImplementationOnce(() => new Promise<Result>((resolve) => { release = resolve; }));
+
+    const pending = ask();
+    try {
+      await vi.waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith("creator_activation_blocked"));
+      expect(mocks.runRateLimit).not.toHaveBeenCalled();
+      expect(mocks.buildTeacherContext).not.toHaveBeenCalled();
+      expect(mocks.retrieveKnowledge).not.toHaveBeenCalled();
+      expect(mocks.askKimi).not.toHaveBeenCalled();
+      expect(mocks.from).not.toHaveBeenCalled();
+    } finally {
+      release({ data: false, error: null });
+    }
+
+    expect((await pending).status).toBe(200);
+    expect(mocks.rpc.mock.calls).toEqual([["is_teacher"], ["creator_activation_blocked"]]);
+    expect(mocks.runRateLimit).toHaveBeenCalledTimes(2);
+    expect(mocks.askKimi).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -596,6 +666,7 @@ describe("advisor route thread recovery", () => {
     expect(await response.json()).toEqual({ conversationId: null, messages: [] });
     // Nothing to fetch messages for — the second query must not run.
     expect(mocks.from).not.toHaveBeenCalledWith("advisor_messages");
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it("returns the stored messages oldest first", async () => {
@@ -604,8 +675,8 @@ describe("advisor route thread recovery", () => {
         advisor_conversations: { data: { id: "conv-1" }, error: null },
         advisor_messages: {
           data: [
-            { role: "user", content: "How should I price this?" },
             { role: "assistant", content: "Start at 49 and test." },
+            { role: "user", content: "How should I price this?" },
           ],
           error: null,
         },
@@ -639,10 +710,56 @@ describe("advisor route thread recovery", () => {
         method: "order",
         args: ["updated_at", { ascending: false }],
       },
-      // The order the client renders is the database's, not the stub's.
-      { table: "advisor_messages", method: "order", args: ["created_at", { ascending: true }] },
+      { table: "advisor_conversations", method: "order", args: ["id", { ascending: true }] },
+      { table: "advisor_messages", method: "limit", args: [200] },
     ]) {
       expect(chain).toContainEqual(call);
     }
+    expect(chain.filter((call) => call.table === "advisor_messages" && call.method === "order")
+      .map((call) => call.args)).toEqual([
+      ["created_at", { ascending: false }],
+      ["role", { ascending: true }],
+      ["id", { ascending: false }],
+    ]);
+  });
+
+  it("recovers the latest 200 rows with tied pair timestamps without treating UUIDs as chronology", async () => {
+    const rows = Array.from({ length: 202 }, (_, index) => ({
+      // Deliberately reverse lexical order: sorting IDs as time reverses pairs.
+      id: `00000000-0000-4000-8000-${(500 - index).toString(16).padStart(12, "0")}`,
+      created_at: new Date(Date.UTC(2026, 8, 10, 0, 0, Math.floor(index / 2))).toISOString(),
+      role: index % 2 === 0 ? "user" : "assistant",
+      content: `turn-${index}`,
+    }));
+    mocks.createServer.mockResolvedValue(supabase({
+      advisor_conversations: { data: { id: "conv-1" }, error: null },
+      advisor_messages: () => {
+        const calls = chain.filter((call) => call.table === "advisor_messages");
+        const orders = calls.filter((call) => call.method === "order");
+        const limit = calls.find((call) => call.method === "limit")?.args[0] as number | undefined;
+        const data = [...rows].reverse().sort((left, right) => {
+          for (const { args } of orders) {
+            const [column, options] = args as [keyof typeof left, { ascending: boolean }];
+            const comparison = left[column] < right[column] ? -1 : left[column] > right[column] ? 1 : 0;
+            if (comparison) return options.ascending ? comparison : -comparison;
+          }
+          return 0;
+        }).slice(0, limit).map(({ role, content }) => ({ role, content }));
+        return { data, error: null };
+      },
+    }));
+
+    const recovered = await (await GET()).json();
+    expect(recovered).toEqual({
+      conversationId: "conv-1",
+      messages: rows.slice(2).map(({ role, content }) => ({ role, content })),
+    });
+
+    await post({ ...recovered, messages: [...recovered.messages, { role: "user", content: "Continue." }] });
+    expect(mocks.askKimi.mock.calls[0][0].messages.slice(-3)).toEqual([
+      { role: "user", content: "turn-200" },
+      { role: "assistant", content: "turn-201" },
+      { role: "user", content: "Continue." },
+    ]);
   });
 });

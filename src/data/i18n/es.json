@@ -2408,7 +2408,7 @@
   },
   "profileValidation": {
     "usernameRequired": "Elige un nombre de usuario para tu identidad en SkillsetMind.",
-    "usernameInvalid": "Usa de 3 a 32 letras minúsculas, números o guiones. Empieza con una letra o un número.",
+    "usernameInvalid": "Usa de 3 a 32 letras minúsculas, números, puntos, guiones o guiones bajos. Empieza con una letra o un número.",
     "displayNameRequired": "Escribe el nombre que la gente debería ver en SkillsetMind.",
     "displayNameTooLong": "Mantén tu nombre visible por debajo de 120 caracteres.",
     "bioTooLong": "Mantén tu bio por debajo de 280 caracteres.",
@@ -3232,7 +3232,7 @@
       "uppercase": "Al menos una letra mayúscula (A-Z)",
       "lowercase": "Al menos una letra minúscula (a-z)",
       "number": "Al menos un número (0-9)",
-      "special": "Al menos un carácter especial (!@#$%^&*)"
+      "special": "Al menos un carácter especial (p. ej., . - _ ! @)"
     },
     "pageTitle": "Inicia sesión o crea una cuenta",
     "loadingForm": "Cargando el formulario de inicio de sesión"
@@ -3848,5 +3848,308 @@
       "learner": "Estudiante de {brandName}",
       "protectedPlayback": "reproducción protegida"
     }
+  },
+  "accountSettings": {
+    "label": "Configuración",
+    "title": "Tus preferencias de SkillsetMind.",
+    "description": "Aquí puedes gestionar tu perfil, correo de acceso, contraseña, alertas, preferencias de aprendizaje y privacidad. La facturación y los cobros de los creadores tienen sus propias secciones.",
+    "navigation": "Secciones de configuración",
+    "saveError": "No pudimos guardar el cambio. Revisa tu conexión e inténtalo de nuevo.",
+    "tabs": {
+      "profile": {
+        "label": "Perfil",
+        "description": "Nombre, foto, usuario, biografía, teléfono y zona horaria."
+      },
+      "notifications": {
+        "label": "Notificaciones",
+        "description": "Alertas de cursos, facturación y soporte."
+      },
+      "security": {
+        "label": "Seguridad",
+        "description": "Correo de acceso, contraseña, recuperación y acceso sensible."
+      },
+      "learning": {
+        "label": "Aprendizaje",
+        "description": "Reproducción, subtítulos, resúmenes y preferencias del aula."
+      },
+      "privacy": {
+        "label": "Privacidad y datos",
+        "description": "Exporta tus datos o solicita eliminar tu cuenta."
+      }
+    },
+    "notifications": {
+      "title": "Decide qué merece tu atención.",
+      "description": "Se guardan en tu cuenta y se aplican cuando cada canal está disponible. Los correos transaccionales de seguridad y pagos permanecen activos para proteger tu cuenta.",
+      "productEmails": {
+        "label": "Correos del producto",
+        "description": "Actualizaciones importantes del producto y resúmenes semanales."
+      },
+      "courseActivity": {
+        "label": "Actividad del curso",
+        "description": "Reseñas, comentarios, actividad de las lecciones y logros de los estudiantes."
+      },
+      "billingAlerts": {
+        "label": "Alertas de facturación y cobros",
+        "description": "Avisos de recibos, facturas, ingresos, reembolsos y pagos fallidos."
+      },
+      "marketingEmails": {
+        "label": "Correos promocionales",
+        "description": "Anuncios de lanzamientos, promociones y campañas editoriales."
+      }
+    },
+    "learning": {
+      "title": "Preferencias del aula.",
+      "description": "Se guardan en tu cuenta para que el aula funcione igual en todos tus dispositivos. La facturación y los cobros de los creadores tienen sus propias secciones.",
+      "autoCaptions": {
+        "label": "Mostrar subtítulos automáticamente",
+        "description": "Muestra los subtítulos automáticamente cuando la lección los incluya."
+      },
+      "dailyDigest": {
+        "label": "Resumen diario de aprendizaje",
+        "description": "Un recordatorio diario breve de tus lecciones pendientes."
+      }
+    }
+  },
+  "accountData": {
+    "label": "Cuenta y datos",
+    "title": "Tus datos, tu cuenta",
+    "description": "Tus datos te pertenecen. Exporta una copia o solicita eliminar tu cuenta cuando quieras. Nuestro equipo procesa y confirma estas solicitudes manualmente.",
+    "requesting": "Solicitando...",
+    "export": "Exportar todos los datos",
+    "delete": "Eliminar cuenta",
+    "confirmDelete": "Confirmar solicitud de eliminación",
+    "cancel": "Cancelar",
+    "processing": "Actualmente, las solicitudes se procesan manualmente en un plazo de 72 horas. La exportación y eliminación automáticas con un clic están en desarrollo.",
+    "exportSuccess": "Solicitud de exportación de datos recibida. SkillsetMind la procesará manualmente en un plazo de 72 horas.",
+    "deleteSuccess": "Solicitud de eliminación de cuenta recibida. SkillsetMind la procesará manualmente en un plazo de 72 horas.",
+    "exportError": "No se pudo solicitar la exportación de tus datos. Inténtalo de nuevo en un momento.",
+    "deleteError": "No se pudo solicitar la eliminación de la cuenta. Inténtalo de nuevo en un momento."
+  },
+  "accountProfile": {
+    "loading": "Cargando los ajustes del perfil...",
+    "identity": "Identidad de la cuenta",
+    "title": "Ajustes del perfil",
+    "description": "Mantén tu identidad de SkillsetMind clara para aprender, enseñar, participar en comunidades y crear futuros perfiles públicos.",
+    "publicName": "Nombre público",
+    "username": "Nombre de usuario",
+    "bio": "Biografía",
+    "bioCount": "{count}/280 caracteres",
+    "phone": "Número de teléfono",
+    "timezone": "Zona horaria",
+    "goalsTitle": "Objetivos",
+    "uploading": "Subiendo...",
+    "saving": "Guardando...",
+    "save": "Guardar perfil",
+    "photo": {
+      "title": "Foto de perfil",
+      "hint": "Usa una imagen cuadrada y nítida (JPG, PNG o WebP de menos de 5 MB). Si no añades una, SkillsetMind muestra un icono neutro de persona en lugar de una inicial.",
+      "replace": "Reemplazar foto",
+      "upload": "Subir foto",
+      "uploadAria": "Subir foto de perfil"
+    },
+    "credentials": {
+      "title": "Credenciales",
+      "publicHint": "Se muestran en tu perfil público de instructor",
+      "hint": "Frases breves sobre tu experiencia, por ejemplo: «Profesor en la Universidad de São Paulo» o «15 años formando equipos de ventas».",
+      "placeholder": "Ej.: Profesor en la Universidad de São Paulo",
+      "removeAria": "Eliminar credencial {number}",
+      "remove": "Eliminar",
+      "add": "Añadir credencial"
+    },
+    "signature": {
+      "alt": "Tu firma para los certificados",
+      "empty": "Sin firma",
+      "title": "Firma para los certificados",
+      "hint": "Opcional. Sube tu firma manuscrita en PNG, JPG o WebP de menos de 5 MB; un PNG transparente se ve mejor. Aparecerá en cada certificado que obtengan tus alumnos. Si no la añades, aparecerá tu nombre.",
+      "replace": "Reemplazar firma",
+      "upload": "Subir firma",
+      "uploadAria": "Subir firma para los certificados"
+    },
+    "goals": {
+      "career_growth": "Crecimiento profesional",
+      "skill_certification": "Aprendizaje verificado",
+      "teach_online": "Enseñar en línea",
+      "build_community": "Crear una comunidad",
+      "live_mentorship": "Mentoría en vivo",
+      "business_training": "Formación de equipos"
+    },
+    "errors": {
+      "load": "No pudimos cargar los ajustes de tu perfil.",
+      "signIn": "Vuelve a iniciar sesión para actualizar tu perfil.",
+      "phone": "Introduce un número de teléfono válido.",
+      "timezone": "Elige tu zona horaria.",
+      "save": "No pudimos guardar tu perfil. Inténtalo de nuevo y contacta con soporte si el problema continúa.",
+      "avatarFile": "Usa una imagen de perfil JPG, PNG o WebP de menos de 5 MB.",
+      "signatureFile": "Usa una imagen PNG, JPG o WebP de menos de 5 MB (un PNG transparente se ve mejor).",
+      "avatarUpload": "No pudimos subir tu foto de perfil. Inténtalo de nuevo. Si el problema continúa, vuelve a iniciar sesión o contacta con soporte.",
+      "signatureUpload": "No pudimos subir tu firma. Inténtalo de nuevo. Si el problema continúa, vuelve a iniciar sesión o contacta con soporte."
+    },
+    "success": {
+      "profile": "Perfil actualizado.",
+      "photo": "Foto de perfil actualizada.",
+      "signature": "Firma para los certificados actualizada."
+    }
+  },
+  "accountSecurity": {
+    "label": "Seguridad",
+    "title": "Protección de la cuenta",
+    "description": "Verifica tu correo antes de acceder a las herramientas de creador, mantén tus datos de acceso actualizados y añade la autenticación de dos factores para proteger tu cuenta.",
+    "verification": {
+      "title": "Verificación del correo electrónico",
+      "description": "Obligatoria para los creadores antes de habilitar las herramientas de publicación.",
+      "verified": "Verificado",
+      "required": "Obligatoria",
+      "send": "Enviar correo",
+      "refresh": "Actualizar estado",
+      "sent": "Correo de verificación enviado. Revisa tu bandeja de entrada y vuelve aquí.",
+      "sendError": "No se pudo enviar el correo de verificación. Inténtalo de nuevo en un momento.",
+      "confirmed": "Correo verificado. Ya se pueden habilitar las herramientas de creador.",
+      "pending": "El correo aún no está verificado.",
+      "refreshError": "No se pudo actualizar el estado de verificación de tu correo."
+    },
+    "email": {
+      "title": "Cambiar correo electrónico",
+      "description": "Correo actual: {email}. Verificamos la nueva dirección antes de sustituirlo.",
+      "missing": "No hay correo registrado",
+      "placeholder": "nuevo-correo@ejemplo.com",
+      "label": "Nueva dirección de correo electrónico",
+      "send": "Enviar confirmación del cambio",
+      "sent": "Enviamos un mensaje de verificación al nuevo correo. Ábrelo para confirmar el cambio."
+    },
+    "password": {
+      "title": "Cambiar contraseña",
+      "description": "Introduce tu contraseña actual antes de elegir una nueva. Las cuentas que solo usan acceso con redes sociales deben recuperar la contraseña para añadir una al acceso por correo.",
+      "current": "Contraseña actual",
+      "next": "Nueva contraseña",
+      "update": "Actualizar contraseña",
+      "forgot": "¿Olvidaste tu contraseña actual? Te enviaremos un enlace seguro por correo para que puedas crear una nueva sin usar la anterior.",
+      "sendReset": "Enviarme un enlace de restablecimiento",
+      "requirementsError": "Usa una contraseña que cumpla todos los requisitos.",
+      "updated": "Contraseña actualizada.",
+      "mfaResetHint": "Esta cuenta tiene activada la verificación en dos pasos. Usa \"Enviarme un enlace de restablecimiento\" a continuación para crear una nueva contraseña sin usar la actual.",
+      "noEmail": "Esta cuenta accede con Google y no tiene una contraseña que restablecer. Primero añade una contraseña de correo desde tu proveedor.",
+      "resetSent": "Enlace de restablecimiento enviado a {email}. Ábrelo para crear una nueva contraseña; no necesitarás la actual.",
+      "resetLimited": "Ya enviamos un enlace de restablecimiento a {email} hace un momento. Revisa tu bandeja de entrada y las carpetas de spam o promociones. Podrás solicitar otro en unos minutos."
+    },
+    "mfa": {
+      "title": "Autenticación de dos factores",
+      "description": "Añade un código de una aplicación de autenticación además de tu contraseña.",
+      "on": "Activada",
+      "off": "Desactivada",
+      "unavailable": "La autenticación de dos factores aún no está habilitada en este espacio de trabajo. Cuando se habilite, podrás configurar una aplicación de autenticación aquí.",
+      "verifyEmail": "Verifica tu correo arriba antes de activar la autenticación de dos factores.",
+      "authenticator": "Aplicación de autenticación",
+      "enrolled": "Registrada el {date}",
+      "disableConfirm": "¿Desactivar la autenticación de dos factores?",
+      "confirmDisable": "Sí, desactivar",
+      "keepEnabled": "Mantener activada",
+      "disable": "Desactivar",
+      "step1": "Abre tu aplicación de autenticación (Google Authenticator, Authy, 1Password...).",
+      "step2BeforeLink": "Añade una cuenta y luego",
+      "setupLink": "abre este enlace de configuración",
+      "step2AfterLink": "o introduce manualmente la clave que aparece abajo.",
+      "step3": "Introduce el código de 6 dígitos que aparece en la aplicación.",
+      "setupKey": "Clave de configuración",
+      "copied": "Copiada",
+      "copy": "Copiar",
+      "code": "Código de 6 dígitos",
+      "codePlaceholder": "000000",
+      "codeLabel": "Código de autenticación",
+      "verifying": "Verificando...",
+      "enable": "Activar 2FA",
+      "cancel": "Cancelar",
+      "preparing": "Preparando...",
+      "setup": "Configurar autenticador",
+      "codeRequired": "Introduce el código de 6 dígitos de tu aplicación de autenticación.",
+      "enabled": "La autenticación de dos factores está activada. Tu cuenta está protegida.",
+      "disabled": "Autenticación de dos factores desactivada."
+    }
+  },
+  "professionalBadge": {
+    "eyebrow": "Estudio del instructor",
+    "title": "Verificación profesional",
+    "description": "Verifica tus credenciales profesionales para obtener el reconocimiento de instructor revisado.",
+    "required": "La verificación es obligatoria antes de publicar un curso.",
+    "optional": "La verificación es opcional. Solicita una insignia profesional o continúa sin ella.",
+    "privacy": "Comparte un perfil profesional, enlace a una red social, diploma o certificado. Los documentos son privados y se utilizan para la revisión.",
+    "edit": "Editar solicitud",
+    "request": "Solicitar insignia profesional",
+    "notNow": "Ahora no",
+    "loading": "Cargando el estado de tu verificación...",
+    "credentialVerified": "Credencial profesional verificada",
+    "evidenceReviewed": "Evidencia profesional revisada",
+    "verificationApproved": "Verificación profesional aprobada",
+    "approvedDescription": "Tu verificación profesional está aprobada. Se aplica a todos los cursos que publiques. No necesitas hacer nada más aquí.",
+    "backToStudio": "Volver al estudio",
+    "inReview": "En revisión",
+    "pendingRequired": "El equipo está revisando tu solicitud. Consulta esta página para conocer la decisión o los cambios solicitados antes de continuar con la activación.",
+    "pendingOptional": "El equipo está revisando tu solicitud de insignia profesional. Puedes continuar sin insignia mientras se revisa.",
+    "profession": "Profesión",
+    "registry": "Registro o licencia",
+    "registrationNumber": "Número de registro",
+    "issuingRegion": "Región emisora",
+    "documentSubmitted": "Documento privado enviado",
+    "evidenceLinks": "Enlaces de evidencia",
+    "changesRequested": "El equipo de revisión solicitó cambios",
+    "applicationRejected": "Tu solicitud fue rechazada",
+    "changesDescription": "Edita tu solicitud para actualizar los datos y enviarla de nuevo.",
+    "rejectedDescription": "Edita tu solicitud para enviarla de nuevo.",
+    "resubmitTitle": "Vuelve a enviar tu solicitud",
+    "applyTitle": "Solicitar verificación",
+    "evidenceLegend": "Evidencia profesional",
+    "chooseProfession": "Elige tu profesión",
+    "yourProfession": "Tu profesión",
+    "issuingCountry": "País o estado emisor",
+    "evidenceHint": "Un enlace https:// por línea, hasta {max}. Puedes incluir un perfil profesional o un enlace a una red social.",
+    "document": "Documento o diploma",
+    "documentHint": "JPEG, PNG, WebP o PDF. Añade un documento o al menos un enlace de evidencia.",
+    "takePhoto": "Tomar foto",
+    "documentAttached": "Documento privado adjunto",
+    "removeDocument": "Quitar documento",
+    "note": "Nota para el equipo de revisión (opcional)",
+    "notePlaceholder": "Información que nos ayude a verificarte más rápido.",
+    "removingDocument": "Quitando documento...",
+    "submitting": "Enviando...",
+    "resubmit": "Volver a enviar para revisión",
+    "submit": "Enviar para revisión",
+    "professions": {
+      "psychologist": "Psicólogo",
+      "coach": "Coach",
+      "holistic": "Profesional holístico",
+      "other": "Otra"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "approved": "Aprobada",
+      "needs_changes": "Requiere cambios",
+      "rejected": "Rechazada"
+    },
+    "errors": {
+      "chooseProfession": "Elige tu profesión.",
+      "professionLength": "Describe tu profesión (entre 2 y 120 caracteres).",
+      "registrationRequired": "Añade tu número de licencia y el país o estado emisor.",
+      "detailsTooLong": "Acorta los datos de registro o la nota.",
+      "evidenceRequired": "Añade un enlace profesional o un certificado para solicitar una insignia.",
+      "tooManyLinks": "Adjunta un máximo de 6 enlaces de evidencia.",
+      "invalidLink": "Utiliza un enlace profesional https:// válido.",
+      "invalidSecureLink": "Utiliza un enlace profesional https:// válido (máximo 300 caracteres).",
+      "invalidFile": "Elige un archivo JPG, PNG, WebP o PDF no vacío de hasta 10 MB. Convierte las fotos HEIC a JPG o PNG.",
+      "removeFailed": "No se pudo quitar el documento subido. Inténtalo de nuevo antes de reemplazarlo o quitarlo.",
+      "submitFailed": "No se pudo enviar la verificación. Inténtalo de nuevo.",
+      "invalidEvidence": "Revisa tus datos profesionales y la evidencia antes de enviar la solicitud."
+    }
+  },
+  "phoneInput": {
+    "label": "Teléfono",
+    "placeholder": "Número de teléfono",
+    "countryAria": "Código de país: {code} {dialCode} ({country})",
+    "hint": "Se guarda en formato internacional E.164, por ejemplo +15551234567."
+  },
+  "userAvatar": {
+    "named": "Foto de perfil de {name}",
+    "default": "Foto de perfil"
+  },
+  "authCaptcha": {
+    "loadError": "No se pudo cargar la verificación de seguridad, por lo que el inicio de sesión está bloqueado. Desactiva cualquier bloqueador de anuncios para este sitio o cambia de red y luego vuelve a cargar la página."
   }
 }
