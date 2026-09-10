@@ -4845,7 +4845,9 @@
       "missing": "Certificado no disponible.",
       "missingDetail": "No se encontró este certificado en tu cuenta o todavía no se ha emitido. Emítelo primero desde tu página de credenciales.",
       "error": "No pudimos cargar este certificado.",
-      "errorDetail": "Ocurrió un error al cargar la credencial. Actualiza la página o inténtalo de nuevo desde tu lista de credenciales."
+      "errorDetail": "Ocurrió un error al cargar la credencial. Actualiza la página o inténtalo de nuevo desde tu lista de credenciales.",
+      "metadataTitle": "Certificado",
+      "metadataDescription": "Consulta e imprime tu certificado SkillsetMind Verified."
     },
     "messages": {
       "loadError": "No pudimos cargar tus mensajes.",
@@ -4963,7 +4965,8 @@
       "codeLabel": "Código de verificación",
       "print": "Imprimir / Guardar como PDF",
       "back": "Volver al inicio",
-      "explore": "Explorar cursos"
+      "explore": "Explorar cursos",
+      "pageLoading": "Cargando verificación..."
     },
     "agenda": {
       "eyebrow": "Sesiones en vivo",
