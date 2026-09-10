@@ -106,6 +106,16 @@ describe("/auth/confirm", () => {
     expect(response.headers.get("location")).toBe(`${ORIGIN}/loading?next=route`);
   });
 
+  it.each(["signup", "email"])("preserves a platform invitation for a %s email opened on another device", async type => {
+    const next = "/invitations/81000000-0000-4000-8000-000000000001";
+    const redirect = `${ORIGIN}/auth/confirm?next=${encodeURIComponent(next)}`;
+    const response = await get(`?token_hash=abc&type=${type}&redirect_to=${encodeURIComponent(redirect)}`);
+    expect(response.headers.get("location")).toBe(`${ORIGIN}${next}`);
+    expect(mocks.verifyOtp).toHaveBeenCalledWith({ type, token_hash: "abc" });
+    expect(mocks.exchangeCodeForSession).not.toHaveBeenCalled();
+    expect(response.cookies.get(PASSWORD_RECOVERY_COOKIE)).toBeUndefined();
+  });
+
   it.each(["https://evil.test/loading?next=route", `${ORIGIN}/auth/confirm?next=${encodeURIComponent("//evil.test")}`, `${ORIGIN}/auth/confirm?next=${encodeURIComponent("/\\evil.test")}`])("refuses an unsafe email redirect %s", async (redirectTo) => {
     const response = await get(`?token_hash=abc&type=signup&redirect_to=${encodeURIComponent(redirectTo)}`);
     expect(response.headers.get("location")).toBe(`${ORIGIN}/welcome`);
