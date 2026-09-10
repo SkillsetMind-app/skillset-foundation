@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { NotificationRow } from "@/components/account/notification-row";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import { notificationHref, type AppNotification } from "@/domain/notification";
@@ -15,6 +16,7 @@ import {
 } from "@/lib/data/notifications";
 
 export function NotificationsInbox() {
+  const { t } = useTranslation();
   const { status, user } = useAuth();
   const uid = status === "authenticated" ? user?.uid ?? null : null;
   const [filter, setFilter] = useState<"all" | "unread">("all");
@@ -66,13 +68,13 @@ export function NotificationsInbox() {
 
   const notificationTabs = useMemo(
     () => [
-      { value: "all", label: "All" },
+      { value: "all", label: t("accountNotifications.all") },
       {
         value: "unread",
-        label: unreadIds.length > 0 ? `Unread (${unreadIds.length})` : "Unread",
+        label: unreadIds.length > 0 ? `${t("accountNotifications.unread")} (${unreadIds.length})` : t("accountNotifications.unread"),
       },
     ],
-    [unreadIds.length],
+    [unreadIds.length, t],
   );
 
   async function handleMarkAll() {
@@ -102,15 +104,15 @@ export function NotificationsInbox() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-[var(--color-ink-soft)]">
           {unreadIds.length > 0
-            ? `${unreadIds.length} unread`
-            : "You're all caught up"}
+            ? t("accountNotifications.unreadCount").replace("{count}", () => String(unreadIds.length))
+            : t("accountNotifications.caughtUp")}
         </p>
         <div className="flex items-center gap-2">
           <Link
             href="/account?tab=notifications"
             className="rounded-[10px] border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-primary)] transition hover:bg-[var(--color-surface-soft)]"
           >
-            Notification preferences
+            {t("accountNotifications.preferences")}
           </Link>
           {unreadIds.length > 0 ? (
             <button
@@ -119,7 +121,7 @@ export function NotificationsInbox() {
               className="inline-flex items-center gap-1.5 rounded-[10px] bg-[var(--color-primary)] px-3 py-2 text-xs font-semibold text-[var(--color-on-primary)] transition hover:opacity-90"
             >
               <CheckCheck aria-hidden="true" size={14} strokeWidth={2} />
-              Mark all read
+              {t("accountNotifications.markAll")}
             </button>
           ) : null}
         </div>
@@ -130,7 +132,7 @@ export function NotificationsInbox() {
           tabs={notificationTabs}
           activeValue={filter}
           onChange={(value) => setFilter(value as "all" | "unread")}
-          ariaLabel="Filter notifications"
+          ariaLabel={t("accountNotifications.filter")}
           className="px-2"
         />
         {loading ? (
@@ -151,14 +153,10 @@ export function NotificationsInbox() {
               className="mx-auto text-[var(--color-ink-muted)]"
             />
             <p className="mt-4 text-sm font-semibold text-[var(--color-ink)]">
-              {filter === "unread" && items.length > 0
-                ? "You're all caught up"
-                : "No notifications yet"}
+              {t(filter === "unread" && items.length > 0 ? "accountNotifications.caughtUp" : "accountNotifications.empty")}
             </p>
             <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[var(--color-ink-soft)]">
-              {filter === "unread" && items.length > 0
-                ? "Nothing unread right now. Switch to All to see your earlier notifications."
-                : "Replies to your posts, new reviews on your courses, and enrollment updates will show up here."}
+              {t(filter === "unread" && items.length > 0 ? "accountNotifications.caughtUpBody" : "accountNotifications.emptyBody")}
             </p>
           </div>
         ) : (

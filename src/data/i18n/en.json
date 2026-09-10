@@ -4367,7 +4367,7 @@
   "activationCheckout": {
     "pageTitle": "Activate your storefront",
     "unavailableTitle": "Card checkout isn't available here yet.",
-    "unavailableBody": "Contact support for help with storefront activation while card checkout is unavailable.",
+    "unavailableBody": "We can activate your storefront manually in the meantime — contact us and we'll switch it on for your account.",
     "backToStudio": "Back to studio",
     "support": "Contact support",
     "errorTitle": "Checkout could not start.",
@@ -4386,7 +4386,7 @@
     "returnTitle": "Storefront activation",
     "thanks": "Thanks",
     "confirming": "We're confirming your payment.",
-    "returnBody": "Stripe confirms activation to us in the background, usually within a few moments. Return to your course to publish once activation is confirmed. If publishing still asks for the fee, wait a moment and try once more.",
+    "returnBody": "Stripe confirms activation to us in the background — it is usually instant. Head back to your course and publish. If publishing still asks for the fee, wait a moment and try once more.",
     "backToCourseStudio": "Back to course studio",
     "error": {
       "notRequired": "The activation fee is not required for your account right now. Return to the studio.",
@@ -4413,8 +4413,8 @@
     "preparing": "Preparing your payout onboarding…",
     "footer": "Powered by Stripe. When this is done, buyers pay your Stripe account directly; SkillsetMind never holds your money. Stripe settles and pays out on its own timing, depending on your country and the payment method. A new account waits on verification before its first payout.",
     "fallbackEyebrow": "Stripe embedded setup needs a fallback",
-    "fallbackTitle": "Continue setting up your Stripe account.",
-    "fallbackBody": "You can try Stripe's secure onboarding page or retry the embedded setup. The secure page returns you to SkillsetMind after completion.",
+    "fallbackTitle": "Continue with Stripe's secure onboarding page.",
+    "fallbackBody": "This can happen with browser privacy settings, blocked cookies, or when Stripe requires a stronger authentication step. The payout setup still works; this fallback returns you to SkillsetMind after completion.",
     "retry": "Retry embedded setup",
     "error": {
       "initialize": "Stripe Connect could not initialize. Try again or contact support if this continues.",
@@ -4443,7 +4443,7 @@
     "backToPlans": "Back to plans",
     "unknownPlanTitle": "We couldn't find that plan.",
     "unknownPlanBody": "The \"{plan}\" plan isn't available for purchase. Head back to plans to choose a current tier.",
-    "unavailableBody": "Card payments for plan upgrades are not available here yet. Your current plan keeps working. Return to plans or contact support for help.",
+    "unavailableBody": "Card payments for plan upgrades aren't available on this account just yet. Your current plan keeps working — head back to plans, or contact us and we'll switch it on.",
     "subscribing": "You're subscribing to",
     "yearly": "Yearly billing",
     "monthly": "Monthly billing",
@@ -4462,13 +4462,12 @@
     "pickPlanBody": "Choose a plan from the plans page and we'll open secure Stripe checkout right here.",
     "seePlans": "See plans",
     "returnTitle": "Checkout status",
-    "confirming": "Awaiting checkout confirmation.",
-    "returnBody": "Your new plan and commission rate activate after Stripe confirms the payment. This page does not verify payment status. Check billing in a few moments to confirm your plan. You can update your card or cancel from billing settings anytime.",
+    "returnBody": "Stripe finished your checkout. Your new plan and commission rate activate as soon as the confirmation lands — usually within a few moments. If billing still shows the old plan, refresh it shortly. You can update your card or cancel from billing settings any time.",
     "backToBilling": "Back to billing",
     "openStudio": "Open Teacher Studio",
     "nothingToConfirm": "Nothing to confirm",
-    "noCheckout": "No checkout reference.",
-    "noCheckoutBody": "There is no checkout session reference in this visit's URL. Return to billing to review your plan or start an upgrade.",
+    "noCheckout": "No recent checkout.",
+    "noCheckoutBody": "This page confirms a Stripe checkout right after you complete one. We didn't find a checkout session for this visit — head back to billing to review your plan or start an upgrade.",
     "goToBilling": "Go to billing",
     "error": {
       "notConfigured": "Plan payments are not configured yet. Contact support; your current plan keeps working.",
@@ -4477,7 +4476,8 @@
       "conflict": "An existing subscription or another checkout prevents a new checkout. Review billing before trying again; manage an existing subscription there.",
       "rateLimit": "Too many attempts. Wait before trying again.",
       "generic": "Could not start checkout. Try again in a moment, or contact support if this continues."
-    }
+    },
+    "complete": "Checkout complete."
   },
   "courseCreation": {
     "format": "Format",

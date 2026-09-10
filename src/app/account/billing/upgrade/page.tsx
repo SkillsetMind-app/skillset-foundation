@@ -5,6 +5,7 @@ import { EmbeddedCheckoutPanel } from "@/components/account/embedded-checkout-pa
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import type { PlanBillingCycle, PlanId } from "@/data/plans";
+import { getServerTranslation } from "@/lib/i18n/server";
 
 type SearchParamValue = string | string[] | undefined;
 
@@ -28,49 +29,49 @@ function parseCycle(value: string | undefined): PlanBillingCycle {
 export default async function BillingUpgradePage({
   searchParams,
 }: UpgradePageProps) {
+  const { t } = await getServerTranslation();
   const params = (await searchParams) ?? {};
   const planId = parsePlanId(firstParam(params.plan));
   const cycle = parseCycle(firstParam(params.cycle));
 
   return (
     <ProtectedSurface permissions={["auth.signOut"]}>
-      <PlatformShell title="Upgrade your plan" compact>
+      <PlatformShell title={t("billingCheckout.pageTitle")} compact>
         {planId ? (
             <Suspense
               fallback={
                 <div className="rounded-[14px] border fine-rule bg-white p-8 text-sm text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)]">
-                  Preparing secure checkout…
+                  {t("activationCheckout.preparing")}
                 </div>
               }
             >
               <EmbeddedCheckoutPanel planId={planId} cycle={cycle} />
             </Suspense>
         ) : (
-          <MissingPlanState />
+          <MissingPlanState t={t} />
         )}
       </PlatformShell>
     </ProtectedSurface>
   );
 }
 
-function MissingPlanState() {
+function MissingPlanState({ t }: { t: (key: string) => string }) {
   return (
     <div className="rounded-[14px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-8 text-center">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-        Pick a plan first
+        {t("billingCheckout.pickPlan")}
       </p>
       <h2 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
-        No plan selected.
+        {t("billingCheckout.noPlan")}
       </h2>
       <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
-        Choose a plan from the plans page and we&apos;ll open secure Stripe
-        checkout right here.
+        {t("billingCheckout.pickPlanBody")}
       </p>
       <Link
         href="/account/billing?tab=subscriptions"
         className="button-solid mt-5 inline-flex px-4 py-2.5 text-sm"
       >
-        See plans
+        {t("billingCheckout.seePlans")}
       </Link>
     </div>
   );

@@ -4279,7 +4279,7 @@
     "opening": "Abriendo...",
     "change": "Cambiar de plan",
     "unavailableHint": "El pago con tarjeta todavía no está disponible en este sitio. Vuelve a consultar pronto.",
-    "upgrade": "Cambiar a {plan}",
+    "upgrade": "Mejorar a {plan}",
     "activating": "Disponible pronto",
     "defaultTier": "Nivel predeterminado",
     "footer": "Stripe procesa los cambios de plan. Las mejoras se aplican de inmediato y Stripe Billing prorratea la diferencia. Los cambios a un plan inferior y las cancelaciones entran en vigor al finalizar el período de facturación actual. Puedes actualizar tu tarjeta o descargar facturas en cualquier momento desde el portal de clientes de Stripe."
@@ -4297,7 +4297,7 @@
   "accountBillingPage": {
     "eyebrow": "Facturación y recibos",
     "title": "Tus compras y recibos.",
-    "description": "Cada curso lo vende el educador que lo publica. El pago se realiza en su cuenta de Stripe, por lo que su nombre puede aparecer en el extracto de tu tarjeta. Los cursos de pago único siguen disponibles mientras los conserves; los cursos por suscripción, mientras esta esté activa. Tu plan de SkillsetMind, tus métodos de pago y tus facturas están en el portal seguro de Stripe. Las transferencias a creadores están en Transferencias."
+    "description": "Cada curso lo vende el educador que lo publica. El pago se realiza en su cuenta de Stripe, por lo que su nombre puede aparecer en el extracto de tu tarjeta. Los cursos de pago único siguen disponibles mientras los conserves; los cursos por suscripción, mientras esta esté activa. Tu plan de SkillsetMind, tus métodos de pago y tus facturas están en el portal seguro de Stripe. Los pagos a los creadores están en Pagos e impuestos."
   },
   "accountNotifications": {
     "title": "Notificaciones",
@@ -4367,7 +4367,7 @@
   "activationCheckout": {
     "pageTitle": "Activa tu tienda",
     "unavailableTitle": "El pago con tarjeta aún no está disponible aquí.",
-    "unavailableBody": "Contacta con soporte para obtener ayuda con la activación de tu tienda mientras el pago con tarjeta no esté disponible.",
+    "unavailableBody": "Mientras tanto, podemos activar tu tienda manualmente: contáctanos y la activaremos en tu cuenta.",
     "backToStudio": "Volver al estudio",
     "support": "Contactar con soporte",
     "errorTitle": "No se pudo iniciar el pago.",
@@ -4386,7 +4386,7 @@
     "returnTitle": "Activación de la tienda",
     "thanks": "Gracias",
     "confirming": "Estamos confirmando tu pago.",
-    "returnBody": "Stripe nos confirma la activación en segundo plano, normalmente en unos instantes. Vuelve a tu curso para publicarlo una vez confirmada la activación. Si todavía se solicita la tarifa al publicar, espera un momento e inténtalo de nuevo.",
+    "returnBody": "Stripe nos confirma la activación en segundo plano; normalmente es instantáneo. Vuelve a tu curso y publícalo. Si al publicar todavía se solicita la tarifa, espera un momento e inténtalo de nuevo.",
     "backToCourseStudio": "Volver al estudio de cursos",
     "error": {
       "notRequired": "Tu cuenta no necesita pagar la tarifa de activación en este momento. Vuelve al estudio.",
@@ -4413,8 +4413,8 @@
     "preparing": "Preparando la configuración de tus transferencias…",
     "footer": "Con tecnología de Stripe. Al terminar, los compradores pagan directamente a tu cuenta de Stripe; SkillsetMind nunca retiene tu dinero. Stripe liquida y transfiere según sus propios plazos, que dependen de tu país y del método de pago. Una cuenta nueva debe verificarse antes de su primera transferencia.",
     "fallbackEyebrow": "La configuración integrada de Stripe necesita una alternativa",
-    "fallbackTitle": "Continúa configurando tu cuenta de Stripe.",
-    "fallbackBody": "Puedes probar la página segura de registro de Stripe o volver a intentar la configuración integrada. La página segura te devuelve a SkillsetMind al terminar.",
+    "fallbackTitle": "Continúa con la página segura de registro de Stripe.",
+    "fallbackBody": "Puede ocurrir por la configuración de privacidad del navegador, por cookies bloqueadas o cuando Stripe exige un paso de autenticación más fuerte. La configuración de pagos sigue funcionando; esta alternativa te devuelve a SkillsetMind al terminar.",
     "retry": "Reintentar la configuración integrada",
     "error": {
       "initialize": "No se pudo iniciar Stripe Connect. Inténtalo de nuevo o contacta con soporte si el problema continúa.",
@@ -4443,7 +4443,7 @@
     "backToPlans": "Volver a los planes",
     "unknownPlanTitle": "No encontramos ese plan.",
     "unknownPlanBody": "El plan \"{plan}\" no está disponible para comprar. Vuelve a los planes para elegir uno de los niveles actuales.",
-    "unavailableBody": "Los pagos con tarjeta para cambiar de plan aún no están disponibles aquí. Tu plan actual sigue funcionando. Vuelve a los planes o contacta con soporte para obtener ayuda.",
+    "unavailableBody": "Los pagos con tarjeta para mejorar de plan aún no están disponibles en esta cuenta. Tu plan actual sigue funcionando: vuelve a los planes o contáctanos y lo activaremos.",
     "subscribing": "Te estás suscribiendo a",
     "yearly": "Facturación anual",
     "monthly": "Facturación mensual",
@@ -4453,22 +4453,21 @@
     "commission": "Comisión por venta en {plan}:",
     "processing": ". La tarifa de procesamiento de Stripe se te traslada en cada venta (2.9% + $0.30 USD / 5.4% + $0.30 estimado para monedas distintas del USD).",
     "cancel": "Cancela cuando quieras desde la configuración de facturación. Conservas los beneficios del plan hasta el final del período.",
-    "close": "Cerrar cambio de plan",
+    "close": "Cerrar",
     "secure": "Pago seguro",
-    "confirm": "Confirma tu cambio de plan",
+    "confirm": "Confirma la mejora de tu plan",
     "pageTitle": "Mejora tu plan",
     "pickPlan": "Elige un plan primero",
     "noPlan": "No hay ningún plan seleccionado.",
     "pickPlanBody": "Elige un plan en la página de planes y abriremos aquí el pago seguro de Stripe.",
     "seePlans": "Ver planes",
     "returnTitle": "Estado del pago",
-    "confirming": "Esperando la confirmación del pago.",
-    "returnBody": "Tu nuevo plan y su comisión se activan cuando Stripe confirma el pago. Esta página no verifica el estado del pago. Revisa la facturación en unos instantes para confirmar tu plan. Puedes actualizar tu tarjeta o cancelar desde la configuración de facturación cuando quieras.",
+    "returnBody": "Stripe completó tu pago. Tu nuevo plan y tu tasa de comisión se activan en cuanto llega la confirmación, normalmente en unos instantes. Si la facturación todavía muestra el plan anterior, actualízala en breve. Puedes actualizar tu tarjeta o cancelar desde la configuración de facturación cuando quieras.",
     "backToBilling": "Volver a la facturación",
     "openStudio": "Abrir el estudio del profesor",
     "nothingToConfirm": "Nada que confirmar",
-    "noCheckout": "No hay referencia de pago.",
-    "noCheckoutBody": "La URL de esta visita no contiene una referencia de sesión de pago. Vuelve a la facturación para revisar tu plan o iniciar un cambio.",
+    "noCheckout": "No hay ningún pago reciente.",
+    "noCheckoutBody": "Esta página confirma un pago de Stripe justo después de completarlo. No encontramos una sesión de pago en esta visita: vuelve a la facturación para revisar tu plan o iniciar una mejora.",
     "goToBilling": "Ir a la facturación",
     "error": {
       "notConfigured": "Los pagos de planes aún no están configurados. Contacta con soporte; tu plan actual sigue funcionando.",
@@ -4477,7 +4476,8 @@
       "conflict": "Una suscripción existente u otro pago en curso impide iniciar un nuevo pago. Revisa la facturación antes de volver a intentarlo; gestiona allí cualquier suscripción existente.",
       "rateLimit": "Demasiados intentos. Espera antes de volver a intentarlo.",
       "generic": "No se pudo iniciar el pago. Inténtalo de nuevo en unos instantes o contacta con soporte si el problema continúa."
-    }
+    },
+    "complete": "Pago completado."
   },
   "courseCreation": {
     "format": "Formato",

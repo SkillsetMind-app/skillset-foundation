@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 import { EmbeddedCheckoutPanel } from "@/components/account/embedded-checkout-panel";
 import type { PlanBillingCycle, PlanId } from "@/data/plans";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 
 type UpgradeModalProps = {
   open: boolean;
@@ -24,6 +25,7 @@ export function UpgradeModal({
   cycle,
   onClose,
 }: UpgradeModalProps) {
+  const { t } = useTranslation();
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useModalFocus(dialogRef, open && Boolean(planId));
@@ -65,27 +67,27 @@ export function UpgradeModal({
       <button
         type="button"
         className="absolute inset-0 bg-[rgba(15,39,68,0.62)] backdrop-blur-[2px]"
-        aria-label="Close upgrade"
+        aria-label={t("billingCheckout.close")}
         onClick={onClose}
       />
       <div className="modal-panel relative z-[75] flex w-full max-w-5xl flex-col overflow-hidden bg-white shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:rounded-[8px]">
         <header className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] px-5 py-4 sm:px-6">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-              Secure checkout
+              {t("billingCheckout.secure")}
             </p>
             <h2
               id="upgrade-modal-title"
               className="display-title mt-1 text-xl text-[var(--color-primary)] sm:text-2xl"
             >
-              Confirm your upgrade
+              {t("billingCheckout.confirm")}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="grid size-9 shrink-0 place-items-center rounded-[8px] text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
-            aria-label="Close upgrade"
+            aria-label={t("billingCheckout.close")}
           >
             <X aria-hidden="true" size={18} strokeWidth={1.8} />
           </button>
