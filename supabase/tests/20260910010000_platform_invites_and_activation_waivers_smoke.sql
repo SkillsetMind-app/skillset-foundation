@@ -229,6 +229,10 @@ set local role service_role;
 select pg_temp.assert_true(public.finalize_creator_activation_waiver('81000000-0000-4000-8000-000000000002',
   (select (result->>'waiver_revision')::uuid from invites where label='teacher-receipt')), 'matching revision cannot finalize');
 reset role;
+select pg_temp.assert_true((select count(*) = 1 from public.audit_log
+  where action = 'creator_activation_waiver.ready'
+    and target_id = '81000000-0000-4000-8000-000000000002'
+    and actor_id = 'service_role' and actor_email is null), 'service cleanup audit actor missing');
 select pg_temp.actor(2);
 set local role authenticated;
 select pg_temp.assert_true(not public.creator_activation_blocked('81000000-0000-4000-8000-000000000009'), 'ready waiver failed or UID oracle leaked');

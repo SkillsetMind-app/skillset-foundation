@@ -155,7 +155,8 @@ begin
   v_row := case when tg_op = 'DELETE' then to_jsonb(old) else to_jsonb(new) end;
   insert into public.audit_log(id, action, actor_id, actor_email, target_type, target_id,
     summary, metadata, created_at)
-  values (gen_random_uuid()::text, v_action, auth.uid()::text,
+  values (gen_random_uuid()::text, v_action, coalesce(auth.uid()::text,
+    case when public.is_service_role() then 'service_role' end),
     (select email from auth.users where id = auth.uid()), tg_table_name,
     coalesce(v_row->>'id', v_row->>'uid'), v_action,
     jsonb_build_object('previous', case when tg_op <> 'INSERT' then to_jsonb(old) end,
