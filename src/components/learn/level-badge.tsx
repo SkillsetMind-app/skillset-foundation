@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { MAX_LEVEL } from "@/domain/gamification";
 
 /**
@@ -12,6 +15,7 @@ export function LevelBadge({
   level: number;
   className?: string;
 }) {
+  const { t, locale } = useTranslation();
   const safeLevel = Math.max(1, Math.min(MAX_LEVEL, Math.round(level)));
 
   return (
@@ -19,9 +23,9 @@ export function LevelBadge({
       className={`inline-flex items-center rounded-[8px] bg-[var(--color-primary)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--color-base)] ${
         className ?? ""
       }`}
-      title={`Level ${safeLevel} — earned from likes on community posts`}
+      title={t("learnWave2.leaderboard.badgeTitle").replace("{level}", () => new Intl.NumberFormat(locale).format(safeLevel))}
     >
-      Lv {safeLevel}
+      {t("learnWave2.leaderboard.badge").replace("{level}", () => new Intl.NumberFormat(locale).format(safeLevel))}
     </span>
   );
 }

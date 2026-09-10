@@ -1,14 +1,16 @@
+import { getServerTranslation } from "@/lib/i18n/server";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { LearnCredentialsHub } from "@/components/learn/learn-credentials-hub";
 import { PlatformShell } from "@/components/platform/platform-shell";
 
-export default function LearnCredentialsPage() {
+export default async function LearnCredentialsPage() {
+  const { t } = await getServerTranslation();
   return (
     <ProtectedSurface permissions={["certificates.view"]}>
       <PlatformShell
-        eyebrow="Credentials"
-        title="Track your SkillsetMind Verified progress."
-        description="Credentials begin with course completion eligibility. Issuance remains controlled by SkillsetMind so certificates can stay trustworthy."
+        eyebrow={t("learnWave2.credentialsPage.eyebrow")}
+        title={t("learnWave2.credentialsPage.title")}
+        description={t("learnWave2.credentialsPage.description")}
       >
         <LearnCredentialsHub />
       </PlatformShell>

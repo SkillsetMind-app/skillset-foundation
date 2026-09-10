@@ -1,14 +1,16 @@
+import { getServerTranslation } from "@/lib/i18n/server";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { LearnCommunityHub } from "@/components/learn/learn-community-hub";
 import { PlatformShell } from "@/components/platform/platform-shell";
 
-export default function LearnCommunityPage() {
+export default async function LearnCommunityPage() {
+  const { t } = await getServerTranslation();
   return (
     <ProtectedSurface permissions={["community.read"]}>
       <PlatformShell
-        eyebrow="Course communities"
-        title="Community stays connected to enrolled learning."
-        description="Each course can open its own discussion space for questions, announcements, resources, and cohort interaction."
+        eyebrow={t("learnWave2.community.eyebrow")}
+        title={t("learnWave2.community.title")}
+        description={t("learnWave2.community.description")}
       >
         <LearnCommunityHub />
       </PlatformShell>

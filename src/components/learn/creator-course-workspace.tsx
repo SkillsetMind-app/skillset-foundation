@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
 import type { ClassroomTab } from "@/domain/classroom-tabs";
@@ -30,6 +31,7 @@ export function CreatorCourseWorkspace({
   /** Um post da comunidade aberto na gaveta. */
   openPostId?: string | null;
 }) {
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const courseId = initialCourseId ?? searchParams.get("courseId") ?? "";
   // Stripe's success_url lands here with ?checkout=success BEFORE the webhook
@@ -136,7 +138,7 @@ export function CreatorCourseWorkspace({
         });
       },
       () => {
-        setError("We could not confirm your enrollment for this creator course.");
+        setError("learnWave2.workspace.enrollmentError");
         setEnrollmentState({
           enrollment: null,
           key: courseId,
@@ -161,7 +163,7 @@ export function CreatorCourseWorkspace({
         });
       },
       () => {
-        setError("We could not load this creator course workspace.");
+        setError("learnWave2.workspace.courseError");
         setCourseState({
           course: null,
           key: courseId,
@@ -174,8 +176,8 @@ export function CreatorCourseWorkspace({
   if (!courseId) {
     return (
       <CreatorWorkspaceState
-        title="Course not selected."
-        detail="Open My Learning from an enrollment card or return to the marketplace."
+        title={t("learnWave2.workspace.notSelected")}
+        detail={t("learnWave2.workspace.notSelectedDetail")}
       />
     );
   }
@@ -183,8 +185,8 @@ export function CreatorCourseWorkspace({
   if (!hasBackendConfig) {
     return (
       <CreatorWorkspaceState
-        title="Creator course access is not connected."
-        detail="Your enrolled courses cannot load right now. Refresh the page, or contact support if the problem continues."
+        title={t("learnWave2.workspace.disconnected")}
+        detail={t("learnWave2.workspace.disconnectedDetail")}
       />
     );
   }
@@ -192,35 +194,35 @@ export function CreatorCourseWorkspace({
   if (isLoadingEnrollment || isLoadingCourse) {
     return (
       <CreatorWorkspaceState
-        title="Loading course workspace..."
-        detail="We are confirming enrollment and loading the teacher-published course."
+        title={t("learnWave2.workspace.loading")}
+        detail={t("learnWave2.workspace.loadingDetail")}
       />
     );
   }
 
   if (error) {
-    return <CreatorWorkspaceState title="Course unavailable." detail={error} />;
+    return <CreatorWorkspaceState title={t("learnWave2.workspace.unavailable")} detail={t(error)} />;
   }
 
   if (!enrollment) {
     if (cameFromCheckout) {
       return checkoutGraceExpired ? (
         <CreatorWorkspaceState
-          title="Almost there — enrollment is taking longer than usual."
-          detail="Your payment went through and is safe. Keep this page open: it opens automatically the moment your enrollment is confirmed. If nothing happens in a few minutes, contact support with your payment receipt."
+          title={t("learnWave2.workspace.delayed")}
+          detail={t("learnWave2.workspace.delayedDetail")}
         />
       ) : (
         <CreatorWorkspaceState
-          title="Payment received — opening your course..."
-          detail="Your payment is confirmed. We are setting up your course access right now; this page opens automatically in a few seconds."
+          title={t("learnWave2.workspace.received")}
+          detail={t("learnWave2.workspace.receivedDetail")}
         />
       );
     }
 
     return (
       <CreatorWorkspaceState
-        title="Enrollment required."
-        detail="This private workspace opens only after payment, admin enrollment, or approved access."
+        title={t("learnWave2.workspace.required")}
+        detail={t("learnWave2.workspace.requiredDetail")}
       />
     );
   }
@@ -228,8 +230,8 @@ export function CreatorCourseWorkspace({
   if (!canOpenCourse) {
     return (
       <CreatorWorkspaceState
-        title="Course access is inactive."
-        detail={`This enrollment is ${enrollment.status}. Private lessons reopen only after payment, admin approval, or restored access.`}
+        title={t("learnWave2.workspace.inactive")}
+        detail={t("learnWave2.workspace.inactiveDetail").replace("{status}", () => t(`learnWave2.enrollmentStatus.${enrollment.status}`))}
       />
     );
   }
@@ -237,8 +239,8 @@ export function CreatorCourseWorkspace({
   if (!course) {
     return (
       <CreatorWorkspaceState
-        title="Course record not found."
-        detail="The enrollment exists, but the course record is unavailable or restricted."
+        title={t("learnWave2.workspace.missing")}
+        detail={t("learnWave2.workspace.missingDetail")}
       />
     );
   }
@@ -270,10 +272,11 @@ function CreatorWorkspaceState({
   title: string;
   detail: string;
 }) {
+  const { t } = useTranslation();
   return (
     <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-        Creator course access
+        {t("learnWave2.workspace.eyebrow")}
       </p>
       {/* h1: nestes estados esta seção É a página inteira. O caminho feliz
           delega ao EnrolledCourseWorkspace, que traz o MembersAreaHero com o
@@ -289,10 +292,10 @@ function CreatorWorkspaceState({
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
         <Link href="/learn" className="button-solid px-4 py-2.5 text-sm">
-          Back to My Learning
+          {t("learnWave2.workspace.back")}
         </Link>
         <Link href="/courses" className="button-outline px-4 py-2.5 text-sm">
-          Open marketplace
+          {t("learnWave2.workspace.marketplace")}
         </Link>
       </div>
     </section>

@@ -38,7 +38,6 @@ import { formatCourseAssetSize, getPrimaryLessonVideoAsset } from "@/domain/cour
 import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 import type { CourseEvent } from "@/domain/course-event";
 import {
-  courseEventTypeLabels,
   formatEventDateTime,
   isValidExternalEventUrl,
 } from "@/domain/course-event";
@@ -1127,10 +1126,10 @@ function CourseEventsAgenda({ courseId }: { courseId: string }) {
     <section className="member-resource-panel">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-          Live sessions
+          {t("learnWave2.agenda.eyebrow")}
         </p>
         <h4 className="mt-2 text-lg font-semibold text-[var(--color-primary)]">
-          Upcoming sessions for this course
+          {t("learnWave2.agenda.title")}
         </h4>
       </div>
       <ul className="mt-4 grid gap-3">
@@ -1148,11 +1147,11 @@ function CourseEventsAgenda({ courseId }: { courseId: string }) {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="member-meta-chip">
-                    {courseEventTypeLabels[event.type]}
+                    {t(`creatorPanel.events.type.${event.type}`)}
                   </span>
                   {isLiveNow ? (
                     <span className="rounded-full bg-[rgba(178,34,52,0.1)] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-accent-fg)]">
-                      Happening now
+                      {t("learnWave2.agenda.now")}
                     </span>
                   ) : null}
                 </div>
@@ -1171,11 +1170,11 @@ function CourseEventsAgenda({ courseId }: { courseId: string }) {
                   className={`${isLiveNow ? "button-accent" : "button-outline"} inline-flex items-center gap-2 px-5 py-2.5 text-sm`}
                 >
                   <PlayCircle size={16} aria-hidden />
-                  {isLiveNow ? "Join now" : "Open session link"}
+                  {isLiveNow ? t("learnWave2.agenda.join") : t("learnWave2.agenda.open")}
                 </a>
               ) : (
                 <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
-                  Link available soon
+                  {t("learnWave2.agenda.soon")}
                 </span>
               )}
             </li>
@@ -1199,6 +1198,7 @@ function CourseCommunitySection({
   currentLesson: CommunityFeedLesson | null;
   openPostId: string | null;
 }) {
+  const { t } = useTranslation();
   // Quem e o professor. O feed marca as respostas dele ("· Instructor"), poe
   // a resposta dele em primeiro no cartao e nomeia o filtro "From <nome>".
   // Sem isto o professor era so mais um membro e o filtro dizia "the
@@ -1225,7 +1225,7 @@ function CourseCommunitySection({
     courseSlug: course.id,
     name: `${course.title} community`,
     description:
-      "A course-linked space for announcements, questions, resources, and cohort discussion.",
+      t("learnWave2.agenda.communityDescription"),
     visibility: "enrolled_only",
     categories: ["announcement", "discussion", "question", "resource"],
   };
