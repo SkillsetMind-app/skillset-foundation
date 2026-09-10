@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { LOCALE_COOKIE } from "@/lib/i18n/config";
-import { buildPageMetadata, privatePageMetadata, SITE_URL } from "@/lib/seo/page-metadata";
+import { buildPageMetadata, SITE_URL } from "@/lib/seo/page-metadata";
+import { privatePageMetadata } from "@/lib/seo/private-page-metadata";
 
 const state = vi.hoisted(() => ({ locale: "en" as "en" | "es" }));
 vi.mock("next/headers", () => ({

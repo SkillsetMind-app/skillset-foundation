@@ -2,7 +2,7 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { LearnCommunityHub } from "@/components/learn/learn-community-hub";
 import { PlatformShell } from "@/components/platform/platform-shell";
-import { privatePageMetadata } from "@/lib/seo/page-metadata";
+import { privatePageMetadata } from "@/lib/seo/private-page-metadata";
 
 export async function generateMetadata() {
   return privatePageMetadata("learnWave2.community.title");

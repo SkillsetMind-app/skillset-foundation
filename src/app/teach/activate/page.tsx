@@ -4,7 +4,7 @@ import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import { ActivationCheckoutPanel } from "@/components/teacher/activation-checkout-panel";
 import { getServerTranslation } from "@/lib/i18n/server";
-import { privatePageMetadata } from "@/lib/seo/page-metadata";
+import { privatePageMetadata } from "@/lib/seo/private-page-metadata";
 
 export async function generateMetadata() {
   return privatePageMetadata("activationCheckout.pageTitle");

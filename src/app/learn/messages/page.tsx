@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { StudentMessagesInbox } from "@/components/learn/student-messages-inbox";
 import { PlatformShell } from "@/components/platform/platform-shell";
-import { privatePageMetadata } from "@/lib/seo/page-metadata";
+import { privatePageMetadata } from "@/lib/seo/private-page-metadata";
 
 export async function generateMetadata() {
   return privatePageMetadata("learnWave2.messagesPage.title");
