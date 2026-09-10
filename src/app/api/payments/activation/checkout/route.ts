@@ -15,6 +15,7 @@ import {
 } from "@/lib/payments/server/stripe-helpers";
 import { isPlatformFlagOn } from "@/domain/platform-settings";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   ACTIVATION_FEE_CHECKOUT_PURPOSE,
   ACTIVATION_FEE_STRIPE_PRICE_ID,
@@ -69,6 +70,14 @@ export async function POST() {
         409,
         "activation_not_required",
       );
+    }
+    const client = await createSupabaseServerClient();
+    const { data: waived, error: waiverError } = await client.rpc("has_creator_activation_waiver");
+    if (waiverError || typeof waived !== "boolean") {
+      throw new PaymentError("Could not verify activation access. Please try again.", 503);
+    }
+    if (waived) {
+      throw new PaymentError("Your activation fee has been waived.", 409, "activation_not_required");
     }
     if (
       verificationRequired
@@ -158,6 +167,7 @@ export async function POST() {
       (session) => session.status === "open" && session.client_secret,
     );
     if (openSession?.client_secret) {
+      await checkBeforeReturningSession(openSession.id);
       return NextResponse.json({
         clientSecret: openSession.client_secret,
         sessionId: openSession.id,
@@ -195,10 +205,30 @@ export async function POST() {
       );
     }
 
+
+    await checkBeforeReturningSession(session.id);
+
     return NextResponse.json({
       clientSecret: session.client_secret,
       sessionId: session.id,
     });
+
+    async function checkBeforeReturningSession(id: string) {
+      const result = await Promise.resolve(client.rpc("has_creator_activation_waiver")).catch(() => null);
+      if (result && !result.error && result.data === false) return;
+      // A waiver may start while Stripe creates the session. Never expose its
+      // client secret until the second check; cancel it if access changed.
+      try {
+        const expired = await stripe.checkout.sessions.expire(id);
+        if (expired.status !== "expired") throw new Error();
+      } catch {
+        throw new PaymentError("Could not safely finish checkout. Please try again.", 503);
+      }
+      if (result && !result.error && result.data === true) {
+        throw new PaymentError("Your activation fee has been waived.", 409, "activation_not_required");
+      }
+      throw new PaymentError("Could not verify activation access. Please try again.", 503);
+    }
   } catch (error) {
     return paymentErrorResponse(error);
   }

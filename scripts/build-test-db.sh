@@ -180,4 +180,11 @@ fi
 echo "Seed:"
 aplica "supabase/schema/seed-teste.sql"
 
+# Prove the same smoke catches premature access before Stripe cleanup. The
+# mutation lives inside the smoke transaction and rolls back on its failure.
+prova_red "isencao sem confirmacao do Stripe" \
+  'SMOKE_ASSERTION_FAILED: pending waiver unlocked activation before cleanup' -- \
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v without_waiver_ready_guard=1 -q \
+    -f "supabase/tests/20260910010000_platform_invites_and_activation_waivers_smoke.sql"
+
 echo "Banco de teste pronto: baseline + $aplicadas migrations + seed."

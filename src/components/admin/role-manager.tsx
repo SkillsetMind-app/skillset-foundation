@@ -1,10 +1,12 @@
 "use client";
 
-import { RotateCcw } from "lucide-react";
+import { CircleDollarSign, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { PlatformInviteManager } from "@/components/admin/platform-invite-manager";
 import { Button, Field, InlineAlert } from "@/components/ui";
+import { setActivationWaiver } from "@/lib/data/platform-invites";
 import {
   listPlatformUsers,
   setUserRoles,
@@ -98,12 +100,32 @@ function personLabel(user: PlatformUser): string {
 
 export function RoleManager() {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<"people" | "matrix">("people");
+  const [tab, setTab] = useState<"people" | "matrix" | "invitations">("people");
+  const [invitationsOpened, setInvitationsOpened] = useState(false);
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState<PlatformUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<{ scope: "load" | "save"; key: string } | null>(null);
   const [savingUid, setSavingUid] = useState("");
+  const [waiverBusy, setWaiverBusy] = useState(false);
+  const [waiverFeedback, setWaiverFeedback] = useState<{ uid: string; key: string; failed: boolean } | null>(null);
+
+  async function applyWaiver(user: PlatformUser, waived: boolean) {
+    if (waiverBusy || savingUid) return;
+    const confirmation = t(`platformInvites.${waived ? "waiveConfirm" : "requireConfirm"}`)
+      .replace("{person}", () => personLabel(user));
+    if (!window.confirm(confirmation)) return;
+    setWaiverBusy(true);
+    setWaiverFeedback(null);
+    try {
+      await setActivationWaiver(user.uid, waived);
+      setWaiverFeedback({ uid: user.uid, key: waived ? "waiverSaved" : "requireSaved", failed: false });
+    } catch {
+      setWaiverFeedback({ uid: user.uid, key: "waiverError", failed: true });
+    } finally {
+      setWaiverBusy(false);
+    }
+  }
 
   const load = useCallback(async (term: string) => {
     setIsLoading(true);
@@ -154,6 +176,7 @@ export function RoleManager() {
 
   const tabs = [
     { id: "people" as const, label: t(`${copy}.people`) },
+    { id: "invitations" as const, label: t("platformInvites.tab") },
     { id: "matrix" as const, label: t(`${copy}.matrix`) },
   ];
 
@@ -164,7 +187,10 @@ export function RoleManager() {
           <button
             key={entry.id}
             type="button"
-            onClick={() => setTab(entry.id)}
+            onClick={() => {
+              setTab(entry.id);
+              if (entry.id === "invitations") setInvitationsOpened(true);
+            }}
             aria-pressed={tab === entry.id}
             className={`min-h-11 rounded-[10px] px-4 py-2 text-sm font-bold transition ${
               tab === entry.id
@@ -176,6 +202,8 @@ export function RoleManager() {
           </button>
         ))}
       </div>
+
+      {invitationsOpened ? <div hidden={tab !== "invitations"} className="mt-6 min-w-0"><PlatformInviteManager /></div> : null}
 
       {tab === "people" && error ? (
         <InlineAlert tone="error" className="mt-5 flex flex-wrap items-center justify-between gap-3">
@@ -242,7 +270,7 @@ export function RoleManager() {
                         <input
                           type="checkbox"
                           checked={hasLevel(user.roles, level)}
-                          disabled={savingUid === user.uid}
+                          disabled={savingUid === user.uid || waiverBusy}
                           onChange={(event) =>
                             void applyLevel(user, level, event.target.checked)
                           }
@@ -251,12 +279,21 @@ export function RoleManager() {
                       </label>
                     ))}
                   </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button variant="outline" disabled={waiverBusy || Boolean(savingUid)} className="min-h-11 max-w-full whitespace-normal" onClick={() => void applyWaiver(user, true)}>
+                      <CircleDollarSign size={16} className="shrink-0" aria-hidden />{t("platformInvites.waive")}
+                    </Button>
+                    <Button variant="outline" disabled={waiverBusy || Boolean(savingUid)} className="min-h-11 max-w-full whitespace-normal" onClick={() => void applyWaiver(user, false)}>
+                      <CircleDollarSign size={16} className="shrink-0" aria-hidden />{t("platformInvites.require")}
+                    </Button>
+                  </div>
+                  {waiverFeedback?.uid === user.uid ? <InlineAlert tone={waiverFeedback.failed ? "error" : "success"} className="mt-3">{t(`platformInvites.${waiverFeedback.key}`)}</InlineAlert> : null}
                 </li>
               ))}
             </ul>
           )}
         </div>
-      ) : (
+      ) : tab === "matrix" ? (
         <div role="region" aria-label={t(`${copy}.matrix`)} tabIndex={0} className="mt-6 overflow-x-auto">
           <table className="w-full min-w-[640px] border-collapse text-left text-sm">
             <thead>
@@ -305,7 +342,7 @@ export function RoleManager() {
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
     </section>
   );
 }
