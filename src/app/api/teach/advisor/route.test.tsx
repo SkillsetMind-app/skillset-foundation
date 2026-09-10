@@ -100,15 +100,34 @@ function ask(content = "How should I price this course?") {
   return post({ messages: [{ role: "user", content }] });
 }
 
+type TurnArgs = { p_conversation_id?: string | null };
+
+// Answers like the real RPCs. save_advisor_turn returns the thread it wrote to:
+// the one the client supplied, or a new one when none was sent.
+async function rpcAnswers(name: string, args?: TurnArgs): Promise<Result> {
+  if (name === "save_advisor_turn") {
+    return { data: args?.p_conversation_id ?? "conv-1", error: null };
+  }
+  return {
+    data: name === "is_teacher" ? true : name === "creator_activation_blocked" ? false : null,
+    error: null,
+  };
+}
+
+// The RPC's own refusals, as supabase-js hands them back: 42501 for a thread
+// that is not the caller's, P0001 RATE_LIMIT when the turn budget is spent.
+function refuseTurn(error: { code: string; message: string }) {
+  mocks.rpc.mockImplementation(async (name: string, args?: TurnArgs) =>
+    name === "save_advisor_turn" ? { data: null, error } : rpcAnswers(name, args),
+  );
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   chain.length = 0;
 
   mocks.getUser.mockResolvedValue({ data: { user: { id: "teacher" } }, error: null });
-  mocks.rpc.mockImplementation(async (name: string) => ({
-    data: name === "is_teacher" ? true : name === "creator_activation_blocked" ? false : null,
-    error: null,
-  }));
+  mocks.rpc.mockImplementation(rpcAnswers);
   mocks.runRateLimit.mockResolvedValue({ data: null, error: null });
   mocks.createServer.mockResolvedValue(supabase());
 
@@ -307,6 +326,7 @@ describe("advisor route activation", () => {
     expect(mocks.retrieveKnowledge).not.toHaveBeenCalled();
     expect(mocks.askKimi).not.toHaveBeenCalled();
     expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalledWith("save_advisor_turn", expect.anything());
   });
 
   it("fails closed without exposing a rejected activation lookup", async () => {
@@ -322,6 +342,7 @@ describe("advisor route activation", () => {
     expect(mocks.retrieveKnowledge).not.toHaveBeenCalled();
     expect(mocks.askKimi).not.toHaveBeenCalled();
     expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalledWith("save_advisor_turn", expect.anything());
   });
 
   it("waits for the shared verdict and accepts false without reimplementing its exceptions", async () => {
@@ -337,12 +358,18 @@ describe("advisor route activation", () => {
       expect(mocks.retrieveKnowledge).not.toHaveBeenCalled();
       expect(mocks.askKimi).not.toHaveBeenCalled();
       expect(mocks.from).not.toHaveBeenCalled();
+      expect(mocks.rpc).not.toHaveBeenCalledWith("save_advisor_turn", expect.anything());
     } finally {
       release({ data: false, error: null });
     }
 
     expect((await pending).status).toBe(200);
-    expect(mocks.rpc.mock.calls).toEqual([["is_teacher"], ["creator_activation_blocked"]]);
+    // The two verdicts, then the turn itself going through its quota RPC.
+    expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual([
+      "is_teacher",
+      "creator_activation_blocked",
+      "save_advisor_turn",
+    ]);
     expect(mocks.runRateLimit).toHaveBeenCalledTimes(2);
     expect(mocks.askKimi).toHaveBeenCalledTimes(1);
   });
@@ -449,13 +476,6 @@ describe("advisor route prompt assembly", () => {
   // embedded for retrieval, stored as the user row and used as the title — pick
   // the wrong one and the advisor answers a question from ten turns ago.
   it("searches, stores and titles from the newest turn", async () => {
-    mocks.createServer.mockResolvedValue(
-      supabase({
-        advisor_conversations: { data: { id: "conv-1" }, error: null },
-        advisor_messages: { data: null, error: null },
-      }),
-    );
-
     await post({
       messages: [
         { role: "user", content: "How should I price this?" },
@@ -468,24 +488,11 @@ describe("advisor route prompt assembly", () => {
       expect.anything(),
       "And the description?",
     );
-    expect(chain).toContainEqual({
-      table: "advisor_conversations",
-      method: "insert",
-      args: [{ teacher_id: "teacher", title: "And the description?" }],
-    });
-    expect(chain).toContainEqual({
-      table: "advisor_messages",
-      method: "insert",
-      args: [
-        [
-          { conversation_id: "conv-1", role: "user", content: "And the description?" },
-          {
-            conversation_id: "conv-1",
-            role: "assistant",
-            content: "Here is one concrete next step.",
-          },
-        ],
-      ],
+    expect(mocks.rpc).toHaveBeenCalledWith("save_advisor_turn", {
+      p_conversation_id: null,
+      p_title: "And the description?",
+      p_question: "And the description?",
+      p_reply: "Here is one concrete next step.",
     });
   });
 
@@ -549,14 +556,11 @@ describe("advisor route upstream failures", () => {
 });
 
 describe("advisor route persistence", () => {
-  it("stores the turn and hands back the conversation id", async () => {
-    mocks.createServer.mockResolvedValue(
-      supabase({
-        advisor_conversations: { data: { id: "conv-1" }, error: null },
-        advisor_messages: { data: null, error: null },
-      }),
-    );
-
+  // save_advisor_turn is the only write path left: INSERT on both tables is
+  // revoked from the API roles, and the RPC is where the turn budget lives. A
+  // route that went back to writing the tables directly would lose every
+  // transcript in production, so assert the path, not just the response.
+  it("stores the turn through the quota RPC and hands back the conversation id", async () => {
     const response = await ask();
 
     expect(response.status).toBe(200);
@@ -564,17 +568,19 @@ describe("advisor route persistence", () => {
       reply: "Here is one concrete next step.",
       conversationId: "conv-1",
     });
+    expect(mocks.rpc).toHaveBeenCalledWith("save_advisor_turn", {
+      p_conversation_id: null,
+      p_title: "How should I price this course?",
+      p_question: "How should I price this course?",
+      p_reply: "Here is one concrete next step.",
+    });
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 
   // The teacher already has their answer by the time this runs. Losing the
   // transcript is a smaller harm than turning a good reply into an error.
-  it("still returns the reply when RLS refuses the write", async () => {
-    mocks.createServer.mockResolvedValue(
-      supabase({
-        advisor_conversations: { data: { id: "conv-1" }, error: null },
-        advisor_messages: { data: null, error: { message: "row-level security" } },
-      }),
-    );
+  it("still returns the reply when the turn budget refuses the write", async () => {
+    refuseTurn({ code: "P0001", message: "RATE_LIMIT" });
 
     const response = await ask();
 
@@ -591,10 +597,6 @@ describe("advisor route persistence", () => {
   // sends back would open a fresh thread on every turn: still 200, still a good
   // reply, and the transcript quietly shattered into one-message conversations.
   it("continues the supplied thread instead of opening a second one", async () => {
-    mocks.createServer.mockResolvedValue(
-      supabase({ advisor_messages: { data: null, error: null } }),
-    );
-
     const response = await post({
       messages: [{ role: "user", content: "And the description?" }],
       conversationId: "conv-1",
@@ -604,37 +606,24 @@ describe("advisor route persistence", () => {
       reply: "Here is one concrete next step.",
       conversationId: "conv-1",
     });
-    expect(mocks.from).not.toHaveBeenCalledWith("advisor_conversations");
-    expect(chain).toContainEqual({
-      table: "advisor_messages",
-      method: "insert",
-      args: [
-        [
-          { conversation_id: "conv-1", role: "user", content: "And the description?" },
-          {
-            conversation_id: "conv-1",
-            role: "assistant",
-            content: "Here is one concrete next step.",
-          },
-        ],
-      ],
+    expect(mocks.rpc).toHaveBeenCalledWith("save_advisor_turn", {
+      p_conversation_id: "conv-1",
+      p_title: "And the description?",
+      p_question: "And the description?",
+      p_reply: "Here is one concrete next step.",
     });
   });
 
-  // A conversationId is client-supplied and therefore attacker-supplied. RLS is
-  // what stops it landing in someone else's thread; this asserts the route's
+  // A conversationId is client-supplied and therefore attacker-supplied. The RPC
+  // is what stops it landing in someone else's thread; this asserts the route's
   // half of that deal — it neither falls back to a thread of its own nor echoes
   // an id the database just refused, which would have the client keep sending it.
   it("does not hand back a conversation id the database refused", async () => {
-    mocks.createServer.mockResolvedValue(
-      supabase({
-        advisor_messages: { data: null, error: { message: "row-level security" } },
-      }),
-    );
+    refuseTurn({ code: "42501", message: "Conversation not found." });
 
     const response = await post({
       messages: [{ role: "user", content: "Show me that thread." }],
-      conversationId: "another-teachers-conversation",
+      conversationId: "5d0c6f3e-6c2b-4c55-9a52-3f1e2d4c5b6a",
     });
 
     expect(response.status).toBe(200);
@@ -642,7 +631,8 @@ describe("advisor route persistence", () => {
       reply: "Here is one concrete next step.",
       conversationId: null,
     });
-    expect(mocks.from).not.toHaveBeenCalledWith("advisor_conversations");
+    // No retry into a fresh thread of its own.
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === "save_advisor_turn")).toHaveLength(1);
   });
 });
 

@@ -121,36 +121,30 @@ function titleFrom(text: string): string {
  * than turning a good reply into an error. Returns the conversation id when it
  * is safe to hand back to the client, null when nothing was stored.
  *
- * SECURITY: uses the request-scoped client, so RLS proves ownership. A supplied
- * conversationId belonging to another teacher fails the message policy's WITH
- * CHECK and stores nothing — the id is never trusted just because it parsed.
+ * SECURITY: save_advisor_turn is the only way into the history tables. INSERT
+ * on both is revoked from the API roles (20260910050000), because a direct
+ * PostgREST insert skipped the 30/h and 120/day budget above. The RPC runs as
+ * the caller's session: it requires the teacher role and a strong session,
+ * proves a supplied conversationId belongs to the caller, and spends its own
+ * copy of that budget in the database. Any refusal stores nothing.
  */
 async function persistTurn(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
-  uid: string,
   conversationId: string | null,
   question: string,
   reply: string,
 ): Promise<string | null> {
   try {
-    let id = conversationId;
-    if (!id) {
-      const { data, error } = await supabase
-        .from("advisor_conversations")
-        .insert({ teacher_id: uid, title: titleFrom(question) })
-        .select("id")
-        .single();
-      if (error || !data) return null;
-      id = data.id as string;
-    }
-
-    const { error } = await supabase.from("advisor_messages").insert([
-      { conversation_id: id, role: "user", content: question.slice(0, MAX_CHARS) },
-      { conversation_id: id, role: "assistant", content: reply.slice(0, 8000) },
-    ]);
-    // An error here means the id was not ours (RLS refused). Returning it anyway
-    // would have the client keep sending an id that can never store anything.
-    return error ? null : id;
+    const { data, error } = await supabase.rpc("save_advisor_turn", {
+      p_conversation_id: conversationId,
+      p_title: titleFrom(question),
+      p_question: question.slice(0, MAX_CHARS),
+      p_reply: reply.slice(0, 8000),
+    });
+    // An error means the database refused the turn (not our thread, or over
+    // budget). Returning the id anyway would have the client keep sending an id
+    // that can never store anything.
+    return error || typeof data !== "string" ? null : data;
   } catch {
     return null;
   }
@@ -346,7 +340,7 @@ export async function POST(request: Request) {
         signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
       });
 
-      const storedId = await persistTurn(supabase, uid, conversationId, question, reply);
+      const storedId = await persistTurn(supabase, conversationId, question, reply);
       return NextResponse.json({ reply, conversationId: storedId });
     } catch (caughtError) {
       // A missing key is a deployment gap, not a failed request: same calm copy

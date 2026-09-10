@@ -2399,6 +2399,10 @@ export type Database = {
       admin_set_activation_waiver: { Args: { p_target_uid: string; p_waived: boolean }; Returns: Json }
       finalize_creator_activation_waiver: { Args: { p_target_uid: string; p_revision: string }; Returns: boolean }
       has_creator_activation_waiver: { Args: Record<PropertyKey, never>; Returns: boolean }
+      save_advisor_turn: {
+        Args: { p_conversation_id: string | null; p_title: string; p_question: string; p_reply: string }
+        Returns: string
+      }
       fulfill_paid_course_access: {
         Args: { p_user_id: string; p_course_id: string; p_source: string; p_subscription_id?: string }
         Returns: undefined
