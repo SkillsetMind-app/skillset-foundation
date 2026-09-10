@@ -26,9 +26,7 @@ import {
 import { getUserProfile, updateUserIdentity } from "@/lib/data/user-profiles";
 import {
   allowedAvatarTypes,
-  avatarRequirementLabel,
   isAllowedAvatarFile,
-  signatureRequirementLabel,
   uploadTeacherSignature,
   uploadUserAvatar,
   type UploadAvatarProgress,
@@ -36,12 +34,12 @@ import {
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
 
 const goalOptions = [
-  ["career_growth", "Career growth"],
-  ["skill_certification", "Verified learning"],
-  ["teach_online", "Teach online"],
-  ["build_community", "Build a community"],
-  ["live_mentorship", "Live mentorship"],
-  ["business_training", "Team training"],
+  ["career_growth", "accountProfile.goals.career_growth"],
+  ["skill_certification", "accountProfile.goals.skill_certification"],
+  ["teach_online", "accountProfile.goals.teach_online"],
+  ["build_community", "accountProfile.goals.build_community"],
+  ["live_mentorship", "accountProfile.goals.live_mentorship"],
+  ["business_training", "accountProfile.goals.business_training"],
 ] as const satisfies Array<[UserGoal, string]>;
 
 const timezoneOptions = [
@@ -108,7 +106,7 @@ export function ProfileSettingsPanel() {
       })
       .catch(() => {
         if (mounted) {
-          setError("We could not load your profile settings.");
+          setError("accountProfile.errors.load");
         }
       })
       .finally(() => {
@@ -160,17 +158,17 @@ export function ProfileSettingsPanel() {
     event.preventDefault();
 
     if (!user) {
-      setError("Sign in again to update your profile.");
+      setError("accountProfile.errors.signIn");
       return;
     }
 
     const validationError =
-      formatValidationMessage(validateDisplayName(displayName), t) ||
-      formatValidationMessage(validateUsername(username), t) ||
-      formatValidationMessage(validateBio(bio), t) ||
-      formatValidationMessage(validateCredentials(credentials), t) ||
-      (!isValidE164Phone(phoneNumber) ? "Use a valid phone number." : "") ||
-      (!timezone ? "Choose your timezone." : "");
+      validateDisplayName(displayName) ||
+      validateUsername(username) ||
+      validateBio(bio) ||
+      validateCredentials(credentials) ||
+      (!isValidE164Phone(phoneNumber) ? "accountProfile.errors.phone" : "") ||
+      (!timezone ? "accountProfile.errors.timezone" : "");
 
     if (validationError) {
       setError(validationError);
@@ -191,9 +189,9 @@ export function ProfileSettingsPanel() {
         goals,
         ...(isTeacher ? { credentials: normalizeCredentials(credentials) } : {}),
       });
-      setSuccess("Profile updated.");
+      setSuccess("accountProfile.success.profile");
     } catch {
-      setError("We could not save your profile. Try again, and contact support if it keeps failing.");
+      setError("accountProfile.errors.save");
     } finally {
       setIsSaving(false);
     }
@@ -205,7 +203,7 @@ export function ProfileSettingsPanel() {
     }
 
     if (!isAllowedAvatarFile(file)) {
-      setError(`Use a ${avatarRequirementLabel} profile image.`);
+      setError("accountProfile.errors.avatarFile");
       return;
     }
 
@@ -222,18 +220,9 @@ export function ProfileSettingsPanel() {
       );
       setPhotoURL(uploadedPhotoURL);
       await refreshUser();
-      setSuccess("Profile photo updated.");
-    } catch (error) {
-      console.error(
-        "Profile avatar upload failed",
-        { uid: user.uid },
-        error,
-      );
-      const message =
-        error instanceof Error && error.message
-          ? error.message
-          : "We could not upload your profile photo. Please try again.";
-      setError(message);
+      setSuccess("accountProfile.success.photo");
+    } catch {
+      setError("accountProfile.errors.avatarUpload");
     } finally {
       setIsUploadingAvatar(false);
       setAvatarProgress(null);
@@ -246,7 +235,7 @@ export function ProfileSettingsPanel() {
     }
 
     if (!isAllowedAvatarFile(file)) {
-      setError(`Use a ${signatureRequirementLabel} image.`);
+      setError("accountProfile.errors.signatureFile");
       return;
     }
 
@@ -262,18 +251,9 @@ export function ProfileSettingsPanel() {
         setSignatureProgress,
       );
       setSignatureUrl(uploadedSignatureUrl);
-      setSuccess("Certificate signature updated.");
-    } catch (error) {
-      console.error(
-        "Teacher signature upload failed",
-        { uid: user.uid },
-        error,
-      );
-      const message =
-        error instanceof Error && error.message
-          ? error.message
-          : "We could not upload your signature. Please try again.";
-      setError(message);
+      setSuccess("accountProfile.success.signature");
+    } catch {
+      setError("accountProfile.errors.signatureUpload");
     } finally {
       setIsUploadingSignature(false);
       setSignatureProgress(null);
@@ -283,7 +263,7 @@ export function ProfileSettingsPanel() {
   if (isLoading) {
     return (
       <section className="settings-section-card">
-        <p className="text-sm text-[var(--color-ink-soft)]">Loading profile settings...</p>
+        <p className="text-sm text-[var(--color-ink-soft)]">{t("accountProfile.loading")}</p>
       </section>
     );
   }
@@ -291,16 +271,16 @@ export function ProfileSettingsPanel() {
   return (
     <section className="settings-section-card">
       <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-        Account identity
+        {t("accountProfile.identity")}
       </p>
       <h3 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
-        Profile settings
+        {t("accountProfile.title")}
       </h3>
       <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        Keep your SkillsetMind identity clear for learning, teaching, communities, and future public profiles.
+        {t("accountProfile.description")}
       </p>
 
-      <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
+      <form className="mt-6 grid grid-cols-1 gap-4" onSubmit={handleSubmit}>
         <div className="flex flex-col gap-4 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 sm:flex-row sm:items-center">
           <UserAvatar
             name={displayName || user?.email}
@@ -309,34 +289,33 @@ export function ProfileSettingsPanel() {
           />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-[var(--color-ink)]">
-              Profile photo
+              {t("accountProfile.photo.title")}
             </p>
             <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
-              Use a clear square image ({avatarRequirementLabel}). If you skip
-              it, SkillsetMind shows a neutral person icon instead of a letter badge.
+              {t("accountProfile.photo.hint")}
             </p>
             <label
-              className={`mt-3 inline-flex w-fit cursor-pointer items-center gap-2 rounded-[10px] border border-dashed border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] ${
+              className={`relative mt-3 inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-[10px] border border-dashed border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
                 isUploadingAvatar ? "pointer-events-none opacity-60" : ""
               }`}
             >
               <UploadCloud size={16} aria-hidden />
               {isUploadingAvatar
-                ? "Uploading..."
+                ? t("accountProfile.uploading")
                 : photoURL
-                  ? "Replace photo"
-                  : "Upload photo"}
+                  ? t("accountProfile.photo.replace")
+                  : t("accountProfile.photo.upload")}
               <input
                 type="file"
                 accept={allowedAvatarTypes.join(",")}
                 disabled={isUploadingAvatar}
-                aria-label="Upload profile photo"
+                aria-label={t("accountProfile.photo.uploadAria")}
                 onChange={(event) => {
                   const file = event.target.files?.[0] ?? null;
                   event.target.value = "";
                   void handleAvatarChange(file);
                 }}
-                className="hidden"
+                className="sr-only"
               />
             </label>
             {avatarProgress ? (
@@ -348,16 +327,16 @@ export function ProfileSettingsPanel() {
         </div>
 
         <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-          Public name
+          {t("accountProfile.publicName")}
           <input
             value={displayName}
             onChange={(event) => setDisplayName(event.target.value)}
-            className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+            className="min-w-0 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
           />
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-          Username
+          {t("accountProfile.username")}
           <div className="flex overflow-hidden rounded-[10px] border border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]">
             <span className="grid place-items-center border-r border-[var(--color-line)] px-3 text-sm font-semibold text-[var(--color-ink-soft)]">
               @
@@ -371,15 +350,15 @@ export function ProfileSettingsPanel() {
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-          Bio
+          {t("accountProfile.bio")}
           <textarea
             value={bio}
             onChange={(event) => setBio(event.target.value)}
             rows={4}
-            className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+            className="min-w-0 resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
           />
           <span className="text-xs font-normal text-[var(--color-ink-soft)]">
-            {bio.trim().length}/280 characters
+            {t("accountProfile.bioCount").replace("{count}", String(bio.trim().length))}
           </span>
         </label>
 
@@ -388,16 +367,14 @@ export function ProfileSettingsPanel() {
           <div className="grid gap-2">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="text-sm font-semibold text-[var(--color-ink)]">
-                Credentials
+                {t("accountProfile.credentials.title")}
               </p>
               <span className="text-xs font-normal text-[var(--color-ink-soft)]">
-                Shown on your public instructor profile
+                {t("accountProfile.credentials.publicHint")}
               </span>
             </div>
             <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
-              Short credibility lines &mdash; for example &ldquo;Professor at
-              University of S&atilde;o Paulo&rdquo; or &ldquo;15 years coaching
-              sales teams&rdquo;.
+              {t("accountProfile.credentials.hint")}
             </p>
             {credentials.length > 0 ? (
               <div className="grid gap-2">
@@ -409,16 +386,16 @@ export function ProfileSettingsPanel() {
                       onChange={(event) =>
                         updateCredential(index, event.target.value)
                       }
-                      placeholder="e.g. Professor at University of São Paulo"
+                      placeholder={t("accountProfile.credentials.placeholder")}
                       className="min-w-0 flex-1 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
                     />
                     <button
                       type="button"
                       onClick={() => removeCredential(index)}
                       className="shrink-0 rounded-[10px] border border-[var(--color-line)] px-3 py-3 text-xs font-semibold text-[var(--color-ink-soft)] hover:border-[var(--color-accent-fg)] hover:text-[var(--color-accent-fg)]"
-                      aria-label={`Remove credential ${index + 1}`}
+                      aria-label={t("accountProfile.credentials.removeAria").replace("{number}", String(index + 1))}
                     >
-                      Remove
+                      {t("accountProfile.credentials.remove")}
                     </button>
                   </div>
                 ))}
@@ -430,7 +407,7 @@ export function ProfileSettingsPanel() {
                 onClick={addCredential}
                 className="button-outline justify-self-start px-4 py-2 text-xs"
               >
-                Add credential
+                {t("accountProfile.credentials.add")}
               </button>
             ) : null}
           </div>
@@ -440,7 +417,7 @@ export function ProfileSettingsPanel() {
               {signatureUrl ? (
                 <Image
                   src={signatureUrl}
-                  alt="Your certificate signature"
+                  alt={t("accountProfile.signature.alt")}
                   fill
                   sizes="128px"
                   className="object-contain p-1"
@@ -448,41 +425,39 @@ export function ProfileSettingsPanel() {
                 />
               ) : (
                 <span className="px-2 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-                  No signature
+                  {t("accountProfile.signature.empty")}
                 </span>
               )}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-[var(--color-ink)]">
-                Certificate signature
+                {t("accountProfile.signature.title")}
               </p>
               <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
-                Optional. Upload your handwritten signature ({signatureRequirementLabel}).
-                It prints on every certificate your students earn. Skip it and
-                your name is printed instead.
+                {t("accountProfile.signature.hint")}
               </p>
               <label
-                className={`mt-3 inline-flex w-fit cursor-pointer items-center gap-2 rounded-[10px] border border-dashed border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] ${
+                className={`relative mt-3 inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-[10px] border border-dashed border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
                   isUploadingSignature ? "pointer-events-none opacity-60" : ""
                 }`}
               >
                 <UploadCloud size={16} aria-hidden />
                 {isUploadingSignature
-                  ? "Uploading..."
+                  ? t("accountProfile.uploading")
                   : signatureUrl
-                    ? "Replace signature"
-                    : "Upload signature"}
+                    ? t("accountProfile.signature.replace")
+                    : t("accountProfile.signature.upload")}
                 <input
                   type="file"
                   accept={allowedAvatarTypes.join(",")}
                   disabled={isUploadingSignature}
-                  aria-label="Upload certificate signature"
+                  aria-label={t("accountProfile.signature.uploadAria")}
                   onChange={(event) => {
                     const file = event.target.files?.[0] ?? null;
                     event.target.value = "";
                     void handleSignatureChange(file);
                   }}
-                  className="hidden"
+                  className="sr-only"
                 />
               </label>
               {signatureProgress ? (
@@ -498,15 +473,15 @@ export function ProfileSettingsPanel() {
         <PhoneInput
           value={phoneNumber}
           onChange={setPhoneNumber}
-          label="Phone number"
+          label={t("accountProfile.phone")}
         />
 
         <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-          Timezone
+          {t("accountProfile.timezone")}
           <select
             value={timezone}
             onChange={(event) => setTimezone(event.target.value)}
-            className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+            className="min-w-0 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
           >
             {safeTimezoneOptions.map((option) => (
               <option key={option} value={option}>
@@ -517,7 +492,7 @@ export function ProfileSettingsPanel() {
         </label>
 
         <div className="grid gap-2">
-          <p className="text-sm font-semibold text-[var(--color-ink)]">Goals</p>
+          <p className="text-sm font-semibold text-[var(--color-ink)]">{t("accountProfile.goalsTitle")}</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {goalOptions.map(([value, label]) => (
               <button
@@ -531,21 +506,21 @@ export function ProfileSettingsPanel() {
                     : "border-[var(--color-line)] bg-white text-[var(--color-ink-soft)]"
                 }`}
               >
-                {label}
+                {t(label)}
               </button>
             ))}
           </div>
         </div>
 
         {error ? (
-          <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {error}
+          <p role="alert" className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+            {formatValidationMessage(error, t)}
           </p>
         ) : null}
 
         {success ? (
-          <p className="info-notice">
-            {success}
+          <p className="info-notice" aria-live="polite">
+            {t(success)}
           </p>
         ) : null}
 
@@ -554,7 +529,7 @@ export function ProfileSettingsPanel() {
           disabled={isSaving}
           className="button-solid justify-self-start px-4 py-2.5 text-sm disabled:opacity-60"
         >
-          {isSaving ? "Saving..." : "Save profile"}
+          {isSaving ? t("accountProfile.saving") : t("accountProfile.save")}
         </button>
       </form>
     </section>

@@ -1,4 +1,6 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
@@ -50,14 +52,13 @@ describe("LocaleSwitcher", () => {
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 
-  // O pill de 44px com seta era grande demais dentro de uma barra de ícones.
-  // Compacto = a mesma caixa dos vizinhos (busca, tema, sino): 40px, moldura
-  // quadrada de cantos suaves, só a sigla. O menu não muda.
-  it("compacto: caixa de 40px quadrada, só a sigla, sem a seta — e o menu abre igual", () => {
+  it("compacto: sigla discreta sem moldura, alvo de toque de 44px e mesmo menu", () => {
     const trigger = renderSwitcher({ variant: "compact" });
-    expect(trigger).toHaveClass("size-10", "rounded-[10px]");
+    expect(trigger).toHaveClass("locale-switcher-compact", "size-11", "bg-transparent", "text-[11px]");
+    expect(trigger).not.toHaveClass("border", "bg-[var(--color-surface-soft)]");
     expect(trigger).not.toHaveClass("rounded-full", "min-w-11");
     expect(trigger).toHaveTextContent("EN");
+    expect(trigger.querySelector("span")).toHaveClass("text-[11px]", "font-semibold");
     expect(trigger.querySelector("svg")).toBeNull();
     expect(trigger).toHaveAttribute("aria-haspopup", "listbox");
     expect(trigger.className).not.toMatch(/outline-none/);
@@ -69,6 +70,13 @@ describe("LocaleSwitcher", () => {
       "English",
       "Español",
     ]);
+  });
+
+  it("a regra forcada do cabecalho exclui a variante compacta inclusive em hover e dark", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
+    const selectors = css.split("\n").filter(line => /^\s*(?:\[data-theme="dark"\] )?\.platform-topbar__actions > (?:div > )?button/.test(line));
+    expect(selectors).toHaveLength(6);
+    selectors.forEach(selector => expect(selector).toContain("button:not(.locale-switcher-compact)"));
   });
 
   it("abre com clique, lista as duas opções e marca a atual", () => {

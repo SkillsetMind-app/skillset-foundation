@@ -15,6 +15,7 @@ import { AccountDataPanel } from "@/components/account/account-data-panel";
 import { ProfileSettingsPanel } from "@/components/account/profile-settings-panel";
 import { SecuritySettingsPanel } from "@/components/account/security-settings-panel";
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import {
   defaultLearningPreferences,
   defaultNotificationPreferences,
@@ -35,43 +36,32 @@ type SettingsTab =
 
 const tabs: Array<{
   value: SettingsTab;
-  label: string;
-  description: string;
   icon: LucideIcon;
 }> = [
   {
     value: "profile",
-    label: "Profile",
-    description: "Name, photo, username, bio, phone, timezone.",
     icon: UserRound,
   },
   {
     value: "notifications",
-    label: "Notifications",
-    description: "Course, billing, and support alerts.",
     icon: Bell,
   },
   {
     value: "security",
-    label: "Security",
-    description: "Login email, password, recovery, and sensitive access.",
     icon: Shield,
   },
   {
     value: "learning",
-    label: "Learning",
-    description: "Playback, captions, digest, and classroom defaults.",
     icon: BookOpen,
   },
   {
     value: "privacy",
-    label: "Privacy & data",
-    description: "Export data or request account deletion.",
     icon: Database,
   },
 ];
 
 export function AccountSettingsHub() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get("tab");
@@ -85,27 +75,25 @@ export function AccountSettingsHub() {
     <div className="space-y-6">
       <header className="platform-hero-card rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          Settings
+          {t("accountSettings.label")}
         </p>
         <h1 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] lg:text-5xl">
-          Your SkillsetMind preferences.
+          {t("accountSettings.title")}
         </h1>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          Profile, login email, password, alerts, learning defaults, and privacy
-          controls live here. Billing and creator payouts stay in their own
-          money sections.
+          {t("accountSettings.description")}
         </p>
       </header>
 
       <div className="account-settings-grid">
-        <nav className="account-settings-tabs" aria-label="Settings sections">
+        <nav className="account-settings-tabs" aria-label={t("accountSettings.navigation")}>
           {tabs.map((tab) => (
             <SettingsTabButton
               key={tab.value}
               active={activeTab === tab.value}
               icon={tab.icon}
-              label={tab.label}
-              description={tab.description}
+              label={t(`accountSettings.tabs.${tab.value}.label`)}
+              description={t(`accountSettings.tabs.${tab.value}.description`)}
               onClick={() => selectTab(tab.value)}
             />
           ))}
@@ -171,6 +159,7 @@ function SettingsTabButton({
 }
 
 function NotificationPreferencesPanel() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [prefs, setPrefs] = useState<NotificationPreferences>(
     defaultNotificationPreferences,
@@ -217,47 +206,46 @@ function NotificationPreferencesPanel() {
   return (
     <section className="settings-section-card">
       <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-        Notifications
+        {t("accountSettings.tabs.notifications.label")}
       </p>
       <h2 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
-        Decide what gets your attention.
+        {t("accountSettings.notifications.title")}
       </h2>
       <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        Saved to your account and applied as each channel ships. Transactional
-        security and payment emails stay enabled for account safety.
+        {t("accountSettings.notifications.description")}
       </p>
 
       {saveFailed ? (
         <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          We could not save that change. Check your connection and try again.
+          {t("accountSettings.saveError")}
         </p>
       ) : null}
 
       <div className="mt-6 divide-y divide-[var(--color-line)]">
         <ToggleRow
-          label="Product emails"
-          description="Important product updates and weekly summaries."
+          label={t("accountSettings.notifications.productEmails.label")}
+          description={t("accountSettings.notifications.productEmails.description")}
           checked={prefs.productEmails}
           disabled={!loaded}
           onChange={() => toggle("productEmails")}
         />
         <ToggleRow
-          label="Course activity"
-          description="Course reviews, comments, lesson activity, and student milestones."
+          label={t("accountSettings.notifications.courseActivity.label")}
+          description={t("accountSettings.notifications.courseActivity.description")}
           checked={prefs.courseActivity}
           disabled={!loaded}
           onChange={() => toggle("courseActivity")}
         />
         <ToggleRow
-          label="Billing and payout alerts"
-          description="Receipts, invoices, earnings, refund, and failed payment notices."
+          label={t("accountSettings.notifications.billingAlerts.label")}
+          description={t("accountSettings.notifications.billingAlerts.description")}
           checked={prefs.billingAlerts}
           disabled={!loaded}
           onChange={() => toggle("billingAlerts")}
         />
         <ToggleRow
-          label="Marketing emails"
-          description="Launch announcements, promotions, and editorial campaigns."
+          label={t("accountSettings.notifications.marketingEmails.label")}
+          description={t("accountSettings.notifications.marketingEmails.description")}
           checked={prefs.marketingEmails}
           disabled={!loaded}
           onChange={() => toggle("marketingEmails")}
@@ -268,6 +256,7 @@ function NotificationPreferencesPanel() {
 }
 
 function LearningPreferencesPanel() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [prefs, setPrefs] = useState<LearningPreferences>(
     defaultLearningPreferences,
@@ -311,33 +300,32 @@ function LearningPreferencesPanel() {
   return (
     <section className="settings-section-card">
       <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-        Learning
+        {t("accountSettings.tabs.learning.label")}
       </p>
       <h2 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
-        Classroom defaults.
+        {t("accountSettings.learning.title")}
       </h2>
       <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        Saved to your account so your classroom behaves the same on every
-        device. Billing and creator payout setup stay in their own sections.
+        {t("accountSettings.learning.description")}
       </p>
 
       {saveFailed ? (
         <p className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          We could not save that change. Check your connection and try again.
+          {t("accountSettings.saveError")}
         </p>
       ) : null}
 
       <div className="mt-6 divide-y divide-[var(--color-line)]">
         <ToggleRow
-          label="Auto-show captions"
-          description="Show captions automatically when a lesson provides them."
+          label={t("accountSettings.learning.autoCaptions.label")}
+          description={t("accountSettings.learning.autoCaptions.description")}
           checked={prefs.autoCaptions}
           disabled={!loaded}
           onChange={() => toggle("autoCaptions")}
         />
         <ToggleRow
-          label="Daily learning digest"
-          description="A lightweight daily reminder for unfinished lessons."
+          label={t("accountSettings.learning.dailyDigest.label")}
+          description={t("accountSettings.learning.dailyDigest.description")}
           checked={prefs.dailyDigest}
           disabled={!loaded}
           onChange={() => toggle("dailyDigest")}

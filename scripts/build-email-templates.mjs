@@ -167,11 +167,11 @@ const TEMPLATES = [
     slug: "Confirm signup",
     dashboardTab: "Confirm sign up",
     subject: "Welcome to SkillsetMind — confirm your email",
-    preheader: "One click to activate your SkillsetMind account.",
-    title: "You're one click away.",
+    preheader: "Confirm your email to continue to SkillsetMind.",
+    title: "Welcome to SkillsetMind",
     intro:
-      "Welcome to SkillsetMind, where coaches, facilitators, and personal-development experts sell their own courses. Confirm your email address to activate your account.",
-    main: button(SIGNUP_URL, "Confirm my email"),
+      "Confirm your email address to continue to your account. If you received an invitation, you'll review it next. Your access changes only after you accept the invitation.",
+    main: button(SIGNUP_URL, "Confirm email and continue"),
     footer:
       "You're receiving this because this address was used to sign up at SkillsetMind. If it wasn't you, you can safely ignore this email.",
   },
@@ -183,9 +183,9 @@ const TEMPLATES = [
     preheader: "Your one-time sign-in link for SkillsetMind.",
     title: "Your sign-in link.",
     intro:
-      "Click the button below to sign in to your SkillsetMind account. This link expires soon and can only be used once. If you didn't request it, ignore this email.",
+      "Use this one-time link to sign in to SkillsetMind. If you received an invitation, you'll review it next. Your access changes only after you accept the invitation.",
     main: button(MAGIC_LINK_URL, "Sign in to SkillsetMind"),
-    footer: "",
+    footer: "If you didn't request this link or expect an invitation, you can safely ignore this email.",
   },
   {
     file: "invite.html",

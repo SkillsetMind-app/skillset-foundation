@@ -458,7 +458,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                 onClick={() => setTemplate(option)}
                 className={`rounded-[10px] border px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
                   template === option
-                    ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                    ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-on-primary)]"
                     : "border-[var(--color-line)] bg-white text-[var(--color-ink)]"
                 }`}
               >
@@ -578,7 +578,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex items-center gap-2 rounded-[12px] bg-[var(--color-primary)] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-[12px] bg-[var(--color-primary)] px-5 py-2.5 text-sm font-bold text-[var(--color-on-primary)] disabled:opacity-50"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Save page

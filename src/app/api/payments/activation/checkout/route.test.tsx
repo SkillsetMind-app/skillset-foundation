@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -12,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   searchPaymentIntents: vi.fn(),
   retrievePaymentIntent: vi.fn(),
   listDisputes: vi.fn(),
+  waiver: vi.fn(),
+  expireSession: vi.fn(),
 }));
 
 vi.mock("@/lib/payments/server/auth", async (importOriginal) => ({
@@ -22,6 +25,9 @@ vi.mock("@/lib/payments/server/auth", async (importOriginal) => ({
 
 vi.mock("@/lib/supabase/admin", () => ({
   getSupabaseAdminClient: mocks.getAdmin,
+}));
+vi.mock("@/lib/supabase/server", () => ({
+  createSupabaseServerClient: async () => ({ rpc: mocks.waiver }),
 }));
 
 vi.mock("@/lib/payments/server/app-url", () => ({
@@ -119,6 +125,8 @@ describe("storefront activation checkout", () => {
     mocks.requireUserId.mockResolvedValue("teacher-1");
     mocks.enforceRateLimit.mockResolvedValue(undefined);
     mocks.getAdmin.mockReturnValue(createAdmin());
+    mocks.waiver.mockResolvedValue({ data: false, error: null });
+    mocks.expireSession.mockResolvedValue({ status: "expired" });
     mocks.getUserRow.mockResolvedValue(profile());
     mocks.getCustomer.mockResolvedValue("cus_teacher");
     mocks.listSessions.mockResolvedValue({ data: [] });
@@ -134,6 +142,7 @@ describe("storefront activation checkout", () => {
         sessions: {
           list: mocks.listSessions,
           create: mocks.createSession,
+          expire: mocks.expireSession,
         },
       },
       paymentIntents: { search: mocks.searchPaymentIntents, retrieve: mocks.retrievePaymentIntent },
@@ -151,6 +160,53 @@ describe("storefront activation checkout", () => {
       error: "Storefront activation is not required right now.",
       code: "activation_not_required",
     });
+    expect(mocks.getStripe).not.toHaveBeenCalled();
+  });
+
+  it("does not charge an explicitly waived creator", async () => {
+    mocks.waiver.mockResolvedValue({ data: true, error: null });
+    const response = await POST();
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: "activation_not_required" });
+    expect(mocks.waiver).toHaveBeenCalledWith("has_creator_activation_waiver");
+    expect(mocks.getStripe).not.toHaveBeenCalled();
+  });
+
+  it.each(["new", "reused"])("expires a %s session if a waiver starts while checkout is running", async kind => {
+    if (kind === "reused") mocks.listSessions.mockResolvedValue({ data: [{
+      id: "cs_activation", status: "open", client_secret: "secret_activation",
+      metadata: { uid: "teacher-1", purpose: "skillset_activation_fee" },
+    }] });
+    mocks.waiver.mockResolvedValueOnce({ data: false, error: null }).mockResolvedValue({ data: true, error: null });
+    const response = await POST();
+    expect(response.status).toBe(409);
+    expect(mocks.expireSession).toHaveBeenCalledWith("cs_activation");
+    expect(await response.json()).not.toHaveProperty("clientSecret");
+  });
+
+  it("never reveals a newly created session if waiver verification fails", async () => {
+    mocks.waiver.mockResolvedValueOnce({ data: false, error: null }).mockResolvedValue({ data: null, error: { message: "unavailable" } });
+    const response = await POST();
+    expect(response.status).toBe(503);
+    expect(mocks.expireSession).toHaveBeenCalledWith("cs_activation");
+    expect(await response.json()).not.toHaveProperty("clientSecret");
+  });
+
+  it("does not return a session when cancellation cannot be confirmed", async () => {
+    mocks.waiver.mockResolvedValueOnce({ data: false, error: null }).mockResolvedValue({ data: true, error: null });
+    mocks.expireSession.mockRejectedValue(new Error("private provider diagnostic"));
+    const response = await POST();
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "Could not safely finish checkout. Please try again." });
+  });
+
+  it.each([
+    { data: null, error: { message: "database unavailable" } },
+    { data: null, error: null },
+  ])("fails closed before charging when waiver lookup is inconclusive: %j", async result => {
+    mocks.waiver.mockResolvedValue(result);
+    const response = await POST();
+    expect(response.status).toBe(503);
     expect(mocks.getStripe).not.toHaveBeenCalled();
   });
 
@@ -198,6 +254,19 @@ describe("storefront activation checkout", () => {
     );
     expect((await POST()).status).toBe(403);
     expect(mocks.getStripe).not.toHaveBeenCalled();
+  });
+
+  it.each(["none", "pending", "rejected"])("allows paid activation without a badge when verification is optional: %s", async (status) => {
+    mocks.getAdmin.mockReturnValue(createAdmin({ verificationRequired: false }));
+    mocks.getUserRow.mockResolvedValue(profile({ creator_verification_status: status }));
+
+    const response = await POST();
+
+    expect(response.status).toBe(200);
+    expect(mocks.createSession).toHaveBeenCalledOnce();
+    expect(mocks.createSession.mock.calls[0][0].line_items).toEqual([
+      { price: "price_1Tz1UvPvg1vJW0IjxFX7Nppi", quantity: 1 },
+    ]);
   });
 
   it("never creates checkout after the profile is activated", async () => {

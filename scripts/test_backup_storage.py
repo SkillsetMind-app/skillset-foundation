@@ -14,14 +14,24 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class BackupStorageTest(unittest.TestCase):
-    def run_backup(self, objects):
+    def run_backup(self, objects, key='local-test-placeholder'):
         requests = []
 
         class API(BaseHTTPRequestHandler):
             def log_message(self, *_args):
                 pass
 
+            def authorized(self):
+                # Storage accepts modern keys via apikey; legacy Bearer remains valid.
+                valid = (self.headers.get('apikey') == key if key.startswith('sb_secret_')
+                         else self.headers.get('Authorization') == 'Bearer ' + key)
+                if not valid:
+                    self.send_error(400)
+                return valid
+
             def do_GET(self):
+                if not self.authorized():
+                    return
                 if self.path == "/storage/v1/bucket":
                     data = json.dumps([{"name": "course-content"}]).encode()
                 else:
@@ -35,6 +45,8 @@ class BackupStorageTest(unittest.TestCase):
                 self.wfile.write(data)
 
             def do_POST(self):
+                if not self.authorized():
+                    return
                 body = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
                 prefix = body['prefix'].rstrip('/')
                 prefix = prefix + '/' if prefix else ''
@@ -69,7 +81,7 @@ class BackupStorageTest(unittest.TestCase):
                            STAMP='2026-09-06T000000Z', DUMP_BYTES='20000',
                            DATABASE_URL='postgres://fixture@invalid.example/scratch',
                            SUPABASE_URL=f'http://127.0.0.1:{server.server_port}',
-                           SUPABASE_SERVICE_ROLE_KEY='local-test-placeholder')
+                           SUPABASE_SERVICE_ROLE_KEY=key)
                 compatibility = 'jq(){ command jq "$@" | tr -d "\\r"; }\npython3(){ py "$@"; }\n' if os.name == 'nt' else ''
                 result = subprocess.run([bash, '-c', 'set -euo pipefail\ndie(){ exit 1; }\npg_dump(){ echo fixture-version; }\n'+compatibility+storage],
                                         cwd=ROOT, env=env, capture_output=True, text=True)
@@ -81,6 +93,13 @@ class BackupStorageTest(unittest.TestCase):
             finally:
                 server.shutdown()
                 server.server_close()
+
+    def test_modern_secret_key_backs_up_storage_without_leaking_credentials(self):
+        key = 'sb_secret_local-test-placeholder'
+        result, actual, _requests, _manifest = self.run_backup({'lesson.txt': b'lesson'}, key)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(actual, {'course-content/lesson.txt': b'lesson'})
+        self.assertNotIn(key, result.stdout + result.stderr)
 
     def test_nested_objects_spaces_and_pagination_are_restorable(self):
         objects = {"courses/c1/lesson 1.pdf": b"lesson", "users/u1/avatar.png": b"avatar"}

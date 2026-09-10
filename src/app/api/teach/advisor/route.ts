@@ -4,6 +4,7 @@ import { buildAssistantKnowledge } from "@/lib/assistant/knowledge";
 import { KimiConfigError, KimiError, askKimi, type KimiMessage } from "@/lib/assistant/kimi";
 import { formatKnowledge, retrieveKnowledge } from "@/lib/assistant/retrieve";
 import { buildTeacherContext } from "@/lib/assistant/teacher-context";
+import { assertCreatorActivated, PaymentError } from "@/lib/payments/server/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { runRateLimit } from "@/lib/supabase/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -172,6 +173,7 @@ export async function GET() {
     .select("id")
     .eq("teacher_id", data.user.id)
     .order("updated_at", { ascending: false })
+    .order("id", { ascending: true })
     .limit(1)
     .maybeSingle();
 
@@ -181,12 +183,18 @@ export async function GET() {
     .from("advisor_messages")
     .select("role,content")
     .eq("conversation_id", conversation.id)
-    .order("created_at", { ascending: true })
+    // Fetch the tail before reversing. A stored pair shares now(): assistant
+    // sorts first here so its question renders first after reversal.
+    // ponytail: id only breaks ties, not chronology; multiple pairs with the
+    // same timestamp need a persisted turn sequence to recover their order.
+    .order("created_at", { ascending: false })
+    .order("role", { ascending: true })
+    .order("id", { ascending: false })
     .limit(200);
 
   return NextResponse.json({
     conversationId: conversation.id,
-    messages: (messages ?? []) as AdvisorMessage[],
+    messages: [...(messages ?? [])].reverse() as AdvisorMessage[],
   });
 }
 
@@ -208,6 +216,20 @@ export async function POST(request: Request) {
   const { data: isTeacher, error: roleError } = await supabase.rpc("is_teacher");
   if (roleError || !isTeacher) {
     return NextResponse.json({ error: "Teacher access is required." }, { status: 403 });
+  }
+
+  // Reuse the studio's predicate, including flag-off, admin, paid and waiver
+  // exceptions. An unavailable verdict must not spend quota or send data to AI.
+  try {
+    await assertCreatorActivated();
+  } catch (error) {
+    if (error instanceof PaymentError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+    }
+    return NextResponse.json(
+      { error: "Could not verify creator activation. Please try again." },
+      { status: 503 },
+    );
   }
 
   // Two-window throttle on a reasoning-model-backed endpoint: an hourly burst

@@ -229,7 +229,9 @@ function MarketplaceHighlightPanel({
             {featured ? t("creatorPanel.hub.highlight.on") : t("creatorPanel.hub.highlight.off")}
           </p>
           <p className="mt-0.5 text-xs text-[var(--color-ink-muted)]">
-            {t("creatorPanel.hub.highlight.usage")
+            {(quota.lockedOnPlan
+              ? t("creatorPanel.hub.highlight.notIncluded")
+              : t("creatorPanel.hub.highlight.usage"))
               .replace("{used}", () => String(quota.used))
               .replace("{limit}", () => formatLimit(limit))
               .replace("{plan}", () => planById(planId).name)}
@@ -674,7 +676,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                         aria-hidden
                         className={`mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
                           item.done
-                            ? "bg-[var(--color-primary)] text-white"
+                            ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
                             : "border fine-rule bg-white text-[var(--color-ink-muted)]"
                         }`}
                       >

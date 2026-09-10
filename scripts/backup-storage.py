@@ -63,6 +63,7 @@ def backup_storage(destination):
     root = Path(destination).resolve()
     base = os.environ['SUPABASE_URL'].rstrip('/') + '/storage/v1'
     headers = {'Authorization': 'Bearer ' + os.environ['SUPABASE_SERVICE_ROLE_KEY'],
+               'apikey': os.environ['SUPABASE_SERVICE_ROLE_KEY'],
                'Content-Type': 'application/json', 'User-Agent': 'SkillsetMind-backup/1.0'}
 
     def request(path, body=None):

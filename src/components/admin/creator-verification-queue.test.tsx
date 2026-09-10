@@ -5,11 +5,12 @@ import { CreatorVerificationQueue } from "@/components/admin/creator-verificatio
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import type { CreatorVerificationCase } from "@/domain/creator-verification";
 
-const mocks = vi.hoisted(() => ({ subscribe: vi.fn(), review: vi.fn() }));
+const mocks = vi.hoisted(() => ({ subscribe: vi.fn(), review: vi.fn(), download: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/lib/data/creator-verification", () => ({
   subscribeToVerificationQueue: mocks.subscribe,
   reviewCreatorVerification: mocks.review,
+  getVerificationEvidenceDownload: mocks.download,
 }));
 
 const cases: CreatorVerificationCase[] = [
@@ -34,6 +35,19 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("verification queue search, states and language", () => {
+  it("offers private evidence without publishing its path and handles denied access", async () => {
+    mocks.download.mockRejectedValue(new Error("private provider detail"));
+    render(queue());
+    deliver([{ ...cases[0], registrationId: "", registrationType: "", registrationRegion: "",
+      verificationKind: "coach", documentPath: "owner/private.pdf" }]);
+    expect(screen.queryByText("No evidence links attached.")).toBeNull();
+    expect(screen.queryByText("owner/private.pdf")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Download private evidence" }));
+    expect(mocks.download).toHaveBeenCalledWith("owner/private.pdf");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not open the document");
+    expect(screen.queryByText("private provider detail")).toBeNull();
+    expect(mocks.review).not.toHaveBeenCalled();
+  });
   it.each(["en", "es"] as const)("preserves literal dollar sequences in the applicant note in %s", locale => {
     const note = "Certificado custa $$50; código literal $&.";
     render(queue());

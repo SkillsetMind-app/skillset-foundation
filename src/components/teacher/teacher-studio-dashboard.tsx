@@ -588,7 +588,7 @@ function StudioEvolution({
               <span
                 className={`grid size-9 place-items-center rounded-full ${
                   milestone.done
-                    ? "bg-[var(--color-primary)] text-white"
+                    ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
                     : "border border-[var(--color-line)] text-[var(--color-ink-muted)]"
                 }`}
               >

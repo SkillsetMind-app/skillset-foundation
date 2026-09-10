@@ -116,7 +116,7 @@ export function NotificationsInbox() {
             <button
               type="button"
               onClick={handleMarkAll}
-              className="inline-flex items-center gap-1.5 rounded-[10px] bg-[var(--color-primary)] px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90"
+              className="inline-flex items-center gap-1.5 rounded-[10px] bg-[var(--color-primary)] px-3 py-2 text-xs font-semibold text-[var(--color-on-primary)] transition hover:opacity-90"
             >
               <CheckCheck aria-hidden="true" size={14} strokeWidth={2} />
               Mark all read

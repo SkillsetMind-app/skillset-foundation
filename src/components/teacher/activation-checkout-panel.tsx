@@ -8,11 +8,13 @@ import {
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { useEffect, useMemo, useState } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { BrandName } from "@/components/shared/brand-name";
 import { Card, Eyebrow, buttonClasses } from "@/components/ui";
 import { activationFeeUsd, plans } from "@/data/plans";
 import { formatUsdWhole } from "@/data/platform";
 import { createActivationCheckoutClientSecret } from "@/lib/payments/activation";
+import { PaymentRequestError } from "@/lib/payments/client-fetch";
 import { track } from "@/lib/posthog/events";
 
 const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? null;
@@ -37,8 +39,12 @@ function getStripePromise(): Promise<Stripe | null> | null {
  * to strand one.
  */
 export function ActivationCheckoutPanel() {
+  const { t } = useTranslation();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{
+    message: string;
+    verificationRequired: boolean;
+  } | null>(null);
   const stripeLoader = getStripePromise();
 
   const freeCommission =
@@ -74,7 +80,11 @@ export function ActivationCheckoutPanel() {
             cause instanceof Error
               ? cause.message
               : "Could not start checkout. Try again in a moment.";
-          setError(message);
+          setError({
+            message,
+            verificationRequired: cause instanceof PaymentRequestError
+              && cause.code === "creator_verification_required",
+          });
           track.checkoutFailed({
             course_id: "activation_fee",
             reason: message,
@@ -115,10 +125,20 @@ export function ActivationCheckoutPanel() {
       <Card padding="none" className="overflow-hidden">
         {error ? (
           <div className="p-6 text-sm text-[var(--color-accent-fg)]">
-            <p className="font-semibold">Checkout could not start.</p>
-            <p className="mt-2 text-[var(--color-ink-soft)]">{error}</p>
-            <Link href="/teach/builder" className={buttonClasses({ variant: "outline" }, "mt-4")}>
-              Back to studio
+            <p className="font-semibold">
+              {error.verificationRequired
+                ? t("creatorPanel.activationGate.verificationTitle")
+                : "Checkout could not start."}
+            </p>
+            <p className="mt-2 text-[var(--color-ink-soft)]">
+              {error.verificationRequired
+                ? t("creatorPanel.activationGate.verificationBody")
+                : error.message}
+            </p>
+            <Link href={error.verificationRequired ? "/teach/verification" : "/teach/builder"} className={buttonClasses({ variant: "outline" }, "mt-4")}>
+              {error.verificationRequired
+                ? t("creatorPanel.activationGate.verificationAction")
+                : "Back to studio"}
             </Link>
           </div>
         ) : !options ? (

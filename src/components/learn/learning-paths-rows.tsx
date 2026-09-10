@@ -261,7 +261,7 @@ function CourseRowCard({
       <div className="relative aspect-[16/10] overflow-hidden rounded-[10px]">
         <CourseCover course={course} sizes="240px" />
         {stepNumber ? (
-          <span className="absolute left-2 top-2 grid size-7 place-items-center rounded-full bg-[var(--color-primary)] text-xs font-bold text-white">
+          <span className="absolute left-2 top-2 grid size-7 place-items-center rounded-full bg-[var(--color-primary)] text-xs font-bold text-[var(--color-on-primary)]">
             {stepNumber}
           </span>
         ) : null}

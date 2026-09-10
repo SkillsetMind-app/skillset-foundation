@@ -9,9 +9,8 @@ export default async function TeacherEventsPage() {
   return (
     <ProtectedSurface permissions={["teacherStudio.manageCourses"]}>
       <PlatformShell
-        eyebrow={t("teach.eventsPage.eyebrow")}
         title={t("teach.eventsPage.title")}
-        description={t("teach.eventsPage.description")}
+        compact
       >
         <TeacherEventStudio />
       </PlatformShell>

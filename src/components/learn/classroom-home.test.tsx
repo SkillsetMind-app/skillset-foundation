@@ -269,6 +269,53 @@ describe("sala de aula com matricula real", () => {
     expect(screen.getByText("Este curso todavía no tiene recursos generales adjuntos.")).toBeInTheDocument();
   });
 
+  it.each([false, true])("keeps the members cover in the hero, not Materials (preview=%s)", async (previewMode) => {
+    mocks.searchParams = new URLSearchParams();
+    mocks.pathname = previewMode ? "/teach/builder/course-1/preview/materials" : "/learn/courses/demo-course/materials";
+    mocks.completed = [];
+    let emit!: (assets: CourseAsset[]) => void;
+    vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_id, callback) => {
+      emit = callback;
+      return vi.fn();
+    });
+    vi.mocked(getProtectedCourseAssetObjectUrl).mockImplementation(async (asset) => `blob:${asset.id}`);
+    const cover: CourseAsset = {
+      id: "members-art", courseId: course.id, ownerId: "teacher-1", lessonId: null,
+      kind: "members_cover", fileName: "identity-only.png", contentType: "image/png",
+      size: 512, storagePath: "courses/course-1/assets/identity-only.png", isPreview: false,
+    };
+    const material: CourseAsset = {
+      ...cover, id: "worksheet", kind: "lesson_material", fileName: "Worksheet.png",
+      storagePath: "courses/course-1/assets/worksheet.png",
+    };
+    const withCover = { ...course, membersCoverAssetId: cover.id };
+    const workspace = (tab: ClassroomTab) => <I18nProvider initialLocale="en">
+      <EnrolledCourseWorkspace course={withCover} tab={tab} previewMode={previewMode} enableFirestoreAssets />
+    </I18nProvider>;
+    const { rerender, container } = render(workspace("materials"));
+    await act(async () => emit([
+      cover, material,
+      { ...cover, id: "course-art", kind: "course_cover", fileName: "course-art.png" },
+      { ...material, id: "lesson-only", lessonId: "l1", fileName: "lesson-only.png" },
+      { ...material, id: "module-only", moduleId: "m1", fileName: "module-only.png" },
+    ]));
+    expect(screen.getByText("1 file")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Materials\s*1$/ })).toBeInTheDocument();
+    expect(screen.getByText("Worksheet.png")).toBeInTheDocument();
+    for (const name of ["identity-only.png", "course-art.png", "lesson-only.png", "module-only.png"]) {
+      expect(screen.queryByText(name)).not.toBeInTheDocument();
+    }
+
+    await act(async () => emit([cover]));
+    expect(screen.getByText("0 files")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Materials$/ })).toBeInTheDocument();
+    expect(screen.getByText("No general course resources are attached yet.")).toBeInTheDocument();
+
+    rerender(workspace("lesson"));
+    await waitFor(() => expect(container.querySelector(".members-hero__cover")).toHaveAttribute("src", "blob:members-art"));
+    expect(recordLessonProgress).not.toHaveBeenCalled();
+  });
+
   it("localizes the certificate link without changing its destination", () => {
     mocks.searchParams = new URLSearchParams("lesson=l2");
     mocks.completed = ["l1", "l2"];

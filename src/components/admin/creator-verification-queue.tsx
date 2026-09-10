@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Download } from "lucide-react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { Field, InlineAlert } from "@/components/ui";
 import type { CreatorVerificationCase } from "@/domain/creator-verification";
 import {
   reviewCreatorVerification,
+  getVerificationEvidenceDownload,
   subscribeToVerificationQueue,
 } from "@/lib/data/creator-verification";
 
@@ -14,6 +16,26 @@ type ReviewDecision = "approved" | "needs_changes" | "rejected";
 
 const decisions: ReviewDecision[] = ["approved", "needs_changes", "rejected"];
 const copy = "platform.ops.verificationQueue";
+
+function EvidenceDocument({ path }: { path: string }) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  return <div>
+    <button type="button" disabled={busy} className="button-outline inline-flex items-center gap-2 px-3 py-2 text-sm"
+      onClick={async () => {
+        setBusy(true);
+        setFailed(false);
+        try { window.location.assign(await getVerificationEvidenceDownload(path)); }
+        catch { setFailed(true); }
+        finally { setBusy(false); }
+      }}>
+      <Download size={16} aria-hidden="true" />
+      {t(`${copy}.${busy ? "openingDocument" : "document"}`)}
+    </button>
+    {failed ? <InlineAlert tone="error">{t(`${copy}.documentError`)}</InlineAlert> : null}
+  </div>;
+}
 
 function formatSubmittedAt(iso: string, locale: string, pendingLabel: string) {
   const date = new Date(iso);
@@ -151,11 +173,12 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
               </div>
 
               <div className="mt-4 grid min-w-0 gap-2 rounded-[14px] border fine-rule bg-white p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
+                {verificationCase.registrationId ? <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
                   {verificationCase.registrationType} —{" "}
                   {verificationCase.registrationId} (
                   {verificationCase.registrationRegion})
-                </p>
+                </p> : null}
+                {verificationCase.documentPath ? <EvidenceDocument path={verificationCase.documentPath} /> : null}
                 {verificationCase.evidenceLinks.length > 0 ? (
                   verificationCase.evidenceLinks.map((link) => (
                     <a
@@ -168,11 +191,11 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
                       {link}
                     </a>
                   ))
-                ) : (
+                ) : !verificationCase.documentPath ? (
                   <p className="text-xs text-[var(--color-ink-soft)]">
                     {t(`${copy}.noEvidence`)}
                   </p>
-                )}
+                ) : null}
                 {verificationCase.note ? (
                   <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
                     {t(`${copy}.applicantNote`).replace("{note}", () => verificationCase.note ?? "")}

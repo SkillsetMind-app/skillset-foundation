@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { enforceRateLimit } from "@/lib/payments/server/auth";
+import { assertCreatorActivated, enforceRateLimit, PaymentError, paymentErrorResponse } from "@/lib/payments/server/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -43,6 +43,7 @@ export async function POST(request: Request) {
     if (action === "grant" && (typeof body.courseId !== "string" || !body.courseId || body.courseId.length > 200 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) return failure(400, "Choose a course and enter a valid email address.");
     if (action !== "grant" && (typeof body.grantId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.grantId))) return failure(400, "Choose an access record.");
     await enforceRateLimit(`course_access_${user.id}`, 30, 3600000);
+    await assertCreatorActivated();
     const result = action === "grant"
       ? await client.rpc("grant_course_access", { p_course_id: body.courseId as string, p_email: email })
       : action === "revoke"
@@ -65,6 +66,7 @@ export async function POST(request: Request) {
     } catch { /* Access remains recorded. Never expose the provider response. */ }
     return NextResponse.json({ grant, accessStatus: grant.access_status, emailStatus });
   } catch (error) {
+    if (error instanceof PaymentError) return paymentErrorResponse(error);
     if (error && typeof error === "object" && "status" in error && error.status === 429) return failure(429, "Too many attempts. Please wait before trying again.");
     return failure(500, "Could not update course access. Please try again.");
   }

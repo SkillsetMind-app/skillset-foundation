@@ -6,6 +6,8 @@ export type CreatorVerificationStatus =
   | "rejected";
 
 export type CreatorVerificationCase = {
+  verificationKind?: "legacy" | ProfessionalVerificationKind;
+  documentPath?: string;
   id: string;
   creatorId: string;
   status: Exclude<CreatorVerificationStatus, "none">;
@@ -26,13 +28,45 @@ export type CreatorVerificationCase = {
 };
 
 export type SubmitCreatorVerificationInput = {
+  verificationKind: ProfessionalVerificationKind;
   profession: string;
-  registrationType: string;
-  registrationId: string;
-  registrationRegion: string;
+  registrationId?: string;
+  registrationRegion?: string;
+  documentPath?: string;
   evidenceLinks: string[];
   note?: string;
 };
+
+export type ProfessionalVerificationKind = "psychologist" | "coach" | "holistic" | "other";
+
+export function validateProfessionalEvidence(input: SubmitCreatorVerificationInput, hasDocument = Boolean(input.documentPath)): void {
+  if (!["psychologist", "coach", "holistic", "other"].includes(input.verificationKind)) {
+    throw new Error("Choose your profession.");
+  }
+  if (input.profession.trim().length < 2 || input.profession.length > 120) {
+    throw new Error("Describe your profession (2-120 characters).");
+  }
+  if (input.verificationKind === "psychologist"
+      && (!(input.registrationId?.trim().length && input.registrationId.trim().length >= 2)
+        || !(input.registrationRegion?.trim().length && input.registrationRegion.trim().length >= 2))) {
+    throw new Error("Add your license number and issuing country or state.");
+  }
+  if ((input.registrationId?.length ?? 0) > 80 || (input.registrationRegion?.length ?? 0) > 80
+      || (input.note?.length ?? 0) > 2000) {
+    throw new Error("Shorten the registration details or note.");
+  }
+  if (!input.evidenceLinks.length && !hasDocument) {
+    throw new Error("Add a professional link or a certificate to request a badge.");
+  }
+  if (input.evidenceLinks.length > 6) throw new Error("Attach at most 6 evidence links.");
+  for (const link of input.evidenceLinks) {
+    let url: URL;
+    try { url = new URL(link); } catch { throw new Error("Use a valid https:// professional link."); }
+    if (link.length > 300 || url.protocol !== "https:" || !url.hostname || url.username || url.password) {
+      throw new Error("Use a valid https:// professional link (max 300 characters).");
+    }
+  }
+}
 
 /**
  * The activation gate speaks through exceptions. The courses trigger raises

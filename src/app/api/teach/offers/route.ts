@@ -5,6 +5,7 @@ import {
   supportedStripeCurrencies,
 } from "@/lib/payments/currencies";
 import {
+  assertCreatorActivated,
   enforceRateLimit,
   PaymentError,
   paymentErrorResponse,
@@ -98,6 +99,8 @@ export async function POST(request: Request) {
     if (course.owner_id !== userId) {
       throw new PaymentError("Only the course owner can manage offers.", 403);
     }
+
+    await assertCreatorActivated();
 
     const offerId = crypto.randomUUID();
     const priceId = crypto.randomUUID();
