@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BadgeCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
@@ -14,15 +15,22 @@ import {
   Field,
   InlineAlert,
 } from "@/components/ui";
-import type { CreatorVerificationCase } from "@/domain/creator-verification";
+import type { CreatorVerificationCase, ProfessionalVerificationKind } from "@/domain/creator-verification";
 import {
   fetchRequireCreatorVerification,
   submitCreatorVerification,
   subscribeToMyVerificationCase,
+  uploadVerificationEvidence,
 } from "@/lib/data/creator-verification";
 import { logSubscriptionError } from "@/lib/data/subscription-error";
 
 const MAX_EVIDENCE_LINKS = 6;
+const professionLabels = {
+  psychologist: "Psychologist",
+  coach: "Coach",
+  holistic: "Holistic practitioner",
+  other: "Other",
+};
 
 const inputClass =
   "rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
@@ -46,11 +54,15 @@ export function CreatorVerificationPanel() {
   const [requireVerification, setRequireVerification] = useState(false);
   const [formRequested, setFormRequested] = useState(false);
   const [profession, setProfession] = useState("");
-  const [registrationType, setRegistrationType] = useState("");
+  const [verificationKind, setVerificationKind] = useState<ProfessionalVerificationKind | "">("");
   const [registrationId, setRegistrationId] = useState("");
   const [registrationRegion, setRegistrationRegion] = useState("");
   const [evidenceLinksText, setEvidenceLinksText] = useState("");
   const [note, setNote] = useState("");
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [documentPath, setDocumentPath] = useState<string | undefined>();
+  const documentInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const seededCaseRef = useRef<string | null>(null);
@@ -75,9 +87,10 @@ export function CreatorVerificationPanel() {
           if (seededCaseRef.current !== seedKey) {
             seededCaseRef.current = seedKey;
             setProfession(nextCase.profession);
-            setRegistrationType(nextCase.registrationType);
-            setRegistrationId(nextCase.registrationId);
-            setRegistrationRegion(nextCase.registrationRegion);
+            setVerificationKind(nextCase.verificationKind === "legacy" ? "" : nextCase.verificationKind ?? "");
+            setRegistrationId(nextCase.registrationId ?? "");
+            setRegistrationRegion(nextCase.registrationRegion ?? "");
+            setDocumentPath(nextCase.documentPath);
             setEvidenceLinksText(nextCase.evidenceLinks.join("\n"));
             setNote(nextCase.note ?? "");
           }
@@ -112,8 +125,37 @@ export function CreatorVerificationPanel() {
       || status === "rejected");
   const showForm = canRequest && formRequested;
 
+  const selectFile = (file: File | null) => {
+    if (documentInputRef.current) documentInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
+    if (file && (
+      !["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(file.type)
+      || file.size === 0
+      || file.size > 10 * 1024 * 1024
+    )) {
+      setSubmitError("Choose a non-empty JPG, PNG, WebP or PDF file up to 10 MB. Convert HEIC photos to JPG or PNG.");
+      return;
+    }
+    setEvidenceFile(file);
+    setDocumentPath(undefined);
+    setSubmitError(null);
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (submitting) return;
+    if (!verificationKind) {
+      setSubmitError("Choose your profession.");
+      return;
+    }
+    if (verificationKind === "other" && profession.trim().length < 2) {
+      setSubmitError("Tell us your profession.");
+      return;
+    }
+    if (verificationKind === "psychologist" && (registrationId.trim().length < 2 || registrationRegion.trim().length < 2)) {
+      setSubmitError("Add your registration number and issuing country or state.");
+      return;
+    }
     const links = evidenceLinksText
       .split(/\r?\n/)
       .map((link) => link.trim())
@@ -127,25 +169,31 @@ export function CreatorVerificationPanel() {
       setSubmitError("Evidence links must start with https://");
       return;
     }
+    if (!links.length && !evidenceFile && !documentPath) {
+      setSubmitError("Add at least one evidence link or a document.");
+      return;
+    }
 
     setSubmitting(true);
     setSubmitError(null);
     try {
+      let uploadedPath = documentPath;
+      if (evidenceFile && !uploadedPath) {
+        uploadedPath = await uploadVerificationEvidence(evidenceFile);
+        setDocumentPath(uploadedPath);
+      }
       await submitCreatorVerification({
-        profession,
-        registrationType,
-        registrationId,
-        registrationRegion,
+        verificationKind,
+        profession: verificationKind === "other" ? profession.trim() : professionLabels[verificationKind],
+        registrationId: verificationKind === "psychologist" ? registrationId.trim() : undefined,
+        registrationRegion: verificationKind === "psychologist" ? registrationRegion.trim() : undefined,
         evidenceLinks: links,
+        documentPath: uploadedPath,
         note: note.trim() || undefined,
       });
       // The realtime subscription flips the panel to "in review".
-    } catch (error) {
-      setSubmitError(
-        error instanceof Error
-          ? error.message
-          : "Could not submit verification. Try again.",
-      );
+    } catch {
+      setSubmitError("Could not submit verification. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -173,9 +221,8 @@ export function CreatorVerificationPanel() {
             : "Verification is optional. Request a professional badge, or continue without one."}
         </p>
         <p className="mt-2 text-xs text-[var(--color-ink-soft)]">
-          Share your registration details and public links that prove them
-          (registry lookup page, license directory, professional profile).
-          Document upload ships later — for now the review works from links.
+          Share a professional profile, social link, diploma or certificate.
+          Documents are private and used for review.
         </p>
         {caseLoaded && status !== "approved" ? (
           <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -207,8 +254,13 @@ export function CreatorVerificationPanel() {
 
       {caseLoaded && status === "approved" ? (
         <Card as="section" padding="lg">
-          <h2 className="text-base font-semibold text-[var(--color-ink)]">
-            You are verified
+          <h2 className="flex items-center gap-2 text-base font-semibold text-[var(--color-ink)]">
+            <BadgeCheck className="h-5 w-5 shrink-0" aria-hidden="true" />
+            {verificationCase?.verificationKind === "psychologist"
+              ? "Professional credential verified"
+              : verificationCase?.verificationKind && verificationCase.verificationKind !== "legacy"
+                ? "Professional evidence reviewed"
+                : "Professional verification approved"}
           </h2>
           <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
             Your professional verification is approved. It applies to every
@@ -232,19 +284,22 @@ export function CreatorVerificationPanel() {
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <DetailRow label="Profession" value={verificationCase.profession} />
-            <DetailRow
+            {verificationCase.registrationType ? <DetailRow
               label="Registry / license"
               value={verificationCase.registrationType}
-            />
-            <DetailRow
+            /> : null}
+            {verificationCase.registrationId ? <DetailRow
               label="Registration number"
               value={verificationCase.registrationId}
-            />
-            <DetailRow
+            /> : null}
+            {verificationCase.registrationRegion ? <DetailRow
               label="Issuing region"
               value={verificationCase.registrationRegion}
-            />
+            /> : null}
           </div>
+          {verificationCase.documentPath ? (
+            <p className="mt-3 text-sm text-[var(--color-ink-soft)]">Private document submitted</p>
+          ) : null}
           {verificationCase.evidenceLinks.length > 0 ? (
             <div className="mt-3">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
@@ -293,37 +348,37 @@ export function CreatorVerificationPanel() {
                 ? "Resubmit your application"
                 : "Apply for verification"}
             </h2>
+            <fieldset disabled={submitting} className="grid min-w-0 gap-4">
+              <legend className="sr-only">Professional evidence</legend>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="verification-profession" label="Profession" required>
+              <Field id="verification-kind" label="Profession" required>
+                {(a11y) => (
+                  <select
+                    {...a11y}
+                    value={verificationKind}
+                    onChange={(event) => setVerificationKind(event.target.value as ProfessionalVerificationKind | "")}
+                    className={inputClass}
+                  >
+                    <option value="" disabled>Choose your profession</option>
+                    {Object.entries(professionLabels).map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                )}
+              </Field>
+              {verificationKind === "other" ? <Field id="verification-profession" label="Your profession" required>
                 {(a11y) => (
                   <input
                     {...a11y}
                     value={profession}
                     onChange={(event) => setProfession(event.target.value)}
-                    placeholder="e.g. Performance coach"
                     minLength={2}
                     maxLength={120}
                     className={inputClass}
                   />
                 )}
-              </Field>
-              <Field
-                id="verification-registry-type"
-                label="Registry / license type"
-                required
-              >
-                {(a11y) => (
-                  <input
-                    {...a11y}
-                    value={registrationType}
-                    onChange={(event) => setRegistrationType(event.target.value)}
-                    placeholder="e.g. State medical board"
-                    minLength={2}
-                    maxLength={60}
-                    className={inputClass}
-                  />
-                )}
-              </Field>
+              </Field> : null}
+              {verificationKind === "psychologist" ? <>
               <Field
                 id="verification-registration-id"
                 label="Registration number"
@@ -334,7 +389,6 @@ export function CreatorVerificationPanel() {
                     {...a11y}
                     value={registrationId}
                     onChange={(event) => setRegistrationId(event.target.value)}
-                    placeholder="e.g. 123456-7"
                     minLength={2}
                     maxLength={80}
                     className={inputClass}
@@ -351,18 +405,18 @@ export function CreatorVerificationPanel() {
                     {...a11y}
                     value={registrationRegion}
                     onChange={(event) => setRegistrationRegion(event.target.value)}
-                    placeholder="e.g. Florida, USA"
                     minLength={2}
                     maxLength={80}
                     className={inputClass}
                   />
                 )}
               </Field>
+              </> : null}
             </div>
             <Field
               id="verification-evidence"
               label="Evidence links"
-              hint={`One https:// link per line, up to ${MAX_EVIDENCE_LINKS} — registry lookup page, license directory, professional profile.`}
+              hint={`One https:// link per line, up to ${MAX_EVIDENCE_LINKS}. A professional profile or social link is welcome.`}
             >
               {(a11y) => (
                 <textarea
@@ -370,11 +424,30 @@ export function CreatorVerificationPanel() {
                   value={evidenceLinksText}
                   onChange={(event) => setEvidenceLinksText(event.target.value)}
                   rows={4}
-                  placeholder={"https://registry.example.gov/lookup?id=123456\nhttps://www.linkedin.com/in/you"}
                   className={`resize-none ${inputClass}`}
                 />
               )}
             </Field>
+            <Field id="verification-document" label="Document or diploma" hint="JPEG, PNG, WebP or PDF. Add a document or at least one evidence link.">
+              {(a11y) => (
+                <input {...a11y} ref={documentInputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf"
+                  onChange={(event) => { if (event.target.files?.[0]) selectFile(event.target.files[0]); }}
+                  className={`${inputClass} min-w-0 w-full`} />
+              )}
+            </Field>
+            <Field id="verification-photo" label="Take photo">
+              {(a11y) => (
+                <input {...a11y} ref={cameraInputRef} type="file" accept="image/*" capture="environment"
+                  onChange={(event) => { if (event.target.files?.[0]) selectFile(event.target.files[0]); }}
+                  className={`${inputClass} min-w-0 w-full`} />
+              )}
+            </Field>
+            {evidenceFile || documentPath ? (
+              <div className="flex min-w-0 flex-wrap items-center gap-3">
+                <span className="min-w-0 break-all text-sm">{evidenceFile?.name ?? "Private document attached"}</span>
+                <Button variant="ghost" onClick={() => selectFile(null)}>Remove document</Button>
+              </div>
+            ) : null}
             <Field
               id="verification-note"
               label="Note to the review team (optional)"
@@ -391,6 +464,7 @@ export function CreatorVerificationPanel() {
                 />
               )}
             </Field>
+            </fieldset>
             {/* O erro do envio era um <p> vermelho solto: quem usa leitor de
                 tela mandava o formulário e não ouvia nada. */}
             {submitError ? (

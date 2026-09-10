@@ -5,6 +5,7 @@ import type {
   SubmitCreatorVerificationInput,
 } from "@/domain/creator-verification";
 import { isPlatformFlagOn } from "@/domain/platform-settings";
+import { validateProfessionalEvidence } from "@/domain/creator-verification";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -15,6 +16,8 @@ type CaseRow = Database["public"]["Tables"]["creator_verification_cases"]["Row"]
 function rowToCase(row: CaseRow): CreatorVerificationCase {
   return {
     id: row.id,
+    verificationKind: row.verification_kind as CreatorVerificationCase["verificationKind"],
+    documentPath: row.document_path ?? undefined,
     creatorId: row.creator_id,
     status: row.status as CreatorVerificationCase["status"],
     profession: row.profession,
@@ -35,26 +38,55 @@ function rowToCase(row: CaseRow): CreatorVerificationCase {
   };
 }
 
-// submitCreatorVerification → submit_creator_verification RPC (SECURITY
-// DEFINER): validates field lengths and https-only evidence links server-side,
-// reuses an open needs_changes case when one exists, and mirrors the pending
-// status onto users.creator_verification_status through the trusted-write flag.
+// The RPC validates role, proof ownership and profession-specific requirements;
+// submission only requests review, never grants a verified badge.
 export async function submitCreatorVerification(
   input: SubmitCreatorVerificationInput,
 ) {
+  validateProfessionalEvidence(input);
   const supabase = getSupabaseBrowserClient();
-  const { error } = await supabase.rpc("submit_creator_verification", {
+  const { error } = await supabase.rpc("submit_professional_badge", {
+    p_kind: input.verificationKind,
     p_profession: input.profession.trim(),
-    p_registration_type: input.registrationType.trim(),
-    p_registration_id: input.registrationId.trim(),
-    p_registration_region: input.registrationRegion.trim(),
+    p_registration_id: input.registrationId?.trim() || undefined,
+    p_registration_region: input.registrationRegion?.trim() || undefined,
+    p_document_path: input.documentPath,
     p_evidence_links: input.evidenceLinks,
     p_note: input.note?.trim() || undefined,
   });
 
   if (error) {
-    throw error;
+    throw new Error("Could not submit your badge request. Check your evidence and try again.");
   }
+}
+
+const verificationBucket = "verification-evidence";
+const evidenceExtensions: Record<string, string> = {
+  "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf",
+};
+
+export async function uploadVerificationEvidence(file: File): Promise<string> {
+  const extension = evidenceExtensions[file.type];
+  if (!extension || file.size === 0 || file.size > 10 * 1024 * 1024) {
+    throw new Error("Choose a JPG, PNG, WebP or PDF file up to 10 MB.");
+  }
+  const supabase = getSupabaseBrowserClient();
+  const { data, error: authError } = await supabase.auth.getUser();
+  if (authError || !data.user) throw new Error("Sign in again before uploading evidence.");
+  const path = `${data.user.id}/${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage.from(verificationBucket).upload(path, file, {
+    contentType: file.type, upsert: false,
+  });
+  if (error) throw new Error("Could not upload the document. Try again.");
+  return path;
+}
+
+export async function getVerificationEvidenceDownload(path: string): Promise<string> {
+  // Storage RLS checks the caller; never generate a public URL for documents.
+  const { data, error } = await getSupabaseBrowserClient().storage
+    .from(verificationBucket).createSignedUrl(path, 60, { download: true });
+  if (error || !data?.signedUrl) throw new Error("Could not open the document. Try again.");
+  return data.signedUrl;
 }
 
 /**

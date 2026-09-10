@@ -1134,6 +1134,8 @@ export type Database = {
       }
       creator_verification_cases: {
         Row: {
+          verification_kind: string
+          document_path: string | null
           created_at: string
           creator_id: string
           evidence_links: Json
@@ -1150,6 +1152,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          verification_kind?: string
+          document_path?: string | null
           created_at?: string
           creator_id: string
           evidence_links?: Json
@@ -1166,6 +1170,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          verification_kind?: string
+          document_path?: string | null
           created_at?: string
           creator_id?: string
           evidence_links?: Json
@@ -2701,6 +2707,18 @@ export type Database = {
       }
       submit_course_review: {
         Args: { p_body: string; p_course_id: string; p_rating: number }
+        Returns: Json
+      }
+      submit_professional_badge: {
+        Args: {
+          p_kind: string
+          p_profession: string
+          p_registration_id?: string
+          p_registration_region?: string
+          p_evidence_links?: Json
+          p_document_path?: string
+          p_note?: string
+        }
         Returns: Json
       }
       submit_creator_verification: {
