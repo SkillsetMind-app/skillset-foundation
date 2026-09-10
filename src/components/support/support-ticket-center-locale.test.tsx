@@ -43,7 +43,7 @@ describe("support with the shipped dictionaries", () => {
   it("requires the separate fragment to be integrated in both real dictionaries", () => {
     expect(translate(getDictionary("en"), "supportCenter.create")).toBe("Create ticket");
     expect(translate(getDictionary("es"), "supportCenter.create")).toBe("Crear ticket");
-    for (const key of ["eyebrow", "pageTitle", "pageDescription", "title", "description", "category", "subject", "subjectPlaceholder", "details", "detailsPlaceholder", "loadError", "validationError", "createError", "created", "creating", "create", "yourTickets", "loading", "empty", "replied"]) {
+    for (const key of ["eyebrow", "pageTitle", "pageDescription", "title", "description", "category", "subject", "subjectPlaceholder", "details", "detailsPlaceholder", "loadError", "validationError", "createError", "rateLimit", "created", "creating", "create", "yourTickets", "loading", "empty", "replied"]) {
       const path = `supportCenter.${key}`;
       const english = translate(getDictionary("en"), path);
       const spanish = translate(getDictionary("es"), path);
@@ -119,6 +119,25 @@ describe("support with the shipped dictionaries", () => {
     expect(screen.getByRole("textbox", { name: "Detalles" })).toHaveValue("  My original question $$ $&  ");
     expect(screen.getByRole("combobox")).toHaveValue("payment");
     expect(screen.queryByText("Private transport detail")).toBeNull();
+  });
+
+  // O banco recusa com RATE_LIMIT quando a pessoa passa de 10 tickets na hora
+  // (P2-9). A tela pede para esperar, em vez de "tente de novo em um momento".
+  it("asks to wait when the database refuses a ticket over the hourly cap, in both languages", async () => {
+    mocks.create.mockRejectedValue({ code: "P0001", message: "RATE_LIMIT" });
+    render(center());
+    deliver();
+    fillDraft();
+    fireEvent.click(screen.getByRole("button", { name: "Create ticket" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "You've opened many tickets in the last hour. Wait a little before opening another one.",
+    );
+    changeLanguage();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Abriste muchos tickets en la última hora. Espera un poco antes de abrir otro.",
+    );
+    expect(screen.getByRole("textbox", { name: "Asunto" })).toHaveValue("  Subject $&  ");
+    expect(screen.queryByText(/RATE_LIMIT/)).toBeNull();
   });
 
   it("switches language during submission and after success, preserving the wire payload", async () => {

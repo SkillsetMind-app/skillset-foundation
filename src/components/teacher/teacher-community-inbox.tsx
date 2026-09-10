@@ -25,6 +25,7 @@ import {
   subscribeToCommunityPosts,
   subscribeToCourseCommunityComments,
 } from "@/lib/data/community-posts";
+import { isRateLimitError } from "@/lib/data/rate-limit-error";
 import { subscribeToTeacherCourse } from "@/lib/data/teacher-courses";
 
 // A comunidade, vista pelo professor (mockup 5, 11d).
@@ -236,8 +237,8 @@ function WaitingCard({
       }
       setBody("");
       setOpen(false);
-    } catch {
-      onError("teacherCommunity.answerError");
+    } catch (failure) {
+      onError(isRateLimitError(failure) ? "teacherCommunity.rateLimit" : "teacherCommunity.answerError");
     } finally {
       setIsSaving(false);
     }
@@ -355,8 +356,8 @@ function UpdateComposer({
       }
       setBody("");
       setOpen(false);
-    } catch {
-      onError("teacherCommunity.updateError");
+    } catch (failure) {
+      onError(isRateLimitError(failure) ? "teacherCommunity.rateLimit" : "teacherCommunity.updateError");
     } finally {
       setIsSaving(false);
     }

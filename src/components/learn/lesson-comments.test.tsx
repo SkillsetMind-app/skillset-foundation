@@ -455,6 +455,39 @@ describe("comentarios da aula sob o player", () => {
     expect(createCommunityPost).toHaveBeenCalledTimes(1);
   });
 
+  // O banco recusa com RATE_LIMIT quando a pessoa passa do teto por hora
+  // (P2-9): a caixa pede para esperar, em vez do erro generico.
+  it("teto por hora do banco vira 'espere um pouco' traduzido, com o rascunho no lugar", async () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.pathname = "/learn/courses/demo-course";
+    mocks.completed = [];
+    render(
+      <I18nProvider initialLocale="en">
+        <ChangeLanguage />
+        <EnrolledCourseWorkspace course={course} />
+      </I18nProvider>,
+    );
+    deliverFeed();
+    vi.mocked(createCommunityPost).mockRejectedValueOnce({ code: "P0001", message: "RATE_LIMIT" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Comment on the lesson." }));
+    const draft = "Is there a Portuguese version? $$ $&";
+    fireEvent.change(screen.getByRole("textbox", { name: "Your comment on this lesson" }), {
+      target: { value: draft },
+    });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Comment" })); });
+    expect(
+      screen.getByText("You've posted a lot in the last hour. Wait a little and try again."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("We could not publish your post.")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(
+      screen.getByText("Publicaste mucho en la última hora. Espera un poco y vuelve a intentarlo."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Tu comentario sobre esta lección" })).toHaveValue(draft);
+  });
+
   it("uma caixa so por aula (decisao 07/09): a antiga, da tabela lesson_comments, saiu", () => {
     renderClassroom("lesson=l1");
     deliverFeed();

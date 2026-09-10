@@ -41,6 +41,7 @@ import {
 import { subscribeToCourseEvents } from "@/lib/data/course-events";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import { setCommunityPostLike, subscribeToPostLikes } from "@/lib/data/gamification";
+import { isRateLimitError } from "@/lib/data/rate-limit-error";
 
 // A comunidade simplificada (mockup 5, rodada 11a/11c/11e).
 //
@@ -550,8 +551,8 @@ function Composer({
         user,
       });
       reset();
-    } catch {
-      onError("learn.community.composer.publishError");
+    } catch (failure) {
+      onError(isRateLimitError(failure) ? "learn.community.rateLimit" : "learn.community.composer.publishError");
     } finally {
       setIsSubmitting(false);
     }
@@ -776,8 +777,8 @@ function FeedCard({
       setReplyBody("");
       setReplyOpen(false);
       setShowAll(true);
-    } catch {
-      setReplyError("learn.community.card.replyError");
+    } catch (failure) {
+      setReplyError(isRateLimitError(failure) ? "learn.community.rateLimit" : "learn.community.card.replyError");
     } finally {
       setIsReplying(false);
     }

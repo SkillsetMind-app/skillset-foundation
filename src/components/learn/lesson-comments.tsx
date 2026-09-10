@@ -15,6 +15,7 @@ import {
   subscribeToCommunityPosts,
   subscribeToCourseCommunityComments,
 } from "@/lib/data/community-posts";
+import { isRateLimitError } from "@/lib/data/rate-limit-error";
 
 // Comentarios da aula sob o player (paridade Hotmart, §4.3 / P3).
 //
@@ -144,8 +145,8 @@ function LessonCommentsPanel({
       });
       setBody("");
       setOpen(false);
-    } catch {
-      setError("learn.community.composer.publishError");
+    } catch (failure) {
+      setError(isRateLimitError(failure) ? "learn.community.rateLimit" : "learn.community.composer.publishError");
     } finally {
       setIsSubmitting(false);
     }
