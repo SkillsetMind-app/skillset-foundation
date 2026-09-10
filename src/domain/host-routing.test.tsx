@@ -16,6 +16,7 @@ describe("platform entry aliases", () => {
     ["app.skillsetmind.com", "/teach"],
     ["consumer.skillsetmind.com", "/learn"],
     ["pay.skillsetmind.com", "/courses"],
+    ["sso.skillsetmind.com", "/login"],
   ])("routes the root of %s to its existing area", (hostname, path) => {
     expect(decideHostRoute({ hostname, pathname: "/", search: "?from=entry", resolvedUid: null }))
       .toEqual({ kind: "redirect", status: 307, url: `${PLATFORM_ORIGIN}${path}?from=entry` });
@@ -36,7 +37,7 @@ describe("platform entry aliases", () => {
   it.each(["POST", "PUT", "PATCH", "DELETE", "OPTIONS", "TRACE", "CONNECT"])(
     "refuses %s before infrastructure paths can pass through",
     (method) => {
-      for (const hostname of ["app.skillsetmind.com", "consumer.skillsetmind.com", "pay.skillsetmind.com"]) {
+      for (const hostname of ["app.skillsetmind.com", "consumer.skillsetmind.com", "pay.skillsetmind.com", "sso.skillsetmind.com"]) {
         expect(decideHostRoute({ hostname, method, pathname: "/api/teach/domains/fixture.png", search: "", resolvedUid: null }))
           .toEqual({ kind: "method-not-allowed" });
       }
