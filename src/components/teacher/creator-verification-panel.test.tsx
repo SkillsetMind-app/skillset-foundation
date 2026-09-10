@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   subscribe: vi.fn(),
   submit: vi.fn(),
   upload: vi.fn(),
+  remove: vi.fn(),
 }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
@@ -20,13 +21,14 @@ vi.mock("@/lib/data/creator-verification", () => ({
   subscribeToMyVerificationCase: mocks.subscribe,
   submitCreatorVerification: mocks.submit,
   uploadVerificationEvidence: mocks.upload,
+  removeVerificationEvidence: mocks.remove,
 }));
 
 function renderPanel() {
   return render(<CreatorVerificationPanel />);
 }
 
-function receiveCase(status: CreatorVerificationCase["status"], verificationKind: CreatorVerificationCase["verificationKind"] = "legacy") {
+function receiveCase(status: CreatorVerificationCase["status"], verificationKind: CreatorVerificationCase["verificationKind"] = "legacy", documentPath?: string) {
   mocks.subscribe.mockImplementation((
     _uid: string,
     onCase: (value: CreatorVerificationCase | null) => void,
@@ -36,6 +38,7 @@ function receiveCase(status: CreatorVerificationCase["status"], verificationKind
       creatorId: mocks.user.uid,
       status,
       verificationKind,
+      documentPath,
       profession: "Performance coach",
       registrationType: "Coaching association",
       registrationId: "COACH-123",
@@ -55,6 +58,7 @@ describe("CreatorVerificationPanel", () => {
     vi.clearAllMocks();
     mocks.submit.mockReset().mockResolvedValue(undefined);
     mocks.upload.mockReset().mockResolvedValue("creator-1/evidence.pdf");
+    mocks.remove.mockReset().mockResolvedValue(undefined);
     mocks.fetchFlag.mockResolvedValue(false);
     mocks.subscribe.mockImplementation((
       _uid: string,
@@ -195,7 +199,7 @@ describe("CreatorVerificationPanel", () => {
   it("prevents submission without a link or file", async () => {
     await chooseKind("coach");
     fireEvent.click(screen.getByRole("button", { name: "Submit for review" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Add at least one evidence link or a document.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Add a professional link or a certificate to request a badge.");
     expect(mocks.submit).not.toHaveBeenCalled();
     expect(mocks.upload).not.toHaveBeenCalled();
   });
@@ -242,7 +246,7 @@ describe("CreatorVerificationPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove document" }));
     expect(screen.queryByText("diploma.jpg")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Submit for review" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Add at least one evidence link or a document.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Add a professional link or a certificate to request a badge.");
     expect(mocks.upload).not.toHaveBeenCalled();
   });
 
@@ -278,6 +282,82 @@ describe("CreatorVerificationPanel", () => {
     expect(screen.getByRole("textbox", { name: "Evidence links" })).toHaveValue("https://directory.org/profile");
   });
 
+  it("validates the full evidence input before uploading a selected document", async () => {
+    await chooseKind("coach");
+    fireEvent.change(screen.getByLabelText("Document or diploma"), { target: { files: [new File(["document"], "diploma.pdf", { type: "application/pdf" })] } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Evidence links" }), { target: { value: "https://" } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit for review" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Use a valid https:// professional link.");
+    expect(mocks.upload).not.toHaveBeenCalled();
+    expect(mocks.submit).not.toHaveBeenCalled();
+  });
+
+  async function failRequestAfterUpload() {
+    mocks.submit.mockRejectedValueOnce(new Error("database internals"));
+    await chooseKind("coach");
+    fireEvent.change(screen.getByLabelText("Document or diploma"), { target: { files: [new File(["document"], "diploma.pdf", { type: "application/pdf" })] } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit for review" }));
+    await screen.findByText("Could not submit verification. Please try again.");
+  }
+
+  it("deletes an unreferenced upload once before removing it and blocks concurrent actions", async () => {
+    await failRequestAfterUpload();
+    let finishRemoval!: () => void;
+    mocks.remove.mockReturnValue(new Promise<void>((resolve) => { finishRemoval = resolve; }));
+    const remove = screen.getByRole("button", { name: "Remove document" });
+    fireEvent.click(remove);
+    fireEvent.click(remove);
+    expect(remove).toBeDisabled();
+    expect(screen.getByLabelText("Document or diploma")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Removing document..." })).toBeDisabled();
+    expect(screen.getByText("diploma.pdf")).toBeVisible();
+    expect(mocks.remove).toHaveBeenCalledExactlyOnceWith("creator-1/evidence.pdf");
+    await act(async () => { finishRemoval(); });
+    expect(screen.queryByText("diploma.pdf")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Submit for review" }));
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(mocks.submit).toHaveBeenCalledTimes(1);
+  });
+
+  it("retains the attachment and uploaded path when cleanup fails", async () => {
+    await failRequestAfterUpload();
+    mocks.remove.mockRejectedValueOnce(new Error("storage private detail"));
+    fireEvent.click(screen.getByRole("button", { name: "Remove document" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not remove the uploaded document. Please try again before replacing or removing it.");
+    expect(screen.queryByText(/storage private detail/)).not.toBeInTheDocument();
+    expect(screen.getByText("diploma.pdf")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Submit for review" }));
+    await waitFor(() => expect(mocks.submit).toHaveBeenCalledTimes(2));
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(mocks.submit).toHaveBeenLastCalledWith(expect.objectContaining({ documentPath: "creator-1/evidence.pdf" }));
+  });
+
+  it("detaches an existing reviewed case document without deleting its referenced file", async () => {
+    receiveCase("needs_changes", "coach", "creator-1/existing.pdf");
+    renderPanel();
+    fireEvent.click(await screen.findByRole("button", { name: "Edit application" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove document" }));
+    expect(screen.queryByText("Private document attached")).not.toBeInTheDocument();
+    expect(mocks.remove).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Resubmit for review" }));
+    await waitFor(() => expect(mocks.submit).toHaveBeenCalledWith(expect.objectContaining({ documentPath: undefined })));
+  });
+
+  it("waits for cleanup before accepting a replacement file", async () => {
+    await failRequestAfterUpload();
+    let finishRemoval!: () => void;
+    mocks.remove.mockReturnValue(new Promise<void>((resolve) => { finishRemoval = resolve; }));
+    fireEvent.change(screen.getByLabelText("Document or diploma"), { target: { files: [new File(["replacement"], "replacement.pdf", { type: "application/pdf" })] } });
+    expect(screen.getByText("diploma.pdf")).toBeVisible();
+    expect(screen.queryByText("replacement.pdf")).not.toBeInTheDocument();
+    await act(async () => { finishRemoval(); });
+    expect(screen.getByText("replacement.pdf")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Submit for review" }));
+    await waitFor(() => expect(mocks.upload).toHaveBeenCalledTimes(2));
+    expect(mocks.remove).toHaveBeenCalledExactlyOnceWith("creator-1/evidence.pdf");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Submit for review" })).toBeEnabled());
+  });
+
   it("does not submit if the private upload fails and keeps the file for retry", async () => {
     mocks.upload.mockRejectedValueOnce(new Error("storage internals"));
     await chooseKind("coach");
@@ -293,7 +373,7 @@ describe("CreatorVerificationPanel", () => {
   });
 
   it.each([
-    ["http://directory.org/profile", "Evidence links must start with https://"],
+    ["http://directory.org/profile", "Use a valid https:// professional link (max 300 characters)."],
     [Array.from({ length: 7 }, (_, index) => `https://directory.org/${index}`).join("\n"), "Attach at most 6 evidence links."],
   ])("rejects invalid evidence before uploading: %s", async (links, message) => {
     await chooseKind("coach");

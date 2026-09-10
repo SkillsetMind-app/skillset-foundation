@@ -1,19 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), upload: vi.fn(), from: vi.fn(), sign: vi.fn(), rpc: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), upload: vi.fn(), from: vi.fn(), sign: vi.fn(), rpc: vi.fn(), remove: vi.fn() }));
 vi.mock("@/lib/supabase/client", () => ({ getSupabaseBrowserClient: () => ({
   auth: { getUser: mocks.getUser }, storage: { from: mocks.from }, rpc: mocks.rpc,
 }) }));
-import { uploadVerificationEvidence, getVerificationEvidenceDownload, submitCreatorVerification } from "./creator-verification";
+import { uploadVerificationEvidence, getVerificationEvidenceDownload, submitCreatorVerification, removeVerificationEvidence } from "./creator-verification";
 
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.getUser.mockResolvedValue({ data: { user: { id: "owner" } }, error: null });
-  mocks.from.mockReturnValue({ upload: mocks.upload, createSignedUrl: mocks.sign });
+  mocks.from.mockReturnValue({ upload: mocks.upload, createSignedUrl: mocks.sign, remove: mocks.remove });
   mocks.upload.mockResolvedValue({ error: null });
   mocks.rpc.mockResolvedValue({ error: null });
 });
 
 describe("private verification documents", () => {
+  it("does not claim removal when storage refuses or filters the object", async () => {
+    mocks.remove.mockResolvedValue({ data: [], error: null });
+    await expect(removeVerificationEvidence("owner/file.pdf")).rejects.toThrow(/Could not remove/);
+    mocks.remove.mockResolvedValue({ data: [{ name: "owner/file.pdf" }], error: null });
+    await expect(removeVerificationEvidence("owner/file.pdf")).resolves.toBeUndefined();
+    expect(mocks.remove).toHaveBeenLastCalledWith(["owner/file.pdf"]);
+  });
   it("uploads only to private evidence storage with a generated name, never the personal filename", async () => {
     const path = await uploadVerificationEvidence(new File(["pdf"], "personal-diploma.pdf", { type: "application/pdf" }));
     expect(mocks.from).toHaveBeenCalledWith("verification-evidence");

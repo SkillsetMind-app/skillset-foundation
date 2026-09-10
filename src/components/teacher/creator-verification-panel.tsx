@@ -15,9 +15,11 @@ import {
   Field,
   InlineAlert,
 } from "@/components/ui";
-import type { CreatorVerificationCase, ProfessionalVerificationKind } from "@/domain/creator-verification";
+import { validateProfessionalEvidence } from "@/domain/creator-verification";
+import type { CreatorVerificationCase, ProfessionalVerificationKind, SubmitCreatorVerificationInput } from "@/domain/creator-verification";
 import {
   fetchRequireCreatorVerification,
+  removeVerificationEvidence,
   submitCreatorVerification,
   subscribeToMyVerificationCase,
   uploadVerificationEvidence,
@@ -64,6 +66,9 @@ export function CreatorVerificationPanel() {
   const documentInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [cleaningDocument, setCleaningDocument] = useState(false);
+  const operationRef = useRef(false);
+  const uploadedPathRef = useRef<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const seededCaseRef = useRef<string | null>(null);
 
@@ -75,6 +80,9 @@ export function CreatorVerificationPanel() {
     return subscribeToMyVerificationCase(
       user.uid,
       (nextCase) => {
+        if (nextCase?.documentPath === uploadedPathRef.current) {
+          uploadedPathRef.current = null;
+        }
         setVerificationCase(nextCase);
         setCaseLoaded(true);
         // Prefill the resubmission form from the reviewed case, once per
@@ -125,7 +133,8 @@ export function CreatorVerificationPanel() {
       || status === "rejected");
   const showForm = canRequest && formRequested;
 
-  const selectFile = (file: File | null) => {
+  const selectFile = async (file: File | null) => {
+    if (operationRef.current) return;
     if (documentInputRef.current) documentInputRef.current.value = "";
     if (cameraInputRef.current) cameraInputRef.current.value = "";
     if (file && (
@@ -136,6 +145,21 @@ export function CreatorVerificationPanel() {
       setSubmitError("Choose a non-empty JPG, PNG, WebP or PDF file up to 10 MB. Convert HEIC photos to JPG or PNG.");
       return;
     }
+    if (documentPath && uploadedPathRef.current === documentPath) {
+      operationRef.current = true;
+      setCleaningDocument(true);
+      setSubmitError(null);
+      try {
+        await removeVerificationEvidence(documentPath);
+        uploadedPathRef.current = null;
+      } catch {
+        setSubmitError("Could not remove the uploaded document. Please try again before replacing or removing it.");
+        return;
+      } finally {
+        operationRef.current = false;
+        setCleaningDocument(false);
+      }
+    }
     setEvidenceFile(file);
     setDocumentPath(undefined);
     setSubmitError(null);
@@ -143,17 +167,9 @@ export function CreatorVerificationPanel() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (submitting) return;
+    if (operationRef.current) return;
     if (!verificationKind) {
       setSubmitError("Choose your profession.");
-      return;
-    }
-    if (verificationKind === "other" && profession.trim().length < 2) {
-      setSubmitError("Tell us your profession.");
-      return;
-    }
-    if (verificationKind === "psychologist" && (registrationId.trim().length < 2 || registrationRegion.trim().length < 2)) {
-      setSubmitError("Add your registration number and issuing country or state.");
       return;
     }
     const links = evidenceLinksText
@@ -161,40 +177,43 @@ export function CreatorVerificationPanel() {
       .map((link) => link.trim())
       .filter(Boolean);
 
-    if (links.length > MAX_EVIDENCE_LINKS) {
-      setSubmitError(`Attach at most ${MAX_EVIDENCE_LINKS} evidence links.`);
-      return;
-    }
-    if (links.some((link) => !/^https:\/\//i.test(link))) {
-      setSubmitError("Evidence links must start with https://");
-      return;
-    }
-    if (!links.length && !evidenceFile && !documentPath) {
-      setSubmitError("Add at least one evidence link or a document.");
+    const input: SubmitCreatorVerificationInput = {
+      verificationKind,
+      profession: verificationKind === "other" ? profession.trim() : professionLabels[verificationKind],
+      registrationId: verificationKind === "psychologist" ? registrationId.trim() : undefined,
+      registrationRegion: verificationKind === "psychologist" ? registrationRegion.trim() : undefined,
+      evidenceLinks: links,
+      documentPath,
+      note: note.trim() || undefined,
+    };
+    try {
+      validateProfessionalEvidence(input, Boolean(evidenceFile || documentPath));
+    } catch (error) {
+      // Only local domain validation messages are shown; transport errors stay generic.
+      setSubmitError(error instanceof Error ? error.message : "Check your professional details and evidence before submitting.");
       return;
     }
 
+    operationRef.current = true;
     setSubmitting(true);
     setSubmitError(null);
     try {
       let uploadedPath = documentPath;
       if (evidenceFile && !uploadedPath) {
         uploadedPath = await uploadVerificationEvidence(evidenceFile);
+        uploadedPathRef.current = uploadedPath;
         setDocumentPath(uploadedPath);
       }
       await submitCreatorVerification({
-        verificationKind,
-        profession: verificationKind === "other" ? profession.trim() : professionLabels[verificationKind],
-        registrationId: verificationKind === "psychologist" ? registrationId.trim() : undefined,
-        registrationRegion: verificationKind === "psychologist" ? registrationRegion.trim() : undefined,
-        evidenceLinks: links,
+        ...input,
         documentPath: uploadedPath,
-        note: note.trim() || undefined,
       });
+      uploadedPathRef.current = null;
       // The realtime subscription flips the panel to "in review".
     } catch {
       setSubmitError("Could not submit verification. Please try again.");
     } finally {
+      operationRef.current = false;
       setSubmitting(false);
     }
   };
@@ -348,7 +367,7 @@ export function CreatorVerificationPanel() {
                 ? "Resubmit your application"
                 : "Apply for verification"}
             </h2>
-            <fieldset disabled={submitting} className="grid min-w-0 gap-4">
+            <fieldset disabled={submitting || cleaningDocument} className="grid min-w-0 gap-4">
               <legend className="sr-only">Professional evidence</legend>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field id="verification-kind" label="Profession" required>
@@ -471,8 +490,10 @@ export function CreatorVerificationPanel() {
               <InlineAlert tone="error">{submitError}</InlineAlert>
             ) : null}
             <div>
-              <Button type="submit" disabled={submitting}>
-                {submitting
+              <Button type="submit" disabled={submitting || cleaningDocument}>
+                {cleaningDocument
+                  ? "Removing document..."
+                  : submitting
                   ? "Submitting..."
                   : status === "needs_changes"
                     ? "Resubmit for review"

@@ -39,7 +39,7 @@ export type SubmitCreatorVerificationInput = {
 
 export type ProfessionalVerificationKind = "psychologist" | "coach" | "holistic" | "other";
 
-export function validateProfessionalEvidence(input: SubmitCreatorVerificationInput): void {
+export function validateProfessionalEvidence(input: SubmitCreatorVerificationInput, hasDocument = Boolean(input.documentPath)): void {
   if (!["psychologist", "coach", "holistic", "other"].includes(input.verificationKind)) {
     throw new Error("Choose your profession.");
   }
@@ -55,7 +55,7 @@ export function validateProfessionalEvidence(input: SubmitCreatorVerificationInp
       || (input.note?.length ?? 0) > 2000) {
     throw new Error("Shorten the registration details or note.");
   }
-  if (!input.evidenceLinks.length && !input.documentPath) {
+  if (!input.evidenceLinks.length && !hasDocument) {
     throw new Error("Add a professional link or a certificate to request a badge.");
   }
   if (input.evidenceLinks.length > 6) throw new Error("Attach at most 6 evidence links.");

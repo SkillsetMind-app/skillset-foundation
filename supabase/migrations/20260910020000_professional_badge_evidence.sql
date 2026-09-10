@@ -20,13 +20,16 @@ for insert to authenticated with check (
 create policy verification_evidence_private_read on storage.objects
 for select to authenticated using (
   bucket_id = 'verification-evidence' and (select public.session_is_strong())
-  and (split_part(name, '/', 1) = (select auth.uid())::text or public.is_ops() or public.is_admin())
+  and (split_part(name, '/', 1) = (select auth.uid())::text
+    or ((public.is_ops() or public.is_admin()) and exists (
+      select 1 from public.creator_verification_cases c where c.document_path = objects.name
+    )))
 );
 create policy verification_evidence_owner_delete on storage.objects
 for delete to authenticated using (
   bucket_id = 'verification-evidence' and (select public.session_is_strong())
   and split_part(name, '/', 1) = (select auth.uid())::text
-  and not exists (select 1 from public.creator_verification_cases c where c.document_path = name)
+  and not exists (select 1 from public.creator_verification_cases c where c.document_path = objects.name)
 );
 -- No UPDATE policy: submitted evidence cannot be replaced through upsert.
 

@@ -89,6 +89,11 @@ export async function getVerificationEvidenceDownload(path: string): Promise<str
   return data.signedUrl;
 }
 
+export async function removeVerificationEvidence(path: string): Promise<void> {
+  const { data, error } = await getSupabaseBrowserClient().storage.from(verificationBucket).remove([path]);
+  if (error || data?.length !== 1) throw new Error("Could not remove the uploaded document. Try again.");
+}
+
 /**
  * Ops/admin review decision → review_creator_verification RPC. The RPC
  * enforces the ops/admin check, requires a note (≥12 chars) for non-approve

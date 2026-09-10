@@ -37,7 +37,8 @@ select gen_random_uuid() as coach, gen_random_uuid() as psychologist,
   gen_random_uuid() as ops, gen_random_uuid() as admin, gen_random_uuid() as legacy,
   gen_random_uuid() as document_id, gen_random_uuid() as unused_id \gset
 select :'coach' || '/' || :'document_id' || '.pdf' as document_path,
-  :'coach' || '/' || :'unused_id' || '.png' as unused_path \gset
+  :'coach' || '/' || :'unused_id' || '.png' as unused_path,
+  :'coach' || '/' || :'unused_id' || '.pdf' as missing_path \gset
 select pg_temp.badge_session(null, 'service_role');
 insert into auth.users(id, aud, role, email, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data)
 select id::uuid, 'authenticated', 'authenticated', id || '@example.invalid', now(), now(), now(), '{}', '{}'
@@ -94,6 +95,12 @@ with changed as (update storage.objects set metadata = '{"changed":true}'
 select pg_temp.check_badge((select count(*) = 0 from changed), 'evidence updates denied');
 with deleted as (delete from storage.objects where bucket_id = 'verification-evidence' and name = :'unused_path' returning id)
 select pg_temp.check_badge((select count(*) = 1 from deleted), 'unreferenced owner delete allowed');
+select pg_temp.check_badge(not exists(select 1 from storage.objects where bucket_id = 'verification-evidence'
+  and name = :'unused_path'), 'unreferenced upload removed');
+-- Keep an actual orphan for the owner/ops/admin privacy checks below.
+insert into storage.objects(bucket_id,name) values ('verification-evidence', :'unused_path');
+select pg_temp.check_badge(exists(select 1 from storage.objects where bucket_id = 'verification-evidence'
+  and name = :'unused_path'), 'owner reads own orphan');
 
 select pg_temp.check_badge(pg_temp.badge_error(format(
   'select public.submit_professional_badge(%L,''Coach'',p_evidence_links=>''["https://example.org/proof"]'')', kind),
@@ -130,7 +137,7 @@ select pg_temp.check_badge(pg_temp.badge_error(format(
   :'other_teacher' || '/' || :'document_id' || '.pdf'),
   'P0001','Document must use your own evidence upload path.'), 'foreign document denied');
 select pg_temp.check_badge(pg_temp.badge_error(format(
-  'select public.submit_professional_badge(''coach'',''Coach'',p_document_path=>%L)', :'unused_path'),
+  'select public.submit_professional_badge(''coach'',''Coach'',p_document_path=>%L)', :'missing_path'),
   'P0001','Upload the evidence document before submitting.'), 'missing object denied');
 select pg_temp.check_badge(pg_temp.badge_error(
   $$select public.submit_professional_badge('coach','Coach',p_document_path=>'https://example.org/file.pdf')$$,
@@ -173,7 +180,9 @@ reset role;
 select pg_temp.badge_session(:'ops');
 set local role authenticated;
 select pg_temp.check_badge(exists(select 1 from storage.objects where bucket_id = 'verification-evidence'
-  and name = :'document_path'), 'ops reads evidence');
+  and name = :'document_path'), 'ops reads referenced evidence');
+select pg_temp.check_badge(not exists(select 1 from storage.objects where bucket_id = 'verification-evidence'
+  and name = :'unused_path'), 'ops cannot read orphan evidence');
 select pg_temp.check_badge(pg_temp.badge_error(format(
   'select public.review_creator_verification(%L,''needs_changes'',''short'')', :'coach_case'),
   'P0001','Add a review note (at least 12 characters) when requesting changes or rejecting.'), 'review note guard retained');
@@ -206,7 +215,7 @@ select pg_temp.check_badge(pg_temp.badge_error(
 select pg_temp.check_badge(not exists(select 1 from storage.objects where bucket_id = 'verification-evidence'
   and name = :'document_path'), 'weak owner cannot read evidence');
 select pg_temp.check_badge(pg_temp.badge_error(format(
-  'insert into storage.objects(bucket_id,name) values (''verification-evidence'',%L)', :'unused_path'),
+  'insert into storage.objects(bucket_id,name) values (''verification-evidence'',%L)', :'missing_path'),
   '42501'), 'weak owner cannot upload');
 with deleted as (delete from storage.objects where bucket_id = 'verification-evidence' and name = :'document_path' returning id)
 select pg_temp.check_badge((select count(*) = 0 from deleted), 'weak owner cannot delete');
@@ -246,7 +255,9 @@ reset role;
 select pg_temp.badge_session(:'admin');
 set local role authenticated;
 select pg_temp.check_badge(exists(select 1 from storage.objects where bucket_id = 'verification-evidence'
-  and name = :'document_path'), 'admin reads evidence');
+  and name = :'document_path'), 'admin reads referenced evidence');
+select pg_temp.check_badge(not exists(select 1 from storage.objects where bucket_id = 'verification-evidence'
+  and name = :'unused_path'), 'admin cannot read orphan evidence');
 select public.review_creator_verification(:'coach_case','approved');
 select pg_temp.check_badge(pg_temp.badge_error(format(
   'select public.review_creator_verification(%L,''rejected'',''This review is already final.'')', :'coach_case'),
