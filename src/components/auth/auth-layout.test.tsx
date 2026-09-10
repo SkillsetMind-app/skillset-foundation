@@ -78,8 +78,8 @@ describe("the auth frame stays consistent during recovery and loading", () => {
     expect(screen.getByRole("link", { name: translate(getDictionary("en"), "auth.onboardingShell.footerLink") })).toHaveAttribute("href", "/courses");
   });
 
-  it("keeps the full-page welcome fallback as a titled page", async () => {
-    render(await WelcomePage());
+  it("keeps the full-page welcome fallback as a titled page", () => {
+    render(<WelcomePage />);
 
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(within(screen.getByRole("main")).getByRole("heading", { level: 1, name: "Preparing onboarding" })).toBeInTheDocument();
