@@ -25,7 +25,7 @@ vi.mock("@/components/site/site-footer", () => ({ SiteFooter: () => null }));
 afterEach(() => { cleanup(); request.locale = undefined; });
 
 const pages = [
-  { key: "privacy", Page: PrivacyPage, metadata: privacyMetadata, path: "/legal/privacy", sections: 12, texts: 40, title: "Política de privacidad" },
+  { key: "privacy", Page: PrivacyPage, metadata: privacyMetadata, path: "/legal/privacy", sections: 12, texts: 44, title: "Política de privacidad" },
   { key: "terms", Page: TermsPage, metadata: termsMetadata, path: "/legal/terms", sections: 18, texts: 37, title: "Condiciones de servicio" },
   { key: "teacherTerms", Page: TeacherTermsPage, metadata: teacherMetadata, path: "/legal/teacher-terms", sections: 12, texts: 26, title: "Condiciones para educadores" },
   { key: "refund", Page: RefundPolicyPage, metadata: refundMetadata, path: "/refund-policy", sections: 7, texts: 10, title: "Política de reembolsos y devoluciones" },
@@ -112,7 +112,7 @@ describe("legal document translation from the request cookie", () => {
       for (const [key, value] of Object.entries(en[group])) {
         const translated = (es[group] as Record<string, string>)[key];
         expect(translated, `${group}.${key}`).toBeTruthy();
-        if (!(group === "common" && key === "kicker") && !(group === "privacy" && key === "text36")) {
+        if (!(group === "common" && key === "kicker") && !(group === "privacy" && key === "text40")) {
           expect(translated, `${group}.${key}: left in English`).not.toBe(value);
         }
         expect(translated.match(/\d+/g), `${group}.${key}: numbers`).toEqual(value.match(/\d+/g));

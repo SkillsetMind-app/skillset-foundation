@@ -108,64 +108,60 @@ export default async function PrivacyPage() {
           <li>
             <LegalText text={t("legalPages.privacy.text22")} />
           </li>
+          <li>
+            <LegalText text={t("legalPages.privacy.text23")} />
+          </li>
+          <li>
+            <LegalText text={t("legalPages.privacy.text24")} />
+          </li>
+          <li>
+            <LegalText text={t("legalPages.privacy.text25")} />
+          </li>
+          <li>
+            <LegalText text={t("legalPages.privacy.text26")} />
+          </li>
         </ul>
         <p>
-          <LegalText text={t("legalPages.privacy.text23")} />
+          <LegalText text={t("legalPages.privacy.text27")} />
         </p>
       </LegalSection>
 
       <LegalSection heading={t("legalPages.privacy.heading6")}>
         <p>
-          <LegalText text={t("legalPages.privacy.text24")} />
+          <LegalText text={t("legalPages.privacy.text28")} />
         </p>
       </LegalSection>
 
       <LegalSection heading={t("legalPages.privacy.heading7")}>
         <p>
-          <LegalText text={t("legalPages.privacy.text25")} />
+          <LegalText text={t("legalPages.privacy.text29")} />
         </p>
         <ul className="list-disc space-y-2 pl-6">
           <li>
-            <LegalText text={t("legalPages.privacy.text26")} />
+            <LegalText text={t("legalPages.privacy.text30")} />
           </li>
           <li>
-            <LegalText text={t("legalPages.privacy.text27")} />
+            <LegalText text={t("legalPages.privacy.text31")} />
           </li>
           <li>
-            <LegalText text={t("legalPages.privacy.text28")} />
+            <LegalText text={t("legalPages.privacy.text32")} />
           </li>
           <li>
-            <LegalText text={t("legalPages.privacy.text29")} />
+            <LegalText text={t("legalPages.privacy.text33")} />
           </li>
         </ul>
       </LegalSection>
 
       <LegalSection heading={t("legalPages.privacy.heading8")}>
         <p>
-          <LegalText text={t("legalPages.privacy.text30")} />
+          <LegalText text={t("legalPages.privacy.text34")} />
         </p>
       </LegalSection>
 
       <LegalSection heading={t("legalPages.privacy.heading9")}>
         <p>
-          <LegalText text={t("legalPages.privacy.text31")} />
+          <LegalText text={t("legalPages.privacy.text35")} />
         </p>
-        <div>
-          <h3 className="text-base font-semibold text-[var(--color-ink)]">
-            <LegalText text={t("legalPages.privacy.text32")} />
-          </h3>
-          <p className="mt-2">
-            <LegalText text={t("legalPages.privacy.text33")} />
-          </p>
-        </div>
-        <div>
-          <h3 className="text-base font-semibold text-[var(--color-ink)]">
-            <LegalText text={t("legalPages.privacy.text34")} />
-          </h3>
-          <p className="mt-2">
-            <LegalText text={t("legalPages.privacy.text35")} />
-          </p>
-        </div>
         <div>
           <h3 className="text-base font-semibold text-[var(--color-ink)]">
             <LegalText text={t("legalPages.privacy.text36")} />
@@ -174,23 +170,39 @@ export default async function PrivacyPage() {
             <LegalText text={t("legalPages.privacy.text37")} />
           </p>
         </div>
+        <div>
+          <h3 className="text-base font-semibold text-[var(--color-ink)]">
+            <LegalText text={t("legalPages.privacy.text38")} />
+          </h3>
+          <p className="mt-2">
+            <LegalText text={t("legalPages.privacy.text39")} />
+          </p>
+        </div>
+        <div>
+          <h3 className="text-base font-semibold text-[var(--color-ink)]">
+            <LegalText text={t("legalPages.privacy.text40")} />
+          </h3>
+          <p className="mt-2">
+            <LegalText text={t("legalPages.privacy.text41")} />
+          </p>
+        </div>
       </LegalSection>
 
       <LegalSection heading={t("legalPages.privacy.heading10")}>
         <p>
-          <LegalText text={t("legalPages.privacy.text38")} />
+          <LegalText text={t("legalPages.privacy.text42")} />
         </p>
       </LegalSection>
 
       <LegalSection heading={t("legalPages.privacy.heading11")}>
         <p>
-          <LegalText text={t("legalPages.privacy.text39")} />
+          <LegalText text={t("legalPages.privacy.text43")} />
         </p>
       </LegalSection>
 
       <LegalSection heading={t("legalPages.privacy.heading12")}>
         <p>
-          <LegalText text={t("legalPages.privacy.text40")} />
+          <LegalText text={t("legalPages.privacy.text44")} />
         </p>
       </LegalSection>
     </LegalArticle>
