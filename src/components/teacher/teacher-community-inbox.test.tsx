@@ -227,10 +227,12 @@ describe("caixa de entrada da comunidade (professor)", () => {
   it("mostra a hora da ultima resposta de aluno no idioma da pessoa", async () => {
     await renderInbox("es");
 
-    const waiting = screen.getByRole("region", { name: /Waiting for an answer/ });
+    // Em espanhol o cartao inteiro sai traduzido agora, nao so a hora.
+    const waiting = screen.getByRole("region", { name: /Esperando respuesta/ });
     const [oldest] = within(waiting).getAllByRole("article");
     // c-student respondeu q-old ha meia hora (NOW - HOUR / 2).
-    expect(oldest).toHaveTextContent("1 student reply so far — Hace 30 min");
+    expect(oldest).toHaveTextContent("1 respuesta de alumnos hasta ahora");
+    expect(oldest).toHaveTextContent("Hace 30 min");
   });
 });
 
