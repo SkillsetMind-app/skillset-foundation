@@ -14,10 +14,11 @@ export function formatUsd(amount: number): string {
  * Whole-dollar USD (no cents) for plan pricing, where every amount is a round
  * dollar figure. Keeps "$19" / "$190" / "$1,990" visually even instead of the
  * default "$19.00" the currency formatter produces — the uneven, decimal-heavy
- * look the pricing cards had before.
+ * look the pricing cards had before. Localized surfaces pass the active
+ * locale so checkout matches the plans grid; the default keeps en-US.
  */
-export function formatUsdWhole(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
+export function formatUsdWhole(amount: number, locale = "en-US"): string {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 0,

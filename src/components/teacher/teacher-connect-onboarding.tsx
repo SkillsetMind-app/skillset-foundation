@@ -1,12 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import {
   ConnectAccountOnboarding,
   ConnectComponentsProvider,
 } from "@stripe/react-connect-js";
 import {
   loadConnectAndInitialize,
-  type LoadError,
   type StripeConnectInstance,
 } from "@stripe/connect-js";
 import { useEffect, useRef, useState } from "react";
@@ -19,6 +19,7 @@ import {
   startTeacherStripeOnboarding,
 } from "@/lib/payments/connect";
 import { useTheme } from "@/lib/theme/theme-provider";
+import { PaymentRequestError } from "@/lib/payments/client-fetch";
 
 /**
  * Renders Stripe's embedded creator-onboarding flow INSIDE SkillsetMind.
@@ -76,15 +77,34 @@ type TeacherConnectOnboardingProps = {
   onAvailabilityChange?: (payoutsUnavailable: boolean) => void;
 };
 
+function connectFailure(cause: unknown, fallback: "initialize" | "hosted") {
+  const paymentError = cause instanceof PaymentRequestError ? cause : null;
+  const code = paymentError?.code;
+  const key = code === "activation_required" ? "activation"
+    : code === "payments_not_configured" ? "configuration"
+    : code === "unauthenticated" || paymentError?.status === 401 ? "signIn"
+    : code === "permission_denied" || paymentError?.status === 403 ? "permission"
+    : paymentError?.status === 429 ? "rateLimit"
+    : fallback;
+  return { key, status: paymentError?.status };
+}
+
+function connectRecoveryHref(key: string) {
+  return key === "activation" ? "/teach/activate"
+    : key === "signIn" ? "/login"
+    : ["configuration", "permission", "request"].includes(key) ? "/support"
+    : null;
+}
+
 export function TeacherConnectOnboarding({
   onComplete,
   onAvailabilityChange,
 }: TeacherConnectOnboardingProps) {
   const { resolvedTheme } = useTheme();
-  const { locale } = useTranslation();
+  const { locale, t } = useTranslation();
   const [connect, setConnect] = useState<StripeConnectInstance | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loadError, setLoadError] = useState<LoadError["error"] | null>(null);
+  const [error, setError] = useState<ReturnType<typeof connectFailure> | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const [isOpeningHosted, setIsOpeningHosted] = useState(false);
   // Platform hasn't enabled Stripe Connect yet. Distinct from `error` because
@@ -160,11 +180,7 @@ export function TeacherConnectOnboarding({
             setPayoutsUnavailable(true);
             return;
           }
-          const message =
-            cause instanceof Error
-              ? cause.message
-              : "Stripe Connect failed to initialize.";
-          setError(message);
+          setError(connectFailure(cause, "initialize"));
         }
       }
     }
@@ -199,18 +215,8 @@ export function TeacherConnectOnboarding({
         setIsOpeningHosted(false);
         return;
       }
-      // Surface the underlying reason instead of a mute "try again". The
-      // request throws an Error whose message carries the route's server-side
-      // detail — e.g. "Stripe secret key is not configured." when
-      // the STRIPE_SECRET_KEY secret is unset, or a permission error when the
-      // account lacks the teacher role. A silent catch made payout-setup
-      // failures undiagnosable (they looked like a dead button).
-      const detail = cause instanceof Error ? cause.message.trim() : "";
-      setError(
-        detail
-          ? `We could not open Stripe onboarding: ${detail}`
-          : "We could not open Stripe onboarding. Please try again.",
-      );
+      // Keep the category and HTTP status for diagnosis, never transport text.
+      setError(connectFailure(cause, "hosted"));
       setIsOpeningHosted(false);
     }
   }
@@ -230,23 +236,20 @@ export function TeacherConnectOnboarding({
     // owner has enabled Connect in the Stripe Dashboard.
     return (
       <Card tone="soft" padding="none" className="p-5">
-        <Eyebrow tone="muted">Payout setup</Eyebrow>
+        <Eyebrow tone="muted">{t("connectOnboarding.setup")}</Eyebrow>
         <h4 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
-          Payouts are being configured.
+          {t("connectOnboarding.unavailableTitle")}
         </h4>
         <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
-          SkillsetMind is finishing its secure payout setup with Stripe. This is on
-          our side, not yours — there&apos;s nothing for you to fix here.
+          {t("connectOnboarding.unavailableBody")}
           <strong className="text-[var(--color-ink)]">
-            {" "}No payout account is connected yet.
+            {" "}{t("connectOnboarding.noAccount")}
           </strong>{" "}
-          When this is ready, Stripe&apos;s identity and bank verification will
-          open right here on this page — you&apos;ll know it worked because
-          you&apos;ll be asked for those details.
+          {t("connectOnboarding.whenReady")}
         </p>
         <div className="mt-4">
           <Button variant="outline" onClick={retryEmbeddedSetup}>
-            Check again
+            {t("connectOnboarding.checkAgain")}
           </Button>
         </div>
       </Card>
@@ -261,28 +264,25 @@ export function TeacherConnectOnboarding({
     // keeps payout setup reachable even if the publishable key is missing.
     return (
       <Card padding="none" className="p-5">
-        <Eyebrow>Payout setup</Eyebrow>
+        <Eyebrow>{t("connectOnboarding.setup")}</Eyebrow>
         <h4 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
-          Set up payouts with Stripe.
+          {t("connectOnboarding.hostedTitle")}
         </h4>
         <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
-          Connect a payout account to start selling paid courses. Stripe
-          verifies your identity and bank details on a secure page and returns
-          you to SkillsetMind the moment you finish. From then on buyers pay your
-          Stripe account directly — SkillsetMind never holds your money. Stripe
-          settles each charge into your balance on its own timing (that depends
-          on your country and the buyer&apos;s payment method) and pays it out to
-          your bank on your connected account&apos;s payout schedule. Your first
-          payout waits on Stripe&apos;s verification of the new account.
+          {t("connectOnboarding.hostedBody")}
         </p>
         {error ? (
           <InlineAlert tone="error" className="mt-3">
-            {error}
+            {t(`connectOnboarding.error.${error.key}`)}
+            {error.status ? <> {t("activationCheckout.reference")} HTTP {error.status}</> : null}
+            {connectRecoveryHref(error.key) ? <Link className="ml-2 underline" href={connectRecoveryHref(error.key)!}>
+              {t(`connectOnboarding.recovery.${error.key}`)}
+            </Link> : null}
           </InlineAlert>
         ) : null}
         <div className="mt-4">
           <Button onClick={openHostedFallback} disabled={isOpeningHosted}>
-            {isOpeningHosted ? "Opening Stripe..." : "Continue with Stripe"}
+            {t(isOpeningHosted ? "connectOnboarding.opening" : "connectOnboarding.continue")}
           </Button>
         </div>
       </Card>
@@ -292,7 +292,8 @@ export function TeacherConnectOnboarding({
   if (error) {
     return (
       <StripeConnectFallback
-        detail={error}
+        errorKey={error.key}
+        status={error.status}
         isOpeningHosted={isOpeningHosted}
         onHosted={openHostedFallback}
         onRetry={retryEmbeddedSetup}
@@ -303,11 +304,7 @@ export function TeacherConnectOnboarding({
   if (loadError) {
     return (
       <StripeConnectFallback
-        detail={
-          loadError.type === "authentication_error"
-            ? "Stripe could not complete the embedded authentication flow in this browser session."
-            : loadError.message || `Stripe embedded component error: ${loadError.type}.`
-        }
+        errorKey={loadError}
         isOpeningHosted={isOpeningHosted}
         onHosted={openHostedFallback}
         onRetry={retryEmbeddedSetup}
@@ -324,7 +321,7 @@ export function TeacherConnectOnboarding({
         aria-busy="true"
         aria-live="polite"
       >
-        Preparing your payout onboarding…
+        {t("connectOnboarding.preparing")}
       </div>
     );
   }
@@ -338,15 +335,19 @@ export function TeacherConnectOnboarding({
               onComplete?.();
             }}
             onLoadError={(nextError) => {
-              setLoadError(nextError.error);
+              const type = nextError.error.type;
+              setLoadError(type === "authentication_error" ? "authentication"
+                : type === "account_session_create_error" ? "session"
+                : type === "api_connection_error" ? "connection"
+                : type === "invalid_request_error" ? "request"
+                : type === "rate_limit_error" ? "rateLimit"
+                : type === "render_error" ? "render"
+                : "embedded");
             }}
           />
         </div>
         <p className="border-t fine-rule px-4 py-2 text-[11px] leading-5 text-[var(--color-ink-muted)]">
-          Powered by Stripe. When this is done, buyers pay your Stripe account
-          directly — SkillsetMind never holds your money. Stripe settles and pays
-          out on its own timing, which depends on your country and the payment
-          method; a new account waits on verification before its first payout.
+          {t("connectOnboarding.footer")}
         </p>
       </ConnectComponentsProvider>
     </Card>
@@ -354,34 +355,43 @@ export function TeacherConnectOnboarding({
 }
 
 function StripeConnectFallback({
-  detail,
+  errorKey,
+  status,
   isOpeningHosted,
   onHosted,
   onRetry,
 }: {
-  detail: string;
+  errorKey: string;
+  status?: number;
   isOpeningHosted: boolean;
   onHosted: () => void;
   onRetry: () => void;
 }) {
+  const { t } = useTranslation();
+  const recoveryHref = connectRecoveryHref(errorKey);
   return (
     <div className="rounded-[14px] border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.04)] p-5">
-      <Eyebrow>Stripe embedded setup needs a fallback</Eyebrow>
+      <Eyebrow>{t("connectOnboarding.fallbackEyebrow")}</Eyebrow>
       <h4 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
-        Continue with Stripe&apos;s secure onboarding page.
+        {t("connectOnboarding.fallbackTitle")}
       </h4>
-      <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
-        {detail} This can happen with browser privacy settings, blocked cookies,
-        or when Stripe requires a stronger authentication step. The payout setup
-        still works; this fallback returns you to SkillsetMind after completion.
+      <p role="alert" className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
+        {t(`connectOnboarding.error.${errorKey}`)}{" "}
+        {t("connectOnboarding.fallbackBody")}
       </p>
+      {status ? <p className="mt-2 text-xs">{t("activationCheckout.reference")} HTTP {status}</p> : null}
       <div className="mt-4 flex flex-wrap gap-2">
+        {/* Stripe's hosted page stays available for every error, as before
+            translation; the recovery link is an extra way out, not a replacement. */}
         <Button onClick={onHosted} disabled={isOpeningHosted}>
-          {isOpeningHosted ? "Opening Stripe..." : "Continue secure setup"}
+          {t(isOpeningHosted ? "connectOnboarding.opening" : "connectOnboarding.continueSecure")}
         </Button>
         <Button variant="outline" onClick={onRetry}>
-          Retry embedded setup
+          {t("connectOnboarding.retry")}
         </Button>
+        {recoveryHref ? <Link className="button-outline px-4 py-2.5 text-sm" href={recoveryHref}>
+          {t(`connectOnboarding.recovery.${errorKey}`)}
+        </Link> : null}
       </div>
     </div>
   );

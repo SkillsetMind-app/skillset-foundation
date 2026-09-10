@@ -2,8 +2,10 @@ import { PlansPanel } from "@/components/account/plans-panel";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import { refundWindowDays } from "@/data/plans";
+import { getServerTranslation } from "@/lib/i18n/server";
 
-export default function AccountPlansPage() {
+export default async function AccountPlansPage() {
+  const { t } = await getServerTranslation();
   return (
     <ProtectedSurface permissions={["auth.signOut"]}>
       {/* O cartão de abertura ("Pricing model / Choose the plan that fits…")
@@ -11,8 +13,8 @@ export default function AccountPlansPage() {
           terceira. A página abre no que importa: o plano atual e os cartões.
           A frase de que todo plano inclui tudo foi para a descrição do título. */}
       <PlatformShell
-        title="Plans & fees"
-        description="Every plan includes every SkillsetMind feature. Paid plans lower the platform commission; checkout and changes go through Stripe."
+        title={t("accountPlansPage.title")}
+        description={t("accountPlansPage.description")}
         compact
       >
         <section className="grid gap-5">
@@ -20,16 +22,16 @@ export default function AccountPlansPage() {
 
           <div className="grid gap-4 lg:grid-cols-3">
             <PolicyCard
-              title="Stripe processing"
-              detail="Stripe processing is separate from SkillsetMind commission and appears in the creator ledger per transaction."
+              title={t("accountPlansPage.processing")}
+              detail={t("accountPlansPage.processingBody")}
             />
             <PolicyCard
-              title="Refund window"
-              detail={`Learners can refund a purchase within ${refundWindowDays} days if they've completed less than half the course and no certificate has been issued — once per course.`}
+              title={t("accountPlansPage.refund")}
+              detail={t("accountPlansPage.refundBody").replace("{days}", () => String(refundWindowDays))}
             />
             <PolicyCard
-              title="Payouts"
-              detail="Buyers pay your Stripe account directly. There is no platform hold — Stripe then settles and pays out to your bank on its own timing, which depends on your country and the payment method."
+              title={t("accountPlansPage.payouts")}
+              detail={t("accountPlansPage.payoutsBody")}
             />
           </div>
         </section>
