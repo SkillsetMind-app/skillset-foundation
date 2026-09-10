@@ -25,7 +25,7 @@ document. SQL smoke execution and hosted CI are required before publication.
 | Direct authenticated table access | Restrictive `account_access_guard` on every existing public RLS table and `storage.objects`, ANDed with existing policies. No permissive policy is removed or weakened. |
 | Private RPCs with MFA guards | Existing `require_strong_session` / `session_is_strong` paths now include live account status. Existing AAL2-or-no-verified-factor rule and grants are retained. |
 | Role predicates inside definers | Six role/author helpers also require the account gate; persisted roles do not change. |
-| Co-producer owner authorization | `assert_course_owner` now requires the existing strong-session guard, including calls from DECLARE initializers. |
+| Course-commerce owner authorization | `assert_course_owner` now requires the existing strong-session guard, including calls from DECLARE initializers. The smoke exercises `upsert_course_commerce_settings`; co-producer RPCs were removed in July. |
 | Roster, subscriber, funnel, quota, enrollment helpers | Existing explicit `session_is_strong` predicates. |
 | Signup / actual email changes | `auth.users` trigger rejects the normalized blocked email, and changing a suspended account's email. It does not trust public profile email or JWT/user metadata. |
 | Last active admin | Account operations and role writes serialize on the users table; role counts exclude suspended accounts. Self-removal guards remain. |

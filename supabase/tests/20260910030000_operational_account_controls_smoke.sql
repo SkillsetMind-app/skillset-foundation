@@ -63,6 +63,7 @@ select pg_temp.assert_true(public.account_session_allowed(), 'unrestricted sessi
 select pg_temp.assert_true(exists(select 1 from public.users where uid = pg_temp.uid(2)::text), 'profile positive control');
 select pg_temp.assert_true(exists(select 1 from public.course_lesson_content where lesson_id = 'account-control-lesson'), 'lesson positive control');
 select pg_temp.assert_true(exists(select 1 from storage.objects where name = 'courses/account-control-course/assets/check.txt'), 'storage positive control');
+select pg_temp.assert_true((public.upsert_course_commerce_settings('account-control-course', false, '[]'::jsonb)->>'success')::boolean, 'course owner RPC positive control');
 select pg_temp.denied($q$select pg_temp.change(4, 'suspend')$q$, 'ACCOUNT_CONTROL_ADMIN_MFA_REQUIRED');
 select pg_temp.denied($q$select public.admin_get_account_control(pg_temp.uid(4)::text)$q$, 'ACCOUNT_CONTROL_ADMIN_MFA_REQUIRED');
 reset role;
@@ -99,7 +100,9 @@ with changed as (update public.users set bio = 'forbidden' where uid = pg_temp.u
 select pg_temp.assert_true(not exists(select 1 from changed), 'suspended user updated profile');
 select pg_temp.denied($q$insert into storage.objects(bucket_id, name) values ('course-content','courses/account-control-course/assets/forbidden.txt')$q$);
 select pg_temp.denied($q$select public.record_lesson_playback('account-control-course','account-control-lesson',1)$q$);
-select pg_temp.denied($q$select public.invite_course_coproducer('account-control-course','other@example.test',10)$q$);
+-- Co-producer RPCs were removed by the July 24 migration. Exercise the current
+-- commerce RPC, which calls assert_course_owner from its DECLARE initializer.
+select pg_temp.denied($q$select public.upsert_course_commerce_settings('account-control-course',false,'[]'::jsonb)$q$);
 select pg_temp.denied($q$select public.admin_set_user_roles(pg_temp.uid(2)::text,'["admin"]')$q$);
 reset role;
 

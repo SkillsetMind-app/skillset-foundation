@@ -6,6 +6,7 @@ import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), set: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/lib/data/account-controls", () => ({ getAccountControl: mocks.get, setAccountControl: mocks.set }));
 const active = { suspended: false, blockedEmail: null, isSelf: false };
 const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
