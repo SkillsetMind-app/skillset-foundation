@@ -1,12 +1,16 @@
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { CertificatePrintView } from "@/components/certificates/certificate-print-view";
+import { getServerTranslation } from "@/lib/i18n/server";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
-export const metadata = buildPageMetadata({
-  title: "Certificate",
-  description: "View and print your SkillsetMind Verified certificate.",
-  path: "/learn/credentials",
-});
+export async function generateMetadata() {
+  const { t } = await getServerTranslation();
+  return buildPageMetadata({
+    title: t("learnWave2.print.metadataTitle"),
+    description: t("learnWave2.print.metadataDescription"),
+    path: "/learn/credentials",
+  });
+}
 
 export default async function CertificatePage({
   params,

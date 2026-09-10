@@ -4845,7 +4845,9 @@
       "missing": "Certificate not available.",
       "missingDetail": "This certificate could not be found on your account, or it has not been issued yet. Issue it from your credentials page first.",
       "error": "We could not load this certificate.",
-      "errorDetail": "Something went wrong loading the credential. Refresh the page or try again from your credentials list."
+      "errorDetail": "Something went wrong loading the credential. Refresh the page or try again from your credentials list.",
+      "metadataTitle": "Certificate",
+      "metadataDescription": "View and print your SkillsetMind Verified certificate."
     },
     "messages": {
       "loadError": "We could not load your messages.",
@@ -4963,7 +4965,8 @@
       "codeLabel": "Verification code",
       "print": "Print / Save as PDF",
       "back": "Back to homepage",
-      "explore": "Explore courses"
+      "explore": "Explore courses",
+      "pageLoading": "Loading verification..."
     },
     "agenda": {
       "eyebrow": "Live sessions",
