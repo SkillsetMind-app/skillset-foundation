@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { CertificateDocument } from "@/components/certificates/certificate-document";
 import type { Certificate } from "@/domain/certificate";
@@ -16,6 +17,7 @@ export function CertificatePrintView({
 }: {
   certificateId: string;
 }) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [certificate, setCertificate] = useState<Certificate | null>(null);
   const [state, setState] = useState<LoadState>("loading");
@@ -61,7 +63,7 @@ export function CertificatePrintView({
           href="/learn/credentials"
           className="text-sm font-semibold text-[var(--color-primary)] underline underline-offset-2"
         >
-          ← Back to credentials
+          {t("learnWave2.print.back")}
         </Link>
         {state === "ready" && certificate ? (
           <div className="flex flex-wrap items-center gap-3">
@@ -71,14 +73,14 @@ export function CertificatePrintView({
               rel="noopener noreferrer"
               className="button-outline px-4 py-2.5 text-sm"
             >
-              Add to LinkedIn
+              {t("learnWave2.print.linkedIn")}
             </a>
             <button
               type="button"
               onClick={() => window.print()}
               className="button-solid px-4 py-2.5 text-sm"
             >
-              Download PDF
+              {t("learnWave2.print.download")}
             </button>
           </div>
         ) : null}
@@ -87,26 +89,28 @@ export function CertificatePrintView({
       <div className="mt-6 print:mt-0">
         {state === "loading" ? (
           <CertificateNotice
-            title="Preparing your certificate..."
-            description="SkillsetMind is loading this credential record."
+            title={t("learnWave2.print.loading")}
+            description={t("learnWave2.print.loadingDetail")}
           />
         ) : null}
 
+        {/* The certificate is the issued record: it stays in English in every interface
+            language. Only the controls around it follow the locale. */}
         {state === "ready" && certificate ? (
           <CertificateDocument certificate={certificate} />
         ) : null}
 
         {state === "missing" ? (
           <CertificateNotice
-            title="Certificate not available."
-            description="This certificate could not be found on your account, or it has not been issued yet. Issue it from your credentials page first."
+            title={t("learnWave2.print.missing")}
+            description={t("learnWave2.print.missingDetail")}
           />
         ) : null}
 
         {state === "error" ? (
           <CertificateNotice
-            title="We could not load this certificate."
-            description="Something went wrong loading the credential. Refresh the page or try again from your credentials list."
+            title={t("learnWave2.print.error")}
+            description={t("learnWave2.print.errorDetail")}
           />
         ) : null}
       </div>
