@@ -1,329 +1,196 @@
-import Link from "next/link";
-
-import { LegalArticle, LegalSection } from "@/components/site/legal-article";
+import { LegalArticle, LegalSection, LegalText } from "@/components/site/legal-article";
+import { getServerTranslation } from "@/lib/i18n/server";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
-export const metadata = buildPageMetadata({
-  title: "Privacy Policy",
-  description: "How SkillsetMind collects, uses, and protects your data.",
-  path: "/legal/privacy",
-});
-
-const EFFECTIVE_DATE = "July 5, 2026";
-const SUPPORT_EMAIL = "support@skillsetmind.com";
-const LEGAL_EMAIL = "legal@skillsetmind.com";
-
-function SupportLink() {
-  return (
-    <a
-      className="font-semibold text-[var(--color-accent-fg)]"
-      href={`mailto:${SUPPORT_EMAIL}`}
-    >
-      {SUPPORT_EMAIL}
-    </a>
-  );
+export async function generateMetadata() {
+  const { t } = await getServerTranslation();
+  return buildPageMetadata({
+    title: t("legalPages.privacy.title"),
+    description: t("legalPages.privacy.description"),
+    path: "/legal/privacy",
+  });
 }
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const { t } = await getServerTranslation();
   return (
     <LegalArticle
-      kicker="Legal"
-      title="Privacy Policy"
-      effectiveDate={EFFECTIVE_DATE}
+      kicker={t("legalPages.common.kicker")}
+      title={t("legalPages.privacy.title")}
+      effectiveDate={t("legalPages.common.effectiveDate")}
+      effectiveLabel={t("legalPages.common.effectiveLabel")}
       intro={
         <>
           <p>
-            This policy explains what personal information SkillsetMind collects,
-            why, who it is shared with, and the rights you have over it. It
-            applies to visitors, learners, and educators. The data controller
-            is Skillset USA, 26 Broadway, New York, NY 10006, United States
-            (&quot;SkillsetMind,&quot; &quot;we,&quot; &quot;us&quot;).
+            <LegalText text={t("legalPages.privacy.text1")} />
           </p>
           <p className="mt-3">
-            Short version: we collect what the platform needs to run — your
-            account, your learning activity, your purchases — plus product
-            analytics you can opt out of. We do not sell your personal
-            information.
+            <LegalText text={t("legalPages.privacy.text2")} />
           </p>
         </>
       }
     >
-      <LegalSection heading="1. Information we collect">
+      <LegalSection heading={t("legalPages.privacy.heading1")}>
         <ul className="list-disc space-y-2 pl-6">
           <li>
-            <strong className="text-[var(--color-ink)]">Account data</strong> —
-            name, email address, password (stored hashed by Supabase Auth), and
-            your role on the platform (learner and/or educator).
+            <LegalText text={t("legalPages.privacy.text3")} />
           </li>
           <li>
-            <strong className="text-[var(--color-ink)]">Profile data</strong> —
-            information you add to your profile, such as a photo, bio, or
-            professional background (for educators).
+            <LegalText text={t("legalPages.privacy.text4")} />
           </li>
           <li>
-            <strong className="text-[var(--color-ink)]">Learning activity</strong>{" "}
-            — courses you enroll in, lesson progress, certificates you earn,
-            reviews you write, and posts in course communities and live
-            sessions.
+            <LegalText text={t("legalPages.privacy.text5")} />
           </li>
           <li>
-            <strong className="text-[var(--color-ink)]">Transaction data</strong>{" "}
-            — order history, amounts, currency, and refund status. Payments are
-            processed by Stripe; we receive confirmation and receipt metadata
-            but never your full card number.
+            <LegalText text={t("legalPages.privacy.text6")} />
           </li>
           <li>
-            <strong className="text-[var(--color-ink)]">Educator payout data</strong>{" "}
-            — if you sell courses, the identity and banking information Stripe
-            Connect requires for payouts is collected and held by Stripe under
-            its own privacy terms; we see payout status and account state.
+            <LegalText text={t("legalPages.privacy.text7")} />
           </li>
           <li>
-            <strong className="text-[var(--color-ink)]">Usage data</strong> —
-            product analytics collected through PostHog: pages viewed, features
-            used, device and browser type, and approximate location derived
-            from IP.
+            <LegalText text={t("legalPages.privacy.text8")} />
           </li>
           <li>
-            <strong className="text-[var(--color-ink)]">Cookies</strong> —
-            described in Section 4 and controlled through the cookie banner.
+            <LegalText text={t("legalPages.privacy.text9")} />
           </li>
           <li>
-            <strong className="text-[var(--color-ink)]">Communications</strong>{" "}
-            — messages you send to support and notification preferences.
+            <LegalText text={t("legalPages.privacy.text10")} />
           </li>
         </ul>
       </LegalSection>
 
-      <LegalSection heading="2. How we use it, and on what legal basis">
+      <LegalSection heading={t("legalPages.privacy.heading2")}>
         <p>
-          Under the GDPR (EU/EEA/UK) and the LGPD (Brazil), each use of
-          personal data needs a legal basis. Ours are:
+          <LegalText text={t("legalPages.privacy.text11")} />
         </p>
         <ul className="list-disc space-y-2 pl-6">
           <li>
-            <strong className="text-[var(--color-ink)]">Performing our contract with you</strong>{" "}
-            — creating and securing your account, delivering courses you enroll
-            in, issuing certificates, routing purchases and refunds to the
-            educator&apos;s Stripe account, and recording educator earnings.
+            <LegalText text={t("legalPages.privacy.text12")} />
           </li>
           <li>
-            <strong className="text-[var(--color-ink)]">Legitimate interests</strong>{" "}
-            — keeping the platform safe, preventing fraud and abuse, improving
-            features based on aggregate usage, and sending service messages
-            about your account and purchases.
+            <LegalText text={t("legalPages.privacy.text13")} />
           </li>
           <li>
-            <strong className="text-[var(--color-ink)]">Consent</strong> —
-            optional analytics cookies and marketing emails. You can withdraw
-            consent at any time (cookie banner, unsubscribe link, or account
-            settings) without affecting your use of the platform.
+            <LegalText text={t("legalPages.privacy.text14")} />
           </li>
           <li>
-            <strong className="text-[var(--color-ink)]">Legal obligations</strong>{" "}
-            — tax, accounting, and lawful requests from authorities.
+            <LegalText text={t("legalPages.privacy.text15")} />
           </li>
         </ul>
       </LegalSection>
 
-      <LegalSection heading="3. What educators can see">
+      <LegalSection heading={t("legalPages.privacy.heading3")}>
         <p>
-          When you enroll in a course, the educator who runs it can see your
-          name, email, enrollment date, and progress in their course — this is
-          how they support their students. Under our public creator commitments
-          (&quot;The Promise&quot;), each educator&apos;s student list belongs
-          to that educator. Educators must handle student data lawfully and may
-          not sell it; their obligations are set out in the{" "}
-          <Link className="font-semibold text-[var(--color-accent-fg)]" href="/legal/teacher-terms">
-            Teacher Terms
-          </Link>
-          . When you buy a course, the educator is the merchant of record and the
-          payment is charged on their own Stripe account, so the transaction —
-          your name, email, the amount, currency, country, and the card brand
-          and last four digits — appears in that educator&apos;s Stripe
-          dashboard, where the educator is the controller of that record and
-          Stripe&apos;s terms and the educator&apos;s own privacy notice apply.
-          SkillsetMind never discloses your full card number to an educator, and
-          educators do not see your activity in other educators&apos; courses.
+          <LegalText text={t("legalPages.privacy.text16")} />
         </p>
       </LegalSection>
 
-      <LegalSection heading="4. Cookies and analytics">
+      <LegalSection heading={t("legalPages.privacy.heading4")}>
         <p>
-          We use strictly necessary cookies for sign-in sessions and language
-          preference, and optional analytics cookies (PostHog) to understand
-          how the product is used. The cookie banner lets you accept or reject
-          the optional ones; strictly necessary cookies cannot be switched off
-          because the platform does not work without them. Analytics data is
-          used in aggregate and not to profile you for advertising.
+          <LegalText text={t("legalPages.privacy.text17")} />
         </p>
       </LegalSection>
 
-      <LegalSection heading="5. Who we share data with (subprocessors)">
+      <LegalSection heading={t("legalPages.privacy.heading5")}>
         <p>
-          We never sell your personal information. We share it only with the
-          service providers that run the platform, under contracts that limit
-          what they can do with it:
+          <LegalText text={t("legalPages.privacy.text18")} />
         </p>
         <ul className="list-disc space-y-2 pl-6">
           <li>
-            <strong className="text-[var(--color-ink)]">Supabase</strong> —
-            authentication, database, and file storage (hosted in the United
-            States).
+            <LegalText text={t("legalPages.privacy.text19")} />
           </li>
           <li>
-            <strong className="text-[var(--color-ink)]">Stripe</strong> —
-            payment processing and refunds (Stripe Connect). For educator
-            subscriptions Stripe processes on our behalf; for a course purchase
-            the charge is created on the educator&apos;s own connected account,
-            where the educator is the merchant of record and Stripe acts for
-            them. SkillsetMind does not receive or hold the purchase price.
+            <LegalText text={t("legalPages.privacy.text20")} />
           </li>
           <li>
-            <strong className="text-[var(--color-ink)]">Vercel</strong> —
-            application hosting and content delivery.
+            <LegalText text={t("legalPages.privacy.text21")} />
           </li>
           <li>
-            <strong className="text-[var(--color-ink)]">PostHog</strong> —
-            product analytics.
+            <LegalText text={t("legalPages.privacy.text22")} />
           </li>
         </ul>
         <p>
-          We may also disclose data when required by law, to protect the
-          rights and safety of users, or as part of a corporate transaction
-          (merger, acquisition), in which case this policy continues to apply
-          to your data.
+          <LegalText text={t("legalPages.privacy.text23")} />
         </p>
       </LegalSection>
 
-      <LegalSection heading="6. International transfers">
+      <LegalSection heading={t("legalPages.privacy.heading6")}>
         <p>
-          Our infrastructure is hosted in the United States. If you access
-          SkillsetMind from outside the US (including the EU/EEA, UK, or Brazil),
-          your data is transferred to and processed in the US. For transfers
-          from the EU/EEA and UK we rely on our providers&apos; Standard
-          Contractual Clauses and, where applicable, the EU-US Data Privacy
-          Framework; for Brazil, on the LGPD&apos;s international-transfer
-          provisions (art. 33). Data processing agreements with our
-          infrastructure providers (Supabase, Stripe, Vercel) are incorporated
-          into their respective service terms.
+          <LegalText text={t("legalPages.privacy.text24")} />
         </p>
       </LegalSection>
 
-      <LegalSection heading="7. Retention">
+      <LegalSection heading={t("legalPages.privacy.heading7")}>
         <p>
-          We keep personal data only as long as needed for the purposes above:
+          <LegalText text={t("legalPages.privacy.text25")} />
         </p>
         <ul className="list-disc space-y-2 pl-6">
           <li>
-            Account and learning data — while your account is active, and
-            deleted or anonymized within 90 days after account deletion, except
-            where retention is legally required.
+            <LegalText text={t("legalPages.privacy.text26")} />
           </li>
           <li>
-            Certificates — the verification record persists so issued
-            certificates remain verifiable, unless you ask us to remove it.
+            <LegalText text={t("legalPages.privacy.text27")} />
           </li>
           <li>
-            Transaction records — kept for the period required by tax and
-            accounting law (typically 5&ndash;10 years depending on
-            jurisdiction).
+            <LegalText text={t("legalPages.privacy.text28")} />
           </li>
-          <li>Analytics data — retained in identifiable form for no longer than 24 months.</li>
+          <li>
+            <LegalText text={t("legalPages.privacy.text29")} />
+          </li>
         </ul>
       </LegalSection>
 
-      <LegalSection heading="8. Security">
+      <LegalSection heading={t("legalPages.privacy.heading8")}>
         <p>
-          Data is encrypted in transit (TLS) and at rest by our infrastructure
-          providers. Access to production data is restricted, and database
-          access is governed by row-level security policies so users can only
-          read what belongs to them. No system is perfectly secure; if a breach
-          affects your personal data we will notify you and the competent
-          authority as required by law (including GDPR art. 33/34 and LGPD
-          art. 48).
+          <LegalText text={t("legalPages.privacy.text30")} />
         </p>
       </LegalSection>
 
-      <LegalSection heading="9. Your rights">
+      <LegalSection heading={t("legalPages.privacy.heading9")}>
         <p>
-          You can exercise any of these rights by emailing <SupportLink /> or
-          from your account settings. We respond within the timeframe required
-          by your law (30 days under GDPR, 15 days for confirmation and access
-          requests under LGPD, 45 days under CCPA). We will never discriminate
-          against you for exercising a privacy right.
+          <LegalText text={t("legalPages.privacy.text31")} />
         </p>
         <div>
           <h3 className="text-base font-semibold text-[var(--color-ink)]">
-            European Union, EEA, and United Kingdom (GDPR / UK GDPR)
+            <LegalText text={t("legalPages.privacy.text32")} />
           </h3>
           <p className="mt-2">
-            You have the right of access, rectification, erasure, restriction
-            of processing, data portability, objection to processing based on
-            legitimate interests, and withdrawal of consent. You may lodge a
-            complaint with your local supervisory authority.
+            <LegalText text={t("legalPages.privacy.text33")} />
           </p>
         </div>
         <div>
           <h3 className="text-base font-semibold text-[var(--color-ink)]">
-            Brazil (LGPD)
+            <LegalText text={t("legalPages.privacy.text34")} />
           </h3>
           <p className="mt-2">
-            You have the rights set out in article 18 of the LGPD:
-            confirmation of processing, access, correction, anonymization or
-            deletion of unnecessary or excessive data, portability, deletion of
-            data processed with consent, information about sharing and about
-            the consequences of refusing consent, and revocation of consent.
-            You may file a complaint with the ANPD (Autoridade Nacional de
-            Prote&ccedil;&atilde;o de Dados).
+            <LegalText text={t("legalPages.privacy.text35")} />
           </p>
         </div>
         <div>
           <h3 className="text-base font-semibold text-[var(--color-ink)]">
-            California (CCPA / CPRA)
+            <LegalText text={t("legalPages.privacy.text36")} />
           </h3>
           <p className="mt-2">
-            You have the right to know what personal information we collect,
-            use, and disclose; to delete it; to correct it; and to opt out of
-            &quot;sale&quot; or &quot;sharing.&quot; We do not sell or share
-            personal information as defined by the CCPA, and we do not use
-            sensitive personal information beyond what is necessary to provide
-            the service. You may designate an authorized agent to submit
-            requests for you.
+            <LegalText text={t("legalPages.privacy.text37")} />
           </p>
         </div>
       </LegalSection>
 
-      <LegalSection heading="10. Children">
+      <LegalSection heading={t("legalPages.privacy.heading10")}>
         <p>
-          SkillsetMind is for adults. We do not knowingly collect personal
-          information from anyone under 18. If you believe a minor has created
-          an account, contact <SupportLink /> and we will delete it.
+          <LegalText text={t("legalPages.privacy.text38")} />
         </p>
       </LegalSection>
 
-      <LegalSection heading="11. Changes to this policy">
+      <LegalSection heading={t("legalPages.privacy.heading11")}>
         <p>
-          When we make material changes we will update the effective date above
-          and notify you by email or in-product notice before they take effect.
-          This policy is written in English; translations may be provided for
-          convenience, and the English version controls except where local law
-          requires otherwise.
+          <LegalText text={t("legalPages.privacy.text39")} />
         </p>
       </LegalSection>
 
-      <LegalSection heading="12. Contact and data protection officer">
+      <LegalSection heading={t("legalPages.privacy.heading12")}>
         <p>
-          Privacy questions and rights requests: <SupportLink /> or{" "}
-          <a
-            className="font-semibold text-[var(--color-accent-fg)]"
-            href={`mailto:${LEGAL_EMAIL}`}
-          >
-            {LEGAL_EMAIL}
-          </a>
-          . Data protection contact (including as
-          &quot;encarregado&quot; under the Brazilian LGPD): SkillsetMind Legal,
-          reachable at the same address.
+          <LegalText text={t("legalPages.privacy.text40")} />
         </p>
       </LegalSection>
     </LegalArticle>
