@@ -16,6 +16,7 @@ import {
 import { isPlatformFlagOn } from "@/domain/platform-settings";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getServerLocale } from "@/lib/i18n/server";
 import {
   ACTIVATION_FEE_CHECKOUT_PURPOSE,
   ACTIVATION_FEE_STRIPE_PRICE_ID,
@@ -175,12 +176,14 @@ export async function POST() {
     }
 
     const appUrl = getAppUrl();
+    const locale = await getServerLocale();
     const latestActivationSessionId = activationSessions[0]?.id ?? "initial";
 
     const session = await stripe.checkout.sessions.create(
       {
         mode: "payment",
         ui_mode: "embedded_page",
+        locale,
         customer: customerId,
         line_items: [{ price: ACTIVATION_FEE_STRIPE_PRICE_ID, quantity: 1 }],
         // Mirrored onto the PaymentIntent so a refund/dispute investigation can

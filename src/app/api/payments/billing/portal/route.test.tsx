@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   getUserRow: vi.fn(),
   getStripe: vi.fn(),
   createPortalSession: vi.fn(),
+  getLocale: vi.fn(),
 }));
 
 vi.mock("@/lib/payments/server/auth", async (importOriginal) => ({
@@ -27,12 +28,15 @@ vi.mock("@/lib/payments/server/stripe-helpers", () => ({
   getUserRow: mocks.getUserRow,
 }));
 
+vi.mock("@/lib/i18n/server", () => ({ getServerLocale: mocks.getLocale }));
+
 import { POST } from "@/app/api/payments/billing/portal/route";
 import { PaymentError } from "@/lib/payments/server/auth";
 
 describe("POST /api/payments/billing/portal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getLocale.mockResolvedValue("en");
     mocks.requireUserId.mockResolvedValue("user-1");
     mocks.enforceRateLimit.mockResolvedValue(undefined);
     mocks.createPortalSession.mockResolvedValue({
@@ -78,6 +82,16 @@ describe("POST /api/payments/billing/portal", () => {
 
     expect(response.status).toBe(429);
     expect(mocks.createPortalSession).not.toHaveBeenCalled();
+  });
+
+  it("opens the portal in the visitor's language", async () => {
+    mocks.getUserRow.mockResolvedValue({ stripe_customer_id: "cus_1" });
+    mocks.getLocale.mockResolvedValue("es");
+
+    const response = await POST();
+
+    expect(response.status).toBe(200);
+    expect(mocks.createPortalSession.mock.calls[0][0].locale).toBe("es");
   });
 
   // Control: a real subscriber opens the portal on THEIR customer and returns

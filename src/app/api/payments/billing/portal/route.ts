@@ -9,6 +9,7 @@ import {
 import { getStripeClient } from "@/lib/payments/server/stripe";
 import { getAppUrl } from "@/lib/payments/server/app-url";
 import { getUserRow } from "@/lib/payments/server/stripe-helpers";
+import { getServerLocale } from "@/lib/i18n/server";
 
 // Ports createBillingPortalSession: opens the Stripe billing portal for an
 // existing subscriber. Faithful to source — refuses (failed-precondition) when
@@ -30,8 +31,10 @@ export async function POST() {
 
     const stripe = getStripeClient();
     const appUrl = getAppUrl();
+    const locale = await getServerLocale();
     const portal = await stripe.billingPortal.sessions.create({
       customer: profile.stripe_customer_id,
+      locale,
       return_url: `${appUrl}/account/billing?tab=subscriptions`,
     });
 

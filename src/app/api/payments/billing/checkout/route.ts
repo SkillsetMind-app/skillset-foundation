@@ -14,6 +14,7 @@ import {
   resolvePriceId,
 } from "@/lib/payments/server/stripe-helpers";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getServerLocale } from "@/lib/i18n/server";
 import type { PlanBillingCycle, PlanId } from "@/data/plans";
 
 // Mirrors COURSE_SUBSCRIPTION_CHECKOUT_BLOCKING_STATUSES minus "incomplete" and
@@ -171,6 +172,7 @@ export async function POST(request: Request) {
     }
 
     const appUrl = getAppUrl();
+    const locale = await getServerLocale();
 
     // Reuse before create: the response shape below is identical either way, so
     // the returning user gets the session they already have instead of a second.
@@ -193,6 +195,7 @@ export async function POST(request: Request) {
         // "embedded" ui_mode to "embedded_page"; client_secret/return_url flow
         // is unchanged. Source used "embedded" against stripe@20.
         ui_mode: "embedded_page",
+        locale,
         customer: customerId,
         line_items: [{ price: priceId, quantity: 1 }],
         // Founding-creator / launch discounts run as Stripe promotion codes on
