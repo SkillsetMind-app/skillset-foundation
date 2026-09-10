@@ -92,6 +92,7 @@ function createAdmin(input: {
   existingOrder?: Record<string, unknown> | null;
   orderVanished?: boolean;
   lockPublishLost?: boolean;
+  ownerCanSell?: boolean | null;
 }) {
   const lockReplies = [...(input.lockReplies ?? [])];
   const lockUpdates: Array<Record<string, unknown>> = [];
@@ -204,6 +205,9 @@ function createAdmin(input: {
       }
       if (name === "reserve_course_coupon" || name === "release_course_coupon_reservation") {
         return { data: null, error: null };
+      }
+      if (name === "course_owner_can_sell") {
+        return { data: "ownerCanSell" in input ? input.ownerCanSell : true, error: null };
       }
       if (name !== "claim_checkout_lock") {
         throw new Error(`Unexpected rpc: ${name}`);
@@ -359,6 +363,20 @@ describe("course checkout subscription exclusivity", () => {
     expect(response.status).toBe(400);
     expect(mocks.createSession).not.toHaveBeenCalled();
     expect(mocks.getSubscriptionPrice).not.toHaveBeenCalled();
+    expect(admin.orderInserts).toEqual([]);
+  });
+
+  it.each([false, null])("refuses a course whose owner is suspended or lost the activation (%s)", async (ownerCanSell) => {
+    const admin = createAdmin({ ownerCanSell, lockReplies: [{ action: "claim", checkout_url: null }] });
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const response = await POST(request({ courseId: "course" }));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "This course is not available for purchase right now." });
+    expect(admin.rpc).toHaveBeenCalledWith("course_owner_can_sell", { p_owner_uid: "teacher" });
+    expect(admin.rpc.mock.calls.filter(([name]) => name === "claim_checkout_lock")).toHaveLength(0);
+    expect(mocks.createSession).not.toHaveBeenCalled();
     expect(admin.orderInserts).toEqual([]);
   });
 
