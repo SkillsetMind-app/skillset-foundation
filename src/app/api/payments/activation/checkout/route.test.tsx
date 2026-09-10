@@ -200,6 +200,19 @@ describe("storefront activation checkout", () => {
     expect(mocks.getStripe).not.toHaveBeenCalled();
   });
 
+  it.each(["none", "pending", "rejected"])("allows paid activation without a badge when verification is optional: %s", async (status) => {
+    mocks.getAdmin.mockReturnValue(createAdmin({ verificationRequired: false }));
+    mocks.getUserRow.mockResolvedValue(profile({ creator_verification_status: status }));
+
+    const response = await POST();
+
+    expect(response.status).toBe(200);
+    expect(mocks.createSession).toHaveBeenCalledOnce();
+    expect(mocks.createSession.mock.calls[0][0].line_items).toEqual([
+      { price: "price_1Tz1UvPvg1vJW0IjxFX7Nppi", quantity: 1 },
+    ]);
+  });
+
   it("never creates checkout after the profile is activated", async () => {
     mocks.getUserRow.mockResolvedValue(
       profile({ activation_fee_paid_at: "2026-07-31T12:00:00.000Z" }),
