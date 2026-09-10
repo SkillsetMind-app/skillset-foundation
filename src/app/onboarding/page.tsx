@@ -27,8 +27,8 @@ export default async function OnboardingPage() {
         fallback={
           <SkillsetSpinner
             fullscreen={false}
-            title="Preparing onboarding"
-            description="One moment. SkillsetMind is getting things ready."
+            title={t("learnWave2.onboarding.title")}
+            description={t("learnWave2.onboarding.description")}
           />
         }
       >

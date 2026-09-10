@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Trophy } from "lucide-react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { LevelBadge } from "@/components/learn/level-badge";
 import type {
   Leaderboard,
@@ -11,7 +12,6 @@ import type {
 } from "@/domain/gamification";
 import {
   LEADERBOARD_WINDOWS,
-  leaderboardWindowLabels,
   levelProgress,
 } from "@/domain/gamification";
 import { subscribeToLeaderboard } from "@/lib/data/gamification";
@@ -27,6 +27,8 @@ export function CommunityLeaderboard({
 }: {
   currentUserStats: MemberStats | null;
 }) {
+  const { t, locale } = useTranslation();
+  const number = new Intl.NumberFormat(locale);
   const [window, setWindow] = useState<LeaderboardWindow>("7d");
   const [boardState, setBoardState] = useState<{
     window: LeaderboardWindow;
@@ -40,7 +42,7 @@ export function CommunityLeaderboard({
       window,
       (board) => setBoardState({ window, board, ready: true }),
       () => {
-        setError("We could not load the leaderboard.");
+        setError("learnWave2.leaderboard.loadError");
         setBoardState({ window, board: null, ready: true });
       },
     );
@@ -78,7 +80,7 @@ export function CommunityLeaderboard({
         <div className="flex items-center gap-2">
           <Trophy size={18} className="text-[var(--color-primary)]" aria-hidden />
           <h3 className="display-title text-3xl text-[var(--color-ink)]">
-            Leaderboard
+            {t("learnWave2.leaderboard.title")}
           </h3>
         </div>
         <div className="flex flex-wrap gap-1 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-1">
@@ -93,15 +95,14 @@ export function CommunityLeaderboard({
                   : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-ink)]"
               }`}
             >
-              {leaderboardWindowLabels[option]}
+              {t(`learnWave2.leaderboard.windows.${option}`)}
             </button>
           ))}
         </div>
       </div>
 
       <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-        Earn points when members like your posts — 1 like = 1 point. Levels rise
-        as your points grow.
+        {t("learnWave2.leaderboard.description")}
       </p>
 
       {progress ? (
@@ -110,15 +111,16 @@ export function CommunityLeaderboard({
             <div className="flex items-center gap-2">
               <LevelBadge level={progress.level} />
               <p className="text-sm font-semibold text-[var(--color-ink)]">
-                Your level
+                {t("learnWave2.leaderboard.level")}
               </p>
             </div>
             <p className="text-xs font-semibold tabular-nums text-[var(--color-ink-soft)]">
               {progress.isMax
-                ? "Top level reached"
-                : `${progress.pointsToNextLevel} ${
-                    progress.pointsToNextLevel === 1 ? "pt" : "pts"
-                  } to Level ${progress.level + 1}`}
+                ? t("learnWave2.leaderboard.top")
+                : t("learnWave2.leaderboard.toNext")
+                  .replace("{points}", () => number.format(progress.pointsToNextLevel ?? 0))
+                  .replace("{unit}", () => t(progress.pointsToNextLevel === 1 ? "learnWave2.leaderboard.point" : "learnWave2.leaderboard.points"))
+                  .replace("{level}", () => number.format(progress.level + 1))}
             </p>
           </div>
           <div
@@ -128,8 +130,11 @@ export function CommunityLeaderboard({
             aria-valuemax={100}
             aria-label={
               progress.isMax
-                ? `Level ${progress.level}, top level reached`
-                : `Level ${progress.level}, ${progress.percentToNext}% toward Level ${progress.level + 1}`
+                ? t("learnWave2.leaderboard.progressTop").replace("{level}", () => number.format(progress.level))
+                : t("learnWave2.leaderboard.progress")
+                  .replace("{level}", () => number.format(progress.level))
+                  .replace("{percent}", () => number.format(progress.percentToNext))
+                  .replace("{next}", () => number.format(progress.level + 1))
             }
             className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-line)]"
           >
@@ -144,12 +149,11 @@ export function CommunityLeaderboard({
       <div className="mt-5 grid gap-2">
         {!ready ? (
           <p className="text-sm text-[var(--color-ink-soft)]">
-            Loading leaderboard...
+            {t("learnWave2.leaderboard.loading")}
           </p>
         ) : entries.length === 0 ? (
           <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-            No points yet for this window. Be the first — post something worth a
-            like.
+            {t("learnWave2.leaderboard.empty")}
           </p>
         ) : (
           entries.map((entry) => {
@@ -165,15 +169,15 @@ export function CommunityLeaderboard({
               >
                 <div className="flex items-center gap-3">
                   <span className="w-6 text-sm font-bold tabular-nums text-[var(--color-ink-soft)]">
-                    {entry.rank}
+                    {number.format(entry.rank)}
                   </span>
                   <p className="text-sm font-semibold text-[var(--color-ink)]">
-                    {isCurrent ? "You" : entry.displayName}
+                    {isCurrent ? t("learnWave2.leaderboard.you") : entry.displayName}
                   </p>
                   <LevelBadge level={entry.level} />
                 </div>
                 <p className="text-sm font-semibold tabular-nums text-[var(--color-primary)]">
-                  {entry.points} {entry.points === 1 ? "pt" : "pts"}
+                  {number.format(entry.points)} {entry.points === 1 ? t("learnWave2.leaderboard.point") : t("learnWave2.leaderboard.points")}
                 </p>
               </div>
             );
@@ -184,19 +188,20 @@ export function CommunityLeaderboard({
       {ready && currentUserStats && !currentUserInTop ? (
         <div className="mt-4 flex items-center justify-between gap-3 rounded-[14px] border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3">
           <div className="flex items-center gap-3">
-            <p className="text-sm font-semibold text-[var(--color-ink)]">You</p>
+            <p className="text-sm font-semibold text-[var(--color-ink)]">{t("learnWave2.leaderboard.you")}</p>
             <LevelBadge level={currentUserStats.level} />
           </div>
           <p className="text-sm font-semibold tabular-nums text-[var(--color-ink-soft)]">
-            {currentUserStats.points}{" "}
-            {currentUserStats.points === 1 ? "pt" : "pts"} all-time
+            {t("learnWave2.leaderboard.allTime")
+              .replace("{points}", () => number.format(currentUserStats.points))
+              .replace("{unit}", () => t(currentUserStats.points === 1 ? "learnWave2.leaderboard.point" : "learnWave2.leaderboard.points"))}
           </p>
         </div>
       ) : null}
 
       {error ? (
-        <p className="mt-3 text-xs font-semibold text-[var(--color-accent-fg)]">
-          {error}
+        <p role="alert" className="mt-3 text-xs font-semibold text-[var(--color-accent-fg)]">
+          {t(error)}
         </p>
       ) : null}
     </section>

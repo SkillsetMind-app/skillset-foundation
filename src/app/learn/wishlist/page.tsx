@@ -1,14 +1,16 @@
+import { getServerTranslation } from "@/lib/i18n/server";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { LearnerWishlist } from "@/components/learn/learner-wishlist";
 import { PlatformShell } from "@/components/platform/platform-shell";
 
-export default function LearnWishlistPage() {
+export default async function LearnWishlistPage() {
+  const { t } = await getServerTranslation();
   return (
     <ProtectedSurface permissions={["courses.viewLearning"]}>
       <PlatformShell
-        eyebrow="Saved courses"
-        title="Your course wishlist."
-        description="Save programs from the marketplace and return here before you enroll."
+        eyebrow={t("learnWave2.wishlist.eyebrow")}
+        title={t("learnWave2.wishlist.title")}
+        description={t("learnWave2.wishlist.description")}
       >
         <LearnerWishlist />
       </PlatformShell>
