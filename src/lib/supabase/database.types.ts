@@ -2480,6 +2480,27 @@ export type Database = {
           uid: string
         }[]
       }
+      admin_search_users: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_role?: string
+          p_search?: string
+          p_status?: string
+        }
+        Returns: {
+          blocked: boolean
+          created_at: string
+          display_name: string
+          email: string
+          last_sign_in_at: string
+          roles: Json
+          suspended: boolean
+          total_count: number
+          uid: string
+        }[]
+      }
+      admin_get_user_dossier: { Args: { p_uid: string }; Returns: Json }
       admin_set_user_roles: {
         Args: { p_roles: Json; p_target_uid: string }
         Returns: Json

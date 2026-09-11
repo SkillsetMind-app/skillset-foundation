@@ -358,3 +358,36 @@ describe("as policies que o segundo fator passa a proteger", () => {
     }
   });
 });
+
+describe("sala de controle do Ops — ler a pessoa exige admin com 2FA e não escreve nada", () => {
+  // A lista e o dossiê mostram dado pessoal e financeiro de qualquer conta. O
+  // portão é o do controle de conta do #326: admin ativo E aal2. Trocar por
+  // require_strong_session deixaria admin sem fator cadastrado ler tudo.
+  for (const nome of ["admin_search_users", "admin_get_user_dossier"]) {
+    const corpo = definicaoEfetiva(nome);
+
+    it(`${nome}: security definer com search_path fixo`, () => {
+      expect(corpo).toMatch(/security\s+definer/i);
+      expect(corpo).toMatch(/set\s+search_path\s+to\s+'public',\s*'pg_temp'/i);
+    });
+
+    it(`${nome}: recusa quem não é admin ou não tem aal2`, () => {
+      expect(corpo).toMatch(/public\.is_admin\(\)/i);
+      expect(corpo).toMatch(/'aal2'/);
+      expect(corpo).toMatch(/OPS_ADMIN_MFA_REQUIRED/);
+    });
+
+    it(`${nome}: só lê`, () => {
+      expect(corpo).not.toMatch(/\binsert\s+into\b|\bupdate\s+public\.|\bdelete\s+from\b/i);
+    });
+  }
+
+  it("o dossiê mostra contagem e data de conversa privada, nunca o texto", () => {
+    // advisor_messages.content e course_messages.body são conversa privada;
+    // course_lesson_content é o curso pago. O operador vê quanto e quando.
+    const corpo = definicaoEfetiva("admin_get_user_dossier");
+    expect(corpo).not.toMatch(/\.content\b/);
+    expect(corpo).not.toMatch(/\bm\.body\b/);
+    expect(corpo).not.toMatch(/course_lesson_content/);
+  });
+});
