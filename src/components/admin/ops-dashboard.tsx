@@ -10,10 +10,10 @@ import { CommunityModerationQueue } from "@/components/admin/community-moderatio
 import { CreatorVerificationQueue } from "@/components/admin/creator-verification-queue";
 import { ManagedCoursePanel } from "@/components/admin/managed-course-panel";
 import { useOpsQueueCounts } from "@/components/admin/ops-overview-metrics";
+import { OpsUserTable } from "@/components/admin/ops-user-table";
 import { PaymentOperationsPanel } from "@/components/admin/payment-operations-panel";
 import { RoleManager } from "@/components/admin/role-manager";
 import { SupportTicketQueue } from "@/components/admin/support-ticket-queue";
-import { UserLookupPanel } from "@/components/admin/user-lookup-panel";
 import { ViewAsSwitcher } from "@/components/admin/view-as";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -89,7 +89,7 @@ export function OpsDashboard() {
           <SupportTicketQueue query={query} />
         ) : activeTab === "users" ? (
           <>
-            <UserLookupPanel />
+            <OpsUserTable />
             <AccountActionRequestsPanel />
           </>
         ) : activeTab === "audit" ? (
