@@ -212,4 +212,9 @@ prova_red "banco sem as travas de producao" 'PRODUCTION_GUARD_REGRESSION: *' \
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v without_production_guards=1 -q \
     -f "supabase/tests/20260910061000_as_travas_de_producao_nascem_com_o_banco_smoke.sql"
 
+prova_red "dossie sem o portao de admin" \
+  'OPS_USER_DOSSIER_REGRESSION: non-admin read another person' -- \
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v without_user_dossier_admin_gate=1 -q \
+    -f "supabase/tests/20260911010000_ops_user_dossier_smoke.sql"
+
 echo "Banco de teste pronto: baseline + $aplicadas migrations + seed."
