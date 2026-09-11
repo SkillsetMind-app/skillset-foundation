@@ -43,6 +43,7 @@ vi.mock("@/lib/data/admin-users", () => ({ subscribeToAdminUserProfiles: mocks.u
 vi.mock("@/lib/data/account-actions", () => ({ subscribeToAccountActionRequests: mocks.accounts, resolveAccountActionRequest: vi.fn() }));
 vi.mock("@/lib/data/audit-log", () => ({ subscribeToAuditLog: mocks.audit }));
 vi.mock("@/lib/data/platform-roles", () => ({ listPlatformUsers: mocks.roster, setUserRoles: vi.fn() }));
+vi.mock("@/lib/data/ops-users", () => ({ OPS_USERS_PAGE_SIZE: 50, searchOpsUsers: () => Promise.resolve({ users: [], total: 0 }) }));
 vi.mock("@/lib/data/published-courses", () => ({ subscribeToPublishedTeacherCourses: (next: (rows: never[]) => void) => { next([]); return () => {}; } }));
 vi.mock("@/lib/data/enrollments", () => ({
   subscribeToAdminGrantedEnrollments: (next: (rows: never[]) => void) => { next([]); return () => {}; },

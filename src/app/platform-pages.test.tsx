@@ -104,8 +104,8 @@ vi.mock("@/components/admin/community-moderation-queue", () => ({
   CommunityModerationQueue: () => <div>Community moderation queue</div>,
 }));
 
-vi.mock("@/components/admin/user-lookup-panel", () => ({
-  UserLookupPanel: () => <div>User lookup panel</div>,
+vi.mock("@/components/admin/ops-user-table", () => ({
+  OpsUserTable: () => <div>User table</div>,
 }));
 
 vi.mock("@/components/admin/support-ticket-queue", () => ({
