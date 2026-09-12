@@ -170,6 +170,12 @@ for arquivo in supabase/migrations/*.sql; do
       psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q --single-transaction \
         -f "supabase/tests/fixtures/20260910061000_sem_as_travas.sql" \
         -f "$arquivo"
+    elif [[ "$nome" == "20260912020000_community_presence_private.sql" ]]; then
+      prova_red "presenca da comunidade sem autorizacao privada" \
+        'COMMUNITY_PRESENCE_REGRESSION: private Realtime policies missing' -- \
+        psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q \
+        -f "supabase/tests/20260912020000_community_presence_private_smoke.sql"
+      aplica "$arquivo"
     else
       aplica "$arquivo"
     fi
