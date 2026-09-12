@@ -20,7 +20,7 @@ begin
   perform set_config('request.jwt.claim.sub', coalesce(p_uid::text, ''), true);
   perform set_config('request.jwt.claim.role', p_role, true);
   perform set_config('request.jwt.claims',
-    jsonb_build_object('sub', p_uid, 'role', p_role, 'aal', 'aal1')::text, true);
+    jsonb_build_object('sub', p_uid, 'role', p_role, 'aal', 'aal2')::text, true);
   perform set_config('skillset.trusted_write', 'off', true);
 end $$;
 -- true só quando a chamada foi recusada com esta mensagem; a que passou é desfeita.
