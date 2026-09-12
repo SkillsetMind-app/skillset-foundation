@@ -10,6 +10,7 @@ import {
 import { resolveHostToUid } from "@/lib/domains/resolve-host";
 import { notifyOps } from "@/lib/ops/alert";
 import { buildContentSecurityPolicy } from "@/lib/security/csp";
+import { isSameOrigin } from "@/lib/security/request-origin";
 import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
 /**
@@ -49,6 +50,19 @@ function isGuardedPath(pathname: string): boolean {
     GUARDED_EXACT.has(pathname) ||
     GUARDED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
   );
+}
+
+const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+function refusedForCrossSiteMutation(request: NextRequest): NextResponse | null {
+  if (
+    !request.nextUrl.pathname.startsWith("/api/") ||
+    !UNSAFE_METHODS.has(request.method) ||
+    isSameOrigin(request)
+  ) {
+    return null;
+  }
+  return new NextResponse(null, { status: 403 });
 }
 
 // Off unless someone turns it on. Patrick decided the platform should not
@@ -176,6 +190,11 @@ export async function proxy(request: NextRequest) {
   };
   // Before any of the session work: refreshing a token for a request we are
   // about to refuse is wasted round trips against Supabase.
+  const crossSiteMutation = refusedForCrossSiteMutation(request);
+  if (crossSiteMutation) {
+    return secure(crossSiteMutation);
+  }
+
   const refused = refusedForCountry(request);
   if (refused) {
     return secure(refused);

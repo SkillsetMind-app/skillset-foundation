@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { PaymentError } from "@/lib/payments/server/auth";
 
+export { isSameOrigin } from "@/lib/security/request-origin";
+
 export const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function failure(status: number, error = "Could not update access. Please try again.") {
   return NextResponse.json({ error }, { status });
@@ -13,11 +15,6 @@ export function databaseFailure(error: { code?: string }) {
 export function caughtFailure(error: unknown) {
   return error instanceof PaymentError ? failure(error.status, error.message) : failure(500);
 }
-export function isSameOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  return !origin || origin === new URL(request.url).origin;
-}
-
 /** Bound the stream before parsing, including requests without Content-Length. */
 export async function readSmallObject(request: Request): Promise<Record<string, unknown>> {
   const reader = request.body?.getReader();
