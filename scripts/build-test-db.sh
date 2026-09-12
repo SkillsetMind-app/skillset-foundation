@@ -217,4 +217,9 @@ prova_red "dossie sem o portao de admin" \
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v without_user_dossier_admin_gate=1 -q \
     -f "supabase/tests/20260911010000_ops_user_dossier_smoke.sql"
 
+prova_red "papel operacional sem segundo fator" \
+  'PRIVILEGED_MFA_REGRESSION: password-only admin retained is_admin' -- \
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v without_privileged_aal2_guard=1 -q \
+    -f "supabase/tests/20260912010000_operational_roles_require_aal2_smoke.sql"
+
 echo "Banco de teste pronto: baseline + $aplicadas migrations + seed."

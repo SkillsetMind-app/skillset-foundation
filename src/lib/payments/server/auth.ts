@@ -62,6 +62,15 @@ export async function requireAdminUserId(): Promise<string> {
   if (userError || !userData.user) {
     throw new PaymentAuthError();
   }
+  const { data: assurance, error: assuranceError } =
+    await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (assuranceError || assurance?.currentLevel !== "aal2") {
+    throw new PaymentError(
+      "Two-factor authentication is required for administrative actions.",
+      403,
+      "mfa_required",
+    );
+  }
   const { data: isAdmin, error } = await supabase.rpc("is_admin");
   if (error || !isAdmin) {
     // A signed-in account reaching an admin-only route is either a bug in our
