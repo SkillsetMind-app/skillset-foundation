@@ -39,9 +39,9 @@ UPDATE public.users SET display_name=:'marker' || ' Older', created_at='2026-01-
 UPDATE public.users SET display_name=:'marker' || ' Newer', created_at='2026-02-02T03:04:05.123456Z'
  WHERE uid=:'newer_uid';
 
-SELECT pg_temp.assume_session(:'admin_uid','authenticated');
+SELECT pg_temp.assume_session(:'admin_uid','authenticated','aal2');
 SET LOCAL ROLE authenticated;
-SELECT pg_temp.check_roster('admin without enrolled MFA can read a timestamp as text',
+SELECT pg_temp.check_roster('aal2 admin can read a timestamp as text',
  (SELECT uid=:'older_uid' AND pg_typeof(created_at)='text'::regtype
    AND created_at::timestamptz='2026-01-02T03:04:05.123456Z'::timestamptz
   FROM public.admin_list_platform_users('  ' || upper(:'older_uid') || '@EXAMPLE.INVALID  ',1)));

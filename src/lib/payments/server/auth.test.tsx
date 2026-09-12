@@ -3,7 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   createServer: vi.fn(),
   getAdmin: vi.fn(),
+  getUser: vi.fn(),
+  getAssurance: vi.fn(),
+  notify: vi.fn(),
   rpc: vi.fn(),
+}));
+
+vi.mock("@/lib/ops/alert", () => ({
+  notifyOps: mocks.notify,
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -17,7 +24,71 @@ vi.mock("@/lib/supabase/server", () => ({
 import {
   assertCreatorActivated,
   enforceRateLimit,
+  requireAdminUserId,
 } from "@/lib/payments/server/auth";
+
+describe("administrative authorization", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.createServer.mockResolvedValue({
+      auth: {
+        getUser: mocks.getUser,
+        mfa: { getAuthenticatorAssuranceLevel: mocks.getAssurance },
+      },
+      rpc: mocks.rpc,
+    });
+    mocks.getUser.mockResolvedValue({
+      data: { user: { id: "admin-1" } },
+      error: null,
+    });
+    mocks.getAssurance.mockResolvedValue({
+      data: { currentLevel: "aal2", nextLevel: "aal2" },
+      error: null,
+    });
+    mocks.rpc.mockResolvedValue({ data: true, error: null });
+  });
+
+  it("accepts only an AAL2 administrator", async () => {
+    await expect(requireAdminUserId()).resolves.toBe("admin-1");
+    expect(mocks.getAssurance).toHaveBeenCalledOnce();
+    expect(mocks.rpc).toHaveBeenCalledWith("is_admin");
+  });
+
+  it.each([
+    [{ currentLevel: "aal1", nextLevel: "aal2" }, null],
+    [null, { message: "private MFA diagnostic" }],
+  ])("denies an admin action when AAL2 is unavailable", async (data, error) => {
+    mocks.getAssurance.mockResolvedValue({ data, error });
+
+    await expect(requireAdminUserId()).rejects.toMatchObject({
+      status: 403,
+      code: "mfa_required",
+    });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.notify).not.toHaveBeenCalled();
+  });
+
+  it("still denies an AAL2 non-admin", async () => {
+    mocks.rpc.mockResolvedValue({ data: false, error: null });
+
+    await expect(requireAdminUserId()).rejects.toMatchObject({
+      status: 403,
+      code: "permission_denied",
+    });
+    expect(mocks.notify).toHaveBeenCalledOnce();
+  });
+
+  it("stops an anonymous request before MFA and role checks", async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
+
+    await expect(requireAdminUserId()).rejects.toMatchObject({
+      status: 401,
+      code: "unauthenticated",
+    });
+    expect(mocks.getAssurance).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+});
 
 describe("payment rate limiting", () => {
   beforeEach(() => {

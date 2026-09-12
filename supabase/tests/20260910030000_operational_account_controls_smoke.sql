@@ -217,7 +217,7 @@ begin
   where n.nspname = 'public' and p.prosecdef and p.prorettype <> 'trigger'::regtype
     and has_function_privilege('authenticated', p.oid, 'EXECUTE')
     and p.proname not in ('account_session_allowed','verify_skillset_certificate','course_title_key_available','creator_activation_blocked')
-    and p.prosrc !~* '(account_session_allowed|session_is_strong|require_strong_session|assert_course_owner|is_admin|is_teacher|is_support|is_moderator|is_ops|is_target_author)';
+    and p.prosrc !~* '(account_session_allowed|privileged_session_allowed|session_is_strong|require_strong_session|assert_course_owner|is_admin|is_teacher|is_support|is_moderator|is_ops|is_target_author)';
   if missing is not null then raise exception 'ACCOUNT_CONTROL_REGRESSION: unguarded authenticated definers: %', missing; end if;
 end $$;
 select pg_temp.assert_true(not exists(select 1 from profiles_before b join public.users u using(uid)

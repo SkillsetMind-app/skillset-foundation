@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  client: vi.fn(), getUser: vi.fn(), rpc: vi.fn(),
+  client: vi.fn(), getUser: vi.fn(), getAssurance: vi.fn(), rpc: vi.fn(),
   admin: vi.fn(), send: vi.fn(), rate: vi.fn(), notify: vi.fn(), finishWaiver: vi.fn(),
 }));
 vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: mocks.client }));
@@ -49,8 +49,17 @@ beforeEach(() => {
   vi.spyOn(Date, "now").mockReturnValue(now);
   vi.stubGlobal("fetch", vi.fn(() => { throw new Error("Unexpected network call in invitation test"); }));
   // Exercise the real requireAdminUserId and enforceRateLimit helpers.
-  mocks.client.mockResolvedValue({ auth: { getUser: mocks.getUser }, rpc: mocks.rpc });
+  mocks.client.mockResolvedValue({
+    auth: {
+      getUser: mocks.getUser,
+      mfa: { getAuthenticatorAssuranceLevel: mocks.getAssurance },
+    },
+    rpc: mocks.rpc,
+  });
   mocks.getUser.mockResolvedValue({ data: { user: { id: uid } }, error: null });
+  mocks.getAssurance.mockResolvedValue({
+    data: { currentLevel: "aal2", nextLevel: "aal2" }, error: null,
+  });
   mocks.rpc.mockImplementation(async (name: string) => {
     switch (name) {
       case "is_admin": return { data: true, error: null };
