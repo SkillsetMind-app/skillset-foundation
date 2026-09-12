@@ -66,6 +66,10 @@ describe("operation request boundaries", () => {
     }))).toBe(false);
   });
 
+  it("rejects a browser-declared cross-site request when Origin is absent", () => {
+    expect(isSameOrigin(request(undefined, { "Sec-Fetch-Site": "cross-site" }))).toBe(false);
+  });
+
   it.each(["22222222-2222-4222-8222-222222222222", "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA"])("accepts a whole UUID (%s)", (id) => {
     expect(uuidPattern.test(id)).toBe(true);
   });

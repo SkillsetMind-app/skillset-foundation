@@ -65,6 +65,50 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 
+describe("same-origin API mutation boundary", () => {
+  it.each(["POST", "PUT", "PATCH", "DELETE"])(
+    "refuses a foreign-origin %s before session or route work",
+    async (method) => {
+      vi.resetModules();
+      const { proxy } = await import("@/proxy");
+      const response = await proxy(new NextRequest(
+        "https://www.skillsetmind.com/api/payments/refunds/admin",
+        { method, headers: { Origin: "https://foreign.example.test" } },
+      ));
+
+      expect(response.status).toBe(403);
+      expect(mocks.resolveHostToUid).not.toHaveBeenCalled();
+      expect(mocks.getSupabaseClientConfig).not.toHaveBeenCalled();
+      expect(mocks.createServerClient).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    { label: "same origin", headers: new Headers({ Origin: "https://www.skillsetmind.com" }) },
+    { label: "server-to-server", headers: new Headers() },
+  ])("preserves $label API calls", async ({ headers }) => {
+    vi.resetModules();
+    const { proxy } = await import("@/proxy");
+    const response = await proxy(new NextRequest(
+      "https://www.skillsetmind.com/api/webhooks/stripe",
+      { method: "POST", headers },
+    ));
+
+    expect(response.status).toBe(200);
+  });
+
+  it("refuses a browser-declared cross-site call even when Origin is absent", async () => {
+    vi.resetModules();
+    const { proxy } = await import("@/proxy");
+    const response = await proxy(new NextRequest(
+      "https://www.skillsetmind.com/api/teach/offers",
+      { method: "POST", headers: { "Sec-Fetch-Site": "cross-site" } },
+    ));
+
+    expect(response.status).toBe(403);
+  });
+});
+
 describe("navigation-only platform entry aliases", () => {
   it.each([
     ["app.skillsetmind.com", "GET", "/", "/teach"],
