@@ -31,7 +31,10 @@ export function getSupabaseBrowserClient(): SupabaseClient<Database> {
   let channelSeq = 0;
   browserClient.channel = (name, opts) => {
     channelSeq += 1;
-    return originalChannel(`${name}#${channelSeq}`, opts);
+    return originalChannel(`${name}#${channelSeq}`, {
+      ...opts,
+      config: { ...opts?.config, private: true },
+    });
   };
 
   return browserClient;

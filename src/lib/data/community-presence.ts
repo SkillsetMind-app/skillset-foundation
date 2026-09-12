@@ -18,7 +18,7 @@ export function subscribeToCommunityPresence(
 ): () => void {
   const supabase = getSupabaseBrowserClient();
   const channel = supabase.channel(`community-presence:${courseSlug}`, {
-    config: { presence: { key: user.uid } },
+    config: { private: true, presence: { key: user.uid } },
   });
 
   const publish = () => {
