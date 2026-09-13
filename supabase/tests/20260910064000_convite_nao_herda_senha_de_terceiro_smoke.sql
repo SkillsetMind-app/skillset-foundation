@@ -60,11 +60,15 @@ reset role;
 -- a do link (102) e a de quem pré-cadastrou, que entrou com a senha (202).
 -- Simula contas confirmadas antes da instalacao deste patch: o aceite ainda
 -- precisa limpar a credencial e revogar suas sessoes reais no Auth.
-set local role supabase_auth_admin;
-alter table auth.users disable trigger admin_bootstrap_on_email_confirmed;
-update auth.users set email_confirmed_at = clock_timestamp() where id = pg_temp.uid(2);
-alter table auth.users enable trigger admin_bootstrap_on_email_confirmed;
-reset role;
+do $$
+declare
+  original_definition text := pg_get_functiondef('public.admin_bootstrap_on_email_confirmed()'::regprocedure);
+  original_body text := (select prosrc from pg_proc where oid = 'public.admin_bootstrap_on_email_confirmed()'::regprocedure);
+begin
+  execute replace(original_definition, original_body, 'begin return new; end;');
+  update auth.users set email_confirmed_at = clock_timestamp() where id = pg_temp.uid(2);
+  execute original_definition;
+end $$;
 insert into auth.sessions(id, user_id, created_at, updated_at) values
   (pg_temp.uid(102), pg_temp.uid(2), clock_timestamp(), clock_timestamp()),
   (pg_temp.uid(202), pg_temp.uid(2), clock_timestamp(), clock_timestamp()),
