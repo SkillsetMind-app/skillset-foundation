@@ -3446,6 +3446,11 @@
       "saveHelp": "Los archivos se guardan al subirlos. El texto y la configuración se guardan con el borrador del curso.",
       "file": {
         "selectAnother": "Elegir otro archivo",
+        "selected": "Seleccionado",
+        "selectedHelp": "Seleccionado en tu dispositivo. Todavía no se ha subido.",
+        "localPreview": "Vista previa del video seleccionado",
+        "previewUnavailable": "Este navegador no puede reproducir la vista previa. Puedes subir el archivo igualmente.",
+        "videoType": "Tipo de video",
         "select": "Elegir archivo",
         "allowPreview": "Permitir este archivo en la vista previa pública cuando sea seguro.",
         "cancel": "Cancelar subida",

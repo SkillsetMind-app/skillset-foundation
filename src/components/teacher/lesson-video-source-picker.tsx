@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type DragEvent } from "react";
+import { useId, useState, type DragEvent, type ReactNode } from "react";
 import { HelpCircle, Link2, ShieldAlert, UploadCloud } from "lucide-react";
 
 import { Tooltip } from "@/components/shared/tooltip";
@@ -20,6 +20,7 @@ export function LessonVideoSourcePicker(props: {
   onChange: (next: LessonVideoSource) => void;
   onSelectFile: (file: File) => void;
   onExternalUrlChange: (next: string) => void;
+  uploadPanel?: ReactNode;
 }) {
   const { t } = useTranslation();
   const urlInputId = useId();
@@ -67,7 +68,7 @@ export function LessonVideoSourcePicker(props: {
     <div className="lesson-video-source-picker">
       <p className="lesson-video-source-picker__heading">{t("creatorEditor.videoSource.heading")}</p>
       <div className="lesson-video-source-picker__options">
-        <label
+        {props.uploadPanel ?? <label
           className={`lesson-video-source-picker__dropzone${
             isDragActive ? " is-drag-active" : ""
           }${props.value === "upload" ? " is-active" : ""}`}
@@ -109,7 +110,7 @@ export function LessonVideoSourcePicker(props: {
           <span className="button-solid">
             {t("creatorEditor.videoSource.chooseVideo")}
           </span>
-        </label>
+        </label>}
 
         <div
           className={`lesson-video-source-picker__url${

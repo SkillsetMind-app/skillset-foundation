@@ -3795,6 +3795,7 @@ body:has([aria-label="Course categories"])
 
 .lesson-modal-upload {
   display: grid;
+  min-width: 0;
   gap: 0.85rem;
   border: 1px solid var(--color-line);
   border-radius: 16px;
@@ -3802,7 +3803,7 @@ body:has([aria-label="Course categories"])
   padding: 1rem;
 }
 
-.lesson-modal-upload label:first-child {
+.lesson-modal-upload label:has(> input[type="file"]) {
   display: grid;
   gap: 0.5rem;
   color: var(--color-ink);
@@ -3823,6 +3824,7 @@ body:has([aria-label="Course categories"])
 .lesson-modal-upload__file,
 .lesson-modal-upload__error,
 .lesson-modal-upload__success {
+  overflow-wrap: anywhere;
   border-radius: 10px;
   background: var(--color-surface-soft);
   padding: 0.75rem 0.9rem;

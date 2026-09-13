@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import type { CourseAsset } from "@/domain/course-asset";
@@ -138,7 +138,7 @@ function renderModal(lessonOverrides: Partial<TeacherLesson> = {}, moduleTitle =
     <I18nProvider initialLocale="en"><ChangeLanguage /><EditableModal /></I18nProvider>
   ) : modal(lesson));
 
-  return { onClose, onUpdateLesson, lesson, rerenderLesson: (patch: Partial<TeacherLesson>) => view.rerender(modal({ ...lesson, ...patch })) };
+  return { onClose, onUpdateLesson, lesson, unmount: view.unmount, rerenderLesson: (patch: Partial<TeacherLesson>) => view.rerender(modal({ ...lesson, ...patch })) };
 }
 
 function chooseVideoFile(name = "aula.mp4") {
@@ -156,13 +156,89 @@ describe("LessonContentModal — video tab", () => {
     currentAssets = [];
     bunnyConfig.isBunnyConfigured = false;
     vi.clearAllMocks();
+    vi.stubGlobal("URL", class extends URL {
+      static createObjectURL = vi.fn((file: File) => `blob:local-${file.name}`);
+      static revokeObjectURL = vi.fn();
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("keeps selected video, local preview and upload in the device column without publishing", () => {
+    const { onUpdateLesson, unmount } = renderModal();
+    const file = chooseVideoFile("my lesson.mp4");
+    const options = document.querySelector(".lesson-video-source-picker__options")!;
+    const form = screen.getByRole("button", { name: "Upload file" }).closest("form")!;
+    expect(options).toContainElement(form);
+    expect(within(form).getByText(/my lesson.mp4/)).toBeInTheDocument();
+    expect(within(form).getByRole("status")).toHaveTextContent("Selected on your device. Not uploaded yet.");
+    const preview = screen.getByLabelText("Selected video preview");
+    expect(form).toContainElement(preview);
+    expect(preview.tagName).toBe("VIDEO");
+    expect(preview).toHaveAttribute("src", "blob:local-my lesson.mp4");
+    expect(preview).toHaveAttribute("controls");
+    expect(preview).not.toHaveAttribute("autoplay");
+    expect(URL.createObjectURL).toHaveBeenCalledExactlyOnceWith(file);
+    expect(form.compareDocumentPosition(screen.getByLabelText("YouTube or Vimeo URL")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+    expect(uploadCourseAsset).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /^Video/ })).toHaveTextContent("Selected");
+
+    fireEvent.error(preview);
+    expect(screen.getByText("This browser cannot preview this file. You can still upload it.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Upload file" })).toBeEnabled();
+    fireEvent.change(screen.getByLabelText("Lesson video"), {
+      target: { files: [new File(["video"], "replacement.webm", { type: "video/webm" })] },
+    });
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:local-my lesson.mp4");
+    expect(screen.getByLabelText("Selected video preview")).toHaveAttribute("src", "blob:local-replacement.webm");
+    expect(screen.queryByText("This browser cannot preview this file. You can still upload it.")).not.toBeInTheDocument();
+    unmount();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:local-replacement.webm");
+  });
+
+  it.each([50, null])("shows transport progress (%s) inside the same device panel", async (percent) => {
+    let finish!: () => void;
+    uploadCourseAsset.mockImplementationOnce((input) => {
+      const callbacks = input as { onProgress: (value: unknown) => void };
+      callbacks.onProgress({ bytesTransferred: 5, totalBytes: 10, percent, state: "running" });
+      return new Promise<void>((resolve) => { finish = resolve; });
+    });
+    const { onClose } = renderModal();
+    chooseVideoFile();
+    fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
+    const progress = await screen.findByRole("progressbar", { name: "Uploading..." });
+    expect(document.querySelector(".lesson-video-source-picker__options")).toContainElement(progress);
+    if (percent === null) expect(progress).not.toHaveAttribute("value");
+    else expect(progress).toHaveAttribute("value", "50");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
+    await act(async () => { finish(); });
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("File uploaded to this lesson.");
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:local-aula.mp4");
+  });
+
+  it("retains the selected file when choosing live recording", async () => {
+    renderModal();
+    const file = chooseVideoFile();
+    fireEvent.change(screen.getByLabelText("Video type"), { target: { value: "live_recording" } });
+    expect(screen.getByRole("button", { name: "Upload file" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
+    await waitFor(() => expect(uploadCourseAsset).toHaveBeenCalledWith(expect.objectContaining({ file, kind: "live_recording" })));
+  });
+
+  it("moves keyboard focus from the replaced file picker to the upload action", () => {
+    renderModal();
+    act(() => screen.getByLabelText("Upload a lesson video").focus());
+    chooseVideoFile();
+    expect(screen.getByRole("button", { name: "Upload file" })).toHaveFocus();
   });
 
   it("keeps file selection and upload before an existing video preview", () => {
     currentAssets = [videoAsset()];
     renderModal({ videoSource: "upload" });
     const preview = screen.getByTestId("storage-preview");
-    const fileInput = screen.getByLabelText("Upload a lesson video");
+    const fileInput = screen.getByLabelText("Lesson video");
     const submit = screen.getByRole("button", { name: "Upload file" });
     expect(fileInput.compareDocumentPosition(preview) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(submit.compareDocumentPosition(preview) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -328,7 +404,7 @@ describe("LessonContentModal — video tab", () => {
     expect(within(header).getByRole("button", { name: "Close lesson studio" })).toBeInTheDocument();
 
     const preview = screen.getByRole("region", { name: "Lesson video preview" });
-    expect(screen.getByLabelText("Upload a lesson video").compareDocumentPosition(preview) & Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(screen.getByLabelText("Lesson video").compareDocumentPosition(preview) & Node.DOCUMENT_POSITION_FOLLOWING)
       .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     for (const laterContent of [
       screen.getByText(/Upload the video to SkillsetMind or paste a YouTube\/Vimeo URL/),

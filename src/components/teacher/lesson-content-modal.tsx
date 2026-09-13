@@ -189,8 +189,12 @@ export function LessonContentModal({
   // aluno recebe". Amarrar a primeira ao campo salvo deixava o único caminho de
   // envio inalcançável numa aula nova — a fonte só vira "upload" no sucesso do
   // envio, e o envio só aparecia se a fonte já fosse "upload".
-  const isUploadPanelOpen = resolvedSource === "upload" || selectedFile !== null;
-  const videoStatus = t(`creatorEditor.lesson.state.${getAssetStatus(lessonAssets, lesson)}`);
+  const isUploadPanelOpen = resolvedSource === "upload" || selectedFile !== null || success === "uploaded";
+  const videoStatus = tab === "video" && isUploading
+    ? t("creatorEditor.lesson.file.uploading")
+    : tab === "video" && selectedFile
+      ? t("creatorEditor.lesson.file.selected")
+      : t(`creatorEditor.lesson.state.${getAssetStatus(lessonAssets, lesson)}`);
   const errorMessage = getLessonErrorMessage(error, t);
   const successMessage = success ? t(`creatorEditor.lesson.success.${success}`) : "";
 
@@ -261,7 +265,7 @@ export function LessonContentModal({
   async function handleUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!isEditable || !selectedFile) {
+    if (!isEditable || !selectedFile || isUploading) {
       return;
     }
 
@@ -495,33 +499,7 @@ export function LessonContentModal({
                 onExternalUrlChange={(nextUrl) =>
                   onUpdateLesson({ externalUrl: nextUrl || null })
                 }
-              />
-
-              {isUploadPanelOpen ? (
-                <>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <button
-                      type="button"
-                      className={`lesson-modal-choice ${uploadKind === "lesson_video" ? "is-active" : ""}`}
-                      onClick={() => resetUploadState("lesson_video")}
-                      disabled={!isEditable || isUploading}
-                    >
-                      <Film aria-hidden="true" size={18} />
-                      <strong>{t("creatorEditor.lesson.uploadVideo")}</strong>
-                      <small>{t("creatorEditor.lesson.uploadVideoHelp")}</small>
-                    </button>
-                    <button
-                      type="button"
-                      className={`lesson-modal-choice ${uploadKind === "live_recording" ? "is-active" : ""}`}
-                      onClick={() => resetUploadState("live_recording")}
-                      disabled={!isEditable || isUploading}
-                    >
-                      <UploadCloud aria-hidden="true" size={18} />
-                      <strong>{t("creatorEditor.lesson.uploadRecording")}</strong>
-                      <small>{t("creatorEditor.lesson.uploadRecordingHelp")}</small>
-                    </button>
-                  </div>
-
+                uploadPanel={isUploadPanelOpen ? (
                   <LessonUploadForm
                     error={errorMessage}
                     isEditable={isEditable}
@@ -536,13 +514,18 @@ export function LessonContentModal({
                     }}
                     onSubmit={handleUpload}
                     progressLabel={formatProgress(uploadProgress, t)}
+                    progressPercent={uploadProgress?.percent}
                     onCancel={cancelUpload}
                     selectedFile={selectedFile}
                     fileInputKey={fileInputKey}
                     success={successMessage}
                     uploadKind={uploadKind}
+                    onKindChange={setUploadKind}
                   />
+                ) : undefined}
+              />
 
+              {videoAssets.length > 0 ? (
                   <LessonAssetList
                     assets={videoAssets}
                     emptyLabel={t("creatorEditor.lesson.noVideo")}
@@ -550,7 +533,6 @@ export function LessonContentModal({
                     deletingAssetId={deletingAssetId}
                     onDelete={handleDeleteAsset}
                   />
-                </>
               ) : null}
 
               {resolvedSource ? (
@@ -647,6 +629,7 @@ export function LessonContentModal({
                   void handleUpload(event);
                 }}
                 progressLabel={formatProgress(uploadProgress, t)}
+                progressPercent={uploadProgress?.percent}
                 onCancel={cancelUpload}
                 selectedFile={selectedFile}
                 fileInputKey={fileInputKey}
@@ -755,6 +738,7 @@ export function LessonContentModal({
                   void handleUpload(event);
                 }}
                 progressLabel={formatProgress(uploadProgress, t)}
+                progressPercent={uploadProgress?.percent}
                 onCancel={cancelUpload}
                 selectedFile={selectedFile}
                 fileInputKey={fileInputKey}
@@ -805,9 +789,11 @@ function LessonUploadForm({
   onFileChange,
   onSubmit,
   progressLabel,
+  progressPercent,
   selectedFile,
   success,
   uploadKind,
+  onKindChange,
 }: {
   error: string;
   fileInputKey: number;
@@ -820,13 +806,87 @@ function LessonUploadForm({
   onFileChange: (file: File | null) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   progressLabel: string;
+  progressPercent?: number | null;
   selectedFile: File | null;
   success: string;
   uploadKind: CourseAssetKind;
+  onKindChange?: (kind: CourseAssetKind) => void;
 }) {
   const { t } = useTranslation();
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const [unpreviewableFile, setUnpreviewableFile] = useState<File | null>(null);
+  const isVideo = isVideoAssetKind(uploadKind);
+
+  useEffect(() => {
+    const video = localVideoRef.current;
+    if (!video || !selectedFile?.type.startsWith("video/")) return;
+    // Blob URLs stream the local file without uploading or reading it all into RAM.
+    const url = URL.createObjectURL(selectedFile);
+    video.src = url;
+    return () => {
+      video.removeAttribute("src");
+      URL.revokeObjectURL(url);
+    };
+  }, [selectedFile]);
+
   return (
-    <form className="lesson-modal-upload" onSubmit={onSubmit}>
+    <form
+      className="lesson-modal-upload"
+      onSubmit={onSubmit}
+      onDragOver={(event) => { if (isVideo) event.preventDefault(); }}
+      onDrop={(event) => {
+        if (!isVideo) return;
+        event.preventDefault();
+        if (!isEditable || isUploading) return;
+        const file = Array.from(event.dataTransfer.files).find((item) => item.type.startsWith("video/"));
+        if (file) onFileChange(file);
+      }}
+    >
+      {selectedFile ? (
+        <p className="lesson-modal-upload__file">
+          {selectedFile.name} - {formatCourseAssetSize(selectedFile.size)}
+        </p>
+      ) : null}
+      {error ? <p role="alert" className="lesson-modal-upload__error">{error}</p> : null}
+      <p role="status" className={success ? "lesson-modal-upload__success" : "text-sm text-[var(--color-ink-soft)]"}>
+        {isUploading ? progressLabel || t("creatorEditor.lesson.file.uploading")
+          : success || (selectedFile ? t("creatorEditor.lesson.file.selectedHelp") : "")}
+      </p>
+      {isUploading ? (
+        <div className="grid min-w-0 gap-2">
+          <progress className="h-2 w-full accent-[var(--color-ink)]" max={100} value={progressPercent ?? undefined} aria-label={t("creatorEditor.lesson.file.uploading")} />
+          {onCancel ? (
+            <button type="button" onClick={onCancel} className="button-outline min-h-11 px-3 text-sm">
+              {t("creatorEditor.lesson.file.cancel")}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      <button
+        type="submit"
+        autoFocus={isVideo && Boolean(selectedFile)}
+        disabled={!isEditable || isUploading || !selectedFile}
+        className="button-solid min-h-11 px-4 py-2.5 text-sm disabled:opacity-60"
+      >
+        {t(`creatorEditor.lesson.file.${isUploading ? "uploading" : "upload"}`)}
+      </button>
+      {isVideo && selectedFile?.type.startsWith("video/") ? (
+        <>
+          <video
+            ref={localVideoRef}
+            controls
+            playsInline
+            preload="metadata"
+            aria-label={t("creatorEditor.lesson.file.localPreview")}
+            className="aspect-video max-h-48 w-full rounded-md bg-black object-contain"
+            hidden={unpreviewableFile === selectedFile}
+            onError={() => setUnpreviewableFile(selectedFile)}
+          />
+          {unpreviewableFile === selectedFile ? (
+            <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorEditor.lesson.file.previewUnavailable")}</p>
+          ) : null}
+        </>
+      ) : null}
       <label>
         <span>{getCourseAssetKindLabel(uploadKind, t)}</span>
         <input
@@ -835,7 +895,10 @@ function LessonUploadForm({
           accept={courseAssetAcceptTypes[uploadKind]}
           disabled={!isEditable || isUploading}
           aria-label={getCourseAssetKindLabel(uploadKind, t)}
-          onChange={(event) => onFileChange(event.target.files?.[0] ?? null)}
+          onChange={(event) => {
+            onFileChange(event.target.files?.[0] ?? null);
+            event.target.value = "";
+          }}
           className="lesson-modal-upload__input"
         />
         <span
@@ -846,6 +909,16 @@ function LessonUploadForm({
           {t(`creatorEditor.lesson.file.${selectedFile ? "selectAnother" : "select"}`)}
         </span>
       </label>
+      {onKindChange ? (
+        <label className="lesson-modal-field">
+          <span>{t("creatorEditor.lesson.file.videoType")}</span>
+          <select value={uploadKind} disabled={!isEditable || isUploading}
+            onChange={(event) => onKindChange(event.target.value as "lesson_video" | "live_recording")}>
+            <option value="lesson_video">{getCourseAssetKindLabel("lesson_video", t)}</option>
+            <option value="live_recording">{getCourseAssetKindLabel("live_recording", t)}</option>
+          </select>
+        </label>
+      ) : null}
       <label className="lesson-modal-upload__preview">
         <input
           type="checkbox"
@@ -855,39 +928,6 @@ function LessonUploadForm({
         />
         {t("creatorEditor.lesson.file.allowPreview")}
       </label>
-      {selectedFile ? (
-        <p className="lesson-modal-upload__file">
-          {selectedFile.name} - {formatCourseAssetSize(selectedFile.size)}
-        </p>
-      ) : null}
-      {progressLabel ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <p className="lesson-modal-upload__file">{progressLabel}</p>
-          {/* Sem isto não havia saída: durante o envio o modal sela (Escape,
-              X, Done e o overlay ficam inertes) e a instância do tus vivia
-              presa no executor da Promise, então abort() era inalcançável.
-              Arquivo errado de 4 GB ou conexão ruim só se resolviam fechando
-              a aba — e aí nada retomava. */}
-          {onCancel ? (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="min-h-11 rounded-md border border-[var(--color-line)] px-3 text-xs font-bold text-[var(--color-ink-soft)] hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
-            >
-              {t("creatorEditor.lesson.file.cancel")}
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-      {error ? <p className="lesson-modal-upload__error">{error}</p> : null}
-      {success ? <p className="lesson-modal-upload__success">{success}</p> : null}
-      <button
-        type="submit"
-        disabled={!isEditable || isUploading || !selectedFile}
-        className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
-      >
-        {t(`creatorEditor.lesson.file.${isUploading ? "uploading" : "upload"}`)}
-      </button>
     </form>
   );
 }
