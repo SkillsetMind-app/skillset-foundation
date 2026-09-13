@@ -136,8 +136,10 @@ async function run() {
     const port = await listen(reservation);
     await new Promise((resolve) => reservation.close(resolve));
     const origin = `http://127.0.0.1:${port}`;
+    const authDatabase = new URL(db.href);
+    authDatabase.username = 'supabase_auth_admin';
     const config = {
-      GOTRUE_DB_DRIVER: 'postgres', GOTRUE_DB_DATABASE_URL: db.href, GOTRUE_DB_NAMESPACE: 'auth',
+      GOTRUE_DB_DRIVER: 'postgres', GOTRUE_DB_DATABASE_URL: authDatabase.href, GOTRUE_DB_NAMESPACE: 'auth',
       GOTRUE_API_HOST: '127.0.0.1', PORT: String(port), API_EXTERNAL_URL: origin,
       GOTRUE_SITE_URL: origin, GOTRUE_JWT_SECRET: key, GOTRUE_JWT_EXP: '3600',
       GOTRUE_JWT_AUD: 'authenticated', GOTRUE_JWT_ADMIN_ROLES: 'service_role',
