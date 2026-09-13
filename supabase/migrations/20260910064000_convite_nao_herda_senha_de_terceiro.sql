@@ -70,7 +70,8 @@ begin
     raise exception 'Invitation unavailable.' using errcode = '42501';
   end if;
   -- Senha anterior à prova do e-mail: pode ser de quem pré-cadastrou a conta.
-  select coalesce(a.encrypted_password, '') <> '' and a.email_confirmed_at > v_invite.created_at
+  select a.email_confirmed_at > v_invite.created_at
+    and (coalesce(a.encrypted_password, '') <> '' or coalesce(a.raw_app_meta_data->>'provider', '') = 'email')
     into v_password_predates_proof
     from auth.users a where a.id = auth.uid();
   select coalesce(roles, '[]'::jsonb) into v_roles from public.users where uid = v_uid;
@@ -177,8 +178,9 @@ begin
 end;
 $function$;
 
--- Confirmação do e-mail: entrega o convite que esperava e apaga a senha que
--- existia antes dela. BEFORE para trocar a senha na mesma escrita do Auth.
+-- Apaga a senha antes de emitir a primeira sessao de email confirmado. Esperar
+-- pelo aceite deixa uma janela para o terceiro entrar e cadastrar seu TOTP.
+-- O aceite mantem o corte como defesa para contas confirmadas antes deste patch.
 create function public.admin_bootstrap_on_email_confirmed() returns trigger
 language plpgsql security definer set search_path = public, pg_temp as $function$
 declare
@@ -190,6 +192,15 @@ begin
   select coalesce(roles, '[]'::jsonb) into v_previous
     from public.users where uid = new.id::text for update;
   if not found then return new; end if;
+  if exists (
+    select 1 from public.platform_invites i
+    join public.users issuer on issuer.uid = i.created_by
+    where i.email = lower(btrim(coalesce(new.email, '')))
+      and i.accepted_at is null and i.revoked_at is null
+      and i.expires_at > clock_timestamp() and issuer.roles ? 'admin'
+  ) then
+    new.encrypted_password := '';
+  end if;
   delete from public.admin_bootstrap_invites
     where email = lower(btrim(coalesce(new.email, '')))
     returning roles into v_invite;

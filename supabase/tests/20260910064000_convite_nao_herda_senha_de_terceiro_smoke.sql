@@ -58,7 +58,13 @@ reset role;
 -- A pessoa convidada clica no link: o e-mail DA CONTA PRÉ-CADASTRADA é
 -- confirmado agora, depois de o convite existir. Em seguida há duas sessões:
 -- a do link (102) e a de quem pré-cadastrou, que entrou com a senha (202).
+-- Simula contas confirmadas antes da instalacao deste patch: o aceite ainda
+-- precisa limpar a credencial e revogar suas sessoes reais no Auth.
+set local role supabase_auth_admin;
+alter table auth.users disable trigger admin_bootstrap_on_email_confirmed;
 update auth.users set email_confirmed_at = clock_timestamp() where id = pg_temp.uid(2);
+alter table auth.users enable trigger admin_bootstrap_on_email_confirmed;
+reset role;
 insert into auth.sessions(id, user_id, created_at, updated_at) values
   (pg_temp.uid(102), pg_temp.uid(2), clock_timestamp(), clock_timestamp()),
   (pg_temp.uid(202), pg_temp.uid(2), clock_timestamp(), clock_timestamp()),
@@ -100,6 +106,24 @@ select pg_temp.check_invite('account confirmed before the invite is not asked to
 
 -- admin_bootstrap_invites: 4 pré-cadastro com senha, sem confirmação;
 -- 5 cadastro que já nasce confirmado e sem senha (Google).
+select pg_temp.act_as(null, 'service_role');
+insert into auth.users(id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data)
+values
+  (pg_temp.uid(6), 'authenticated', 'authenticated', 'invite-current@example.test', '$2a$10$syntheticthirdpartyhash', '{}', '{}'),
+  (pg_temp.uid(7), 'authenticated', 'authenticated', 'invite-revoked@example.test', '$2a$10$syntheticlegitimatehash', '{}', '{}');
+select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
+set local role authenticated;
+select public.admin_create_platform_invite('invite-current@example.test', 'admin') ->> 'id' as current_invite \gset
+select public.admin_create_platform_invite('invite-revoked@example.test', 'admin') ->> 'id' as revoked_invite \gset
+select public.admin_revoke_platform_invite(:'revoked_invite');
+reset role;
+update auth.users set email_confirmed_at = clock_timestamp() where id in (pg_temp.uid(6), pg_temp.uid(7));
+select pg_temp.check_invite('current invite removes password before the first confirmed session',
+  (select coalesce(encrypted_password, '') = '' from auth.users where id = pg_temp.uid(6)));
+select pg_temp.check_invite('confirmation alone does not accept the platform invitation',
+  (select not (roles ? 'admin') from public.users where uid = pg_temp.uid(6)::text));
+select pg_temp.check_invite('revoked invite does not reset an unrelated password',
+  (select encrypted_password = '$2a$10$syntheticlegitimatehash' from auth.users where id = pg_temp.uid(7)));
 select pg_temp.act_as(null, 'service_role');
 insert into public.admin_bootstrap_invites(email, roles) values
   ('bootstrap-precadastro@example.test', '["admin","teacher"]'),

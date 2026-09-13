@@ -64,18 +64,19 @@ async function run() {
   const pgEnv = { ...childEnv, PGHOST: '127.0.0.1', PGPORT: db.port,
     PGDATABASE: 'postgres', PGUSER: 'postgres', PGPASSWORD: decodeURIComponent(db.password),
     PGPASSFILE: '/dev/null', PGSERVICEFILE: '/dev/null', PGCONNECT_TIMEOUT: '5',
-    PGOPTIONS: '-c statement_timeout=15000 -c log_statement=none -c log_min_error_statement=panic' };
+    PGOPTIONS: '-c statement_timeout=15000' };
   function command(program, args, input, env = childEnv) {
     const result = spawnSync(program, args, { env, input, encoding: 'utf8',
       timeout: 30000, maxBuffer: 2 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'] });
     // Raw stdout/stderr stay in memory. Never print process errors or SQL bodies.
     if (result.error || result.status !== 0) {
-      console.error(`[invite-auth] COMMAND ${stage} exit=${result.status ?? 'unavailable'}`);
+      const sqlState = result.stderr?.match(/(?:ERROR|FATAL):\s+([A-Z0-9]{5})(?:\s|$)/)?.[1] ?? 'none';
+      console.error(`[invite-auth] COMMAND ${stage} exit=${result.status ?? 'unavailable'} sqlstate=${sqlState}`);
     }
     assert(!result.error && result.status === 0);
     return result.stdout.trim();
   }
-  function sql(label, body, claims) {
+  function sql(label, body, claims, user = 'postgres') {
     stage = label;
     const context = claims ? `do $$ begin
       perform set_config('request.jwt.claims', ${quote(JSON.stringify(claims))}, true);
@@ -83,8 +84,8 @@ async function run() {
       perform set_config('request.jwt.claim.role', ${quote(claims.role)}, true);
       perform set_config('skillset.trusted_write', 'off', true);
     end $$; set local role authenticated;` : '';
-    return command('psql', ['-X', '-w', '-qAt', '-v', 'ON_ERROR_STOP=1', '-f', '-'],
-      `begin; ${context}\n${body}\ncommit;`, pgEnv);
+    return command('psql', ['-X', '-w', '-qAt', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=sqlstate', '-f', '-'],
+      `begin; ${context}\n${body}\ncommit;`, { ...pgEnv, PGUSER: user });
   }
   const key = randomBytes(48).toString('base64url');
   const suffix = randomBytes(8).toString('hex');
@@ -269,6 +270,37 @@ async function run() {
     const invite = (address, level = 'admin') => JSON.parse(sql('issuer-create-invite',
       `select public.admin_create_platform_invite(${quote(address)}, ${quote(level)}, false);`, issuerClaims));
 
+    // Current flow: the password must disappear before the confirmation returns a session.
+    const currentEmail = email('current-preregistered');
+    const currentOldPassword = password();
+    const currentUser = await signup('current-preregistration', currentEmail, currentOldPassword);
+    const currentInvite = invite(currentEmail);
+    const currentSession = await linkSession('current-confirm', 'signup', currentEmail, currentOldPassword);
+    assert(currentSession.user.id === currentUser.id);
+    check('current-confirmation-password-cleared', hasNoPassword(currentUser.id));
+    const currentOldLogin = await request('current-password-before-acceptance', '/token?grant_type=password',
+      { email: currentEmail, password: currentOldPassword }, undefined, 'POST', [200, 400]);
+    check('current-password-denied-before-acceptance', currentOldLogin.status === 400
+      && currentOldLogin.body.error_code === 'invalid_credentials');
+    check('current-confirmation-does-not-grant-role', !persistedRoles(currentUser.id).includes('admin'));
+    const currentReceipt = JSON.parse(sql('current-accept-aal1',
+      `select public.accept_platform_invite(${quote(currentInvite.id)});`, claims(currentSession)));
+    const currentState = state('current-accepted-session', currentSession);
+    check('current-owner-reauthentication-required', currentReceipt.reauthentication_required === true
+      && currentState.allowed === false);
+    check('current-role-retained-without-mfa-bypass', persistedRoles(currentUser.id).includes('admin')
+      && currentState.admin === false);
+    const currentRecovered = await linkSession('current-owner-recovery', 'recovery', currentEmail);
+    const currentRecoveredState = state('current-recovered-session', currentRecovered);
+    check('current-recovery-session-allowed', currentRecoveredState.allowed === true
+      && currentRecoveredState.roles?.includes('admin') && currentRecoveredState.admin === false
+      && claims(currentRecovered).session_id !== claims(currentSession).session_id);
+    const currentNewPassword = password();
+    await request('current-owner-set-password', '/user',
+      { password: currentNewPassword }, currentRecovered.access_token, 'PUT');
+    check('current-new-password-login-allowed', state('current-new-password-session',
+      await login('current-new-password-login', currentEmail, currentNewPassword)).allowed === true);
+
     if (withoutFix || withoutAuthRevocation) {
       restore = sql('reversal-snapshot', "select pg_get_functiondef('public.accept_platform_invite(uuid)'::regprocedure);");
       const needle = withoutAuthRevocation
@@ -287,7 +319,25 @@ async function run() {
       { email: victimEmail, password: oldPassword }, undefined, 'POST', [400]);
     check('unconfirmed-login-fail-closed', unconfirmed.body.error_code === 'email_not_confirmed');
     const pending = invite(victimEmail);
-    const recipient = await linkSession('recipient-confirm', 'signup', victimEmail, oldPassword);
+    // Legacy fixture: real Auth confirmation without the new prevention trigger.
+    // Restore before password login/acceptance so the fallback and its mutation stay real.
+    const triggerEnabled = `select count(*) = 1 from pg_trigger
+      where tgrelid = 'auth.users'::regclass and tgname = 'admin_bootstrap_on_email_confirmed'
+        and not tgisinternal and tgenabled = 'O';`;
+    assert(sql('legacy-trigger-preflight', triggerEnabled) === 't');
+    let recipient;
+    try {
+      sql('legacy-disable-confirmation-trigger',
+        'alter table auth.users disable trigger admin_bootstrap_on_email_confirmed;', undefined, 'supabase_auth_admin');
+      recipient = await linkSession('recipient-confirm', 'signup', victimEmail, oldPassword);
+    } finally {
+      const confirmationStage = stage;
+      sql('legacy-restore-confirmation-trigger',
+        'alter table auth.users enable trigger admin_bootstrap_on_email_confirmed;', undefined, 'supabase_auth_admin');
+      assert(sql('legacy-trigger-restored', triggerEnabled) === 't');
+      stage = confirmationStage;
+    }
+    check('legacy-confirmation-trigger-restored', true);
     assert(recipient.user.id === victim.id);
     const attacker = await login('attacker-password-before-acceptance', victimEmail, oldPassword);
     check('attacker-session-live-before-acceptance', state('attacker-before', attacker).allowed);
