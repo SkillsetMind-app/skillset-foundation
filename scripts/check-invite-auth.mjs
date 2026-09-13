@@ -85,7 +85,7 @@ async function run() {
       perform set_config('skillset.trusted_write', 'off', true);
     end $$; set local role authenticated;` : '';
     return command('psql', ['-X', '-w', '-qAt', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=sqlstate', '-f', '-'],
-      `begin; ${context}\n${body}\ncommit;`, { ...pgEnv, PGUSER: user });
+      `begin; ${context}\n${body}\n;\ncommit;`, { ...pgEnv, PGUSER: user });
   }
   const key = randomBytes(48).toString('base64url');
   const suffix = randomBytes(8).toString('hex');
