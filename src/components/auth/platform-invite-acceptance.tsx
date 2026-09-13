@@ -15,12 +15,19 @@ const copy = "platformInvites";
 export function PlatformInviteAcceptance({ id }: { id: string }) {
   const { status, user } = useAuth();
   const { t } = useTranslation();
+  const [reauthenticationPath, setReauthenticationPath] = useState("");
   const returnTo = encodeURIComponent(`/invitations/${encodeURIComponent(id)}`);
 
   return <section className="mx-auto w-full max-w-xl min-w-0 space-y-5 px-4 py-10 text-[var(--color-ink)]">
     <h1 className="text-2xl font-bold">{t(`${copy}.acceptTitle`)}</h1>
-    {status === "loading" ? <p role="status">{t(`${copy}.loading`)}</p> : status === "authenticated" && user ? (
-      <RecipientInvite key={`${id}:${user.uid}:${user.email}:${user.emailVerified}`} id={id} />
+    {reauthenticationPath ? <div className="space-y-4">
+      <InlineAlert tone="info">{t(`${copy}.reauthenticationRequired`)}</InlineAlert>
+      <div className="flex flex-wrap gap-3">
+        <Link href="/forgot-password" className={buttonClasses({}, "min-h-11 max-w-full whitespace-normal")}>{t(`${copy}.setPassword`)}</Link>
+        <Link href={`/login?returnTo=${encodeURIComponent(reauthenticationPath)}`} className={buttonClasses({ variant: "outline" }, "min-h-11 max-w-full whitespace-normal")}>{t(`${copy}.signIn`)}</Link>
+      </div>
+    </div> : status === "loading" ? <p role="status">{t(`${copy}.loading`)}</p> : status === "authenticated" && user ? (
+      <RecipientInvite key={`${id}:${user.uid}:${user.email}:${user.emailVerified}`} id={id} onReauthentication={setReauthenticationPath} />
     ) : <div className="space-y-4">
       <p className="text-sm">{t(`${copy}.signInRequired`)}</p>
       <div className="flex flex-wrap gap-3">
@@ -31,7 +38,7 @@ export function PlatformInviteAcceptance({ id }: { id: string }) {
   </section>;
 }
 
-function RecipientInvite({ id }: { id: string }) {
+function RecipientInvite({ id, onReauthentication }: { id: string; onReauthentication: (path: string) => void }) {
   const { t } = useTranslation();
   const [invite, setInvite] = useState<PlatformInvite | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,9 +74,10 @@ function RecipientInvite({ id }: { id: string }) {
     setBusy(true);
     setError("");
     try {
-      const { next_path } = await acceptPlatformInvite(id);
+      const { next_path, reauthentication_required } = await acceptPlatformInvite(id);
       if (!active.current) return;
       if (!["/onboarding?path=teacher", "/ops", "/learn"].includes(next_path)) throw new Error("Invalid destination");
+      if (reauthentication_required) { onReauthentication(next_path); return; }
       window.location.assign(next_path);
     } catch {
       if (!active.current) return;

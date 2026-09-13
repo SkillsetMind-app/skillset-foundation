@@ -101,6 +101,9 @@ begin
   -- as sessões abertas até aqui. Só quem prova o e-mail entra de novo.
   if v_password_predates_proof then
     update auth.users set encrypted_password = '' where id = auth.uid();
+    -- O corte de RLS nao revoga o Auth: uma sessao antiga ainda poderia trocar
+    -- a senha em /auth/v1/user. A FK elimina tambem seus refresh tokens.
+    delete from auth.sessions where user_id = auth.uid();
     insert into public.account_controls(uid, suspended, blocked_email, sessions_revoked_before)
       values (v_uid, false, null, clock_timestamp())
       on conflict (uid) do update set sessions_revoked_before = excluded.sessions_revoked_before;

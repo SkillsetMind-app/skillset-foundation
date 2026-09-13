@@ -6,6 +6,18 @@
 -- do e-mail e as sessões são linhas escritas à mão, e a senha é um hash
 -- sintético (só importa se está vazio ou não).
 begin;
+\if :{?without_invite_password_guard}
+do $$
+declare
+  v_definition text := pg_get_functiondef('public.accept_platform_invite(uuid)'::regprocedure);
+  v_without_guard text;
+begin
+  v_without_guard := replace(v_definition,
+    'update auth.users set encrypted_password = '''' where id = auth.uid();', 'null;');
+  if v_without_guard = v_definition then raise exception 'INVITE_TEST_SETUP_FAILED'; end if;
+  execute v_without_guard;
+end $$;
+\endif
 create temp table invite_checks (name text, passed boolean);
 grant insert, select on invite_checks to authenticated;
 create function pg_temp.check_invite(p_name text, p_ok boolean) returns void
@@ -19,7 +31,7 @@ begin
   perform set_config('request.jwt.claim.sub', coalesce(p_uid::text, ''), true);
   perform set_config('request.jwt.claim.role', p_role, true);
   perform set_config('request.jwt.claims', jsonb_build_object('sub', p_uid, 'role', p_role,
-    'aal', 'aal1', 'session_id', p_session)::text, true);
+    'aal', 'aal2', 'session_id', p_session)::text, true);
   perform set_config('skillset.trusted_write', 'off', true);
 end $$;
 
@@ -62,6 +74,8 @@ select pg_temp.check_invite('pre-registered password does not survive the accept
   (select coalesce(encrypted_password, '') = '' from auth.users where id = pg_temp.uid(2)));
 select pg_temp.check_invite('acceptance asks the invitee to sign in again',
   (:'attack_result')::jsonb ->> 'reauthentication_required' = 'true');
+select pg_temp.check_invite('old Auth sessions are removed, not only denied by RLS',
+  not exists (select 1 from auth.sessions where user_id = pg_temp.uid(2)));
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated', pg_temp.uid(202));
 select pg_temp.check_invite('a session opened before the acceptance is not admin', not public.is_admin());
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated', pg_temp.uid(102));

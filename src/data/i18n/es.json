@@ -68,6 +68,8 @@
     "acceptError": "No se pudo completar la aceptación de esta invitación. Recarga la página para comprobar su estado antes de volver a intentarlo.",
     "accept": "Aceptar invitación",
     "accepting": "Aceptando...",
+    "reauthenticationRequired": "Tu invitación fue aceptada. Por tu seguridad, la contraseña y las sesiones anteriores ya no permiten el acceso. Usa el correo de recuperación para crear una nueva contraseña o inicia sesión con tu cuenta de Google vinculada.",
+    "setPassword": "Crear una nueva contraseña",
     "waiveConfirm": "¿Eximir la tarifa de activación de {person}? Esto no aprueba la verificación, acepta términos ni cambia registros de pago.",
     "requireConfirm": "¿Quitar la exención de la tarifa de activación de {person}? Los pagos existentes siguen siendo válidos. Esto no genera un cobro.",
     "waiverSaved": "Exención guardada. La verificación, los términos y los registros de pago no cambiaron.",

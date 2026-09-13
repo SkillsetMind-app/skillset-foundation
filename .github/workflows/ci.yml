@@ -108,3 +108,7 @@ jobs:
 
       - name: RLS smoke tests (supabase/tests)
         run: npm run test:db
+
+      - name: Real Auth invite security (GoTrue ephemeral)
+        timeout-minutes: 5
+        run: node scripts/check-invite-auth.mjs

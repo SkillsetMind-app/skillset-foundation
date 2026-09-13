@@ -68,6 +68,8 @@
     "acceptError": "Could not finish accepting this invitation. Reload the page to check its status before trying again.",
     "accept": "Accept invitation",
     "accepting": "Accepting...",
+    "reauthenticationRequired": "Your invitation was accepted. For your security, the previous password and sessions no longer grant access. Use the recovery email to set a new password, or sign in with your linked Google account.",
+    "setPassword": "Set a new password",
     "waiveConfirm": "Waive the activation fee for {person}? This does not approve verification, accept terms, or change payment records.",
     "requireConfirm": "Remove the activation fee waiver for {person}? Any existing payment remains valid. This does not charge them.",
     "waiverSaved": "Activation fee waiver saved. Verification, terms and payment records are unchanged.",
