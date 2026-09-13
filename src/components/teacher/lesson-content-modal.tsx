@@ -472,31 +472,6 @@ export function LessonContentModal({
           </div>
           {tab === "video" ? (
             <div className="grid gap-5">
-              {resolvedSource ? (
-                <section aria-label={t("creatorEditor.lesson.previewLabel")} className="grid min-w-0 gap-2">
-                  <h4 className="text-sm font-semibold">{t("creatorEditor.lesson.previewTitle")}</h4>
-                  {resolvedSource === "upload" && primaryVideo ? (
-                    primaryVideo.bunnyVideoId ? (
-                      <>
-                        <BunnyVideoPlayer key={primaryVideo.id} assetId={primaryVideo.id} title={lesson.title} />
-                        <p className="text-sm text-[var(--color-ink-soft)]">
-                          {t("creatorEditor.lesson.savedProcessing")}
-                        </p>
-                      </>
-                    ) : (
-                      <ProtectedAssetPreview key={primaryVideo.id} asset={primaryVideo} />
-                    )
-                  ) : resolvedSource === "youtube" && trustedEmbed ? (
-                    <TrustedEmbedPlayer
-                      key={trustedEmbed.embedUrl}
-                      embedUrl={trustedEmbed.embedUrl}
-                      provider={trustedEmbed.provider}
-                      title={lesson.title}
-                      onEnded={handlePreviewEnded}
-                    />
-                  ) : null}
-                </section>
-              ) : null}
 
               <LessonVideoSourcePicker
                 value={isUploadPanelOpen ? "upload" : resolvedSource}
@@ -576,6 +551,32 @@ export function LessonContentModal({
                     onDelete={handleDeleteAsset}
                   />
                 </>
+              ) : null}
+
+              {resolvedSource ? (
+                <section aria-label={t("creatorEditor.lesson.previewLabel")} className="grid min-w-0 gap-2">
+                  <h4 className="text-sm font-semibold">{t("creatorEditor.lesson.previewTitle")}</h4>
+                  {resolvedSource === "upload" && primaryVideo ? (
+                    primaryVideo.bunnyVideoId ? (
+                      <>
+                        <BunnyVideoPlayer key={primaryVideo.id} assetId={primaryVideo.id} title={lesson.title} />
+                        <p className="text-sm text-[var(--color-ink-soft)]">
+                          {t("creatorEditor.lesson.savedProcessing")}
+                        </p>
+                      </>
+                    ) : (
+                      <ProtectedAssetPreview key={primaryVideo.id} asset={primaryVideo} />
+                    )
+                  ) : resolvedSource === "youtube" && trustedEmbed ? (
+                    <TrustedEmbedPlayer
+                      key={trustedEmbed.embedUrl}
+                      embedUrl={trustedEmbed.embedUrl}
+                      provider={trustedEmbed.provider}
+                      title={lesson.title}
+                      onEnded={handlePreviewEnded}
+                    />
+                  ) : null}
+                </section>
               ) : null}
 
               <p className="lesson-modal__guidance">

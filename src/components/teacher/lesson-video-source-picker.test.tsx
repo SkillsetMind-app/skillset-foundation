@@ -35,6 +35,15 @@ function videoFile(name = "lesson.mp4") {
 }
 
 describe("LessonVideoSourcePicker", () => {
+  it("names the device action and URL input without absorbing the help button", () => {
+    renderPicker();
+    const fileInput = screen.getByLabelText("Upload a lesson video");
+    expect(fileInput.closest("label")).toContainElement(screen.getByText("Choose video"));
+    expect(fileInput.closest("label")).toContainElement(screen.getByText("From your device"));
+    expect(screen.getByRole("textbox", { name: "YouTube or Vimeo URL" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "How the YouTube or Vimeo URL field works" }).closest("label")).toBeNull();
+  });
+
   it("keeps the active drop target and authored URL when the language changes", () => {
     const onChange = vi.fn();
     const onSelectFile = vi.fn();

@@ -158,6 +158,16 @@ describe("LessonContentModal — video tab", () => {
     vi.clearAllMocks();
   });
 
+  it("keeps file selection and upload before an existing video preview", () => {
+    currentAssets = [videoAsset()];
+    renderModal({ videoSource: "upload" });
+    const preview = screen.getByTestId("storage-preview");
+    const fileInput = screen.getByLabelText("Upload a lesson video");
+    const submit = screen.getByRole("button", { name: "Upload file" });
+    expect(fileInput.compareDocumentPosition(preview) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(submit.compareDocumentPosition(preview) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("dismisses URL help with Escape while keeping the lesson open and focused", () => {
     const { onClose } = renderModal();
     const help = screen.getByRole("button", { name: "How the YouTube or Vimeo URL field works" });
@@ -300,7 +310,7 @@ describe("LessonContentModal — video tab", () => {
     expect(onUpdateLesson).not.toHaveBeenCalled();
   });
 
-  it("keeps full lesson identity in the content scroll and preview ahead of setup guidance", () => {
+  it("keeps full lesson identity in the content scroll, upload first and preview before guidance", () => {
     const title = "Como preparar uma aula com um título completo que precisa continuar legível em uma tela pequena";
     const moduleTitle = "Planejamento e preparação de todas as etapas do primeiro módulo";
     currentAssets = [videoAsset()];
@@ -318,8 +328,9 @@ describe("LessonContentModal — video tab", () => {
     expect(within(header).getByRole("button", { name: "Close lesson studio" })).toBeInTheDocument();
 
     const preview = screen.getByRole("region", { name: "Lesson video preview" });
+    expect(screen.getByLabelText("Upload a lesson video").compareDocumentPosition(preview) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     for (const laterContent of [
-      screen.getByLabelText("Upload a lesson video"),
       screen.getByText(/Upload the video to SkillsetMind or paste a YouTube\/Vimeo URL/),
     ]) {
       expect(preview.compareDocumentPosition(laterContent) & Node.DOCUMENT_POSITION_FOLLOWING)

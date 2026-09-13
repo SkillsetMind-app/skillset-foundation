@@ -3476,6 +3476,8 @@
     },
     "videoSource": {
       "heading": "Add the lesson video",
+      "device": "From your device",
+      "chooseVideo": "Choose video",
       "fileInput": "Upload a lesson video",
       "dropActive": "Drop the video to select it",
       "dropIdle": "Drag & drop your video here",
