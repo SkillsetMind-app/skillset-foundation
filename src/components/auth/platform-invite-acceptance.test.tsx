@@ -29,6 +29,19 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.resetAllMocks(); vi.unstubAllGlobals(); });
 
 describe("PlatformInviteAcceptance", () => {
+  it.each(["en", "es"] as const)("explains reauthentication in %s without entering the workspace", async locale => {
+    mocks.acceptPlatformInvite.mockResolvedValue({ next_path: "/ops", reauthentication_required: true });
+    const view = render(<I18nProvider initialLocale={locale}><PlatformInviteAcceptance id={invitation.id} /></I18nProvider>);
+    fireEvent.click(await screen.findByRole("button", { name: locale === "en" ? "Accept invitation" : "Aceptar invitación" }));
+    const message = await screen.findByText(locale === "en" ? /Your invitation was accepted/ : /Tu invitación fue aceptada/);
+    expect(message).toHaveAttribute("role", "status");
+    expect(screen.getByRole("link", { name: locale === "en" ? "Set a new password" : "Crear una nueva contraseña" })).toHaveAttribute("href", "/forgot-password");
+    expect(screen.getByRole("link", { name: locale === "en" ? "Sign in" : "Iniciar sesión" })).toHaveAttribute("href", "/login?returnTo=%2Fops");
+    expect(mocks.assign).not.toHaveBeenCalled();
+    mocks.useAuth.mockReturnValue({ status: "unauthenticated", user: null });
+    view.rerender(<I18nProvider initialLocale={locale}><PlatformInviteAcceptance id={invitation.id} /></I18nProvider>);
+    expect(screen.getByRole("status")).toHaveTextContent(locale === "en" ? "Your invitation was accepted" : "Tu invitación fue aceptada");
+  });
   it("can finish a pending waiver after acceptance even when the original invitation expired", async () => {
     mocks.getMyPlatformInvite.mockResolvedValue({ ...invitation, accepted_at: "2026-09-09T01:00:00Z", expires_at: "2026-01-01T00:00:00Z", activation_pending: true });
     mocks.acceptPlatformInvite.mockResolvedValue({ next_path: "/onboarding?path=teacher" });

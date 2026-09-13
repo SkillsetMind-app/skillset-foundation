@@ -29,8 +29,8 @@ export async function setActivationWaiver(uid: string, waived: boolean): Promise
 export async function getMyPlatformInvite(id: string): Promise<PlatformInvite> {
   return (await get<{ invite: PlatformInvite }>(`/api/invitations/${encodeURIComponent(id)}`)).invite;
 }
-export async function acceptPlatformInvite(id: string): Promise<{ next_path: string }> {
-  const result = await postPaymentRoute<{ next_path: string }>(`/api/invitations/${encodeURIComponent(id)}`);
+export async function acceptPlatformInvite(id: string): Promise<{ next_path: string; reauthentication_required?: boolean }> {
+  const result = await postPaymentRoute<{ next_path: string; reauthentication_required?: boolean }>(`/api/invitations/${encodeURIComponent(id)}`);
   if (!["/ops", "/learn", "/onboarding?path=teacher"].includes(result.next_path)) {
     throw new Error("Invitation destination unavailable.");
   }

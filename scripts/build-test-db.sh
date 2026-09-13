@@ -229,3 +229,8 @@ prova_red "papel operacional sem segundo fator" \
     -f "supabase/tests/20260912010000_operational_roles_require_aal2_smoke.sql"
 
 echo "Banco de teste pronto: baseline + $aplicadas migrations + seed."
+
+prova_red "convite preserva senha anterior a prova do email" \
+  'PLATFORM_INVITE_REGRESSION: pre-registered password does not survive the acceptance' -- \
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v without_invite_password_guard=1 -q \
+    -f "supabase/tests/20260910064000_convite_nao_herda_senha_de_terceiro_smoke.sql"

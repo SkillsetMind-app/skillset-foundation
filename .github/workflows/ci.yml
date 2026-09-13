@@ -108,3 +108,19 @@ jobs:
 
       - name: RLS smoke tests (supabase/tests)
         run: npm run test:db
+
+      - name: Real Auth invite security (GoTrue ephemeral)
+        timeout-minutes: 5
+        run: node scripts/check-invite-auth.mjs
+
+      - name: Prova por reversao da revogacao Auth
+        timeout-minutes: 5
+        run: |
+          set +e
+          output=$(WITHOUT_INVITE_AUTH_REVOCATION=1 node scripts/check-invite-auth.mjs 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          test "$status" -ne 0
+          printf '%s\n' "$output" | grep -Fqx '[invite-auth] FAIL old-session-cannot-reinstall-password'
+          printf '%s\n' "$output" | grep -Fqx '[invite-auth] FAIL security-assertions'
