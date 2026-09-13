@@ -25,7 +25,7 @@ vi.mock("@/components/site/site-footer", () => ({ SiteFooter: () => null }));
 afterEach(() => { cleanup(); request.locale = undefined; });
 
 const pages = [
-  { key: "privacy", Page: PrivacyPage, metadata: privacyMetadata, path: "/legal/privacy", sections: 12, texts: 40, title: "Política de privacidad" },
+  { key: "privacy", Page: PrivacyPage, metadata: privacyMetadata, path: "/legal/privacy", sections: 12, texts: 44, title: "Política de privacidad" },
   { key: "terms", Page: TermsPage, metadata: termsMetadata, path: "/legal/terms", sections: 18, texts: 37, title: "Condiciones de servicio" },
   { key: "teacherTerms", Page: TeacherTermsPage, metadata: teacherMetadata, path: "/legal/teacher-terms", sections: 12, texts: 26, title: "Condiciones para educadores" },
   { key: "refund", Page: RefundPolicyPage, metadata: refundMetadata, path: "/refund-policy", sections: 7, texts: 10, title: "Política de reembolsos y devoluciones" },
@@ -100,9 +100,9 @@ describe("legal document translation from the request cookie", () => {
     }
   });
 
-  it("keeps the 6cd334e English reference and matching ES keys, numbers and rich-text tags", () => {
+  it("keeps the reviewed English reference and matching ES keys, numbers and rich-text tags", () => {
     // Fixture extracted from the four English pages at 6cd334e; only JSX whitespace,
-    // entities and inline link/formatting nodes were normalized. No legal copy was rewritten.
+    // entities and inline nodes were normalized. Provider disclosures were updated explicitly.
     const en = legalDictionary("en");
     const es = legalDictionary("es");
     expect(en).toEqual(englishReference);
@@ -112,7 +112,7 @@ describe("legal document translation from the request cookie", () => {
       for (const [key, value] of Object.entries(en[group])) {
         const translated = (es[group] as Record<string, string>)[key];
         expect(translated, `${group}.${key}`).toBeTruthy();
-        if (!(group === "common" && key === "kicker") && !(group === "privacy" && key === "text36")) {
+        if (!(group === "common" && key === "kicker") && !(group === "privacy" && key === "text40")) {
           expect(translated, `${group}.${key}: left in English`).not.toBe(value);
         }
         expect(translated.match(/\d+/g), `${group}.${key}: numbers`).toEqual(value.match(/\d+/g));
@@ -121,6 +121,26 @@ describe("legal document translation from the request cookie", () => {
       }
     }
     expect(es.common.effectiveDate).toBe("5 de julio de 2026");
+  });
+
+  it.each(["en", "es"] as const)("discloses provider data and conditional use in %s, without promising prompt redaction", async (locale) => {
+    request.locale = locale;
+    render(await PrivacyPage());
+    const section = screen.getByRole("heading", { name: legalDictionary(locale).privacy.heading5 }).parentElement!;
+    const items = within(section).getAllByRole("listitem");
+    expect(items.map((item) => item.querySelector("strong")?.textContent)).toEqual([
+      "Supabase", "Stripe", "Vercel", "PostHog", "Moonshot AI", "OpenAI", "Bunny.net", "Cloudflare Turnstile",
+    ]);
+    const provider = (name: string) => items.find((item) => item.querySelector("strong")?.textContent === name)!;
+    expect(provider("Supabase")).toHaveTextContent(locale === "en" ? "advisor conversation history" : "historial de conversaciones del Asesor");
+    expect(provider("Moonshot AI")).toHaveTextContent(locale === "en" ? "including drafts" : "incluidos los borradores");
+    expect(provider("Moonshot AI")).toHaveTextContent(locale === "en" ? "without automatic removal of personal information" : "sin eliminar automáticamente la información personal");
+    expect(provider("Moonshot AI")).not.toHaveTextContent(locale === "en" ? "does not add learners' personal data" : "no añade datos personales de estudiantes");
+    expect(provider("OpenAI")).toHaveTextContent(locale === "en" ? "when knowledge search is configured" : "cuando la búsqueda de conocimiento está configurada");
+    expect(provider("OpenAI")).toHaveTextContent(locale === "en" ? "even if the advisor later fails to reply" : "aunque el Asesor no logre responder después");
+    expect(provider("Bunny.net")).toHaveTextContent(locale === "en" ? "uploaded video files and titles" : "archivos de video subidos y sus títulos");
+    expect(provider("Cloudflare Turnstile")).toHaveTextContent(locale === "en" ? "when enabled" : "cuando está habilitado");
+    expect(provider("Cloudflare Turnstile")).toHaveTextContent(locale === "en" ? "IP address" : "dirección IP");
   });
 
   it("retains English precedence and local-law exceptions in rendered Spanish", async () => {
@@ -132,6 +152,16 @@ describe("legal document translation from the request cookie", () => {
     }
     render(await TeacherTermsPage());
     expect(screen.getByRole("main")).toHaveTextContent("estas condiciones prevalecen para tu actividad como educador");
+  });
+
+  it.each(["en", "es"] as const)("does not promise US-only processing or unverified transfer safeguards in %s", async (locale) => {
+    request.locale = locale;
+    render(await PrivacyPage());
+    const transfers = screen.getByRole("heading", { name: legalDictionary(locale).privacy.heading6 }).parentElement!;
+    expect(transfers).toHaveTextContent(locale === "en"
+      ? "the United States and in other countries where they operate"
+      : "Estados Unidos y en otros países donde operan");
+    expect(transfers.textContent).not.toMatch(/Standard Contractual Clauses|Cláusulas Contractuales Tipo|Data Privacy Framework|Marco de Privacidad de Datos|Data processing agreements|acuerdos de tratamiento de datos/);
   });
 
   it("does not broaden refund eligibility, waive Stripe timing or change the liability cap", async () => {
