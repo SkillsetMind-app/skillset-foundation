@@ -2456,6 +2456,55 @@ export function CourseBuilderStudio() {
                             key={lesson.id}
                             className="grid gap-3 rounded-[14px] border border-[var(--color-line)] bg-white p-4"
                           >
+                            <div className="flex flex-wrap items-center gap-2">
+                            {savedLessonIds.has(lesson.id) ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setActiveLessonStudio({
+                                    moduleId: module.id,
+                                    lessonId: lesson.id,
+                                  })
+                                }
+                                className="button-solid inline-flex items-center gap-1.5 px-3 py-2 text-xs"
+                                title={
+                                  lessonIdsWithVideo.has(lesson.id) ||
+                                  getTrustedLessonEmbed(lesson.externalUrl)
+                                    ? t("creatorEditor.builder.curriculum.editTitle")
+                                    : t("creatorEditor.builder.curriculum.addVideoTitle")
+                                }
+                              >
+                                {lessonIdsWithVideo.has(lesson.id) ||
+                                getTrustedLessonEmbed(lesson.externalUrl) ? (
+                                  t("creatorEditor.builder.curriculum.editContent")
+                                ) : (
+                                  <>
+                                    <Film aria-hidden="true" size={13} strokeWidth={1.9} />
+                                    {t("creatorEditor.builder.curriculum.addVideo")}
+                                  </>
+                                )}
+                              </button>
+                            ) : autosaveState === "error" ? (
+                              <button
+                                type="button"
+                                disabled
+                                className="button-solid px-3 py-2 text-xs disabled:opacity-60"
+                                title={t("creatorEditor.builder.curriculum.saveErrorTitle")}
+                              >
+                                {t("creatorEditor.builder.curriculum.saveToUpload")}
+                              </button>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink-soft)]">
+                                <Loader2
+                                  aria-hidden="true"
+                                  size={13}
+                                  strokeWidth={2.2}
+                                  className="animate-spin"
+                                />
+                                {t("creatorEditor.builder.curriculum.savingLesson")}
+                              </span>
+                            )}
+                            </div>
                             <div className="grid gap-3 lg:grid-cols-[1fr_190px_120px_140px_auto] lg:items-end">
                               <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
                                 {t("creatorEditor.builder.curriculum.lessonTitle")}
@@ -2585,53 +2634,6 @@ export function CourseBuilderStudio() {
 
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div className="flex flex-wrap gap-2">
-                                {savedLessonIds.has(lesson.id) ? (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setActiveLessonStudio({
-                                        moduleId: module.id,
-                                        lessonId: lesson.id,
-                                      })
-                                    }
-                                    className="button-solid inline-flex items-center gap-1.5 px-3 py-2 text-xs"
-                                    title={
-                                      lessonIdsWithVideo.has(lesson.id) ||
-                                      getTrustedLessonEmbed(lesson.externalUrl)
-                                        ? t("creatorEditor.builder.curriculum.editTitle")
-                                        : t("creatorEditor.builder.curriculum.addVideoTitle")
-                                    }
-                                  >
-                                    {lessonIdsWithVideo.has(lesson.id) ||
-                                    getTrustedLessonEmbed(lesson.externalUrl) ? (
-                                      t("creatorEditor.builder.curriculum.editContent")
-                                    ) : (
-                                      <>
-                                        <Film aria-hidden="true" size={13} strokeWidth={1.9} />
-                                        {t("creatorEditor.builder.curriculum.addVideo")}
-                                      </>
-                                    )}
-                                  </button>
-                                ) : autosaveState === "error" ? (
-                                  <button
-                                    type="button"
-                                    disabled
-                                    className="button-solid px-3 py-2 text-xs disabled:opacity-60"
-                                    title={t("creatorEditor.builder.curriculum.saveErrorTitle")}
-                                  >
-                                    {t("creatorEditor.builder.curriculum.saveToUpload")}
-                                  </button>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink-soft)]">
-                                    <Loader2
-                                      aria-hidden="true"
-                                      size={13}
-                                      strokeWidth={2.2}
-                                      className="animate-spin"
-                                    />
-                                    {t("creatorEditor.builder.curriculum.savingLesson")}
-                                  </span>
-                                )}
                                 <button
                                   type="button"
                                   onClick={() =>

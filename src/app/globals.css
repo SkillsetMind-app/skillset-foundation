@@ -3522,7 +3522,7 @@ body:has([aria-label="Course categories"])
 
 .lesson-video-source-picker__options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 0.75rem;
 }
 
@@ -3549,6 +3549,11 @@ body:has([aria-label="Course categories"])
 .lesson-video-source-picker__dropzone span {
   display: grid;
   gap: 0.2rem;
+}
+
+.lesson-video-source-picker__dropzone > .button-solid {
+  display: inline-flex;
+  min-height: 44px;
 }
 
 .lesson-video-source-picker__dropzone strong {
@@ -3586,6 +3591,7 @@ body:has([aria-label="Course categories"])
 
 .lesson-video-source-picker__url {
   display: grid;
+  min-width: 0;
   align-content: start;
   gap: 0.5rem;
   border: 1px solid var(--color-line);
@@ -3610,6 +3616,8 @@ body:has([aria-label="Course categories"])
 }
 
 .lesson-video-source-picker__url input {
+  width: 100%;
+  min-width: 0;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-xs);
   background: #ffffff;

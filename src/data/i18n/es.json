@@ -3476,6 +3476,8 @@
     },
     "videoSource": {
       "heading": "Añade el video de la lección",
+      "device": "Desde tu dispositivo",
+      "chooseVideo": "Elegir video",
       "fileInput": "Subir un video de la lección",
       "dropActive": "Suelta el video para seleccionarlo",
       "dropIdle": "Arrastra y suelta tu video aquí",

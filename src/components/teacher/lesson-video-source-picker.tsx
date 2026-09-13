@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type DragEvent } from "react";
+import { useId, useState, type DragEvent } from "react";
 import { HelpCircle, Link2, ShieldAlert, UploadCloud } from "lucide-react";
 
 import { Tooltip } from "@/components/shared/tooltip";
@@ -22,6 +22,7 @@ export function LessonVideoSourcePicker(props: {
   onExternalUrlChange: (next: string) => void;
 }) {
   const { t } = useTranslation();
+  const urlInputId = useId();
   const [isDragActive, setIsDragActive] = useState(false);
 
   function selectFile(file: File) {
@@ -97,23 +98,27 @@ export function LessonVideoSourcePicker(props: {
           />
           <UploadCloud aria-hidden="true" size={22} />
           <span>
-            <strong>
+            <strong>{t("creatorEditor.videoSource.device")}</strong>
+            <small>
               {isDragActive
                 ? t("creatorEditor.videoSource.dropActive")
                 : t("creatorEditor.videoSource.dropIdle")}
-            </strong>
+            </small>
             <small>{t("creatorEditor.videoSource.browseHelp")}</small>
+          </span>
+          <span className="button-solid">
+            {t("creatorEditor.videoSource.chooseVideo")}
           </span>
         </label>
 
-        <label
+        <div
           className={`lesson-video-source-picker__url${
             props.value === "youtube" ? " is-active" : ""
           }`}
         >
           <span className="lesson-video-source-picker__url-label">
             <Link2 aria-hidden="true" size={15} className="shrink-0" />
-            <strong className="min-w-0">{t("creatorEditor.videoSource.url")}</strong>
+            <label htmlFor={urlInputId} className="min-w-0 font-bold">{t("creatorEditor.videoSource.url")}</label>
             <Tooltip content={t("creatorEditor.videoSource.help")}>
               <button
                 type="button"
@@ -125,6 +130,7 @@ export function LessonVideoSourcePicker(props: {
             </Tooltip>
           </span>
           <input
+            id={urlInputId}
             type="url"
             value={props.externalUrl}
             disabled={props.disabled}
@@ -147,7 +153,7 @@ export function LessonVideoSourcePicker(props: {
               {t("creatorEditor.videoSource.protectionNote")}
             </span>
           </small>
-        </label>
+        </div>
       </div>
     </div>
   );
