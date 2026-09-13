@@ -3446,6 +3446,11 @@
       "saveHelp": "Uploads save immediately. Text and settings save with the course draft.",
       "file": {
         "selectAnother": "Choose a different file",
+        "selected": "Selected",
+        "selectedHelp": "Selected on your device. Not uploaded yet.",
+        "localPreview": "Selected video preview",
+        "previewUnavailable": "This browser cannot preview this file. You can still upload it.",
+        "videoType": "Video type",
         "select": "Choose file",
         "allowPreview": "Allow this file in the public preview when it is safe.",
         "cancel": "Cancel upload",
