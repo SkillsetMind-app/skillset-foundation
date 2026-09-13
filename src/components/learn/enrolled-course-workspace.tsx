@@ -34,7 +34,7 @@ import {
 } from "@/components/learn/watermarked-video-player";
 import { ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
 import type { CourseAsset } from "@/domain/course-asset";
-import { formatCourseAssetSize, getPrimaryLessonVideoAsset } from "@/domain/course-asset";
+import { formatCourseAssetSize, getModuleCoverAsset, getPrimaryLessonVideoAsset } from "@/domain/course-asset";
 import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 import type { CourseEvent } from "@/domain/course-event";
 import {
@@ -595,15 +595,13 @@ export function EnrolledCourseWorkspace({
   const thumbnailUrlByLessonId = new Map<string, string>();
   const thumbnailDateByLessonId = new Map<string, number>();
   const courseLessonIds = new Set(allLessons.map((lesson) => lesson.id));
-  // Module cover art. Teachers already upload these through the course asset
-  // uploader's "Module cover" preset, which stamps the asset with its moduleId;
-  // module_cover lives in the world-readable bucket, so downloadUrl renders
-  // straight into the card with no signed-URL round trip. Cards without one
-  // keep the numbered gradient tone.
-  // ponytail: one cover per module — assets arrive sorted by fileName, so if a
-  // teacher uploads two the alphabetically last wins. Add an explicit picker
-  // only if that ever confuses someone.
-  const moduleCoverUrlById = new Map<string, string>();
+  // Navigation uses public cover images only, never signed private assets.
+  const moduleCoverAssets = assetsState.key === course.id
+    ? assetsState.assets.filter((asset) => asset.courseId === course.id
+      && asset.kind === "module_cover"
+      && asset.contentType.startsWith("image/")
+      && getSafeMediaUrl(asset.downloadUrl))
+    : [];
   const totalLessonCount = allLessons.length;
   // Mesma conta de getCourseProgressPercent: so aulas que existem no curso.
   const completedLessonCount = allLessons.filter((lesson) =>
@@ -667,9 +665,6 @@ export function EnrolledCourseWorkspace({
           asset.lessonId,
           (assetCountByLessonId.get(asset.lessonId) ?? 0) + 1,
         );
-      }
-      if (asset.kind === "module_cover" && asset.moduleId && asset.downloadUrl) {
-        moduleCoverUrlById.set(asset.moduleId, asset.downloadUrl);
       }
     }
   }
@@ -1009,7 +1004,51 @@ export function EnrolledCourseWorkspace({
             ("Aula 3/12 · Arquivos 2"), nem "Continuar" (a aula atual já está
             destacada), nem "links do workspace" (a única saída é "← My courses"
             no topo; a página de vendas não pertence à sala). */}
-        <aside className="member-classroom-sidebar">
+        <aside className="member-classroom-sidebar min-w-0">
+          {course.modules.length > 0 ? (
+            <nav className="min-w-0 max-w-full" aria-label={t("learn.classroom.curriculum.modules")}>
+              <h2 className="mb-2 text-sm font-semibold text-[var(--ma-ink)]">
+                {t("learn.classroom.curriculum.modules")}
+              </h2>
+              <ol className="flex min-w-0 max-w-full gap-3 overflow-x-scroll p-1 [scrollbar-width:auto]">
+                {course.modules.map((module, moduleIndex) => {
+                  const coverUrl = getSafeMediaUrl(getModuleCoverAsset(module, moduleCoverAssets)?.downloadUrl);
+                  const targetLesson = module.lessons.find((lesson) => !completedLessonIds.includes(lesson.id))
+                    ?? module.lessons[0];
+                  const isCurrent = selectedModule?.id === module.id;
+                  return (
+                    <li key={module.id} className="shrink-0">
+                      <button
+                        type="button"
+                        className="group block w-[120px] rounded-md text-left text-[var(--ma-ink)] outline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--ma-accent-ink)] disabled:cursor-default disabled:opacity-60 sm:w-[160px]"
+                        aria-label={t("learn.classroom.curriculum.openModule").replace("{title}", () => module.title)}
+                        aria-current={isCurrent ? "true" : undefined}
+                        disabled={!targetLesson}
+                        onClick={() => { if (targetLesson) selectLesson(targetLesson.id); }}
+                      >
+                        <span className={`relative block aspect-[2/3] w-full overflow-hidden rounded-md border-2 bg-[var(--ma-surface-2)] ${isCurrent ? "border-[var(--ma-accent-ink)]" : "border-transparent group-hover:border-[var(--ma-line)]"}`}>
+                          {coverUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={coverUrl} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+                          ) : (
+                            <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center text-3xl font-semibold text-[var(--ma-ink-soft)]">
+                              {moduleIndex + 1}
+                            </span>
+                          )}
+                        </span>
+                        <span className="mt-2 block text-sm font-semibold [overflow-wrap:anywhere]">{module.title}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+              {selectedModule?.summary?.trim() ? (
+                <p className="mt-3 whitespace-pre-wrap text-sm text-[var(--ma-ink-soft)] [overflow-wrap:anywhere]">
+                  {selectedModule.summary}
+                </p>
+              ) : null}
+            </nav>
+          ) : null}
           <CoursePlaylist
             thumbnailUrlByLessonId={thumbnailUrlByLessonId}
             modules={course.modules}

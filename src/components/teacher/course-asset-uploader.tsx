@@ -38,7 +38,7 @@ const uploadPresets: Array<{
 }> = [
   {
     kind: "module_cover",
-    // A proporção é a do .member-module-card__cover (16/10, object-cover):
+    // A proporção é a do poster de modulo (2/3, object-cover):
     // sem dizer isso aqui o professor só descobria o enquadramento na área do aluno.
     detail: "creatorEditor.assets.presets.module",
     icon: Layers3,
@@ -53,9 +53,11 @@ const uploadPresets: Array<{
 type CourseAssetUploaderProps = {
   course: TeacherCourse;
   isEditable: boolean;
+  onModuleCoverUploaded?: (moduleId: string, assetId: string) => void;
+  onAssetDeleted?: () => void;
 };
 
-export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderProps) {
+export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded, onAssetDeleted }: CourseAssetUploaderProps) {
   const { locale, t } = useTranslation();
   const [assets, setAssets] = useState<CourseAsset[]>([]);
   const [kind, setKind] = useState<CourseAssetKind>("course_cover");
@@ -126,7 +128,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
   async function handleUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!isEditable || !selectedFile) {
+    if (!isEditable || !selectedFile || isUploading) {
       return;
     }
 
@@ -147,7 +149,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
     setIsUploading(true);
 
     try {
-      await uploadCourseAsset({
+      const assetId = await uploadCourseAsset({
         courseId: course.id,
         ownerId: course.ownerId,
         kind,
@@ -157,6 +159,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
         moduleId: requiresModuleTarget ? moduleId : null,
         onProgress: setUploadProgress,
       });
+      if (kind === "module_cover") onModuleCoverUploaded?.(moduleId, assetId);
       setSuccess("uploaded");
       setSelectedFile(null);
       setModuleId("");
@@ -192,6 +195,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
 
     try {
       await deleteCourseAsset(asset);
+      onAssetDeleted?.();
       setSuccess("deleted");
     } catch {
       setError({ kind: "delete" });
@@ -345,7 +349,7 @@ export function CourseAssetUploader({ course, isEditable }: CourseAssetUploaderP
               <img
                 src={previewUrl}
                 alt={t("creatorEditor.assets.previewAlt").replace("{fileName}", () => selectedFile.name)}
-                className="h-16 w-24 shrink-0 rounded-[8px] border border-[var(--color-line)] bg-white object-cover"
+                className={`shrink-0 rounded-[8px] border border-[var(--color-line)] bg-white object-cover ${kind === "module_cover" ? "aspect-[2/3] w-24" : "h-16 w-24"}`}
               />
             ) : null}
             <span>
@@ -471,7 +475,7 @@ function AssetGroup({
                   <img
                     src={asset.downloadUrl}
                     alt={`${getCourseAssetKindLabel(asset.kind, t)}: ${asset.fileName}`}
-                    className="h-16 w-24 shrink-0 rounded-[8px] border border-[var(--color-line)] bg-white object-cover"
+                    className={`shrink-0 rounded-[8px] border border-[var(--color-line)] bg-white object-cover ${asset.kind === "module_cover" ? "aspect-[2/3] w-24" : "h-16 w-24"}`}
                   />
                 ) : null}
                 <div className="min-w-0 flex-1">

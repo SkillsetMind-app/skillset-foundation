@@ -75,6 +75,7 @@ import {
   courseAssetAcceptTypes,
   formatCourseAssetSize,
   getCourseAssetUploadErrorMessage,
+  getModuleCoverAsset,
   isAllowedCourseAssetFile,
   supabaseUploadLimitBytes,
 } from "@/domain/course-asset";
@@ -91,6 +92,7 @@ import { InlineAlert } from "@/components/ui";
 import type { CourseAsset } from "@/domain/course-asset";
 import { isActivationRequiredError } from "@/domain/creator-verification";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
+import { getSafeMediaUrl } from "@/domain/external-url";
 import { isPublicFeatureEnabled } from "@/lib/feature-flags";
 import { countLabel } from "@/lib/i18n/count-label";
 import { track } from "@/lib/posthog/events";
@@ -243,16 +245,6 @@ function parseInstallmentsMax(value: string): number | null {
   }
 
   return normalizeInstallmentsMax(parsedValue);
-}
-
-function normalizeDurationMinutes(value: string): number | null {
-  const parsedValue = Number(value);
-
-  if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
-    return null;
-  }
-
-  return Math.round(parsedValue);
 }
 
 function normalizeDripDelayDays(value: string): number | null {
@@ -488,7 +480,6 @@ export function CourseBuilderStudio() {
   const [lessonTitle, setLessonTitle] = useState("");
   const [lessonType, setLessonType] = useState<LessonType>("video");
   const [lessonDescription, setLessonDescription] = useState("");
-  const [lessonDurationMinutes, setLessonDurationMinutes] = useState("");
   const [lessonDripDelayDays, setLessonDripDelayDays] = useState("");
   const [lessonContentText, setLessonContentText] = useState("");
   const [lessonExternalUrl, setLessonExternalUrl] = useState("");
@@ -990,12 +981,7 @@ export function CourseBuilderStudio() {
       return;
     }
 
-    const durationMinutes = Number(lessonDurationMinutes);
     const nextLessonId = createLocalId("lesson");
-    const nextDurationMinutes =
-      lessonDurationMinutes.trim().length > 0 && Number.isFinite(durationMinutes) && durationMinutes > 0
-        ? Math.round(durationMinutes)
-        : null;
     const nextDripDelayDays = normalizeDripDelayDays(lessonDripDelayDays);
 
     setModules((current) =>
@@ -1010,7 +996,7 @@ export function CourseBuilderStudio() {
                   title: nextTitle,
                   type: lessonType,
                   description: lessonDescription.trim(),
-                  durationMinutes: nextDurationMinutes,
+                  durationMinutes: null,
                   dripDelayDays: nextDripDelayDays,
                   contentText: lessonContentText.trim() || null,
                   externalUrl: lessonExternalUrl.trim() || null,
@@ -1025,7 +1011,6 @@ export function CourseBuilderStudio() {
     }
     setLessonTitle("");
     setLessonDescription("");
-    setLessonDurationMinutes("");
     setLessonDripDelayDays("");
     setLessonContentText("");
     setLessonExternalUrl("");
@@ -1064,6 +1049,20 @@ export function CourseBuilderStudio() {
       ),
     );
     setSuccess(null);
+  }
+
+  function updateModuleCover(moduleId: string, assetId: string) {
+    if (!isEditable || !courseId) return;
+    setModules((current) => current.map((module) => module.id === moduleId
+      ? { ...module, coverAssetId: assetId } : module));
+    refreshCourseAssets();
+  }
+
+  function refreshCourseAssets() {
+    if (!courseId) return;
+    void fetchCourseAssets(courseId).then(setCourseAssets).catch(() => {
+      setError({ code: "load" });
+    });
   }
 
   function moveModule(moduleId: string, direction: "up" | "down") {
@@ -2175,12 +2174,8 @@ export function CourseBuilderStudio() {
                   placeholder={t("creatorEditor.builder.curriculum.moduleTitlePlaceholder")}
                   className="min-w-0 flex-1 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 />
-                {/* So o titulo e obrigatorio; a descricao fica recolhida para o
-                    formulario caber em uma olhada. */}
-                <details className="rounded-[10px] border fine-rule bg-white px-4 py-3">
-                  <summary className="cursor-pointer text-xs font-semibold text-[var(--color-ink-soft)]">
-                    {t("creatorEditor.builder.curriculum.moreOptions")}
-                  </summary>
+                <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                  {t("creatorEditor.builder.curriculum.moduleDescription")}
                   <textarea
                     value={moduleSummary}
                     onChange={(event) => setModuleSummary(event.target.value)}
@@ -2190,7 +2185,7 @@ export function CourseBuilderStudio() {
                     placeholder={t("creatorEditor.builder.curriculum.moduleDescriptionExample")}
                     className="mt-3 w-full resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                   />
-                </details>
+                </label>
                 {moduleError ? (
                   <p
                     role="alert"
@@ -2308,10 +2303,16 @@ export function CourseBuilderStudio() {
 
                     {isExpanded ? (
                     <div className="mt-4 grid gap-3">
-                      <details className="rounded-[10px] border fine-rule bg-white px-4 py-3">
-                        <summary className="cursor-pointer text-xs font-semibold text-[var(--color-ink-soft)]">
-                          {t("creatorEditor.builder.curriculum.moreOptions")}
-                        </summary>
+                      <div className="grid gap-4 border-b border-[var(--color-line)] pb-4 sm:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
+                        {course ? <MembersCoverField
+                          course={course}
+                          moduleId={module.id}
+                          isEditable={isEditable && course.modules.some((saved) => saved.id === module.id)}
+                          coverUrl={getSafeMediaUrl(getModuleCoverAsset(module, courseAssets)?.downloadUrl)}
+                          onUploaded={(assetId) => updateModuleCover(module.id, assetId)}
+                        /> : null}
+                        <label className="grid content-start gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                          {t("creatorEditor.builder.curriculum.moduleDescription")}
                         <textarea
                           value={module.summary ?? ""}
                           onChange={(event) =>
@@ -2323,7 +2324,8 @@ export function CourseBuilderStudio() {
                           placeholder={t("creatorEditor.builder.curriculum.moduleDescriptionPlaceholder")}
                           className="mt-3 w-full resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                         />
-                      </details>
+                        </label>
+                      </div>
 
                       {isLessonFormOpen ? (
                         <form
@@ -2339,7 +2341,7 @@ export function CourseBuilderStudio() {
                               {t("creatorEditor.builder.curriculum.help")}
                             </InlineHelp>
                           </h5>
-                          <div className="grid gap-3 md:grid-cols-[180px_minmax(0,1fr)_140px]">
+                          <div className="grid gap-3 md:grid-cols-[180px_minmax(0,1fr)]">
                             <select
                               value={lessonType}
                               onChange={(event) => setLessonType(event.target.value as LessonType)}
@@ -2360,15 +2362,6 @@ export function CourseBuilderStudio() {
                               aria-label={t("creatorEditor.builder.curriculum.lessonTitle")}
                               placeholder={t("creatorEditor.builder.curriculum.lessonTitle")}
                               className="min-w-0 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                            />
-                            <input
-                              value={lessonDurationMinutes}
-                              onChange={(event) => setLessonDurationMinutes(event.target.value)}
-                              disabled={!isEditable}
-                              inputMode="numeric"
-                              aria-label={t("creatorEditor.builder.curriculum.lessonDuration")}
-                              placeholder={t("creatorEditor.builder.curriculum.minutes")}
-                              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                             />
                           </div>
                           {/* Drip, link, nota, texto e previa gratis sao a
@@ -2505,7 +2498,7 @@ export function CourseBuilderStudio() {
                                 </span>
                               )}
                             </div>
-                            <div className="grid gap-3 lg:grid-cols-[1fr_190px_120px_140px_auto] lg:items-end">
+                            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_190px_140px_auto] lg:items-end">
                               <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
                                 {t("creatorEditor.builder.curriculum.lessonTitle")}
                                 <input
@@ -2537,22 +2530,6 @@ export function CourseBuilderStudio() {
                                     </option>
                                   ))}
                                 </select>
-                              </label>
-                              <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                                {t("creatorEditor.builder.curriculum.minutes")}
-                                <input
-                                  value={lesson.durationMinutes ?? ""}
-                                  onChange={(event) =>
-                                    updateLesson(module.id, lesson.id, {
-                                      durationMinutes: normalizeDurationMinutes(
-                                        event.target.value,
-                                      ),
-                                    })
-                                  }
-                                  disabled={!isEditable}
-                                  inputMode="numeric"
-                                  className="rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                                />
                               </label>
                               <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
                                 {t("creatorEditor.builder.curriculum.delayDays")}
@@ -2917,7 +2894,7 @@ export function CourseBuilderStudio() {
                 : "creatorEditor.builder.curriculum.openMediaLibrary")}
             </button>
             {isMediaLibraryOpen ? (
-              <CourseAssetUploader course={course} isEditable={isEditable} />
+              <CourseAssetUploader course={course} isEditable={isEditable} onModuleCoverUploaded={updateModuleCover} onAssetDeleted={refreshCourseAssets} />
             ) : null}
           </div>
         ) : null}
@@ -3438,18 +3415,22 @@ function MembersAreaTab({
 // the course's public coverImageUrl.
 function MembersCoverField({
   course,
+  moduleId,
   isEditable,
   coverUrl,
   onUploaded,
   onRemove,
 }: {
   course: TeacherCourse;
+  moduleId?: string;
   isEditable: boolean;
   coverUrl: string | null;
   onUploaded: (assetId: string) => void;
-  onRemove: () => void;
+  onRemove?: () => void;
 }) {
   const { t } = useTranslation();
+  const kind = moduleId ? "module_cover" : "members_cover";
+  const title = moduleId ? t("courseMedia.assetKinds.module_cover") : t("creatorEditor.members.cover");
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState<UploadCourseAssetProgress | null>(null);
   const [error, setError] = useState<
@@ -3460,14 +3441,14 @@ function MembersCoverField({
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
 
-    if (!file || !isEditable) {
+    if (!file || !isEditable || isUploading) {
       return;
     }
 
     setError(null);
     setProgress(null);
 
-    if (!isAllowedCourseAssetFile(file, "members_cover")) {
+    if (!isAllowedCourseAssetFile(file, kind)) {
       setError({ kind: "invalid-image" });
       setFileInputKey((current) => current + 1);
       return;
@@ -3479,7 +3460,8 @@ function MembersCoverField({
       const assetId = await uploadCourseAsset({
         courseId: course.id,
         ownerId: course.ownerId,
-        kind: "members_cover",
+        kind,
+        moduleId,
         file,
         isPreview: false,
         onProgress: setProgress,
@@ -3495,14 +3477,14 @@ function MembersCoverField({
   }
 
   return (
-    <section className="grid gap-3 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4">
+    <section aria-label={title} className={moduleId ? "grid min-w-0 content-start gap-3" : "grid gap-3 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            {t("creatorEditor.members.cover")}
+            {title}
           </p>
           <p className="mt-1 max-w-xl text-xs leading-5 text-[var(--color-ink-soft)]">
-            {t("creatorEditor.members.coverHelp").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))}
+            {t(moduleId ? "creatorEditor.assets.presets.module" : "creatorEditor.members.coverHelp").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))}
           </p>
         </div>
         {coverUrl ? (
@@ -3512,13 +3494,13 @@ function MembersCoverField({
         ) : null}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-[200px_1fr] sm:items-start">
-        <div className="relative aspect-video overflow-hidden rounded-[10px] border border-[var(--color-line)] bg-white">
+      <div className={moduleId ? "grid min-w-0 gap-3" : "grid gap-3 sm:grid-cols-[200px_1fr] sm:items-start"}>
+        <div className={`relative overflow-hidden rounded-[8px] border border-[var(--color-line)] bg-white ${moduleId ? "aspect-[2/3] w-32" : "aspect-video"}`}>
           {coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- members cover is an arbitrary CourseAsset URL
             <img
               src={coverUrl}
-              alt={t("creatorEditor.members.coverAlt").replace("{courseTitle}", () => course.title || t("publicCourses.course"))}
+              alt={moduleId ? title : t("creatorEditor.members.coverAlt").replace("{courseTitle}", () => course.title || t("publicCourses.course"))}
               className="h-full w-full object-cover"
             />
           ) : (
@@ -3548,14 +3530,15 @@ function MembersCoverField({
             <input
               key={fileInputKey}
               type="file"
-              accept={courseAssetAcceptTypes.members_cover}
+              accept={courseAssetAcceptTypes[kind]}
+              aria-label={moduleId ? t("courseMedia.assetKinds.module_cover") : undefined}
               disabled={!isEditable || isUploading}
               onChange={handleFile}
               className="sr-only"
             />
           </label>
 
-          {coverUrl && isEditable && !isUploading ? (
+          {coverUrl && onRemove && isEditable && !isUploading ? (
             <button
               type="button"
               onClick={onRemove}

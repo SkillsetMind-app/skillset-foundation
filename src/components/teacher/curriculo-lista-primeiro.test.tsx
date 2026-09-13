@@ -1,9 +1,11 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { CourseBuilderStudio } from "@/components/teacher/course-builder-studio";
 import type { TeacherCourse } from "@/domain/teacher-course";
+import { uploadCourseAsset } from "@/lib/data/course-assets";
+import { updateTeacherCourseBuilder } from "@/lib/data/teacher-courses";
 
 // O que a pessoa sofria: a aba Curriculum abria com dois formularios grandes
 // sempre expandidos - "Add module" e "Add lesson" (este com um select "Choose
@@ -120,7 +122,7 @@ describe("aba Curriculum: a lista de modulos vem primeiro", () => {
     expect(card.previousElementSibling).toBeNull();
   });
 
-  it("so mostra o formulario de modulo depois do clique, e com a descricao recolhida", async () => {
+  it("abre titulo e descricao juntos ao criar modulo", async () => {
     renderBuilder();
     await screen.findByRole("heading", { name: mocks.course.title });
 
@@ -128,10 +130,8 @@ describe("aba Curriculum: a lista de modulos vem primeiro", () => {
     const form = curriculumCard().querySelector("form");
     expect(form).not.toBeNull();
     expect(within(form as HTMLElement).getByRole("textbox", { name: "Module title" })).toHaveValue("");
-    // Titulo obrigatorio a vista; descricao a um clique.
-    const details = (form as HTMLElement).querySelector("details");
-    expect(details?.open).toBe(false);
-    expect(within(details as HTMLElement).getByText("More options")).toBeInTheDocument();
+    expect(within(form as HTMLElement).getByRole("textbox", { name: "Module description" })).toBeVisible();
+    expect((form as HTMLElement).querySelector("details")).toBeNull();
 
     // A validacao que ja existia continua de pe.
     fireEvent.click(screen.getByRole("button", { name: "Create module" }));
@@ -196,5 +196,58 @@ describe("aba Curriculum: a lista de modulos vem primeiro", () => {
     expect(screen.getByText("BIBLIOTECA DE MIDIA")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Hide media library" }));
     expect(screen.queryByText("BIBLIOTECA DE MIDIA")).not.toBeInTheDocument();
+  });
+
+  it("envia a capa pelo modulo certo e grava o asset sem tocar nas aulas", async () => {
+    vi.mocked(uploadCourseAsset).mockResolvedValueOnce("poster-new");
+    renderBuilder();
+    await screen.findByRole("heading", { name: mocks.course.title });
+    fireEvent.click(screen.getByRole("button", { name: "Show the lessons in module 2" }));
+    const poster = screen.getByRole("region", { name: "Module cover" });
+    expect(poster.querySelector('.aspect-\\[2\\/3\\]')).not.toBeNull();
+    const description = screen.getByRole("textbox", { name: "Module 2 description" });
+    expect(description.closest("details")).toBeNull();
+    const file = new File(["png"], "module.png", { type: "image/png" });
+    fireEvent.change(within(poster).getByLabelText("Module cover"), { target: { files: [file] } });
+    await waitFor(() => expect(uploadCourseAsset).toHaveBeenCalledWith(expect.objectContaining({
+      courseId: "course-1", ownerId: "teacher-1", moduleId: "m2", kind: "module_cover", file,
+    })));
+    fireEvent.click(screen.getAllByRole("button", { name: "Save draft" })[0]);
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalled());
+    expect(vi.mocked(updateTeacherCourseBuilder).mock.calls.at(-1)?.[1].modules).toEqual([
+      expect.objectContaining({ id: "m1", title: "Start here", lessons: [] }),
+      expect.objectContaining({ id: "m2", title: "Deep work", coverAssetId: "poster-new", lessons: [] }),
+    ]);
+  });
+
+  it("nao permite capa em modulo ainda nao salvo nem pede minutos da aula", async () => {
+    renderBuilder();
+    await screen.findByRole("heading", { name: mocks.course.title });
+    fireEvent.click(screen.getByRole("button", { name: "Add module" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Module title" }), { target: { value: "New module" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create module" }));
+    expect(screen.getByLabelText("Module cover", { selector: "input" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Add lesson to module 3" }));
+    expect(screen.queryByRole("textbox", { name: "Lesson duration" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Minutes", { exact: true })).not.toBeInTheDocument();
+  });
+
+  it("recusa arquivo invalido e permite repetir uma capa cujo envio falhou", async () => {
+    vi.mocked(uploadCourseAsset).mockRejectedValueOnce(new Error("network"));
+    renderBuilder();
+    await screen.findByRole("heading", { name: mocks.course.title });
+    fireEvent.click(screen.getByRole("button", { name: "Show the lessons in module 1" }));
+    fireEvent.change(screen.getByLabelText("Module cover", { selector: "input" }), {
+      target: { files: [new File(["video"], "lesson.mp4", { type: "video/mp4" })] },
+    });
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(uploadCourseAsset).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Module cover", { selector: "input" }), {
+      target: { files: [new File(["png"], "poster.png", { type: "image/png" })] },
+    });
+    await waitFor(() => expect(uploadCourseAsset).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByLabelText("Module cover", { selector: "input" })).toBeEnabled());
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   });
 });

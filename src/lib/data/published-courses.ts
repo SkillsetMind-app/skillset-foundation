@@ -365,6 +365,7 @@ export function teacherCourseToLearningCourse(course: TeacherCourse): Course {
     modules: course.modules.map((module) => ({
       id: module.id,
       title: module.title,
+      coverAssetId: module.coverAssetId ?? null,
       summary:
         module.summary
         || `${module.lessons.length} lesson${module.lessons.length === 1 ? "" : "s"}`,
