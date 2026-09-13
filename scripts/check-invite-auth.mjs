@@ -162,9 +162,20 @@ async function run() {
     auth.stderr.on('data', (chunk) => { rawOutput = (rawOutput + chunk).slice(-1024 * 1024); });
     let launchError = false;
     auth.on('error', () => { launchError = true; });
+    const startupDiagnostic = () => {
+      const categories = [
+        ['image-pull', /pull access denied|toomanyrequests|manifest unknown|failed to resolve|unauthorized/i],
+        ['database-connection', /failed to connect|connection refused|no pg_hba|password authentication|SSL|TLS/i],
+        ['database-migration', /migration|schema|relation|permission denied|must be owner/i],
+        ['configuration', /configuration|envconfig|required|invalid.*(port|url|duration)|unable to load/i],
+        ['listener', /address already in use|bind:/i],
+      ].filter(([, pattern]) => pattern.test(rawOutput)).map(([label]) => label);
+      const sqlState = rawOutput.match(/SQLSTATE ([A-Z0-9]{5})/)?.[1] ?? 'none';
+      console.error(`[invite-auth] STARTUP exit=${auth.exitCode ?? 'running'} categories=${categories.join(',') || 'unclassified'} sqlstate=${sqlState}`);
+    };
     let healthy = false;
     for (let attempt = 0; attempt < 120; attempt++) {
-      assert(!launchError && auth.exitCode === null);
+      if (launchError || auth.exitCode !== null) { startupDiagnostic(); assert.fail(); }
       try {
         const response = await fetch(`${origin}/health`, { signal: AbortSignal.timeout(1000) });
         healthy = response.ok;
@@ -173,7 +184,7 @@ async function run() {
       if (healthy) break;
       await pause(1000);
     }
-    assert(healthy);
+    if (!healthy) { startupDiagnostic(); assert.fail(); }
     check('gotrue-ready-v2.196.0', true);
 
     const encode = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
