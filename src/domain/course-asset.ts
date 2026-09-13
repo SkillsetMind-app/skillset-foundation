@@ -323,6 +323,25 @@ export function canViewCourseAssetVideo(params: {
   return isAdmin;
 }
 
+/** Callers supply assets from one course; legacy covers use newest date, then greatest id. */
+export function getModuleCoverAsset(
+  module: { id: string; coverAssetId?: string | null },
+  assets: readonly CourseAsset[],
+): CourseAsset | null {
+  const covers = assets.filter((asset) => asset.kind === "module_cover" && asset.moduleId === module.id);
+  const selected = covers.find((asset) => asset.id === module.coverAssetId);
+  if (selected) return selected;
+
+  return covers.reduce<CourseAsset | null>((newest, asset) => {
+    if (!newest) return asset;
+    const assetDate = Date.parse(String(asset.createdAt ?? ""));
+    const newestDate = Date.parse(String(newest.createdAt ?? ""));
+    const a = Number.isNaN(assetDate) ? -Infinity : assetDate;
+    const b = Number.isNaN(newestDate) ? -Infinity : newestDate;
+    return a > b || (a === b && asset.id > newest.id) ? asset : newest;
+  }, null);
+}
+
 /** Select the newest playable lesson upload; equal or invalid dates stay stable. */
 export function getPrimaryLessonVideoAsset(assets: readonly CourseAsset[]): CourseAsset | null {
   return assets

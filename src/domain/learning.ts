@@ -16,6 +16,7 @@ export type CourseModule = {
   id: string;
   title: string;
   summary: string;
+  coverAssetId?: string | null;
   lessons: Lesson[];
 };
 

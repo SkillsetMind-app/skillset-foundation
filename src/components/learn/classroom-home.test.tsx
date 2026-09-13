@@ -404,6 +404,125 @@ describe("sala de aula com matricula real", () => {
     expect(document.querySelector(".member-classroom-head")).toBeNull();
   });
 
+  it("renders explicit and deterministic legacy module posters using only safe course images", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.pathname = "/learn/courses/demo-course";
+    mocks.completed = [];
+    vi.mocked(subscribeToCourseAssets).mockClear();
+    vi.mocked(getProtectedCourseAssetObjectUrl).mockClear();
+    let emit!: (assets: CourseAsset[]) => void;
+    vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_id, callback) => {
+      emit = callback;
+      return vi.fn();
+    });
+    const withPosters: Course = { ...course, modules: [
+      { ...course.modules[0], coverAssetId: "old" },
+      { id: "m2", title: "Legacy module", summary: "", lessons: [] },
+    ] };
+    const cover = (patch: Partial<CourseAsset>): CourseAsset => ({
+      id: "old", courseId: course.id, ownerId: "teacher-1", lessonId: null, moduleId: "m1",
+      kind: "module_cover", fileName: "z-old.png", contentType: "image/png", size: 123,
+      storagePath: "courses/course-1/assets/old.png", downloadUrl: "/old.png", isPreview: false,
+      createdAt: "2026-09-01", ...patch,
+    });
+    const assets = [
+      cover({}),
+      cover({ id: "new", createdAt: "2026-09-02", fileName: "a-new.png", downloadUrl: "/new.png" }),
+      cover({ id: "legacy-old", moduleId: "m2", downloadUrl: "/legacy-old.png" }),
+      cover({ id: "legacy-new", moduleId: "m2", createdAt: "2026-09-02", downloadUrl: "/legacy-new.png" }),
+      cover({ id: "tracker", createdAt: "2026-09-03", downloadUrl: "https://tracker.invalid/secret.png" }),
+      cover({ id: "private", moduleId: "m2", createdAt: "2026-09-03", downloadUrl: null }),
+      cover({ id: "other-course", courseId: "other", moduleId: "m2", createdAt: "2026-09-03", downloadUrl: "/other.png" }),
+      cover({ id: "material", kind: "lesson_material", createdAt: "2026-09-03", downloadUrl: "/material.png" }),
+      cover({ id: "not-image", contentType: "application/pdf", createdAt: "2026-09-03", downloadUrl: "/document.pdf" }),
+    ];
+    const { rerender } = render(<I18nProvider initialLocale="en">
+      <EnrolledCourseWorkspace course={withPosters} enableFirestoreAssets />
+    </I18nProvider>);
+    const rail = screen.getByRole("navigation", { name: "Modules" });
+    expect(rail.closest("aside")).toHaveClass("member-classroom-sidebar");
+    act(() => emit(assets));
+    const firstPoster = within(rail).getByRole("button", { name: "Open module: Module one" });
+    expect(firstPoster).toHaveClass("w-[120px]", "sm:w-[160px]");
+    expect(firstPoster).toHaveAttribute("aria-current", "true");
+    const image = firstPoster.querySelector("img")!;
+    expect(image).toHaveAttribute("src", "/old.png");
+    expect(image).toHaveAttribute("alt", "");
+    expect(image).toHaveClass("object-cover");
+    expect(image.parentElement).toHaveClass("aspect-[2/3]");
+    expect(Array.from(rail.querySelectorAll("img"), (img) => img.getAttribute("src")))
+      .toEqual(["/old.png", "/legacy-new.png"]);
+    act(() => emit([...assets].reverse()));
+    expect(firstPoster.querySelector("img")).toHaveAttribute("src", "/old.png");
+    expect(within(rail).getByRole("button", { name: "Open module: Legacy module" }).querySelector("img"))
+      .toHaveAttribute("src", "/legacy-new.png");
+    rerender(<I18nProvider initialLocale="en"><EnrolledCourseWorkspace course={{ ...withPosters,
+      modules: withPosters.modules.map((module) => ({ ...module, coverAssetId: "tracker" })),
+    }} enableFirestoreAssets /></I18nProvider>);
+    expect(firstPoster.querySelector("img")).toHaveAttribute("src", "/new.png");
+    act(() => emit([]));
+    expect(rail.querySelector("img")).toBeNull();
+    act(() => emit(assets));
+    expect(subscribeToCourseAssets).toHaveBeenCalledTimes(1);
+    expect(getProtectedCourseAssetObjectUrl).not.toHaveBeenCalled();
+    rerender(<I18nProvider initialLocale="en"><EnrolledCourseWorkspace
+      course={{ ...withPosters, id: "other", slug: "other" }} enableFirestoreAssets /></I18nProvider>);
+    expect(document.querySelector('img[src="/new.png"]')).toBeNull();
+    expect(document.querySelector('img[src="/legacy-new.png"]')).toBeNull();
+  });
+
+  it("module posters navigate to pending lessons without bypassing drip or recording progress", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1&campaign=literal");
+    mocks.pathname = "/learn/courses/demo-course";
+    mocks.completed = ["l1"];
+    const withModules: Course = { ...course, dripStrategy: "sequential_progress", modules: [
+      { ...course.modules[0], summary: "First module description" },
+      { id: "m2", title: "Module $$2 $&", summary: "Second module description", lessons: [
+        { id: "l3", title: "Lesson three", type: "text", duration: "", isPreview: false, contentText: "Locked body" },
+      ] },
+      { id: "m3", title: "Empty module", summary: "", lessons: [] },
+    ] };
+    const { rerender } = render(<I18nProvider initialLocale="en"><EnrolledCourseWorkspace course={withModules} /></I18nProvider>);
+    const rail = screen.getByRole("navigation", { name: "Modules" });
+    expect(rail.closest("aside")).toHaveClass("min-w-0");
+    expect(within(rail).getByRole("list")).toHaveClass("overflow-x-scroll", "[scrollbar-width:auto]");
+    expect(within(rail).getByText("First module description").tagName).toBe("P");
+    expect(within(rail).queryByText("Second module description")).not.toBeInTheDocument();
+    fireEvent.click(within(rail).getByRole("button", { name: "Open module: Module one" }));
+    expect(mocks.replace).toHaveBeenLastCalledWith("/learn/courses/demo-course?lesson=l2&campaign=literal", { scroll: false });
+    expect(screen.getByText("Two")).toBeInTheDocument();
+    const second = within(rail).getByRole("button", { name: "Open module: Module $$2 $&" });
+    fireEvent.click(second);
+    expect(mocks.replace).toHaveBeenLastCalledWith("/learn/courses/demo-course?lesson=l3&campaign=literal", { scroll: false });
+    expect(second).toHaveAttribute("aria-current", "true");
+    expect(within(rail).getByText("Second module description").tagName).toBe("P");
+    expect(within(rail).queryByText("First module description")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Lesson locked" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Lesson locked" })).toBeDisabled();
+    expect(screen.queryByText("Locked body")).not.toBeInTheDocument();
+    expect(within(rail).getByRole("button", { name: "Open module: Empty module" })).toBeDisabled();
+    expect(document.getElementById("member-lesson-player")?.scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
+    expect(recordLessonProgress).not.toHaveBeenCalled();
+    rerender(<I18nProvider initialLocale="en"><EnrolledCourseWorkspace course={{ ...withModules,
+      modules: withModules.modules.map((module) => ({ ...module, summary: "  " })),
+    }} /></I18nProvider>);
+    expect(rail.querySelector("p")).toBeNull();
+  });
+
+  it("does not subscribe to module covers or show posters without an enrollment", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    vi.mocked(subscribeToCourseAssets).mockClear();
+    vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, onNext) => {
+      onNext(null);
+      return vi.fn();
+    });
+    render(<I18nProvider initialLocale="en"><EnrolledCourseWorkspace course={course} enableFirestoreAssets /></I18nProvider>);
+    expect(screen.queryByRole("navigation", { name: "Modules" })).not.toBeInTheDocument();
+    expect(subscribeToCourseAssets).not.toHaveBeenCalled();
+    expect(recordLessonProgress).not.toHaveBeenCalled();
+  });
+
   it("uses subscribed lesson thumbnails in both lists without signing private content", () => {
     mocks.searchParams = new URLSearchParams("lesson=l1");
     mocks.completed = [];

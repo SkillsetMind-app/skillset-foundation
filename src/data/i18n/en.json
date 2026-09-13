@@ -1253,6 +1253,8 @@
       },
       "curriculum": {
         "lessons": "Lessons",
+        "modules": "Modules",
+        "openModule": "Open module: {title}",
         "title": "Curriculum",
         "all": "All lessons",
         "close": "Close lesson list",
@@ -3862,7 +3864,7 @@
     },
     "assets": {
       "presets": {
-        "module": "Visual cover for one module in the student members area. Shown at 16:10.",
+        "module": "Vertical module cover (2:3). JPG, PNG or WebP.",
         "course": "Public artwork for marketplace, course detail, and previews."
       },
       "errors": {

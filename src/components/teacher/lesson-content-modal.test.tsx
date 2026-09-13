@@ -371,15 +371,13 @@ describe("LessonContentModal — video tab", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Settings/ }));
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByRole("button", { name: /^Ajustes/ })).toHaveAttribute("aria-current", "page");
-    const type = screen.getByLabelText("Tipo de lección");
-    expect(type).toHaveValue("external_embed");
-    expect(within(type).getAllByRole("option").map((option) => (option as HTMLOptionElement).value))
-      .toEqual(["video", "text", "live_recording", "download", "external_embed"]);
-    expect(screen.getByLabelText("Duración en minutos")).toHaveValue("12");
+    expect(screen.queryByLabelText("Tipo de lección")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Duración en minutos")).not.toBeInTheDocument();
     expect(screen.getByDisplayValue("7")).toBeInTheDocument();
     expect(screen.getByText("Módulo 1 - Módulo $& {lessonIndex} / Lección 1")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Miniatura de la lección: Miniatura $&.png" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Usar esta lección como vista previa gratuita" })).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(screen.getByRole("button", { name: /^Descripción/ }));
+    expect(screen.getByRole("img", { name: "Miniatura de la lección: Miniatura $&.png" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Materiales/ }));
     expect(screen.getByLabelText("Material de la lección")).toBeInTheDocument();
     expect(screen.getByText("Todavía no hay materiales complementarios.")).toBeInTheDocument();
@@ -517,10 +515,10 @@ describe("LessonContentModal — video tab", () => {
     expect(screen.queryByTestId("storage-preview")).not.toBeInTheDocument();
   });
 
-  it("shows the uploaded thumbnail image in Settings", () => {
+  it("shows the uploaded thumbnail beside lesson details, not release settings", () => {
     currentAssets = [videoAsset({ kind: "lesson_thumbnail", contentType: "image/png", fileName: "thumbnail.png", downloadUrl: "https://example.supabase.co/storage/v1/object/public/public-media/thumbnail.png" })];
     renderModal();
-    fireEvent.click(screen.getByRole("button", { name: /^Settings/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
     expect(screen.getByRole("img", { name: "Lesson thumbnail: thumbnail.png" })).toHaveAttribute("src", currentAssets[0].downloadUrl);
   });
 

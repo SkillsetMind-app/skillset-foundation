@@ -33,7 +33,6 @@ import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import { getSafeMediaUrl } from "@/domain/external-url";
 import {
   resolveLessonVideoSource,
-  type LessonType,
   type TeacherCourse,
   type TeacherCourseModule,
   type TeacherLesson,
@@ -100,19 +99,6 @@ const lessonModalTabs: Array<{
   { value: "description", icon: FileText },
   { value: "materials", icon: UploadCloud },
   { value: "settings", icon: Settings },
-];
-
-const editableLessonTypes: LessonType[] = [
-  "video",
-  "text",
-  // Quiz/assignment authoring is intentionally hidden until a real assessment
-  // engine exists (no question/submission/grading model yet). Exposing them lets
-  // instructors sell a course whose paid lessons render only a placeholder.
-  // See docs/plans/2026-06-23-launch-readiness.md (B8). The LessonType union and
-  // student-side rendering are kept for forward-compat.
-  "live_recording",
-  "download",
-  "external_embed",
 ];
 
 function getAssetStatus(assets: CourseAsset[], lesson: TeacherLesson) {
@@ -257,7 +243,7 @@ export function LessonContentModal({
       resetUploadState("lesson_material");
     }
 
-    if (nextTab === "settings") {
+    if (nextTab === "description" || nextTab === "settings") {
       resetUploadState("lesson_thumbnail");
     }
   }
@@ -603,6 +589,41 @@ export function LessonContentModal({
                   placeholder={t("creatorEditor.lesson.textPlaceholder")}
                 />
               </label>
+              <div className="lesson-modal-note">
+                <ImageIcon aria-hidden="true" size={17} />
+                <p>
+                  {t("creatorEditor.lesson.thumbnailHelp")}
+                </p>
+              </div>
+              <LessonUploadForm
+                error={errorMessage}
+                isEditable={isEditable}
+                isPreviewAsset={isPreviewAsset}
+                isUploading={isUploading}
+                onChangePreview={setIsPreviewAsset}
+                onFileChange={(file) => {
+                  resetUploadState("lesson_thumbnail");
+                  setSelectedFile(file);
+                }}
+                onSubmit={(event) => {
+                  setUploadKind("lesson_thumbnail");
+                  void handleUpload(event);
+                }}
+                progressLabel={formatProgress(uploadProgress, t)}
+                progressPercent={uploadProgress?.percent}
+                onCancel={cancelUpload}
+                selectedFile={selectedFile}
+                fileInputKey={fileInputKey}
+                success={successMessage}
+                uploadKind="lesson_thumbnail"
+              />
+              <LessonAssetList
+                assets={thumbnailAssets}
+                emptyLabel={t("creatorEditor.lesson.noThumbnail")}
+                isEditable={isEditable}
+                deletingAssetId={deletingAssetId}
+                onDelete={handleDeleteAsset}
+              />
             </div>
           ) : null}
 
@@ -648,40 +669,6 @@ export function LessonContentModal({
 
           {tab === "settings" ? (
             <div className="grid gap-5">
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="lesson-modal-field">
-                  <span>{t("creatorEditor.lesson.type")}</span>
-                  <select
-                    value={lesson.type}
-                    onChange={(event) => onUpdateLesson({ type: event.target.value as LessonType })}
-                    disabled={!isEditable}
-                  >
-                    {editableLessonTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {t(`publicCourses.lessonTypes.${type}`)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="lesson-modal-field">
-                  <span>{t("creatorEditor.lesson.duration")}</span>
-                  <input
-                    value={lesson.durationMinutes ?? ""}
-                    inputMode="numeric"
-                    onChange={(event) => {
-                      const parsedValue = Number(event.target.value);
-                      onUpdateLesson({
-                        durationMinutes:
-                          Number.isFinite(parsedValue) && parsedValue > 0
-                            ? Math.round(parsedValue)
-                            : null,
-                      });
-                    }}
-                    disabled={!isEditable}
-                    placeholder="12"
-                  />
-                </label>
-              </div>
               <div className="lesson-modal-setting">
                 <div>
                   <strong>{t("creatorEditor.lesson.freePreview")}</strong>
@@ -717,41 +704,6 @@ export function LessonContentModal({
                   placeholder="7"
                 />
               </label>
-              <div className="lesson-modal-note">
-                <ImageIcon aria-hidden="true" size={17} />
-                <p>
-                  {t("creatorEditor.lesson.thumbnailHelp")}
-                </p>
-              </div>
-              <LessonUploadForm
-                error={errorMessage}
-                isEditable={isEditable}
-                isPreviewAsset={isPreviewAsset}
-                isUploading={isUploading}
-                onChangePreview={setIsPreviewAsset}
-                onFileChange={(file) => {
-                  resetUploadState("lesson_thumbnail");
-                  setSelectedFile(file);
-                }}
-                onSubmit={(event) => {
-                  setUploadKind("lesson_thumbnail");
-                  void handleUpload(event);
-                }}
-                progressLabel={formatProgress(uploadProgress, t)}
-                progressPercent={uploadProgress?.percent}
-                onCancel={cancelUpload}
-                selectedFile={selectedFile}
-                fileInputKey={fileInputKey}
-                success={successMessage}
-                uploadKind="lesson_thumbnail"
-              />
-              <LessonAssetList
-                assets={thumbnailAssets}
-                emptyLabel={t("creatorEditor.lesson.noThumbnail")}
-                isEditable={isEditable}
-                deletingAssetId={deletingAssetId}
-                onDelete={handleDeleteAsset}
-              />
             </div>
           ) : null}
           <p className="lesson-modal__guidance">

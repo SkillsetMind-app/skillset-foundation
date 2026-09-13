@@ -8,13 +8,54 @@ import {
   courseAssetUploadLimitMessage,
   formatCourseAssetSize,
   getCourseAssetUploadErrorMessage,
+  getModuleCoverAsset,
   isAllowedCourseAssetFile,
   supabaseUploadLimitBytes,
+  type CourseAsset,
 } from "./course-asset";
 
 function file(name: string, type: string, size = 1024) {
   return new File(["x".repeat(size)], name, { type });
 }
+
+describe("getModuleCoverAsset", () => {
+  const cover = (patch: Partial<CourseAsset> = {}): CourseAsset => ({
+    id: "old", courseId: "course-1", ownerId: "teacher-1", kind: "module_cover",
+    moduleId: "m1", lessonId: null, fileName: "z-old.png", contentType: "image/png",
+    size: 100, storagePath: "old.png", isPreview: false, createdAt: "2026-09-01",
+    ...patch,
+  });
+  const old = cover();
+  const newest = cover({ id: "new", fileName: "a-new.png", createdAt: "2026-09-02" });
+
+  it("honors the explicit cover only within the module and cover kind", () => {
+    const otherModule = cover({ id: "other-module", moduleId: "m2" });
+    const otherKind = cover({ id: "other-kind", kind: "lesson_material" });
+    const assets = [newest, old, otherModule, otherKind];
+    expect(getModuleCoverAsset({ id: "m1", coverAssetId: old.id }, assets)).toBe(old);
+    for (const coverAssetId of [otherModule.id, otherKind.id, "deleted", null]) {
+      expect(getModuleCoverAsset({ id: "m1", coverAssetId }, assets)).toBe(newest);
+    }
+    expect(getModuleCoverAsset({ id: "missing", coverAssetId: old.id }, assets)).toBeNull();
+    expect(getModuleCoverAsset({ id: "m1" }, [])).toBeNull();
+  });
+
+  it("uses newest creation time then greatest id, independent of input order or filename", () => {
+    const tie = cover({ id: "z-tie", fileName: "0.png", createdAt: newest.createdAt });
+    const invalid = cover({ id: "zz-invalid", createdAt: "invalid" });
+    const assets = Object.freeze([old, tie, invalid, newest]);
+    expect(getModuleCoverAsset({ id: "m1" }, assets)).toBe(tie);
+    expect(getModuleCoverAsset({ id: "m1" }, [...assets].reverse())).toBe(tie);
+    expect(assets).toEqual([old, tie, invalid, newest]);
+  });
+
+  it("breaks missing or invalid date ties by id", () => {
+    const a = cover({ id: "a", createdAt: undefined });
+    const z = cover({ id: "z", createdAt: "invalid" });
+    expect(getModuleCoverAsset({ id: "m1" }, [a, z])).toBe(z);
+    expect(getModuleCoverAsset({ id: "m1" }, [z, a])).toBe(z);
+  });
+});
 
 describe("course asset validation", () => {
   it("allows common lesson material formats creators need for classes", () => {

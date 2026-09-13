@@ -10,7 +10,9 @@ vi.mock("@/lib/supabase/client", () => ({
 
 import {
   courseUrlSlug,
+  rowToTeacherCourse,
   subscribeToViewableTeacherCourse,
+  teacherCourseToLearningCourse,
 } from "@/lib/data/published-courses";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -81,6 +83,26 @@ describe("courseUrlSlug", () => {
       .toBe("clinical-performance");
     expect(courseUrlSlug({ id: "course-abc123", titleKey: undefined }))
       .toBe("course-abc123");
+  });
+});
+
+describe("teacherCourseToLearningCourse module covers", () => {
+  it("preserves explicit cover selection from the database module through the learner adapter", () => {
+    const teacher = rowToTeacherCourse({
+      ...courseRow,
+      modules: [
+        { id: "m1", title: "Module one", summary: "Authored description", coverAssetId: "selected-cover",
+          lessons: [{ id: "l1", title: "First lesson", type: "text", description: "Lesson description" }] },
+        { id: "m2", title: "Legacy module", lessons: [] },
+      ],
+    });
+    const result = teacherCourseToLearningCourse(teacher);
+    expect(result.modules[0]).toMatchObject({
+      id: "m1", title: "Module one", summary: "Authored description", coverAssetId: "selected-cover",
+      lessons: [{ id: "l1", title: "First lesson", type: "text", description: "Lesson description" }],
+    });
+    expect(result.modules[1].coverAssetId).toBeNull();
+    expect(teacher.modules[0].coverAssetId).toBe("selected-cover");
   });
 });
 

@@ -107,6 +107,7 @@ describe("CourseAssetUploader", () => {
     fireEvent.change(input, { target: { files: [file] } });
     fireEvent.click(screen.getByRole("checkbox"));
     const originalPreview = screen.getByRole("img", { name: "Preview of portada-$$-$&.png" });
+    expect(originalPreview).toHaveClass("aspect-[2/3]", "object-cover");
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByLabelText("Elige un archivo para Portada del módulo")).toBe(input);
     expect(screen.getByLabelText("Adjuntar al módulo")).toHaveValue("m1");
@@ -131,6 +132,22 @@ describe("CourseAssetUploader", () => {
     unmount();
     expect(URL.revokeObjectURL).toHaveBeenCalledExactlyOnceWith("blob:preview-1");
     expect(mocks.unsubscribe).toHaveBeenCalledOnce();
+  });
+
+  it("liga a nova capa ao modulo tambem pela biblioteca de midia", async () => {
+    const onModuleCoverUploaded = vi.fn();
+    mocks.uploadCourseAsset.mockResolvedValueOnce("poster-library");
+    render(<I18nProvider initialLocale="en"><CourseAssetUploader
+      course={{ ...course, modules: [{ id: "m1", title: "Module", lessons: [] }] }}
+      isEditable onModuleCoverUploaded={onModuleCoverUploaded}
+    /></I18nProvider>);
+    fireEvent.change(screen.getByLabelText("Asset type"), { target: { value: "module_cover" } });
+    fireEvent.change(screen.getByLabelText("Attach to module"), { target: { value: "m1" } });
+    fireEvent.change(screen.getByLabelText("Choose a module cover file"), {
+      target: { files: [new File(["png"], "cover.png", { type: "image/png" })] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Upload asset" }));
+    await waitFor(() => expect(onModuleCoverUploaded).toHaveBeenCalledWith("m1", "poster-library"));
   });
 
   it("translates existing upload success and delete confirmation while retaining the filename literally", async () => {
@@ -174,12 +191,14 @@ describe("CourseAssetUploader", () => {
     mocks.assets = [asset];
     if (fails) vi.mocked(deleteCourseAsset).mockRejectedValueOnce(new Error("Fixture failure"));
     vi.spyOn(window, "confirm").mockReturnValue(true);
-    render(<I18nProvider initialLocale="en"><SwitchLanguage /><CourseAssetUploader course={course} isEditable /></I18nProvider>);
+    const onAssetDeleted = vi.fn();
+    render(<I18nProvider initialLocale="en"><SwitchLanguage /><CourseAssetUploader course={course} isEditable onAssetDeleted={onAssetDeleted} /></I18nProvider>);
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     await screen.findByText(fails ? /We could not delete this asset/ : "Asset deleted.");
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByText(fails ? "No pudimos eliminar este archivo. Comprueba la propiedad del curso y los permisos actuales." : "Archivo eliminado.")).toBeInTheDocument();
     expect(deleteCourseAsset).toHaveBeenCalledExactlyOnceWith(asset);
+    expect(onAssetDeleted).toHaveBeenCalledTimes(fails ? 0 : 1);
     expect(subscribeToCourseAssets).toHaveBeenCalledOnce();
     expect(mocks.uploadCourseAsset).not.toHaveBeenCalled();
   });

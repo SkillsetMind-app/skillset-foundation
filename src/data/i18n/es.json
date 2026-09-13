@@ -1253,6 +1253,8 @@
       },
       "curriculum": {
         "lessons": "Lecciones",
+        "modules": "Módulos",
+        "openModule": "Abrir módulo: {title}",
         "title": "Temario",
         "all": "Todas las lecciones",
         "close": "Cerrar lista de lecciones",
@@ -3862,7 +3864,7 @@
     },
     "assets": {
       "presets": {
-        "module": "Portada de un módulo en el área de miembros. Se muestra en proporción 16:10.",
+        "module": "Portada vertical del módulo (2:3). JPG, PNG o WebP.",
         "course": "Imagen pública para el marketplace, la página del curso y las vistas previas."
       },
       "errors": {
