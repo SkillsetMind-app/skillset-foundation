@@ -154,6 +154,16 @@ describe("legal document translation from the request cookie", () => {
     expect(screen.getByRole("main")).toHaveTextContent("estas condiciones prevalecen para tu actividad como educador");
   });
 
+  it.each(["en", "es"] as const)("does not promise US-only processing or unverified transfer safeguards in %s", async (locale) => {
+    request.locale = locale;
+    render(await PrivacyPage());
+    const transfers = screen.getByRole("heading", { name: legalDictionary(locale).privacy.heading6 }).parentElement!;
+    expect(transfers).toHaveTextContent(locale === "en"
+      ? "the United States and in other countries where they operate"
+      : "Estados Unidos y en otros países donde operan");
+    expect(transfers.textContent).not.toMatch(/Standard Contractual Clauses|Cláusulas Contractuales Tipo|Data Privacy Framework|Marco de Privacidad de Datos|Data processing agreements|acuerdos de tratamiento de datos/);
+  });
+
   it("does not broaden refund eligibility, waive Stripe timing or change the liability cap", async () => {
     request.locale = "es";
     let view = render(await RefundPolicyPage());
