@@ -61,9 +61,9 @@ describe("account settings locale", () => {
     expect(mocks.remove).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Confirmar solicitud de eliminación" }));
     await waitFor(() => expect(mocks.remove).toHaveBeenCalledOnce());
-    expect(await screen.findByText("Solicitud de eliminación de cuenta recibida. SkillsetMind la procesará manualmente en un plazo de 72 horas.")).toBeVisible();
+    expect(await screen.findByText("Solicitud de eliminación de cuenta recibida. SkillsetMind la procesará en un plazo de 30 días una vez verificada la solicitud.")).toBeVisible();
     fireEvent.click(screen.getByText("EN test"));
-    expect(screen.getByText("Account deletion request received. SkillsetMind will process it manually within 72 hours.")).toBeVisible();
+    expect(screen.getByText("Account deletion request received. SkillsetMind will process it within 30 days once the request is verified.")).toBeVisible();
   });
 
   it("shows Spanish export failures without exposing transport details", async () => {
