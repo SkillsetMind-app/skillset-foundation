@@ -42,6 +42,14 @@ function accountSession(value: string) {
   return { [SESSION_FIELD]: value };
 }
 
+// A raw string is sent as-is (malformed JSON); anything else is JSON-encoded.
+function req(body?: unknown) {
+  return new Request("https://example.test/api/payments/connect/account-session", {
+    method: "POST",
+    body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body),
+  });
+}
+
 function invalidRequest(message: string, statusCode = 400) {
   return new Stripe.errors.StripeInvalidRequestError({
     message,
@@ -80,7 +88,7 @@ describe("POST /api/payments/connect/account-session", () => {
   it("throttles before minting anything", async () => {
     mocks.enforceRateLimit.mockRejectedValue(new PaymentError("Too many requests.", 429));
 
-    const response = await POST();
+    const response = await POST(req());
 
     expect(response.status).toBe(429);
     expect(mocks.createFreshConnectedAccount).not.toHaveBeenCalled();
@@ -90,7 +98,7 @@ describe("POST /api/payments/connect/account-session", () => {
   it("refuses when the profile row is missing", async () => {
     mocks.getUserRow.mockResolvedValue(null);
 
-    const response = await POST();
+    const response = await POST(req());
 
     expect(response.status).toBe(400);
     expect(mocks.createFreshConnectedAccount).not.toHaveBeenCalled();
@@ -99,7 +107,7 @@ describe("POST /api/payments/connect/account-session", () => {
   it("refuses a non-teacher before creating an account", async () => {
     mocks.getUserRow.mockResolvedValue({ ...TEACHER, roles: [] });
 
-    const response = await POST();
+    const response = await POST(req());
     const body = await response.json();
 
     expect(response.status).toBe(403);
@@ -117,7 +125,7 @@ describe("POST /api/payments/connect/account-session", () => {
       ),
     );
 
-    const response = await POST();
+    const response = await POST(req());
     const body = await response.json();
 
     expect(response.status).toBe(402);
@@ -125,28 +133,63 @@ describe("POST /api/payments/connect/account-session", () => {
     expect(mocks.createFreshConnectedAccount).not.toHaveBeenCalled();
   });
 
-  it("mints an account when the teacher has none stored", async () => {
+  it("mints the account in the chosen country when none is stored", async () => {
     mocks.getUserRow.mockResolvedValue({ ...TEACHER, stripe_connected_account_id: null });
 
-    const response = await POST();
+    const response = await POST(req({ country: "gb" }));
     const body = await response.json();
 
     expect(response.status).toBe(200);
     expect(body[RESPONSE_FIELD]).toBe("cs_live_1");
     expect(body.accountId).toBe("acct_fresh_1");
     expect(mocks.createFreshConnectedAccount).toHaveBeenCalledTimes(1);
+    expect(mocks.createFreshConnectedAccount.mock.calls[0][0].country).toBe("GB");
+  });
+
+  // Without a country Stripe locks the new account to the US forever, and an
+  // off-list country (BR/MX: no application fee; IS: recipient-only) yields an
+  // account that cannot sell. Either way: refuse before any Stripe call.
+  it.each([
+    ["no body", undefined],
+    ["malformed JSON", "{not json"],
+    ["JSON null", "null"],
+    ["no country", {}],
+    ["Brazil", { country: "BR" }],
+    ["Mexico", { country: "MX" }],
+    ["Iceland", { country: "IS" }],
+    ["a number", { country: 42 }],
+  ])("refuses to mint a first account with %s", async (_label, payload) => {
+    mocks.getUserRow.mockResolvedValue({ ...TEACHER, stripe_connected_account_id: null });
+
+    const response = await POST(req(payload));
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("unsupported_country");
+    expect(mocks.createFreshConnectedAccount).not.toHaveBeenCalled();
+    expect(mocks.getStripe).not.toHaveBeenCalled();
+    expect(mocks.createSession).not.toHaveBeenCalled();
   });
 
   // Control: a stored id is reused. Minting on every visit would strand the
   // onboarding the teacher already completed.
   it("reuses the stored account and does not mint a second one", async () => {
-    const response = await POST();
+    const response = await POST(req());
     const body = await response.json();
 
     expect(response.status).toBe(200);
     expect(body.accountId).toBe("acct_stored");
     expect(mocks.createFreshConnectedAccount).not.toHaveBeenCalled();
     expect(mocks.createSession.mock.calls[0][0].account).toBe("acct_stored");
+  });
+
+  // Control: once an account exists the body country is ignored, even an
+  // off-list one. The account's country is Stripe's, not the client's.
+  it("ignores the body country once an account exists", async () => {
+    const response = await POST(req({ country: "BR" }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.createFreshConnectedAccount).not.toHaveBeenCalled();
   });
 
   // The response must carry the id the session was actually minted on. Returning
@@ -156,7 +199,7 @@ describe("POST /api/payments/connect/account-session", () => {
       .mockRejectedValueOnce(orphanError())
       .mockResolvedValueOnce(accountSession("cs_live_healed"));
 
-    const response = await POST();
+    const response = await POST(req());
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -169,6 +212,32 @@ describe("POST /api/payments/connect/account-session", () => {
     expect(mocks.createSession).toHaveBeenCalledTimes(2);
   });
 
+  // A heal replaces a dead account; it must not move the creator to whatever
+  // country the client happens to send.
+  it("heals an orphan in the STORED country, never the requested one", async () => {
+    mocks.getUserRow.mockResolvedValue({ ...TEACHER, stripe_connect_country: "CA" });
+    mocks.createSession
+      .mockRejectedValueOnce(orphanError())
+      .mockResolvedValueOnce(accountSession("cs_live_healed"));
+
+    const response = await POST(req({ country: "DE" }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.createFreshConnectedAccount.mock.calls[0][0].country).toBe("CA");
+  });
+
+  // Accounts minted before the column existed were all locked to the US.
+  it("heals a legacy account with no stored country as US", async () => {
+    mocks.createSession
+      .mockRejectedValueOnce(orphanError())
+      .mockResolvedValueOnce(accountSession("cs_live_healed"));
+
+    const response = await POST(req({ country: "FR" }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.createFreshConnectedAccount.mock.calls[0][0].country).toBe("US");
+  });
+
   it("maps a Connect-not-enabled platform error to a friendly 400", async () => {
     mocks.createSession.mockRejectedValue(
       invalidRequest(
@@ -176,7 +245,7 @@ describe("POST /api/payments/connect/account-session", () => {
       ),
     );
 
-    const response = await POST();
+    const response = await POST(req());
     const body = await response.json();
 
     expect(response.status).toBe(400);
@@ -189,7 +258,7 @@ describe("POST /api/payments/connect/account-session", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     mocks.createSession.mockRejectedValue(invalidRequest("Invalid country."));
 
-    const response = await POST();
+    const response = await POST(req());
     const body = await response.json();
 
     expect(response.status).toBe(500);

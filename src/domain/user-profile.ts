@@ -160,6 +160,8 @@ export type UserProfile = {
   stripeConnectChargesEnabled?: boolean;
   stripeConnectPayoutsEnabled?: boolean;
   stripeConnectUpdatedAt?: unknown;
+  /** ISO alpha-2 of the connected account; null until the server records it. */
+  stripeConnectCountry?: string | null;
   /**
    * Professional admission review outcome, mirrored from the latest
    * creator_verification_cases decision by the verification RPCs. Server-only
