@@ -10,7 +10,9 @@ Round 5: assets skipped only when every name is an image/font and the block is
 really binary; symlinks, snapshots, non-asset binaries, English keys, big
 risk-only diffs, image-only PRs.
 Round 6: the gate's own source (U+FFFD only on added lines), assets decided by
-the new side, a finding cut before its severity, repeated keys, severity words."""
+the new side, a finding cut before its severity, repeated keys, severity words.
+Round 7: capitalised keys (main's raw fallback had re.I), .ttf/.avif only with a
+NUL start, non-Latin and parenthesised severities, a loose summary object."""
 import http.client
 import io
 import json
@@ -1044,6 +1046,89 @@ class CadeiaDeReservaTest(unittest.TestCase):
         codigo, placar, _, _ = self.roda({"glm-5": json.dumps({"achados": [dict(ALTA, severidade="Minor")]})})
         self.assertEqual(codigo, 0)  # a warning, even in "barra"
         self.assertIn("1 achado · 0 bloqueantes", placar)
+
+    # ---- Round 7: adversarial review of 4ee3cb1 (each failed there) ----
+    def test_S1_chaves_em_maiusculas_barram_na_1a_resposta(self):
+        # main's raw GRAVE had re.I. A capitalised key thrown away meant a retry,
+        # and a later [] passed with 0 (main: 3).
+        for nome, resposta in {
+                "Severidade/Titulo": '{"achados":[{"Severidade":"critica","Titulo":"SQLi","Arquivo":"a","Linha":1,"Confianca":0.95}]}',
+                "SEVERIDADE upper": '{"achados":[{"SEVERIDADE":"ALTA","TITULO":"SQLi","ARQUIVO":"a"}]}',
+                "Severity/Title": '{"achados":[{"Severity":"Critical","Title":"SQLi","File":"a"}]}',
+                "Achados key": '{"Achados":[{"severidade":"critica","titulo":"SQLi","arquivo":"a"}]}',
+                "FINDINGS key": '{"FINDINGS":[{"SEVERITY":"HIGH","TITLE":"SQLi","FILE":"a"}]}'}.items():
+            for fim in ("stop", "length"):
+                with self.subTest(nome, fim=fim):
+                    codigo, placar, modelos, _ = self.roda({"glm-5": [(resposta, fim), VAZIO_JSON], "kimi-k3": VAZIO_JSON})
+                    self.assertEqual((codigo, modelos), (1, ["glm-5"]))
+                    self.assertIn("1 bloqueante", placar)
+        # Out of format with a capitalised raw severity: an indício at once (3, no retry).
+        fora = '{"achados":[],"Vulnerabilidades":[{"Severidade":"critica","Titulo":"SQLi"}]}'
+        codigo, placar, modelos, _ = self.roda({"glm-5": [fora, VAZIO_JSON], "kimi-k3": VAZIO_JSON})
+        self.assertEqual((codigo, modelos), (3, ["glm-5"]))
+        self.assertIn("indício de achado grave", placar)
+
+    def test_S2_corte_em_qualquer_ponto_depois_do_achado_nunca_da_0(self):
+        # exp5's sweep: reply[:n] with finish "length", then []. No prefix after the
+        # finding's "{" may end in 0.
+        g = {"titulo": "SQL injection", "arquivo": "a", "linha": 1, "porque": "concatena id", "como_explorar": "id=1 or 1=1"}
+        cheias = {
+            "pt severity first": json.dumps({"achados": [{"severidade": "critica", **g, "confianca": 0.95}]}),
+            "pt title first": json.dumps({"achados": [{**g, "severidade": "alta", "confianca": 0.9}]}),
+            "en findings": json.dumps({"findings": [{"title": "SQLi", "file": "a", "description": "id concat",
+                                                     "severity": "critical", "confidence": 0.9}]}),
+            "fenced": "Resultado:\n```json\n" + json.dumps({"achados": [{"titulo": "SQLi", "severidade": "critica",
+                                                                          "arquivo": "a"}]}, indent=2) + "\n```",
+            "low then critical": json.dumps({"achados": [{"severidade": "baixa", "titulo": "log", "arquivo": "a"},
+                                                         {"titulo": "SQLi", "arquivo": "a", "severidade": "critica"}]}),
+            "capitalised pt": '{"achados":[{"Titulo":"SQLi","Arquivo":"a","Severidade":"critica"}]}',
+            "capitalised en": '{"Findings":[{"Title":"SQLi","File":"a","Severity":"Critical"}]}',
+        }
+        for nome, cheia in cheias.items():
+            inicio = cheia.find("{", cheia.find("["))
+            zeros = [n for n in range(inicio + 1, len(cheia))
+                     if self.roda({"glm-5": [(cheia[:n], "length"), VAZIO_JSON], "kimi-k3": VAZIO_JSON})[0] == 0]
+            with self.subTest(nome):
+                self.assertEqual(zeros, [])
+
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_S3_ttf_e_avif_so_pulam_com_nul(self):
+        # main never excluded .ttf/.avif: a script named x.ttf with \x89 in front
+        # reached the model. Only a NUL start (a real TTF/AVIF) proves binary there.
+        loader = b'{"name":"x","scripts":{"postinstall":"bash public/fonts/x.EXT"}}\n'
+        for ext in ("ttf", "avif", "TTF"):
+            with self.subTest(ext):
+                head = {f"public/fonts/x.{ext}": b"\x89\n" + PAYLOAD, "package.json": loader.replace(b"EXT", ext.encode())}
+                codigo, placar, modelos, _ = self.pr(head, {"glm-5": VAZIO_JSON})
+                self.assertEqual((codigo, modelos), (3, []))
+                self.assertIn("arquivo binário não lido (1", placar)
+        # A real TTF/AVIF (NUL start) and a real PNG still skip.
+        for nome, blob in (("public/f.ttf", b"\x00\x01\x00\x00\x00\x0e\x00\x80\n" + b"\x00" * 20),
+                           ("public/a.avif", b"\x00\x00\x00\x1cftypavif\x00\x00\x00\x00"), ("public/logo.png", PNG)):
+            with self.subTest(nome):
+                codigo, placar, modelos, _ = self.pr({nome: blob}, {"glm-5": VAZIO_JSON})
+                self.assertEqual((codigo, modelos), (0, []))
+                self.assertIn("só com arquivos de imagem/fonte (1)", placar)
+
+    def test_S4_severidade_fora_do_latim_ou_grave_entre_parenteses(self):
+        casos = {"严重": "alta", "高危": "alta", "критический": "alta", "Low (escalates to critical)": "critica",
+                 "baixa (crítica se a rota for pública)": "critica", "(critical)": "critica",
+                 "Low (informational)": "baixa", "Medium (CVSS 5.3)": "media", "(low)": "alta", " ": "media"}
+        self.assertEqual({k: porteiro._sev(k) for k in casos}, casos)
+        for sev in ("严重", "Low (escalates to critical)"):
+            with self.subTest(sev):
+                resposta = json.dumps({"achados": [dict(ALTA, severidade=sev)]}, ensure_ascii=False)
+                codigo, placar, modelos, _ = self.roda({"glm-5": resposta})
+                self.assertEqual((codigo, modelos), (1, ["glm-5"]))
+
+    def test_S5_objeto_solto_com_titulo_nao_estraga_resposta_limpa(self):
+        # Only a LIST of finding-shaped objects outside "achados" is out of format (test_R4).
+        for resposta in ('{"achados":[],"resumo":{"titulo":"Sem achados"}}',
+                         '{"achados":[],"stats":{"severity":{"critica":0,"alta":0}}}'):
+            with self.subTest(resposta):
+                codigo, placar, modelos, _ = self.roda({"glm-5": resposta, "kimi-k3": VAZIO_JSON})
+                self.assertEqual((codigo, modelos), (0, ["glm-5"]))
+                self.assertIn("✅ **0 achados**", placar)
 
 
 if __name__ == "__main__":

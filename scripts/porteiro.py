@@ -180,8 +180,9 @@ CHAVES = {"severidade": ("severidade", "severity", "nivel", "gravidade"), "titul
           "arquivo": ("arquivo", "file"), "confianca": ("confianca", "confidence"), "linha": ("linha", "line")}
 # Severidade no texto cru de uma resposta que não fechou o JSON. Sem a aspa
 # final (cortou dentro do valor) é ilegível: conta como grave.
-SEV_CRU = re.compile(r'"(?:%s)"\s*:\s*"([^"]*)("?)' % "|".join(CHAVES["severidade"]))
-ABRE_ACHADOS = re.compile(r'"(?:achados|findings)"\s*:\s*\[')
+# Sem caixa, como o GRAVE da main: "Severidade"/"SEVERITY"/"Achados" também contam.
+SEV_CRU = re.compile(r'"(?:%s)"\s*:\s*"([^"]*)("?)' % "|".join(CHAVES["severidade"]), re.I)
+ABRE_ACHADOS = re.compile(r'"(?:achados|findings)"\s*:\s*\[', re.I)
 SEV_SINONIMOS = {
     "critical": "critica", "critico": "critica", "high": "alta", "alto": "alta",
     "medium": "media", "medio": "media", "moderate": "media", "moderado": "media", "moderada": "media",
@@ -290,9 +291,12 @@ def _junta(pares) -> dict:
     """object_pairs_hook: "achados"/"findings" repetidos SOMAM as listas (com o
     padrão do json, um `"achados":[]` no fim apagaria o bloqueante de antes);
     um deles que não seja lista estraga a resposta (None fica). Chave de
-    severidade repetida fica com a mais grave; de confiança, com a maior."""
+    severidade repetida fica com a mais grave; de confiança, com a maior.
+    Toda chave vira minúscula aqui ("Severidade", "TITLE", "Achados"), e é por
+    este gancho que passa todo JSON lido: o resto do arquivo compara minúsculas."""
     d = {}
     for k, v in pares:
+        k = k.lower()
         if k in ("achados", "findings"):
             antes = d.get("achados", [])
             d["achados"] = antes + v if isinstance(antes, list) and isinstance(v, list) else None
@@ -332,16 +336,18 @@ def _texto(v) -> str:
 def _sev(v) -> str:
     """'Crítica', 'HIGH', 'baixo', 'moderate', 'info' -> critica/alta/media/baixa.
     Vazio -> media. 'Low (informational)' vale pelo que vem antes do '(';
-    'low/critical' pela mais grave das opções. Qualquer outra coisa (inclusive
-    não-texto) -> alta: severidade que o portão não reconhece não vira aviso."""
-    if v is None:
+    'low/critical' pela mais grave das opções. Palavra de severidade em
+    qualquer ponto (inclusive entre parênteses) só SOBE: 'Low (escalates to
+    critical)' -> critica. Qualquer outra coisa (inclusive não-texto e texto
+    sem letra latina, '严重') -> alta: severidade que o portão não reconhece
+    não vira aviso."""
+    if v is None or isinstance(v, str) and not v.strip():
         return "media"
     s = unicodedata.normalize("NFKD", v).encode("ascii", "ignore").decode().lower().strip() if isinstance(v, str) else "?"
-    if not s:
-        return "media"
     partes = [s] if s in SEV_SINONIMOS else [p.strip() for p in s.split("(")[0].split("/")]
-    return min((x if x in SEVERIDADES else "alta" for x in (SEV_SINONIMOS.get(p, p) for p in partes)),
-               key=ORDEM.index)
+    base = [x if x in SEVERIDADES else "alta" for x in (SEV_SINONIMOS.get(p, p) for p in partes)]
+    soltas = [x for x in (SEV_SINONIMOS.get(w, w) for w in re.findall(r"[a-z]+", s)) if x in SEVERIDADES]
+    return min(base + soltas, key=ORDEM.index)
 
 
 def _conf(v, padrao: float) -> float:
@@ -358,10 +364,14 @@ def _preenchido(v) -> bool:
 
 
 def _tem_achado(v) -> bool:
-    """Algum objeto com cara de achado (severidade ou título, em qualquer grafia) dentro de v."""
+    """Alguma LISTA dentro de v com objeto com cara de achado (severidade ou
+    título, em qualquer grafia). Objeto solto com essas chaves ("resumo":
+    {"titulo": ...}, "stats": {"severity": ...}) não é achado."""
     if isinstance(v, dict):
-        return any(k in v for k in CHAVES["severidade"] + CHAVES["titulo"]) or any(map(_tem_achado, v.values()))
-    return isinstance(v, list) and any(map(_tem_achado, v))
+        return any(map(_tem_achado, v.values()))
+    return isinstance(v, list) and any(
+        isinstance(x, dict) and any(k in x for k in CHAVES["severidade"] + CHAVES["titulo"]) or _tem_achado(x)
+        for x in v)
 
 
 def _pega(a: dict, campo: str, padrao=None):
@@ -594,7 +604,10 @@ def asset_de_verdade(bloco: str) -> bool:
     if BINARIO.search(bloco) or re.search(r"^deleted file mode ", bloco, re.M):
         return True
     primeira = _primeira_nova(bloco)
-    return _tem_binario(_novas(bloco)) and primeira is not None and primeira.startswith(INICIO_ASSET)
+    # TTF/AVIF começam em \x00; a main mostrava o texto deles ao modelo, então
+    # só NUL prova binário ali (um \x89 na frente de um script não).
+    inicio = ("\x00",) if _ultimo(nomes[1]).lower().endswith((".ttf", ".avif")) else INICIO_ASSET
+    return _tem_binario(_novas(bloco)) and primeira is not None and primeira.startswith(inicio)
 
 
 def binario(bloco: str) -> bool:
