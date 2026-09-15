@@ -86,6 +86,7 @@ import {
   uploadCourseAsset,
   type UploadCourseAssetProgress,
 } from "@/lib/data/course-assets";
+import { compressImage, MAX_SOURCE_IMAGE_BYTES } from "@/lib/media/compress-image";
 import { ReadinessGroups } from "@/components/teacher/readiness-groups";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
 import { InlineAlert } from "@/components/ui";
@@ -3605,7 +3606,7 @@ function MembersCoverField({
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState<UploadCourseAssetProgress | null>(null);
   const [error, setError] = useState<
-    { kind: "invalid-image" } | { kind: "upload"; cause: unknown } | null
+    { kind: "invalid-image" } | { kind: "too-large" } | { kind: "upload"; cause: unknown } | null
   >(null);
   const [fileInputKey, setFileInputKey] = useState(0);
 
@@ -3619,6 +3620,14 @@ function MembersCoverField({
     setError(null);
     setProgress(null);
 
+    // Capa do módulo: foto de origem até 10 MB, recusada na hora (antes de
+    // abrir a imagem). As recusas ficam síncronas, como eram.
+    if (moduleId && file.size > MAX_SOURCE_IMAGE_BYTES) {
+      setError({ kind: "too-large" });
+      setFileInputKey((current) => current + 1);
+      return;
+    }
+
     if (!isAllowedCourseAssetFile(file, kind)) {
       setError({ kind: "invalid-image" });
       setFileInputKey((current) => current + 1);
@@ -3628,12 +3637,16 @@ function MembersCoverField({
     setIsUploading(true);
 
     try {
+      // Capa do módulo: recorte vertical 2:3 comprimido no navegador (10 MB
+      // entram, uns 300 KB saem). Se não der para comprimir, sobe o original.
+      // A capa da área de membros sobe como veio.
+      const upload = moduleId ? await compressImage(file).catch(() => file) : file;
       const assetId = await uploadCourseAsset({
         courseId: course.id,
         ownerId: course.ownerId,
         kind,
         moduleId,
-        file,
+        file: upload,
         isPreview: false,
         onProgress: setProgress,
       });
@@ -3723,9 +3736,11 @@ function MembersCoverField({
 
           {error ? (
             <p role="alert" className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">
-              {error.kind === "invalid-image"
-                ? t("creatorEditor.members.invalidImage").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))
-                : getCourseAssetUploadErrorMessage(error.cause, supabaseUploadLimitBytes, t)}
+              {error.kind === "too-large"
+                ? t("creatorEditor.members.coverTooLarge")
+                : error.kind === "invalid-image"
+                  ? t("creatorEditor.members.invalidImage").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))
+                  : getCourseAssetUploadErrorMessage(error.cause, supabaseUploadLimitBytes, t)}
             </p>
           ) : null}
         </div>

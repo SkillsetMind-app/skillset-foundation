@@ -3542,7 +3542,8 @@
       "replaceCover": "Cambiar portada",
       "uploadCover": "Subir portada",
       "removeCover": "Quitar portada",
-      "invalidImage": "Usa una imagen de menos de {limit}."
+      "invalidImage": "Usa una imagen de menos de {limit}.",
+      "coverTooLarge": "Esta imagen pasa de 10 MB. Elige una más pequeña."
     },
     "preview": {
       "open": "Vista previa",
