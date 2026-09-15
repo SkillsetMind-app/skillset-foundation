@@ -272,14 +272,16 @@ describe("aviso do player sem video segue o conteudo, nao o tipo", () => {
     mocks.searchParams = new URLSearchParams("lesson=l3");
     vi.mocked(subscribeToCourseAssets).mockImplementation((_courseId, onAssets) => {
       onAssets([]);
-      return vi.fn();
+      return Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) });
     });
     try {
       render(<EnrolledCourseWorkspace course={semVideo} previewMode enableFirestoreAssets />);
 
       expect(playerNotice()).toBe("Media not attached yet");
     } finally {
-      vi.mocked(subscribeToCourseAssets).mockImplementation(() => vi.fn());
+      vi.mocked(subscribeToCourseAssets).mockImplementation(() =>
+        Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) }),
+      );
     }
   });
 });
