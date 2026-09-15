@@ -6,6 +6,7 @@ import { startCourseCheckout, enrollInFreeCreatorCourse } from "@/lib/payments/c
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
 import { getCourseLanding } from "@/lib/data/course-landings";
 import { getLessonContentDoc } from "@/lib/data/lesson-content";
+import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
@@ -120,6 +121,15 @@ vi.mock("@/components/courses/course-social-proof", () => ({
 
 vi.mock("@/components/courses/bunny-video-player", () => ({
   BunnyVideoPlayer: () => null,
+}));
+
+// The viewer's enrollment (the same read the classroom uses). Default: none.
+const enrollmentState = vi.hoisted(() => ({ current: null as { status: string } | null }));
+vi.mock("@/lib/data/enrollments", () => ({
+  subscribeToEnrollment: vi.fn((_uid: string, _courseId: string, onNext: (enrollment: unknown) => void) => {
+    onNext(enrollmentState.current);
+    return () => {};
+  }),
 }));
 
 beforeEach(() => {
@@ -654,5 +664,41 @@ describe("CreatorCourseDetail — padlocked lessons and the buy popup", () => {
 
     expect(screen.queryByRole("button", { name: /Why focus breaks/ })).not.toBeInTheDocument();
     expect(screen.getByText("Why focus breaks")).toBeInTheDocument();
+  });
+
+  // An enrolled learner saw every lesson padlocked and a popup telling them to
+  // buy; checkout then failed with alreadyEnrolled.
+  it("an enrolled learner sees no padlocks, like the owner", async () => {
+    fixtures.auth.status = "authenticated";
+    fixtures.auth.user = { uid: "student-1" };
+    enrollmentState.current = { status: "active" };
+    try {
+      render(<CreatorCourseDetail courseIdOverride="course-1" />);
+      await screen.findAllByText("$149.00");
+
+      expect(subscribeToEnrollment).toHaveBeenCalledWith(
+        "student-1", "course-1", expect.any(Function), expect.any(Function),
+      );
+      expect(screen.queryByRole("button", { name: /Why focus breaks/ })).not.toBeInTheDocument();
+      expect(screen.getByText("Why focus breaks")).toBeInTheDocument();
+    } finally {
+      enrollmentState.current = null;
+    }
+  });
+
+  // With the card's button disabled, the popup said "Enroll" while the card
+  // said "Checkout not available yet".
+  it("a signed-in viewer whose card says checkout is unavailable gets the same words in the popup", async () => {
+    fixtures.auth.status = "authenticated";
+    fixtures.auth.user = { uid: "buyer" };
+    fixtures.query = "offer=MISSING";
+    withOffers();
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await waitFor(() => expect(cardAction(container)).toHaveTextContent("Checkout not available yet"));
+
+    fireEvent.click(screen.getByRole("button", { name: /Why focus breaks/ }));
+
+    const popupCta = within(screen.getByRole("dialog")).getAllByRole("link")[0];
+    expect(popupCta.textContent?.trim()).toBe("Checkout not available yet");
   });
 });
