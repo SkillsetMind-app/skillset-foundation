@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { BookOpen, Lock, X } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type MouseEvent } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -19,7 +19,7 @@ export function CourseCover({
   course,
   sizes,
 }: {
-  course: TeacherCourse;
+  course: Pick<TeacherCourse, "coverImageUrl" | "title">;
   sizes: string;
 }) {
   if (course.coverImageUrl) {
@@ -52,13 +52,29 @@ export function CourseCover({
  * card gets the pitch here instead of losing the dashboard to a full page load;
  * the CTA then hands off to /courses/[id], which owns the real purchase flow
  * (offers, coupons, Stripe). No checkout logic is duplicated here.
+ *
+ * Also used on the public course page (padlocked lesson) and in the classroom
+ * for someone without an enrollment. It only reads public course fields.
  */
+export type CourseUnlockModalCourse = Pick<
+  TeacherCourse,
+  "id" | "title" | "summary" | "category" | "coverImageUrl" | "priceAmountMinor" | "currency"
+>;
+
 export function CourseUnlockModal({
   course,
   onClose,
+  ctaHref,
+  note,
+  secondaryLink,
 }: {
-  course: TeacherCourse | null;
+  course: CourseUnlockModalCourse | null;
   onClose: () => void;
+  // Where the buy button goes; defaults to the course page. A "#id" stays on
+  // the same page: the popup closes and the page scrolls to that element.
+  ctaHref?: string;
+  note?: string;
+  secondaryLink?: { href: string; label: string };
 }) {
   const { t } = useTranslation();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -97,6 +113,19 @@ export function CourseUnlockModal({
           currency: course.currency || "USD",
         }).format(course.priceAmountMinor / 100)
       : "";
+  const href = ctaHref ?? `/courses/${course.id}`;
+
+  function handleCtaClick(event: MouseEvent<HTMLAnchorElement>) {
+    if (!href.startsWith("#")) {
+      return;
+    }
+    // Same page: the buyer never leaves it. Close first so the page can scroll
+    // again, then bring the target (the buy card) into view.
+    event.preventDefault();
+    const target = document.getElementById(href.slice(1));
+    onClose();
+    requestAnimationFrame(() => target?.scrollIntoView?.({ behavior: "smooth", block: "start" }));
+  }
 
   return (
     <div
@@ -142,11 +171,12 @@ export function CourseUnlockModal({
 
           <p className="mt-4 flex items-start gap-2 rounded-[10px] bg-[var(--color-surface-soft)] px-3 py-2.5 text-xs leading-6 text-[var(--color-ink-soft)]">
             <Lock aria-hidden="true" size={14} className="mt-1 shrink-0" />
-            <span>{t("learn.paths.unlockNote")}</span>
+            <span>{note ?? t("learn.paths.unlockNote")}</span>
           </p>
 
           <Link
-            href={`/courses/${course.id}`}
+            href={href}
+            onClick={handleCtaClick}
             className="button-solid mt-5 inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 text-sm"
           >
             <Lock aria-hidden="true" size={15} />
@@ -154,6 +184,14 @@ export function CourseUnlockModal({
               ? `${t("learn.paths.unlock")} - ${price}`
               : t("learn.paths.unlock")}
           </Link>
+          {secondaryLink ? (
+            <Link
+              href={secondaryLink.href}
+              className="button-outline mt-3 inline-flex w-full items-center justify-center px-4 py-2.5 text-sm"
+            >
+              {secondaryLink.label}
+            </Link>
+          ) : null}
         </div>
       </div>
     </div>

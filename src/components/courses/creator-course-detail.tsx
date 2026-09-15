@@ -5,12 +5,13 @@ import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
 import Link from "next/link";
-import { Star, Target } from "lucide-react";
+import { Lock, Star, Target } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
+import { CourseUnlockModal } from "@/components/learn/course-unlock-modal";
 import {
   CourseInstructorCard,
   CourseReviewsSection,
@@ -168,6 +169,10 @@ export function CreatorCourseDetail({
   const [isCouponOpen, setIsCouponOpen] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isEnrollingFree, setIsEnrollingFree] = useState(false);
+  // Padlocked lesson in the curriculum: opens the buy popup (cover, title and a
+  // button to the buy card on this same page). Public course fields only.
+  const [isUnlockOpen, setIsUnlockOpen] = useState(false);
+  const closeUnlock = useCallback(() => setIsUnlockOpen(false), []);
   const [offerLoadError, setOfferLoadError] = useState("");
   const [offerState, setOfferState] = useState<{
     courseId: string | null;
@@ -731,21 +736,43 @@ export function CreatorCourseDetail({
                     {module.title}
                   </h2>
                   <div className="mt-4 grid gap-2">
-                    {module.lessons.map((lesson) => (
-                      <div
-                        key={lesson.id}
-                        className="flex items-center justify-between gap-3 rounded-[10px] bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)]"
-                      >
-                        <span className="font-semibold text-[var(--color-ink)]">
-                          {lesson.title}
-                        </span>
+                    {module.lessons.map((lesson) => {
+                      const isPreview = course.freePreviewLessonId === lesson.id;
+                      const rowClass =
+                        "flex items-center justify-between gap-3 rounded-[10px] bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)]";
+                      const meta = (
                         <span className="shrink-0 text-right uppercase tracking-[0.16em]">
                           {t(`publicCourses.lessonTypes.${lesson.type}`)}
                           {lesson.durationMinutes ? ` - ${lesson.durationMinutes} min` : ""}
-                          {course.freePreviewLessonId === lesson.id ? ` - ${t("publicCourses.previewShort")}` : ""}
+                          {isPreview ? ` - ${t("publicCourses.previewShort")}` : ""}
                         </span>
-                      </div>
-                    ))}
+                      );
+                      // The free preview stays as it was; every other lesson
+                      // carries a padlock and opens the buy popup.
+                      return isPreview ? (
+                        <div key={lesson.id} className={rowClass}>
+                          <span className="font-semibold text-[var(--color-ink)]">
+                            {lesson.title}
+                          </span>
+                          {meta}
+                        </div>
+                      ) : (
+                        <button
+                          key={lesson.id}
+                          type="button"
+                          aria-haspopup="dialog"
+                          onClick={() => setIsUnlockOpen(true)}
+                          className={`${rowClass} w-full text-left transition hover:bg-[var(--color-surface-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]`}
+                        >
+                          <span className="flex min-w-0 items-center gap-2 font-semibold text-[var(--color-ink)]">
+                            <Lock aria-hidden="true" size={13} className="shrink-0" />
+                            {lesson.title}
+                            <span className="sr-only">{t("publicCourses.locked")}</span>
+                          </span>
+                          {meta}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ))
@@ -1005,6 +1032,14 @@ export function CreatorCourseDetail({
         >{t("publicCourses.enroll")}</Link>
       </div>
     </div> : null}
+    {!checkoutOnly ? (
+      <CourseUnlockModal
+        course={isUnlockOpen ? course : null}
+        onClose={closeUnlock}
+        ctaHref="#enroll-card"
+        note={t("publicCourses.unlockNote")}
+      />
+    ) : null}
     </>
   );
 }

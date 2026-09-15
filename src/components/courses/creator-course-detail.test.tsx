@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CreatorCourseDetail } from "@/components/courses/creator-course-detail";
@@ -471,5 +471,62 @@ describe("checkout errors in the current locale", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Inscribirse —/ }));
     expect(await screen.findByText("No pudimos iniciar el pago seguro. Inténtalo de nuevo o contacta con soporte.")).toBeInTheDocument();
     expect(screen.queryByText(/PRIVATE_INTERNAL_DETAIL|This coupon has expired/)).not.toBeInTheDocument();
+  });
+});
+
+// Padlocked lesson + buy popup: the buyer stays on this page. The popup uses
+// only public course fields; no lesson content is fetched for the visitor.
+describe("CreatorCourseDetail — padlocked lessons and the buy popup", () => {
+  const mutable = fixtures.course as TeacherCourse;
+  const original = { modules: mutable.modules, freePreviewLessonId: mutable.freePreviewLessonId };
+
+  afterEach(() => {
+    mutable.modules = original.modules;
+    mutable.freePreviewLessonId = original.freePreviewLessonId;
+  });
+
+  it("clicking a locked lesson opens a dialog with the course title; its button goes to #enroll-card", async () => {
+    render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findAllByText("$149.00");
+
+    fireEvent.click(screen.getByRole("button", { name: /Why focus breaks/ }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Deep Focus Systems" })).toBeInTheDocument();
+    const cta = within(dialog).getByRole("link", { name: /Unlock course/ });
+    expect(cta).toHaveAttribute("href", "#enroll-card");
+
+    // Same page: the popup closes and nothing navigates away.
+    fireEvent.click(cta);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(fixtures.router.push).not.toHaveBeenCalled();
+
+    // Anonymous visitor: no lesson content fetch, and the only network call is
+    // the public offers list.
+    expect(getLessonContentDoc).not.toHaveBeenCalled();
+    for (const [url] of vi.mocked(fetch).mock.calls) {
+      expect(String(url)).not.toMatch(/lesson|video/i);
+    }
+  });
+
+  it("the free-preview lesson is still not locked", async () => {
+    mutable.freePreviewLessonId = "lesson-2";
+    mutable.modules = [{
+      ...original.modules[0],
+      lessons: [
+        ...original.modules[0].lessons,
+        { id: "lesson-2", title: "Free taste", type: "video", description: "" },
+      ],
+    }];
+    vi.mocked(getLessonContentDoc).mockResolvedValue(null as never);
+    render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findAllByText("$149.00");
+
+    expect(screen.queryByRole("button", { name: /Free taste/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Why focus breaks/ })).toHaveAttribute("aria-haspopup", "dialog");
+    // Only the preview row can ever be read by a visitor.
+    for (const [, lessonId] of vi.mocked(getLessonContentDoc).mock.calls) {
+      expect(lessonId).toBe("lesson-2");
+    }
   });
 });
