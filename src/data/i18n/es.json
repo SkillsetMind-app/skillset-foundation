@@ -1239,6 +1239,8 @@
         },
         "available": "Disponible",
         "previousRequired": "Completa la lección anterior para desbloquearla",
+        "previousRequiredNamed": "Termina \"{title}\" primero",
+        "goToPreviousLesson": "Ir a esa lección",
         "unlocks": "Disponible el {date}",
         "locked": "Lección bloqueada",
         "closeMiniPlayer": "Cerrar mini reproductor",

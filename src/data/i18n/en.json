@@ -1239,6 +1239,8 @@
         },
         "available": "Available",
         "previousRequired": "Complete the previous lesson to unlock",
+        "previousRequiredNamed": "Finish \"{title}\" first",
+        "goToPreviousLesson": "Go to that lesson",
         "unlocks": "Unlocks {date}",
         "locked": "Lesson locked",
         "closeMiniPlayer": "Close mini player",
