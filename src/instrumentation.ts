@@ -1,11 +1,20 @@
 import type { Instrumentation } from "next";
 
-import { notifyOps } from "@/lib/ops/alert";
+import { sendOpsAlert } from "@/lib/ops/alert";
 
 // Um 500 no checkout, numa aula ou no login so aparecia no log do Vercel, que
 // ninguem le. Este gancho do Next (onRequestError) recebe todo erro de
-// requisicao no servidor e avisa o Telegram de ops pelo notifyOps, que ja
-// segura repeticoes por instancia, roda depois da resposta e nunca lanca.
+// requisicao no servidor e avisa o Telegram de ops.
+//
+// AGUARDA o envio de proposito. Num 500 de route handler o Next chama este
+// gancho depois de sair de todo escopo de requisicao: ali o after() do
+// notifyOps lanca, e o fetch sem await morre quando a invocacao termina (o
+// mesmo buraco que alert.ts descreve). O Next espera este gancho antes de
+// seguir, entao aguardar o sendOpsAlert (4 s de teto, nunca lanca) garante que
+// o aviso sai. Custo: ate 4 s a mais numa resposta que ja falhou.
+//
+// O Next ja registra o erro inteiro no log antes de chamar o gancho, entao
+// aqui nao ha console.error.
 
 // Erros de fluxo do Next, nao falha: notFound()/forbidden()/unauthorized()
 // e redirect() viajam como excecao com `digest`.
@@ -42,42 +51,58 @@ function shortHash(text: string): string {
   return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
-// Trava de reentrada: um erro disparado de dentro do aviso nao pode voltar
-// aqui e avisar de novo. (O throttle do notifyOps ja segura repeticoes do
-// mesmo evento por 5 minutos; isto cobre a chamada sincrona.)
-let reporting = false;
+// Um aviso por rota a cada 5 minutos, por instancia. Por ROTA, e nao pelo
+// evento: um 500 inofensivo e recorrente numa rota nao pode esconder o 500 do
+// checkout. A chave e gravada antes do envio, entao um erro que volte a este
+// gancho pela mesma rota tambem para aqui.
+const THROTTLE_MS = 5 * 60 * 1000;
+const MAX_ROUTES = 200;
+const lastSentAt = new Map<string, number>();
 
-export const onRequestError: Instrumentation.onRequestError = (error, request, context) => {
-  if (reporting || isExpected(error)) {
+function shouldSend(key: string, now: number): boolean {
+  const previous = lastSentAt.get(key);
+  if (previous !== undefined && now - previous < THROTTLE_MS) {
+    return false;
+  }
+  // delete + set deixa o Map em ordem de uso: o primeiro e o mais antigo.
+  lastSentAt.delete(key);
+  lastSentAt.set(key, now);
+  if (lastSentAt.size > MAX_ROUTES) {
+    const oldest = lastSentAt.keys().next().value;
+    if (oldest !== undefined) {
+      lastSentAt.delete(oldest);
+    }
+  }
+  return true;
+}
+
+export const onRequestError: Instrumentation.onRequestError = async (error, request, context) => {
+  if (isExpected(error)) {
     return;
   }
 
-  reporting = true;
-  try {
-    // O log do Vercel continua com o erro inteiro; so o aviso sai enxuto.
-    console.error("[app.server_error]", context.routeType, context.routePath, error);
-
-    const message = error instanceof Error ? error.message : String(error);
-    notifyOps({
-      event: "app.server_error",
-      // alert.ts so aceita "warn" | "critical"; um 500 inesperado e falha real.
-      severity: "critical",
-      summary: "A server request failed with an unexpected error (HTTP 500).",
-      // So o padrao da rota, o tipo, o metodo, o nome do erro e uma impressao
-      // digital. Nunca a URL com query, cabecalhos, cookies, corpo, ids,
-      // e-mails ou a mensagem inteira.
-      context: {
-        route: context.routePath.split("?")[0],
-        routeType: context.routeType,
-        method: request.method,
-        errorName: error instanceof Error ? error.name : typeof error,
-        fingerprint: digestOf(error) ?? shortHash(message),
-      },
-    });
-  } catch {
-    // notifyOps ja nao lanca; isto garante que o aviso nunca vire um segundo
-    // erro nem segure a resposta.
-  } finally {
-    reporting = false;
+  const route = context.routePath.split("?")[0];
+  if (!shouldSend(`app.server_error:${route}`, Date.now())) {
+    return;
   }
+
+  const message = error instanceof Error ? error.message : String(error);
+  // sendOpsAlert nunca lanca e tem teto de 4 s: o aviso nao vira um segundo
+  // erro nem prende a resposta alem disso.
+  await sendOpsAlert({
+    event: "app.server_error",
+    // alert.ts so aceita "warn" | "critical"; um 500 inesperado e falha real.
+    severity: "critical",
+    summary: "A server request failed with an unexpected error (HTTP 500).",
+    // So o padrao da rota, o tipo, o metodo, o nome do erro e uma impressao
+    // digital. Nunca a URL com query, cabecalhos, cookies, corpo, ids,
+    // e-mails ou a mensagem inteira.
+    context: {
+      route,
+      routeType: context.routeType,
+      method: request.method,
+      errorName: error instanceof Error ? error.name : typeof error,
+      fingerprint: digestOf(error) ?? shortHash(message),
+    },
+  });
 };

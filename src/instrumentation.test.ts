@@ -1,10 +1,17 @@
-import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const ops = vi.hoisted(() => ({ notifyOps: vi.fn() }));
+// Modulo de alerta REAL: so o fetch global e falso. Mockar o alerta inteiro
+// escondia o buraco que importa: num 500 de route handler o after() lanca
+// fora do escopo da requisicao e o aviso nunca saia.
+const RELAY = "https://relay.example.test/hook";
 
-vi.mock("@/lib/ops/alert", () => ({ notifyOps: ops.notifyOps }));
+type Instrumentation = typeof import("@/instrumentation");
 
-const { onRequestError } = await import("@/instrumentation");
+async function loadFresh(): Promise<Instrumentation["onRequestError"]> {
+  // O throttle por rota vive no modulo: cada caso comeca com o seu.
+  vi.resetModules();
+  return (await import("@/instrumentation")).onRequestError;
+}
 
 // Pedido com tudo o que NUNCA pode sair no aviso: query, e-mail na URL e
 // cabecalhos com dado privado. Enderecos inventados usam example.test.
@@ -21,8 +28,7 @@ const request = {
 const context = {
   routerKind: "App Router",
   routePath: "/courses/[slug]",
-  routeType: "render",
-  renderSource: "server-rendering",
+  routeType: "route",
   revalidateReason: undefined,
 } as const;
 
@@ -30,56 +36,83 @@ function withDigest(message: string, digest: string) {
   return Object.assign(new Error(message), { digest });
 }
 
-let consoleError: MockInstance;
+let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
-  ops.notifyOps.mockReset();
-  consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+  process.env.OPS_ALERT_WEBHOOK_URL = RELAY;
+  fetchMock = vi.fn(() => Promise.resolve(new Response("ok")));
+  vi.stubGlobal("fetch", fetchMock);
 });
 
 afterEach(() => {
-  consoleError.mockRestore();
+  vi.unstubAllGlobals();
+  delete process.env.OPS_ALERT_WEBHOOK_URL;
 });
 
 describe("onRequestError", () => {
-  it("erro inesperado avisa o ops uma vez, so com rota, tipo, metodo, nome e impressao digital", () => {
-    const error = new TypeError("falhou para pessoa@example.test no pedido 123");
+  it("aguarda o envio ao relay antes de terminar", async () => {
+    let deliver!: (response: Response) => void;
+    fetchMock.mockImplementationOnce(() => new Promise<Response>((resolve) => { deliver = resolve; }));
+    const onRequestError = await loadFresh();
 
-    const result = onRequestError(error, request, context);
+    let finished = false;
+    const pending = Promise.resolve(onRequestError(new Error("boom"), request, context)).then(() => {
+      finished = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
-    // Sincrono: nao devolve promessa, entao nao segura a resposta.
-    expect(result).toBeUndefined();
-    expect(ops.notifyOps).toHaveBeenCalledOnce();
-    const alert = ops.notifyOps.mock.calls[0][0];
-    expect(alert).toMatchObject({ event: "app.server_error", severity: "critical" });
-    expect(alert.context).toEqual({
+    // O Next espera este gancho: enquanto o relay nao respondeu, ele segue vivo.
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(finished).toBe(false);
+    deliver(new Response("ok"));
+    await pending;
+    expect(finished).toBe(true);
+  });
+
+  it("manda so rota, tipo, metodo, nome do erro e impressao digital", async () => {
+    const onRequestError = await loadFresh();
+
+    await onRequestError(new TypeError("falhou para pessoa@example.test no pedido 123"), request, context);
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(RELAY);
+    const body = JSON.parse(init.body as string);
+    expect(body).toMatchObject({ event: "app.server_error", severity: "critical" });
+    expect(body.context).toEqual({
       route: "/courses/[slug]",
-      routeType: "render",
+      routeType: "route",
       method: "POST",
       errorName: "TypeError",
       fingerprint: expect.stringMatching(/^[0-9a-f]{8}$/),
     });
 
-    const sent = JSON.stringify(alert);
+    // Nem no corpo nem nos cabecalhos do envio.
+    const sent = JSON.stringify(init);
     for (const leak of ["coupon", "PRIVADO", "pessoa@example.test", "deep-focus", "falhou", "123", "valor-privado", "203.0.113.9"]) {
       expect(sent).not.toContain(leak);
     }
-    // O log do Vercel continua recebendo o erro inteiro.
-    expect(consoleError).toHaveBeenCalledOnce();
   });
 
-  it("usa o digest do Next como impressao digital e corta query que venha na rota", () => {
-    onRequestError(withDigest("boom", "2890447281"), request, {
-      ...context,
-      routePath: "/api/checkout?x=1",
-      routeType: "route",
-    });
+  it("usa o digest do Next como impressao digital e corta query que venha na rota", async () => {
+    const onRequestError = await loadFresh();
 
-    expect(ops.notifyOps.mock.calls[0][0].context).toMatchObject({
-      route: "/api/checkout",
-      routeType: "route",
-      fingerprint: "2890447281",
-    });
+    await onRequestError(withDigest("boom", "2890447281"), request, { ...context, routePath: "/api/checkout?x=1" });
+
+    const body = JSON.parse((fetchMock.mock.calls[0] as [string, RequestInit])[1].body as string);
+    expect(body.context).toMatchObject({ route: "/api/checkout", fingerprint: "2890447281" });
+  });
+
+  it("segura por rota: rotas diferentes avisam, a mesma rota avisa uma vez", async () => {
+    const onRequestError = await loadFresh();
+
+    await onRequestError(new Error("a"), request, { ...context, routePath: "/api/checkout" });
+    await onRequestError(new Error("b"), request, { ...context, routePath: "/learn/courses/[slug]" });
+    await onRequestError(new Error("c"), request, { ...context, routePath: "/api/checkout" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const routes = fetchMock.mock.calls.map((call) => JSON.parse((call as [string, RequestInit])[1].body as string).context.route);
+    expect(routes).toEqual(["/api/checkout", "/learn/courses/[slug]"]);
   });
 
   it.each([
@@ -87,31 +120,30 @@ describe("onRequestError", () => {
     ["redirect", withDigest("NEXT_REDIRECT", "NEXT_REDIRECT;replace;/entrar;307;")],
     ["pedido abortado", Object.assign(new Error("aborted"), { name: "AbortError" })],
     ["conexao fechada", Object.assign(new Error("socket hang up"), { code: "ECONNRESET" })],
-  ])("%s nao manda aviso", (_case, error) => {
-    onRequestError(error, request, context);
+  ])("%s nao manda aviso", async (_case, error) => {
+    const onRequestError = await loadFresh();
 
-    expect(ops.notifyOps).not.toHaveBeenCalled();
-    expect(consoleError).not.toHaveBeenCalled();
+    await onRequestError(error, request, context);
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("falha no aviso nunca lanca, e o proximo erro ainda avisa", () => {
-    ops.notifyOps.mockImplementationOnce(() => {
-      throw new Error("relay fora");
-    });
+  it("relay fora do ar nao lanca", async () => {
+    fetchMock.mockImplementation(() => Promise.reject(new Error("relay fora")));
+    const onRequestError = await loadFresh();
 
-    expect(() => onRequestError(new Error("a"), request, context)).not.toThrow();
-    onRequestError(new Error("b"), request, context);
-
-    expect(ops.notifyOps).toHaveBeenCalledTimes(2);
+    await expect(onRequestError(new Error("a"), request, context)).resolves.toBeUndefined();
   });
 
-  it("um erro disparado de dentro do aviso nao reentra", () => {
-    ops.notifyOps.mockImplementationOnce(() => {
-      onRequestError(new Error("dentro do aviso"), request, context);
+  it("um erro que volte ao gancho durante o envio, pela mesma rota, nao reenvia", async () => {
+    const onRequestError = await loadFresh();
+    fetchMock.mockImplementationOnce(async () => {
+      await onRequestError(new Error("dentro do envio"), request, context);
+      return new Response("ok");
     });
 
-    onRequestError(new Error("fora"), request, context);
+    await onRequestError(new Error("fora"), request, context);
 
-    expect(ops.notifyOps).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 });

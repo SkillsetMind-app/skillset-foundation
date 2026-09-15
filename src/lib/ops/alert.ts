@@ -114,6 +114,18 @@ export async function sendOpsAlert(alert: OpsAlert): Promise<boolean> {
   }
 }
 
+type PlatformRequestContext = { waitUntil?: (promise: Promise<unknown>) => void };
+
+// The same request context Next itself reads (next/dist/server/after/
+// builtin-request-context): on Vercel it carries waitUntil, which keeps the
+// instance alive until the promise settles.
+function platformRequestContext(): PlatformRequestContext | undefined {
+  const store = (globalThis as unknown as Record<symbol, { get?: () => PlatformRequestContext | undefined } | undefined>)[
+    Symbol.for("@next/request-context")
+  ];
+  return store?.get?.();
+}
+
 export function notifyOps(alert: OpsAlert): void {
   const url = process.env.OPS_ALERT_WEBHOOK_URL;
   if (!url) {
@@ -134,8 +146,16 @@ export function notifyOps(alert: OpsAlert): void {
   try {
     after(send);
   } catch {
-    // after() throws outside a request scope (a script, a test). Fall back to
-    // the unawaited call: best-effort, but losing the alert entirely is worse.
-    void send();
+    // after() throws outside a request scope (a script, a test, or code that
+    // runs after the request left its scope). Hand the send to the platform's
+    // waitUntil when there is one, so the instance stays up until it lands;
+    // otherwise it is a best-effort unawaited call, which still beats losing
+    // the alert entirely.
+    const pending = send();
+    try {
+      platformRequestContext()?.waitUntil?.(pending);
+    } catch {
+      // A broken platform context must not turn an alert into a thrown error.
+    }
   }
 }

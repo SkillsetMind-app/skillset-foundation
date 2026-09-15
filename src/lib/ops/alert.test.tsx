@@ -49,6 +49,34 @@ describe("notifyOps", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("hands the send to the platform waitUntil when after() is unavailable", async () => {
+    // Outside a request scope after() throws, and a bare unawaited fetch dies
+    // when a serverless instance freezes. The platform's waitUntil, read from
+    // the same request context Next uses, keeps it alive until it lands.
+    process.env.OPS_ALERT_WEBHOOK_URL = WEBHOOK;
+    const key = Symbol.for("@next/request-context");
+    const slots = globalThis as unknown as Record<symbol, unknown>;
+    const waitUntil = vi.fn();
+    slots[key] = { get: () => ({ waitUntil }) };
+    try {
+      const { notifyOps } = await loadFresh();
+
+      notifyOps({ event: "test.wait_until", severity: "warn", summary: "x" });
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(waitUntil).toHaveBeenCalledExactlyOnceWith(expect.any(Promise));
+
+      // A broken platform context changes nothing: still no throw.
+      slots[key] = { get: () => { throw new Error("context gone"); } };
+      expect(() =>
+        notifyOps({ event: "test.wait_until.broken", severity: "warn", summary: "x" }),
+      ).not.toThrow();
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      delete slots[key];
+    }
+  });
+
   it("never throws when the relay fails (notifyOps)", async () => {
     // This sits on the failure path of money routes. A dead relay must not be
     // the reason a webhook handler falls over.
