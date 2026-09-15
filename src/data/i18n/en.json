@@ -3475,7 +3475,8 @@
       },
       "success": {
         "uploaded": "File uploaded to this lesson.",
-        "deleted": "Asset deleted."
+        "deleted": "Asset deleted.",
+        "oldLinkRemoved": "Old link removed."
       },
       "deleteConfirm": "Delete \"{fileName}\"? This permanently removes the file.",
       "thumbnailAlt": "Lesson thumbnail: {fileName}",

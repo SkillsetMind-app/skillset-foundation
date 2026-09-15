@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type DragEvent, type ReactNode } from "react";
+import { useId, useRef, useState, type DragEvent, type ReactNode, type Ref } from "react";
 import { HelpCircle, Link2, ShieldAlert, UploadCloud } from "lucide-react";
 
 import { Tooltip } from "@/components/shared/tooltip";
@@ -9,11 +9,20 @@ import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 
 export type LessonVideoMode = "upload" | "link";
 
+// Sem esquema ("youtube.com/watch?v=..."), assume https:// antes de validar; o
+// link gravado ja sai normalizado.
+function normalizeLink(value: string) {
+  const trimmed = value.trim();
+  return !trimmed || /^[a-z][a-z\d+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
 // Uma aula, um video (decisao de 14/09): o estudio mostra OU o envio OU o link
 // do YouTube/Vimeo, nunca os dois. Trocar e uma acao explicita ("Replace with
 // link" / "Replace with upload") e nao apaga nada: o envio antigo continua
 // listado no modal, com o proprio botao de apagar.
-export function LessonVideoSourcePicker(props: {
+// ponytail: o ref sai de `props` na desestruturacao; se ficasse, a regra
+// react-hooks/refs tratava todo `props.x` como leitura de ref no render.
+export function LessonVideoSourcePicker({ replaceButtonRef, ...props }: {
   mode: LessonVideoMode;
   disabled?: boolean;
   accept: string;
@@ -25,6 +34,8 @@ export function LessonVideoSourcePicker(props: {
   // link aceito que o campo mostrava. Link recusado nunca sai daqui.
   onLinkChange: (next: string | null) => void;
   uploadPanel?: ReactNode;
+  // Alvo estavel de foco para o modal (ex.: depois de tirar o link antigo).
+  replaceButtonRef?: Ref<HTMLButtonElement>;
 }) {
   const { t } = useTranslation();
   const urlInputId = useId();
@@ -36,6 +47,7 @@ export function LessonVideoSourcePicker(props: {
   // mostra a parte, so leitura.
   const [draft, setDraft] = useState(() => (savedIsEmbed ? props.externalUrl : ""));
   const [rejected, setRejected] = useState(false);
+  const pastedRef = useRef(false);
 
   function selectFile(file: File) {
     // Escolher um arquivo NÃO declara a fonte da aula. Antes declarava, e isso
@@ -68,27 +80,23 @@ export function LessonVideoSourcePicker(props: {
     }
   }
 
-  function handleLinkInput(value: string) {
-    setDraft(value);
-    const trimmed = value.trim();
+  // Grava so ao sair do campo, no Enter ou ao colar: salvar a cada tecla
+  // gravava ids de video truncados e acusava erro no meio da digitacao.
+  function commitLink(value: string) {
+    const url = normalizeLink(value);
 
-    if (!trimmed) {
-      setRejected(false);
-      // Apagar o campo tira o link aceito que ele mostrava. Um link antigo
-      // nunca aparece aqui, entao nunca e apagado por este caminho.
-      if (savedIsEmbed) {
-        props.onLinkChange(null);
-      }
+    if (url && !getTrustedLessonEmbed(url)) {
+      setRejected(true);
       return;
     }
 
-    if (getTrustedLessonEmbed(trimmed)) {
-      setRejected(false);
-      props.onLinkChange(trimmed);
-      return;
+    setRejected(false);
+    setDraft(url);
+    // Campo vazio tira o link aceito que ele mostrava. Um link antigo nunca
+    // aparece aqui (a base e ""), entao nunca e apagado por este caminho.
+    if (url !== (savedIsEmbed ? props.externalUrl : "")) {
+      props.onLinkChange(url || null);
     }
-
-    setRejected(true);
   }
 
   return (
@@ -164,7 +172,24 @@ export function LessonVideoSourcePicker(props: {
               aria-invalid={rejected || undefined}
               aria-describedby={rejected ? errorId : undefined}
               placeholder="https://www.youtube.com/watch?v=..."
-              onChange={(event) => handleLinkInput(event.target.value)}
+              onPaste={() => {
+                pastedRef.current = true;
+              }}
+              onChange={(event) => {
+                setDraft(event.target.value);
+                setRejected(false);
+                if (pastedRef.current) {
+                  pastedRef.current = false;
+                  commitLink(event.target.value);
+                }
+              }}
+              onBlur={(event) => commitLink(event.currentTarget.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  commitLink(event.currentTarget.value);
+                }
+              }}
             />
             {rejected ? (
               <small id={errorId} role="alert" className="font-semibold text-[var(--color-danger-fg)]">
@@ -186,6 +211,7 @@ export function LessonVideoSourcePicker(props: {
         )}
       </div>
       <button
+        ref={replaceButtonRef}
         type="button"
         className="button-outline justify-self-start px-3 py-2 text-xs disabled:opacity-60"
         disabled={props.disabled}

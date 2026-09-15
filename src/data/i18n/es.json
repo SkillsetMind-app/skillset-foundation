@@ -3475,7 +3475,8 @@
       },
       "success": {
         "uploaded": "Archivo subido a esta lección.",
-        "deleted": "Archivo eliminado."
+        "deleted": "Archivo eliminado.",
+        "oldLinkRemoved": "Enlace antiguo quitado."
       },
       "deleteConfirm": "¿Eliminar \"{fileName}\"? El archivo se eliminará de forma permanente.",
       "thumbnailAlt": "Miniatura de la lección: {fileName}",

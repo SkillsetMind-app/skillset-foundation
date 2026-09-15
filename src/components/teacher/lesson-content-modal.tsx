@@ -168,7 +168,9 @@ export function LessonContentModal({
   const [cancelUpload, setCancelUpload] = useState<(() => void) | null>(null);
   const [uploadProgress, setUploadProgress] = useState<UploadCourseAssetProgress | null>(null);
   const [error, setError] = useState<LessonError | null>(null);
-  const [success, setSuccess] = useState<"uploaded" | "deleted" | null>(null);
+  const [success, setSuccess] = useState<"uploaded" | "deleted" | "oldLinkRemoved" | null>(null);
+  const [assetsLoaded, setAssetsLoaded] = useState(false);
+  const replaceButtonRef = useRef<HTMLButtonElement>(null);
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
   const lessonAssets = assets.filter((asset) => asset.lessonId === lesson.id);
   const videoAssets = lessonAssets.filter((asset) => isVideoAssetKind(asset.kind));
@@ -188,12 +190,17 @@ export function LessonContentModal({
   // envio inalcançável numa aula nova — a fonte só vira "upload" no sucesso do
   // envio, e o envio só aparecia se a fonte já fosse "upload".
   const isUploadPanelOpen = resolvedSource === "upload" || selectedFile !== null || success === "uploaded";
-  // Um video por aula: a aba mostra OU o envio OU o link. Enquanto o professor
-  // nao troca, segue a escolha de resolveLessonVideoSource (aula que hoje tem
-  // os dois continua como esta). A troca e explicita e nao apaga nada.
+  // Um video por aula: a aba mostra OU o envio OU o link. A aba abre como
+  // resolveLessonVideoSource decide (aula que hoje tem os dois continua como
+  // esta) e essa escolha e fixada UMA vez, quando os arquivos da aula chegam.
+  // Rederivar a cada render tirava o campo de link da tela no meio da
+  // digitacao quando o professor o apagava. A troca e explicita e nao apaga nada.
   const [videoModeChoice, setVideoModeChoice] = useState<LessonVideoMode | null>(null);
-  const videoMode: LessonVideoMode =
-    videoModeChoice ?? (resolvedSource === "youtube" ? "link" : "upload");
+  const derivedVideoMode: LessonVideoMode = resolvedSource === "youtube" ? "link" : "upload";
+  if (assetsLoaded && videoModeChoice === null) {
+    setVideoModeChoice(derivedVideoMode);
+  }
+  const videoMode = videoModeChoice ?? derivedVideoMode;
   // Link antigo que nao e video (Drive etc.): so leitura, com botao de tirar.
   // O aluno continua com o botao "Open resource".
   const oldLink = lesson.externalUrl?.trim() && !trustedEmbed ? lesson.externalUrl : null;
@@ -223,7 +230,10 @@ export function LessonContentModal({
   useEffect(() => {
     return subscribeToCourseAssets(
       course.id,
-      setAssets,
+      (next) => {
+        setAssets(next);
+        setAssetsLoaded(true);
+      },
       () => setError({ kind: "load" }),
     );
   }, [course.id]);
@@ -494,22 +504,40 @@ export function LessonContentModal({
                     ? t("creatorEditor.lesson.embedDetected").replace("{provider}", () => trustedEmbed.provider === "youtube" ? "YouTube" : "Vimeo")
                     : t("creatorEditor.lesson.embedEmpty")
                 }
+                replaceButtonRef={replaceButtonRef}
                 onModeChange={(next) => {
                   setVideoModeChoice(next);
                   resetUploadState("lesson_video");
+                  // Se a midia de destino ja existe, a troca vale para o aluno
+                  // na hora: grava so a fonte. Nada e apagado. Sem midia, a
+                  // troca fica so na tela ate um link ser aceito ou um envio
+                  // terminar.
+                  if (next === "link" && trustedEmbed && lesson.videoSource !== "youtube") {
+                    onUpdateLesson({ videoSource: "youtube" });
+                  }
+                  if (next === "upload" && primaryVideo && lesson.videoSource !== "upload") {
+                    onUpdateLesson({ videoSource: "upload" });
+                  }
                 }}
                 // Fonte e link numa gravacao so, e so com link aceito. Nenhum
                 // course_assets e apagado aqui: o envio antigo segue na lista.
-                onLinkChange={(nextUrl) =>
-                  onUpdateLesson(
-                    nextUrl
-                      ? { videoSource: "youtube", externalUrl: nextUrl }
-                      : {
-                          externalUrl: null,
-                          ...(lesson.videoSource === "youtube" ? { videoSource: null } : {}),
-                        },
-                  )
-                }
+                onLinkChange={(nextUrl) => {
+                  // Mexeu no link: a aba fica no link mesmo que a fonte mude.
+                  setVideoModeChoice("link");
+                  if (!nextUrl) {
+                    onUpdateLesson({
+                      externalUrl: null,
+                      ...(lesson.videoSource === "youtube" ? { videoSource: null } : {}),
+                    });
+                    return;
+                  }
+                  // O link aceito substitui o link antigo (Drive etc.): pede a
+                  // mesma confirmacao do botao de tirar. Recusou, nada muda.
+                  if (oldLink && !window.confirm(t("creatorEditor.lesson.removeOldLinkConfirm"))) {
+                    return;
+                  }
+                  onUpdateLesson({ videoSource: "youtube", externalUrl: nextUrl });
+                }}
                 onSelectFile={(file) => {
                   setSelectedFile(file);
                   setUploadProgress(null);
@@ -557,6 +585,10 @@ export function LessonContentModal({
                     onClick={() => {
                       if (window.confirm(t("creatorEditor.lesson.removeOldLinkConfirm"))) {
                         onUpdateLesson({ externalUrl: null });
+                        // Esta secao some junto com o link: o foco vai para um
+                        // botao que fica, e o aviso sai pelo role="status".
+                        setSuccess("oldLinkRemoved");
+                        replaceButtonRef.current?.focus();
                       }
                     }}
                   >
@@ -564,6 +596,14 @@ export function LessonContentModal({
                   </button>
                 </section>
               ) : null}
+
+              {/* Com o formulario de envio na tela, o role="status" dele da o
+                  aviso; sem ele, este. Nunca dois ao mesmo tempo. */}
+              {videoMode === "upload" && isUploadPanelOpen ? null : (
+                <p role="status" className="text-sm text-[var(--color-ink-soft)]">
+                  {success === "oldLinkRemoved" ? successMessage : ""}
+                </p>
+              )}
 
               {videoAssets.length > 0 ? (
                   <LessonAssetList

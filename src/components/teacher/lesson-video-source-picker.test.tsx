@@ -81,19 +81,63 @@ describe("LessonVideoSourcePicker", () => {
     const props = renderPicker({ mode: "link" });
 
     fireEvent.change(urlField() as HTMLElement, { target: { value: "https://example.test/v.mp4" } });
+    fireEvent.blur(urlField() as HTMLElement);
     expect(screen.getByRole("alert")).toHaveTextContent("Only YouTube and Vimeo video links are accepted.");
     expect(urlField()).toHaveAttribute("aria-invalid", "true");
     expect(props.onLinkChange).not.toHaveBeenCalled();
 
     fireEvent.change(urlField() as HTMLElement, { target: { value: `  ${vimeo} ` } });
+    fireEvent.blur(urlField() as HTMLElement);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(urlField()).not.toHaveAttribute("aria-invalid");
     expect(props.onLinkChange).toHaveBeenCalledExactlyOnceWith(vimeo);
   });
 
-  it("apagar o campo tira o link aceito salvo", () => {
+  // Gravar a cada tecla persistia ids truncados ("vimeo.com/12") enquanto a
+  // tela dizia "This link was not saved", e acusava erro no meio da digitacao.
+  it("digitar nao grava nem acusa erro; grava ao sair do campo ou no Enter", () => {
+    const props = renderPicker({ mode: "link" });
+
+    for (const partial of ["h", "https://vim", "https://vimeo.com/12", vimeo]) {
+      fireEvent.change(urlField() as HTMLElement, { target: { value: partial } });
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(urlField()).not.toHaveAttribute("aria-invalid");
+    }
+    expect(props.onLinkChange).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(urlField() as HTMLElement, { key: "Enter" });
+    expect(props.onLinkChange).toHaveBeenCalledExactlyOnceWith(vimeo);
+
+    // Colar e um valor inteiro: valida na hora, e o erro acompanha aria-invalid.
+    fireEvent.paste(urlField() as HTMLElement);
+    fireEvent.change(urlField() as HTMLElement, { target: { value: "https://example.test/v.mp4" } });
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(urlField()).toHaveAttribute("aria-invalid", "true");
+    fireEvent.change(urlField() as HTMLElement, { target: { value: "https://example.test/v" } });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(urlField()).not.toHaveAttribute("aria-invalid");
+    expect(props.onLinkChange).toHaveBeenCalledOnce();
+  });
+
+  it("sem https:// completa o esquema antes de validar e grava o link normalizado", () => {
+    const props = renderPicker({ mode: "link" });
+
+    fireEvent.change(urlField() as HTMLElement, { target: { value: " vimeo.com/123456 " } });
+    fireEvent.blur(urlField() as HTMLElement);
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(props.onLinkChange).toHaveBeenCalledExactlyOnceWith(vimeo);
+    expect(urlField()).toHaveValue(vimeo);
+  });
+
+  it("apagar o campo tira o link aceito salvo, so ao sair do campo", () => {
     const props = renderPicker({ mode: "link", externalUrl: vimeo });
 
+    // Sair sem mudar o link salvo nao grava de novo.
+    fireEvent.blur(urlField() as HTMLElement);
     fireEvent.change(urlField() as HTMLElement, { target: { value: "" } });
+    expect(props.onLinkChange).not.toHaveBeenCalled();
+    fireEvent.blur(urlField() as HTMLElement);
     expect(props.onLinkChange).toHaveBeenCalledExactlyOnceWith(null);
   });
 
@@ -105,6 +149,7 @@ describe("LessonVideoSourcePicker", () => {
     expect(urlField()).toHaveValue("");
     fireEvent.change(urlField() as HTMLElement, { target: { value: "abc" } });
     fireEvent.change(urlField() as HTMLElement, { target: { value: "" } });
+    fireEvent.blur(urlField() as HTMLElement);
     expect(props.onLinkChange).not.toHaveBeenCalled();
   });
 
