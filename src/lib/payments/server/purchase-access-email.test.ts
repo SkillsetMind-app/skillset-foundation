@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { buildPurchaseAccessEmail, sendPurchaseAccessEmail } from "@/lib/payments/server/purchase-access-email";
+import {
+  buildCreatorSaleEmail,
+  buildPurchaseAccessEmail,
+  sendPurchaseAccessEmail,
+} from "@/lib/payments/server/purchase-access-email";
 
 const sale = {
   email: "buyer@example.test",
@@ -8,6 +12,15 @@ const sale = {
   courseUrl: "https://www.skillsetmind.com/learn/courses/course_1",
   locale: "en" as const,
   idempotencyKey: "order_1",
+};
+
+const creatorSale = {
+  email: "creator@example.test",
+  courseTitle: "Course",
+  amountMinor: 10000,
+  currency: "USD",
+  salesUrl: "https://www.skillsetmind.com/teach/sales",
+  idempotencyKey: "order_1:creator-sale",
 };
 
 describe("purchase access email", () => {
@@ -30,5 +43,20 @@ describe("purchase access email", () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 500 })));
 
     await expect(sendPurchaseAccessEmail(sale)).rejects.toThrow("Resend answered 500.");
+  });
+});
+
+describe("creator sale email", () => {
+  it("prints the stored amount, zero-decimal currencies included", () => {
+    expect(buildCreatorSaleEmail(creatorSale).text).toContain("Amount: $100.00");
+    expect(buildCreatorSaleEmail({ ...creatorSale, amountMinor: 100000, currency: "JPY" }).text).toContain("Amount: ¥1,000");
+  });
+
+  it("escapes the title in the HTML", () => {
+    const email = buildCreatorSaleEmail({ ...creatorSale, courseTitle: "<script>x</script>" });
+
+    expect(email.html).not.toContain("<script>");
+    expect(email.html).toContain("&lt;script&gt;x&lt;/script&gt;");
+    expect(email.subject).toBe("New sale: <script>x</script>");
   });
 });

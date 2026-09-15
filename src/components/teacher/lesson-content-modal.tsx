@@ -179,6 +179,12 @@ export function LessonContentModal({
   const [error, setError] = useState<LessonError | null>(null);
   const [success, setSuccess] = useState<"uploaded" | "deleted" | "oldLinkRemoved" | null>(null);
   const [assetsLoaded, setAssetsLoaded] = useState(false);
+  // Estado proprio, fora de `error`: resetUploadState (troca de aba ou de
+  // modo) limpava o erro de carga e o aviso do link voltava a "Loading...".
+  const [assetsLoadFailed, setAssetsLoadFailed] = useState(false);
+  // "Replace with upload" antes de os arquivos chegarem: a fonte so pode ser
+  // decidida quando se sabe se ha envio.
+  const uploadChosenBeforeLoadRef = useRef(false);
   const replaceButtonRef = useRef<HTMLButtonElement>(null);
   const linkHandleRef = useRef<LessonVideoSourcePickerHandle>(null);
   // Contador, nao booleano: cada recusa vira um no novo no role="status" e e
@@ -222,7 +228,11 @@ export function LessonContentModal({
     : tab === "video" && selectedFile
       ? t("creatorEditor.lesson.file.selected")
       : t(`creatorEditor.lesson.state.${getAssetStatus(lessonAssets, lesson)}`);
-  const errorMessage = getLessonErrorMessage(error, t);
+  // So vale antes da primeira carga boa: depois dela, um recarregamento em
+  // tempo real que falha deixava o alerta fixo ao lado de uma lista que
+  // continua na tela.
+  const loadErrorMessage = assetsLoadFailed && !assetsLoaded ? getLessonErrorMessage({ kind: "load" }, t) : "";
+  const errorMessage = error ? getLessonErrorMessage(error, t) : loadErrorMessage;
   const successMessage = success ? t(`creatorEditor.lesson.success.${success}`) : "";
 
   const dialogRef = useRef<HTMLElement>(null);
@@ -249,10 +259,24 @@ export function LessonContentModal({
       (next) => {
         setAssets(next);
         setAssetsLoaded(true);
+        setAssetsLoadFailed(false);
       },
-      () => setError({ kind: "load" }),
+      () => setAssetsLoadFailed(true),
     );
   }, [course.id]);
+
+  // O professor escolheu o envio antes de os arquivos chegarem: com eles na
+  // mao e um envio salvo, a fonte vai para "upload", para o aluno ver o que o
+  // estudio mostra. Se a carga falha, nada e gravado.
+  useEffect(() => {
+    if (!assetsLoaded || !uploadChosenBeforeLoadRef.current) {
+      return;
+    }
+    uploadChosenBeforeLoadRef.current = false;
+    if (primaryVideo && lesson.videoSource !== "upload") {
+      onUpdateLesson({ videoSource: "upload" });
+    }
+  }, [assetsLoaded, primaryVideo, lesson.videoSource, onUpdateLesson]);
 
   // The parent mounts this modal conditionally, so it is always "open" while
   // mounted — Escape mirrors the close affordances (X button / Done / overlay).
@@ -527,16 +551,19 @@ export function LessonContentModal({
                 // o link agora gravaria a fonte em null com um envio salvo.
                 linkLockedHint={assetsLoaded
                   ? undefined
-                  : error?.kind === "load" ? errorMessage : t("creatorEditor.lesson.linkLoading")}
+                  : loadErrorMessage || t("creatorEditor.lesson.linkLoading")}
                 onModeChange={(next) => {
                   setVideoModeChoice(next);
+                  uploadChosenBeforeLoadRef.current = next === "upload" && !assetsLoaded;
                   setLinkNotSaved(null);
                   resetUploadState("lesson_video");
                   // Se a midia de destino ja existe, a troca vale para o aluno
                   // na hora: grava so a fonte. Nada e apagado. Sem midia, a
                   // troca fica so na tela ate um link ser aceito ou um envio
-                  // terminar.
-                  if (next === "link" && trustedEmbed && lesson.videoSource !== "youtube") {
+                  // terminar. Antes de os arquivos chegarem o modo link e so o
+                  // plano B da tela (nao se sabe se ha envio): gravar "youtube"
+                  // ali tirava o aluno do envio numa ida e volta sem efeito.
+                  if (next === "link" && assetsLoaded && trustedEmbed && lesson.videoSource !== "youtube") {
                     onUpdateLesson({ videoSource: "youtube" });
                   }
                   if (next === "upload" && primaryVideo && lesson.videoSource !== "upload") {
@@ -636,12 +663,16 @@ export function LessonContentModal({
               ) : null}
 
               {/* Com o formulario de envio na tela, o role="status" dele da o
-                  aviso; sem ele, este. Nunca dois ao mesmo tempo. */}
+                  aviso; sem ele, este. Nunca dois ao mesmo tempo. O erro de
+                  carga aparece aqui so no modo envio: no modo link ele ja sai
+                  no proprio campo. */}
               {videoMode === "upload" && isUploadPanelOpen ? null : (
                 <p role="status" className="text-sm text-[var(--color-ink-soft)]">
                   {success === "oldLinkRemoved"
                     ? successMessage
-                    : linkNotSaved ? <span key={linkNotSaved}>{t("creatorEditor.lesson.linkNotSaved")}</span> : ""}
+                    : linkNotSaved
+                      ? <span key={linkNotSaved}>{t("creatorEditor.lesson.linkNotSaved")}</span>
+                      : videoMode === "upload" ? loadErrorMessage : ""}
                 </p>
               )}
 
