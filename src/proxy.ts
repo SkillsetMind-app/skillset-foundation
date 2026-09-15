@@ -7,6 +7,7 @@ import {
   isPlatformHost,
   normaliseHostHeader,
 } from "@/domain/host-routing";
+import { getAuthErrorRoute } from "@/lib/auth/routing";
 import { resolveHostToUid } from "@/lib/domains/resolve-host";
 import { notifyOps } from "@/lib/ops/alert";
 import { buildContentSecurityPolicy } from "@/lib/security/csp";
@@ -177,6 +178,19 @@ async function routedByHost(
   }
 }
 
+// Doors of an interactive sign-in. Ending a session on /auth/callback or
+// /auth/confirm would delete the PKCE verifier of the flow in progress, and on
+// the login page itself it could only loop.
+const SIGN_IN_EXACT = new Set(["/auth", "/login", "/signup", "/logout"]);
+const SIGN_IN_PREFIXES = ["/auth/", "/api/auth/"];
+
+function isSignInPath(pathname: string): boolean {
+  return (
+    SIGN_IN_EXACT.has(pathname) ||
+    SIGN_IN_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+  );
+}
+
 export async function proxy(request: NextRequest) {
   const nonce = crypto.randomUUID().replaceAll("-", "");
   const csp = buildContentSecurityPolicy(nonce);
@@ -239,7 +253,43 @@ export async function proxy(request: NextRequest) {
   // cookies. Do NOT gate/redirect on identity here — route-level guards own
   // authorization. The country check above is not an exception to that: it
   // refuses a connection, and knows nothing about who is making it.
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // One exception, about the session rather than the person. Suspending and
+  // restoring an account (or accepting an invite that required signing in
+  // again) only moves account_controls.sessions_revoked_before. GoTrue keeps
+  // refreshing the old session, and for that JWT the restrictive
+  // account_access_guard hides every row: an empty platform, public courses
+  // included, until a manual sign-out. Only a definite "no" ends the session —
+  // an unreachable database must never sign everyone out.
+  const { pathname, search } = request.nextUrl;
+  let revoked = false;
+  if (user && !isSignInPath(pathname)) {
+    try {
+      const { data, error } = await supabase.rpc("account_session_allowed");
+      revoked = !error && data === false;
+    } catch {
+      // Unknown is not "no".
+    }
+  }
+
+  if (revoked) {
+    // Local scope: ends this device's session in GoTrue and clears its cookies
+    // through setAll above, even when GoTrue cannot be reached.
+    await supabase.auth.signOut({ scope: "local" });
+    // Page loads go to login with the reason. API calls and server actions
+    // continue anonymous, so their own guards answer as for a signed-out user.
+    if ((request.method === "GET" || request.method === "HEAD") && !pathname.startsWith("/api/")) {
+      const login = NextResponse.redirect(
+        new URL(getAuthErrorRoute("session_revoked", pathname + search), request.url),
+      );
+      for (const cookie of response.cookies.getAll()) {
+        login.cookies.set(cookie);
+      }
+      login.headers.set("Cache-Control", "private, no-store");
+      return secure(login);
+    }
+  }
 
   return secure(response);
 }

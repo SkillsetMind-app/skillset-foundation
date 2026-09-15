@@ -149,6 +149,18 @@ describe("getCourseRefAccess", () => {
     expect(await getCourseRefAccess("meu-curso")).toBe("unknown");
   });
 
+  // Conta suspensa e restaurada: o GoTrue ainda aceita a sessao antiga, mas a
+  // policy restritiva account_access_guard esconde toda linha dela — curso
+  // publicado inclusive. "Nao achei" ali nao e "nao existe".
+  it("sessao revogada: a RLS esconde ate o curso publicado, e isso nao e 404", async () => {
+    const denied = new AuthError("Account access is unavailable.", 403, "account_access_denied");
+    server.client = fakeClient({ userError: denied });
+    expect(await getCourseRefAccess("c-1")).toBe("unknown");
+    // Logado de verdade, curso que nao existe: continua 404.
+    server.client = fakeClient({ userId: "aluno" });
+    expect(await getCourseRefAccess("nao-existe")).toBe("missing");
+  });
+
   it("falha de leitura nunca vira 404", async () => {
     server.client = fakeClient({ keyError: true });
     expect(await getCourseRefAccess("meu-curso")).toBe("unknown");

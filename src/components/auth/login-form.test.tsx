@@ -108,6 +108,25 @@ describe("LoginForm with Google", () => {
 // provider agora expoe isso como `mfa_required` e manda para ca — entao esta
 // tela tem que (1) retomar o desafio sozinha, sem pedir a senha de novo, e
 // (2) ter uma saida que encerre a sessao de verdade, nao so esconda a tela.
+describe("LoginForm com sessao encerrada pela conta", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getPendingSecondFactor.mockResolvedValue(null);
+  });
+
+  afterEach(cleanup);
+
+  // O proxy derruba a sessao revogada e manda para ca com ?error=session_revoked.
+  // Sem a frase propria, caia em "link invalido ou expirado", que nao explica nada.
+  it("diz por que a pessoa saiu, em vez de falar de link expirado", () => {
+    mocks.searchParams = new URLSearchParams("error=session_revoked");
+    render(<LoginForm />);
+
+    expect(screen.getByText("authFlow.errors.sessionRevoked")).toBeTruthy();
+    expect(screen.queryByText("authFlow.callback.invalidOrExpired")).toBeNull();
+  });
+});
+
 describe("LoginForm com segundo fator pendente", () => {
   beforeEach(() => {
     vi.clearAllMocks();
