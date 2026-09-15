@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
 
+// Controles bidi (ALM, LRM/RLM, LRE..RLO, LRI..PDI), escritos como escape de
+// proposito: caractere invisivel no fonte e o proprio ataque. Com eles o
+// texto do link "le" um dominio e o href vai para outro (RLO + URL invertida).
+const bidi = "\\u061C\\u200E\\u200F\\u202A-\\u202E\\u2066-\\u2069";
+const bidiControls = new RegExp(`[${bidi}]`, "gu");
+
 /**
  * Texto do professor -> React com links clicaveis, sem HTML cru.
  * So http(s) vira link: javascript:, data: e "www." sem esquema ficam texto.
@@ -8,15 +14,18 @@ import type { ReactNode } from "react";
  * Contar parenteses se alguem reclamar.
  */
 export function linkify(text: string): ReactNode[] {
-  const pattern = /https?:\/\/[^\s<>"]*[^\s<>".,)!?;:']/gi;
+  // Tira os controles bidi do texto todo; as classes tambem os recusam.
+  const clean = text.replace(bidiControls, "");
+  const pattern = new RegExp(`https?:\\/\\/[^\\s<>"${bidi}]*[^\\s<>".,)!?;:'${bidi}]`, "giu");
   const parts: ReactNode[] = [];
   let last = 0;
-  for (let match = pattern.exec(text); match; match = pattern.exec(text)) {
-    parts.push(text.slice(last, match.index));
+  for (let match = pattern.exec(clean); match; match = pattern.exec(clean)) {
+    parts.push(clean.slice(last, match.index));
     parts.push(
       <a
         key={match.index}
         href={match[0]}
+        dir="ltr"
         target="_blank"
         rel="noopener noreferrer nofollow ugc"
         className="underline [overflow-wrap:anywhere]"
@@ -26,6 +35,6 @@ export function linkify(text: string): ReactNode[] {
     );
     last = match.index + match[0].length;
   }
-  parts.push(text.slice(last));
+  parts.push(clean.slice(last));
   return parts;
 }

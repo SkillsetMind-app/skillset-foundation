@@ -2756,6 +2756,9 @@ export function CourseBuilderStudio() {
       </div>
       {course && activeLessonStudioModule && activeLessonStudioLesson ? (
         <LessonContentModal
+          // Uma instancia por aula: o estado do estudio (aba, envio, se a
+          // nota publica antiga aparece) nao vaza de uma aula para outra.
+          key={activeLessonStudioLesson.id}
           course={course}
           module={activeLessonStudioModule}
           moduleIndex={activeLessonStudioModuleIndex}

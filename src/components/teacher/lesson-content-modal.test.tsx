@@ -96,6 +96,7 @@ function renderModal(
   moduleTitle = "Módulo 1",
   localized = false,
   dripStrategy: DripStrategy = "instant",
+  isFreePreview = false,
 ) {
   const lesson: TeacherLesson = {
     id: "lesson-1",
@@ -127,7 +128,7 @@ function renderModal(
       lesson={nextLesson}
       lessonIndex={0}
       isEditable
-      isFreePreview={false}
+      isFreePreview={isFreePreview}
       dripStrategy={dripStrategy}
       onClose={onClose}
       onSetFreePreview={vi.fn()}
@@ -183,6 +184,8 @@ describe("LessonContentModal — dias de espera", () => {
 // Decisao de 14/09: a descricao da aula e UM campo de texto simples, gravado no
 // campo protegido (contentText). A nota publica antiga nunca e apagada.
 describe("LessonContentModal — descricao", () => {
+  const oldNoteLabel = "Old public note (shown to students above the description; anyone can read it)";
+
   beforeEach(() => {
     currentAssets = [];
     vi.clearAllMocks();
@@ -193,7 +196,7 @@ describe("LessonContentModal — descricao", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
 
     const oldNote = screen
-      .getByText("Old public note (visible on the course page)")
+      .getByText(oldNoteLabel)
       .closest("details") as HTMLElement;
     expect(oldNote).not.toBeNull();
     expect(oldNote).not.toHaveAttribute("open");
@@ -215,7 +218,7 @@ describe("LessonContentModal — descricao", () => {
 
     expect(screen.getByPlaceholderText("Explain what the student is about to learn and why it matters.")).toHaveValue("corpo");
     fireEvent.change(
-      screen.getByRole("textbox", { name: "Old public note (visible on the course page)", hidden: true }),
+      screen.getByRole("textbox", { name: oldNoteLabel, hidden: true }),
       { target: { value: "old!" } },
     );
     expect(onUpdateLesson).toHaveBeenLastCalledWith({ description: "old!" });
@@ -223,7 +226,34 @@ describe("LessonContentModal — descricao", () => {
 
     renderModal({ description: "", contentText: "corpo" });
     fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
-    expect(screen.queryByText("Old public note (visible on the course page)")).not.toBeInTheDocument();
+    expect(screen.queryByText(oldNoteLabel)).not.toBeInTheDocument();
+  });
+
+  // Apagar a nota antiga desmontava o campo no mesmo toque: o professor nao
+  // conseguia redigitar nem desfazer, e o autosave gravava "".
+  it("apagar a nota antiga nao some com o campo", () => {
+    const { onUpdateLesson } = renderModal({ description: "old", contentText: null }, "Módulo 1", true);
+    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    const note = () => screen.queryByRole("textbox", { name: oldNoteLabel, hidden: true });
+
+    fireEvent.change(note() as HTMLElement, { target: { value: "" } });
+    expect(onUpdateLesson).toHaveBeenLastCalledWith({ description: "" });
+    expect(note()).toBeInTheDocument();
+    fireEvent.change(note() as HTMLElement, { target: { value: "de volta" } });
+    expect(onUpdateLesson).toHaveBeenLastCalledWith({ description: "de volta" });
+  });
+
+  // O texto da aula de previa gratis e lido por qualquer um na pagina do curso.
+  it("na aula de previa gratis a ajuda avisa que o texto e publico", () => {
+    const { unmount } = renderModal({}, "Módulo 1", false, "instant", true);
+    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    expect(screen.getByText(/anyone can read this text on the course page/)).toBeInTheDocument();
+    expect(screen.queryByText(/for enrolled students/)).not.toBeInTheDocument();
+    unmount();
+
+    renderModal();
+    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    expect(screen.getByText(/for enrolled students/)).toBeInTheDocument();
   });
 });
 

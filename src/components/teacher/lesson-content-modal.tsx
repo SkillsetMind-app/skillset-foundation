@@ -151,6 +151,10 @@ export function LessonContentModal({
 }: LessonContentModalProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<LessonModalTab>("video");
+  // Decidido uma vez ao abrir a aula (o builder monta uma instancia por aula):
+  // se dependesse do valor vivo, apagar a nota desmontava o campo no mesmo
+  // toque e o professor nao conseguia desfazer.
+  const [hadOldNote] = useState(() => Boolean(lesson.description?.trim()));
   const [assets, setAssets] = useState<CourseAsset[]>([]);
   const [uploadKind, setUploadKind] = useState<CourseAssetKind>("lesson_video");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -574,7 +578,13 @@ export function LessonContentModal({
               <label className="lesson-modal-field">
                 <span>
                   {t("creatorEditor.lesson.description")}
-                  <small>{t("creatorEditor.lesson.descriptionHelp")}</small>
+                  {/* A aula de previa gratis tem o texto lido por qualquer um
+                      na pagina do curso: "so inscritos" enganaria o professor. */}
+                  <small>
+                    {t(isFreePreview
+                      ? "creatorEditor.lesson.descriptionHelpPreview"
+                      : "creatorEditor.lesson.descriptionHelp")}
+                  </small>
                 </span>
                 <textarea
                   value={lesson.contentText ?? ""}
@@ -586,7 +596,7 @@ export function LessonContentModal({
               </label>
               {/* A descricao publica antiga nunca e apagada: fica recolhida e
                   editavel, e o aluno continua vendo onde ja via. */}
-              {lesson.description ? (
+              {hadOldNote ? (
                 <details className="lesson-modal-field">
                   <summary>{t("creatorEditor.lesson.oldNote")}</summary>
                   <textarea

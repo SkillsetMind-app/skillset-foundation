@@ -20,6 +20,7 @@ import { UserAvatar } from "@/components/shared/user-avatar";
 import { getSafeExternalUrl } from "@/domain/external-url";
 import { CourseLandingBlocks } from "@/components/courses/course-landing-blocks";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
+import { linkify } from "@/lib/format/linkify";
 import type { CourseLanding } from "@/lib/data/course-landings";
 import { emptyCourseLanding, getCourseLanding } from "@/lib/data/course-landings";
 import {
@@ -666,8 +667,10 @@ export function CreatorCourseDetail({
                 </p>
               </div>
               {previewLessonContentText ? (
-                <div className="rounded-[12px] bg-white p-4 text-sm leading-7 text-[var(--color-ink)]">
-                  {previewLessonContentText}
+                // Mesmo texto da area de membros: quebras de linha e links
+                // clicaveis, sem HTML cru.
+                <div className="whitespace-pre-line rounded-[12px] bg-white p-4 text-sm leading-7 text-[var(--color-ink)]">
+                  {linkify(previewLessonContentText)}
                 </div>
               ) : null}
               {previewLessonEmbed ? (
