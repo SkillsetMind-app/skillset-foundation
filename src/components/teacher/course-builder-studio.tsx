@@ -550,15 +550,12 @@ export function CourseBuilderStudio() {
   // Saves nossos no ar (autosave, Salvar, Publicar). Aqui em cima porque o
   // efeito do snapshot pulado tambem le.
   const inFlightSavesRef = useRef(0);
-  // Assinatura do ultimo save que saiu: a descarga ao sair nao manda de novo o
-  // que ja esta a caminho.
-  const lastSentSignatureRef = useRef<string | null>(null);
   // Timer do debounce do autosave, para a descarga ao sair poder cancela-lo.
   const autosaveTimerRef = useRef<number | undefined>(undefined);
   // Estudio aberto: grava (sem prompt) o link digitado e ainda sem blur.
   const studioLeaveFlushRef = useRef<(() => void) | null>(null);
   // Descarga ao sair, refeita a cada render para ver o estado atual.
-  const flushOnLeaveRef = useRef<() => void>(() => {});
+  const flushOnLeaveRef = useRef<(withStudio: boolean) => void>(() => {});
 
   // Copia o snapshot do servidor para o rascunho. So setters (estaveis), entao
   // serve ao callback do realtime e ao efeito que aplica o snapshot pulado.
@@ -1350,7 +1347,6 @@ export function CourseBuilderStudio() {
       }
 
       inFlightSavesRef.current += 1;
-      lastSentSignatureRef.current = signature;
       setAutosaveState("saving");
 
       try {
@@ -1847,10 +1843,22 @@ export function CourseBuilderStudio() {
   // edicao ia com ele (beforeunload nao dispara no App Router). A descarga manda
   // o rascunho pendente na hora, pelo mesmo persistDraft do autosave.
   useEffect(() => {
-    flushOnLeaveRef.current = () => {
+    flushOnLeaveRef.current = (withStudio) => {
       try {
         // Link digitado no estudio e ainda sem blur vai primeiro, sem prompt.
-        studioLeaveFlushRef.current?.();
+        // So saindo de verdade: com a aba apenas escondida, a pessoa volta ao
+        // campo e decide ela mesma.
+        if (withStudio) {
+          studioLeaveFlushRef.current?.();
+        }
+        // Save, autosave ou Publicar no ar: nao comeca uma segunda troca total
+        // (o Publicar pausa o autosave de proposito entre gravar e publicar).
+        // O caminho no ar e o autosave normal levam o resto.
+        // ponytail: desmontar de verdade com save no ar pula a descarga, e o
+        // que foi editado depois dele se perde; enfileirar se virar caso real.
+        if (isAutosavingRef.current || inFlightSavesRef.current > 0 || isSaving || isSubmitting) {
+          return;
+        }
         if (!courseId || !canAutosaveDraft || savedSignature === null) {
           return;
         }
@@ -1860,15 +1868,14 @@ export function CourseBuilderStudio() {
           modules: sanitizeModules(localModulesRef.current),
         };
         const signature = JSON.stringify(payload);
-        const alreadySending =
-          inFlightSavesRef.current > 0 && lastSentSignatureRef.current === signature;
-        if (signature === savedSignature || alreadySending) {
+        if (signature === savedSignature) {
           return;
         }
         window.clearTimeout(autosaveTimerRef.current);
-        void persistDraft(signature, payload).catch(() => {
-          setAutosaveState("error");
-        });
+        // Pelo runAutosave (que chama o persistDraft): o save fica marcado como
+        // o autosave no ar, e um timer novo com o mesmo payload nao o reenvia.
+        // Ele ja trata o erro, entao nada escapa daqui.
+        void runAutosave(signature, payload);
       } catch {
         // Sair nunca pode quebrar a desmontagem.
       }
@@ -1876,14 +1883,15 @@ export function CourseBuilderStudio() {
   });
 
   // pagehide cobre fechar/recarregar e o bfcache; visibilitychange('hidden')
-  // chega antes, e e o unico aviso confiavel no celular.
+  // chega antes, e e o unico aviso confiavel no celular. Aba escondida nao mexe
+  // no estudio: trocar de app e voltar nao pode apagar o link digitado.
   // ponytail: fechar a aba de verdade pode cortar o fetch no meio; fetch com
   // keepalive no cliente Supabase se isso aparecer em producao.
   useEffect(() => {
-    const flush = () => flushOnLeaveRef.current();
+    const flush = () => flushOnLeaveRef.current(true);
     const flushWhenHidden = () => {
       if (document.visibilityState === "hidden") {
-        flush();
+        flushOnLeaveRef.current(false);
       }
     };
     window.addEventListener("pagehide", flush);
@@ -1899,7 +1907,7 @@ export function CourseBuilderStudio() {
   // aqui. Numa limpeza passiva ele ja teria sido solto.
   useLayoutEffect(() => {
     const flushRef = flushOnLeaveRef;
-    return () => flushRef.current();
+    return () => flushRef.current(true);
   }, []);
 
   // Browser-level guard for the gap autosave can't cover: the debounce window

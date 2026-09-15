@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -186,4 +186,100 @@ describe("builder grava o rascunho pendente ao sair", () => {
     expect(confirm).not.toHaveBeenCalled();
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   });
+
+  // Trocar de app ou de aba e voltar: a descarga silenciosa recusava o link
+  // (pedia confirmacao) e zerava o campo com o builder ainda montado.
+  it("aba escondida e pagehide nao apagam o link digitado que pediria confirmacao", async () => {
+    mocks.course = courseWith([
+      { id: "l1", title: "Welcome", type: "video", description: "", externalUrl: drive },
+    ]);
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    await renderBuilder();
+    fireEvent.click(screen.getByRole("button", { name: "Add video" }));
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    const field = () => screen.getByRole("textbox", { name: "YouTube or Vimeo URL" });
+    fireEvent.change(field(), { target: { value: vimeo } });
+
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    Reflect.deleteProperty(document, "visibilityState");
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(field()).toHaveValue(vimeo);
+
+    // pagehide (o bfcache pode trazer a pagina de volta): recusa sem perguntar
+    // e sem apagar o que foi digitado.
+    act(() => {
+      window.dispatchEvent(new Event("pagehide"));
+    });
+    expect(field()).toHaveValue(vimeo);
+    expect(confirm).not.toHaveBeenCalled();
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+  });
+
+  // Duas trocas totais diferentes no ar ao mesmo tempo: a descarga nao comeca
+  // uma segunda; o save no ar e o autosave normal levam a edicao nova.
+  it("com save no ar, sair nao comeca uma segunda gravacao", async () => {
+    let finishFirst = () => {};
+    vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(
+      () => new Promise<void>((resolve) => { finishFirst = resolve; }),
+    );
+    await renderBuilder();
+    fireEvent.change(moduleName(), { target: { value: "Start here, v1" } });
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1), { timeout: 5000 });
+
+    fireEvent.change(moduleName(), { target: { value: "Start here, v2" } });
+    act(() => {
+      window.dispatchEvent(new Event("pagehide"));
+    });
+    expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1);
+
+    await act(async () => finishFirst());
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(2), { timeout: 5000 });
+    expect(lastPayload()?.modules?.[0].title).toBe("Start here, v2");
+  }, 15000);
+
+  it("a descarga cancela o timer do debounce que estava correndo", async () => {
+    const setTimeoutSpy = vi.spyOn(window, "setTimeout");
+    const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
+    await renderBuilder();
+    fireEvent.change(moduleName(), { target: { value: "Start here, renamed" } });
+    const debounceCalls = setTimeoutSpy.mock.calls.flatMap((call, index) => (call[1] === 1800 ? [index] : []));
+    const handle = setTimeoutSpy.mock.results[debounceCalls.at(-1) ?? -1]?.value;
+    expect(handle).toBeDefined();
+    expect(clearTimeoutSpy).not.toHaveBeenCalledWith(handle);
+
+    act(() => {
+      window.dispatchEvent(new Event("pagehide"));
+    });
+
+    expect(clearTimeoutSpy).toHaveBeenCalledWith(handle);
+    expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1);
+  });
+
+  // Com o save da descarga ainda no ar, o efeito agenda um timer novo com o
+  // MESMO payload (a pessoa mexeu e voltou ao que ja foi mandado). Ele nao pode
+  // reenviar o mesmo save.
+  it("timer novo com o mesmo payload nao reenvia o save da descarga ainda no ar", async () => {
+    let finishFlush = () => {};
+    vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(
+      () => new Promise<void>((resolve) => { finishFlush = resolve; }),
+    );
+    await renderBuilder();
+    fireEvent.change(moduleName(), { target: { value: "Start here, renamed" } });
+    act(() => {
+      window.dispatchEvent(new Event("pagehide"));
+    });
+    expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1);
+
+    fireEvent.change(moduleName(), { target: { value: "Start here, other" } });
+    fireEvent.change(moduleName(), { target: { value: "Start here, renamed" } });
+    await wait(2200);
+    expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1);
+
+    await act(async () => finishFlush());
+  }, 10000);
 });

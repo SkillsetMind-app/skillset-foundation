@@ -131,8 +131,11 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
       ? props.onLinkChange(url || null, { silent: true })
       : props.onLinkChange(url || null)) !== false;
     // Nao gravou: o campo volta ao salvo, senao cada blur seguinte (X, aba,
-    // "Replace with upload") perguntava de novo e comia o clique.
-    setDraft(kept ? url : saved);
+    // "Replace with upload") perguntava de novo e comia o clique. Na descarga
+    // silenciosa ninguem foi perguntado: o que foi digitado fica no campo.
+    if (kept || !silent) {
+      setDraft(kept ? url : saved);
+    }
     return kept ? "saved" : "declined";
   }
 
