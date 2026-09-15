@@ -78,13 +78,14 @@ jobs:
               echo "::error title=Uptime alert not sent::Missing repository secret OPS_ALERT_WEBHOOK_URL."
               continue
             fi
-            # x-ops-secret only when set, same as alert.ts.
+            # x-ops-secret only when set, same as alert.ts. No -S and stderr
+            # dropped: curl's own error names the relay host, and the log is public.
             jq -n --arg s "$url HTTP $code" --arg at "$(date -u +%FT%TZ)" \
               '{source:"skillsetmind", event:"uptime_down", severity:"critical", summary:$s, at:$at}' \
-              | curl -fsS -o /dev/null -w 'alert HTTP %{http_code}\n' --max-time 20 \
+              | curl -fs -o /dev/null -w 'alert HTTP %{http_code}\n' --max-time 20 \
                   -H 'content-type: application/json' \
                   ${OPS_ALERT_WEBHOOK_SECRET:+-H "x-ops-secret: $OPS_ALERT_WEBHOOK_SECRET"} \
-                  --data-binary @- "$OPS_ALERT_WEBHOOK_URL" \
+                  --data-binary @- "$OPS_ALERT_WEBHOOK_URL" 2>/dev/null \
               || echo "::error title=Uptime alert not delivered::The relay did not accept the alert for $url."
           done
           exit $down
