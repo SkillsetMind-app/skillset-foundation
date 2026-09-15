@@ -45,3 +45,32 @@ describe("Bunny playback locale", () => {
     }));
   });
 });
+
+describe("Bunny playback retry", () => {
+  beforeEach(() => { mocks.fetch.mockReset(); vi.stubGlobal("fetch", mocks.fetch); });
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+  const player = <I18nProvider initialLocale="en"><BunnyVideoPlayer assetId="asset-1" title="Aula" /></I18nProvider>;
+
+  it("offers a retry after a temporary failure and asks for playback again", async () => {
+    mocks.fetch
+      .mockResolvedValueOnce(new Response("{}", { status: 503 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        embedUrl: "https://iframe.mediadelivery.net/embed/library/video",
+      }), { status: 200 }));
+    render(player);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByTitle("Aula")).toBeInTheDocument();
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not offer a retry when the lesson is simply not available", async () => {
+    mocks.fetch.mockResolvedValueOnce(new Response("{}", { status: 404 }));
+    render(player);
+
+    expect(await screen.findByRole("heading", { name: "Video unavailable" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+});

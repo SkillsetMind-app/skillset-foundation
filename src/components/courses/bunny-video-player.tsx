@@ -3,6 +3,7 @@
 import { PlayCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { Button } from "@/components/ui";
 
 import {
   clearLessonPosition,
@@ -246,6 +247,12 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
     }
   }
 
+  // A 404 is a real "no" (not bought, not open yet, or gone). Anything else —
+  // the 503 a database blip returns, a 429, a dropped connection — can work on
+  // a second try, so the student gets a button instead of a dead end.
+  const [attempt, setAttempt] = useState(0);
+  const [failedStatus, setFailedStatus] = useState<string | null>(null);
+
   useEffect(() => {
     let active = true;
     const body = assetId
@@ -267,8 +274,9 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
           setPlayback({ key: requestKey, embedUrl: data.embedUrl, error: false });
         }
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (active) {
+          setFailedStatus(error instanceof Error ? error.message : null);
           setPlayback({
             key: requestKey,
             embedUrl: null,
@@ -280,14 +288,27 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
     return () => {
       active = false;
     };
-  }, [assetId, courseId, lessonId, requestKey]);
+  }, [assetId, courseId, lessonId, requestKey, attempt]);
 
   if (currentPlayback.error) {
+    const retryable = failedStatus !== "404" && failedStatus !== "401";
     return (
       <div className="member-video-empty">
         <PlayCircle size={34} aria-hidden />
         <h5>{t("courseMedia.preview.unavailable")}</h5>
         <p>{t("courseMedia.preview.videoError")}</p>
+        {retryable ? (
+          <Button
+            variant="outline"
+            className="min-h-11"
+            onClick={() => {
+              setPlayback({ key: requestKey, embedUrl: null, error: false });
+              setAttempt((value) => value + 1);
+            }}
+          >
+            {t("authFlow.loading.retry")}
+          </Button>
+        ) : null}
       </div>
     );
   }

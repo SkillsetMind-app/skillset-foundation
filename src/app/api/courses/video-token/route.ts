@@ -42,29 +42,31 @@ async function isLessonDripLocked(
     userId: string;
     enrolledAt: string | null;
   },
-): Promise<boolean> {
+): Promise<"open" | "locked" | "unknown"> {
   const { data: course, error: courseError } = await admin
     .from("courses")
     .select("modules, drip_strategy, drip_interval_days, free_preview_lesson_id")
     .eq("id", params.courseId)
     .maybeSingle();
-  // ponytail: fail open on a read failure, same rule the rate limiter uses for
-  // playback — a DB blip must not black out a paid student. Drip is scheduling,
-  // not entitlement: enrollment is checked separately by the caller, so the
-  // worst case here is early access to a lesson the student already bought.
-  // Logged instead of swallowed so a persistent failure is visible.
+  // A read failure means the schedule cannot be checked, so no signed URL: the
+  // caller answers 503 and the player offers a retry. Failing open handed out
+  // lessons the teacher had scheduled for later whenever the database blinked.
   if (courseError) {
-    console.error("Drip lock read failed, allowing playback", {
+    console.error("Drip lock read failed, refusing playback", {
       courseId: params.courseId,
       lessonId: params.lessonId,
       message: courseError.message,
     });
-    return false;
+    return "unknown";
+  }
+  // The asset outlived its course: there is nothing left to be enrolled in.
+  if (!course) {
+    return "locked";
   }
 
-  const strategy = (course?.drip_strategy as DripStrategy | null) ?? "instant";
-  if (!course || strategy === "instant") {
-    return false;
+  const strategy = (course.drip_strategy as DripStrategy | null) ?? "instant";
+  if (strategy === "instant") {
+    return "open";
   }
 
   // modules is a JSONB column, so lessons can be missing on a malformed row.
@@ -76,18 +78,23 @@ async function isLessonDripLocked(
     .find((item) => item.id === params.lessonId);
   // The asset points at a lesson the course no longer lists: nothing to schedule.
   if (!lesson) {
-    return false;
+    return "open";
   }
 
   // sequential_progress is the only strategy that reads progress; the rest are
   // date math off the enrollment, so skip the query for them.
   let completedLessonIds: string[] = [];
   if (strategy === "sequential_progress") {
-    const { data: progress } = await admin
+    const { data: progress, error: progressError } = await admin
       .from("lesson_progress")
       .select("lesson_id")
       .eq("user_id", params.userId)
       .eq("enrollment_id", `${params.userId}__${params.courseId}`);
+    // Unread progress is not "nothing completed": that would lock a student
+    // out of a lesson they already earned and read as a paywall.
+    if (progressError) {
+      return "unknown";
+    }
     completedLessonIds = (progress ?? []).map((row) => row.lesson_id);
   }
 
@@ -102,7 +109,7 @@ async function isLessonDripLocked(
     completedLessonIds,
   );
 
-  return !state.unlocked;
+  return state.unlocked ? "open" : "locked";
 }
 
 export async function POST(request: Request) {
@@ -239,11 +246,16 @@ export async function POST(request: Request) {
     let enrolledAt: string | null = null;
     let viewerIsAdmin = false;
     if (!entitled) {
-      const { data: enrollment } = await admin
+      const { data: enrollment, error: enrollmentError } = await admin
         .from("enrollments")
         .select("status, created_at")
         .eq("id", `${callerId}__${asset.course_id}`)
         .maybeSingle();
+      // An unread enrollment is not "not enrolled": a 404 would tell a paying
+      // student the video does not exist. Retry-later instead.
+      if (enrollmentError) {
+        return NextResponse.json({ error: "Video host unavailable." }, { status: 503 });
+      }
       const { data: isAdmin } = await supabase.rpc("is_admin");
       viewerIsAdmin = Boolean(isAdmin);
       enrolledAt = enrollment?.created_at ?? null;
@@ -262,13 +274,16 @@ export async function POST(request: Request) {
     // Drip only binds students. A teacher previewing their own course and an
     // admin investigating one both need every lesson regardless of schedule.
     if (!previewOrOwner && !viewerIsAdmin && asset.lesson_id) {
-      const locked = await isLessonDripLocked(admin, {
+      const drip = await isLessonDripLocked(admin, {
         courseId: asset.course_id,
         lessonId: asset.lesson_id,
         userId: callerId!,
         enrolledAt,
       });
-      if (locked) {
+      if (drip === "unknown") {
+        return NextResponse.json({ error: "Video host unavailable." }, { status: 503 });
+      }
+      if (drip === "locked") {
         return NextResponse.json({ error: "Not available." }, { status: 404 });
       }
     }

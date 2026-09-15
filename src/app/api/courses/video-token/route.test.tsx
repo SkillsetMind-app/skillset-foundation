@@ -29,6 +29,9 @@ function createQuery(result: { data: unknown; error: unknown }) {
     order: vi.fn(() => query),
     limit: vi.fn(() => query),
     maybeSingle: vi.fn(async () => result),
+    // lesson_progress is awaited straight off the filter chain, not via maybeSingle.
+    then: (resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) =>
+      Promise.resolve(result).then(resolve, reject),
   };
   return query;
 }
@@ -146,7 +149,11 @@ describe("course video token", () => {
 
   // Drip: enrollment alone is not the grant — the lesson also has to have opened.
   // Enrolled today on a 7-day-per-lesson course, asking for lesson 2.
-  function enrolledStudentAskingForLesson(lessonId: string) {
+  type Result = { data: unknown; error: unknown };
+  function enrolledStudentAskingForLesson(
+    lessonId: string,
+    overrides: { enrolledAt?: string; enrollment?: Result; course?: Result; progress?: Result } = {},
+  ) {
     mocks.createServer.mockResolvedValue({
       auth: {
         getUser: vi.fn(async () => ({ data: { user: { id: "student-1" } }, error: null })),
@@ -164,8 +171,11 @@ describe("course video token", () => {
         },
         error: null,
       },
-      { data: { status: "active", created_at: new Date().toISOString() }, error: null },
-      {
+      overrides.enrollment ?? {
+        data: { status: "active", created_at: overrides.enrolledAt ?? new Date().toISOString() },
+        error: null,
+      },
+      overrides.course ?? {
         data: {
           drip_strategy: "time_drip_lesson",
           drip_interval_days: 7,
@@ -174,8 +184,81 @@ describe("course video token", () => {
         },
         error: null,
       },
+      ...(overrides.progress ? [overrides.progress] : []),
     );
   }
+
+  const DAY = 24 * 60 * 60 * 1000;
+  const enrolledAgo = (ms: number) => new Date(Date.now() - ms).toISOString();
+
+  it.each([
+    ["day 0", 0, 404],
+    ["day 3", 3 * DAY, 404],
+    ["one minute before day 7", 7 * DAY - 60_000, 404],
+    ["one minute after day 7", 7 * DAY + 60_000, 200],
+  ])("opens lesson 2 of a 7-day drip only after the week (%s)", async (_label, elapsed, status) => {
+    mocks.getAdmin.mockReturnValue(
+      enrolledStudentAskingForLesson("lesson-2", { enrolledAt: enrolledAgo(elapsed) }),
+    );
+
+    expect((await POST(request({ assetId: "asset-2" }))).status).toBe(status);
+  });
+
+  it("refuses to sign when the drip schedule cannot be read, instead of opening the lesson", async () => {
+    mocks.getAdmin.mockReturnValue(enrolledStudentAskingForLesson("lesson-2", {
+      course: { data: null, error: { message: "connection reset" } },
+    }));
+
+    expect((await POST(request({ assetId: "asset-2" }))).status).toBe(503);
+    expect(mocks.signEmbed).not.toHaveBeenCalled();
+  });
+
+  it("refuses to sign a video whose course no longer exists", async () => {
+    mocks.getAdmin.mockReturnValue(enrolledStudentAskingForLesson("lesson-1", {
+      course: { data: null, error: null },
+    }));
+
+    expect((await POST(request({ assetId: "asset-1" }))).status).toBe(404);
+    expect(mocks.signEmbed).not.toHaveBeenCalled();
+  });
+
+  const sequentialCourse = {
+    data: {
+      drip_strategy: "sequential_progress",
+      drip_interval_days: null,
+      free_preview_lesson_id: null,
+      modules: [{ lessons: [{ id: "lesson-1" }, { id: "lesson-2" }] }],
+    },
+    error: null,
+  };
+
+  it("answers retry-later, not locked, when sequential progress cannot be read", async () => {
+    mocks.getAdmin.mockReturnValue(enrolledStudentAskingForLesson("lesson-2", {
+      course: sequentialCourse,
+      progress: { data: null, error: { message: "timeout" } },
+    }));
+
+    expect((await POST(request({ assetId: "asset-2" }))).status).toBe(503);
+    expect(mocks.signEmbed).not.toHaveBeenCalled();
+  });
+
+  it("opens the next sequential lesson once the previous one is completed", async () => {
+    mocks.getAdmin.mockReturnValue(enrolledStudentAskingForLesson("lesson-2", {
+      course: sequentialCourse,
+      progress: { data: [{ lesson_id: "lesson-1" }], error: null },
+    }));
+
+    expect((await POST(request({ assetId: "asset-2" }))).status).toBe(200);
+  });
+
+  it("answers retry-later, not 'not enrolled', when the enrollment cannot be read", async () => {
+    mocks.getAdmin.mockReturnValue(enrolledStudentAskingForLesson("lesson-1", {
+      enrollment: { data: null, error: { message: "timeout" } },
+    }));
+
+    expect((await POST(request({ assetId: "asset-1" }))).status).toBe(503);
+    expect(mocks.signEmbed).not.toHaveBeenCalled();
+  });
 
   it("refuses to sign a lesson the drip schedule has not opened yet", async () => {
     mocks.getAdmin.mockReturnValue(enrolledStudentAskingForLesson("lesson-2"));
