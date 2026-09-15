@@ -114,8 +114,8 @@ let view: RenderResult;
 
 // A aula abre como pagina (?lesson=L) e volta ao modulo pelo router: segue a
 // ultima URL que o builder pediu, como o navegador faria.
-function followPush() {
-  const href = String(mocks.router.push.mock.calls.at(-1)?.[0]);
+function followPush(kind: "push" | "replace" = "push") {
+  const href = String(mocks.router[kind].mock.calls.at(-1)?.[0]);
   openAt(href.slice(href.indexOf("?") + 1));
   view.rerender(tree());
 }
@@ -210,7 +210,8 @@ describe("pagina do modulo dentro do builder", () => {
     followPush();
     expect(screen.getByRole("dialog")).toHaveTextContent("m2:Lesson A");
     fireEvent.click(screen.getByRole("button", { name: "Close studio" }));
-    followPush();
+    // Done/fechar troca a entrada do historico (router.replace).
+    followPush("replace");
 
     // Mesma pagina, mesmo formulario aberto, depois do eco.
     fireEvent.change(within(form()).getByRole("textbox", { name: "Lesson title" }), {

@@ -69,7 +69,20 @@ type LessonContentModalProps = {
   // camada escura, sem foco preso e sem Esc para fechar; a trilha
   // Curso > Modulo > Aula fica no lugar do cabecalho.
   variant?: "dialog" | "page";
-  crumbs?: { courseLabel: string; courseHref: string; moduleLabel: string; moduleHref: string };
+  crumbs?: {
+    courseLabel: string;
+    courseHref: string;
+    moduleLabel: string;
+    moduleHref: string;
+    // Sair pela trilha do curso: o builder guarda para onde devolver o foco.
+    onCourseNavigate?: () => void;
+  };
+  // Envio em curso: o builder mantem esta pagina montada ate o envio acabar,
+  // mesmo que a URL mude (voltar do navegador, outra aba).
+  onUploadingChange?: (uploading: boolean) => void;
+  // Arquivo enviado ou apagado: o builder busca de novo a lista do curso, e a
+  // prontidao do Publish ve o que mudou.
+  onAssetsChanged?: () => void;
   // Builder saindo da pagina: grava, sem prompt, o link digitado e sem blur.
   leaveFlushRef?: Ref<() => void>;
   course: TeacherCourse;
@@ -204,6 +217,8 @@ export function LessonContentModal({
   leaveFlushRef,
   variant = "dialog",
   crumbs,
+  onUploadingChange,
+  onAssetsChanged,
 }: LessonContentModalProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<LessonModalTab>("video");
@@ -524,6 +539,7 @@ export function LessonContentModal({
     }
 
     setIsUploading(true);
+    onUploadingChange?.(true);
 
     // O vídeo da aula marcada como "prévia gratuita" PRECISA subir com
     // is_preview, senão a página pública de vendas não o encontra: a busca
@@ -574,6 +590,7 @@ export function LessonContentModal({
       setUploadProgress(null);
       setIsPreviewAsset(false);
       setFileInputKey((current) => current + 1);
+      onAssetsChanged?.();
     } catch (caughtError) {
       // Cancelar é desfecho normal, não falha: limpa a tela sem caixa vermelha.
       if (caughtError instanceof CourseAssetUploadCancelled) {
@@ -590,6 +607,7 @@ export function LessonContentModal({
     } finally {
       setCancelUpload(null);
       setIsUploading(false);
+      onUploadingChange?.(false);
     }
   }
 
@@ -626,6 +644,7 @@ export function LessonContentModal({
       }
 
       setSuccess("deleted");
+      onAssetsChanged?.();
     } catch {
       setError({ kind: "delete" });
     } finally {
@@ -657,7 +676,24 @@ export function LessonContentModal({
           <nav className="lesson-modal__header" aria-label={t("creatorEditor.builder.curriculum.breadcrumb")}>
             <ol className="lesson-modal__trail">
               <li>
-                <Link href={crumbs.courseHref} scroll={false} onClick={guardLeave}>
+                <Link
+                  href={crumbs.courseHref}
+                  scroll={false}
+                  onClick={(event) => {
+                    guardLeave(event);
+                    // So o clique simples navega nesta aba (ctrl/cmd abrem outra).
+                    if (
+                      !event.defaultPrevented
+                      && event.button === 0
+                      && !event.metaKey
+                      && !event.ctrlKey
+                      && !event.shiftKey
+                      && !event.altKey
+                    ) {
+                      crumbs.onCourseNavigate?.();
+                    }
+                  }}
+                >
                   {crumbs.courseLabel}
                 </Link>
               </li>
@@ -715,7 +751,7 @@ export function LessonContentModal({
 
         <div className="lesson-modal__body">
           <div className="lesson-modal__context">
-            <h3 id="lesson-modal-title">{lesson.title || t("creatorEditor.lesson.untitled")}</h3>
+            <h3 id="lesson-modal-title" tabIndex={-1}>{lesson.title || t("creatorEditor.lesson.untitled")}</h3>
             <p className="lesson-modal__crumb">
               {t("creatorEditor.lesson.context")
                 .replace("{moduleIndex}", () => String(moduleIndex + 1))
