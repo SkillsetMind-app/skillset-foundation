@@ -253,13 +253,25 @@ describe("LessonVideoSourcePicker", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByText(
-      "YouTube and Vimeo videos stay viewable by anyone with the link, even outside SkillsetMind. Upload the video here to keep it for enrolled students only.",
-    )).toBeInTheDocument();
+    // A aula de previa gratis entrega o envio a qualquer visitante: o texto nao
+    // promete "so matriculados", so que o envio passa pelo controle de acesso.
+    const en = "YouTube and Vimeo videos stay viewable by anyone with the link, even outside SkillsetMind. Upload the video here so playback goes through SkillsetMind's access check.";
+    const es = "Cualquiera que tenga el enlace puede ver los videos de YouTube y Vimeo, incluso fuera de SkillsetMind. Sube el video aquí para que la reproducción pase por el control de acceso de SkillsetMind.";
+    expect(screen.getByText(en)).toBeInTheDocument();
+    expect(urlField()).toHaveAccessibleDescription(en);
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByText(
-      "Cualquiera que tenga el enlace puede ver los videos de YouTube y Vimeo, incluso fuera de SkillsetMind. Sube el video aquí para que solo lo vean los estudiantes inscritos.",
-    )).toBeInTheDocument();
+    expect(screen.getByText(es)).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "URL de YouTube o Vimeo" })).toHaveAccessibleDescription(es);
+  });
+
+  it("o aviso de protecao continua na descricao do campo junto do erro de link recusado", () => {
+    renderPicker({ mode: "link" });
+
+    fireEvent.change(urlField() as HTMLElement, { target: { value: "https://example.test/v.mp4" } });
+    fireEvent.blur(urlField() as HTMLElement);
+    expect(urlField()).toHaveAccessibleDescription(
+      /^Only YouTube and Vimeo video links are accepted\. This link was not saved\. YouTube and Vimeo videos stay viewable/,
+    );
   });
 
   it("mantem a area de soltar ativa ao trocar de idioma", () => {
