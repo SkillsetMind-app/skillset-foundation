@@ -42,6 +42,15 @@ declare
   v_interval numeric;
   v_delay numeric;
 begin
+  -- Mesmo portão de has_enrollment_for_course_slug: conta suspensa, sessão
+  -- revogada ou sessão aal1 de conta com segundo fator não abre aula nenhuma.
+  -- As policies já têm esse corte (account_access_guard e strong_session_*);
+  -- aqui ele vale também para quem chamar a função direto. Sem usuário
+  -- (service_role) a resposta é true e o resto da regra decide.
+  if not public.session_is_strong() then
+    return false;
+  end if;
+
   select c.modules, c.drip_strategy, c.drip_interval_days, c.free_preview_lesson_id
     into v_course
     from public.courses c
@@ -126,7 +135,9 @@ stable
 security definer
 set search_path to 'public', 'pg_temp'
 as $function$
-  select coalesce(bool_and(public.lesson_is_released(a.course_id, a.lesson_id, p_uid)), true)
+  -- Mesmo portão de sessão de lesson_is_released, no corpo desta também.
+  select public.session_is_strong()
+     and coalesce(bool_and(public.lesson_is_released(a.course_id, a.lesson_id, p_uid)), true)
     from public.course_assets a
    where a.course_id = (storage.foldername(p_object_name))[2]
      and a.storage_path = p_object_name
