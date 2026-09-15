@@ -29,6 +29,7 @@ import {
   isVideoAssetKind,
   supabaseUploadLimitBytes,
 } from "@/domain/course-asset";
+import type { DripStrategy } from "@/domain/drip-policy";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import { getSafeMediaUrl } from "@/domain/external-url";
 import {
@@ -57,6 +58,9 @@ type LessonContentModalProps = {
   lessonIndex: number;
   isEditable: boolean;
   isFreePreview: boolean;
+  // Vem do estado do builder, nao de `course`: a estrategia pode ter mudado
+  // na tela e ainda nao ter voltado do banco.
+  dripStrategy: DripStrategy;
   onClose: () => void;
   onSetFreePreview: () => void;
   onUpdateLesson: (patch: Partial<TeacherLesson>) => void;
@@ -140,6 +144,7 @@ export function LessonContentModal({
   lessonIndex,
   isEditable,
   isFreePreview,
+  dripStrategy,
   onClose,
   onSetFreePreview,
   onUpdateLesson,
@@ -683,27 +688,31 @@ export function LessonContentModal({
                   aria-label={t("creatorEditor.lesson.freePreviewLabel")}
                 />
               </div>
-              <label className="lesson-modal-field">
-                <span>
-                  {t("creatorEditor.lesson.drip")}
-                  <small>{t("creatorEditor.lesson.dripHelp")}</small>
-                </span>
-                <input
-                  value={lesson.dripDelayDays ?? ""}
-                  inputMode="numeric"
-                  onChange={(event) => {
-                    const parsedValue = Number(event.target.value);
-                    onUpdateLesson({
-                      dripDelayDays:
-                        event.target.value.trim() && Number.isFinite(parsedValue) && parsedValue >= 0
-                          ? Math.round(parsedValue)
-                          : null,
-                    });
-                  }}
-                  disabled={!isEditable}
-                  placeholder="7"
-                />
-              </label>
+              {/* So a estrategia "time_drip_custom" le os dias por aula
+                  (src/domain/drip-policy.ts); nas outras o campo nao faz nada. */}
+              {dripStrategy === "time_drip_custom" ? (
+                <label className="lesson-modal-field">
+                  <span>
+                    {t("creatorEditor.lesson.drip")}
+                    <small>{t("creatorEditor.lesson.dripHelp")}</small>
+                  </span>
+                  <input
+                    value={lesson.dripDelayDays ?? ""}
+                    inputMode="numeric"
+                    onChange={(event) => {
+                      const parsedValue = Number(event.target.value);
+                      onUpdateLesson({
+                        dripDelayDays:
+                          event.target.value.trim() && Number.isFinite(parsedValue) && parsedValue >= 0
+                            ? Math.round(parsedValue)
+                            : null,
+                      });
+                    }}
+                    disabled={!isEditable}
+                    placeholder="7"
+                  />
+                </label>
+              ) : null}
             </div>
           ) : null}
           <p className="lesson-modal__guidance">

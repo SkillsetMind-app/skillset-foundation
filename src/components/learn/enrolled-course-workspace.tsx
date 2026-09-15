@@ -1658,6 +1658,13 @@ function LessonContentPanel({
     !locked
     && ((resolvedVideoSource === "upload" && Boolean(primaryHostedVideo))
       || (resolvedVideoSource === "youtube" && Boolean(trustedEmbed)));
+  // Sem video, quem decide o aviso e o CORPO da aula, nao o tipo: aula nova
+  // nasce "video" e o professor nao troca mais o tipo (decisao de 14/09). Aula
+  // so de leitura nao pode dizer "Media not attached yet". A descricao nao
+  // conta: quase toda aula de video tem uma linha de resumo. O tipo "text"
+  // antigo continua valendo.
+  const isTextFirstLesson =
+    lesson.type === "text" || Boolean(lesson.contentText?.trim());
   // No preview do professor não se guarda posição: ele não é o aluno.
   // Memoizado porque a referência é objeto: uma nova a cada render reabriria
   // a aula (e o evento "abriu" do funil) a cada quadro.
@@ -1678,10 +1685,14 @@ function LessonContentPanel({
             {lesson.title}
           </h4>
         </div>
-        <span className="member-meta-chip">
-          <Clock size={14} aria-hidden />
-          {lesson.duration}
-        </span>
+        {/* Sem duracao real (o fallback "Self-paced" de published-courses)
+            nao ha relogio a mostrar: a duracao nao se digita mais. */}
+        {/\d/.test(lesson.duration) ? (
+          <span className="member-meta-chip">
+            <Clock size={14} aria-hidden />
+            {lesson.duration}
+          </span>
+        ) : null}
       </div>
 
       <VideoDock title={lesson.title} enabled={hasPlayableVideo} closeLabel={t("learn.classroom.lesson.closeMiniPlayer")}>
@@ -1725,7 +1736,9 @@ function LessonContentPanel({
               autoplay={autoplay}
             />
           </VideoWatermark>
-        ) : lessonContentPending ? (
+        ) : lessonContentPending || isLoadingAssets ? (
+          // Com os anexos ainda chegando, a aula de video piscava "Media not
+          // attached yet" antes do player aparecer.
           <div className="member-video-empty">
             <PlayCircle size={34} aria-hidden />
             <h5>{t("learn.classroom.lesson.loading")}</h5>
@@ -1734,9 +1747,9 @@ function LessonContentPanel({
         ) : (
           <div className="member-video-empty">
             <PlayCircle size={34} aria-hidden />
-            <h5>{t(lesson.type === "text" ? "learn.classroom.lesson.textFirst" : "learn.classroom.lesson.mediaMissing")}</h5>
+            <h5>{t(isTextFirstLesson ? "learn.classroom.lesson.textFirst" : "learn.classroom.lesson.mediaMissing")}</h5>
             <p>
-              {lesson.type === "text"
+              {isTextFirstLesson
                 ? t("learn.classroom.lesson.textDetails")
                 : t("learn.classroom.lesson.mediaDetails")}
             </p>

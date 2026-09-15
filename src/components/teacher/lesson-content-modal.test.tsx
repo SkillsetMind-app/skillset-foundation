@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import type { CourseAsset } from "@/domain/course-asset";
+import type { DripStrategy } from "@/domain/drip-policy";
 import type { TeacherCourse, TeacherLesson } from "@/domain/teacher-course";
 
 const deleteCourseAsset = vi.fn<(asset: CourseAsset) => Promise<void>>(
@@ -90,7 +91,12 @@ function ChangeLanguage() {
   return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
 }
 
-function renderModal(lessonOverrides: Partial<TeacherLesson> = {}, moduleTitle = "Módulo 1", localized = false) {
+function renderModal(
+  lessonOverrides: Partial<TeacherLesson> = {},
+  moduleTitle = "Módulo 1",
+  localized = false,
+  dripStrategy: DripStrategy = "instant",
+) {
   const lesson: TeacherLesson = {
     id: "lesson-1",
     title: "Primeira aula",
@@ -122,6 +128,7 @@ function renderModal(lessonOverrides: Partial<TeacherLesson> = {}, moduleTitle =
       lessonIndex={0}
       isEditable
       isFreePreview={false}
+      dripStrategy={dripStrategy}
       onClose={onClose}
       onSetFreePreview={vi.fn()}
       onUpdateLesson={onChange}
@@ -150,6 +157,28 @@ function chooseVideoFile(name = "aula.mp4") {
 
   return file;
 }
+
+// So a estrategia "time_drip_custom" le os dias de espera por aula
+// (src/domain/drip-policy.ts). Nas outras o campo nao fazia nada.
+describe("LessonContentModal — dias de espera", () => {
+  beforeEach(() => {
+    currentAssets = [];
+    vi.clearAllMocks();
+  });
+
+  it("esconde os dias de espera quando a estrategia do curso nao os usa", () => {
+    renderModal({ dripDelayDays: 7 }, "Módulo 1", false, "instant");
+    fireEvent.click(screen.getByRole("button", { name: /^Settings/ }));
+    expect(screen.getByRole("button", { name: "Use this lesson as the free preview" })).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("7")).not.toBeInTheDocument();
+  });
+
+  it("mostra os dias de espera na liberacao por aula", () => {
+    renderModal({ dripDelayDays: 7 }, "Módulo 1", false, "time_drip_custom");
+    fireEvent.click(screen.getByRole("button", { name: /^Settings/ }));
+    expect(screen.getByDisplayValue("7")).toBeInTheDocument();
+  });
+});
 
 describe("LessonContentModal — video tab", () => {
   beforeEach(() => {
@@ -367,7 +396,7 @@ describe("LessonContentModal — video tab", () => {
       kind: "lesson_thumbnail", contentType: "image/png", fileName: "Miniatura $&.png",
       downloadUrl: "https://example.supabase.co/storage/v1/object/public/public-media/thumbnail.png",
     })];
-    const { onUpdateLesson } = renderModal({ type: "external_embed", durationMinutes: 12, dripDelayDays: 7 }, "Módulo $& {lessonIndex}", true);
+    const { onUpdateLesson } = renderModal({ type: "external_embed", durationMinutes: 12, dripDelayDays: 7 }, "Módulo $& {lessonIndex}", true, "time_drip_custom");
     fireEvent.click(screen.getByRole("button", { name: /^Settings/ }));
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByRole("button", { name: /^Ajustes/ })).toHaveAttribute("aria-current", "page");
