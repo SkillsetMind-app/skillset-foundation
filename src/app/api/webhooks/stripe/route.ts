@@ -1264,6 +1264,39 @@ async function handleChargeRefunded(
         .eq("id", `${order.user_id}__${order.course_id}`),
       "Refund course enrollment",
     );
+    await revokeCertificateForPurchase(admin, order.user_id, order.course_id);
+  }
+}
+
+// --- certificate withdrawn with the purchase --------------------------------
+// A full refund or a lost chargeback takes the course back; the certificate it
+// earned goes with it, so the public verification page stops vouching for it.
+// Called only where the enrollment is revoked for that reason. Touches only a
+// certificate still 'issued': a repeated event matches nothing, and one ops
+// already revoked keeps its own history. Never throws: the refund and the
+// access revocation are already written, and a failed certificate write is an
+// alert for a human, not a reason to fail the event.
+async function revokeCertificateForPurchase(
+  admin: Admin,
+  userId: string,
+  courseId: string,
+): Promise<void> {
+  try {
+    const { error } = await admin
+      .from("certificates")
+      .update({ status: "revoked", updated_at: nowIso() })
+      .eq("enrollment_id", `${userId}__${courseId}`)
+      .eq("status", "issued");
+    if (error) throw new Error(error.message);
+  } catch (error) {
+    console.error("Certificate revocation failed", { courseId, userId }, error);
+    notifyOps({
+      event: "stripe.webhook.certificate_revoke_failed",
+      severity: "warn",
+      summary:
+        "A refunded or charged-back purchase kept its certificate: the revocation write failed. Revoke it by hand.",
+      context: { courseId, userId },
+    });
   }
 }
 
@@ -1431,6 +1464,7 @@ async function handleDisputeClosed(
           .eq("id", `${order.user_id}__${order.course_id}`),
         "Revoke enrollment after lost chargeback",
       );
+      await revokeCertificateForPurchase(admin, order.user_id, order.course_id);
     }
   }
   // Stripe keeps subscriptions running after disputes unless optional account

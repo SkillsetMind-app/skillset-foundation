@@ -5102,6 +5102,8 @@
       "verify": "Verificar",
       "missing": "Certificado no encontrado",
       "missingDetail": "Este código no corresponde a un certificado emitido por SkillsetMind. Comprueba el código e inténtalo de nuevo.",
+      "revoked": "Certificado revocado",
+      "revokedDetail": "SkillsetMind emitió este certificado, pero después fue revocado. Ya no certifica que se completó este curso.",
       "verified": "Credencial verificada",
       "authority": "Entidad emisora",
       "category": "Categoría",

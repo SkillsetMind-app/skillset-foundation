@@ -4,13 +4,37 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "@/app/api/certificates/verify/route";
 import { rateLimitKeyFromIp } from "@/lib/supabase/rate-limit";
 
-const mocks = vi.hoisted(() => ({ rpc: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  rpc: vi.fn(),
+  revokedLookup: vi.fn(),
+  filters: [] as Array<[string, unknown]>,
+}));
+
+type LookupQuery = {
+  select(): LookupQuery;
+  eq(column: string, value: unknown): LookupQuery;
+  limit(): LookupQuery;
+  maybeSingle(): unknown;
+};
 
 vi.mock("@/lib/supabase/server", () => ({
   createSupabaseServerClient: async () => ({ rpc: mocks.rpc }),
 }));
 
-vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdminClient: () => ({}) }));
+vi.mock("@/lib/supabase/admin", () => ({
+  getSupabaseAdminClient: () => {
+    const query: LookupQuery = {
+      select: () => query,
+      eq: (column, value) => {
+        mocks.filters.push([column, value]);
+        return query;
+      },
+      limit: () => query,
+      maybeSingle: () => mocks.revokedLookup(),
+    };
+    return { from: () => query };
+  },
+}));
 
 const IP = "203.0.113.7";
 const FORWARDED = `${IP}, 10.0.0.1`;
@@ -28,7 +52,9 @@ function verify(code = "sk-abc-123") {
 describe("GET /api/certificates/verify", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.filters.length = 0;
     mocks.rpc.mockResolvedValue({ data: { valid: false }, error: null });
+    mocks.revokedLookup.mockResolvedValue({ data: null, error: null });
   });
 
   // O bug (A-28): a rota mandava o IP cru do visitante como p_rate_key. Todas
@@ -63,5 +89,34 @@ describe("GET /api/certificates/verify", () => {
 
     expect(response.status).toBe(429);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    // A code the rate limit refused is never looked up a second way.
+    expect(mocks.revokedLookup).not.toHaveBeenCalled();
+  });
+
+  // Certificado retirado depois de reembolso integral ou chargeback perdido: o
+  // RPC so atesta os emitidos, entao a rota diz "revogado" em vez de "nao existe".
+  it("says revoked, not not-found, for a certificate revoked after issue", async () => {
+    mocks.revokedLookup.mockResolvedValue({ data: { status: "revoked" }, error: null });
+
+    const response = await verify();
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ valid: false, revoked: true });
+    expect(mocks.filters).toEqual([["verification_code", "SK-ABC-123"], ["status", "revoked"]]);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+  });
+
+  it("keeps not-found for a code that matches nothing", async () => {
+    const response = await verify();
+
+    expect(await response.json()).toEqual({ valid: false });
+  });
+
+  it("does not look up a code the RPC already verified", async () => {
+    mocks.rpc.mockResolvedValue({ data: { valid: true, certificate: {} }, error: null });
+
+    await verify();
+
+    expect(mocks.revokedLookup).not.toHaveBeenCalled();
   });
 });
