@@ -1742,13 +1742,13 @@ describe("Stripe webhook financial integrity", () => {
       return { ...disputeClosedEvent(id, status), account: "acct_teacher" };
     }
 
-    it("revokes the certificate on a full refund", async () => {
+    it("withdraws the certificate on a full refund as refund_revoked", async () => {
       const admin = createAdmin("refund");
       mocks.getAdmin.mockReturnValue(admin);
 
       expect((await postEvent(fullRefundEvent("evt_full_refund"))).status).toBe(200);
 
-      expect(admin.state.certificate.status).toBe("revoked");
+      expect(admin.state.certificate.status).toBe("refund_revoked");
       expect(admin.state.enrollmentUpdates).toContainEqual(
         expect.objectContaining({ id: "user_1__course_1", status: "refunded" }),
       );
@@ -1764,14 +1764,14 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.certificateWrites).toBe(0);
     });
 
-    it("revokes the certificate when a chargeback is lost", async () => {
+    it("withdraws the certificate as refund_revoked when a chargeback is lost", async () => {
       const admin = createAdmin("refund");
       admin.state.ledger.status = "disputed";
       mocks.getAdmin.mockReturnValue(admin);
 
       expect((await postEvent(connectedDispute("evt_dispute_lost_certificate", "lost"))).status).toBe(200);
 
-      expect(admin.state.certificate.status).toBe("revoked");
+      expect(admin.state.certificate.status).toBe("refund_revoked");
     });
 
     it("keeps the certificate when a chargeback is won", async () => {
@@ -1793,8 +1793,22 @@ describe("Stripe webhook financial integrity", () => {
       expect((await postEvent(event)).status).toBe(200);
       expect((await postEvent(event)).status).toBe(200);
 
-      expect(admin.state.certificate.status).toBe("revoked");
+      expect(admin.state.certificate.status).toBe("refund_revoked");
       expect(admin.state.certificateWrites).toBe(1);
+    });
+
+    // An ops revocation is final (issue_skillset_certificate refuses to
+    // re-issue 'revoked'). A refund must never turn it into 'refund_revoked',
+    // which a rebuy would re-issue.
+    it("leaves an ops-revoked certificate untouched on a full refund", async () => {
+      const admin = createAdmin("refund");
+      admin.state.certificate.status = "revoked";
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(fullRefundEvent("evt_full_refund_ops_revoked"))).status).toBe(200);
+
+      expect(admin.state.certificate.status).toBe("revoked");
+      expect(admin.state.certificateWrites).toBe(0);
     });
 
     it("keeps the refund and the access revocation when the certificate write fails", async () => {

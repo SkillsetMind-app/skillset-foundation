@@ -1271,11 +1271,23 @@ async function handleChargeRefunded(
 // --- certificate withdrawn with the purchase --------------------------------
 // A full refund or a lost chargeback takes the course back; the certificate it
 // earned goes with it, so the public verification page stops vouching for it.
-// Called only where the enrollment is revoked for that reason. Touches only a
-// certificate still 'issued': a repeated event matches nothing, and one ops
-// already revoked keeps its own history. Never throws: the refund and the
-// access revocation are already written, and a failed certificate write is an
-// alert for a human, not a reason to fail the event.
+// Called only where the enrollment is revoked for that reason.
+//
+// 'refund_revoked', not 'revoked': issue_skillset_certificate refuses to
+// re-issue only 'revoked' (an ops decision) and sets any other existing row
+// back to 'issued'. A buyer who is refunded, buys again and finishes gets the
+// certificate back; an ops revocation stays final.
+//
+// Touches only a certificate still 'issued': a repeated event matches nothing,
+// and an ops 'revoked' row is never downgraded. Never throws: the refund and
+// the access revocation are already written, and a failed certificate write is
+// an alert for a human, not a reason to fail the event.
+//
+// Known limit: the match is user + course, the same as the enrollment
+// revocation it follows — enrollments carry no order id. A late refund or lost
+// chargeback on an OLD order also withdraws the certificate earned under a
+// newer purchase (and that purchase's access). Once access is restored, the
+// learner re-issues it.
 async function revokeCertificateForPurchase(
   admin: Admin,
   userId: string,
@@ -1284,7 +1296,7 @@ async function revokeCertificateForPurchase(
   try {
     const { error } = await admin
       .from("certificates")
-      .update({ status: "revoked", updated_at: nowIso() })
+      .update({ status: "refund_revoked", updated_at: nowIso() })
       .eq("enrollment_id", `${userId}__${courseId}`)
       .eq("status", "issued");
     if (error) throw new Error(error.message);

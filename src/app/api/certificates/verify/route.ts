@@ -31,7 +31,8 @@ async function isRevokedCode(code: string): Promise<boolean> {
       .from("certificates")
       .select("status")
       .eq("verification_code", code)
-      .eq("status", "revoked")
+      // 'revoked' by ops, 'refund_revoked' by a full refund or lost chargeback.
+      .in("status", ["revoked", "refund_revoked"])
       .limit(1)
       .maybeSingle();
     return Boolean(data);

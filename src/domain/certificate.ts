@@ -1,6 +1,10 @@
 import type { Enrollment } from "@/domain/enrollment";
 
-export type CertificateStatus = "in_progress" | "eligible" | "issued" | "revoked";
+/**
+ * "revoked" is an ops decision and blocks re-issue. "refund_revoked" is written
+ * by a full refund or lost chargeback; buying again and finishing re-issues it.
+ */
+export type CertificateStatus = "in_progress" | "eligible" | "issued" | "revoked" | "refund_revoked";
 
 export type Certificate = {
   id: string;
@@ -11,7 +15,7 @@ export type Certificate = {
   courseTitle: string;
   courseCategory: string;
   authorityLabel: "SkillsetMind Verified";
-  status: Extract<CertificateStatus, "issued" | "revoked">;
+  status: Extract<CertificateStatus, "issued" | "revoked" | "refund_revoked">;
   verificationCode: string;
   /** Locked at issuance — the learner's full name printed on the credential. */
   studentFullName?: string | null;
@@ -83,6 +87,7 @@ export function getCertificateStatusLabel(status: CertificateStatus): string {
     eligible: "Ready for review",
     issued: "Issued",
     revoked: "Revoked",
+    refund_revoked: "Revoked",
   };
 
   return labels[status];

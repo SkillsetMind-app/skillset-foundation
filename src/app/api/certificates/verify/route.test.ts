@@ -6,31 +6,46 @@ import { rateLimitKeyFromIp } from "@/lib/supabase/rate-limit";
 
 const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
-  revokedLookup: vi.fn(),
+  // Status of the certificate behind the code, if one exists.
+  storedStatus: null as string | null,
+  lookups: 0,
   filters: [] as Array<[string, unknown]>,
 }));
 
 type LookupQuery = {
   select(): LookupQuery;
   eq(column: string, value: unknown): LookupQuery;
+  in(column: string, values: unknown[]): LookupQuery;
   limit(): LookupQuery;
-  maybeSingle(): unknown;
+  maybeSingle(): Promise<{ data: unknown; error: null }>;
 };
 
 vi.mock("@/lib/supabase/server", () => ({
   createSupabaseServerClient: async () => ({ rpc: mocks.rpc }),
 }));
 
+// Answers like the table would: a row comes back only when its status is in
+// the list the route asked for.
 vi.mock("@/lib/supabase/admin", () => ({
   getSupabaseAdminClient: () => {
+    let statuses: unknown[] = [];
     const query: LookupQuery = {
       select: () => query,
       eq: (column, value) => {
         mocks.filters.push([column, value]);
         return query;
       },
+      in: (column, values) => {
+        mocks.filters.push([column, values]);
+        statuses = values;
+        return query;
+      },
       limit: () => query,
-      maybeSingle: () => mocks.revokedLookup(),
+      maybeSingle: async () => {
+        mocks.lookups += 1;
+        const match = mocks.storedStatus !== null && statuses.includes(mocks.storedStatus);
+        return { data: match ? { status: mocks.storedStatus } : null, error: null };
+      },
     };
     return { from: () => query };
   },
@@ -52,9 +67,10 @@ function verify(code = "sk-abc-123") {
 describe("GET /api/certificates/verify", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.storedStatus = null;
+    mocks.lookups = 0;
     mocks.filters.length = 0;
     mocks.rpc.mockResolvedValue({ data: { valid: false }, error: null });
-    mocks.revokedLookup.mockResolvedValue({ data: null, error: null });
   });
 
   // O bug (A-28): a rota mandava o IP cru do visitante como p_rate_key. Todas
@@ -90,19 +106,20 @@ describe("GET /api/certificates/verify", () => {
     expect(response.status).toBe(429);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
     // A code the rate limit refused is never looked up a second way.
-    expect(mocks.revokedLookup).not.toHaveBeenCalled();
+    expect(mocks.lookups).toBe(0);
   });
 
-  // Certificado retirado depois de reembolso integral ou chargeback perdido: o
-  // RPC so atesta os emitidos, entao a rota diz "revogado" em vez de "nao existe".
-  it("says revoked, not not-found, for a certificate revoked after issue", async () => {
-    mocks.revokedLookup.mockResolvedValue({ data: { status: "revoked" }, error: null });
+  // O RPC so atesta os emitidos. Certificado revogado pela operacao ('revoked')
+  // ou por reembolso integral/chargeback perdido ('refund_revoked'): a rota diz
+  // "revogado" em vez de "nao existe".
+  it.each(["revoked", "refund_revoked"])("says revoked, not not-found, for a %s certificate", async (status) => {
+    mocks.storedStatus = status;
 
     const response = await verify();
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ valid: false, revoked: true });
-    expect(mocks.filters).toEqual([["verification_code", "SK-ABC-123"], ["status", "revoked"]]);
+    expect(mocks.filters[0]).toEqual(["verification_code", "SK-ABC-123"]);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
 
@@ -117,6 +134,6 @@ describe("GET /api/certificates/verify", () => {
 
     await verify();
 
-    expect(mocks.revokedLookup).not.toHaveBeenCalled();
+    expect(mocks.lookups).toBe(0);
   });
 });
