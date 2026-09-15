@@ -1031,6 +1031,39 @@ describe("Stripe webhook financial integrity", () => {
         stripe_connect_payouts_enabled: true,
       }),
     );
+    // Control: a payload without a country must not null the stored one.
+    expect(admin.state.userUpdates.some((update: Record<string, unknown>) =>
+      "stripe_connect_country" in update)).toBe(false);
+  });
+
+  // Lazy backfill: accounts minted before the column existed get their country
+  // the next time Stripe reports on them.
+  it("records the connected account's payout country from account.updated", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const response = await postEvent({
+      id: "evt_account_updated_country",
+      type: "account.updated",
+      account: "acct_teacher",
+      data: {
+        object: {
+          id: "acct_teacher",
+          object: "account",
+          country: "gb",
+          charges_enabled: false,
+          payouts_enabled: false,
+        },
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(admin.state.userUpdates).toContainEqual(
+      expect.objectContaining({
+        stripe_connected_account_id: "acct_teacher",
+        stripe_connect_country: "GB",
+      }),
+    );
   });
 
   it("records refunds without moving any money (direct-charge invariant)", async () => {

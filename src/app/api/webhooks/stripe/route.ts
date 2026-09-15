@@ -1613,6 +1613,9 @@ async function handleConnectedAccountUpdated(
         stripe_connect_status: ready ? "ready" : "onboarding_required",
         stripe_connect_charges_enabled: Boolean(account.charges_enabled),
         stripe_connect_payouts_enabled: Boolean(account.payouts_enabled),
+        // Backfills accounts created before the column existed. Omitted, never
+        // nulled, when Stripe leaves it out of the payload.
+        ...(account.country ? { stripe_connect_country: account.country.toUpperCase() } : {}),
         stripe_connect_updated_at: ts,
         updated_at: ts,
       })

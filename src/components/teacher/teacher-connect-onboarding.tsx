@@ -18,6 +18,7 @@ import {
   isConnectNotEnabledError,
   startTeacherStripeOnboarding,
 } from "@/lib/payments/connect";
+import { CONNECT_PAYOUT_COUNTRIES } from "@/lib/payments/connect-countries";
 import { useTheme } from "@/lib/theme/theme-provider";
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
 
@@ -75,6 +76,12 @@ type TeacherConnectOnboardingProps = {
    * payouts are platform-unavailable.
    */
   onAvailabilityChange?: (payoutsUnavailable: boolean) => void;
+  /**
+   * No connected account yet: ask for the payout country first. Nothing calls
+   * the Connect routes (which create the account) until the creator continues,
+   * because Stripe can never change an account's country afterwards.
+   */
+  needsCountry?: boolean;
 };
 
 function connectFailure(cause: unknown, fallback: "initialize" | "hosted") {
@@ -82,6 +89,7 @@ function connectFailure(cause: unknown, fallback: "initialize" | "hosted") {
   const code = paymentError?.code;
   const key = code === "activation_required" ? "activation"
     : code === "payments_not_configured" ? "configuration"
+    : code === "unsupported_country" ? "country"
     : code === "unauthenticated" || paymentError?.status === 401 ? "signIn"
     : code === "permission_denied" || paymentError?.status === 403 ? "permission"
     : paymentError?.status === 429 ? "rateLimit"
@@ -97,9 +105,60 @@ function connectRecoveryHref(key: string) {
 }
 
 export function TeacherConnectOnboarding({
+  needsCountry = false,
+  ...props
+}: TeacherConnectOnboardingProps) {
+  const { locale, t } = useTranslation();
+  const [draft, setDraft] = useState("US");
+  const [country, setCountry] = useState<string | null>(null);
+
+  // Once chosen, the flow below stays mounted even after the profile flips to
+  // "connected" (needsCountry -> false), so onboarding progress is never reset.
+  if (needsCountry && !country) {
+    const regionNames = new Intl.DisplayNames([locale], { type: "region" });
+    const options = CONNECT_PAYOUT_COUNTRIES
+      .map((code) => ({ code, label: regionNames.of(code) ?? code }))
+      .sort((a, b) => a.label.localeCompare(b.label, locale));
+    return (
+      <Card padding="none" className="p-5">
+        <Eyebrow>{t("connectOnboarding.setup")}</Eyebrow>
+        <label htmlFor="payout-country" className="mt-3 block text-sm font-semibold text-[var(--color-ink)]">
+          {t("connectOnboarding.countryLabel")}
+        </label>
+        <select
+          id="payout-country"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          aria-describedby="payout-country-hint"
+          className="mt-2 block min-h-11 w-full max-w-sm rounded-[10px] border border-[var(--color-line)] bg-white px-4 text-sm outline-none focus:border-[var(--color-primary-light)]"
+        >
+          {options.map(({ code, label }) => (
+            <option key={code} value={code}>{label}</option>
+          ))}
+        </select>
+        <p id="payout-country-hint" className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
+          {t("connectOnboarding.countryHint")}
+        </p>
+        <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
+          {t("connectOnboarding.countryLater")}
+        </p>
+        <div className="mt-4">
+          <Button onClick={() => setCountry(draft)}>
+            {t("connectOnboarding.countryContinue")}
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
+  return <ConnectOnboardingFlow {...props} country={country ?? undefined} />;
+}
+
+function ConnectOnboardingFlow({
   onComplete,
   onAvailabilityChange,
-}: TeacherConnectOnboardingProps) {
+  country,
+}: Omit<TeacherConnectOnboardingProps, "needsCountry"> & { country?: string }) {
   const { resolvedTheme } = useTheme();
   const { locale, t } = useTranslation();
   const [connect, setConnect] = useState<StripeConnectInstance | null>(null);
@@ -149,7 +208,7 @@ export function TeacherConnectOnboarding({
         // retrying the fetcher internally and spraying "Uncaught (in promise)" +
         // a burst of 400s into the console. When Connect IS enabled we reuse this
         // secret for the first init, so the happy path costs no extra call.
-        const firstSecret = await fetchConnectAccountSessionSecret();
+        const firstSecret = await fetchConnectAccountSessionSecret(country);
 
         let reuseFirstSecret = true;
         const instance = await loadConnectAndInitialize({
@@ -160,7 +219,7 @@ export function TeacherConnectOnboarding({
               return firstSecret;
             }
             // Connect asks again only when the session later expires.
-            return fetchConnectAccountSessionSecret();
+            return fetchConnectAccountSessionSecret(country);
           },
           // Inherit SkillsetMind brand colors (light/dark) so the embedded UI doesn't
           // look like a foreign Stripe widget plopped onto the page.
@@ -190,7 +249,8 @@ export function TeacherConnectOnboarding({
     return () => {
       cancelled = true;
     };
-  }, [retryKey]);
+    // `country` is fixed before this flow mounts; listing it keeps the rule honest.
+  }, [retryKey, country]);
 
   // Re-skin (and re-language) the already-running embedded widget when the
   // teacher flips the theme or the interface language, without re-initializing
@@ -205,7 +265,7 @@ export function TeacherConnectOnboarding({
     setIsOpeningHosted(true);
 
     try {
-      await startTeacherStripeOnboarding();
+      await startTeacherStripeOnboarding(country);
     } catch (cause) {
       // Connect-not-enabled comes back here too (the hosted link also calls
       // accounts.create). It's a platform gap, not a "try again" — switch to the

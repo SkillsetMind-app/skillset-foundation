@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Download,
   FileText,
+  Globe,
   RefreshCw,
   ShieldCheck,
 } from "lucide-react";
@@ -43,7 +44,7 @@ type Translate = (key: string) => string;
 
 export function TeacherWalletPanel() {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { locale, t } = useTranslation();
   // `t` fica fora das dependencias dos efeitos: com ele la, um provider que
   // devolva funcao nova por render reinscreve tudo em laco (a suite do CI
   // ficou muda 16 min). A ref le sempre o `t` atual sem reinscrever nada.
@@ -362,6 +363,17 @@ export function TeacherWalletPanel() {
                     : t("teach.earnings.notCreated")
               }
             />
+            {/* Read-only: Stripe fixes an account's country at creation. */}
+            {connected && profile?.stripeConnectCountry ? (
+              <PayoutStatusRow
+                icon={Globe}
+                label={t("teach.earnings.payoutCountry")}
+                value={
+                  new Intl.DisplayNames([locale], { type: "region" }).of(profile.stripeConnectCountry)
+                    ?? profile.stripeConnectCountry
+                }
+              />
+            ) : null}
             <PayoutStatusRow
               icon={ShieldCheck}
               label={t("teach.earnings.charges")}
@@ -464,10 +476,16 @@ export function TeacherWalletPanel() {
             </div>
           </div>
           <div className="mt-5">
-            <TeacherConnectOnboarding
-              onComplete={handleOnboardingComplete}
-              onAvailabilityChange={setPlatformPayoutsUnavailable}
-            />
+            {/* Wait for the profile: until it loads we can't tell whether to
+                ask for the payout country, and the Connect routes behind the
+                onboarding are what create the account. */}
+            {isLoading ? null : (
+              <TeacherConnectOnboarding
+                needsCountry={!connected}
+                onComplete={handleOnboardingComplete}
+                onAvailabilityChange={setPlatformPayoutsUnavailable}
+              />
+            )}
           </div>
         </section>
       )}

@@ -1732,7 +1732,7 @@
       "title": "Your earnings, your payout setup.",
       "helpTopic": "Payout schedule",
       "helpBody": "Buyers pay your Stripe account directly, so there is no platform hold. Stripe then settles and pays out to your bank on its own timing, which depends on your country and the payment method, and a new account waits on verification before its first payout. Stripe Connect must have both charges and payouts enabled before a paid product can go live.",
-      "taxForms": "Stripe issues your tax forms",
+      "taxForms": "Stripe collects your tax details",
       "netEstimate": "Creator net estimate",
       "refunded": "Refunded",
       "unavailable": "Unavailable",
@@ -1748,6 +1748,7 @@
       "statusNotConnected": "Not connected",
       "bankNote": "SkillsetMind never stores full bank details. Stripe collects identity, tax, and bank information inside the embedded onboarding flow.",
       "connectedAccount": "Connected account",
+      "payoutCountry": "Payout country",
       "notActiveYet": "Not active yet",
       "notCreated": "Not created",
       "charges": "Charges",
@@ -1782,7 +1783,7 @@
       "statusRefunded": "Refunded",
       "statusPartiallyRefunded": "Partially refunded",
       "taxCenter": "Tax center",
-      "taxCenterBody": "Tax forms appear once you have real payout volume. Stripe Connect collects your tax details, and SkillsetMind keeps the payout ledger fully transparent.",
+      "taxCenterBody": "Stripe Connect collects your tax details, and SkillsetMind keeps the payout ledger fully transparent.",
       "payoutsUnavailable": "Paid selling isn't open on SkillsetMind yet — Stripe Connect is still being configured on our side. No Stripe account is connected yet, so buyers have nowhere to pay you; onboarding will open on this page automatically once it's ready.",
       "profileError": "We could not load your payout profile.",
       "ledgerReadError": "We could not load your earnings record.",
@@ -3107,7 +3108,7 @@
       "refund_window": "Refund window",
       "self_serve_for_days_from_purchase": "Self-serve for {value0} days from purchase, subject to course progress and certificate status. A refund is debited from your Stripe balance, and our commission on that sale is returned with it — you never pay a fee on a sale that was undone.",
       "payout_schedule": "Payout schedule",
-      "there_is_no_platform_clearance_period": "There is no platform clearance period, because there is nothing for us to clear. The sale lands in your own Stripe balance, and Stripe pays it to your bank on your connected account's payout schedule. The account is yours — but because it is a Stripe Express account opened through SkillsetMind, the payout interval is a platform setting rather than one you pick, and in some countries (Brazil included) the interval cannot be changed at all. Stripe applies its usual verification delay before a brand-new account's first payout, and settlement timing depends on your country and payment method. Marketplaces that collect your sales into their own account have to clear that money before they release it; we never collect it, so there is nothing to release.",
+      "there_is_no_platform_clearance_period": "There is no platform clearance period, because there is nothing for us to clear. The sale lands in your own Stripe balance, and Stripe pays it to your bank on your connected account's payout schedule. The account is yours — but because it is a Stripe Express account opened through SkillsetMind, the payout interval is a platform setting rather than one you pick, and in some countries the interval cannot be changed at all. Stripe applies its usual verification delay before a brand-new account's first payout, and settlement timing depends on your country and payment method. Marketplaces that collect your sales into their own account have to clear that money before they release it; we never collect it, so there is nothing to release.",
       "payout_account": "Payout account",
       "creators_connect_stripe_before_selling_any": "Creators connect Stripe before selling any paid course. Checkout stays closed until your account can accept charges.",
       "currency": "Currency",
@@ -3211,7 +3212,7 @@
         "items": {
           "0": {
             "q": "When do I receive my first payout?",
-            "a": "Your buyers pay your own Stripe account directly — you are the merchant of record, and SkillsetMind never holds or remits your money. There is no SkillsetMind clearing period, because we hold nothing. The timing is Stripe's: it pays out from your balance to your bank on the payout schedule of your connected account, and it applies its own settlement timing for your country and payment method. Stripe also holds a new connected account's first payout for a waiting period — typically 7 to 14 days, and up to 30 days in Brazil — that we cannot waive. Complete Stripe's identity verification and your first payout follows that schedule."
+            "a": "Your buyers pay your own Stripe account directly — you are the merchant of record, and SkillsetMind never holds or remits your money. There is no SkillsetMind clearing period, because we hold nothing. The timing is Stripe's: it pays out from your balance to your bank on the payout schedule of your connected account, and it applies its own settlement timing for your country and payment method. Stripe also holds a new connected account's first payout for a waiting period — typically 7 to 14 days — that we cannot waive. Complete Stripe's identity verification and your first payout follows that schedule."
           },
           "1": {
             "q": "How are creator payouts handled?",
@@ -4559,7 +4560,12 @@
     "fallbackTitle": "Continue with Stripe's secure onboarding page.",
     "fallbackBody": "This can happen with browser privacy settings, blocked cookies, or when Stripe requires a stronger authentication step. The payout setup still works; this fallback returns you to SkillsetMind after completion.",
     "retry": "Retry embedded setup",
+    "countryLabel": "Payout country",
+    "countryHint": "Choose the country where you live and keep your bank account. Stripe can't change it after setup.",
+    "countryLater": "Latin America and Brazil are coming later.",
+    "countryContinue": "Continue",
     "error": {
+      "country": "Payouts aren't available in that country yet. Contact support if this looks wrong.",
       "initialize": "Stripe Connect could not initialize. Try again or contact support if this continues.",
       "hosted": "We could not open Stripe onboarding. Try again or contact support if this continues.",
       "activation": "Activate your creator account before setting up payouts.",

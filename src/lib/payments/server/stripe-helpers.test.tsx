@@ -11,20 +11,24 @@ import {
 import type { ProductOffer } from "@/domain/product-pricing";
 import type { CourseRow } from "@/lib/payments/server/stripe-helpers";
 
-const { supabaseQuery } = vi.hoisted(() => {
+const { supabaseQuery, userUpdates } = vi.hoisted(() => {
   // One self-returning object covers both chains the create helpers use:
   // .from().select().eq().maybeSingle() for the profile read, and
   // .from().update().eq() awaited for the write — awaiting a plain
   // non-thenable destructures to { error: undefined }, the same silent
   // success the real driver returns on a zero-error UPDATE.
   const q: Record<string, unknown> = {};
+  const updates: Array<Record<string, unknown>> = [];
   Object.assign(q, {
     select: () => q,
     eq: () => q,
-    update: () => q,
+    update: (payload: Record<string, unknown>) => {
+      updates.push(payload);
+      return q;
+    },
     maybeSingle: async () => ({ data: null, error: null }),
   });
-  return { supabaseQuery: q };
+  return { supabaseQuery: q, userUpdates: updates };
 });
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -181,20 +185,40 @@ describe("idempotency keys on first-use creates", () => {
     const create = vi.fn().mockResolvedValue({ id: "acct_new" });
     const stripe = { accounts: { create } } as unknown as Stripe;
 
-    await createFreshConnectedAccount({ uid: "uid_1", email: undefined, stripe });
+    await createFreshConnectedAccount({ uid: "uid_1", email: undefined, stripe, country: "US" });
     await createFreshConnectedAccount({
       uid: "uid_1",
       email: undefined,
       stripe,
       replacingAccountId: "acct_orphan",
+      country: "US",
     });
 
     expect(create.mock.calls[0][1].idempotencyKey).toBe(
-      "connect_account_uid_1_initial",
+      "connect_account_uid_1_initial_US",
     );
     expect(create.mock.calls[1][1].idempotencyKey).toBe(
-      "connect_account_uid_1_acct_orphan",
+      "connect_account_uid_1_acct_orphan_US",
     );
+  });
+
+  // Without a country Stripe silently locks the account to the platform's (US),
+  // and the account can never move. The key carries it so a different choice
+  // is a different create, not a replay of the first.
+  it("creates the account in the chosen country and records it", async () => {
+    const create = vi.fn().mockResolvedValue({ id: "acct_gb", country: "GB" });
+    const stripe = { accounts: { create } } as unknown as Stripe;
+    userUpdates.length = 0;
+
+    await createFreshConnectedAccount({ uid: "uid_1", email: undefined, stripe, country: "GB" });
+
+    expect(create.mock.calls[0][0].country).toBe("GB");
+    expect(create.mock.calls[0][0].business_type).toBe("individual");
+    expect(create.mock.calls[0][1].idempotencyKey).toBe("connect_account_uid_1_initial_GB");
+    expect(userUpdates[0]).toMatchObject({
+      stripe_connected_account_id: "acct_gb",
+      stripe_connect_country: "GB",
+    });
   });
 });
 

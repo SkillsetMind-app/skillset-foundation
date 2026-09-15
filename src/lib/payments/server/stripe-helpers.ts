@@ -252,12 +252,15 @@ export async function createFreshConnectedAccount(params: {
   email: string | undefined;
   stripe: Stripe;
   replacingAccountId?: string | null;
+  /** ISO alpha-2, already validated by the caller. Stripe never changes it later. */
+  country: string;
 }): Promise<string> {
-  const { uid, email, stripe, replacingAccountId } = params;
+  const { uid, email, stripe, replacingAccountId, country } = params;
 
   const account = await stripe.accounts.create(
     {
       type: "express",
+      country,
       email,
       business_type: "individual",
       capabilities: {
@@ -272,9 +275,11 @@ export async function createFreshConnectedAccount(params: {
     // function is the self-heal recreate path, and a uid-only key lives 24h, so
     // a heal inside that window would replay the create and hand back the very
     // orphaned account it is replacing. Racing healers share the stale id, so
-    // they still collapse to one fresh account.
+    // they still collapse to one fresh account. The country is in the key too:
+    // a replay for a different country must mint a new account, not return the
+    // one locked to the first choice.
     {
-      idempotencyKey: `connect_account_${uid}_${replacingAccountId ?? "initial"}`,
+      idempotencyKey: `connect_account_${uid}_${replacingAccountId ?? "initial"}_${country}`,
     },
   );
 
@@ -283,6 +288,7 @@ export async function createFreshConnectedAccount(params: {
     .from("users")
     .update({
       stripe_connected_account_id: account.id,
+      stripe_connect_country: (account.country || country).toUpperCase(),
       stripe_connect_status: "created",
       stripe_connect_charges_enabled: Boolean(account.charges_enabled),
       stripe_connect_payouts_enabled: Boolean(account.payouts_enabled),
