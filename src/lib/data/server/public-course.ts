@@ -107,6 +107,63 @@ export async function getPublicCourseByRef(
   }
 }
 
+export type CourseRefAccess = "visible" | "missing" | "unknown";
+
+const ACCESS_FIELDS = "id, status, owner_id";
+
+type AccessRow = { id: string; status: string | null; owner_id: string | null };
+
+/**
+ * O que a página /courses/[ref] faz com um ref que não é do catálogo estático
+ * nem curso publicado encontrado.
+ *
+ * A leitura usa o cliente da SESSÃO do pedido, então a RLS decide o que existe
+ * para quem pede: o dono (courses_select_owner), o admin (courses_select_admin)
+ * e o aluno matriculado (courses_select_enrolled) leem rascunho e arquivado; o
+ * público só lê publicado e em revisão (courses_select_public). Como "em
+ * revisão" é legível por qualquer um, ali exige-se ser o dono.
+ *
+ * - "visible": renderiza (prévia do dono/admin, ou curso publicado).
+ * - "missing": 404 de verdade.
+ * - "unknown": a leitura falhou; quem chama NÃO deve responder 404 — um
+ *   soluço do banco não pode derrubar a página de um curso publicado.
+ */
+export async function getCourseRefAccess(ref: string): Promise<CourseRefAccess> {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    // Ref que não é uuid faz a busca por id falhar (22P02): segue para o
+    // title_key, na mesma ordem de getPublicCourseByRef.
+    const byId = await supabase
+      .from("courses")
+      .select(ACCESS_FIELDS)
+      .eq("id", ref)
+      .maybeSingle();
+    let row = (byId.data as AccessRow | null) ?? null;
+
+    if (!row) {
+      const byKey = await supabase
+        .from("courses")
+        .select(ACCESS_FIELDS)
+        .eq("title_key", ref)
+        .limit(1);
+      if (byKey.error) return "unknown";
+      row = (byKey.data?.[0] as AccessRow | undefined) ?? null;
+    }
+
+    if (!row) return "missing";
+    if (row.status === "published") return "visible";
+    if (!user) return "missing";
+    if (row.status === "in_review" && row.owner_id !== user.id) return "missing";
+    return "visible";
+  } catch {
+    return "unknown";
+  }
+}
+
 /** Cursos publicados para o sitemap. */
 export async function listPublishedCourses(): Promise<PublicCourseSummary[]> {
   try {

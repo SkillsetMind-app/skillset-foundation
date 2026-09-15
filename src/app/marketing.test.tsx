@@ -45,4 +45,15 @@ describe("marketing home", () => {
       "Pricing",
     ]);
   });
+
+  // Acessibilidade basica: um landmark <main> por pagina, alvo do "Skip to
+  // content" que abre a barra.
+  it("tem exatamente um <main id=\"conteudo\">, alvo do pular para o conteudo", () => {
+    const { container } = render(<Home />);
+
+    const mains = container.querySelectorAll("main");
+    expect(mains).toHaveLength(1);
+    expect(mains[0]).toHaveAttribute("id", "conteudo");
+    expect(screen.getByRole("link", { name: "Skip to content" })).toHaveAttribute("href", "#conteudo");
+  });
 });
