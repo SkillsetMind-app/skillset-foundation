@@ -5131,6 +5131,8 @@
       "verify": "Verify",
       "missing": "Certificate not found",
       "missingDetail": "This code does not match an issued SkillsetMind certificate. Check the code and try again.",
+      "revoked": "Certificate revoked",
+      "revokedDetail": "SkillsetMind issued this certificate, but it was later revoked. It no longer certifies that this course was completed.",
       "verified": "Verified credential",
       "authority": "Authority",
       "category": "Category",
