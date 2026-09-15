@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ user: vi.fn(), asset: vi.fn(), course: vi.fn() }));
+const mocks = vi.hoisted(() => ({ user: vi.fn(), asset: vi.fn(), course: vi.fn(), rateLimit: vi.fn() }));
+vi.mock("@/lib/payments/server/auth", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/payments/server/auth")>(),
+  enforceRateLimit: mocks.rateLimit,
+}));
 vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: async () => ({
   auth: { getUser: mocks.user },
   from: (table: string) => {
@@ -14,6 +18,7 @@ vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: async () =
 }) }));
 
 import { signBunnyAssetPath } from "@/lib/bunny/server";
+import { PaymentError } from "@/lib/payments/server/auth";
 import { GET } from "./route";
 
 // fetch is mocked: nothing reaches Bunny. The request host is example.test.
@@ -36,6 +41,7 @@ beforeEach(() => {
     error: null,
   });
   mocks.course.mockResolvedValue({ data: { id: "course-1" }, error: null });
+  mocks.rateLimit.mockResolvedValue(undefined);
   fetchMock.mockResolvedValue({
     ok: true,
     status: 200,
@@ -97,4 +103,40 @@ it("answers 503 when Bunny fails, so the studio can try again later", async () =
 
   expect(response.status).toBe(503);
   expect(await response.json()).toEqual({ error: "Video host unavailable." });
+});
+
+it("limits each owner to 600 checks per hour and answers 429 over it, without calling Bunny", async () => {
+  expect((await GET(statusRequest())).status).toBe(200);
+  expect(mocks.rateLimit).toHaveBeenCalledWith("teach_video_status_real-owner", 600, 60 * 60 * 1000);
+
+  fetchMock.mockClear();
+  mocks.rateLimit.mockRejectedValueOnce(
+    new PaymentError("Too many attempts. Please wait before trying again.", 429),
+  );
+  expect((await GET(statusRequest())).status).toBe(429);
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+it("answers 503, not 404, when a database query fails, so the studio keeps polling", async () => {
+  mocks.asset.mockResolvedValueOnce({ data: null, error: { message: "connection reset" } });
+  expect((await GET(statusRequest())).status).toBe(503);
+
+  mocks.course.mockResolvedValueOnce({ data: null, error: { message: "connection reset" } });
+  expect((await GET(statusRequest())).status).toBe(503);
+
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+it("gives the Bunny call an 8 s timeout, and a hang becomes the 503 retry path", async () => {
+  const timeout = vi.spyOn(AbortSignal, "timeout");
+
+  await GET(statusRequest());
+  expect(timeout).toHaveBeenCalledWith(8000);
+  expect(fetchMock.mock.calls[0][1]).toEqual(
+    expect.objectContaining({ signal: timeout.mock.results[0].value }),
+  );
+
+  fetchMock.mockRejectedValueOnce(new DOMException("The operation timed out.", "TimeoutError"));
+  expect((await GET(statusRequest())).status).toBe(503);
+  timeout.mockRestore();
 });

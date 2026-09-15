@@ -1260,6 +1260,70 @@ describe("LessonContentModal — processamento na Bunny", () => {
     expect(second.onUpdateLesson).not.toHaveBeenCalled();
   });
 
+  it("keeps polling after a 429, like after a 5xx", async () => {
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 429, json: async () => ({}) });
+    fetchMock.mockResolvedValue({
+      ok: true, status: 200, json: async () => ({ status: 4, encodeProgress: 100, lengthSeconds: 60 }),
+    });
+    const { onUpdateLesson } = renderModal({ videoSource: "upload" });
+
+    await flush();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    await tenSeconds();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+    expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ durationMinutes: 1 });
+  });
+
+  // 7 (JIT segmenting) does not play yet: only 4 and 8 are ready.
+  it("treats status 7 as still processing and keeps polling until 8", async () => {
+    replyWith(
+      { status: 7, encodeProgress: 60, lengthSeconds: 90 },
+      { status: 8, encodeProgress: 100, lengthSeconds: 90 },
+    );
+    const { onUpdateLesson } = renderModal({ videoSource: "upload" });
+
+    await flush();
+    expect(screen.getByText("Processing 60%")).toBeInTheDocument();
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+    await tenSeconds();
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+    expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ durationMinutes: 2 });
+    await tenSeconds();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps polling while ready without a length, and writes the duration when it arrives", async () => {
+    replyWith(
+      { status: 4, encodeProgress: 100, lengthSeconds: null },
+      { status: 4, encodeProgress: 100, lengthSeconds: 0 },
+      { status: 4, encodeProgress: 100, lengthSeconds: 200 },
+    );
+    const { onUpdateLesson } = renderModal({ videoSource: "upload" });
+
+    await flush();
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+    await tenSeconds();
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+    await tenSeconds();
+    expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ durationMinutes: 4 });
+    await tenSeconds();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("stops asking for a missing length after 30 more polls", async () => {
+    replyWith({ status: 4, encodeProgress: 100, lengthSeconds: null });
+    const { onUpdateLesson } = renderModal({ videoSource: "upload" });
+
+    await flush();
+    for (let poll = 0; poll < 40; poll += 1) {
+      await tenSeconds();
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(31);
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+  });
+
   it("does not poll for a video that is not on Bunny", async () => {
     currentAssets = [videoAsset()];
     renderModal({ videoSource: "upload" });

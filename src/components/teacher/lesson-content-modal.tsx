@@ -107,15 +107,18 @@ type BunnyProcessing = {
 };
 
 // Bunny "Get Video" status: 0-3 still processing, 4 finished, 5 error,
-// 6 upload failed. 7-8 (just-in-time packaging) already play, so anything from
-// 4 up that is not a failure counts as ready.
-const BUNNY_FINISHED = 4;
+// 6 upload failed, 7 JIT segmenting (not playable yet), 8 JIT playlists
+// created (plays). Only 4 and 8 are ready; everything else that is not a
+// failure keeps polling.
 function isBunnyFailed(status: number | null) {
   return status === 5 || status === 6;
 }
 function isBunnyReady(status: number | null) {
-  return status !== null && status >= BUNNY_FINISHED && !isBunnyFailed(status);
+  return status === 4 || status === 8;
 }
+// Ready but no length yet: Bunny can report the length a little later. Keep
+// asking so the duration still gets written, but never forever.
+const MAX_READY_POLLS_WITHOUT_LENGTH = 30;
 
 // O link digitado e ainda nao gravado (sem blur) vai antes de fechar. Link
 // recusado ou troca nao confirmada seguram o modal aberto, com o erro ou o
@@ -310,6 +313,7 @@ export function LessonContentModal({
     const assetId = bunnyAssetId;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let readyPollsWithoutLength = 0;
 
     async function poll() {
       try {
@@ -323,11 +327,18 @@ export function LessonContentModal({
             return;
           }
           setBunnyProcessing({ assetId, ...data });
-          if (data.status !== null && data.status >= BUNNY_FINISHED) {
+          if (isBunnyFailed(data.status)) {
             return;
           }
-        } else if (response.status < 500) {
+          if (
+            isBunnyReady(data.status)
+            && (data.lengthSeconds || ++readyPollsWithoutLength > MAX_READY_POLLS_WITHOUT_LENGTH)
+          ) {
+            return;
+          }
+        } else if (response.status < 500 && response.status !== 429) {
           // Signed out, not the owner, or gone: asking again will not help.
+          // Too many checks (429) and 5xx try again in 10 s.
           return;
         }
       } catch {

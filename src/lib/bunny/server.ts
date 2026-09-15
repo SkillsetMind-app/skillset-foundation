@@ -87,6 +87,8 @@ export async function getBunnyVideoStatus(videoId: string): Promise<BunnyVideoSt
   const res = await fetch(`${BUNNY_API_BASE}/library/${libraryId}/videos/${encodeURIComponent(videoId)}`, {
     headers: { AccessKey: apiKey, Accept: "application/json" },
     cache: "no-store",
+    // A hung upstream call turns into the route's 503, and the studio retries.
+    signal: AbortSignal.timeout(8000),
   });
 
   if (!res.ok) {
