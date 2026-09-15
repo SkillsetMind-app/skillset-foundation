@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import type Stripe from "stripe";
 
 import { ACTIVATION_FEE_CHECKOUT_PURPOSE, planByStripePriceId } from "@/data/plans";
@@ -19,6 +19,8 @@ import {
   stripeProcessingFeeMinor,
 } from "@/lib/payments/rules";
 import { fromStripeAmount, toStripeAmount } from "@/lib/payments/currencies";
+import { getAppUrl } from "@/lib/payments/server/app-url";
+import { sendPurchaseAccessEmail } from "@/lib/payments/server/purchase-access-email";
 import { getStripeClient, isStripeConfigured } from "@/lib/payments/server/stripe";
 import {
   courseSubscriptionInterval,
@@ -178,6 +180,50 @@ async function markStripeEventFailed(
   } catch {
     // Registrar a falha nunca pode mascarar a falha original: o webhook precisa
     // devolver 500 para o Stripe reentregar, aconteça o que acontecer aqui.
+  }
+}
+
+// --- access email after a paid sale -----------------------------------------
+// A buyer who closes the tab after paying used to get only the Stripe receipt:
+// no course link, no sign-in instructions. This queues ONE email whose button
+// signs them in and opens the course.
+//
+// Once per sale: callers queue it right after inserting the sale's
+// payout_ledger row — the row that already gates fulfilment. A replayed or
+// redelivered event returns at that gate (or dies on the row's primary key)
+// before reaching the send, so no migration and no new flag. At-most-once by
+// design: a lost email costs a support ticket, a duplicate reads as spam.
+//
+// It never touches the enrollment. It runs after the response (the
+// notifyOps pattern), so Stripe gets its 2xx without waiting on mail, and any
+// failure — lookup or send — is logged and alerted, never thrown.
+function queuePurchaseAccessEmail(admin: Admin, userId: string, courseId: string): void {
+  const send = async () => {
+    try {
+      const { data, error } = await admin.auth.admin.getUserById(userId);
+      const email = data?.user?.email;
+      if (error || !email) throw new Error("Buyer account has no email to send access to.");
+      await sendPurchaseAccessEmail({
+        email,
+        // Same classroom path checkout's success_url lands on.
+        courseUrl: `${getAppUrl()}/learn/courses/${encodeURIComponent(courseId)}`,
+      });
+    } catch (error) {
+      console.error("Purchase access email failed", error);
+      notifyOps({
+        event: "stripe.webhook.access_email_failed",
+        severity: "warn",
+        summary:
+          "A buyer paid and has course access, but the access email did not go out. They only have the Stripe receipt; expect a support message.",
+        context: { courseId },
+      });
+    }
+  };
+  try {
+    after(send);
+  } catch {
+    // after() throws outside a request scope (tests, scripts): send inline.
+    void send();
   }
 }
 
@@ -474,6 +520,9 @@ async function handleCheckoutCompleted(
     }),
     "Create checkout earnings record",
   );
+  // Enrollment and the once-per-order gate are both written: safe to tell the
+  // buyer, and a replay can no longer reach this line.
+  queuePurchaseAccessEmail(admin, userId, courseId);
 
   // Release the in-flight checkout lock now that the purchase settled — only if
   // it still belongs to THIS order (a sibling attempt's lock must survive). [B3]
@@ -651,6 +700,9 @@ async function handleCourseSubscriptionInvoicePaid(
   // Record this invoice's earnings — keyed by invoice id (one per invoice,
   // idempotent against retries). Skip if it exists, gross 0, or no connected
   // account. Nothing is held: Stripe already settled the teacher.
+  // ponytail: a $0 first invoice (100% coupon) writes no ledger row, so it
+  // gets no access email; gate on a dedicated flag if that case shows up.
+  let firstSale = false;
   if (invoice.id && grossAmountMinor > 0 && connectedAccountId) {
     const { data: existingLedger } = await admin
       .from("payout_ledger")
@@ -683,6 +735,9 @@ async function handleCourseSubscriptionInvoicePaid(
         updated_at: ts,
       });
       if (ledgerInsertError) throw new Error(ledgerInsertError.message);
+      // This run wrote the invoice's gate row. Only the subscription's first
+      // invoice is a purchase; renewals must not re-send access.
+      firstSale = invoice.billing_reason === "subscription_create";
     }
   }
 
@@ -695,6 +750,7 @@ async function handleCourseSubscriptionInvoicePaid(
       admin.rpc("fulfill_paid_course_access", { p_user_id: userId, p_course_id: courseId, p_source: "subscription", p_subscription_id: subscriptionId }),
       "Fulfill subscription enrollment",
     );
+    if (firstSale) queuePurchaseAccessEmail(admin, userId, courseId);
   }
 
   // Mirror the subscription for the learner's cancel UI + lifecycle handler.
