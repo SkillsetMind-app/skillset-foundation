@@ -90,7 +90,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       {
         id: "payouts",
         q: "When do I receive my first payout?",
-        a: "Your buyers pay your own Stripe account directly — you are the merchant of record, and SkillsetMind never holds or remits your money. There is no SkillsetMind clearing period, because we hold nothing. The timing is Stripe's: it pays out from your balance to your bank on the payout schedule of your connected account, and it applies its own settlement timing for your country and payment method. Stripe also holds a new connected account's first payout for a waiting period — typically 7 to 14 days — that we cannot waive. Complete Stripe's identity verification and your first payout follows that schedule.",
+        a: "Your buyers pay your own Stripe account directly — you are the merchant of record, and SkillsetMind never holds or remits your money. There is no SkillsetMind clearing period, because we hold nothing. The timing is Stripe's: it pays out from your balance to your bank on the payout schedule of your connected account, and it applies its own settlement timing for your country and payment method. Stripe also holds a new connected account's first payout for a waiting period — typically 7 to 14 days, and longer in some countries; Stripe sets the schedule — that we cannot waive. Complete Stripe's identity verification and your first payout follows that schedule.",
       },
       {
         q: "How are creator payouts handled?",
