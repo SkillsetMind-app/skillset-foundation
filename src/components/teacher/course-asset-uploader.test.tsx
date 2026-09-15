@@ -76,6 +76,7 @@ describe("CourseAssetUploader", () => {
 
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
@@ -117,7 +118,8 @@ describe("CourseAssetUploader", () => {
     expect(URL.revokeObjectURL).not.toHaveBeenCalled();
     expect(mocks.uploadCourseAsset).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Subir archivo" }));
-    expect(screen.getByRole("status")).toHaveTextContent("50%");
+    // A capa do módulo passa pela compressão (assíncrona) antes do envio.
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("50%"));
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByRole("status")).toHaveTextContent("50%");
     expect(input).toBeDisabled();
@@ -148,6 +150,46 @@ describe("CourseAssetUploader", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Upload asset" }));
     await waitFor(() => expect(onModuleCoverUploaded).toHaveBeenCalledWith("m1", "poster-library"));
+  });
+
+  function chooseModuleCover(file: File) {
+    render(<I18nProvider initialLocale="en"><CourseAssetUploader
+      course={{ ...course, modules: [{ id: "m1", title: "Module", lessons: [] }] }}
+      isEditable
+    /></I18nProvider>);
+    fireEvent.change(screen.getByLabelText("Asset type"), { target: { value: "module_cover" } });
+    fireEvent.change(screen.getByLabelText("Attach to module"), { target: { value: "m1" } });
+    fireEvent.change(screen.getByLabelText("Choose a module cover file"), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: "Upload asset" }));
+  }
+
+  it("capa do modulo pela biblioteca tambem sai recortada 2:3 e comprimida", async () => {
+    vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width: 3000, height: 2000, close: vi.fn() })));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      { drawImage: vi.fn(), fillRect: vi.fn() } as unknown as CanvasRenderingContext2D,
+    );
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((callback: BlobCallback, type?: string) => {
+      callback(new Blob(["comprimido"], { type }));
+    });
+    mocks.uploadCourseAsset.mockResolvedValueOnce("poster-library");
+
+    chooseModuleCover(new File(["foto grande"], "cover.png", { type: "image/png" }));
+
+    await waitFor(() => expect(mocks.uploadCourseAsset).toHaveBeenCalledOnce());
+    const sent = mocks.uploadCourseAsset.mock.calls[0][0] as UploadInput & { kind: string; file: File };
+    expect(sent.kind).toBe("module_cover");
+    expect(sent.file.type).toBe("image/webp");
+    expect(sent.file.name).toBe("cover.webp");
+  });
+
+  it("capa do modulo acima de 10 MB pela biblioteca e recusada, sem subir", () => {
+    const big = new File(["x"], "enorme.png", { type: "image/png" });
+    Object.defineProperty(big, "size", { value: 11 * 1024 * 1024 });
+
+    chooseModuleCover(big);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("This image is over 10 MB. Choose a smaller one.");
+    expect(mocks.uploadCourseAsset).not.toHaveBeenCalled();
   });
 
   it("translates existing upload success and delete confirmation while retaining the filename literally", async () => {
