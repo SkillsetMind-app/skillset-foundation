@@ -233,6 +233,79 @@ describe("pagina do modulo dentro do builder", () => {
     expect(document.activeElement).toBe(within(card()).getByRole("link", { name: /Deep work/ }));
   });
 
+  // Perda de conteudo: o snapshot do realtime (eco de um save ANTERIOR)
+  // sobrescrevia o rascunho local com edicao ainda nao gravada, e o autosave
+  // nunca a regravava. A aula sumia da tela e o estudio nunca abria.
+  it("eco de um save anterior nao apaga edicao local ainda nao gravada", async () => {
+    let emitCourse: (course: TeacherCourse | null) => void = () => {};
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emitCourse = emit;
+      emit(mocks.course);
+      return () => undefined;
+    });
+    let finishFirst = () => {};
+    vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(
+      () => new Promise<void>((resolve) => { finishFirst = resolve; }),
+    );
+    openAt("courseId=course-1&tab=content&module=m1");
+    const card = await renderBuilder();
+
+    // 1) Autosave de um titulo sai e fica no ar.
+    fireEvent.change(within(card).getByRole("textbox", { name: "Module 1" }), {
+      target: { value: "Start here, renamed" },
+    });
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1), { timeout: 5000 });
+    const first = vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1];
+
+    // 2) Edicao nova enquanto ele esta no ar: uma aula.
+    fireEvent.click(within(card).getByRole("button", { name: "Add lesson to module 1" }));
+    const form = card.querySelector("form") as HTMLElement;
+    fireEvent.change(within(form).getByRole("textbox", { name: "Lesson title" }), {
+      target: { value: "Fresh lesson" },
+    });
+    fireEvent.click(within(form).getByRole("button", { name: "Add lesson" }));
+
+    // 3) Chega o eco do 1o save (sem a aula) e depois o save volta.
+    act(() => emitCourse({ ...mocks.course, ...first }));
+    await act(async () => finishFirst());
+
+    // A aula continua na tela, na pagina do modulo...
+    expect(within(card).getByRole("navigation", { name: "Breadcrumb" })).toBeInTheDocument();
+    expect(within(card).getAllByRole("textbox", { name: "Lesson title" }).map((input) => (input as HTMLInputElement).value))
+      .toContain("Fresh lesson");
+    // ...e no autosave seguinte.
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(2), { timeout: 5000 });
+    const second = vi.mocked(updateTeacherCourseBuilder).mock.calls[1][1];
+    expect(second.modules?.[0]).toEqual(expect.objectContaining({
+      title: "Start here, renamed",
+      lessons: [expect.objectContaining({ title: "Fresh lesson" })],
+    }));
+    // O eco desse save confirma a aula e abre o estudio nela.
+    act(() => emitCourse({ ...mocks.course, ...second }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("m1:Fresh lesson");
+  }, 15000);
+
+  // Ctrl/Cmd/Shift/Alt+clique ou botao do meio abrem outra aba: esta aba nao
+  // navega, entao nao pode ficar pedido de foco para o proximo voltar/avancar.
+  it("clique que abre outra aba nao deixa pedido de foco pendurado", async () => {
+    const { rerender } = render(tree());
+    await screen.findByRole("heading", { name: mocks.course.title });
+    const card = () => document.querySelector("#builder-sec-modules") as HTMLElement;
+
+    for (const init of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }, { button: 1 }]) {
+      fireEvent.click(within(card()).getByRole("link", { name: /Deep work/ }), init);
+    }
+    // Depois, o voltar/avancar do navegador troca a URL sem clique nesta aba.
+    openAt("courseId=course-1&tab=content&module=m2");
+    rerender(tree());
+    expect(document.activeElement).toBe(document.body);
+
+    fireEvent.click(within(card()).getByRole("link", { name: mocks.course.title }), { ctrlKey: true });
+    openAt("courseId=course-1&tab=content");
+    rerender(tree());
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it("sem ?module mostra uma linha por modulo, com nome em negrito e numero de aulas", async () => {
     const card = await renderBuilder();
 

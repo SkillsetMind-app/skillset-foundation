@@ -191,6 +191,24 @@ const paymentModelOptions: PlanSelectorOption<TeacherCoursePaymentType>[] = [
   },
 ];
 
+// Ctrl/Cmd/Shift/Alt ou botao que nao e o esquerdo: o navegador abre outra aba
+// e esta aqui nao navega. Nada que dependa de "a pessoa saiu daqui" pode rodar.
+function isPlainLeftClick(event: {
+  button: number;
+  metaKey: boolean;
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+}) {
+  return (
+    event.button === 0
+    && !event.metaKey
+    && !event.ctrlKey
+    && !event.shiftKey
+    && !event.altKey
+  );
+}
+
 function createLocalId(prefix: string) {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return `${prefix}-${crypto.randomUUID()}`;
@@ -520,6 +538,8 @@ export function CourseBuilderStudio() {
   // Navegacao de modulo pedida pela pessoa (linha, trilha ou modulo novo).
   // Nula na primeira hidratacao: abrir o builder ja num modulo nao rouba foco.
   const moduleNavigationRef = useRef<{ returnTo: string | null } | null>(null);
+  // Espelho de `draftIsDirty` para o callback do realtime, que nao ve o render.
+  const draftDirtyRef = useRef(false);
 
   useEffect(() => {
     if (!courseId) {
@@ -537,6 +557,40 @@ export function CourseBuilderStudio() {
         }
 
         setCourse(nextCourse);
+        setError(null);
+
+        // Video-first flow: a lesson added through the form auto-opens its
+        // studio (Video tab) as soon as hydration confirms autosave persisted
+        // it — uploads need the saved lesson id.
+        const pendingStudio = pendingLessonStudioRef.current;
+        if (
+          pendingStudio &&
+          nextCourse.modules?.some(
+            (module) =>
+              module.id === pendingStudio.moduleId &&
+              module.lessons.some(
+                (lesson) => lesson.id === pendingStudio.lessonId,
+              ),
+          )
+        ) {
+          pendingLessonStudioRef.current = null;
+          // Never replace a studio that is already open: the modal is keyed by
+          // lesson id, so swapping lessons would remount it mid-upload and drop
+          // the progress bar and the close guard of the lesson in progress.
+          setActiveLessonStudio((current) => current ?? pendingStudio);
+          setSuccess(null);
+        }
+
+        // O snapshot pode chegar atras do rascunho: eco de um save anterior com
+        // autosave no ar, debounce correndo ou aula/modulo recem-criado. Antes,
+        // sobrescrever apagava a edicao local e o autosave nunca a regravava.
+        // Com rascunho sujo, o local manda e o proximo autosave grava por cima.
+        // ponytail: local vence enquanto houver edicao pendente, ate sobre
+        // mudanca de outra aba; resolver conflito entre abas se virar caso real.
+        if (draftDirtyRef.current) {
+          return;
+        }
+
         setTitle(nextCourse.title);
         setSummary(nextCourse.summary);
         setCategory(nextCourse.category);
@@ -576,33 +630,10 @@ export function CourseBuilderStudio() {
             ? current
             : nextCourse.modules?.[0]?.id ?? "",
         );
-        setError(null);
         // Baseline mirrors exactly what the state setters above produce, so a
         // fresh hydration (or our own write echoing back) is never seen as a
         // user edit. Async callback -> setState is allowed here.
         setSavedSignature(builderDraftSignatureFromCourse(nextCourse));
-
-        // Video-first flow: a lesson added through the form auto-opens its
-        // studio (Video tab) as soon as hydration confirms autosave persisted
-        // it — uploads need the saved lesson id.
-        const pendingStudio = pendingLessonStudioRef.current;
-        if (
-          pendingStudio &&
-          nextCourse.modules?.some(
-            (module) =>
-              module.id === pendingStudio.moduleId &&
-              module.lessons.some(
-                (lesson) => lesson.id === pendingStudio.lessonId,
-              ),
-          )
-        ) {
-          pendingLessonStudioRef.current = null;
-          // Never replace a studio that is already open: the modal is keyed by
-          // lesson id, so swapping lessons would remount it mid-upload and drop
-          // the progress bar and the close guard of the lesson in progress.
-          setActiveLessonStudio((current) => current ?? pendingStudio);
-          setSuccess(null);
-        }
       },
       () => {
         setIsLoading(false);
@@ -882,6 +913,9 @@ export function CourseBuilderStudio() {
   const canAutosaveDraft = isEditable && autosaveBlockedReason === null;
   const draftIsDirty =
     savedSignature !== null && builderDraftSignature !== savedSignature;
+  useEffect(() => {
+    draftDirtyRef.current = draftIsDirty;
+  }, [draftIsDirty]);
   // Preço e parcelas só ficam inválidos por digitação (a hidratação sempre
   // produz valor válido ou vazio). Um preço inválido que normaliza para o mesmo
   // valor da base ("invalid" e vazio viram null) não muda a assinatura, e o
@@ -1279,8 +1313,10 @@ export function CourseBuilderStudio() {
               <Link
                 href={builderModuleHref(null)}
                 scroll={false}
-                onClick={() => {
-                  moduleNavigationRef.current = { returnTo: module.id };
+                onClick={(event) => {
+                  if (isPlainLeftClick(event)) {
+                    moduleNavigationRef.current = { returnTo: module.id };
+                  }
                 }}
                 className="inline-flex min-h-11 items-center text-[var(--color-primary)] underline-offset-2 hover:underline"
               >
@@ -1763,10 +1799,7 @@ export function CourseBuilderStudio() {
     }
 
     const handleClickCapture = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0) {
-        return;
-      }
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      if (event.defaultPrevented || !isPlainLeftClick(event)) {
         return;
       }
 
@@ -2562,8 +2595,10 @@ export function CourseBuilderStudio() {
                       href={builderModuleHref(module.id)}
                       scroll={false}
                       data-module-row={module.id}
-                      onClick={() => {
-                        moduleNavigationRef.current = { returnTo: null };
+                      onClick={(event) => {
+                        if (isPlainLeftClick(event)) {
+                          moduleNavigationRef.current = { returnTo: null };
+                        }
                       }}
                       className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-[10px]"
                     >
