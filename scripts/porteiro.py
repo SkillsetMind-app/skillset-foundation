@@ -18,6 +18,9 @@ Cadeia de reserva: se a IA da vez não dá veredito (sem saldo, chave recusada,
 rate limit/5xx/timeout depois das repetições, resposta fora do formato), a
 próxima da cadeia analisa: z.ai GLM -> Kimi k3 -> Kimi k2.6 -> OpenAI. Um
 veredito válido NUNCA cai para a próxima: "bloqueante" de qualquer uma barra.
+Resposta cortada que já aponta achado também não cai (a próxima IA poderia
+devolver lista vazia e aprovar), e filtro de conteúdo/recusa encerra a cadeia
+com 3 (texto plantado no diff não escolhe o analisador).
 Se nenhuma der veredito, o script NÃO passa verde: escreve "NÃO ANALISADO" e
 sai com 3. Um portão que aprova por omissão é pior que portão nenhum (o check
 de RLS ficou dois meses verde sem rodar por exatamente isso).
@@ -44,6 +47,7 @@ com chave e saldo deu veredito) · 2 erro de uso.
 from __future__ import annotations
 
 import fnmatch
+import http.client
 import json
 import os
 import re
@@ -83,6 +87,18 @@ PROVEDORES = {
 CADEIA_PADRAO = "zai:{primario},kimi:kimi-k3,kimi:kimi-k2.6,openai:gpt-6-astra"
 # Sem saldo/cota: repetir não adianta, vai direto para a próxima IA.
 SEM_SALDO = {"1113", "insufficient_quota", "exceeded_current_quota_error"}
+# Filtro de conteúdo / recusa de segurança: fail-closed, nunca a próxima IA.
+# z.ai 1301 (HTTP 400) e finish "sensitive"; Moonshot type content_filter;
+# OpenAI invalid_prompt / content_policy_violation e message.refusal.
+FILTRO = {"1301", "content_filter", "content_policy_violation", "invalid_prompt"}
+FINISH = ("stop", "length", "tool_calls", "content_filter", "sensitive", "network_error")
+FINISH_FILTRADO = {"content_filter", "sensitive"}
+# Tempo: o job tem 30 min e o passo de análise 27. 4 provedores x 6 min = 24
+# cabem em PRAZO_TOTAL; sem teto, um provedor sozinho levava 6x300 s + backoff.
+TIMEOUT_HTTP = 180     # por chamada; o teto de 32k tokens do glm-5 precisa de folga
+PRAZO_PROVEDOR = 360   # para de repetir um provedor depois disso
+PRAZO_TOTAL = 25 * 60  # a cadeia inteira
+MIN_CHAMADA = 30       # menos que isso de prazo restante: nem começa a chamada
 
 
 def le_cadeia(env) -> list[Provedor]:
@@ -102,7 +118,7 @@ def le_cadeia(env) -> list[Provedor]:
 CAMINHOS_DE_RISCO = (
     "src/lib/payments/*", "src/app/api/*", "src/proxy.ts", "supabase/*",
     "*auth*", "*policy*", "*policies*", "src/lib/ops/*", "src/lib/supabase/*",
-    ".github/workflows/*",
+    ".github/workflows/*", "scripts/porteiro.py", "scripts/test_porteiro.py",
 )
 
 SISTEMA = """Voce e um analista de seguranca de aplicacao revisando um diff.
@@ -139,6 +155,11 @@ class SaldoZerado(RuntimeError):
     exceeded_current_quota_error). Repetir só queima 93 s."""
 
 
+class Recusado(Exception):
+    """Filtro de conteúdo ou recusa de segurança. NÃO é RuntimeError de
+    propósito: não cai para a próxima IA, encerra a cadeia com 3."""
+
+
 def codigo_erro(e: urllib.error.HTTPError) -> str:
     """error.code (z.ai 1113/1302, OpenAI) ou error.type (Moonshot) do corpo
     de erro. Só um identificador curto sai daqui: o corpo nunca chega ao log."""
@@ -169,7 +190,7 @@ def corpo_pedido(diff: str, prov: Provedor, max_tokens: int) -> dict:
     return c
 
 
-def chama(diff: str, prov: Provedor, max_tokens: int, chave: str) -> tuple[str, dict]:
+def chama(diff: str, prov: Provedor, max_tokens: int, chave: str, prazo: float) -> tuple[str, dict]:
     corpo = json.dumps(corpo_pedido(diff, prov, max_tokens)).encode()
     req = urllib.request.Request(
         prov.url, data=corpo,
@@ -177,29 +198,42 @@ def chama(diff: str, prov: Provedor, max_tokens: int, chave: str) -> tuple[str, 
                  "Authorization": "Bearer " + chave})
     ultimo = None
     for tentativa in range(6):
+        restante = prazo - time.monotonic()
+        if restante < MIN_CHAMADA:
+            raise RuntimeError(f"prazo esgotado ({ultimo or 'antes da chamada'})")
         try:
-            with urllib.request.urlopen(req, timeout=300) as r:
+            # ponytail: timeout é por operação de socket, não total; um servidor
+            # que pinga byte a byte passa do prazo. Stream + relógio se acontecer.
+            with urllib.request.urlopen(req, timeout=min(TIMEOUT_HTTP, restante)) as r:
                 dados = json.load(r)
             break
         except urllib.error.HTTPError as e:
             cod = codigo_erro(e)
             ultimo = f"HTTP {e.code}" + (f", código {cod}" if cod else "")
+            if cod in FILTRO:
+                raise Recusado(f"recusou o diff (filtro de conteúdo, código {cod})")
             if cod in SEM_SALDO:
                 raise SaldoZerado(f"saldo da {prov.nome} zerado (código {cod}) — recarregar")
             if e.code not in (408, 429, 500, 502, 503, 504):
                 raise RuntimeError(f"API recusou ({ultimo})")
-        except (OSError, json.JSONDecodeError) as e:
+        except (OSError, ValueError, http.client.HTTPException) as e:
+            # ValueError cobre JSONDecodeError e UnicodeDecodeError.
             ultimo = type(e).__name__
         if tentativa == 5:
             raise RuntimeError(f"API falhou 6 vezes seguidas ({ultimo})")
-        time.sleep(min(2 ** tentativa * 3, 60))
-    esc = dados.get("choices") or [{}]
-    content = esc[0].get("message", {}).get("content")
-    tokens = (dados.get("usage") or {}).get("total_tokens", 0)
-    finish = esc[0].get("finish_reason")
+        time.sleep(min(2 ** tentativa * 3, 60, max(0.0, prazo - time.monotonic())))
+    # Corpo de formato estranho (null, lista, message string) = tentativa vazia.
+    dados = dados if isinstance(dados, dict) else {}
+    esc = dados.get("choices")
+    esc = esc[0] if isinstance(esc, list) and esc and isinstance(esc[0], dict) else {}
+    msg = esc.get("message") if isinstance(esc.get("message"), dict) else {}
+    content = msg.get("content")
+    uso = dados.get("usage") if isinstance(dados.get("usage"), dict) else {}
+    tokens = uso.get("total_tokens", 0)
+    finish = "content_filter" if msg.get("refusal") else esc.get("finish_reason")
     return (content.strip() if isinstance(content, str) else ""), {
         "total_tokens": tokens if type(tokens) is int and tokens >= 0 else 0,
-        "finish_reason": finish if finish in ("stop", "length", "tool_calls", "content_filter") else "other",
+        "finish_reason": finish if finish in FINISH else "other",
     }
 
 
@@ -248,17 +282,21 @@ def normaliza(bruto: dict | None) -> dict | None:
     return {"achados": fora}
 
 
-def analisa(diff: str, prov: Provedor, chave: str) -> tuple[dict, dict]:
-    """Três tetos para raciocínio + JSON final. Esgotou => falhou=True."""
+def analisa(diff: str, prov: Provedor, chave: str, arquivos=(), prazo: float | None = None) -> tuple[dict, dict]:
+    """Três tetos para raciocínio + JSON final. Esgotou => falhou=True.
+    Resposta cortada que JÁ aponta achado é o veredito (tel["cortado"]): pedir
+    de novo, aqui ou à próxima IA, seria procurar quem aprove."""
+    prazo = prazo or time.monotonic() + PRAZO_PROVEDOR
     tel = {"modelo": prov.rotulo, "tentativas": [], "segundos": 0.0, "tokens": 0}
     t0 = time.monotonic()
     for tentativa, teto in enumerate((4000, 16000, 32000), start=1):
-        content, usage = chama(diff, prov, teto, chave)
+        content, usage = chama(diff, prov, teto, chave, prazo)
         tel["tokens"] += usage["total_tokens"]
         r = normaliza(extrai_json(content))
+        fim = usage["finish_reason"]
         estado = ("vazio" if not content else "json_malformado" if r is None
-                  else "truncado" if usage["finish_reason"] == "length"
-                  else "interrompido" if usage["finish_reason"] != "stop" else "ok")
+                  else "truncado" if fim == "length"
+                  else "interrompido" if fim != "stop" else "ok")
         tel["tentativas"].append(estado)
         # Só enums e contagens. Nunca content, reasoning, erro ou achados.
         print("tentativa: " + json.dumps({
@@ -266,9 +304,17 @@ def analisa(diff: str, prov: Provedor, chave: str) -> tuple[dict, dict]:
             "tokens": usage["total_tokens"], "finish_reason": usage["finish_reason"],
             "resultado": estado,
         }), flush=True)
-        if estado == "ok":
+        if r is not None and estado != "ok":
+            bloq, aviso = classifica(r["achados"], list(arquivos))
+            if bloq or aviso:
+                # ponytail: para no 1º corte com achado, sem tentar teto maior;
+                # achado leve cortado vira 3. Mesclar tentativas se isso for comum.
+                tel["cortado"] = estado
+        if estado == "ok" or "cortado" in tel:
             tel["segundos"] = round(time.monotonic() - t0, 1)
             return r, tel
+        if fim in FINISH_FILTRADO:
+            raise Recusado(f"recusou o diff (filtro de conteúdo, finish_reason {fim})")
     tel["segundos"] = round(time.monotonic() - t0, 1)
     tel["falhou"] = True
     return dict(VAZIO), tel
@@ -338,12 +384,13 @@ TETO_RELAY = 500     # o nó "Formatar mensagem" do n8n descarta >600 e corta o 
 TETO_DETALHE = 3000  # o mesmo nó corta `detalhe` em 3000 (teto do Telegram é 4096)
 
 
-def resumo_telegram(bloq: list[dict], aviso: list[dict], pr: str, pr_url: str) -> str:
+def resumo_telegram(bloq: list[dict], aviso: list[dict], pr: str, pr_url: str, sem_veredito: int = 0) -> str:
     """O `summary` é a manchete: quantos achados, onde e o quê. O relay do n8n
     exige source=skillsetmind, descarta acima de 600 caracteres e corta em 500,
     então isto nunca passa de TETO_RELAY. O porquê e o como explorar vão no
     campo `detalhe` (ver detalhe_telegram)."""
-    cabeca = f"Porteiro PR #{pr}: {len(bloq)} bloqueante(s), {len(aviso)} aviso(s)\n{pr_url}\n"
+    cabeca = (f"Porteiro PR #{pr}: {len(bloq)} bloqueante(s), {len(aviso)} aviso(s)"
+              + (f", {sem_veredito} IA(s) sem veredito" if sem_veredito else "") + f"\n{pr_url}\n")
     linhas, resto = [], 0
     for tag, grupo in (("!!", bloq), ("!", aviso)):
         for a in grupo:
@@ -381,27 +428,31 @@ def detalhe_telegram(bloq: list[dict], aviso: list[dict]) -> str:
     return "\n\n".join(linhas)[:TETO_DETALHE]
 
 
-def corpo_alerta(bloq: list[dict], aviso: list[dict], pr: str, pr_url: str) -> dict:
+def corpo_alerta(bloq: list[dict], aviso: list[dict], pr: str, pr_url: str, falhas=()) -> dict:
     """O JSON que vai ao relay. Função pura, para o auto-teste conferir o
     contrato sem rede: `source` é o que o porteiro do nó exige, e `detalhe` é
-    o campo que carrega o porquê e o ataque."""
+    o campo que carrega o porquê e o ataque. `falhas` (saldo, chave, código de
+    erro de cada IA sem veredito) também só existe aqui, nunca no placar."""
+    detalhe = detalhe_telegram(bloq, aviso)
+    if falhas:
+        detalhe = ("sem veredito: " + " · ".join(falhas) + ("\n\n" + detalhe if detalhe else ""))[:TETO_DETALHE]
     return {
         "source": "skillsetmind",
         "event": "porteiro_pr",
         "severity": "critical" if bloq else "warn",
-        "summary": resumo_telegram(bloq, aviso, pr, pr_url),
-        "detalhe": detalhe_telegram(bloq, aviso),
+        "summary": resumo_telegram(bloq, aviso, pr, pr_url, len(falhas)),
+        "detalhe": detalhe,
         "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
 
 
-def manda_detalhe(bloq: list[dict], aviso: list[dict]) -> str:
+def manda_detalhe(bloq: list[dict], aviso: list[dict], falhas=()) -> str:
     """Canal privado. Devolve o texto para o placar ('no Telegram' / 'indisponível')."""
     url = os.environ.get("OPS_ALERT_WEBHOOK_URL")
     if not url:
         return "indisponível (canal privado não configurado)"
     pr, pr_url = (os.environ.get(k, "?") for k in ("PR_NUMBER", "PR_URL"))
-    corpo = json.dumps(corpo_alerta(bloq, aviso, pr, pr_url)).encode()
+    corpo = json.dumps(corpo_alerta(bloq, aviso, pr, pr_url, falhas)).encode()
     cab = {"Content-Type": "application/json"}
     seg = os.environ.get("OPS_ALERT_WEBHOOK_SECRET")
     if seg:
@@ -453,7 +504,7 @@ def main(argv: list[str]) -> int:
     with open(diff_path, encoding="utf-8", errors="replace") as f:
         diff = f.read()
     arquivos = arquivos_do_diff(diff)
-    nota = ""
+    notas = []
     if not diff.strip() or not arquivos:
         escreve(placar_path, placar(0, 0, modo, {"modelo": modelo, "segundos": 0, "tokens": 0}, "", "Diff vazio: nada a analisar."))
         print("diff vazio")
@@ -461,14 +512,16 @@ def main(argv: list[str]) -> int:
     if len(diff.encode()) > max_kb * 1024:
         diff = filtra_risco(diff)
         arquivos = arquivos_do_diff(diff)
-        nota = f"Diff acima de {max_kb} KB: só os caminhos de risco (auth, dinheiro, API, banco) foram lidos — {len(arquivos)} arquivo(s)."
+        notas.append(f"Diff acima de {max_kb} KB: só os caminhos de risco (auth, dinheiro, API, banco) foram lidos — {len(arquivos)} arquivo(s).")
         if not arquivos:
-            escreve(placar_path, placar(0, 0, modo, {"modelo": modelo, "segundos": 0, "tokens": 0}, "", nota + " Nenhum deles neste PR."))
+            escreve(placar_path, placar(0, 0, modo, {"modelo": modelo, "segundos": 0, "tokens": 0}, "", notas[0] + " Nenhum deles neste PR."))
             print("diff grande sem caminho de risco")
             return 0
 
-    # Só "sem veredito" passa adiante. Veredito válido (inclusive bloqueante)
-    # para aqui: cair para a próxima IA seria procurar quem aprove.
+    # Só "sem veredito" passa adiante. Veredito válido (inclusive bloqueante),
+    # resposta cortada com achado e filtro de conteúdo param aqui: cair para a
+    # próxima IA seria procurar quem aprove.
+    fim = time.monotonic() + PRAZO_TOTAL
     falhas = []
     for n, prov in enumerate(cadeia):
         try:
@@ -476,24 +529,40 @@ def main(argv: list[str]) -> int:
             if not chave:
                 raise RuntimeError("sem chave")
             print(f"provedor: {prov.rotulo}" + (" (reserva)" if n else ""), flush=True)
-            r, tel = analisa(diff, prov, chave)
+            r, tel = analisa(diff, prov, chave, arquivos, min(fim, time.monotonic() + PRAZO_PROVEDOR))
             if not tel.get("falhou"):
                 break
             raise RuntimeError("não devolveu JSON em 3 tentativas")
+        except Recusado as e:
+            escreve(placar_path, nao_analisado(
+                f"{prov.rotulo} {e}. Nenhuma outra IA é consultada: texto plantado no diff não escolhe o analisador", modo))
+            print(f"NAO ANALISADO: {prov.rotulo} {e}")
+            return 3
         except RuntimeError as e:
             falhas.append(f"{prov.rotulo}: {e}")
             print(f"sem veredito: {falhas[-1]}", flush=True)
     else:
-        escreve(placar_path, nao_analisado("nenhuma IA disponível — " + " · ".join(falhas), modo))
+        # Motivo de cada IA (saldo, chave) só no canal privado; o placar é público.
+        canal = manda_detalhe([], [], falhas)
+        k = len(falhas)
+        escreve(placar_path, nao_analisado(f"nenhuma IA disponível ({k} provedor{'es' if k != 1 else ''}) · motivo {canal}", modo))
         print("NAO ANALISADO: nenhuma IA disponível")
         return 3
-    if n:
-        tel["modelo"] += " (reserva)"
-        nota = (nota + "\n\n" if nota else "") + "IA reserva — sem veredito antes: " + " · ".join(falhas) + "."
 
     bloq, aviso = classifica(r["achados"], arquivos)
-    canal = manda_detalhe(bloq, aviso) if (bloq or aviso) else ""
-    escreve(placar_path, placar(len(bloq), len(aviso), modo, tel, canal, nota))
+    canal = manda_detalhe(bloq, aviso, falhas) if (bloq or aviso or falhas) else ""
+    if n:
+        tel["modelo"] += " (reserva)"
+        notas.append(f"IA reserva — {len(falhas)} antes dela sem veredito (motivo {canal}).")
+    if tel.get("cortado"):
+        if not bloq:
+            escreve(placar_path, nao_analisado(
+                f"{tel['modelo']} apontou {len(aviso)} achado(s) numa resposta cortada ({tel['cortado']}) · detalhe {canal}. "
+                "Nenhuma outra IA é consultada: ela poderia apagá-los", modo))
+            print(f"NAO ANALISADO: achado em resposta cortada ({tel['cortado']})")
+            return 3
+        notas.append(f"Resposta cortada ({tel['cortado']}): o bloqueante vale e nenhuma outra IA é consultada.")
+    escreve(placar_path, placar(len(bloq), len(aviso), modo, tel, canal, "\n\n".join(notas)))
     # Só contagens no log público. Nunca o achado.
     print(f"placar: {len(bloq)} bloqueante(s), {len(aviso)} aviso(s); modo={modo}; "
           f"{tel['segundos']}s; {tel['tokens']} tokens; detalhe {canal or 'n/a'}")
@@ -543,6 +612,9 @@ def demo() -> None:
     assert c["severity"] == "critical" and "ataque:" in c["detalhe"], c
     assert len(c["summary"]) <= TETO_RELAY and len(c["detalhe"]) <= TETO_DETALHE
     assert corpo_alerta([], rico, "7", "u")["severity"] == "warn"
+    f = corpo_alerta([], [], "7", "u", ["z.ai glm-5: saldo zerado (código 1113)"])
+    assert "código 1113" in f["detalhe"] and "1 IA(s) sem veredito" in f["summary"], f
+    assert eh_de_risco("scripts/porteiro.py") and eh_de_risco(".github/workflows/porteiro.yml")
 
     p = placar(1, 2, "avisa", {"modelo": "glm-5", "segundos": 30, "tokens": 900}, "no Telegram")
     assert "3 achados · 1 bloqueante" in p and "só avisa" in p and "IDOR" not in p
@@ -578,7 +650,8 @@ def demo() -> None:
         ([('{"achados":[{}]}', "stop", 12)] * 3, 3, ["json_malformado"] * 3),
         ([("", "length", 12)] * 3, 3, ["vazio"] * 3),
         ([('{"achados":[]}', "length", 12)] * 3, 3, ["truncado"] * 3),
-        ([('{"achados":[]}', "content_filter", 12)] * 3, 3, ["interrompido"] * 3),
+        # Filtro de conteúdo encerra na 1ª resposta, sem teto maior nem reserva.
+        ([('{"achados":[]}', "content_filter", 12)], 3, ["interrompido"]),
         ([('{"achados":[]}', "unknown", 12)] * 3, 3, ["interrompido"] * 3),
         ([("PRIVATE_SENTINEL", "PRIVATE_SENTINEL", "PRIVATE_SENTINEL")] * 3,
          3, ["json_malformado"] * 3),
@@ -593,7 +666,7 @@ def demo() -> None:
             assert main(["--diff", "demo", "--placar", "demo"]) == expected_exit
         assert request.call_count == len(replies)
         for i, call in enumerate(request.call_args_list):
-            assert call.kwargs["timeout"] == 300
+            assert call.kwargs["timeout"] == TIMEOUT_HTTP
             payload = json.loads(call.args[0].data)
             assert payload.get("response_format") == {"type": "json_object"}
             assert payload["max_tokens"] == [4000, 16000, 32000][i]
@@ -605,7 +678,7 @@ def demo() -> None:
             assert entry["tentativa"] == i + 1 and entry["teto"] == [4000, 16000, 32000][i]
             assert entry["chars"] == len(reply[0])
             assert entry["tokens"] == (reply[2] if type(reply[2]) is int else 0)
-            assert entry["finish_reason"] == (reply[1] if reply[1] in ("stop", "length", "tool_calls", "content_filter") else "other")
+            assert entry["finish_reason"] == (reply[1] if reply[1] in FINISH else "other")
         assert "PRIVATE_SENTINEL" not in output.getvalue() + str(write.call_args)
         if expected_exit == 3:
             assert "NÃO ANALISADO" in write.call_args.args[1]

@@ -69,6 +69,9 @@ jobs:
       - name: Analisa com o GLM-5 (e reservas)
         id: analisa
         continue-on-error: true
+        # A cadeia para sozinha em PRAZO_TOTAL (25 min, scripts/porteiro.py);
+        # 27 garante que o placar ainda seja publicado dentro dos 30 do job.
+        timeout-minutes: 27
         env:
           GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
           KIMI_API_KEY: ${{ secrets.KIMI_API_KEY }}
