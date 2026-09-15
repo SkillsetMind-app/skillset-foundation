@@ -2,6 +2,7 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import Link from "next/link";
 
 import { PublicPage } from "@/components/site/public-page";
+import { WhatsAppContact } from "@/components/site/whatsapp-contact";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 const SUPPORT_EMAIL = "support@skillsetmind.com";
@@ -120,6 +121,7 @@ export default async function ContactPage() {
           </div>
         ))}
       </div>
+      <WhatsAppContact t={t} className="mt-6" />
     </PublicPage>
   );
 }

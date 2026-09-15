@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ChevronDown,
   ChevronLeft,
@@ -427,6 +427,11 @@ export function EnrolledCourseWorkspace({
     pending: new Map<string, { unlocksAt: number | null; tries: number }>(),
     retryTimer: undefined as number | undefined,
   });
+  // Aulas cuja recarga de abertura está no ar: o painel mostra "carregando" só
+  // para elas, nunca para as que já estavam abertas. Quando essa recarga volta,
+  // a aula sai daqui e a tela mostra o estado real (as novas tentativas da fila
+  // seguem por trás, sem "carregando").
+  const [releasingLessonIds, setReleasingLessonIds] = useState<ReadonlySet<string>>(() => new Set());
 
   // O retrato de partida só sai depois que o banco entregou a primeira carga:
   // ele compara o relógio da tela com o que chegou de fato.
@@ -500,7 +505,12 @@ export function EnrolledCourseWorkspace({
   }, [course.id]);
 
   // A recarga só sai quando o conjunto de abertas ou o de concluídas muda.
-  useEffect(() => {
+  // Efeito de layout: a aula que abre neste render entra na fila (e o painel
+  // mostra "carregando") antes da pintura, sem piscar o aviso de vazio.
+  // ponytail: jsdom não distingue efeito de layout de efeito passivo (o act
+  // roda os dois antes de devolver), então nenhum teste guarda esta escolha.
+  // Trocar por useEffect volta a pintar o aviso de vazio por um quadro.
+  useLayoutEffect(() => {
     if (unlockedKey === null) {
       return;
     }
@@ -516,6 +526,23 @@ export function EnrolledCourseWorkspace({
       || latestAssets.current.some(
         (asset) => asset.lessonId === lessonId && asset.kind !== "lesson_thumbnail",
       );
+    // Liga ou desliga o "carregando" das aulas dadas (só elas).
+    const markReleasing = (lessonIds: string[], on: boolean) => {
+      if (lessonIds.length === 0) {
+        return;
+      }
+      setReleasingLessonIds((current) => {
+        const next = new Set(current);
+        for (const lessonId of lessonIds) {
+          if (on) {
+            next.add(lessonId);
+          } else {
+            next.delete(lessonId);
+          }
+        }
+        return next;
+      });
+    };
     // Tira da fila a aula que chegou, ou que já gastou as tentativas, e arma a
     // próxima tentativa se sobrou aula. Relógio do aparelho adiantado: até 3
     // tentativas perto do prazo (janela de 2 min). Fora dela, ou em aula sem
@@ -570,7 +597,12 @@ export function EnrolledCourseWorkspace({
         tracker.pending.set(id, { unlocksAt, tries: 0 });
       }
     }
-    void reload();
+    // "Carregando" só enquanto a recarga que abriu a aula está no ar. Depois
+    // dela a tela mostra o estado real; as novas tentativas seguem por trás e,
+    // se o conteúdo chegar numa delas, ele simplesmente aparece.
+    const opened = unlocked.filter(({ id }) => !before.has(id)).map(({ id }) => id);
+    markReleasing(opened, true);
+    void reload().finally(() => markReleasing(opened, false));
   }, [completedKey, course.id, unlockedKey]);
 
   useEffect(() => {
@@ -783,6 +815,11 @@ export function EnrolledCourseWorkspace({
   const isLessonContentLoading = Boolean(
     workspaceEnrollment
       && (!lessonContentState.ready || lessonContentState.key !== course.id),
+  );
+  // A aula que o relógio acabou de abrir e cujo conteúdo ainda está vindo (só
+  // ela: as outras aulas abertas continuam como estavam).
+  const selectedLessonReleasing = Boolean(
+    selectedLesson && releasingLessonIds.has(selectedLesson.id),
   );
   const resolvedSelectedLesson: Lesson | null = selectedLesson
     ? {
@@ -1133,11 +1170,16 @@ export function EnrolledCourseWorkspace({
             assets={selectedLessonAssets}
             enrollmentId={workspaceEnrollment?.id ?? null}
             enableFirestoreAssets={enableFirestoreAssets}
-            isLoadingAssets={Boolean(
-              enableFirestoreAssets
-                && (!assetsState.ready || assetsState.key !== course.id),
-            )}
-            isLoadingContent={isLessonContentLoading}
+            isLoadingAssets={
+              Boolean(
+                enableFirestoreAssets
+                  && (!assetsState.ready || assetsState.key !== course.id),
+              )
+              // Aula com texto no próprio currículo já tem o que mostrar: o
+              // player fica em "Text-first lesson", não em "carregando".
+              || (selectedLessonReleasing && !resolvedSelectedLesson?.contentText?.trim())
+            }
+            isLoadingContent={isLessonContentLoading || selectedLessonReleasing}
             lesson={resolvedSelectedLesson}
             moduleTitle={selectedModule?.title ?? null}
             onEnded={handleLessonEnded}
