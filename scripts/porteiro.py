@@ -1108,7 +1108,7 @@ def demo() -> None:
         ([('{"achados":[{}]}', "stop", 12)] * 3, 3, ["json_malformado"] * 3),
         # Campo de gravidade escrito em escape: o texto cru esconde, o objeto
         # decodificado não. Uma resposta só — não pode haver 2ª tentativa.
-        ([(r'{"achados":[],"severity":"critical"}', "stop", 12)], 3, ["json_malformado"]),
+        ([('{"achados":[],"' + chr(92) + 'u0073everity":"critical"}', "stop", 12)], 3, ["json_malformado"]),
         ([("", "length", 12)] * 3, 3, ["vazio"] * 3),
         ([('{"achados":[]}', "length", 12)] * 3, 3, ["truncado"] * 3),
         # Filtro de conteúdo encerra na 1ª resposta, sem teto maior nem reserva.
