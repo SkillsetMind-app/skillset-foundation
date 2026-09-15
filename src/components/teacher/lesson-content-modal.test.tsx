@@ -16,6 +16,7 @@ const uploadLessonVideoToBunny = vi.fn<(input: unknown) => Promise<void>>(
 );
 let currentAssets: CourseAsset[] = [];
 let emitAssets: (assets: CourseAsset[]) => void;
+let emitLoadError: (error: Error) => void;
 // "wait" segura a primeira entrega dos arquivos; "fail" simula erro de carga.
 let subscribeOutcome: "emit" | "wait" | "fail" = "emit";
 const subscribed = vi.fn();
@@ -59,6 +60,7 @@ vi.mock("@/lib/data/course-assets", () => ({
   ) => {
     subscribed();
     emitAssets = onAssets;
+    emitLoadError = onError;
     if (subscribeOutcome === "emit") onAssets(currentAssets);
     if (subscribeOutcome === "fail") onError(new Error("load-failed"));
     return () => {};
@@ -622,6 +624,50 @@ describe("LessonContentModal — um video por aula", () => {
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     act(() => emitAssets(currentAssets));
     expect(back.onUpdateLesson).not.toHaveBeenCalled();
+  });
+
+  // Antes da carga o modo link e so o plano B da tela. "Replace with upload" e
+  // depois "Replace with link" gravava "youtube" e tirava o aluno do envio.
+  it("ida e volta envio/link antes da carga nao tira o aluno do envio", () => {
+    subscribeOutcome = "wait";
+    currentAssets = [videoAsset()];
+    const { onUpdateLesson } = renderModal({ videoSource: "upload", externalUrl: youtube }, "Módulo 1", true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace with upload" }));
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+
+    act(() => emitAssets(currentAssets));
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+    // O aluno segue no envio: a previa mostra o arquivo, nao o embed.
+    expect(screen.getByTestId("storage-preview")).toBeInTheDocument();
+    expect(screen.queryByTestId("embed-preview")).not.toBeInTheDocument();
+  });
+
+  // Depois de uma carga boa, um recarregamento em tempo real que falhava
+  // deixava o alerta fixo ao lado de uma lista que continuava na tela.
+  it("uma carga boa seguida de um recarregamento que falha nao mostra alerta de carga", () => {
+    currentAssets = [videoAsset()];
+    renderModal({ videoSource: "upload" });
+    expect(screen.getByRole("button", { name: "Upload file" })).toBeInTheDocument();
+
+    act(() => emitLoadError(new Error("reload-failed")));
+
+    expect(screen.queryByText("We could not load lesson assets.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("o erro de carga e anunciado: no campo de link, ligado a ele, e no modo envio", () => {
+    subscribeOutcome = "fail";
+    const linkMode = renderModal({ videoSource: "youtube", externalUrl: youtube });
+    const hint = screen.getByText("We could not load lesson assets.");
+    expect(hint).toHaveAttribute("role", "status");
+    expect(linkField()).toHaveAccessibleDescription("We could not load lesson assets.");
+    linkMode.unmount();
+
+    // Sem link, a aba abre no modo envio: o aviso tambem aparece ali.
+    renderModal();
+    expect(screen.getByRole("status")).toHaveTextContent("We could not load lesson assets.");
   });
 });
 

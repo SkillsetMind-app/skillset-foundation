@@ -228,7 +228,10 @@ export function LessonContentModal({
     : tab === "video" && selectedFile
       ? t("creatorEditor.lesson.file.selected")
       : t(`creatorEditor.lesson.state.${getAssetStatus(lessonAssets, lesson)}`);
-  const loadErrorMessage = assetsLoadFailed ? getLessonErrorMessage({ kind: "load" }, t) : "";
+  // So vale antes da primeira carga boa: depois dela, um recarregamento em
+  // tempo real que falha deixava o alerta fixo ao lado de uma lista que
+  // continua na tela.
+  const loadErrorMessage = assetsLoadFailed && !assetsLoaded ? getLessonErrorMessage({ kind: "load" }, t) : "";
   const errorMessage = error ? getLessonErrorMessage(error, t) : loadErrorMessage;
   const successMessage = success ? t(`creatorEditor.lesson.success.${success}`) : "";
 
@@ -557,8 +560,10 @@ export function LessonContentModal({
                   // Se a midia de destino ja existe, a troca vale para o aluno
                   // na hora: grava so a fonte. Nada e apagado. Sem midia, a
                   // troca fica so na tela ate um link ser aceito ou um envio
-                  // terminar.
-                  if (next === "link" && trustedEmbed && lesson.videoSource !== "youtube") {
+                  // terminar. Antes de os arquivos chegarem o modo link e so o
+                  // plano B da tela (nao se sabe se ha envio): gravar "youtube"
+                  // ali tirava o aluno do envio numa ida e volta sem efeito.
+                  if (next === "link" && assetsLoaded && trustedEmbed && lesson.videoSource !== "youtube") {
                     onUpdateLesson({ videoSource: "youtube" });
                   }
                   if (next === "upload" && primaryVideo && lesson.videoSource !== "upload") {
@@ -658,12 +663,16 @@ export function LessonContentModal({
               ) : null}
 
               {/* Com o formulario de envio na tela, o role="status" dele da o
-                  aviso; sem ele, este. Nunca dois ao mesmo tempo. */}
+                  aviso; sem ele, este. Nunca dois ao mesmo tempo. O erro de
+                  carga aparece aqui so no modo envio: no modo link ele ja sai
+                  no proprio campo. */}
               {videoMode === "upload" && isUploadPanelOpen ? null : (
                 <p role="status" className="text-sm text-[var(--color-ink-soft)]">
                   {success === "oldLinkRemoved"
                     ? successMessage
-                    : linkNotSaved ? <span key={linkNotSaved}>{t("creatorEditor.lesson.linkNotSaved")}</span> : ""}
+                    : linkNotSaved
+                      ? <span key={linkNotSaved}>{t("creatorEditor.lesson.linkNotSaved")}</span>
+                      : videoMode === "upload" ? loadErrorMessage : ""}
                 </p>
               )}
 
