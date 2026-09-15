@@ -179,6 +179,12 @@ export function LessonContentModal({
   const [error, setError] = useState<LessonError | null>(null);
   const [success, setSuccess] = useState<"uploaded" | "deleted" | "oldLinkRemoved" | null>(null);
   const [assetsLoaded, setAssetsLoaded] = useState(false);
+  // Estado proprio, fora de `error`: resetUploadState (troca de aba ou de
+  // modo) limpava o erro de carga e o aviso do link voltava a "Loading...".
+  const [assetsLoadFailed, setAssetsLoadFailed] = useState(false);
+  // "Replace with upload" antes de os arquivos chegarem: a fonte so pode ser
+  // decidida quando se sabe se ha envio.
+  const uploadChosenBeforeLoadRef = useRef(false);
   const replaceButtonRef = useRef<HTMLButtonElement>(null);
   const linkHandleRef = useRef<LessonVideoSourcePickerHandle>(null);
   // Contador, nao booleano: cada recusa vira um no novo no role="status" e e
@@ -222,7 +228,8 @@ export function LessonContentModal({
     : tab === "video" && selectedFile
       ? t("creatorEditor.lesson.file.selected")
       : t(`creatorEditor.lesson.state.${getAssetStatus(lessonAssets, lesson)}`);
-  const errorMessage = getLessonErrorMessage(error, t);
+  const loadErrorMessage = assetsLoadFailed ? getLessonErrorMessage({ kind: "load" }, t) : "";
+  const errorMessage = error ? getLessonErrorMessage(error, t) : loadErrorMessage;
   const successMessage = success ? t(`creatorEditor.lesson.success.${success}`) : "";
 
   const dialogRef = useRef<HTMLElement>(null);
@@ -249,10 +256,24 @@ export function LessonContentModal({
       (next) => {
         setAssets(next);
         setAssetsLoaded(true);
+        setAssetsLoadFailed(false);
       },
-      () => setError({ kind: "load" }),
+      () => setAssetsLoadFailed(true),
     );
   }, [course.id]);
+
+  // O professor escolheu o envio antes de os arquivos chegarem: com eles na
+  // mao e um envio salvo, a fonte vai para "upload", para o aluno ver o que o
+  // estudio mostra. Se a carga falha, nada e gravado.
+  useEffect(() => {
+    if (!assetsLoaded || !uploadChosenBeforeLoadRef.current) {
+      return;
+    }
+    uploadChosenBeforeLoadRef.current = false;
+    if (primaryVideo && lesson.videoSource !== "upload") {
+      onUpdateLesson({ videoSource: "upload" });
+    }
+  }, [assetsLoaded, primaryVideo, lesson.videoSource, onUpdateLesson]);
 
   // The parent mounts this modal conditionally, so it is always "open" while
   // mounted — Escape mirrors the close affordances (X button / Done / overlay).
@@ -527,9 +548,10 @@ export function LessonContentModal({
                 // o link agora gravaria a fonte em null com um envio salvo.
                 linkLockedHint={assetsLoaded
                   ? undefined
-                  : error?.kind === "load" ? errorMessage : t("creatorEditor.lesson.linkLoading")}
+                  : loadErrorMessage || t("creatorEditor.lesson.linkLoading")}
                 onModeChange={(next) => {
                   setVideoModeChoice(next);
+                  uploadChosenBeforeLoadRef.current = next === "upload" && !assetsLoaded;
                   setLinkNotSaved(null);
                   resetUploadState("lesson_video");
                   // Se a midia de destino ja existe, a troca vale para o aluno

@@ -572,6 +572,57 @@ describe("LessonContentModal — um video por aula", () => {
     fireEvent.blur(linkField());
     expect(onUpdateLesson).not.toHaveBeenCalled();
   });
+
+  // resetUploadState limpava o erro de carga: depois de "Replace with link" ou
+  // de uma troca de aba, o aviso voltava a "Loading..." para sempre.
+  it("o erro de carga continua na tela depois de trocar de modo e de aba", () => {
+    subscribeOutcome = "fail";
+    const { onUpdateLesson } = renderModal();
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Video/ }));
+
+    expect(linkField()).toHaveAttribute("readonly");
+    expect(screen.getByText("We could not load lesson assets.")).toBeInTheDocument();
+    expect(screen.queryByText("Loading this lesson's files...")).not.toBeInTheDocument();
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+  });
+
+  // "Replace with upload" antes de os arquivos chegarem nao gravava a fonte: o
+  // estudio mostrava o envio e o aluno continuava com o link.
+  it("Replace with upload antes da carga grava a fonte no envio quando os arquivos chegam", () => {
+    subscribeOutcome = "wait";
+    currentAssets = [videoAsset()];
+    const { onUpdateLesson, lesson } = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Módulo 1", true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace with upload" }));
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+
+    act(() => emitAssets(currentAssets));
+    expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ videoSource: "upload" });
+    const saved = { ...lesson, ...onUpdateLesson.mock.calls[0][0] } as TeacherLesson;
+    expect(saved.externalUrl).toBe(youtube);
+    // O mesmo calculo do player da area de membros (enrolled-course-workspace).
+    expect(resolveLessonVideoSource({ declared: saved.videoSource, hasVideoAsset: true, hasTrustedEmbed: true }))
+      .toBe("upload");
+    expect(deleteCourseAsset).not.toHaveBeenCalled();
+  });
+
+  it("se a carga falha, ou o professor volta para o link, a escolha do envio nao grava nada", () => {
+    subscribeOutcome = "fail";
+    currentAssets = [videoAsset()];
+    const failed = renderModal({ videoSource: "youtube", externalUrl: youtube });
+    fireEvent.click(screen.getByRole("button", { name: "Replace with upload" }));
+    expect(failed.onUpdateLesson).not.toHaveBeenCalled();
+    failed.unmount();
+
+    subscribeOutcome = "wait";
+    const back = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Módulo 1", true);
+    fireEvent.click(screen.getByRole("button", { name: "Replace with upload" }));
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    act(() => emitAssets(currentAssets));
+    expect(back.onUpdateLesson).not.toHaveBeenCalled();
+  });
 });
 
 describe("LessonContentModal — video tab", () => {
