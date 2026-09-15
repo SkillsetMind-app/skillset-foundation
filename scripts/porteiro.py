@@ -46,8 +46,9 @@ Ambiente:
 Arquivo que o analisador não leu nunca dá 0: binário que não é imagem/fonte
 (inclusive o que o .gitattributes marca -diff), submódulo, link simbólico, ou
 arquivo que o `git diff --name-only` lista e o diff não traz saem com 3.
-Imagem/fonte só fica de fora quando é binário de verdade e todos os nomes do
-bloco (antes e depois do rename) são de imagem/fonte; PR só com isso dá 0.
+Imagem/fonte só fica de fora quando todos os nomes do bloco (antes e depois do
+rename) são de imagem/fonte e o lado NOVO é binário e começa num byte que JS
+não aceita (ver asset_de_verdade); PR só com isso dá 0.
 
 Saídas: 0 ok · 1 bloqueante em modo "barra" · 3 não analisado (nenhuma IA
 com chave e saldo deu veredito, cabeçalho do diff ilegível, binário,
@@ -138,7 +139,14 @@ LOCKFILES = {"package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock
 # Imagem/fonte: fora da análise só pela regra de asset_de_verdade. Casado com o
 # ÚLTIMO segmento do caminho (src/app/api/x.png/route.ts é código). SVG carrega
 # script e o vitest executa .snap (new Function no conteúdo): os dois são código.
-ASSETS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".ico", ".woff", ".woff2", ".ttf", ".otf"}
+# Só formatos cuja assinatura começa num byte que torna JS/TS SyntaxError no
+# byte 0 (o Node faz require() de .png como JS): PNG \x89 e JPEG \xFF (não são
+# UTF-8, viram U+FFFD), ICO/TTF/AVIF \x00. GIF ("GIF8"), WebP ("RIFF"), WOFF
+# ("wOFF"), WOFF2 ("wOF2") e OTF ("OTTO") começam em texto e cabem num poliglota
+# JS: são código, e binário que é código dá 3. O repo tem 14 .webp; PR que mexa
+# num deles fica NÃO ANALISADO (raro, um humano decide).
+ASSETS = {".png", ".jpg", ".jpeg", ".ico", ".ttf", ".avif"}
+INICIO_ASSET = ("\ufffd", "\x00")
 
 SISTEMA = """Voce e um analista de seguranca de aplicacao revisando um diff.
 
@@ -173,12 +181,13 @@ CHAVES = {"severidade": ("severidade", "severity", "nivel", "gravidade"), "titul
 # Severidade no texto cru de uma resposta que não fechou o JSON. Sem a aspa
 # final (cortou dentro do valor) é ilegível: conta como grave.
 SEV_CRU = re.compile(r'"(?:%s)"\s*:\s*"([^"]*)("?)' % "|".join(CHAVES["severidade"]))
-ABRE_ACHADOS = re.compile(r'"achados"\s*:\s*\[')
+ABRE_ACHADOS = re.compile(r'"(?:achados|findings)"\s*:\s*\[')
 SEV_SINONIMOS = {
     "critical": "critica", "critico": "critica", "high": "alta", "alto": "alta",
     "medium": "media", "medio": "media", "moderate": "media", "moderado": "media", "moderada": "media",
     "low": "baixa", "baixo": "baixa", "info": "baixa", "informational": "baixa", "informativo": "baixa",
-    "informativa": "baixa", "none": "baixa", "nenhuma": "baixa", "nenhum": "baixa",
+    "informativa": "baixa", "none": "baixa", "nenhuma": "baixa", "nenhum": "baixa", "minor": "baixa",
+    "trivial": "baixa", "negligible": "baixa", "n/a": "baixa", "nit": "baixa", "note": "baixa",
 }
 ORDEM = ("critica", "alta", "media", "baixa")
 # Metadado do git (coluna 0; linha de conteúdo sempre começa com + - espaço \).
@@ -278,12 +287,19 @@ def chama(diff: str, prov: Provedor, max_tokens: int, chave: str, prazo: float) 
 
 
 def _junta(pares) -> dict:
-    """object_pairs_hook: "achados" repetido SOMA as listas. Com o padrão do
-    json, um `"achados":[]` no fim apagaria o bloqueante que veio antes."""
+    """object_pairs_hook: "achados"/"findings" repetidos SOMAM as listas (com o
+    padrão do json, um `"achados":[]` no fim apagaria o bloqueante de antes);
+    um deles que não seja lista estraga a resposta (None fica). Chave de
+    severidade repetida fica com a mais grave; de confiança, com a maior."""
     d = {}
     for k, v in pares:
-        if k == "achados" and k in d and isinstance(d[k], list):
-            d[k] = d[k] + v if isinstance(v, list) else d[k]
+        if k in ("achados", "findings"):
+            antes = d.get("achados", [])
+            d["achados"] = antes + v if isinstance(antes, list) and isinstance(v, list) else None
+        elif k in d and k in CHAVES["severidade"]:
+            d[k] = min((d[k], v), key=lambda x: ORDEM.index(_sev(x)))
+        elif k in d and k in CHAVES["confianca"]:
+            d[k] = max((d[k], v), key=lambda x: _conf(x, 1.0))
         else:
             d[k] = v
     return d
@@ -315,17 +331,37 @@ def _texto(v) -> str:
 
 def _sev(v) -> str:
     """'Crítica', 'HIGH', 'baixo', 'moderate', 'info' -> critica/alta/media/baixa.
-    Vazio -> media. Qualquer outra coisa (inclusive não-texto) -> alta:
-    severidade que o portão não reconhece não pode virar aviso."""
+    Vazio -> media. 'Low (informational)' vale pelo que vem antes do '(';
+    'low/critical' pela mais grave das opções. Qualquer outra coisa (inclusive
+    não-texto) -> alta: severidade que o portão não reconhece não vira aviso."""
     if v is None:
         return "media"
     s = unicodedata.normalize("NFKD", v).encode("ascii", "ignore").decode().lower().strip() if isinstance(v, str) else "?"
-    s = SEV_SINONIMOS.get(s, s)
-    return s if s in SEVERIDADES else "alta" if s else "media"
+    if not s:
+        return "media"
+    partes = [s] if s in SEV_SINONIMOS else [p.strip() for p in s.split("(")[0].split("/")]
+    return min((x if x in SEVERIDADES else "alta" for x in (SEV_SINONIMOS.get(p, p) for p in partes)),
+               key=ORDEM.index)
+
+
+def _conf(v, padrao: float) -> float:
+    """Confiança 0.0-1.0; ilegível ("95%", "alta", NaN, estouro) -> padrao."""
+    try:
+        c = float(v)
+    except (TypeError, ValueError, OverflowError):
+        return padrao
+    return max(0.0, min(1.0, c)) if c == c else padrao
 
 
 def _preenchido(v) -> bool:
     return v is not None and not (isinstance(v, str) and not v.strip())
+
+
+def _tem_achado(v) -> bool:
+    """Algum objeto com cara de achado (severidade ou título, em qualquer grafia) dentro de v."""
+    if isinstance(v, dict):
+        return any(k in v for k in CHAVES["severidade"] + CHAVES["titulo"]) or any(map(_tem_achado, v.values()))
+    return isinstance(v, list) and any(map(_tem_achado, v))
 
 
 def _pega(a: dict, campo: str, padrao=None):
@@ -340,8 +376,11 @@ def normaliza(bruto: dict | None) -> dict | None:
     Chaves em inglês (severity/title/file/confidence/line) valem; com duas
     severidades, vale a mais grave. Lista só com entradas inválidas => None.
     Entrada com campos mas sem severidade e sem título em nenhuma grafia
-    => None, a menos que haja bloqueante: não é "nenhum achado"."""
+    => None, a menos que haja bloqueante: não é "nenhum achado". Achado fora
+    da lista (outra chave do topo, ex. "vulnerabilities":[...]) => None."""
     if not isinstance(bruto, dict) or not isinstance(bruto.get("achados"), list):
+        return None
+    if any(_tem_achado(v) for k, v in bruto.items() if k != "achados"):
         return None
     fora, sem_nada = [], 0
     for a in bruto["achados"]:
@@ -360,12 +399,9 @@ def normaliza(bruto: dict | None) -> dict | None:
                 continue
             titulo = "(sem título)"
         # Grave sem confiança legível ("95%", "alta", NaN, estouro) barra: 1.0.
+        # Com confianca e confidence, vale a maior.
         padrao = 1.0 if grave else 0.5
-        try:
-            conf = float(_pega(a, "confianca", padrao))
-            conf = max(0.0, min(1.0, conf)) if conf == conf else padrao  # NaN
-        except (TypeError, ValueError, OverflowError):
-            conf = padrao
+        conf = max((_conf(a[k], padrao) for k in CHAVES["confianca"] if _preenchido(a.get(k))), default=padrao)
         try:
             linha = int(_pega(a, "linha") or 0)
         except (TypeError, ValueError, OverflowError):
@@ -386,21 +422,30 @@ def normaliza(bruto: dict | None) -> dict | None:
     return {"achados": fora}
 
 
+def _le_listas(texto: str) -> tuple[list, bool]:
+    """Cada lista "achados"/"findings" do texto, objeto a objeto: os que
+    chegaram inteiros, e se alguma parou num "{" que não fecha (achado que
+    começou e foi cortado antes de dizer a severidade)."""
+    dec, objs, aberto = json.JSONDecoder(object_pairs_hook=_junta), [], False
+    for m in ABRE_ACHADOS.finditer(texto):
+        i = m.end()
+        while True:
+            while i < len(texto) and texto[i] in " \t\r\n,":
+                i += 1
+            try:
+                obj, i = dec.raw_decode(texto, i)
+            except (ValueError, RecursionError):
+                break
+            objs.append(obj)
+        aberto = aberto or (texto[i:i + 1] != "]" and "{" in texto[i:])
+    return objs, aberto
+
+
 def resgata(texto: str) -> dict | None:
     """Resposta cortada no meio da lista: lê os achados objeto a objeto e fica
-    com os que chegaram inteiros. O pedaço pela metade não conta."""
-    m = ABRE_ACHADOS.search(texto)
-    if not m:
-        return None
-    dec, i, objs = json.JSONDecoder(object_pairs_hook=_junta), m.end(), []
-    while True:
-        while i < len(texto) and texto[i] in " \t\r\n,":
-            i += 1
-        try:
-            obj, i = dec.raw_decode(texto, i)
-        except (ValueError, RecursionError):
-            break
-        objs.append(obj)
+    com os que chegaram inteiros. O pedaço pela metade não conta aqui (ele é
+    indício: ver analisa)."""
+    objs, _ = _le_listas(texto)
     return normaliza({"achados": objs}) if objs else None
 
 
@@ -431,8 +476,11 @@ def analisa(diff: str, prov: Provedor, chave: str, arquivos=(), prazo: float | N
         if estado != "ok":
             parcial = r if r is not None else resgata(content)
             bloq, aviso, _ = classifica(parcial["achados"], list(arquivos)) if parcial else ([], [], 0)
-            grave = r is None and any(not aspa or _sev(s) in ("critica", "alta")
-                                      for s, aspa in SEV_CRU.findall(content))
+            # Achado que começou e não fechou (título primeiro, chave em inglês,
+            # corte no nome da chave ou antes da aspa do valor) também é
+            # indício: a severidade dele nunca chegou, e ninguém pode apagá-lo.
+            grave = r is None and (any(not aspa or _sev(s) in ("critica", "alta")
+                                       for s, aspa in SEV_CRU.findall(content)) or _le_listas(content)[1])
             if bloq or aviso or grave:
                 # ponytail: para no 1º corte com achado, sem tentar teto maior;
                 # achado leve cortado vira 3. Mesclar tentativas se isso for comum.
@@ -509,23 +557,51 @@ def modos(bloco: str) -> set[str]:
     return set(MODO_GIT.findall(bloco))
 
 
+def _novas(bloco: str) -> list[str]:
+    """As linhas acrescentadas (+) do bloco, sem o sinal: o conteúdo que o PR traz."""
+    return [l[1:] for l in _conteudo(bloco).split("\n") if l.startswith("+")]
+
+
+def _tem_binario(linhas: list[str]) -> bool:
+    # NUL, ou U+FFFD: byte que não é UTF-8, trocado na leitura com errors=replace.
+    return any("\x00" in l or "\ufffd" in l for l in linhas)
+
+
+def _primeira_nova(bloco: str) -> str | None:
+    """A 1ª linha do arquivo novo, se o 1º hunk começa nela; senão None."""
+    c = _conteudo(bloco).lstrip("\n").split("\n")
+    m = re.match(r"@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@", c[0])
+    if not m or m.group(1) != "1":
+        return None
+    return next((l[1:] for l in c[1:] if l[:1] in (" ", "+")), None)
+
+
 def asset_de_verdade(bloco: str) -> bool:
     """Imagem/fonte que pode ficar fora da análise: todos os nomes do bloco
     (lado a, lado b, rename/copy from) com extensão de imagem/fonte, só modo
-    100644 (nada de link 120000 nem submódulo 160000) e binário de verdade
-    (o git disse, ou o conteúdo tem NUL). Texto com nome de imagem é código;
-    rename de .ts para .png também."""
+    100644 (nada de link 120000 nem submódulo 160000), e decidido pelo lado
+    NOVO: arquivo apagado sai; senão as linhas acrescentadas são binárias E a
+    1ª linha do arquivo novo começa em U+FFFD ou NUL (INICIO_ASSET), que o
+    Node não aceita como JS. As linhas "-" da imagem antiga não contam: PNG
+    sobrescrito por JS em texto é código. Imagem alterada cujo 1º hunk não
+    mostra a linha 1 não se prova: fica código, e binário dá 3."""
     m = CABECALHO.match(bloco)
     nomes = [*_lados(m.group(1)), *renomeados(bloco)] if m else [None]
-    return (all(n and eh_asset(n) for n in nomes) and modos(bloco) <= {"100644"}
-            and bool(BINARIO.search(bloco) or "\x00" in _conteudo(bloco)))
+    if not (all(n and eh_asset(n) for n in nomes) and modos(bloco) <= {"100644"}):
+        return False
+    # ponytail: "Binary files" só aparece sem --text (execução local); o
+    # workflow sempre passa --text, e aí só o conteúdo decide.
+    if BINARIO.search(bloco) or re.search(r"^deleted file mode ", bloco, re.M):
+        return True
+    primeira = _primeira_nova(bloco)
+    return _tem_binario(_novas(bloco)) and primeira is not None and primeira.startswith(INICIO_ASSET)
 
 
 def binario(bloco: str) -> bool:
-    """Bloco que o modelo não leria: o git não mostrou o texto, ou o texto tem
-    NUL ou U+FFFD (byte que não é UTF-8, trocado na leitura com errors=replace)."""
-    c = _conteudo(bloco)
-    return bool(BINARIO.search(bloco)) or "\x00" in c or "�" in c
+    """Bloco que o modelo não leria: o git não mostrou o texto, ou as linhas
+    acrescentadas têm NUL ou U+FFFD. Contexto e linhas "-" são da base: um
+    U+FFFD que já estava lá não impede ler a mudança."""
+    return bool(BINARIO.search(bloco)) or _tem_binario(_novas(bloco))
 
 
 def filtra_risco(diff: str) -> str:
@@ -909,11 +985,13 @@ def demo() -> None:
     # Extensão só no último segmento: a pasta x.png de uma rota não é imagem.
     assert eh_asset("public/logo.PNG") and not eh_asset("src/app/api/x.png/route.ts") and not eh_asset("a.svg")
     assert eh_asset("f.ttf") and not eh_asset("x.test.ts.snap")  # o vitest executa .snap
-    png = "diff --git a/i.png b/i.png\nnew file mode 100644\n--- /dev/null\n+++ b/i.png\n@@ -0,0 +1 @@\n+�PNG\x00\n"
-    assert asset_de_verdade(png) and not asset_de_verdade(png.replace("\x00", ""))  # texto é código
+    png = "diff --git a/i.png b/i.png\nnew file mode 100644\n--- /dev/null\n+++ b/i.png\n@@ -0,0 +1 @@\n+\ufffdPNG\x00\n"
+    assert asset_de_verdade(png) and not asset_de_verdade(png.replace("\ufffdPNG\x00", "texto"))  # texto é código
+    assert not asset_de_verdade(png.replace("\ufffdPNG", "/*"))  # começa em texto: poliglota JS
     assert not asset_de_verdade(png.replace("100644", "120000"))
     assert not asset_de_verdade("diff --git a/p.ts b/p.png\nrename from p.ts\nrename to p.png\nBinary files a/p.ts and b/p.png differ\n")
-    assert binario(png) and not binario(png.replace("�", "").replace("\x00", ""))
+    assert binario(png) and not binario(png.replace("\ufffd", "").replace("\x00", ""))
+    assert not binario(png.replace("+\ufffd", " \ufffd").replace("@@\n", "@@\n+ok\n"))  # U+FFFD da base não conta
     assert [_sev(s) for s in ("Crítica", "HIGH", "medium", "urgente", "", None, "baixo", "moderado", "info")] == [
         "critica", "alta", "media", "alta", "media", "media", "baixa", "media", "baixa"]
     assert normaliza({"achados": [{"title": "t", "severity": "critical"}]})["achados"][0]["severidade"] == "critica"
