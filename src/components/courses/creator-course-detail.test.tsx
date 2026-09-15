@@ -55,6 +55,11 @@ const fixtures = vi.hoisted(() => ({
   },
 }));
 
+// The consent-gated door to PostHog (its own tests cover the gate): here it
+// just records what the page hands over.
+const analytics = vi.hoisted(() => ({ capture: vi.fn() }));
+vi.mock("@/lib/posthog/client", () => ({ captureEvent: analytics.capture }));
+
 vi.mock("@/components/i18n/i18n-provider", () => ({ useTranslation: () => ({ locale: fixtures.locale, t: (key: string) => translate(getDictionary(fixtures.locale), key) }) }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
@@ -184,6 +189,56 @@ describe("CreatorCourseDetail", () => {
     expect(screen.queryByText("Deep Focus Systems")).not.toBeInTheDocument();
     // O resto do conteúdo interativo continua no lugar.
     expect(container.querySelector("#free-preview")).not.toBeNull();
+  });
+});
+
+describe("CreatorCourseDetail: funnel events", () => {
+  const enroll = translate(getDictionary("en"), "publicCourses.enroll");
+
+  function sent(name: string) {
+    return analytics.capture.mock.calls.filter(([event]) => event === name);
+  }
+
+  it("sends course_viewed once, with ids only, when the public page resolves its price", async () => {
+    render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    await screen.findAllByText("$149.00");
+
+    await waitFor(() => expect(sent("course_viewed")).toHaveLength(1));
+    const [, props] = sent("course_viewed")[0];
+    expect(Object.keys(props).filter((key) => props[key] !== undefined).sort())
+      .toEqual(["course_id", "currency", "is_free"]);
+    expect(props).toMatchObject({ course_id: "course-1", is_free: false });
+    expect(String(props.currency).toUpperCase()).toBe("USD");
+  });
+
+  // The checkout-only page is a step of the purchase, not another view.
+  it("sends no course_viewed from the checkout-only step", async () => {
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+    await screen.findAllByText(/\$149\.00/);
+    expect(sent("course_viewed")).toHaveLength(0);
+  });
+
+  it("sends checkout_started once from the buy button, with no personal data", async () => {
+    const buyer = { uid: "buyer-1", email: "buyer@example.test", displayName: "Bia Buyer" };
+    fixtures.auth.status = "authenticated";
+    fixtures.auth.user = buyer;
+    render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    await screen.findAllByText(/\$149\.00/);
+
+    const buy = screen.getAllByRole("button").find((button) => button.textContent?.startsWith(enroll));
+    fireEvent.click(buy!);
+    await waitFor(() => expect(startCourseCheckout).toHaveBeenCalledTimes(1));
+
+    expect(sent("checkout_started")).toHaveLength(1);
+    const [, props] = sent("checkout_started")[0];
+    expect(props).toMatchObject({ course_id: "course-1", price_minor: 14900 });
+    expect(String(props.currency).toUpperCase()).toBe("USD");
+    expect(props).not.toHaveProperty("coupon_code");
+    // Nothing about the buyer, the teacher or the course copy in any payload.
+    const everything = JSON.stringify(analytics.capture.mock.calls);
+    for (const personal of ["buyer@example.test", "Bia Buyer", "Ana Prado", "Deep Focus Systems", "@"]) {
+      expect(everything).not.toContain(personal);
+    }
   });
 });
 

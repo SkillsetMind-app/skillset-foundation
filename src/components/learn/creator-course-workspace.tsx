@@ -12,7 +12,7 @@ import { canOpenEnrollment, type Enrollment } from "@/domain/enrollment";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import { teacherCourseToLearningCourse } from "@/lib/data/published-courses";
-import { CourseViewedTracker } from "@/lib/posthog/page-trackers";
+import { CourseViewedTracker, PurchaseCompletedTracker } from "@/lib/posthog/page-trackers";
 import { subscribeToTeacherCourse } from "@/lib/data/teacher-courses";
 import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
@@ -254,6 +254,10 @@ export function CreatorCourseWorkspace({
           slug is omitted: TeacherCourse has no slug field (the converter just
           aliases slug: course.id), and CourseViewedProps makes it optional. */}
       <CourseViewedTracker course_id={course.id} source="direct" />
+      {/* PURCHASE_COMPLETED: Stripe's success_url lands here, and reaching this
+          branch means the webhook's enrollment exists and opened the course.
+          The tracker keeps it to one event per course per session. */}
+      {cameFromCheckout ? <PurchaseCompletedTracker course_id={course.id} /> : null}
       <EnrolledCourseWorkspace
         course={teacherCourseToLearningCourse(course)}
         enableFirestoreAssets

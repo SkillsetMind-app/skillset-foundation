@@ -8,7 +8,8 @@
  * Design rules:
  *  - Event names are `snake_case` and describe a past action (`checkout_completed`).
  *  - Money is always sent as `_minor` integer + `currency` string.
- *  - Sensitive PII is never sent; we send IDs and references only.
+ *  - Sensitive PII is never sent; we send IDs and references only. No names,
+ *    no emails, and no free text a person typed into a form.
  */
 
 import { captureEvent } from "./client";
@@ -23,6 +24,7 @@ export const EVENTS = {
   CHECKOUT_STARTED: "checkout_started",
   CHECKOUT_COMPLETED: "checkout_completed",
   CHECKOUT_FAILED: "checkout_failed",
+  PURCHASE_COMPLETED: "purchase_completed",
   LESSON_STARTED: "lesson_started",
   LESSON_COMPLETED: "lesson_completed",
   COURSE_COMPLETED: "course_completed",
@@ -58,6 +60,9 @@ export type CourseViewedProps = {
   course_id: string;
   slug?: string;
   source?: "search" | "category" | "featured" | "direct" | "instructor";
+  /** Public course page only, once the price is resolved. */
+  is_free?: boolean;
+  currency?: string;
 };
 
 export type CheckoutStartedProps = {
@@ -80,6 +85,14 @@ export type CheckoutCompletedProps = {
 export type CheckoutFailedProps = {
   course_id: string;
   reason: string;
+};
+
+/**
+ * Client-side: the buyer is back from Stripe and the paid enrollment has
+ * opened the course. The order and money live server-side (checkout_completed).
+ */
+export type PurchaseCompletedProps = {
+  course_id: string;
 };
 
 export type LessonStartedProps = {
@@ -122,7 +135,8 @@ export type PayoutReleasedProps = {
 
 /**
  * Typed event capture helpers. Use these instead of `posthog.capture()`
- * directly so TypeScript checks the property shape.
+ * directly so TypeScript checks the property shape. Each returns whether the
+ * event was actually handed to PostHog (false without analytics consent).
  */
 export const track = {
   userSignedUp: (p: UserSignedUpProps) => captureEvent(EVENTS.USER_SIGNED_UP, p),
@@ -141,6 +155,8 @@ export const track = {
     captureEvent(EVENTS.CHECKOUT_COMPLETED, p),
   checkoutFailed: (p: CheckoutFailedProps) =>
     captureEvent(EVENTS.CHECKOUT_FAILED, p),
+  purchaseCompleted: (p: PurchaseCompletedProps) =>
+    captureEvent(EVENTS.PURCHASE_COMPLETED, p),
   lessonStarted: (p: LessonStartedProps) =>
     captureEvent(EVENTS.LESSON_STARTED, p),
   lessonCompleted: (p: LessonCompletedProps) =>

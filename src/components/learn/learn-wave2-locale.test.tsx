@@ -35,7 +35,12 @@ vi.mock("@/lib/data/published-courses", () => ({
   teacherCourseToCourseCard: (course: unknown) => course,
 }));
 vi.mock("@/lib/data/catalog", () => ({ getFeaturedCourseCards: () => [] }));
-vi.mock("@/lib/posthog/page-trackers", () => ({ CourseViewedTracker: () => null }));
+vi.mock("@/lib/posthog/page-trackers", () => ({
+  CourseViewedTracker: () => null,
+  PurchaseCompletedTracker: ({ course_id }: { course_id: string }) => (
+    <i data-testid="purchase-completed-tracker" data-course={course_id} />
+  ),
+}));
 vi.mock("@/components/learn/enrolled-course-workspace", () => ({
   EnrolledCourseWorkspace: ({ course }: { course: { title: string } }) => <h1>{course.title}</h1>,
 }));
@@ -125,6 +130,21 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     mocks.course.mockImplementation((_id, next) => { next({ title: enrollment.courseTitle }); return () => {}; });
     act(() => { vi.advanceTimersByTime(20_000); });
     expect(screen.getByRole("heading", { name: enrollment.courseTitle })).toBeVisible();
+  });
+
+  // PURCHASE_COMPLETED is wired only where Stripe's success_url lands AND the
+  // paid enrollment has opened the course: an ordinary visit never counts a sale.
+  it("mounts the purchase tracker only after a checkout return opens the course", () => {
+    mocks.enrollment.mockImplementation((_uid, _id, next) => { next(enrollment); return () => {}; });
+    mocks.course.mockImplementation((_id, next) => { next({ id: "course-es", title: enrollment.courseTitle }); return () => {}; });
+    const visit = show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+    expect(screen.getByRole("heading", { name: enrollment.courseTitle })).toBeVisible();
+    expect(screen.queryByTestId("purchase-completed-tracker")).toBeNull();
+    visit.unmount();
+
+    mocks.params = new URLSearchParams("checkout=success");
+    show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+    expect(screen.getByTestId("purchase-completed-tracker")).toHaveAttribute("data-course", "course-es");
   });
 
   it("relocalizes a retained enrollment error without resubscribing", () => {
