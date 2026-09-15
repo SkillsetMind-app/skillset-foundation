@@ -420,8 +420,10 @@ function createAdmin(
     }),
     auth: {
       admin: {
+        // The course owner (teacher_1) has their own address, so an email
+        // that reaches the wrong person shows up as the wrong recipient.
         getUserById: vi.fn(async (uid: string) => ({
-          data: { user: { id: uid, email: "buyer@example.test" } },
+          data: { user: { id: uid, email: uid === "teacher_1" ? "creator@example.test" : "buyer@example.test" } },
           error: null,
         })),
       },
@@ -1415,6 +1417,10 @@ describe("Stripe webhook financial integrity", () => {
       }));
     }
 
+    const emailsTo = (address: string) => sentEmails().filter((email) => email.body.to.includes(address));
+    const buyerEmails = () => emailsTo("buyer@example.test");
+    const creatorEmails = () => emailsTo("creator@example.test");
+
     function subscription(metadata: Record<string, string> = {}) {
       return {
         metadata: { purpose: "course_subscription", courseId: "course_1", userId: "user_1", teacherId: "teacher_1", ...metadata },
@@ -1449,8 +1455,8 @@ describe("Stripe webhook financial integrity", () => {
 
       expect((await postEvent(checkoutEvent())).status).toBe(200);
 
-      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
-      const [email] = sentEmails();
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
+      const [email] = buyerEmails();
       expect(email.url).toBe("https://api.resend.com/emails");
       expect(email.headers.get("Idempotency-Key")).toBe("order_1");
       expect(email.body).toMatchObject({
@@ -1473,8 +1479,8 @@ describe("Stripe webhook financial integrity", () => {
 
       expect((await postEvent(event)).status).toBe(200);
 
-      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
-      const [email] = sentEmails();
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
+      const [email] = buyerEmails();
       expect(email.body.subject).toBe("Tu curso está listo: Course");
       expect(email.body.text).toContain("Inicia sesión con buyer@example.test");
     });
@@ -1485,11 +1491,11 @@ describe("Stripe webhook financial integrity", () => {
       const event = checkoutEvent();
 
       expect((await postEvent(event)).status).toBe(200);
-      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
       expect((await postEvent(event)).status).toBe(200);
 
       await flush();
-      expect(resend).toHaveBeenCalledTimes(1);
+      expect(buyerEmails()).toHaveLength(1);
       expect(fulfillCalls(admin)).toHaveLength(1);
     });
 
@@ -1508,17 +1514,18 @@ describe("Stripe webhook financial integrity", () => {
       expect(fulfillCalls(admin)).toHaveLength(1);
       expect(admin.state.doneEvents).toContain("evt_checkout");
       await vi.waitFor(() => expect(mocks.notifyOps).toHaveBeenCalledWith(lostEmailAlert));
-      expect(resend).toHaveBeenCalledTimes(1);
+      expect(buyerEmails()).toHaveLength(1);
     });
 
-    it("skips without a Resend key: no request, no throw, one warning", async () => {
+    it("skips without a Resend key: no request, no throw, one warning per email", async () => {
       vi.stubEnv("RESEND_API_KEY", "");
       const admin = createAdmin("checkout");
       mocks.getAdmin.mockReturnValue(admin);
 
       expect((await postEvent(checkoutEvent())).status).toBe(200);
 
-      await vi.waitFor(() => expect(console.warn).toHaveBeenCalledTimes(1));
+      // One per skipped email: the buyer's and the creator's.
+      await vi.waitFor(() => expect(console.warn).toHaveBeenCalledTimes(2));
       expect(resend).not.toHaveBeenCalled();
       expect(mocks.notifyOps).not.toHaveBeenCalled();
     });
@@ -1527,13 +1534,13 @@ describe("Stripe webhook financial integrity", () => {
       const admin = createAdmin("checkout");
       mocks.getAdmin.mockReturnValue(admin);
       expect((await postEvent(checkoutEvent())).status).toBe(200);
-      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
 
       admin.state.mode = "refund";
       expect((await postEvent(refundEvent("evt_refund_access", 10000))).status).toBe(200);
 
       await flush();
-      expect(resend).toHaveBeenCalledTimes(1);
+      expect(buyerEmails()).toHaveLength(1);
     });
 
     it("sends on a subscription's first invoice, not on its renewals", async () => {
@@ -1542,8 +1549,8 @@ describe("Stripe webhook financial integrity", () => {
       mocks.subscriptionRetrieve.mockResolvedValue(subscription({ locale: "es" }));
 
       expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
-      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
-      const [email] = sentEmails();
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
+      const [email] = buyerEmails();
       expect(email.headers.get("Idempotency-Key")).toBe("in_paid_1");
       expect(email.body.to).toEqual(["buyer@example.test"]);
       expect(email.body.subject).toBe("Tu curso está listo: Course");
@@ -1554,7 +1561,7 @@ describe("Stripe webhook financial integrity", () => {
       expect((await postEvent(renewal)).status).toBe(200);
 
       await flush();
-      expect(resend).toHaveBeenCalledTimes(1);
+      expect(buyerEmails()).toHaveLength(1);
     });
 
     it("alerts with the ids when a first invoice's enrollment fails after its gate row", async () => {
@@ -1578,11 +1585,11 @@ describe("Stripe webhook financial integrity", () => {
       mocks.subscriptionRetrieve.mockResolvedValue(subscription());
 
       expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
-      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
       expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
 
       await flush();
-      expect(resend).toHaveBeenCalledTimes(1);
+      expect(buyerEmails()).toHaveLength(1);
       expect(fulfillCalls(admin)).toHaveLength(2);
     });
 
@@ -1600,6 +1607,110 @@ describe("Stripe webhook financial integrity", () => {
       expect(mocks.notifyOps).not.toHaveBeenCalledWith(lostEmailAlert);
       await flush();
       expect(resend).not.toHaveBeenCalled();
+    });
+
+    describe("new-sale email to the creator", () => {
+      it("sends one creator email per paid sale, keyed apart from the buyer's", async () => {
+        const admin = createAdmin("checkout");
+        mocks.getAdmin.mockReturnValue(admin);
+
+        expect((await postEvent(checkoutEvent())).status).toBe(200);
+
+        await vi.waitFor(() => expect(creatorEmails()).toHaveLength(1));
+        const [email] = creatorEmails();
+        expect(email.headers.get("Idempotency-Key")).toBe("order_1:creator-sale");
+        expect(email.body).toMatchObject({
+          from: "SkillsetMind <no-reply@skillsetmind.com>",
+          to: ["creator@example.test"],
+          subject: "New sale: Course",
+        });
+        expect(email.body.text).toContain("Amount: $100.00");
+        expect(email.body.text).toContain("https://www.skillsetmind.com/teach/sales");
+        expect(email.body.text).toContain("Stripe pays this sale out to your own Stripe account.");
+        expect(admin.auth.admin.getUserById).toHaveBeenCalledWith("teacher_1");
+        await flush();
+        expect(creatorEmails()).toHaveLength(1);
+      });
+
+      it("says nothing about the buyer", async () => {
+        const admin = createAdmin("checkout");
+        mocks.getAdmin.mockReturnValue(admin);
+
+        expect((await postEvent(checkoutEvent())).status).toBe(200);
+
+        await vi.waitFor(() => expect(creatorEmails()).toHaveLength(1));
+        const [email] = creatorEmails();
+        const everything = [email.body.subject, email.body.html, email.body.text].join("\n");
+        expect(everything).toContain("A new student");
+        expect(everything).not.toContain("buyer@example.test");
+        expect(everything).not.toContain("user_1");
+      });
+
+      it("sends none when the same first invoice is delivered again", async () => {
+        const admin = createAdmin("checkout");
+        mocks.getAdmin.mockReturnValue(admin);
+        mocks.subscriptionRetrieve.mockResolvedValue(subscription());
+
+        expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
+        await vi.waitFor(() => expect(creatorEmails()).toHaveLength(1));
+        expect(creatorEmails()[0].headers.get("Idempotency-Key")).toBe("in_paid_1:creator-sale");
+        expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
+
+        await flush();
+        expect(creatorEmails()).toHaveLength(1);
+      });
+
+      it("sends none on a renewal", async () => {
+        const admin = createAdmin("checkout");
+        mocks.getAdmin.mockReturnValue(admin);
+        mocks.subscriptionRetrieve.mockResolvedValue(subscription());
+        const renewal = paidInvoiceEvent();
+        Object.assign(renewal.data.object, { billing_reason: "subscription_cycle" });
+
+        expect((await postEvent(renewal)).status).toBe(200);
+
+        await flush();
+        expect(creatorEmails()).toHaveLength(0);
+        expect(fulfillCalls(admin)).toHaveLength(1);
+      });
+
+      // Free enrollment never reaches this webhook (it is a client RPC). The
+      // webhook's version of "free" is a $0 order, which is not a sale.
+      it("sends none for a free ($0) enrollment", async () => {
+        const admin = createAdmin("checkout");
+        admin.state.orderRow.amount_minor = 0;
+        mocks.getAdmin.mockReturnValue(admin);
+        const event = checkoutEvent();
+        Object.assign(event.data.object, { amount_total: 0 });
+
+        expect((await postEvent(event)).status).toBe(200);
+
+        await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
+        await flush();
+        expect(creatorEmails()).toHaveLength(0);
+      });
+
+      it("keeps the enrollment and answers 200 when the creator email fails", async () => {
+        const admin = createAdmin("checkout");
+        mocks.getAdmin.mockReturnValue(admin);
+        resend.mockImplementation(async (_url, init) =>
+          String(init?.body).includes("creator@example.test")
+            ? new Response("{}", { status: 503 })
+            : new Response('{"id":"email_1"}', { status: 200 }),
+        );
+
+        const response = await postEvent(checkoutEvent());
+
+        expect(response.status).toBe(200);
+        expect(fulfillCalls(admin)).toHaveLength(1);
+        expect(admin.state.doneEvents).toContain("evt_checkout");
+        await vi.waitFor(() => expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+          event: "stripe.webhook.creator_sale_email_failed",
+          context: { courseId: "course_1", ownerId: "teacher_1" },
+        })));
+        expect(buyerEmails()).toHaveLength(1);
+        expect(mocks.notifyOps).not.toHaveBeenCalledWith(lostEmailAlert);
+      });
     });
   });
 });
