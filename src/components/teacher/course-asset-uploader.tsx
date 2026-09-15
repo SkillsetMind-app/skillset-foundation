@@ -24,6 +24,7 @@ import {
   uploadCourseAsset,
   type UploadCourseAssetProgress,
 } from "@/lib/data/course-assets";
+import { compressImage, MAX_SOURCE_IMAGE_BYTES } from "@/lib/media/compress-image";
 
 import { UploadProgressNote } from "./upload-progress-note";
 
@@ -68,7 +69,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadCourseAssetProgress | null>(null);
   const [error, setError] = useState<
-    | { kind: "load" | "module" | "delete" }
+    | { kind: "load" | "module" | "delete" | "tooLarge" }
     | { kind: "invalidFile"; assetKind: CourseAssetKind }
     | { kind: "upload"; cause: unknown }
     | null
@@ -97,7 +98,9 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
       ? t("creatorEditor.assets.errors.invalidFile")
         .replace("{kind}", () => getCourseAssetKindLabel(error.assetKind, t).toLocaleLowerCase(locale))
         .replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))
-      : t(`creatorEditor.assets.errors.${error.kind}`);
+      : error.kind === "tooLarge"
+        ? t("creatorEditor.members.coverTooLarge")
+        : t(`creatorEditor.assets.errors.${error.kind}`);
 
   // Prévia do arquivo escolhido antes de enviar. Os dois presets deste painel
   // são imagens; sem isto o professor subia a capa do módulo às cegas.
@@ -141,6 +144,12 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
       return;
     }
 
+    // Capa do módulo: mesmo teto de 10 MB do campo da página do módulo.
+    if (kind === "module_cover" && selectedFile.size > MAX_SOURCE_IMAGE_BYTES) {
+      setError({ kind: "tooLarge" });
+      return;
+    }
+
     if (requiresModuleTarget && !moduleId) {
       setError({ kind: "module" });
       return;
@@ -149,11 +158,16 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
     setIsUploading(true);
 
     try {
+      // Mesmo recorte 2:3 e compressão do campo da página do módulo; se falhar,
+      // sobe o original.
+      const file = kind === "module_cover"
+        ? await compressImage(selectedFile).catch(() => selectedFile)
+        : selectedFile;
       const assetId = await uploadCourseAsset({
         courseId: course.id,
         ownerId: course.ownerId,
         kind,
-        file: selectedFile,
+        file,
         isPreview,
         lessonId: null,
         moduleId: requiresModuleTarget ? moduleId : null,

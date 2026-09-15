@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CreatorCourseDetail } from "@/components/courses/creator-course-detail";
@@ -123,11 +123,18 @@ vi.mock("@/components/courses/bunny-video-player", () => ({
   BunnyVideoPlayer: () => null,
 }));
 
-// The viewer's enrollment (the same read the classroom uses). Default: none.
-const enrollmentState = vi.hoisted(() => ({ current: null as { status: string } | null }));
+// The viewer's enrollment (the same read the classroom uses). Default: none,
+// delivered at once; `deliverLater` holds it back so a test can send it via
+// `onNext`, like a read that arrives after the page has painted.
+const enrollmentState = vi.hoisted(() => ({
+  current: null as { status: string } | null,
+  deliverLater: false,
+  onNext: null as ((enrollment: unknown) => void) | null,
+}));
 vi.mock("@/lib/data/enrollments", () => ({
   subscribeToEnrollment: vi.fn((_uid: string, _courseId: string, onNext: (enrollment: unknown) => void) => {
-    onNext(enrollmentState.current);
+    enrollmentState.onNext = onNext;
+    if (!enrollmentState.deliverLater) onNext(enrollmentState.current);
     return () => {};
   }),
 }));
@@ -700,5 +707,50 @@ describe("CreatorCourseDetail — padlocked lessons and the buy popup", () => {
 
     const popupCta = within(screen.getByRole("dialog")).getAllByRole("link")[0];
     expect(popupCta.textContent?.trim()).toBe("Checkout not available yet");
+  });
+
+  // The enrollment read arrives late: a learner who clicked a padlock in that
+  // gap kept a buy popup open after their access loaded.
+  it("the buy popup closes itself when the learner's enrollment arrives late", async () => {
+    fixtures.auth.status = "authenticated";
+    fixtures.auth.user = { uid: "student-1" };
+    enrollmentState.deliverLater = true;
+    try {
+      render(<CreatorCourseDetail courseIdOverride="course-1" />);
+      await screen.findAllByText("$149.00");
+      fireEvent.click(screen.getByRole("button", { name: /Why focus breaks/ }));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+      act(() => enrollmentState.onNext?.({ status: "active" }));
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    } finally {
+      enrollmentState.deliverLater = false;
+      enrollmentState.onNext = null;
+    }
+  });
+
+  // An enrolled learner was offered "Enroll — $X" on the card and the mobile
+  // bar; checkout then refused with alreadyEnrolled.
+  it("an enrolled learner gets a link to the classroom on the card and the mobile bar", async () => {
+    fixtures.auth.status = "authenticated";
+    fixtures.auth.user = { uid: "student-1" };
+    enrollmentState.current = { status: "active" };
+    try {
+      const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" />);
+      await screen.findAllByText("$149.00");
+
+      const cta = cardAction(container);
+      expect(cta?.tagName).toBe("A");
+      expect(cta).toHaveAttribute("href", "/learn/courses/course-1");
+      expect(cta).toHaveTextContent("Continue learning");
+      const links = screen.getAllByRole("link", { name: "Continue learning" });
+      expect(links).toHaveLength(2);
+      for (const link of links) expect(link).toHaveAttribute("href", "/learn/courses/course-1");
+      expect(container.querySelector('a[href="#enroll-card"]')).toBeNull();
+      expect(screen.queryByText(/Enroll —/)).not.toBeInTheDocument();
+    } finally {
+      enrollmentState.current = null;
+    }
   });
 });
