@@ -5214,7 +5214,7 @@
     "privacy": {
       "title": "Política de privacidad",
       "description": "Cómo SkillsetMind recopila, utiliza y protege tus datos.",
-      "text1": "Esta política explica qué información personal recopila SkillsetMind, por qué, con quién se comparte y qué derechos tienes sobre ella. Se aplica a visitantes, estudiantes y educadores. El responsable del tratamiento es SKILLSET USA INC., 26 Broadway, New York, NY 10006, Estados Unidos (\"SkillsetMind\", \"nosotros\").",
+      "text1": "Esta política explica qué información personal recopila SkillsetMind, por qué, con quién se comparte y qué derechos tienes sobre ella. Se aplica a visitantes, estudiantes y educadores. El responsable del tratamiento es SKILLSET USA INC., 418 Broadway, Ste N, Albany, NY 12207, Estados Unidos (\"SkillsetMind\", \"nosotros\").",
       "text2": "En resumen: recopilamos lo que la plataforma necesita para funcionar — tu cuenta, tu actividad de aprendizaje, tus compras — además de análisis del producto de los que puedes excluirte. No vendemos tu información personal.",
       "text3": "<strong>Datos de la cuenta</strong> — nombre, dirección de correo electrónico, contraseña (almacenada como hash por Supabase Auth) y tu rol en la plataforma (estudiante y/o educador).",
       "text4": "<strong>Datos del perfil</strong> — información que añades a tu perfil, como una foto, biografía o trayectoria profesional (para educadores).",
@@ -5310,7 +5310,7 @@
       "text34": "Las controversias no resueltas se resolverán mediante arbitraje individual vinculante conforme al Reglamento de Arbitraje de Consumo de la American Arbitration Association (AAA), con sede en Nueva York, Nueva York, y cada parte renuncia a las acciones colectivas y a los juicios con jurado en la medida permitida por la ley. En su lugar, cualquiera de las partes puede presentar una reclamación individual ante un tribunal de menor cuantía. Si resides en una jurisdicción cuya legislación te garantiza acceso a tus tribunales locales o protecciones irrenunciables (incluidos los consumidores de la Unión Europea y Brasil), esta sección no afecta a esos derechos.",
       "text35": "Podemos actualizar estas Condiciones a medida que evoluciona la plataforma. En caso de cambios sustanciales, actualizaremos la fecha de entrada en vigor indicada arriba y te notificaremos por correo electrónico o mediante un aviso en el producto antes de que los cambios entren en vigor. Seguir utilizando SkillsetMind después de esa fecha significa que aceptas las Condiciones revisadas.",
       "text36": "Estas Condiciones están redactadas en inglés. Pueden proporcionarse traducciones para facilitar su consulta; si existe un conflicto, prevalece la versión en inglés salvo que la legislación local exija lo contrario.",
-      "text37": "SKILLSET USA INC., 26 Broadway, New York, NY 10006, Estados Unidos. Consultas sobre estas Condiciones: <support>support@skillsetmind.com</support> o <legal>legal@skillsetmind.com</legal>.",
+      "text37": "SKILLSET USA INC., 418 Broadway, Ste N, Albany, NY 12207, Estados Unidos. Consultas sobre estas Condiciones: <support>support@skillsetmind.com</support> o <legal>legal@skillsetmind.com</legal>.",
       "heading1": "1. Aceptación y requisitos",
       "heading2": "2. Tu cuenta y tus roles",
       "heading3": "3. La plataforma y las normas del mercado",

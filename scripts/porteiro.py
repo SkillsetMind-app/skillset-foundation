@@ -86,6 +86,20 @@ ARQUIVO_DO_DIFF = re.compile(r"^diff --git a/(.+?) b/(.+)$", re.M)
 # --------------------------------------------------------------------------
 # GLM (mesma mecânica medida em skillset-ops/protecao-glm/analisa.py)
 # --------------------------------------------------------------------------
+class SaldoZerado(RuntimeError):
+    """z.ai código 1113: sem saldo até recarregar. Repetir só queima 93 s."""
+
+
+def codigo_zai(e: urllib.error.HTTPError) -> str:
+    """error.code do corpo de erro da z.ai (1113 sem saldo, 1302 rate limit).
+    Só dígitos saem daqui: o corpo em si nunca chega ao log público."""
+    try:
+        c = str(json.loads(e.read())["error"]["code"])
+    except Exception:
+        return ""
+    return c if c.isdigit() and len(c) <= 6 else ""
+
+
 def chama(diff: str, modelo: str, max_tokens: int, chave: str) -> tuple[str, dict]:
     corpo = json.dumps({
         "model": modelo,
@@ -108,9 +122,12 @@ def chama(diff: str, modelo: str, max_tokens: int, chave: str) -> tuple[str, dic
                 dados = json.load(r)
             break
         except urllib.error.HTTPError as e:
+            cod = codigo_zai(e)
+            ultimo = f"HTTP {e.code}" + (f", código {cod}" if cod else "")
+            if cod == "1113":
+                raise SaldoZerado("saldo da z.ai zerado (código 1113) — recarregar")
             if e.code not in (408, 429, 500, 502, 503, 504):
-                raise RuntimeError(f"HTTP {e.code} da API")
-            ultimo = f"HTTP {e.code}"
+                raise RuntimeError(f"API recusou ({ultimo})")
         except (OSError, json.JSONDecodeError) as e:
             ultimo = type(e).__name__
         if tentativa == 5:
@@ -393,7 +410,8 @@ def main(argv: list[str]) -> int:
     try:
         r, tel = analisa(diff, modelo, chave)
     except RuntimeError as e:
-        escreve(placar_path, nao_analisado(f"o analisador não respondeu ({e})", modo))
+        escreve(placar_path, nao_analisado(
+            str(e) if isinstance(e, SaldoZerado) else f"o analisador não respondeu ({e})", modo))
         print(f"NAO ANALISADO: {e}")
         return 3
     if tel.get("falhou"):
