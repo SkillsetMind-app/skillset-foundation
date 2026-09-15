@@ -16,13 +16,13 @@ type PickerProps = Parameters<typeof LessonVideoSourcePicker>[0];
 
 function renderPicker(overrides: Partial<PickerProps> = {}) {
   const props: PickerProps = {
-    value: null,
+    mode: "upload",
     accept: "video/*",
     externalUrl: "",
     embedStatus: "Paste a link when the video already lives outside SkillsetMind.",
-    onChange: vi.fn(),
+    onModeChange: vi.fn(),
     onSelectFile: vi.fn(),
-    onExternalUrlChange: vi.fn(),
+    onLinkChange: vi.fn(),
     ...overrides,
   };
 
@@ -34,73 +34,123 @@ function videoFile(name = "lesson.mp4") {
   return new File(["video-bytes"], name, { type: "video/mp4" });
 }
 
+// O host tem de ser do YouTube ou do Vimeo: e o que getTrustedLessonEmbed
+// aceita. Nada e buscado; o resto usa example.test.
+const vimeo = "https://vimeo.com/123456";
+const urlField = () => screen.queryByRole("textbox", { name: "YouTube or Vimeo URL" });
+
 describe("LessonVideoSourcePicker", () => {
-  it("names the device action and URL input without absorbing the help button", () => {
-    renderPicker();
+  // Um video por aula (decisao de 14/09): o envio OU o link, nunca os dois.
+  it("no modo envio mostra so a area de envio e o botao de trocar para link", () => {
+    const props = renderPicker();
     const fileInput = screen.getByLabelText("Upload a lesson video");
+
     expect(fileInput.closest("label")).toContainElement(screen.getByText("Choose video"));
     expect(fileInput.closest("label")).toContainElement(screen.getByText("From your device"));
-    expect(screen.getByRole("textbox", { name: "YouTube or Vimeo URL" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "How the YouTube or Vimeo URL field works" }).closest("label")).toBeNull();
+    expect(screen.getByText(/Drag & drop your video here/i)).toBeInTheDocument();
+    expect(urlField()).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    expect(props.onModeChange).toHaveBeenCalledExactlyOnceWith("link");
   });
 
-  it("keeps the active drop target and authored URL when the language changes", () => {
-    const onChange = vi.fn();
-    const onSelectFile = vi.fn();
-    const onExternalUrlChange = vi.fn();
-    const url = "https://vimeo.com/123456";
+  it("no modo link mostra so o campo, com a ajuda fora do rotulo, e o botao de trocar para envio", () => {
+    const props = renderPicker({ mode: "link" });
+
+    expect(urlField()).toBeInTheDocument();
+    expect(screen.queryByLabelText("Upload a lesson video")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "How the YouTube or Vimeo URL field works" }).closest("label")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace with upload" }));
+    expect(props.onModeChange).toHaveBeenCalledExactlyOnceWith("upload");
+  });
+
+  it("a ajuda diz que so YouTube e Vimeo sao aceitos, com area de toque cheia", () => {
+    renderPicker({ mode: "link", externalUrl: vimeo });
+    const help = screen.getByRole("button", { name: "How the YouTube or Vimeo URL field works" });
+
+    expect(help).toHaveClass("size-11", "shrink-0");
+    expect(help.querySelector("svg")).toHaveAttribute("width", "13");
+    fireEvent.focus(help);
+    expect(screen.getByRole("tooltip")).toHaveTextContent(/Only YouTube and Vimeo video links are accepted/);
+    expect(help).toHaveAccessibleDescription(screen.getByRole("tooltip").textContent ?? "");
+    expect(screen.getByDisplayValue(vimeo)).toBeInTheDocument();
+  });
+
+  it("grava so link aceito; link recusado mostra erro e nao sai do campo", () => {
+    const props = renderPicker({ mode: "link" });
+
+    fireEvent.change(urlField() as HTMLElement, { target: { value: "https://example.test/v.mp4" } });
+    expect(screen.getByRole("alert")).toHaveTextContent("Only YouTube and Vimeo video links are accepted.");
+    expect(urlField()).toHaveAttribute("aria-invalid", "true");
+    expect(props.onLinkChange).not.toHaveBeenCalled();
+
+    fireEvent.change(urlField() as HTMLElement, { target: { value: `  ${vimeo} ` } });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(props.onLinkChange).toHaveBeenCalledExactlyOnceWith(vimeo);
+  });
+
+  it("apagar o campo tira o link aceito salvo", () => {
+    const props = renderPicker({ mode: "link", externalUrl: vimeo });
+
+    fireEvent.change(urlField() as HTMLElement, { target: { value: "" } });
+    expect(props.onLinkChange).toHaveBeenCalledExactlyOnceWith(null);
+  });
+
+  // Um link antigo (Drive etc.) nao entra no campo. Digitar e apagar ali nao
+  // pode apaga-lo: quem tira o link antigo e o botao proprio, no modal.
+  it("com link antigo que nao e video, o campo comeca vazio e apagar nao grava nada", () => {
+    const props = renderPicker({ mode: "link", externalUrl: "https://drive.example.test/file/d/x/view" });
+
+    expect(urlField()).toHaveValue("");
+    fireEvent.change(urlField() as HTMLElement, { target: { value: "abc" } });
+    fireEvent.change(urlField() as HTMLElement, { target: { value: "" } });
+    expect(props.onLinkChange).not.toHaveBeenCalled();
+  });
+
+  it("mantem o rascunho do link ao trocar de idioma", () => {
+    const onLinkChange = vi.fn();
     render(
       <I18nProvider initialLocale="en">
         <ChangeLanguage />
-        <LessonVideoSourcePicker value="youtube" accept="video/*" externalUrl={url}
-          embedStatus="Vimeo" onChange={onChange} onSelectFile={onSelectFile} onExternalUrlChange={onExternalUrlChange} />
+        <LessonVideoSourcePicker mode="link" accept="video/*" externalUrl={vimeo}
+          embedStatus="Vimeo" onModeChange={vi.fn()} onSelectFile={vi.fn()} onLinkChange={onLinkChange} />
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByDisplayValue(vimeo)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cómo funciona el campo de URL de YouTube o Vimeo" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reemplazar por archivo" })).toBeInTheDocument();
+    expect(onLinkChange).not.toHaveBeenCalled();
+  });
+
+  it("mantem a area de soltar ativa ao trocar de idioma", () => {
+    const onSelectFile = vi.fn();
+    render(
+      <I18nProvider initialLocale="en">
+        <ChangeLanguage />
+        <LessonVideoSourcePicker mode="upload" accept="video/*" externalUrl=""
+          embedStatus="" onModeChange={vi.fn()} onSelectFile={onSelectFile} onLinkChange={vi.fn()} />
       </I18nProvider>,
     );
     const input = screen.getByLabelText("Upload a lesson video");
-    fireEvent.dragOver(input.closest("label")!);
+
+    fireEvent.dragOver(input.closest("label") as HTMLElement);
     expect(screen.getByText("Drop the video to select it")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByText("Suelta el video para seleccionarlo")).toBeInTheDocument();
     expect(screen.getByLabelText("Subir un video de la lección")).toBe(input);
-    expect(screen.getByDisplayValue(url)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cómo funciona el campo de URL de YouTube o Vimeo" })).toBeInTheDocument();
-    expect(onChange).not.toHaveBeenCalled();
-    expect(onExternalUrlChange).not.toHaveBeenCalled();
     const file = videoFile("Aula $& íntegra.mp4");
-    fireEvent.drop(input.closest("label")!, { dataTransfer: { files: [file] } });
+    fireEvent.drop(input.closest("label") as HTMLElement, { dataTransfer: { files: [file] } });
     expect(onSelectFile).toHaveBeenCalledExactlyOnceWith(file);
-    expect(onChange).not.toHaveBeenCalled();
   });
 
-  it("renders the dropzone and the URL field immediately, with no source-choice step", () => {
-    renderPicker();
-
-    expect(screen.getByLabelText("Upload a lesson video")).toBeInTheDocument();
-    expect(screen.getByText(/Drag & drop your video here/i)).toBeInTheDocument();
-    expect(
-      screen.getByPlaceholderText("https://www.youtube.com/watch?v=..."),
-    ).toBeInTheDocument();
-  });
-
-  it("gives the small help icon a full touch target and an accessible description without changing the URL", () => {
-    const props = renderPicker({ externalUrl: "https://vimeo.com/123456" });
-    const help = screen.getByRole("button", { name: "How the YouTube or Vimeo URL field works" });
-    expect(help).toHaveClass("size-11", "shrink-0");
-    expect(help.querySelector("svg")).toHaveAttribute("width", "13");
-    fireEvent.focus(help);
-    expect(help).toHaveAccessibleDescription(screen.getByRole("tooltip").textContent ?? "");
-    expect(screen.getByDisplayValue("https://vimeo.com/123456")).toBeInTheDocument();
-    expect(props.onChange).not.toHaveBeenCalled();
-    expect(props.onExternalUrlChange).not.toHaveBeenCalled();
-  });
-
-  // Escolher NAO declara a fonte. A versao anterior destes dois testes exigia
-  // `onChange("upload")` na escolha, e era essa a regra que apagava a aula para
-  // quem ja tinha pago: `videoSource` e persistido pelo autosave e e o campo que
-  // o aluno le para escolher o player, entao a fonte virava "upload" sem existir
-  // arquivo nenhum. Quem declara a fonte agora e o caminho de sucesso do envio,
-  // no lesson-content-modal. (Auditoria de produto de 2026-08-30, achado P-01.)
-  it("selects a dropped video file without declaring the source yet", () => {
+  // Escolher NAO declara a fonte: `videoSource` e persistido pelo autosave e e
+  // o campo que o aluno le para escolher o player. Quem declara a fonte e o
+  // caminho de sucesso do envio, no lesson-content-modal. (Auditoria de produto
+  // de 2026-08-30, achado P-01.)
+  it("seleciona o video solto sem declarar a fonte nem trocar de modo", () => {
     const props = renderPicker();
     const file = videoFile();
 
@@ -109,10 +159,11 @@ describe("LessonVideoSourcePicker", () => {
     });
 
     expect(props.onSelectFile).toHaveBeenCalledWith(file);
-    expect(props.onChange).not.toHaveBeenCalled();
+    expect(props.onModeChange).not.toHaveBeenCalled();
+    expect(props.onLinkChange).not.toHaveBeenCalled();
   });
 
-  it("ignores dropped non-video files", () => {
+  it("ignora arquivo solto que nao e video", () => {
     const props = renderPicker();
 
     fireEvent.drop(screen.getByText(/Drag & drop your video here/i), {
@@ -121,11 +172,10 @@ describe("LessonVideoSourcePicker", () => {
       },
     });
 
-    expect(props.onChange).not.toHaveBeenCalled();
     expect(props.onSelectFile).not.toHaveBeenCalled();
   });
 
-  it("selects a browsed file without declaring the source yet", () => {
+  it("seleciona o video escolhido no navegador sem declarar a fonte", () => {
     const props = renderPicker();
     const file = videoFile();
 
@@ -134,57 +184,26 @@ describe("LessonVideoSourcePicker", () => {
     });
 
     expect(props.onSelectFile).toHaveBeenCalledWith(file);
-    expect(props.onChange).not.toHaveBeenCalled();
+    expect(props.onModeChange).not.toHaveBeenCalled();
   });
 
-  it("reports URL typing and switches the source to youtube only when needed", () => {
-    const props = renderPicker();
-    const urlInput = screen.getByPlaceholderText(
-      "https://www.youtube.com/watch?v=...",
-    );
-
-    fireEvent.change(urlInput, {
-      target: { value: "https://www.youtube.com/watch?v=abc" },
-    });
-
-    expect(props.onChange).toHaveBeenCalledWith("youtube");
-    expect(props.onExternalUrlChange).toHaveBeenCalledWith(
-      "https://www.youtube.com/watch?v=abc",
-    );
-
-    const activeProps = renderPicker({ value: "youtube" });
-    const inputs = screen.getAllByPlaceholderText(
-      "https://www.youtube.com/watch?v=...",
-    );
-    fireEvent.change(inputs[inputs.length - 1], {
-      target: { value: "https://vimeo.com/123" },
-    });
-
-    expect(activeProps.onChange).not.toHaveBeenCalled();
-    expect(activeProps.onExternalUrlChange).toHaveBeenCalledWith(
-      "https://vimeo.com/123",
-    );
-  });
-
-  it("shows the embed status label", () => {
-    renderPicker({ embedStatus: "YouTube embed detected." });
+  it("mostra o estado do link embutido", () => {
+    renderPicker({ mode: "link", embedStatus: "YouTube embed detected." });
 
     expect(screen.getByText("YouTube embed detected.")).toBeInTheDocument();
   });
 
-  it("disables both inputs and ignores drops when disabled", () => {
+  it("desabilitado: nada responde, nem a troca de modo", () => {
     const props = renderPicker({ disabled: true });
 
     expect(screen.getByLabelText("Upload a lesson video")).toBeDisabled();
-    expect(
-      screen.getByPlaceholderText("https://www.youtube.com/watch?v=..."),
-    ).toBeDisabled();
-
+    expect(screen.getByRole("button", { name: "Replace with link" })).toBeDisabled();
     fireEvent.drop(screen.getByText(/Drag & drop your video here/i), {
       dataTransfer: { files: [videoFile()] },
     });
-
-    expect(props.onChange).not.toHaveBeenCalled();
     expect(props.onSelectFile).not.toHaveBeenCalled();
+
+    renderPicker({ mode: "link", disabled: true });
+    expect(urlField()).toBeDisabled();
   });
 });

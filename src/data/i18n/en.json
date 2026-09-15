@@ -3418,7 +3418,10 @@
       "previewTitle": "Video preview",
       "savedProcessing": "Your upload is saved. New videos may still be processing before they can play.",
       "embedDetected": "{provider} embed detected.",
-      "embedInvalid": "Link saved, but it will not play in the classroom. Use a standard YouTube or Vimeo video URL.",
+      "oldLink": "Old link",
+      "oldLinkHelp": "This link is not a video, so it does not play in the classroom. Students still get a button that opens it.",
+      "removeOldLink": "Remove old link",
+      "removeOldLinkConfirm": "Remove the old link? Students will lose the button that opens it.",
       "embedEmpty": "Paste a link when the video already lives outside SkillsetMind.",
       "uploadVideo": "Upload lesson video",
       "uploadVideoHelp": "MP4, MOV, WebM or any browser-supported video file.",
@@ -3490,7 +3493,10 @@
       "browseHelp": "or click to browse — MP4, MOV, WebM and other video files.",
       "url": "YouTube or Vimeo URL",
       "helpLabel": "How the YouTube or Vimeo URL field works",
-      "help": "Paste the video's page link — e.g. https://www.youtube.com/watch?v=… or a Vimeo URL. We turn it into a privacy-friendly embed that plays inside the classroom, stamped with the student's identity. It stays a link on YouTube or Vimeo, though: anyone who reaches that link can watch it outside your course. Upload instead and playback is signed per student.",
+      "help": "Only YouTube and Vimeo video links are accepted: paste the video's page link, e.g. https://www.youtube.com/watch?v=… or https://vimeo.com/…. Other links are not saved. We turn it into a privacy-friendly embed that plays inside the classroom, stamped with the student's identity. It stays a link on YouTube or Vimeo, though: anyone who reaches that link can watch it outside your course. Upload instead and playback is signed per student.",
+      "replaceWithLink": "Replace with link",
+      "replaceWithUpload": "Replace with upload",
+      "rejected": "Only YouTube and Vimeo video links are accepted. This link was not saved.",
       "protectionNote": "An embedded video stays a link on YouTube or Vimeo — anyone with that link can watch it outside your course. Upload the file instead and each student gets their own signed playback."
     },
     "members": {

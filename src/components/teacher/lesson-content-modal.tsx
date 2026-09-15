@@ -12,7 +12,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { LessonVideoSourcePicker } from "@/components/teacher/lesson-video-source-picker";
+import {
+  LessonVideoSourcePicker,
+  type LessonVideoMode,
+} from "@/components/teacher/lesson-video-source-picker";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import { TrustedEmbedPlayer } from "@/components/learn/trusted-embed-player";
@@ -185,6 +188,15 @@ export function LessonContentModal({
   // envio inalcançável numa aula nova — a fonte só vira "upload" no sucesso do
   // envio, e o envio só aparecia se a fonte já fosse "upload".
   const isUploadPanelOpen = resolvedSource === "upload" || selectedFile !== null || success === "uploaded";
+  // Um video por aula: a aba mostra OU o envio OU o link. Enquanto o professor
+  // nao troca, segue a escolha de resolveLessonVideoSource (aula que hoje tem
+  // os dois continua como esta). A troca e explicita e nao apaga nada.
+  const [videoModeChoice, setVideoModeChoice] = useState<LessonVideoMode | null>(null);
+  const videoMode: LessonVideoMode =
+    videoModeChoice ?? (resolvedSource === "youtube" ? "link" : "upload");
+  // Link antigo que nao e video (Drive etc.): so leitura, com botao de tirar.
+  // O aluno continua com o botao "Open resource".
+  const oldLink = lesson.externalUrl?.trim() && !trustedEmbed ? lesson.externalUrl : null;
   const videoStatus = tab === "video" && isUploading
     ? t("creatorEditor.lesson.file.uploading")
     : tab === "video" && selectedFile
@@ -473,27 +485,37 @@ export function LessonContentModal({
             <div className="grid gap-5">
 
               <LessonVideoSourcePicker
-                value={isUploadPanelOpen ? "upload" : resolvedSource}
+                mode={videoMode}
                 disabled={!isEditable || isUploading}
                 accept={courseAssetAcceptTypes[uploadKind]}
                 externalUrl={lesson.externalUrl ?? ""}
                 embedStatus={
                   trustedEmbed
                     ? t("creatorEditor.lesson.embedDetected").replace("{provider}", () => trustedEmbed.provider === "youtube" ? "YouTube" : "Vimeo")
-                    : lesson.externalUrl
-                      ? t("creatorEditor.lesson.embedInvalid")
-                      : t("creatorEditor.lesson.embedEmpty")
+                    : t("creatorEditor.lesson.embedEmpty")
                 }
-                onChange={(videoSource) => onUpdateLesson({ videoSource })}
+                onModeChange={(next) => {
+                  setVideoModeChoice(next);
+                  resetUploadState("lesson_video");
+                }}
+                // Fonte e link numa gravacao so, e so com link aceito. Nenhum
+                // course_assets e apagado aqui: o envio antigo segue na lista.
+                onLinkChange={(nextUrl) =>
+                  onUpdateLesson(
+                    nextUrl
+                      ? { videoSource: "youtube", externalUrl: nextUrl }
+                      : {
+                          externalUrl: null,
+                          ...(lesson.videoSource === "youtube" ? { videoSource: null } : {}),
+                        },
+                  )
+                }
                 onSelectFile={(file) => {
                   setSelectedFile(file);
                   setUploadProgress(null);
                   setSuccess(null);
                   setError(null);
                 }}
-                onExternalUrlChange={(nextUrl) =>
-                  onUpdateLesson({ externalUrl: nextUrl || null })
-                }
                 uploadPanel={isUploadPanelOpen ? (
                   <LessonUploadForm
                     error={errorMessage}
@@ -519,6 +541,29 @@ export function LessonContentModal({
                   />
                 ) : undefined}
               />
+
+              {oldLink ? (
+                <section
+                  aria-label={t("creatorEditor.lesson.oldLink")}
+                  className="grid gap-2 rounded-[12px] border border-[var(--color-line)] p-3 text-sm"
+                >
+                  <p className="font-semibold">{t("creatorEditor.lesson.oldLink")}</p>
+                  <p className="break-all text-[var(--color-ink-soft)]">{oldLink}</p>
+                  <p className="text-xs text-[var(--color-ink-soft)]">{t("creatorEditor.lesson.oldLinkHelp")}</p>
+                  <button
+                    type="button"
+                    className="button-outline justify-self-start px-3 py-2 text-xs disabled:opacity-60"
+                    disabled={!isEditable}
+                    onClick={() => {
+                      if (window.confirm(t("creatorEditor.lesson.removeOldLinkConfirm"))) {
+                        onUpdateLesson({ externalUrl: null });
+                      }
+                    }}
+                  >
+                    {t("creatorEditor.lesson.removeOldLink")}
+                  </button>
+                </section>
+              ) : null}
 
               {videoAssets.length > 0 ? (
                   <LessonAssetList
