@@ -118,7 +118,8 @@
     "openMenu": "Abrir menú",
     "closeMenu": "Cerrar menú",
     "primaryNavLabel": "Navegación principal",
-    "mobileNavLabel": "Navegación móvil"
+    "mobileNavLabel": "Navegación móvil",
+    "skipToContent": "Ir al contenido"
   },
   "footer": {
     "tagline": "La plataforma de cursos para psicólogos, coaches, facilitadores y expertos en desarrollo personal. Expertos verificados, sin retención de la plataforma sobre tu dinero, certificados verificables.",

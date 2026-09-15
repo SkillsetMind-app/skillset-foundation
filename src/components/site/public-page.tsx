@@ -28,6 +28,7 @@ export function PublicPage({
     <div className="page-shell">
       <SiteNav />
       <main
+        id="conteudo"
         className={`mx-auto w-full px-6 py-12 sm:px-8 sm:py-16 ${
           reading ? "max-w-[72ch]" : "max-w-7xl"
         }`}

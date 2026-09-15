@@ -1,17 +1,29 @@
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import CourseDetailPage, { generateMetadata } from "@/app/courses/[slug]/page";
-import type { PublicCourseSummary } from "@/lib/data/server/public-course";
+import type { CourseRefAccess, PublicCourseSummary } from "@/lib/data/server/public-course";
 
 const mocks = vi.hoisted(() => ({
   getPublicCourseByRef: vi.fn<() => Promise<PublicCourseSummary | null>>(),
+  getCourseRefAccess: vi.fn<() => Promise<CourseRefAccess>>(),
+  // Como o Next: notFound() interrompe a renderizacao lancando.
+  notFound: vi.fn(() => {
+    throw new Error("NEXT_NOT_FOUND");
+  }),
 }));
 
 vi.mock("@/lib/data/server/public-course", () => ({
   getPublicCourseByRef: mocks.getPublicCourseByRef,
+  getCourseRefAccess: mocks.getCourseRefAccess,
 }));
+
+vi.mock("next/navigation", () => ({ notFound: mocks.notFound }));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 // O componente cliente de verdade abre assinatura no Supabase; aqui só
 // interessa o contrato: a página avisa quando o cabeçalho já saiu do servidor.
@@ -64,14 +76,40 @@ describe("página do curso de criador", () => {
       "src",
       expect.stringContaining(encodeURIComponent(COVER)),
     );
+    // Curso publicado renderiza sem a consulta extra e sem 404.
+    expect(mocks.getCourseRefAccess).not.toHaveBeenCalled();
+    expect(mocks.notFound).not.toHaveBeenCalled();
   });
 
-  it("sem curso publicado, deixa o cliente desenhar o próprio cabeçalho", async () => {
+  // Link para curso nao publicado, removido ou slug invalido respondia 200 com
+  // pagina vazia: ruim para anuncio e para o buscador.
+  it("curso que nao existe para quem pede responde 404 antes de desenhar a pagina", async () => {
     mocks.getPublicCourseByRef.mockResolvedValue(null);
+    mocks.getCourseRefAccess.mockResolvedValue("missing");
+
+    await expect(renderPage("nao-existe")).rejects.toThrow("NEXT_NOT_FOUND");
+    expect(mocks.getCourseRefAccess).toHaveBeenCalledWith("nao-existe");
+    expect(mocks.notFound).toHaveBeenCalledOnce();
+  });
+
+  it("rascunho visivel para o dono segue com a pagina do cliente, que desenha o proprio cabecalho", async () => {
+    mocks.getPublicCourseByRef.mockResolvedValue(null);
+    mocks.getCourseRefAccess.mockResolvedValue("visible");
 
     await renderPage("rascunho");
 
+    expect(mocks.notFound).not.toHaveBeenCalled();
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    expect(screen.getByText("client header shown")).toBeInTheDocument();
+  });
+
+  it("falha de leitura nao vira 404", async () => {
+    mocks.getPublicCourseByRef.mockResolvedValue(null);
+    mocks.getCourseRefAccess.mockResolvedValue("unknown");
+
+    await renderPage("talvez-exista");
+
+    expect(mocks.notFound).not.toHaveBeenCalled();
     expect(screen.getByText("client header shown")).toBeInTheDocument();
   });
 

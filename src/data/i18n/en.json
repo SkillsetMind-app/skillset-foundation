@@ -118,7 +118,8 @@
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "primaryNavLabel": "Primary navigation",
-    "mobileNavLabel": "Mobile navigation"
+    "mobileNavLabel": "Mobile navigation",
+    "skipToContent": "Skip to content"
   },
   "footer": {
     "tagline": "The course platform for psychologists, coaches, facilitators, and personal-development experts. Verified experts, no platform hold on your money, verifiable certificates.",

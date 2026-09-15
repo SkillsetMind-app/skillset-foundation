@@ -36,22 +36,25 @@ export default function Home() {
   return (
     <div className="page-shell">
       <SiteNav landingNav={landingNav} />
-      <MarketingHero />
-      <section id="how-it-works" className="scroll-mt-28">
-        <HowItWorksStrip />
-      </section>
-      <section id="courses" className="scroll-mt-28">
-        <FeaturedCourses />
-      </section>
-      <section id="capabilities" className="scroll-mt-28">
-        <CapabilitiesGrid />
-      </section>
-      <section id="promise" className="scroll-mt-28">
-        <PromisePreviewBand />
-      </section>
-      <section id="for-creators" className="scroll-mt-28">
-        <ForCreatorsBand />
-      </section>
+      {/* Um <main> por página, alvo do "Skip to content" da barra. */}
+      <main id="conteudo">
+        <MarketingHero />
+        <section id="how-it-works" className="scroll-mt-28">
+          <HowItWorksStrip />
+        </section>
+        <section id="courses" className="scroll-mt-28">
+          <FeaturedCourses />
+        </section>
+        <section id="capabilities" className="scroll-mt-28">
+          <CapabilitiesGrid />
+        </section>
+        <section id="promise" className="scroll-mt-28">
+          <PromisePreviewBand />
+        </section>
+        <section id="for-creators" className="scroll-mt-28">
+          <ForCreatorsBand />
+        </section>
+      </main>
       <SiteFooter />
     </div>
   );
