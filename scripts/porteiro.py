@@ -81,10 +81,10 @@ PROVEDORES = {
     "openai": ("OpenAI", "https://api.openai.com/v1/chat/completions", "OPENAI_API_KEY"),
 }
 # Ordem = prioridade. O 1º é o primário; os outros só entram sem veredito dele.
-# gpt-6-astra: o modelo mais capaz da OpenAI; a chave usa em /chat/completions
-# com json_object (medido 15/09/2026). Se sair do preview, PORTEIRO_CADEIA com
-# openai:gpt-5.5 (também medido) resolve sem mexer no código.
-CADEIA_PADRAO = "zai:{primario},kimi:kimi-k3,kimi:kimi-k2.6,openai:gpt-6-astra"
+# Só entra aqui reserva que passou no controle adversarial do portão (15/09/2026:
+# as quatro, 8/8 cada; glm-5 20/20 em 02/09). gpt-5.5 fica por último caso o
+# gpt-6-astra saia do preview. Ordem diferente: PORTEIRO_CADEIA, sem mexer no código.
+CADEIA_PADRAO = "zai:{primario},kimi:kimi-k3,kimi:kimi-k2.6,openai:gpt-6-astra,openai:gpt-5.5"
 # Sem saldo/cota: repetir não adianta, vai direto para a próxima IA.
 SEM_SALDO = {"1113", "insufficient_quota", "exceeded_current_quota_error"}
 # Filtro de conteúdo / recusa de segurança: fail-closed, nunca a próxima IA.
@@ -95,6 +95,8 @@ FINISH = ("stop", "length", "tool_calls", "content_filter", "sensitive", "networ
 FINISH_FILTRADO = {"content_filter", "sensitive"}
 # Tempo: o job tem 30 min e o passo de análise 27. 4 provedores x 6 min = 24
 # cabem em PRAZO_TOTAL; sem teto, um provedor sozinho levava 6x300 s + backoff.
+# ponytail: se todos travam, o 5º (gpt-5.5) só tem o 1 min que sobra (média
+# medida: 16 s). Mais reservas pedem PRAZO_TOTAL e timeout-minutes maiores.
 TIMEOUT_HTTP = 180     # por chamada; o teto de 32k tokens do glm-5 precisa de folga
 PRAZO_PROVEDOR = 360   # para de repetir um provedor depois disso
 PRAZO_TOTAL = 25 * 60  # a cadeia inteira

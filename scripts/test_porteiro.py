@@ -150,16 +150,17 @@ class CadeiaDeReservaTest(unittest.TestCase):
         for modo in ("avisa", "barra"):
             codigo, placar, modelos, _ = self.roda(
                 {"glm-5": Z1113, "kimi-k3": KIMI_QUOTA, "kimi-k2.6": "desculpe, não sei",
-                 "gpt-6-astra": OPENAI_QUOTA}, modo=modo)
+                 "gpt-6-astra": OPENAI_QUOTA, "gpt-5.5": OPENAI_QUOTA}, modo=modo)
             self.assertEqual(codigo, 3)
             # k2.6 respondeu fora do formato 3x (os três tetos) antes de cair.
-            self.assertEqual(modelos, ["glm-5", "kimi-k3"] + ["kimi-k2.6"] * 3 + ["gpt-6-astra"])
+            self.assertEqual(modelos, ["glm-5", "kimi-k3"] + ["kimi-k2.6"] * 3 + ["gpt-6-astra", "gpt-5.5"])
             self.assertIn("NÃO ANALISADO", placar)
-            self.assertIn("nenhuma IA disponível (4 provedores)", placar)
+            self.assertIn("nenhuma IA disponível (5 provedores)", placar)
             for trecho in ("z.ai glm-5: saldo da z.ai zerado (código 1113)",
                            "Kimi kimi-k3: saldo da Kimi zerado (código exceeded_current_quota_error)",
                            "Kimi kimi-k2.6: não devolveu JSON",
-                           "OpenAI gpt-6-astra: saldo da OpenAI zerado (código insufficient_quota)"):
+                           "OpenAI gpt-6-astra: saldo da OpenAI zerado (código insufficient_quota)",
+                           "OpenAI gpt-5.5: saldo da OpenAI zerado (código insufficient_quota)"):
                 self.assertIn(trecho, self.privado)
             # Billing and credential reasons never reach the public comment.
             for publico_nao in ("1113", "saldo", "insufficient_quota", "exceeded_current_quota_error"):
@@ -189,6 +190,12 @@ class CadeiaDeReservaTest(unittest.TestCase):
         self.assertGreaterEqual(kimi["max_tokens"], 8192)
         # O primário continua igual: z.ai, glm-5, temperature 0.1, teto 4000.
         self.assertEqual((url_z, zai["temperature"], zai["max_tokens"]), (porteiro.URL, 0.1, 4000))
+
+    def test_cadeia_padrao_so_com_reservas_aprovadas(self):
+        # glm-5 primeiro, depois só quem passou no controle adversarial de 15/09/2026.
+        self.assertEqual([p.rotulo for p in porteiro.le_cadeia({})],
+                         ["z.ai glm-5", "Kimi kimi-k3", "Kimi kimi-k2.6",
+                          "OpenAI gpt-6-astra", "OpenAI gpt-5.5"])
 
     def test_cadeia_e_modelo_primario_configuraveis(self):
         _, _, modelos, _ = self.roda({"glm-4.6": VAZIO_JSON},
@@ -264,12 +271,13 @@ class CadeiaDeReservaTest(unittest.TestCase):
     def test_E_cadeia_inteira_cabe_no_prazo_do_job(self):
         relogio = [0.0]
         codigo, placar, modelos, _ = self.roda(
-            {m: TimeoutError("timed out") for m in ("glm-5", "kimi-k3", "kimi-k2.6", "gpt-6-astra")},
+            {m: TimeoutError("timed out") for m in ("glm-5", "kimi-k3", "kimi-k2.6", "gpt-6-astra", "gpt-5.5")},
             relogio=relogio)
         self.assertEqual(codigo, 3)
         self.assertIn("NÃO ANALISADO", placar)
         # Every reserve got its turn, and nothing ran past the analysis step's cap.
-        self.assertEqual(set(modelos), {"glm-5", "kimi-k3", "kimi-k2.6", "gpt-6-astra"})
+        self.assertEqual(set(modelos), {"glm-5", "kimi-k3", "kimi-k2.6", "gpt-6-astra", "gpt-5.5"})
+        self.assertLessEqual(relogio[0], porteiro.PRAZO_TOTAL)
         teto_min = min(int(m) for m in re.findall(r"timeout-minutes:\s*(\d+)", WORKFLOW.read_text(encoding="utf-8")))
         self.assertLessEqual(relogio[0] + 60, teto_min * 60, relogio[0])
         self.assertLessEqual(max(self.timeouts), 180)
