@@ -122,7 +122,7 @@
     "skipToContent": "Skip to content"
   },
   "footer": {
-    "tagline": "The course platform for coaches, facilitators and mentors who already teach live. Verified experts, no platform hold on your money, verifiable certificates.",
+    "tagline": "The course platform for coaches, facilitators and mentors who already teach live. Experts verified where required, no platform hold on your money, verifiable certificates.",
     "platform": "Platform",
     "creator": "Creator",
     "helpLegal": "Help & legal",
@@ -293,7 +293,7 @@
     "pathLearnTitle": "Learn with structure",
     "pathLearnDesc": "Access courses, events, communities, progress, and SkillsetMind Verified certificates.",
     "pathTeachTitle": "Teach and publish",
-    "pathTeachDesc": "Build courses, upload materials, schedule live sessions, and publish after professional verification.",
+    "pathTeachDesc": "Build courses, upload materials, schedule live sessions, and publish after professional verification where required.",
     "pathBothTitle": "Use both sides",
     "pathBothDesc": "Study, teach, and move between the learner area and educator studio from one account.",
     "emailVerificationTitle": "Email verification",
@@ -394,7 +394,7 @@
       "title": "Three steps from your method to a published program.",
       "step1Title": "Set up your studio",
       "step1Desc": "Open a Teacher Studio account, accept the Teacher Terms, and connect Stripe Express.",
-      "step1Activation": "Where required, get your professional verification approved, then complete the one-time US${amount} studio activation before you start building.",
+      "step1Activation": "Open a Teacher Studio account and accept the Teacher Terms. Where required, get your professional verification approved, then complete the one-time US${amount} activation (while activation is required). Then connect Stripe Express and start building.",
       "step2Title": "Build and publish",
       "step2Desc": "Build your modules and lessons in Course Builder. Set your price, complete the launch checks, and publish when ready.",
       "step3Title": "Reach people anywhere",
@@ -1659,7 +1659,7 @@
     "page": {
       "eyebrow": "Teacher Studio",
       "title": "Build, ship, get paid.",
-      "description": "Drafting opens once your professional verification is approved (where required) and your one-time studio activation is complete (while activation is required). Then build the learner experience, pass the launch checks, and publish directly."
+      "description": "While activation is required, drafting opens after your one-time activation, and professional verification, where required, must be approved before you can pay. Publishing always needs verification (where required) and passing the launch checks."
     },
     "dashboard": {
       "welcomeBackNamed": "Welcome back, {name}.",
@@ -2448,7 +2448,7 @@
     },
     "products": {
       "eyebrow": "Products",
-      "description": "Create private drafts, complete the product checks, and publish directly once your professional verification is approved.",
+      "description": "Create private drafts, complete the product checks, and publish directly once your professional verification is approved (where required).",
       "productWorkspace": "Product workspace",
       "communityWorkspace": "Community workspace",
       "loading": "Loading products...",
@@ -2974,7 +2974,7 @@
     "directory": {
       "loading_instructors": "Loading instructors...",
       "instructor_profiles_could_not_load_right": "Instructor profiles could not load right now.",
-      "course_pages_still_show_verified_instructor": "Course pages still show verified instructor identity when a public profile is available.",
+      "course_pages_still_show_verified_instructor": "Course pages still show the instructor's identity, verified where required, when a public profile is available.",
       "first_cohort": "First cohort",
       "public_instructor_profiles_appear_after_review": "Public instructor profiles appear after review.",
       "skillsetmind_only_lists_real_published_profiles": "SkillsetMind only lists real published profiles. New creators can finish onboarding and submit their first reviewed course before they appear here.",
@@ -3006,7 +3006,7 @@
       "browse_all_courses": "Browse all courses",
       "no_public_courses_yet": "No public courses yet",
       "this_instructor_s_first_courses_will": "This instructor's first courses will appear here.",
-      "only_shows_published_courses_from_verified": " only shows published courses from verified professionals on instructor storefronts. Browse the marketplace to see what is live now.",
+      "only_shows_published_courses_from_verified": " only shows published courses on instructor storefronts, and publishing needs professional verification where required. Browse the marketplace to see what is live now.",
       "loading_instructor_profile": "Loading instructor profile...",
       "courses_error": "Instructor courses could not load right now.",
       "fallback_name": "{brand} instructor",
@@ -3091,7 +3091,7 @@
       "trust_and_safety": "Trust and safety",
       "skillsetmind_is_built_around_controlled_course": "SkillsetMind is built around controlled course publication, protected student access, course payments that go straight to the creator's own Stripe account, moderation, and verifiable learning outcomes.",
       "verified_professionals": "Verified professionals",
-      "skillsetmind_verifies_professional_eligibility_before_publication": "SkillsetMind verifies professional eligibility before publication and monitors live programs for marketplace compliance.",
+      "skillsetmind_verifies_professional_eligibility_before_publication": "Where required, SkillsetMind verifies professional eligibility before publication, and it monitors live programs for marketplace compliance.",
       "protected_access": "Protected access",
       "learning_workspaces_open_only_after_enrollment": "Learning workspaces open only after enrollment — no public links bypass paid access.",
       "refund_controls": "Refund controls",
@@ -3805,7 +3805,7 @@
         "title": "Publish readiness",
         "heading": "Ready the product for launch",
         "helpTopic": "Course publishing",
-        "help": "SkillsetMind verifies the professional rather than manually approving every course. Once these product checks pass, an approved creator publishes directly and the marketplace link opens immediately.",
+        "help": "SkillsetMind verifies the professional, where required, rather than manually approving every course. Once these product checks pass (and your professional verification is approved, where required), you publish directly and the marketplace link opens right away.",
         "optional": "Optional",
         "checksHelp": "SkillsetMind gates the professional, not each course. Product, pricing, and payout checks run before the marketplace link opens.",
         "finish": "Finish the publication checks to go live.",
@@ -4697,7 +4697,7 @@
     "createError": "We could not create this course. Please try again.",
     "activationError": "Activate your storefront to unlock publishing: a one-time activation fee, charged once per creator account, never per course.",
     "intro": "Pick the access model and the essential information here. Pricing, lessons, and publication continue in the builder.",
-    "privateDraft": "This creates a private draft. Nothing becomes visible or sellable before professional verification and publication.",
+    "privateDraft": "This creates a private draft. Nothing becomes visible or sellable before you publish, and publishing needs professional verification where required.",
     "formatHelp": "The format defines how learners receive access. Commercial terms remain editable in Pricing and offers.",
     "categoryHelp": "Categories determine where buyers discover the product and how SkillsetMind groups related expertise. Choose the most specific fit first; that first selection becomes the primary marketplace category.",
     "products": "My products",

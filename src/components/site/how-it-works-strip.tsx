@@ -21,10 +21,11 @@ export async function HowItWorksStrip() {
     {
       number: "01",
       title: t("home.how.step1Title"),
-      // Same switch and amount as the /pricing fee line: /teach sits behind
-      // the activation gate, so step 1 names it while the fee can be charged.
+      // Same switch and amount as the /pricing fee line. While the fee can be
+      // charged, Stripe Connect answers 402 until activation is paid, so the
+      // fee-on sentence is a full variant with the activation before Stripe.
       description: isActivationFeeConfigured()
-        ? `${t("home.how.step1Desc")} ${t("home.how.step1Activation").replace("{amount}", String(activationFeeUsd))}`
+        ? t("home.how.step1Activation").replace("{amount}", String(activationFeeUsd))
         : t("home.how.step1Desc"),
       Icon: PenLine,
     },

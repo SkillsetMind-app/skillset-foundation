@@ -210,21 +210,36 @@ describe("creator path order and conditions", () => {
   const whileActivation = /while activation is required|mientras se exija la activación/i;
   const at = (dict: object, path: string) => path.split(".").reduce<unknown>((node, key) => (node as Record<string, unknown>)[key], dict);
 
+  // Every key here is rendered: the home strips, /teach, /for-creators, /help,
+  // the footer, /trust, the instructor directory and profile, onboarding, the
+  // create-course start and the course builder.
   it.each(dictionaries)("the %s lines that describe verification say it applies where required", (_locale, dict) => {
     for (const path of [
       "home.hero.trust1Desc",
       "home.how.step1Activation",
       "home.how.step3Desc",
       "home.marketplace.sub",
-      "auth.page.aside.teacher.description",
-      "auth.page.aside.teacher.point1Desc",
-      "auth.page.aside.learner.description",
+      "footer.tagline",
       "teach.page.description",
       "publicPages.creators.professional_verification_up_front_then_automated",
       "publicPages.creators.creators_can_draft_after_verification",
       "publicPages.helpFaq.course-creation.items.4.a",
+      "publicPages.trust.skillsetmind_verifies_professional_eligibility_before_publication",
+      "publicPages.directory.course_pages_still_show_verified_instructor",
+      "publicPages.profile.only_shows_published_courses_from_verified",
+      "onboarding.pathTeachDesc",
+      "courseCreation.privateDraft",
+      "creatorPanel.products.description",
+      "creatorEditor.builder.publish.help",
     ]) {
       expect(at(dict, path), path).toMatch(whereRequired);
+    }
+    expect(at(dict, "creatorEditor.builder.publish.help")).not.toMatch(/approved creator|creador aprobado/i);
+  });
+
+  it.each(dictionaries)("the %s activation lines say the activation applies while it is required", (_locale, dict) => {
+    for (const path of ["home.how.step1Activation", "teach.page.description"]) {
+      expect(at(dict, path), path).toMatch(whileActivation);
     }
   });
 
@@ -234,9 +249,17 @@ describe("creator path order and conditions", () => {
     expect(answer).not.toMatch(/Approved creators/);
   });
 
-  it.each(dictionaries)("the %s /teach description puts verification and activation before drafting", (_locale, dict) => {
-    expect(dict.teach.page.description).toMatch(whileActivation);
+  it.each(dictionaries)("the %s /teach description puts verification before paying and activation before drafting", (_locale, dict) => {
+    expect(dict.teach.page.description).toMatch(/before you can pay|antes de que puedas pagar/);
     expect(dict.teach.page.description).not.toMatch(/while SkillsetMind verifies|mientras SkillsetMind verifica/i);
+  });
+
+  // Connect Stripe answers 402 until the activation is paid (assertCreatorActivated).
+  it.each(["en", "es"])("%s home step 1 (fee configured) puts the activation before Stripe Express", async (locale) => {
+    state.locale = locale;
+    const text = String(render(await HowItWorksStrip()).container.textContent);
+    expect(text).toContain("US$25");
+    expect(text.indexOf("US$25")).toBeLessThan(text.indexOf("Stripe Express"));
   });
 
   it.each([
