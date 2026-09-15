@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
 import type { Course } from "@/domain/learning";
+import { resolveLessonContent } from "@/lib/data/lesson-content";
 
 /**
  * Aula sem capa própria (lesson_thumbnail) e com link do YouTube aparecia sem
@@ -42,13 +43,19 @@ vi.mock("@/lib/data/lesson-progress", () => ({
 
 // O texto e o link da aula chegam pelo mesmo caminho da sala de verdade
 // (resolveLessonContent); só a assinatura do banco é dublada.
-vi.mock("@/lib/data/lesson-content", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/data/lesson-content")>()),
-  subscribeToLessonContent: vi.fn((_courseId, onNext) => {
-    onNext(new Map());
-    return vi.fn();
-  }),
-}));
+// resolveLessonContent é o de verdade embrulhado num vi.fn: um teste força o
+// null que o preview do professor recebe em preview-tabs.test.tsx.
+vi.mock("@/lib/data/lesson-content", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/data/lesson-content")>();
+  return {
+    ...original,
+    resolveLessonContent: vi.fn(original.resolveLessonContent),
+    subscribeToLessonContent: vi.fn((_courseId, onNext) => {
+      onNext(new Map());
+      return vi.fn();
+    }),
+  };
+});
 
 vi.mock("@/lib/data/course-assets", () => ({
   subscribeToCourseAssets: vi.fn((_courseId, onNext) => {
@@ -109,6 +116,8 @@ const course = {
 
 describe("a capa da aula cai na do YouTube", () => {
   beforeEach(() => {
+    // Volta ao resolveLessonContent de verdade entre os testes.
+    vi.mocked(resolveLessonContent).mockReset();
     Element.prototype.scrollIntoView = vi.fn();
     window.requestAnimationFrame = (cb: FrameRequestCallback) => {
       cb(0);
@@ -124,5 +133,19 @@ describe("a capa da aula cai na do YouTube", () => {
       document.querySelector('img[src="https://i.ytimg.com/vi/openVideo01/hqdefault.jpg"]'),
     ).not.toBeNull();
     expect(document.querySelector('img[src*="lockedVid02"]')).toBeNull();
+  });
+
+  // preview-tabs.test.tsx dubla resolveLessonContent devolvendo null; a volta
+  // da capa lia .externalUrl dele e derrubava a sala inteira do preview.
+  it("no preview, conteúdo nulo não derruba a sala nem inventa capa", () => {
+    vi.mocked(resolveLessonContent).mockReturnValue(
+      null as unknown as ReturnType<typeof resolveLessonContent>,
+    );
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+
+    expect(() =>
+      render(<EnrolledCourseWorkspace course={course} previewMode enableFirestoreAssets />),
+    ).not.toThrow();
+    expect(document.querySelector('img[src*="i.ytimg.com"]')).toBeNull();
   });
 });

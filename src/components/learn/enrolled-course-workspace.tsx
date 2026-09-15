@@ -935,9 +935,13 @@ export function EnrolledCourseWorkspace({
     if (thumbnailUrlByLessonId.has(lesson.id) || !lessonUnlockStateById.get(lesson.id)?.unlocked) {
       continue;
     }
-    const embed = getTrustedLessonEmbed(
-      resolveLessonContent(lessonContentMap?.get(lesson.id), lesson).externalUrl,
-    );
+    // Sem objeto de conteúdo, sem capa: o preview do professor pode receber
+    // null daqui (preview-tabs.test.tsx dubla assim) e a sala não pode cair.
+    const content = resolveLessonContent(lessonContentMap?.get(lesson.id), lesson);
+    if (!content) {
+      continue;
+    }
+    const embed = getTrustedLessonEmbed(content?.externalUrl);
     if (embed?.provider === "youtube") {
       thumbnailUrlByLessonId.set(lesson.id, `https://i.ytimg.com/vi/${embed.videoId}/hqdefault.jpg`);
     }
