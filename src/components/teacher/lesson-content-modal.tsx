@@ -12,7 +12,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { LessonVideoSourcePicker } from "@/components/teacher/lesson-video-source-picker";
+import {
+  LessonVideoSourcePicker,
+  type LessonVideoMode,
+  type LessonVideoSourcePickerHandle,
+} from "@/components/teacher/lesson-video-source-picker";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import { TrustedEmbedPlayer } from "@/components/learn/trusted-embed-player";
@@ -95,6 +99,14 @@ function getLessonErrorMessage(error: LessonError | null, t: (key: string) => st
 // Author preview never advances or records a student's lesson progress.
 function handlePreviewEnded() {}
 
+// O link digitado e ainda nao gravado (sem blur) vai antes de fechar. Link
+// recusado ou troca nao confirmada seguram o modal aberto, com o erro ou o
+// aviso na tela: fechar calado perdia o que o professor digitou.
+function flushLinkAllowsClose(handle: LessonVideoSourcePickerHandle | null) {
+  const result = handle?.flushLink();
+  return result !== "rejected" && result !== "declined";
+}
+
 const lessonModalTabs: Array<{
   value: LessonModalTab;
   icon: LucideIcon;
@@ -165,7 +177,13 @@ export function LessonContentModal({
   const [cancelUpload, setCancelUpload] = useState<(() => void) | null>(null);
   const [uploadProgress, setUploadProgress] = useState<UploadCourseAssetProgress | null>(null);
   const [error, setError] = useState<LessonError | null>(null);
-  const [success, setSuccess] = useState<"uploaded" | "deleted" | null>(null);
+  const [success, setSuccess] = useState<"uploaded" | "deleted" | "oldLinkRemoved" | null>(null);
+  const [assetsLoaded, setAssetsLoaded] = useState(false);
+  const replaceButtonRef = useRef<HTMLButtonElement>(null);
+  const linkHandleRef = useRef<LessonVideoSourcePickerHandle>(null);
+  // Contador, nao booleano: cada recusa vira um no novo no role="status" e e
+  // anunciada de novo. null = sem aviso.
+  const [linkNotSaved, setLinkNotSaved] = useState<number | null>(null);
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
   const lessonAssets = assets.filter((asset) => asset.lessonId === lesson.id);
   const videoAssets = lessonAssets.filter((asset) => isVideoAssetKind(asset.kind));
@@ -185,6 +203,20 @@ export function LessonContentModal({
   // envio inalcançável numa aula nova — a fonte só vira "upload" no sucesso do
   // envio, e o envio só aparecia se a fonte já fosse "upload".
   const isUploadPanelOpen = resolvedSource === "upload" || selectedFile !== null || success === "uploaded";
+  // Um video por aula: a aba mostra OU o envio OU o link. A aba abre como
+  // resolveLessonVideoSource decide (aula que hoje tem os dois continua como
+  // esta) e essa escolha e fixada UMA vez, quando os arquivos da aula chegam.
+  // Rederivar a cada render tirava o campo de link da tela no meio da
+  // digitacao quando o professor o apagava. A troca e explicita e nao apaga nada.
+  const [videoModeChoice, setVideoModeChoice] = useState<LessonVideoMode | null>(null);
+  const derivedVideoMode: LessonVideoMode = resolvedSource === "youtube" ? "link" : "upload";
+  if (assetsLoaded && videoModeChoice === null) {
+    setVideoModeChoice(derivedVideoMode);
+  }
+  const videoMode = videoModeChoice ?? derivedVideoMode;
+  // Link antigo que nao e video (Drive etc.): so leitura, com botao de tirar.
+  // O aluno continua com o botao "Open resource".
+  const oldLink = lesson.externalUrl?.trim() && !trustedEmbed ? lesson.externalUrl : null;
   const videoStatus = tab === "video" && isUploading
     ? t("creatorEditor.lesson.file.uploading")
     : tab === "video" && selectedFile
@@ -205,13 +237,19 @@ export function LessonContentModal({
       return;
     }
 
+    if (!flushLinkAllowsClose(linkHandleRef.current)) {
+      return;
+    }
     onClose();
   }
 
   useEffect(() => {
     return subscribeToCourseAssets(
       course.id,
-      setAssets,
+      (next) => {
+        setAssets(next);
+        setAssetsLoaded(true);
+      },
       () => setError({ kind: "load" }),
     );
   }, [course.id]);
@@ -222,7 +260,7 @@ export function LessonContentModal({
   // in-flight upload, matching requestClose below.
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !isUploading) {
+      if (event.key === "Escape" && !isUploading && flushLinkAllowsClose(linkHandleRef.current)) {
         onClose();
       }
     }
@@ -243,6 +281,7 @@ export function LessonContentModal({
 
   function handleTabChange(nextTab: LessonModalTab) {
     setTab(nextTab);
+    setLinkNotSaved(null);
 
     if (nextTab === "video") {
       resetUploadState("lesson_video");
@@ -473,27 +512,73 @@ export function LessonContentModal({
             <div className="grid gap-5">
 
               <LessonVideoSourcePicker
-                value={isUploadPanelOpen ? "upload" : resolvedSource}
+                mode={videoMode}
                 disabled={!isEditable || isUploading}
                 accept={courseAssetAcceptTypes[uploadKind]}
                 externalUrl={lesson.externalUrl ?? ""}
                 embedStatus={
                   trustedEmbed
                     ? t("creatorEditor.lesson.embedDetected").replace("{provider}", () => trustedEmbed.provider === "youtube" ? "YouTube" : "Vimeo")
-                    : lesson.externalUrl
-                      ? t("creatorEditor.lesson.embedInvalid")
-                      : t("creatorEditor.lesson.embedEmpty")
+                    : t("creatorEditor.lesson.embedEmpty")
                 }
-                onChange={(videoSource) => onUpdateLesson({ videoSource })}
+                replaceButtonRef={replaceButtonRef}
+                linkHandleRef={linkHandleRef}
+                // Sem os arquivos da aula nao da para saber se ha envio: apagar
+                // o link agora gravaria a fonte em null com um envio salvo.
+                linkLockedHint={assetsLoaded
+                  ? undefined
+                  : error?.kind === "load" ? errorMessage : t("creatorEditor.lesson.linkLoading")}
+                onModeChange={(next) => {
+                  setVideoModeChoice(next);
+                  setLinkNotSaved(null);
+                  resetUploadState("lesson_video");
+                  // Se a midia de destino ja existe, a troca vale para o aluno
+                  // na hora: grava so a fonte. Nada e apagado. Sem midia, a
+                  // troca fica so na tela ate um link ser aceito ou um envio
+                  // terminar.
+                  if (next === "link" && trustedEmbed && lesson.videoSource !== "youtube") {
+                    onUpdateLesson({ videoSource: "youtube" });
+                  }
+                  if (next === "upload" && primaryVideo && lesson.videoSource !== "upload") {
+                    onUpdateLesson({ videoSource: "upload" });
+                  }
+                }}
+                // Fonte e link numa gravacao so, e so com link aceito. Nenhum
+                // course_assets e apagado aqui: o envio antigo segue na lista.
+                onLinkChange={(nextUrl) => {
+                  // Mexeu no link: a aba fica no link mesmo que a fonte mude.
+                  setVideoModeChoice("link");
+                  if (!nextUrl) {
+                    setLinkNotSaved(null);
+                    // Com envio salvo, a fonte volta para ele: a pagina publica
+                    // do curso so le "upload" da fonte gravada
+                    // (creator-course-detail), e o video da previa gratis
+                    // sumia da pagina de vendas com a fonte em null.
+                    const source = primaryVideo
+                      ? "upload"
+                      : lesson.videoSource === "youtube" ? null : lesson.videoSource;
+                    onUpdateLesson({
+                      externalUrl: null,
+                      ...(source !== lesson.videoSource ? { videoSource: source } : {}),
+                    });
+                    return;
+                  }
+                  // O link aceito substitui o link antigo (Drive etc.): pede a
+                  // mesma confirmacao do botao de tirar. Recusou, nada muda e
+                  // o campo volta ao salvo.
+                  if (oldLink && !window.confirm(t("creatorEditor.lesson.removeOldLinkConfirm"))) {
+                    setLinkNotSaved((count) => (count ?? 0) + 1);
+                    return false;
+                  }
+                  setLinkNotSaved(null);
+                  onUpdateLesson({ videoSource: "youtube", externalUrl: nextUrl });
+                }}
                 onSelectFile={(file) => {
                   setSelectedFile(file);
                   setUploadProgress(null);
                   setSuccess(null);
                   setError(null);
                 }}
-                onExternalUrlChange={(nextUrl) =>
-                  onUpdateLesson({ externalUrl: nextUrl || null })
-                }
                 uploadPanel={isUploadPanelOpen ? (
                   <LessonUploadForm
                     error={errorMessage}
@@ -519,6 +604,46 @@ export function LessonContentModal({
                   />
                 ) : undefined}
               />
+
+              {oldLink ? (
+                <section
+                  aria-label={t("creatorEditor.lesson.oldLink")}
+                  className="grid gap-2 rounded-[12px] border border-[var(--color-line)] p-3 text-sm"
+                >
+                  <p className="font-semibold">{t("creatorEditor.lesson.oldLink")}</p>
+                  <p className="break-all text-[var(--color-ink-soft)]">{oldLink}</p>
+                  <p className="text-xs text-[var(--color-ink-soft)]">{t("creatorEditor.lesson.oldLinkHelp")}</p>
+                  <button
+                    type="button"
+                    className="button-outline justify-self-start px-3 py-2 text-xs disabled:opacity-60"
+                    // Durante o envio o botao de troca fica desabilitado: o
+                    // foco nao teria para onde ir e o aviso se perdia.
+                    disabled={!isEditable || isUploading}
+                    onClick={() => {
+                      if (window.confirm(t("creatorEditor.lesson.removeOldLinkConfirm"))) {
+                        onUpdateLesson({ externalUrl: null });
+                        // Esta secao some junto com o link: o foco vai para um
+                        // botao que fica, e o aviso sai pelo role="status".
+                        setSuccess("oldLinkRemoved");
+                        setLinkNotSaved(null);
+                        replaceButtonRef.current?.focus();
+                      }
+                    }}
+                  >
+                    {t("creatorEditor.lesson.removeOldLink")}
+                  </button>
+                </section>
+              ) : null}
+
+              {/* Com o formulario de envio na tela, o role="status" dele da o
+                  aviso; sem ele, este. Nunca dois ao mesmo tempo. */}
+              {videoMode === "upload" && isUploadPanelOpen ? null : (
+                <p role="status" className="text-sm text-[var(--color-ink-soft)]">
+                  {success === "oldLinkRemoved"
+                    ? successMessage
+                    : linkNotSaved ? <span key={linkNotSaved}>{t("creatorEditor.lesson.linkNotSaved")}</span> : ""}
+                </p>
+              )}
 
               {videoAssets.length > 0 ? (
                   <LessonAssetList
