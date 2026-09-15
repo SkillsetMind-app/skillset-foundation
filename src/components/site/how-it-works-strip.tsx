@@ -1,6 +1,7 @@
 import { PenLine, Send, Sparkles, type LucideIcon } from "lucide-react";
 
 import { RevealSection } from "@/components/shared/reveal-section";
+import { activationFeeUsd, isActivationFeeConfigured } from "@/data/plans";
 import { getServerTranslation } from "@/lib/i18n/server";
 
 type Step = {
@@ -20,7 +21,11 @@ export async function HowItWorksStrip() {
     {
       number: "01",
       title: t("home.how.step1Title"),
-      description: t("home.how.step1Desc"),
+      // Same switch and amount as the /pricing fee line: /teach sits behind
+      // the activation gate, so step 1 names it while the fee can be charged.
+      description: isActivationFeeConfigured()
+        ? `${t("home.how.step1Desc")} ${t("home.how.step1Activation").replace("{amount}", String(activationFeeUsd))}`
+        : t("home.how.step1Desc"),
       Icon: PenLine,
     },
     {

@@ -185,9 +185,9 @@
         "teacher": {
           "eyebrow": "SkillsetMind para expertos",
           "title": "Enséñale al mundo lo que sabes.",
-          "description": "Verifica tu perfil profesional, publica tu programa, vende en 30 monedas y haz que el comprador pague directo en tu propia cuenta de Stripe. Sin montar un sitio web.",
+          "description": "Verifica tu perfil profesional cuando se requiere, publica tu programa, vende en 30 monedas y haz que el comprador pague directo en tu propia cuenta de Stripe. Sin montar un sitio web.",
           "point1Title": "Profesionales verificados",
-          "point1Desc": "La elegibilidad profesional se verifica antes de que un creador pueda publicar.",
+          "point1Desc": "Cuando se requiere, la elegibilidad profesional se verifica antes de que un creador pueda publicar.",
           "point2Title": "Vende en 30 monedas",
           "point2Desc": "Checkout global vía Stripe. El cobro entra en tu propia cuenta de Stripe.",
           "point3Title": "Certificados verificables",
@@ -196,7 +196,7 @@
         "learner": {
           "eyebrow": "SkillsetMind para estudiantes",
           "title": "Aprende de quienes ya lo hacen.",
-          "description": "Cada programa proviene de un profesional verificado y permanece sujeto al monitoreo de cumplimiento del marketplace. Paga en tu moneda, estudia a tu ritmo y obtén certificados que cualquiera puede verificar.",
+          "description": "Cada programa proviene de un profesional independiente, verificado cuando se requiere, y permanece sujeto al monitoreo de cumplimiento del marketplace. Paga en tu moneda, estudia a tu ritmo y obtén certificados que cualquiera puede verificar.",
           "point1Title": "Expertos verificados",
           "point1Desc": "La elegibilidad profesional se comprueba antes de que un creador pueda publicar.",
           "point2Title": "Paga en tu moneda",
@@ -379,7 +379,7 @@
       "title2": "Ahora haz que llegue a miles.",
       "sub": "Para coaches, facilitadores y mentores que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago, sin mensualidad. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe, así que nunca retenemos tu dinero. Tú enseñas.",
       "trust1Title": "Verificado",
-      "trust1Desc": "Los profesionales se verifican antes de publicar y los programas activos se supervisan para garantizar el cumplimiento.",
+      "trust1Desc": "Cuando se requiere, los profesionales se verifican antes de publicar y los programas activos se supervisan para garantizar el cumplimiento.",
       "trust2Title": "Global",
       "trust2Desc": "Checkout en 30 monedas vía Stripe.",
       "trust3Title": "Verificable",
@@ -394,15 +394,16 @@
       "title": "Tres pasos de tu método a un programa publicado.",
       "step1Title": "Monta tu estudio",
       "step1Desc": "Abre tu cuenta en el estudio del profesor, acepta las Condiciones para educadores y conecta Stripe Express.",
+      "step1Activation": "Cuando se requiere, obtén la aprobación de tu verificación profesional y luego completa la activación única del estudio de US${amount} antes de empezar a crear.",
       "step2Title": "Crea y publica",
       "step2Desc": "Organiza tus módulos y lecciones en el constructor de cursos. Define el precio, completa las verificaciones de lanzamiento y publica cuando esté listo.",
       "step3Title": "Llega a gente en cualquier lugar",
-      "step3Desc": "Cuando tu verificación profesional y las comprobaciones de lanzamiento estén completas, el curso sale al aire al publicarlo. El monitoreo de cumplimiento continúa sin frenar las inscripciones. Vende en 30 monedas, con cada comprador cobrado en tu propia cuenta de Stripe, sin retención de la plataforma."
+      "step3Desc": "Cuando las comprobaciones de lanzamiento estén completas (y tu verificación profesional esté aprobada, cuando se requiere), el curso sale al aire al publicarlo. El monitoreo de cumplimiento continúa sin frenar las inscripciones. Vende en 30 monedas, con cada comprador cobrado en tu propia cuenta de Stripe, sin retención de la plataforma."
     },
     "marketplace": {
       "kicker": "El marketplace",
       "title": "Cursos de expertos verificados, listos para aprender.",
-      "sub": "Cada curso lo crea un profesional independiente verificado por SkillsetMind, y los programas activos se monitorean para garantizar el cumplimiento del marketplace.",
+      "sub": "Cada curso lo crea un profesional independiente, verificado por SkillsetMind cuando se requiere, y los programas activos se monitorean para garantizar el cumplimiento del marketplace.",
       "browseAll": "Ver todos los cursos",
       "viewCourse": "Ver curso",
       "emptyTitle": "El marketplace abre pronto — sé uno de los primeros profesores.",
@@ -1658,7 +1659,7 @@
     "page": {
       "eyebrow": "Estudio del Profesor",
       "title": "Crea, publica, cobra.",
-      "description": "Prepara un curso y cuida la experiencia del estudiante mientras SkillsetMind verifica tu perfil profesional. Tras la aprobación, publica directamente y empieza a vender."
+      "description": "La preparación de cursos se abre cuando tu verificación profesional está aprobada (cuando se requiere) y completas la activación única del estudio (mientras se exija la activación). Después, crea la experiencia del estudiante, supera los controles de lanzamiento y publica directamente."
     },
     "dashboard": {
       "welcomeBackNamed": "Hola de nuevo, {name}.",
@@ -2886,7 +2887,7 @@
       "protected_student_workspace_with_progress_files": "Espacio protegido para alumnos con progreso, archivos y certificados.",
       "course_linked_community_events_and_future": "Comunidad vinculada al curso, eventos y notificaciones futuras.",
       "stripe_connect_onboarding_refund_controls_and": "Configuración de Stripe Connect, controles de reembolso y un registro completo de ingresos: el registro está aquí y el dinero está en tu cuenta de Stripe.",
-      "professional_verification_up_front_then_automated": "Verificación profesional inicial y después controles automáticos de cumplimiento que nunca bloquean tu lanzamiento.",
+      "professional_verification_up_front_then_automated": "Verificación profesional inicial cuando se requiere y después controles automáticos de cumplimiento que nunca bloquean tu lanzamiento.",
       "shareable_course_links_for_simple_launch": "Enlaces de cursos para compartir en campañas de lanzamiento sencillas.",
       "teach_on_skillsetmind": "Enseña en SkillsetMind",
       "publish_professional_courses_to_a_global": "Publica cursos profesionales para una audiencia global. Empieza en el plan Free (sin mensualidad) con una comisión del {value0}%; los compradores pagan directamente a tu cuenta de Stripe. Comunidad del curso y certificados incluidos en todos los planes.",
@@ -2900,11 +2901,11 @@
       "buyers_are_charged_on_your_own": "Los compradores pagan en tu propia cuenta de Stripe: la plataforma no retiene tu dinero. Empieza en el plan Free (sin mensualidad) con una comisión del 10% y mejora tu plan para reducirla al 5%, 3% o 2%.",
       "see_all_four_plans": "Ver los cuatro planes",
       "creator_path": "El camino del creador",
-      "start_as_a_creator_publish_after": "Activa tu estudio una vez; después, prepara y publica.",
+      "start_as_a_creator_publish_after": "Activa tu estudio una vez (mientras se exija la activación); después, prepara y publica.",
       "creators_can_draft_courses_immediately_professional": "Cuando completas la activación única (y tu verificación profesional está aprobada, cuando se exige), puedes preparar cursos en el estudio. Después, los controles de lanzamiento con reglas definidas protegen la calidad del catálogo sin que cada curso tenga que esperar una aprobación manual.",
       "create_account": "Crear cuenta",
       "draft_then_publish": "Prepara y publica cuando tu curso supere los controles de lanzamiento.",
-      "creators_can_draft_after_verification": "Cuando tu verificación profesional está aprobada (cuando se exige), puedes preparar cursos en el estudio. Después, los controles de lanzamiento con reglas definidas protegen la calidad del catálogo sin que cada curso tenga que esperar una aprobación manual."
+      "creators_can_draft_after_verification": "La preparación de cursos en el estudio está abierta. Para publicar necesitas tu verificación profesional aprobada (cuando se requiere); después, los controles de lanzamiento con reglas definidas protegen la calidad del catálogo sin que cada curso tenga que esperar una aprobación manual."
     },
     "promise": {
       "fee_lock_for_24_months": "Comisión fija durante 24 meses",
@@ -3032,7 +3033,7 @@
       "free": {
         "tagline": "Empieza a vender sin suscripción.",
         "audience": "Nuevos creadores que están validando una idea.",
-        "highlight0": "Sin tarifa mensual: solo pagas cuando vendes",
+        "highlight0": "Sin mensualidad: comisión solo cuando vendes",
         "highlight1": "Publica cuando tu curso supere los controles de lanzamiento",
         "highlight2": "Pagos con Stripe en 30 monedas",
         "highlight3": "Los compradores pagan a tu propia cuenta de Stripe: la plataforma no retiene tu dinero",
@@ -3195,7 +3196,7 @@
           },
           "4": {
             "q": "¿Cómo funciona la publicación?",
-            "a": "SkillsetMind verifica al profesional en lugar de aprobar manualmente cada curso. Los creadores aprobados publican directamente después de que el constructor compruebe la estructura del curso, el precio, la configuración de cobro y la referencia de la vista previa pública. Los controles automáticos de cumplimiento pueden señalar casos excepcionales después de la publicación sin retirar un producto de forma silenciosa."
+            "a": "SkillsetMind verifica al profesional, cuando se requiere, en lugar de aprobar manualmente cada curso. Los creadores publican directamente después de que el constructor compruebe la estructura del curso, el precio, la configuración de cobro y la referencia de la vista previa pública. Los controles automáticos de cumplimiento pueden señalar casos excepcionales después de la publicación sin retirar un producto de forma silenciosa."
           }
         }
       },
