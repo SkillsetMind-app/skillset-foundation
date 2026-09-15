@@ -3686,7 +3686,7 @@
         "moduleDescription": "Module description",
         "moduleDescriptionExample": "Optional module description. Example: Set up the concepts students need before the practical lessons.",
         "helpTopic": "Lesson access and drip release",
-        "help": "Use lesson delays to pace access after enrollment. A free preview is optional and must point to a lesson in this course; it helps buyers inspect the teaching style before enrolling.",
+        "help": "A free preview is optional and must point to a lesson in this course; it helps buyers inspect the teaching style before enrolling. Release days per lesson live in the lesson's Edit content > Settings, and only appear when the course uses per-lesson release.",
         "moduleForLesson": "Module for this lesson",
         "chooseModule": "Choose module",
         "lessonTitle": "Lesson title",

@@ -178,3 +178,43 @@ describe("relogio da aula so com duracao", () => {
     expect(lessonClock()).toHaveTextContent("5 min");
   });
 });
+
+// Aula nova nasce "video" e o tipo nao se troca mais (decisao de 14/09). Sem
+// video, o aviso do player sai do conteudo: aula de leitura nao pode dizer
+// "Media not attached yet".
+describe("aviso do player sem video segue o conteudo, nao o tipo", () => {
+  function playerNotice() {
+    return document
+      .getElementById("member-lesson-player")
+      ?.querySelector(".member-video-empty h5")?.textContent;
+  }
+
+  const semVideo = {
+    ...course,
+    modules: [
+      {
+        ...course.modules[0],
+        lessons: [
+          { id: "l1", title: "Leitura", type: "video", duration: "Self-paced", isPreview: true, contentText: "leia isto", description: "" },
+          { id: "l2", title: "Vazia", type: "video", duration: "Self-paced", isPreview: false, contentText: null, description: "" },
+        ],
+      },
+    ],
+  } as unknown as Course;
+
+  it("aula tipo video so com texto mostra o aviso de leitura", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    render(<EnrolledCourseWorkspace course={semVideo} previewMode />);
+
+    expect(playerHeading()).toBe("Leitura");
+    expect(playerNotice()).toBe("Text-first lesson");
+  });
+
+  it("aula sem video e sem texto continua com o aviso de midia", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l2");
+    render(<EnrolledCourseWorkspace course={semVideo} previewMode />);
+
+    expect(playerHeading()).toBe("Vazia");
+    expect(playerNotice()).toBe("Media not attached yet");
+  });
+});
