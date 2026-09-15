@@ -3,22 +3,43 @@
 // disclosed on /for-creators and /fees-and-payouts exactly as the teacher terms
 // state them (legalPages.teacherTerms.text5 and text22-23).
 import { cleanup, render } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import PricingPage from "@/app/pricing/page";
+import PricingPage, { generateMetadata as pricingMetadata } from "@/app/pricing/page";
 import CreatorsPage, { generateMetadata as creatorsMetadata } from "@/app/for-creators/page";
-import FeesPage from "@/app/fees-and-payouts/page";
+import FeesPage, { generateMetadata as feesMetadata } from "@/app/fees-and-payouts/page";
+import HelpPage, { generateMetadata as helpMetadata } from "@/app/help/page";
+import { generateMetadata as homeMetadata } from "@/app/page";
+import { I18nProvider } from "@/components/i18n/i18n-provider";
+import { CapabilitiesGrid } from "@/components/site/capabilities-grid";
+import { ForCreatorsBand } from "@/components/site/for-creators-band";
+import { HowItWorksStrip } from "@/components/site/how-it-works-strip";
+import { MarketingHero } from "@/components/site/marketing-hero";
+import { PromisePreviewBand } from "@/components/site/promise-preview-band";
+import { helpFaqCategories } from "@/data/help-faq";
 import en from "@/data/i18n/en.json";
 import es from "@/data/i18n/es.json";
 import { plans } from "@/data/plans";
 
-const state = vi.hoisted(() => ({ locale: "en" }));
+const state = vi.hoisted(() => ({ locale: "en", fee: true }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => ({ value: state.locale }) }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/components/site/site-nav", () => ({ SiteNav: () => null }));
 vi.mock("@/components/site/site-footer", () => ({ SiteFooter: () => null }));
+vi.mock("@/lib/assistant/config", () => ({ isAssistantEnabled: true }));
+vi.mock("@/components/auth/auth-provider", () => ({
+  useAuth: () => ({ refreshUser: vi.fn(), status: "unauthenticated", user: null, signOut: vi.fn() }),
+}));
+// The one switch every public page reads to decide whether the fee exists.
+vi.mock("@/data/plans", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/data/plans")>()),
+  isActivationFeeConfigured: () => state.fee,
+}));
 afterEach(() => {
   cleanup();
   state.locale = "en";
+  state.fee = true;
 });
 
 const incomeClaims =
@@ -88,5 +109,93 @@ describe("creator fee disclosure", () => {
       expect(text).not.toMatch(/draft courses immediately|preparar cursos de inmediato|Start free|Empieza gratis/i);
     }
     expect(container.textContent).toMatch(/no monthly fee|sin mensualidad/);
+  });
+});
+
+// One guard over every public entry page. Production truth it defends:
+// /teach sits behind ActivationGate, so nobody drafts before the one-time fee;
+// where verification is required it is approved before paying; publishing
+// then passes launch checks; the Free plan has no monthly fee and takes 10%.
+describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /help", () => {
+  const falseClaims: ReadonlyArray<readonly [string, RegExp]> = [
+    ["an earnings claim", incomeClaims],
+    ["psychologist framing", /psycholog|psicólog/i],
+    [
+      "publishing or selling immediately",
+      /publish[^.]{0,100}immediately|immediately[^.]{0,20}(publish|sell)|publica[^.]{0,100}de inmediato|de inmediato[^.]{0,20}(publica|vend)/i,
+    ],
+    [
+      "drafting before verification or activation",
+      /before (professional )?verification is complete|draft courses immediately|antes de completar la verificación|preparar cursos de inmediato/i,
+    ],
+    [
+      "a free start",
+      /\bstart(ing)? (teaching )?free\b|get started free|teach(ing)? free|free to start|free, takes minutes|empieza (a enseñar )?gratis|enseñar gratis|gratis para empezar|es gratis y toma/i,
+    ],
+  ];
+
+  function expectNoFalseClaim(where: string, text: string) {
+    for (const [claim, pattern] of falseClaims) {
+      expect(text, `${where} carries ${claim}`).not.toMatch(pattern);
+    }
+  }
+
+  const wrap = (locale: string, node: ReactNode) => <I18nProvider initialLocale={locale as "en" | "es"}>{node}</I18nProvider>;
+
+  async function home() {
+    return (
+      <>
+        {await MarketingHero()}
+        {await HowItWorksStrip()}
+        {await CapabilitiesGrid()}
+        {await PromisePreviewBand()}
+        {await ForCreatorsBand()}
+      </>
+    );
+  }
+
+  const pages = [
+    ["home", home, homeMetadata],
+    ["/pricing", PricingPage, pricingMetadata],
+    ["/fees-and-payouts", FeesPage, feesMetadata],
+    ["/for-creators", CreatorsPage, creatorsMetadata],
+    ["/help", HelpPage, helpMetadata],
+  ] as const;
+
+  const cases = (["en", "es"] as const).flatMap((locale) =>
+    [true, false].flatMap((fee) => pages.map(([path, Page, metadata]) => [locale, fee, path, Page, metadata] as const)),
+  );
+
+  it.each(cases)("%s (fee configured: %s) %s renders no false claim", async (locale, fee, path, Page, metadata) => {
+    state.locale = locale;
+    state.fee = fee;
+    const { container } = render(wrap(locale, await Page()));
+    const meta = await metadata();
+    expectNoFalseClaim(`${locale} ${path}`, `${container.textContent} ${String(meta.title)} ${String(meta.description)}`);
+  });
+
+  it.each(dictionaries)("the %s copy behind those pages (nav, home, plans, fees, creators, help) carries no false claim", (locale, dict) => {
+    const p = dict.publicPages;
+    expectNoFalseClaim(`${locale} dictionary`, JSON.stringify([dict.nav, dict.home, dict.footer, p.pricing, p.plans, p.fees, p.creators, p.help, p.helpFaq]));
+  });
+
+  it("the English sources shared with the assistant carry no false claim", () => {
+    expectNoFalseClaim("help-faq.ts", JSON.stringify(helpFaqCategories));
+    expectNoFalseClaim("plans.ts", JSON.stringify(plans));
+  });
+
+  // The fee sentence tracks isActivationFeeConfigured(), exactly like /pricing.
+  const feeSentence = /\$25(?!\d)|activation fee|one-time activation|pago único de activación|activación única|tarifa (única )?de activación|cuota de activación/i;
+  const feePages = pages.filter(([path]) => path !== "/help");
+  const feeCases = (["en", "es"] as const).flatMap((locale) =>
+    [true, false].flatMap((fee) => feePages.map(([path, Page]) => [locale, fee, path, Page] as const)),
+  );
+
+  it.each(feeCases)("%s (fee configured: %s) %s shows the fee sentence only when the fee is configured", async (locale, fee, path, Page) => {
+    state.locale = locale;
+    state.fee = fee;
+    const { container } = render(wrap(locale, await Page()));
+    if (fee && path !== "home") expect(container.textContent).toMatch(feeSentence);
+    else expect(container.textContent).not.toMatch(feeSentence);
   });
 });

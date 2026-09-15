@@ -78,7 +78,7 @@ export const plans: ReadonlyArray<Plan> = [
     audience: "New creators validating an idea.",
     highlights: [
       "No monthly fee — you only pay when you sell",
-      "Publish and sell immediately",
+      "Publish once your course passes the launch checks",
       "Stripe checkout in 30 currencies",
       "Buyers pay your own Stripe account — no platform hold on your money",
       "SkillsetMind Verified certificates",

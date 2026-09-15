@@ -111,7 +111,7 @@
     "promise": "Promesa",
     "help": "Ayuda",
     "signIn": "Iniciar sesión",
-    "getStarted": "Empieza gratis",
+    "getStarted": "Crear cuenta",
     "dashboard": "Panel",
     "goToDashboard": "Ir al panel",
     "accountSettings": "Ajustes de la cuenta",
@@ -179,7 +179,7 @@
       "titleSignupEducator": "Crea tu cuenta de educador.",
       "titleSigninLearner": "Entra como estudiante.",
       "titleSigninEducator": "Entra como educador.",
-      "subSignup": "Gratis para empezar. Explora programas, guarda tu progreso y usa las herramientas de creador con la misma cuenta.",
+      "subSignup": "Crear una cuenta es gratis. Explora programas, guarda tu progreso y usa la misma cuenta para enseñar.",
       "subSignin": "Retoma donde lo dejaste.",
       "aside": {
         "teacher": {
@@ -386,14 +386,14 @@
       "trust3Desc": "Cada certificado tiene un enlace público de verificación.",
       "ctaDashboard": "Ir a tu panel",
       "ctaBrowse": "Explorar cursos",
-      "ctaTeach": "Empieza a enseñar gratis",
+      "ctaTeach": "Crea tu cuenta de creador",
       "ctaPaid": "Mira cómo cobras"
     },
     "how": {
       "kicker": "Cómo funciona",
       "title": "Tres pasos de tu método a un programa publicado.",
       "step1Title": "Monta tu estudio",
-      "step1Desc": "Abre tu cuenta en el estudio del profesor, acepta las Condiciones para educadores y conecta Stripe Express. Es gratis y toma unos minutos.",
+      "step1Desc": "Abre tu cuenta en el estudio del profesor, acepta las Condiciones para educadores y conecta Stripe Express.",
       "step2Title": "Crea y publica",
       "step2Desc": "Organiza tus módulos y lecciones en el constructor de cursos. Define el precio, completa las verificaciones de lanzamiento y publica cuando esté listo.",
       "step3Title": "Llega a gente en cualquier lugar",
@@ -2878,7 +2878,7 @@
       "ready_to_publish_on_skillsetmind": "¿Listo para publicar en SkillsetMind?",
       "start_on_free_upgrade_only_when": "Empieza con Free y mejora tu plan solo cuando las cuentas te favorezcan.",
       "creator_overview": "Información para creadores",
-      "start_free": "Empieza gratis",
+      "start_free": "Crear cuenta",
       "start_plan": "Empieza con {plan}"
     },
     "creators": {
@@ -2902,7 +2902,9 @@
       "creator_path": "El camino del creador",
       "start_as_a_creator_publish_after": "Activa tu estudio una vez; después, prepara y publica.",
       "creators_can_draft_courses_immediately_professional": "Cuando completas la activación única (y tu verificación profesional está aprobada, cuando se exige), puedes preparar cursos en el estudio. Después, los controles de lanzamiento con reglas definidas protegen la calidad del catálogo sin que cada curso tenga que esperar una aprobación manual.",
-      "create_account": "Crear cuenta"
+      "create_account": "Crear cuenta",
+      "draft_then_publish": "Prepara y publica cuando tu curso supere los controles de lanzamiento.",
+      "creators_can_draft_after_verification": "Cuando tu verificación profesional está aprobada (cuando se exige), puedes preparar cursos en el estudio. Después, los controles de lanzamiento con reglas definidas protegen la calidad del catálogo sin que cada curso tenga que esperar una aprobación manual."
     },
     "promise": {
       "fee_lock_for_24_months": "Comisión fija durante 24 meses",
@@ -3031,7 +3033,7 @@
         "tagline": "Empieza a vender sin suscripción.",
         "audience": "Nuevos creadores que están validando una idea.",
         "highlight0": "Sin tarifa mensual: solo pagas cuando vendes",
-        "highlight1": "Publica y vende de inmediato",
+        "highlight1": "Publica cuando tu curso supere los controles de lanzamiento",
         "highlight2": "Pagos con Stripe en 30 monedas",
         "highlight3": "Los compradores pagan a tu propia cuenta de Stripe: la plataforma no retiene tu dinero",
         "highlight4": "Certificados SkillsetMind Verified",
@@ -3105,7 +3107,7 @@
       "you_get_paid_directly": "Cobras directamente",
       "learners_pay_your_stripe_account_not": "Los alumnos pagan a tu cuenta de Stripe, no a la nuestra. SkillsetMind nunca retiene tu dinero, nunca te lo remite ni intermedia entre tú y tu comprador. Tú eres el vendedor responsable de cada venta.",
       "platform_fee": "Comisión de la plataforma",
-      "plan_based_every_plan_includes_the": "Según el plan: {value0}. Todos los planes incluyen las mismas funciones; la diferencia es la comisión que SkillsetMind cobra por cada venta de pago y que Stripe descuenta en el momento del cobro. Empieza gratis y mejora tu plan cuando las cuentas te favorezcan.",
+      "plan_based_every_plan_includes_the": "Según el plan: {value0}. Todos los planes incluyen las mismas funciones; la diferencia es la comisión que SkillsetMind cobra por cada venta de pago y que Stripe descuenta en el momento del cobro. El plan Free no tiene mensualidad; mejora tu plan cuando una comisión más baja te favorezca.",
       "stripe_processing_fee": "Tarifa de procesamiento de Stripe",
       "charged_by_stripe_to_your_account": "Stripe la cobra a tu cuenta en cada venta. Los precios de Stripe en Estados Unidos son del 2.9% + $0.30 para pagos con tarjeta en USD y un estimado del 5.4% + $0.30 para otras monedas. Tus tarifas son las que Stripe establece en el país donde está registrada tu cuenta. Nunca se oculta dentro del porcentaje de la plataforma.",
       "refund_window": "Plazo de reembolso",
@@ -3168,7 +3170,7 @@
           },
           "1": {
             "q": "¿Cómo creo mi cuenta de SkillsetMind?",
-            "a": "Haz clic en Empieza gratis en la página de inicio. Puedes registrarte como alumno o ir directamente a la solicitud de creador desde la página Para creadores. La misma cuenta sirve para aprender y enseñar."
+            "a": "Haz clic en Crear cuenta en la parte superior de cualquier página; crear una cuenta es gratis. Puedes registrarte como alumno o ir directamente al registro de creador desde la página Para creadores. La misma cuenta sirve para aprender y enseñar."
           }
         }
       },
@@ -3177,7 +3179,7 @@
         "items": {
           "0": {
             "q": "¿Los creadores pueden subir sus propios cursos?",
-            "a": "Sí. Los creadores pueden preparar y construir productos antes de completar la verificación profesional. Cuando se aprueba su credencial profesional y el producto pasa los controles, publican directamente y se habilitan de inmediato los enlaces públicos, la visibilidad en el catálogo y las ventas."
+            "a": "Sí, sin una revisión manual de cada curso. Mientras SkillsetMind exija la activación del estudio, el creador completa el pago único de activación antes de preparar, subir o publicar, y, cuando se exige verificación profesional, esta debe estar aprobada antes de que pueda pagar. Con el estudio activo, el propio creador publica directamente el producto que supera los controles de lanzamiento; los productos de pago necesitan además una cuenta de Stripe que pueda aceptar cobros antes de que se abra el pago."
           },
           "1": {
             "q": "¿Cómo debo elegir las categorías del curso?",

@@ -31,7 +31,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       },
       {
         q: "How do I create my SkillsetMind account?",
-        a: "Click Get started free on the homepage. You can sign up as a learner or jump straight to the teacher application from the For creators page. The same account works for learning and teaching.",
+        a: "Click Create account at the top of any page; creating an account is free. You can sign up as a learner, or go straight to the creator sign-up from the For creators page. The same account works for learning and teaching.",
       },
     ],
   },
@@ -41,7 +41,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
     items: [
       {
         q: "Can creators upload courses themselves?",
-        a: "Yes. Creators can draft and build products before professional verification is complete. Once their professional credential is approved and the product checks pass, they publish directly and public links, catalog visibility, and sales open immediately.",
+        a: "Yes, without a manual review of each course. While SkillsetMind requires studio activation, a creator completes the one-time activation checkout before drafting, uploading or publishing, and where professional verification is required it must be approved before they can pay. Once the studio is active, a product that passes the launch checks is published directly by its creator; paid products also need a Stripe account that can accept charges before checkout opens.",
       },
       {
         id: "course-categories",

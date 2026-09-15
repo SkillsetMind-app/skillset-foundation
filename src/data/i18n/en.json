@@ -111,7 +111,7 @@
     "promise": "Promise",
     "help": "Help",
     "signIn": "Sign in",
-    "getStarted": "Get started free",
+    "getStarted": "Create account",
     "dashboard": "Dashboard",
     "goToDashboard": "Go to dashboard",
     "accountSettings": "Account settings",
@@ -179,7 +179,7 @@
       "titleSignupEducator": "Create your educator account.",
       "titleSigninLearner": "Sign in as a learner.",
       "titleSigninEducator": "Sign in as an educator.",
-      "subSignup": "Free to start. Browse programs, save your progress, and open creator tools from the same account.",
+      "subSignup": "Creating an account is free. Browse programs, save your progress, and use the same account to teach.",
       "subSignin": "Pick up where you left off.",
       "aside": {
         "teacher": {
@@ -386,14 +386,14 @@
       "trust3Desc": "Every certificate has a public verification URL.",
       "ctaDashboard": "Go to your dashboard",
       "ctaBrowse": "Browse courses",
-      "ctaTeach": "Start teaching free",
+      "ctaTeach": "Create your creator account",
       "ctaPaid": "See how you get paid"
     },
     "how": {
       "kicker": "How it works",
       "title": "Three steps from your method to a published program.",
       "step1Title": "Set up your studio",
-      "step1Desc": "Open a Teacher Studio account, accept the Teacher Terms, connect Stripe Express. Free, takes minutes.",
+      "step1Desc": "Open a Teacher Studio account, accept the Teacher Terms, and connect Stripe Express.",
       "step2Title": "Build and publish",
       "step2Desc": "Build your modules and lessons in Course Builder. Set your price, complete the launch checks, and publish when ready.",
       "step3Title": "Reach people anywhere",
@@ -2878,7 +2878,7 @@
       "ready_to_publish_on_skillsetmind": "Ready to publish on SkillsetMind?",
       "start_on_free_upgrade_only_when": "Start on Free — upgrade only when the math works in your favor.",
       "creator_overview": "Creator overview",
-      "start_free": "Start free",
+      "start_free": "Create account",
       "start_plan": "Start on {plan}"
     },
     "creators": {
@@ -2902,7 +2902,9 @@
       "creator_path": "Creator path",
       "start_as_a_creator_publish_after": "Activate your studio once, then draft and publish.",
       "creators_can_draft_courses_immediately_professional": "Once your one-time activation is complete (and your professional verification is approved, where required), you can draft courses in the studio. Deterministic launch checks then protect marketplace quality without making every course wait for manual approval.",
-      "create_account": "Create account"
+      "create_account": "Create account",
+      "draft_then_publish": "Draft, then publish when your launch checks pass.",
+      "creators_can_draft_after_verification": "Once your professional verification is approved (where required), you can draft courses in the studio. Deterministic launch checks then protect marketplace quality without making every course wait for manual approval."
     },
     "promise": {
       "fee_lock_for_24_months": "Fee-lock for 24 months",
@@ -3031,7 +3033,7 @@
         "tagline": "Start selling without a subscription.",
         "audience": "New creators validating an idea.",
         "highlight0": "No monthly fee — you only pay when you sell",
-        "highlight1": "Publish and sell immediately",
+        "highlight1": "Publish once your course passes the launch checks",
         "highlight2": "Stripe checkout in 30 currencies",
         "highlight3": "Buyers pay your own Stripe account — no platform hold on your money",
         "highlight4": "SkillsetMind Verified certificates",
@@ -3105,7 +3107,7 @@
       "you_get_paid_directly": "You get paid directly",
       "learners_pay_your_stripe_account_not": "Learners pay your Stripe account, not ours. SkillsetMind never holds your money, never remits it to you, and never sits between you and your buyer. You are the merchant of record on every sale.",
       "platform_fee": "Platform fee",
-      "plan_based_every_plan_includes_the": "Plan-based: {value0}. Every plan includes the same features — the difference is the commission SkillsetMind takes per paid sale, deducted by Stripe at the moment of the charge. Start free, upgrade when the math helps you.",
+      "plan_based_every_plan_includes_the": "Plan-based: {value0}. Every plan includes the same features — the difference is the commission SkillsetMind takes per paid sale, deducted by Stripe at the moment of the charge. The Free plan has no monthly fee; upgrade when a lower commission helps you.",
       "stripe_processing_fee": "Stripe processing fee",
       "charged_by_stripe_to_your_account": "Charged by Stripe to your account on every sale. US Stripe pricing is 2.9% + $0.30 for USD card payments and an estimated 5.4% + $0.30 for non-USD; your own rates are the ones Stripe sets in the country your account is registered in. Never hidden inside the platform percentage.",
       "refund_window": "Refund window",
@@ -3168,7 +3170,7 @@
           },
           "1": {
             "q": "How do I create my SkillsetMind account?",
-            "a": "Click Get started free on the homepage. You can sign up as a learner or jump straight to the teacher application from the For creators page. The same account works for learning and teaching."
+            "a": "Click Create account at the top of any page; creating an account is free. You can sign up as a learner, or go straight to the creator sign-up from the For creators page. The same account works for learning and teaching."
           }
         }
       },
@@ -3177,7 +3179,7 @@
         "items": {
           "0": {
             "q": "Can creators upload courses themselves?",
-            "a": "Yes. Creators can draft and build products before professional verification is complete. Once their professional credential is approved and the product checks pass, they publish directly and public links, catalog visibility, and sales open immediately."
+            "a": "Yes, without a manual review of each course. While SkillsetMind requires studio activation, a creator completes the one-time activation checkout before drafting, uploading or publishing, and where professional verification is required it must be approved before they can pay. Once the studio is active, a product that passes the launch checks is published directly by its creator; paid products also need a Stripe account that can accept charges before checkout opens."
           },
           "1": {
             "q": "How should I choose course categories?",
