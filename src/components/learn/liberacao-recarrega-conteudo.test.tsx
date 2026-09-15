@@ -467,4 +467,64 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     expect(document.getElementById("member-lesson-player")).not.toBeNull();
     expect(counts().signs).toBe(before.signs);
   });
+
+  // O aviso grande do player (h5): fechada, carregando, ou o vazio de verdade.
+  function playerNotice() {
+    return (
+      document
+        .getElementById("member-lesson-player")
+        ?.querySelector(".member-video-empty h5")?.textContent ?? null
+    );
+  }
+
+  it("a aula que abre pelo prazo mostra carregando, não o aviso de vazio, até a recarga chegar", async () => {
+    await mount(timeDripCourse, "l2");
+
+    // Prazo + folga, com o banco ainda fechado (relógio do aparelho adiantado).
+    await flush(day + 6 * second);
+    expect(playerNotice()).toBe("Loading lesson content...");
+
+    db.state.serverOpen.add("l2");
+    await flush(30 * second);
+    expect(screen.getByText("Texto da aula dois")).toBeTruthy();
+    expect(playerNotice()).toBe("Text-first lesson");
+  });
+
+  it("uma aula que já estava aberta não pisca carregando enquanto outra aula abre", async () => {
+    const textFirstCourse = {
+      ...timeDripCourse,
+      modules: [
+        {
+          ...timeDripCourse.modules[0],
+          lessons: [
+            { id: "l1", title: "Lesson one", type: "text", duration: "5 min", isPreview: false },
+            timeDripCourse.modules[0].lessons[1],
+          ],
+        },
+      ],
+    } as unknown as Course;
+    db.state.tables = {
+      course_assets: [assetRow("pdf-l2", "l2", "lesson_material", "application/pdf")],
+      course_lesson_content: [contentRow("l1", "Texto da aula um"), contentRow("l2", "Texto da aula dois")],
+    };
+    await mount(textFirstCourse, "l1");
+    expect(playerNotice()).toBe("Text-first lesson");
+
+    // A aula 2 abre e fica na fila (banco atrasado); a aula 1 não muda.
+    await flush(day + 6 * second);
+    expect(playerNotice()).toBe("Text-first lesson");
+    await flush(minute);
+    expect(playerNotice()).toBe("Text-first lesson");
+  });
+
+  it("a aula que continua vazia sai do carregando depois das tentativas", async () => {
+    await mount(timeDripCourse, "l2");
+
+    await flush(day + 6 * second);
+    expect(playerNotice()).toBe("Loading lesson content...");
+
+    // O banco nunca entrega: depois das 3 tentativas, o vazio de verdade.
+    await flush(10 * minute);
+    expect(playerNotice()).toBe("Text-first lesson");
+  });
 });

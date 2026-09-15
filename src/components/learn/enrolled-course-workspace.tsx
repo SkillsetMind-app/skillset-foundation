@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ChevronDown,
   ChevronLeft,
@@ -427,6 +427,11 @@ export function EnrolledCourseWorkspace({
     pending: new Map<string, { unlocksAt: number | null; tries: number }>(),
     retryTimer: undefined as number | undefined,
   });
+  // A mesma fila, em estado: o painel mostra "carregando" só para a aula que
+  // acabou de abrir e ainda não chegou, nunca para as que já estavam abertas.
+  // A aula sai da fila quando chega ou quando as tentativas acabam (aí o painel
+  // mostra o vazio de verdade, não carrega para sempre).
+  const [releasingLessonIds, setReleasingLessonIds] = useState<ReadonlySet<string>>(() => new Set());
 
   // O retrato de partida só sai depois que o banco entregou a primeira carga:
   // ele compara o relógio da tela com o que chegou de fato.
@@ -500,7 +505,9 @@ export function EnrolledCourseWorkspace({
   }, [course.id]);
 
   // A recarga só sai quando o conjunto de abertas ou o de concluídas muda.
-  useEffect(() => {
+  // Efeito de layout: a aula que abre neste render entra na fila (e o painel
+  // mostra "carregando") antes da pintura, sem piscar o aviso de vazio.
+  useLayoutEffect(() => {
     if (unlockedKey === null) {
       return;
     }
@@ -516,6 +523,13 @@ export function EnrolledCourseWorkspace({
       || latestAssets.current.some(
         (asset) => asset.lessonId === lessonId && asset.kind !== "lesson_thumbnail",
       );
+    // Copia a fila para o estado que o painel lê (mesmo Set se nada mudou).
+    const syncReleasing = () => {
+      const ids = [...tracker.pending.keys()];
+      setReleasingLessonIds((current) =>
+        current.size === ids.length && ids.every((id) => current.has(id)) ? current : new Set(ids),
+      );
+    };
     // Tira da fila a aula que chegou, ou que já gastou as tentativas, e arma a
     // próxima tentativa se sobrou aula. Relógio do aparelho adiantado: até 3
     // tentativas perto do prazo (janela de 2 min). Fora dela, ou em aula sem
@@ -539,6 +553,7 @@ export function EnrolledCourseWorkspace({
           void reload();
         }, RELEASE_RETRY_MS);
       }
+      syncReleasing();
     };
     const reload = async () => {
       await Promise.all([
@@ -570,6 +585,7 @@ export function EnrolledCourseWorkspace({
         tracker.pending.set(id, { unlocksAt, tries: 0 });
       }
     }
+    syncReleasing();
     void reload();
   }, [completedKey, course.id, unlockedKey]);
 
@@ -783,6 +799,11 @@ export function EnrolledCourseWorkspace({
   const isLessonContentLoading = Boolean(
     workspaceEnrollment
       && (!lessonContentState.ready || lessonContentState.key !== course.id),
+  );
+  // A aula que o relógio acabou de abrir e cujo conteúdo ainda está vindo (só
+  // ela: as outras aulas abertas continuam como estavam).
+  const selectedLessonReleasing = Boolean(
+    selectedLesson && releasingLessonIds.has(selectedLesson.id),
   );
   const resolvedSelectedLesson: Lesson | null = selectedLesson
     ? {
@@ -1133,11 +1154,13 @@ export function EnrolledCourseWorkspace({
             assets={selectedLessonAssets}
             enrollmentId={workspaceEnrollment?.id ?? null}
             enableFirestoreAssets={enableFirestoreAssets}
-            isLoadingAssets={Boolean(
-              enableFirestoreAssets
-                && (!assetsState.ready || assetsState.key !== course.id),
-            )}
-            isLoadingContent={isLessonContentLoading}
+            isLoadingAssets={
+              Boolean(
+                enableFirestoreAssets
+                  && (!assetsState.ready || assetsState.key !== course.id),
+              ) || selectedLessonReleasing
+            }
+            isLoadingContent={isLessonContentLoading || selectedLessonReleasing}
             lesson={resolvedSelectedLesson}
             moduleTitle={selectedModule?.title ?? null}
             onEnded={handleLessonEnded}
