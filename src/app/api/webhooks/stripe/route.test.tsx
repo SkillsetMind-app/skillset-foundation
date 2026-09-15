@@ -35,7 +35,8 @@ type FailurePoint =
   | "orders.update"
   | "fulfill_paid_course_access"
   | "payout_ledger.insert"
-  | "course_subscriptions.update";
+  | "course_subscriptions.update"
+  | "certificates.update";
 
 type RefundClaim = {
   state: "pending" | "done";
@@ -69,6 +70,9 @@ type AdminState = {
   // payout_ledger ids written in checkout mode, so a redelivery meets the
   // same re-arm gate it would in production.
   ledgerIds: Set<string>;
+  // The buyer's certificate for this course, and how many writes changed it.
+  certificate: Record<string, unknown>;
+  certificateWrites: number;
 };
 
 type Filter = { column: string; value: unknown };
@@ -124,6 +128,8 @@ function createAdmin(
     paymentWrites: [],
     orderWrites: [],
     ledgerIds: new Set(),
+    certificate: { enrollment_id: "user_1__course_1", status: "issued" },
+    certificateWrites: 0,
   };
 
   class Query {
@@ -246,6 +252,15 @@ function createAdmin(
 
         if (this.table === "payout_ledger" && this.operation === "insert") {
           state.ledgerIds.add(String(this.values.id));
+        }
+
+        // An update lands only when every filter matches the row, like PostgREST.
+        if (this.table === "certificates" && this.operation === "update") {
+          const row = state.certificate;
+          if (this.filters.every(({ column, value }) => row[column] === value)) {
+            Object.assign(row, this.values);
+            state.certificateWrites += 1;
+          }
         }
 
         if (this.table === "payments") state.paymentWrites.push({ ...this.values });
@@ -1033,6 +1048,39 @@ describe("Stripe webhook financial integrity", () => {
         stripe_connect_payouts_enabled: true,
       }),
     );
+    // Control: a payload without a country must not null the stored one.
+    expect(admin.state.userUpdates.some((update: Record<string, unknown>) =>
+      "stripe_connect_country" in update)).toBe(false);
+  });
+
+  // Lazy backfill: accounts minted before the column existed get their country
+  // the next time Stripe reports on them.
+  it("records the connected account's payout country from account.updated", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const response = await postEvent({
+      id: "evt_account_updated_country",
+      type: "account.updated",
+      account: "acct_teacher",
+      data: {
+        object: {
+          id: "acct_teacher",
+          object: "account",
+          country: "gb",
+          charges_enabled: false,
+          payouts_enabled: false,
+        },
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(admin.state.userUpdates).toContainEqual(
+      expect.objectContaining({
+        stripe_connected_account_id: "acct_teacher",
+        stripe_connect_country: "GB",
+      }),
+    );
   });
 
   it("records refunds without moving any money (direct-charge invariant)", async () => {
@@ -1711,6 +1759,105 @@ describe("Stripe webhook financial integrity", () => {
         expect(buyerEmails()).toHaveLength(1);
         expect(mocks.notifyOps).not.toHaveBeenCalledWith(lostEmailAlert);
       });
+    });
+  });
+
+  // Um reembolso integral ou um chargeback perdido tira o curso; o certificado
+  // que ele rendeu sai junto, e a pagina publica para de atestar.
+  describe("certificate withdrawn with the purchase", () => {
+    function fullRefundEvent(id: string) {
+      const event = refundEvent(id, 10000);
+      event.data.object.refunded = true;
+      return event;
+    }
+
+    function connectedDispute(id: string, status: string) {
+      return { ...disputeClosedEvent(id, status), account: "acct_teacher" };
+    }
+
+    it("withdraws the certificate on a full refund as refund_revoked", async () => {
+      const admin = createAdmin("refund");
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(fullRefundEvent("evt_full_refund"))).status).toBe(200);
+
+      expect(admin.state.certificate.status).toBe("refund_revoked");
+      expect(admin.state.enrollmentUpdates).toContainEqual(
+        expect.objectContaining({ id: "user_1__course_1", status: "refunded" }),
+      );
+    });
+
+    it("keeps the certificate on a partial refund", async () => {
+      const admin = createAdmin("refund");
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(refundEvent("evt_partial_refund", 3000))).status).toBe(200);
+
+      expect(admin.state.certificate.status).toBe("issued");
+      expect(admin.state.certificateWrites).toBe(0);
+    });
+
+    it("withdraws the certificate as refund_revoked when a chargeback is lost", async () => {
+      const admin = createAdmin("refund");
+      admin.state.ledger.status = "disputed";
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(connectedDispute("evt_dispute_lost_certificate", "lost"))).status).toBe(200);
+
+      expect(admin.state.certificate.status).toBe("refund_revoked");
+    });
+
+    it("keeps the certificate when a chargeback is won", async () => {
+      const admin = createAdmin("refund");
+      admin.state.ledger.status = "disputed";
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(connectedDispute("evt_dispute_won_certificate", "won"))).status).toBe(200);
+
+      expect(admin.state.certificate.status).toBe("issued");
+      expect(admin.state.certificateWrites).toBe(0);
+    });
+
+    it("treats a repeated full refund as already done: 200 both times, one write", async () => {
+      const admin = createAdmin("refund");
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = fullRefundEvent("evt_full_refund_twice");
+
+      expect((await postEvent(event)).status).toBe(200);
+      expect((await postEvent(event)).status).toBe(200);
+
+      expect(admin.state.certificate.status).toBe("refund_revoked");
+      expect(admin.state.certificateWrites).toBe(1);
+    });
+
+    // An ops revocation is final (issue_skillset_certificate refuses to
+    // re-issue 'revoked'). A refund must never turn it into 'refund_revoked',
+    // which a rebuy would re-issue.
+    it("leaves an ops-revoked certificate untouched on a full refund", async () => {
+      const admin = createAdmin("refund");
+      admin.state.certificate.status = "revoked";
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(fullRefundEvent("evt_full_refund_ops_revoked"))).status).toBe(200);
+
+      expect(admin.state.certificate.status).toBe("revoked");
+      expect(admin.state.certificateWrites).toBe(0);
+    });
+
+    it("keeps the refund and the access revocation when the certificate write fails", async () => {
+      const admin = createAdmin("refund", "certificates.update");
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(fullRefundEvent("evt_full_refund_certificate_down"))).status).toBe(200);
+
+      expect(admin.state.enrollmentUpdates).toContainEqual(
+        expect.objectContaining({ id: "user_1__course_1", status: "refunded" }),
+      );
+      expect(admin.state.doneEvents).toContain("evt_full_refund_certificate_down");
+      expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+        event: "stripe.webhook.certificate_revoke_failed",
+        context: { courseId: "course_1", userId: "user_1" },
+      }));
     });
   });
 });

@@ -1,6 +1,6 @@
-import { isVideoAssetKind, type CourseAsset } from "@/domain/course-asset";
+import type { CourseAsset } from "@/domain/course-asset";
+import { getLessonIdsWithMedia } from "@/domain/course-readiness";
 import { isCouponExpired, type CourseCoupon } from "@/domain/course-commerce";
-import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
 // O painel do produto respondia "quanto falta para publicar" e mais nada. Quem
@@ -150,23 +150,14 @@ export function getCourseMaintenanceIssues({
   const issues: CourseMaintenanceIssue[] = [];
 
   if (assets) {
-    const videoLessonIds = new Set(
-      assets
-        .filter((asset) => isVideoAssetKind(asset.kind) && asset.lessonId)
-        .map((asset) => asset.lessonId as string),
-    );
-
-    // Mesma regra que o estudio da aula usa nos selos "Empty"/"Done": video
-    // enviado, embed confiavel, texto da aula ou descricao. Nenhum dos quatro
-    // = a pessoa que comprou abre a aula e nao encontra nada.
+    // A MESMA regra da prontidao do Publish (getLessonIdsWithMedia): video
+    // enviado, link, texto da aula, descricao ou arquivo de material. Nenhum
+    // deles = a pessoa que comprou abre a aula e nao encontra nada. Uma regra
+    // so, para o painel e o construtor nunca discordarem sobre qual aula esta
+    // vazia.
+    const withContent = getLessonIdsWithMedia(course.modules, assets);
     const emptyLessons = course.modules.flatMap((courseModule) =>
-      courseModule.lessons.filter(
-        (lesson) =>
-          !videoLessonIds.has(lesson.id) &&
-          !getTrustedLessonEmbed(lesson.externalUrl) &&
-          !(lesson.contentText ?? "").trim() &&
-          !lesson.description.trim(),
-      ),
+      courseModule.lessons.filter((lesson) => !withContent.has(lesson.id)),
     );
 
     if (emptyLessons.length) {

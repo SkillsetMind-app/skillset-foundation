@@ -1735,7 +1735,7 @@
       "title": "Your earnings, your payout setup.",
       "helpTopic": "Payout schedule",
       "helpBody": "Buyers pay your Stripe account directly, so there is no platform hold. Stripe then settles and pays out to your bank on its own timing, which depends on your country and the payment method, and a new account waits on verification before its first payout. Stripe Connect must have both charges and payouts enabled before a paid product can go live.",
-      "taxForms": "Stripe issues your tax forms",
+      "taxForms": "Stripe collects your tax details",
       "netEstimate": "Creator net estimate",
       "refunded": "Refunded",
       "unavailable": "Unavailable",
@@ -1751,6 +1751,7 @@
       "statusNotConnected": "Not connected",
       "bankNote": "SkillsetMind never stores full bank details. Stripe collects identity, tax, and bank information inside the embedded onboarding flow.",
       "connectedAccount": "Connected account",
+      "payoutCountry": "Payout country",
       "notActiveYet": "Not active yet",
       "notCreated": "Not created",
       "charges": "Charges",
@@ -1785,7 +1786,7 @@
       "statusRefunded": "Refunded",
       "statusPartiallyRefunded": "Partially refunded",
       "taxCenter": "Tax center",
-      "taxCenterBody": "Tax forms appear once you have real payout volume. Stripe Connect collects your tax details, and SkillsetMind keeps the payout ledger fully transparent.",
+      "taxCenterBody": "Stripe Connect collects your tax details, and SkillsetMind keeps the payout ledger fully transparent.",
       "payoutsUnavailable": "Paid selling isn't open on SkillsetMind yet — Stripe Connect is still being configured on our side. No Stripe account is connected yet, so buyers have nowhere to pay you; onboarding will open on this page automatically once it's ready.",
       "profileError": "We could not load your payout profile.",
       "ledgerReadError": "We could not load your earnings record.",
@@ -3937,6 +3938,12 @@
           "label": "Lesson",
           "hint": "Add at least one lesson."
         },
+        "lessonMedia": {
+          "label": "Lesson content",
+          "hint": "Add a video, text or file to every lesson.",
+          "missing": "Missing: {lessons}.",
+          "missingMore": "Missing: {lessons} and {count} more."
+        },
         "pricing": {
           "label": "Pricing",
           "hint": "Set a paid price greater than $0, or choose Free."
@@ -4573,7 +4580,14 @@
     "fallbackTitle": "Continue with Stripe's secure onboarding page.",
     "fallbackBody": "This can happen with browser privacy settings, blocked cookies, or when Stripe requires a stronger authentication step. The payout setup still works; this fallback returns you to SkillsetMind after completion.",
     "retry": "Retry embedded setup",
+    "countryLabel": "Payout country",
+    "countryHint": "Choose the country where you live and keep your bank account. Stripe can't change it after setup.",
+    "countryLater": "Latin America and Brazil are coming later.",
+    "countryContinue": "Continue",
+    "chooseAnotherCountry": "Choose another country",
     "error": {
+      "country": "Payouts aren't available in that country yet. Contact support if this looks wrong.",
+      "conflict": "Your payout account is being set up. Wait a minute and refresh this page. If this keeps happening, contact us.",
       "initialize": "Stripe Connect could not initialize. Try again or contact support if this continues.",
       "hosted": "We could not open Stripe onboarding. Try again or contact support if this continues.",
       "activation": "Activate your creator account before setting up payouts.",
@@ -4593,7 +4607,9 @@
       "signIn": "Sign in",
       "configuration": "Contact support",
       "permission": "Contact support",
-      "request": "Contact support"
+      "request": "Contact support",
+      "country": "Contact support",
+      "conflict": "Contact us"
     }
   },
   "billingCheckout": {
@@ -5116,6 +5132,8 @@
       "verify": "Verify",
       "missing": "Certificate not found",
       "missingDetail": "This code does not match an issued SkillsetMind certificate. Check the code and try again.",
+      "revoked": "Certificate revoked",
+      "revokedDetail": "SkillsetMind issued this certificate, but it was later revoked. It no longer certifies that this course was completed.",
       "verified": "Verified credential",
       "authority": "Authority",
       "category": "Category",

@@ -100,7 +100,7 @@ import { track } from "@/lib/posthog/events";
 import { defaultSkillsetCurrency } from "@/lib/payments/currencies";
 import { CurrencySelect } from "@/components/teacher/currency-select";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
-import { getCourseReadiness } from "@/domain/course-readiness";
+import { getCourseReadiness, getLessonIdsWithMedia } from "@/domain/course-readiness";
 
 const builderTabs = [
   { value: "details", label: "creatorEditor.builder.steps.details.tab", sub: "creatorEditor.builder.steps.details.tabHelp" },
@@ -518,6 +518,10 @@ export function CourseBuilderStudio() {
   const [activeLessonStudio, setActiveLessonStudio] =
     useState<ActiveLessonStudio>(null);
   const [courseAssets, setCourseAssets] = useState<CourseAsset[]>([]);
+  // So com a lista de arquivos na mao a prontidao cobra conteudo em toda aula:
+  // antes (ou se a busca falhar) o item fica de fora, como no Manage, em vez de
+  // acusar de vazia uma aula que so tem envio ou PDF.
+  const [courseAssetsLoaded, setCourseAssetsLoaded] = useState(false);
   const [autosaveState, setAutosaveState] =
     useState<"idle" | "saving" | "saved" | "error">("idle");
   // Signature of the last state we know the server has. Lives in state (not a
@@ -691,6 +695,7 @@ export function CourseBuilderStudio() {
       .then((nextAssets) => {
         if (!cancelled) {
           setCourseAssets(nextAssets);
+          setCourseAssetsLoaded(true);
         }
       })
       .catch(() => {
@@ -850,8 +855,15 @@ export function CourseBuilderStudio() {
   // cabecalho media outra coisa (estagios): tres numeros para um curso so.
   // Le do payload normalizado, entao um preco digitado errado conta como
   // preco ausente, igual ao que o servidor gravaria.
+  // Aula sem video, texto nem arquivo trava o Publish (so aqui: o servidor
+  // nao cobra, entao uma chamada direta a API passa, e o dano e so no curso
+  // do proprio professor).
+  const lessonIdsWithMedia = useMemo(
+    () => (courseAssetsLoaded ? getLessonIdsWithMedia(builderDraftPayload.modules, courseAssets) : undefined),
+    [courseAssetsLoaded, builderDraftPayload.modules, courseAssets],
+  );
   const readiness = getCourseReadiness(
-    { ...builderDraftPayload, coverImageUrl: course?.coverImageUrl ?? null },
+    { ...builderDraftPayload, coverImageUrl: course?.coverImageUrl ?? null, lessonIdsWithMedia },
     publishGates,
     t,
   );

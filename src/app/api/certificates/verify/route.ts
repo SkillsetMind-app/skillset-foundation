@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { rateLimitKeyFromIp } from "@/lib/supabase/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -16,6 +17,30 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type",
   "Cache-Control": "no-store",
 };
+
+// The RPC only vouches for issued certificates, so one revoked after a refund
+// or a lost chargeback reads as "not found". Whoever holds the code may be
+// looking at a printed copy: tell them it was revoked. Exact code only, one
+// boolean out, and it runs only after the RPC's rate limit has counted the
+// request.
+// ponytail: a second read on the service role; move it into the RPC's answer
+// when that function is next migrated.
+async function isRevokedCode(code: string): Promise<boolean> {
+  try {
+    const { data } = await getSupabaseAdminClient()
+      .from("certificates")
+      .select("status")
+      .eq("verification_code", code)
+      // 'revoked' by ops, 'refund_revoked' by a full refund or lost chargeback.
+      .in("status", ["revoked", "refund_revoked"])
+      .limit(1)
+      .maybeSingle();
+    return Boolean(data);
+  } catch {
+    // Best effort: the visitor still gets the RPC's "not found".
+    return false;
+  }
+}
 
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
@@ -53,6 +78,11 @@ export async function GET(request: NextRequest) {
       { error: "Certificate verification failed." },
       { status: 500, headers: CORS_HEADERS },
     );
+  }
+
+  const invalid = (data as { valid?: unknown } | null)?.valid === false;
+  if (invalid && (await isRevokedCode(code))) {
+    return NextResponse.json({ valid: false, revoked: true }, { status: 200, headers: CORS_HEADERS });
   }
 
   return NextResponse.json(data, { status: 200, headers: CORS_HEADERS });

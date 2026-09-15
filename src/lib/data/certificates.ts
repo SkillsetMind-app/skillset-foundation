@@ -122,6 +122,8 @@ export async function getCertificate(
 export type CertificateVerificationResult =
   | {
       valid: false;
+      /** The code matched a certificate that was issued and later revoked. */
+      revoked?: boolean;
     }
   | {
       valid: true;

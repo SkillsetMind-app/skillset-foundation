@@ -38,6 +38,14 @@ vi.mock("@/lib/payments/server/stripe-helpers", () => ({
 import { POST } from "@/app/api/payments/connect/account-link/route";
 import { PaymentError } from "@/lib/payments/server/auth";
 
+// A raw string is sent as-is (malformed JSON); anything else is JSON-encoded.
+function req(body?: unknown) {
+  return new Request("https://example.test/api/payments/connect/account-link", {
+    method: "POST",
+    body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body),
+  });
+}
+
 function invalidRequest(message: string, statusCode = 400) {
   return new Stripe.errors.StripeInvalidRequestError({
     message,
@@ -76,7 +84,7 @@ describe("POST /api/payments/connect/account-link", () => {
   it("throttles before minting anything", async () => {
     mocks.enforceRateLimit.mockRejectedValue(new PaymentError("Too many requests.", 429));
 
-    const response = await POST();
+    const response = await POST(req());
 
     expect(response.status).toBe(429);
     expect(mocks.createFreshConnectedAccount).not.toHaveBeenCalled();
@@ -86,7 +94,7 @@ describe("POST /api/payments/connect/account-link", () => {
   it("refuses when the profile row is missing", async () => {
     mocks.getUserRow.mockResolvedValue(null);
 
-    const response = await POST();
+    const response = await POST(req());
 
     expect(response.status).toBe(400);
     expect(mocks.createFreshConnectedAccount).not.toHaveBeenCalled();
@@ -97,7 +105,7 @@ describe("POST /api/payments/connect/account-link", () => {
   it("refuses a non-teacher before creating an account", async () => {
     mocks.getUserRow.mockResolvedValue({ ...TEACHER, roles: [] });
 
-    const response = await POST();
+    const response = await POST(req());
     const body = await response.json();
 
     expect(response.status).toBe(403);
@@ -116,7 +124,7 @@ describe("POST /api/payments/connect/account-link", () => {
       ),
     );
 
-    const response = await POST();
+    const response = await POST(req());
     const body = await response.json();
 
     expect(response.status).toBe(402);
@@ -124,22 +132,45 @@ describe("POST /api/payments/connect/account-link", () => {
     expect(mocks.createFreshConnectedAccount).not.toHaveBeenCalled();
   });
 
-  it("mints an account when the teacher has none stored", async () => {
+  it("mints the account in the chosen country when none is stored", async () => {
     mocks.getUserRow.mockResolvedValue({ ...TEACHER, stripe_connected_account_id: null });
 
-    const response = await POST();
+    const response = await POST(req({ country: "ch" }));
     const body = await response.json();
 
     expect(response.status).toBe(200);
     expect(body.url).toBe("https://connect.stripe.test/setup");
     expect(mocks.createFreshConnectedAccount).toHaveBeenCalledTimes(1);
+    expect(mocks.createFreshConnectedAccount.mock.calls[0][0].country).toBe("CH");
     expect(mocks.createLink.mock.calls[0][0].account).toBe("acct_fresh_1");
+  });
+
+  // Same refusal as the embedded route: the hosted fallback must not become a
+  // side door to a country-less (US-locked) or off-list account.
+  it.each([
+    ["no body", undefined],
+    ["malformed JSON", "{not json"],
+    ["no country", {}],
+    ["Brazil", { country: "BR" }],
+    ["Mexico", { country: "MX" }],
+    ["Guyana", { country: "GY" }],
+  ])("refuses to mint a first account with %s", async (_label, payload) => {
+    mocks.getUserRow.mockResolvedValue({ ...TEACHER, stripe_connected_account_id: null });
+
+    const response = await POST(req(payload));
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("unsupported_country");
+    expect(mocks.createFreshConnectedAccount).not.toHaveBeenCalled();
+    expect(mocks.getStripe).not.toHaveBeenCalled();
+    expect(mocks.createLink).not.toHaveBeenCalled();
   });
 
   // Control for the case above: a stored id must be reused, never replaced.
   // Minting on every visit would strand the teacher's completed onboarding.
   it("reuses the stored account and does not mint a second one", async () => {
-    const response = await POST();
+    const response = await POST(req());
 
     expect(response.status).toBe(200);
     expect(mocks.createFreshConnectedAccount).not.toHaveBeenCalled();
@@ -149,6 +180,14 @@ describe("POST /api/payments/connect/account-link", () => {
     );
   });
 
+  // Control: once an account exists the body country is ignored, even off-list.
+  it("ignores the body country once an account exists", async () => {
+    const response = await POST(req({ country: "MX" }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.createFreshConnectedAccount).not.toHaveBeenCalled();
+  });
+
   // An orphaned id (minted under another key/mode) heals once: new account,
   // one retry. Without this the teacher is stuck on a permanently 400ing page.
   it("recreates the account once when the stored id is orphaned", async () => {
@@ -156,7 +195,7 @@ describe("POST /api/payments/connect/account-link", () => {
       .mockRejectedValueOnce(orphanError())
       .mockResolvedValueOnce({ url: "https://connect.stripe.test/healed" });
 
-    const response = await POST();
+    const response = await POST(req());
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -169,6 +208,29 @@ describe("POST /api/payments/connect/account-link", () => {
     expect(mocks.createLink.mock.calls[1][0].account).toBe("acct_fresh_1");
   });
 
+  it("heals an orphan in the STORED country, never the requested one", async () => {
+    mocks.getUserRow.mockResolvedValue({ ...TEACHER, stripe_connect_country: "SE" });
+    mocks.createLink
+      .mockRejectedValueOnce(orphanError())
+      .mockResolvedValueOnce({ url: "https://connect.stripe.test/healed" });
+
+    const response = await POST(req({ country: "GB" }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.createFreshConnectedAccount.mock.calls[0][0].country).toBe("SE");
+  });
+
+  it("heals a legacy account with no stored country as US", async () => {
+    mocks.createLink
+      .mockRejectedValueOnce(orphanError())
+      .mockResolvedValueOnce({ url: "https://connect.stripe.test/healed" });
+
+    const response = await POST(req({ country: "GB" }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.createFreshConnectedAccount.mock.calls[0][0].country).toBe("US");
+  });
+
   // Platform-side misconfiguration, not the teacher's fault: it has to read as
   // "try again soon", not as a raw Stripe stack trace.
   it("maps a Connect-not-enabled platform error to a friendly 400", async () => {
@@ -178,7 +240,7 @@ describe("POST /api/payments/connect/account-link", () => {
       ),
     );
 
-    const response = await POST();
+    const response = await POST(req());
     const body = await response.json();
 
     expect(response.status).toBe(400);
@@ -191,7 +253,7 @@ describe("POST /api/payments/connect/account-link", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     mocks.createLink.mockRejectedValue(invalidRequest("Invalid country."));
 
-    const response = await POST();
+    const response = await POST(req());
     const body = await response.json();
 
     expect(response.status).toBe(500);
