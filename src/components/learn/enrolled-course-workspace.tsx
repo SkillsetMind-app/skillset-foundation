@@ -28,6 +28,7 @@ import { NextLessonCard } from "@/components/learn/next-lesson-card";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { TrustedEmbedPlayer } from "@/components/learn/trusted-embed-player";
 import { CourseSubscriptionCard } from "@/components/learn/course-subscription-card";
+import { CourseUnlockModal } from "@/components/learn/course-unlock-modal";
 import { VideoDock } from "@/components/learn/video-dock";
 import {
   VideoWatermark,
@@ -760,26 +761,28 @@ export function EnrolledCourseWorkspace({
       );
     }
 
+    // No enrollment: the same buy popup as the course page and the members
+    // area (cover + buy button to the course page), instead of a full page
+    // "enrollment required" with a link out. Public course fields only: no
+    // lesson content or video is fetched without an enrollment.
     return (
-      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          {t("learn.classroom.workspace.enrollmentRequired")}
-        </p>
-        <h1 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-          {t("learn.classroom.workspace.enrollmentHeading")}
-        </h1>
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          {t("learn.classroom.workspace.enrollmentDetails")}
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link href={`/courses/${course.slug}`} className="button-solid px-4 py-2.5 text-sm">
-            {t("learn.classroom.workspace.openCourse")}
-          </Link>
-          <Link href="/learn" className="button-outline px-4 py-2.5 text-sm">
-            {t("learn.classroom.workspace.backToLearningTitle")}
-          </Link>
-        </div>
-      </section>
+      <>
+        <h1 className="sr-only">{course.title}</h1>
+        <CourseUnlockModal
+          course={{
+            id: course.id,
+            title: course.title,
+            summary: course.summary,
+            category: course.category,
+            coverImageUrl: getSafeMediaUrl(course.image),
+            priceAmountMinor: course.priceAmountMinor,
+            currency: course.currency,
+          }}
+          ctaHref={`/courses/${course.slug}`}
+          secondaryLink={{ href: "/learn", label: t("learn.classroom.workspace.backToLearning") }}
+          onClose={() => router.push("/learn")}
+        />
+      </>
     );
   }
 
@@ -923,6 +926,27 @@ export function EnrolledCourseWorkspace({
           (assetCountByLessonId.get(asset.lessonId) ?? 0) + 1,
         );
       }
+    }
+  }
+  // Aula ABERTA sem capa própria e com link do YouTube: a capa do próprio
+  // vídeo. A aula trancada fica sem: o link dela nunca chega à página (a RLS
+  // esconde), e mesmo um link no currículo não vira capa enquanto ela está
+  // fechada. Vimeo e Bunny ficam de fora. O id já vem limpo
+  // ([a-zA-Z0-9_-]) de getTrustedLessonEmbed; o CSP (img-src https:) já cobre
+  // i.ytimg.com.
+  for (const lesson of allLessons) {
+    if (thumbnailUrlByLessonId.has(lesson.id) || !lessonUnlockStateById.get(lesson.id)?.unlocked) {
+      continue;
+    }
+    // Sem objeto de conteúdo, sem capa: o preview do professor pode receber
+    // null daqui (preview-tabs.test.tsx dubla assim) e a sala não pode cair.
+    const content = resolveLessonContent(lessonContentMap?.get(lesson.id), lesson);
+    if (!content) {
+      continue;
+    }
+    const embed = getTrustedLessonEmbed(content?.externalUrl);
+    if (embed?.provider === "youtube") {
+      thumbnailUrlByLessonId.set(lesson.id, `https://i.ytimg.com/vi/${embed.videoId}/hqdefault.jpg`);
     }
   }
   async function toggleLessonCompletion(lessonId: string, completed: boolean) {
