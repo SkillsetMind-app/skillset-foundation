@@ -86,6 +86,10 @@ import {
 } from "@/lib/data/lesson-content";
 import { track } from "@/lib/posthog/events";
 
+// Teto do timer de liberação: prazos distantes são rearmados a cada 24h em vez
+// de confiar num único setTimeout de semanas (aba dormindo, relógio mudado).
+const MAX_RELEASE_WAIT_MS = 24 * 60 * 60 * 1000;
+
 type EnrolledCourseWorkspaceProps = {
   course: Course;
   enableFirestoreAssets?: boolean;
@@ -366,11 +370,64 @@ export function EnrolledCourseWorkspace({
     );
   }, [previewMode, workspaceEnrollment]);
 
-  // A RLS só entrega o texto e o material da aula que já abriu (migration
-  // 20260915020000). No sequencial, concluir uma aula abre a próxima sem
-  // escrever nessas tabelas, então o realtime não acorda: recarrega quando o
-  // número de aulas concluídas muda.
-  const releaseRefreshKey = progressState.lessonIds.length;
+  // A RLS só entrega o texto, o link e o material da aula que já abriu
+  // (migration 20260915020000), e nada no banco muda quando uma aula abre:
+  // concluir a anterior (sequencial) ou vencer o prazo não escreve nessas
+  // tabelas, então o realtime não acorda. A chave de recarga junta o conjunto
+  // de aulas concluídas (a lista já chega ordenada) e um tique do relógio.
+  const [releaseTick, setReleaseTick] = useState(0);
+  const releaseRefreshKey = `${progressState.lessonIds.join("|")}:${releaseTick}`;
+
+  // O tique bate no próximo prazo ainda no futuro (teto de 24h, rearmado a
+  // cada tique) e quando a aba volta a ficar visível: timer de aba em segundo
+  // plano atrasa, e o relógio pode ter passado de vários prazos.
+  // ponytail: o prazo é o relógio do aparelho. Aparelho adiantado em relação
+  // ao banco busca cedo demais e só pega a aula no próximo tique ou ao voltar
+  // para a aba.
+  useEffect(() => {
+    if (previewMode || !workspaceEnrollment) {
+      return;
+    }
+
+    const now = Date.now();
+    let nextUnlockAt = Number.POSITIVE_INFINITY;
+    for (const lesson of course.modules.flatMap((module) => module.lessons)) {
+      const state = getLessonUnlockState(
+        course,
+        lesson,
+        workspaceEnrollment,
+        progressState.lessonIds,
+        new Date(now),
+      );
+      const unlocksAt = state.unlocksAt?.getTime();
+      if (!state.unlocked && unlocksAt !== undefined && unlocksAt > now) {
+        nextUnlockAt = Math.min(nextUnlockAt, unlocksAt);
+      }
+    }
+    if (nextUnlockAt === Number.POSITIVE_INFINITY) {
+      return;
+    }
+
+    const timer = window.setTimeout(
+      () => setReleaseTick((tick) => tick + 1),
+      Math.min(nextUnlockAt - now, MAX_RELEASE_WAIT_MS),
+    );
+    return () => window.clearTimeout(timer);
+  }, [course, previewMode, progressState.lessonIds, releaseTick, workspaceEnrollment]);
+
+  useEffect(() => {
+    if (previewMode || !workspaceEnrollment) {
+      return;
+    }
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        setReleaseTick((tick) => tick + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [previewMode, workspaceEnrollment]);
 
   useEffect(() => {
     if (!enableFirestoreAssets || !workspaceEnrollment) {

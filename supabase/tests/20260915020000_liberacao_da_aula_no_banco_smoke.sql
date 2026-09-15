@@ -94,15 +94,23 @@ from (values
 insert into public.course_lesson_content(lesson_id, course_id, content_text)
 select k || '-' || x, 'smoke-drip-' || k, 'Texto protegido da aula ' || x
 from unnest(array['custom', 'sequential']) k, unnest(array['a', 'b', 'p', 'c']) x;
--- Material por aula (a, b) e um do curso inteiro (sem aula), com o arquivo.
+-- Material por aula (a, b) e um do curso inteiro (sem aula), com o arquivo no
+-- bucket privado; e a miniatura pública da aula b (o arquivo dela mora em
+-- public-media, aqui só a linha importa).
 insert into public.course_assets(id, course_id, owner_id, kind, file_name, content_type, size,
   storage_path, lesson_id, created_at)
-select a.k || '-asset-' || a.x, 'smoke-drip-' || a.k, pg_temp.uid(1)::text, 'lesson_material',
-  'material.pdf', 'application/pdf', 1, pg_temp.file_path(a.k, a.x),
-  nullif(a.k || '-' || a.x, a.k || '-course'), now()
-from (values ('custom', 'a'), ('custom', 'b'), ('custom', 'course'), ('sequential', 'b')) a(k, x);
+select a.k || '-asset-' || a.x, 'smoke-drip-' || a.k, pg_temp.uid(1)::text, a.kind,
+  'material.pdf', 'application/pdf', 1, pg_temp.file_path(a.k, a.x), a.lesson, now()
+from (values
+  ('custom', 'a', 'custom-a', 'lesson_material'),
+  ('custom', 'b', 'custom-b', 'lesson_material'),
+  ('custom', 'course', null, 'lesson_material'),
+  ('custom', 'thumb', 'custom-b', 'lesson_thumbnail'),
+  ('sequential', 'b', 'sequential-b', 'lesson_material')
+) a(k, x, lesson, kind);
 insert into storage.objects(bucket_id, name)
-select 'course-content', storage_path from public.course_assets where course_id like 'smoke-drip-%';
+select 'course-content', storage_path from public.course_assets
+where course_id like 'smoke-drip-%' and kind = 'lesson_material';
 
 -- Aluno ativo, matriculado hoje, no curso com prazo por aula.
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
@@ -117,6 +125,8 @@ select pg_temp.check_drip('active student sees the material of the open lesson',
   'custom-asset-a' = any(pg_temp.assets_seen('custom')));
 select pg_temp.check_drip('active student cannot see the material of the closed lesson',
   not 'custom-asset-b' = any(pg_temp.assets_seen('custom')));
+select pg_temp.check_drip('active student still sees the public thumbnail of the closed lesson',
+  'custom-asset-thumb' = any(pg_temp.assets_seen('custom')));
 select pg_temp.check_drip('active student sees course-level material',
   'custom-asset-course' = any(pg_temp.assets_seen('custom')));
 select pg_temp.check_drip('active student opens the file of the open lesson',
@@ -133,7 +143,7 @@ set local role authenticated;
 select pg_temp.check_drip('owner reads every lesson',
   pg_temp.lessons_seen('custom') = array['custom-a', 'custom-b', 'custom-c', 'custom-p']);
 select pg_temp.check_drip('owner sees every material',
-  pg_temp.assets_seen('custom') = array['custom-asset-a', 'custom-asset-b', 'custom-asset-course']);
+  pg_temp.assets_seen('custom') = array['custom-asset-a', 'custom-asset-b', 'custom-asset-course', 'custom-asset-thumb']);
 select pg_temp.check_drip('owner opens every file',
   pg_temp.files_seen('custom') = array['custom-asset-a', 'custom-asset-b', 'custom-asset-course']);
 reset role;
@@ -262,9 +272,29 @@ begin
   end loop;
 end $$;
 
--- 29 checks de RLS + um por caso da tabela: nenhum pode sumir calado.
+-- Chamada direta não é oráculo: quem não é dono nem matriculado recebe false
+-- tanto para um curso instant que existe quanto para um id que não existe.
+select pg_temp.act_as(pg_temp.uid(5), 'authenticated');
+set local role authenticated;
+select pg_temp.check_drip('direct call: a stranger gets false for an existing instant course',
+  pg_temp.released('smoke-drip-instant', 'instant-c', null) = false);
+select pg_temp.check_drip('direct call: a stranger gets false for a course id that does not exist',
+  pg_temp.released('smoke-drip-missing', 'missing-c', null) = false);
+reset role;
+select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
+set local role authenticated;
+select pg_temp.check_drip('direct call: the owner gets the schedule of the own course',
+  pg_temp.released('smoke-drip-instant', 'instant-c', null));
+reset role;
+select pg_temp.act_as(pg_temp.uid(4), 'authenticated');
+set local role authenticated;
+select pg_temp.check_drip('direct call: an enrolled student gets the own schedule',
+  pg_temp.released('smoke-drip-instant', 'instant-c', null));
+reset role;
+
+-- 34 checks fora da tabela + um por caso da tabela: nenhum pode sumir calado.
 select pg_temp.check_drip('every case ran',
-  (select count(*) = 29 + (select count(*) from drip_cases) from drip_checks));
+  (select count(*) = 34 + (select count(*) from drip_cases) from drip_checks));
 
 select name, passed from drip_checks order by name;
 do $$

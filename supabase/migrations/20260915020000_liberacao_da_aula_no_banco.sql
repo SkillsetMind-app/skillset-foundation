@@ -51,12 +51,25 @@ begin
     return false;
   end if;
 
-  select c.modules, c.drip_strategy, c.drip_interval_days, c.free_preview_lesson_id
+  select c.owner_id, c.modules, c.drip_strategy, c.drip_interval_days, c.free_preview_lesson_id
     into v_course
     from public.courses c
    where c.id = p_course_id;
   -- O curso sumiu: não há do que liberar (a rota responde "locked").
   if not found then
+    return false;
+  end if;
+
+  -- Chamada direta por quem está logado não vira oráculo: quem não é dono nem
+  -- matriculado recebe false tanto para curso que existe quanto para curso que
+  -- não existe, então não descobre id de rascunho nem a estratégia do curso.
+  -- Nas policies nada muda: elas só chamam a função no ramo da matrícula.
+  if (select auth.uid()) is not null
+     and v_course.owner_id is distinct from v_uid
+     and not exists (
+       select 1 from public.enrollments e
+        where e.course_id = p_course_id and e.user_id = v_uid
+     ) then
     return false;
   end if;
 
@@ -193,6 +206,11 @@ create policy course_assets_select on public.course_assets
       )
       and (
         course_assets.lesson_id is null
+        -- Capa e miniatura moram no bucket público e aparecem no currículo
+        -- mesmo com a aula fechada (a lista de publicMediaKinds em
+        -- src/lib/data/course-assets.ts).
+        or course_assets.kind = any (array['lesson_thumbnail'::text, 'course_cover'::text,
+          'members_cover'::text, 'module_cover'::text])
         or public.lesson_is_released(course_assets.course_id, course_assets.lesson_id, (select auth.uid())::text)
       )
     )
