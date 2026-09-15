@@ -72,6 +72,36 @@ export async function createBunnyVideo(title: string): Promise<string> {
   return data.guid;
 }
 
+export type BunnyVideoStatus = {
+  status: number | null;
+  encodeProgress: number | null;
+  lengthSeconds: number | null;
+};
+
+// Processing state of one video (Bunny "Get Video"). Returns only the three
+// fields the lesson studio shows; the full response and the key stay here.
+export async function getBunnyVideoStatus(videoId: string): Promise<BunnyVideoStatus> {
+  const libraryId = getLibraryId();
+  const apiKey = requireEnv("BUNNY_STREAM_API_KEY");
+
+  const res = await fetch(`${BUNNY_API_BASE}/library/${libraryId}/videos/${encodeURIComponent(videoId)}`, {
+    headers: { AccessKey: apiKey, Accept: "application/json" },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error(`Bunny get video failed: ${res.status}`);
+  }
+
+  const data = (await res.json()) as { status?: unknown; encodeProgress?: unknown; length?: unknown };
+  const asNumber = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : null);
+  return {
+    status: asNumber(data.status),
+    encodeProgress: asNumber(data.encodeProgress),
+    lengthSeconds: asNumber(data.length),
+  };
+}
+
 // TUS upload authorization, per Bunny docs:
 //   signature = SHA256(library_id + api_key + expiration + video_id)
 // The browser sends {signature, expires, libraryId, videoId} as TUS headers.

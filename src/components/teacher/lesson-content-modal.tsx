@@ -99,6 +99,24 @@ function getLessonErrorMessage(error: LessonError | null, t: (key: string) => st
 // Author preview never advances or records a student's lesson progress.
 function handlePreviewEnded() {}
 
+type BunnyProcessing = {
+  assetId: string;
+  status: number | null;
+  encodeProgress: number | null;
+  lengthSeconds: number | null;
+};
+
+// Bunny "Get Video" status: 0-3 still processing, 4 finished, 5 error,
+// 6 upload failed. 7-8 (just-in-time packaging) already play, so anything from
+// 4 up that is not a failure counts as ready.
+const BUNNY_FINISHED = 4;
+function isBunnyFailed(status: number | null) {
+  return status === 5 || status === 6;
+}
+function isBunnyReady(status: number | null) {
+  return status !== null && status >= BUNNY_FINISHED && !isBunnyFailed(status);
+}
+
 // O link digitado e ainda nao gravado (sem blur) vai antes de fechar. Link
 // recusado ou troca nao confirmada seguram o modal aberto, com o erro ou o
 // aviso na tela: fechar calado perdia o que o professor digitou.
@@ -179,6 +197,10 @@ export function LessonContentModal({
   const [error, setError] = useState<LessonError | null>(null);
   const [success, setSuccess] = useState<"uploaded" | "deleted" | "oldLinkRemoved" | null>(null);
   const [assetsLoaded, setAssetsLoaded] = useState(false);
+  // Latest Bunny processing answer for the lesson video, and the asset whose
+  // duration was already written (only once per video).
+  const [bunnyProcessing, setBunnyProcessing] = useState<BunnyProcessing | null>(null);
+  const durationWrittenForRef = useRef<string | null>(null);
   // Estado proprio, fora de `error`: resetUploadState (troca de aba ou de
   // modo) limpava o erro de carga e o aviso do link voltava a "Loading...".
   const [assetsLoadFailed, setAssetsLoadFailed] = useState(false);
@@ -277,6 +299,79 @@ export function LessonContentModal({
       onUpdateLesson({ videoSource: "upload" });
     }
   }, [assetsLoaded, primaryVideo, lesson.videoSource, onUpdateLesson]);
+
+  // Video on Bunny: ask for its processing state every 10 s until it is ready
+  // or failed. Stops when the studio closes (unmount) or the video changes.
+  const bunnyAssetId = resolvedSource === "upload" && primaryVideo?.bunnyVideoId ? primaryVideo.id : null;
+  useEffect(() => {
+    if (!bunnyAssetId) {
+      return;
+    }
+    const assetId = bunnyAssetId;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    async function poll() {
+      try {
+        const response = await fetch(`/api/teach/video/status?assetId=${encodeURIComponent(assetId)}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (response.ok) {
+          const data = (await response.json()) as Omit<BunnyProcessing, "assetId">;
+          if (controller.signal.aborted) {
+            return;
+          }
+          setBunnyProcessing({ assetId, ...data });
+          if (data.status !== null && data.status >= BUNNY_FINISHED) {
+            return;
+          }
+        } else if (response.status < 500) {
+          // Signed out, not the owner, or gone: asking again will not help.
+          return;
+        }
+      } catch {
+        if (controller.signal.aborted) {
+          return;
+        }
+      }
+      timer = setTimeout(poll, 10_000);
+    }
+
+    void poll();
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [bunnyAssetId]);
+
+  // Duration: the first answer that shows the video ready with a length writes
+  // the minutes (rounded up, at least 1), only if they changed. The normal
+  // autosave takes it to the database.
+  useEffect(() => {
+    const answer = bunnyProcessing;
+    if (
+      !answer || !isBunnyReady(answer.status) || !answer.lengthSeconds
+      || durationWrittenForRef.current === answer.assetId
+    ) {
+      return;
+    }
+    durationWrittenForRef.current = answer.assetId;
+    const minutes = Math.max(1, Math.ceil(answer.lengthSeconds / 60));
+    if (lesson.durationMinutes !== minutes) {
+      onUpdateLesson({ durationMinutes: minutes });
+    }
+  }, [bunnyProcessing, lesson.durationMinutes, onUpdateLesson]);
+
+  const processing = bunnyProcessing?.assetId === primaryVideo?.id ? bunnyProcessing : null;
+  const bunnyStatusLine = !processing || processing.status === null
+    ? t("creatorEditor.lesson.savedProcessing")
+    : isBunnyFailed(processing.status)
+      ? t("creatorEditor.lesson.videoFailed")
+      : isBunnyReady(processing.status)
+        ? t("creatorEditor.lesson.videoReady")
+        : t("creatorEditor.lesson.videoProcessing")
+          .replace("{percent}", () => String(processing.encodeProgress ?? 0));
 
   // The parent mounts this modal conditionally, so it is always "open" while
   // mounted — Escape mirrors the close affordances (X button / Done / overlay).
@@ -694,7 +789,7 @@ export function LessonContentModal({
                       <>
                         <BunnyVideoPlayer key={primaryVideo.id} assetId={primaryVideo.id} title={lesson.title} />
                         <p className="text-sm text-[var(--color-ink-soft)]">
-                          {t("creatorEditor.lesson.savedProcessing")}
+                          {bunnyStatusLine}
                         </p>
                       </>
                     ) : (
