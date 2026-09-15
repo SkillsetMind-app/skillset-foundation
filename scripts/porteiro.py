@@ -43,13 +43,15 @@ Ambiente:
     OPS_ALERT_WEBHOOK_SECRET vai no cabeçalho x-ops-secret; opcional
     PR_NUMBER / PR_URL / REPO  só para o texto do alerta
 
-Arquivo que o analisador não leu nunca dá 0: binário (inclusive o que o
-.gitattributes marca -diff), submódulo, arquivo que o `git diff --name-only`
-lista e o diff não traz, ou PR só de imagem/fonte/snapshot saem com 3.
+Arquivo que o analisador não leu nunca dá 0: binário que não é imagem/fonte
+(inclusive o que o .gitattributes marca -diff), submódulo, link simbólico, ou
+arquivo que o `git diff --name-only` lista e o diff não traz saem com 3.
+Imagem/fonte só fica de fora quando é binário de verdade e todos os nomes do
+bloco (antes e depois do rename) são de imagem/fonte; PR só com isso dá 0.
 
 Saídas: 0 ok · 1 bloqueante em modo "barra" · 3 não analisado (nenhuma IA
-com chave e saldo deu veredito, cabeçalho do diff ilegível, binário ou
-submódulo, ou PARCIAL: arquivo que ficou sem ler) · 2 erro de uso.
+com chave e saldo deu veredito, cabeçalho do diff ilegível, binário,
+submódulo ou link, ou PARCIAL: arquivo que ficou sem ler) · 2 erro de uso.
 """
 from __future__ import annotations
 
@@ -133,9 +135,10 @@ CAMINHOS_DE_RISCO = (
 # Lockfile decide de onde vem o código instalado ("resolved"/"integrity"):
 # é caminho de risco, lido pelo nome do arquivo em qualquer pasta.
 LOCKFILES = {"package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml", "bun.lock", "bun.lockb"}
-# Fora da análise por não ser código -- casado só com o ÚLTIMO segmento do
-# caminho (src/app/api/x.png/route.ts é código). SVG carrega script: é código.
-ASSETS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".woff", ".woff2", ".snap"}
+# Imagem/fonte: fora da análise só pela regra de asset_de_verdade. Casado com o
+# ÚLTIMO segmento do caminho (src/app/api/x.png/route.ts é código). SVG carrega
+# script e o vitest executa .snap (new Function no conteúdo): os dois são código.
+ASSETS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".ico", ".woff", ".woff2", ".ttf", ".otf"}
 
 SISTEMA = """Voce e um analista de seguranca de aplicacao revisando um diff.
 
@@ -163,15 +166,24 @@ CERCA = re.compile(r"^```(?:json)?|```$", re.M)
 # O git põe entre aspas (escape estilo C) o caminho com aspas, barra invertida,
 # caractere de controle e -- sem core.quotePath=false -- qualquer não-ASCII.
 CABECALHO = re.compile(r"^diff --git (.*)$", re.M)
-LADOS = re.compile(r'(?:"a/(?:[^"\\]|\\.)*"|a/.+?) ("b/(?:[^"\\]|\\.)*"|b/.+)')
-# Severidade no texto cru de uma resposta que não fechou o JSON (a aspa final
-# pode ter ficado de fora do corte); grave ou não decide _sev.
-SEV_CRU = re.compile(r'"severidade"\s*:\s*"([^"]*)')
+LADOS = re.compile(r'("a/(?:[^"\\]|\\.)*"|a/.+?) ("b/(?:[^"\\]|\\.)*"|b/.+)')
+# Chaves aceitas por campo (o modelo às vezes responde em inglês).
+CHAVES = {"severidade": ("severidade", "severity", "nivel", "gravidade"), "titulo": ("titulo", "title"),
+          "arquivo": ("arquivo", "file"), "confianca": ("confianca", "confidence"), "linha": ("linha", "line")}
+# Severidade no texto cru de uma resposta que não fechou o JSON. Sem a aspa
+# final (cortou dentro do valor) é ilegível: conta como grave.
+SEV_CRU = re.compile(r'"(?:%s)"\s*:\s*"([^"]*)("?)' % "|".join(CHAVES["severidade"]))
 ABRE_ACHADOS = re.compile(r'"achados"\s*:\s*\[')
-SEV_EN = {"critical": "critica", "high": "alta", "medium": "media", "low": "baixa"}
+SEV_SINONIMOS = {
+    "critical": "critica", "critico": "critica", "high": "alta", "alto": "alta",
+    "medium": "media", "medio": "media", "moderate": "media", "moderado": "media", "moderada": "media",
+    "low": "baixa", "baixo": "baixa", "info": "baixa", "informational": "baixa", "informativo": "baixa",
+    "informativa": "baixa", "none": "baixa", "nenhuma": "baixa", "nenhum": "baixa",
+}
+ORDEM = ("critica", "alta", "media", "baixa")
 # Metadado do git (coluna 0; linha de conteúdo sempre começa com + - espaço \).
 BINARIO = re.compile(r"^(?:Binary files |GIT binary patch)", re.M)
-SUBMODULO = re.compile(r"^(?:(?:new file|deleted file|old|new) mode 160000|index \S+ 160000)$", re.M)
+MODO_GIT = re.compile(r"^(?:(?:new file|deleted file|old|new) mode|index \S+) (\d{6})$", re.M)
 RENOMEADO = re.compile(r"^(?:rename|copy) from (.+)$", re.M)
 
 
@@ -302,21 +314,32 @@ def _texto(v) -> str:
 
 
 def _sev(v) -> str:
-    """'Crítica', 'HIGH' -> critica/alta. Vazio -> media. Qualquer outra coisa
-    (inclusive não-texto) -> alta: severidade que o portão não reconhece não
-    pode virar aviso."""
+    """'Crítica', 'HIGH', 'baixo', 'moderate', 'info' -> critica/alta/media/baixa.
+    Vazio -> media. Qualquer outra coisa (inclusive não-texto) -> alta:
+    severidade que o portão não reconhece não pode virar aviso."""
     if v is None:
         return "media"
     s = unicodedata.normalize("NFKD", v).encode("ascii", "ignore").decode().lower().strip() if isinstance(v, str) else "?"
-    s = SEV_EN.get(s, s)
+    s = SEV_SINONIMOS.get(s, s)
     return s if s in SEVERIDADES else "alta" if s else "media"
+
+
+def _preenchido(v) -> bool:
+    return v is not None and not (isinstance(v, str) and not v.strip())
+
+
+def _pega(a: dict, campo: str, padrao=None):
+    """1º valor preenchido entre as chaves aceitas do campo (pt ou inglês)."""
+    return next((a[k] for k in CHAVES[campo] if _preenchido(a.get(k))), padrao)
 
 
 def normaliza(bruto: dict | None) -> dict | None:
     """Entrada inválida é pulada, não derruba a lista (um bloqueante bom ao lado
     de um `null` continua valendo). Crítica/alta sem título não some: vira
-    "(sem título)" e ainda barra. Lista só com entradas inválidas => None.
-    Entrada com campos mas sem severidade e sem título (ex.: chaves em inglês)
+    "(sem título)" e ainda barra. Título sem severidade legível é alta.
+    Chaves em inglês (severity/title/file/confidence/line) valem; com duas
+    severidades, vale a mais grave. Lista só com entradas inválidas => None.
+    Entrada com campos mas sem severidade e sem título em nenhuma grafia
     => None, a menos que haja bloqueante: não é "nenhum achado"."""
     if not isinstance(bruto, dict) or not isinstance(bruto.get("achados"), list):
         return None
@@ -324,12 +347,13 @@ def normaliza(bruto: dict | None) -> dict | None:
     for a in bruto["achados"]:
         if not isinstance(a, dict):
             continue
-        cru, titulo = a.get("severidade"), a.get("titulo")
-        tem_titulo = isinstance(titulo, str) and bool(titulo.strip())
-        if (cru is None or (isinstance(cru, str) and not cru.strip())) and not tem_titulo:
+        sevs = [_sev(a[k]) for k in CHAVES["severidade"] if _preenchido(a.get(k))]
+        titulo = _pega(a, "titulo")
+        tem_titulo = isinstance(titulo, str)
+        if not sevs and not tem_titulo:
             sem_nada += bool(a)
             continue
-        sev = _sev(cru)
+        sev = min(sevs, key=ORDEM.index) if sevs else "alta"
         grave = sev in ("critica", "alta")
         if not tem_titulo:
             if not grave:
@@ -338,17 +362,17 @@ def normaliza(bruto: dict | None) -> dict | None:
         # Grave sem confiança legível ("95%", "alta", NaN, estouro) barra: 1.0.
         padrao = 1.0 if grave else 0.5
         try:
-            conf = float(a.get("confianca", padrao))
+            conf = float(_pega(a, "confianca", padrao))
             conf = max(0.0, min(1.0, conf)) if conf == conf else padrao  # NaN
         except (TypeError, ValueError, OverflowError):
             conf = padrao
         try:
-            linha = int(a.get("linha") or 0)
+            linha = int(_pega(a, "linha") or 0)
         except (TypeError, ValueError, OverflowError):
             linha = 0
         fora.append({
             "severidade": sev,
-            "arquivo": _texto(a.get("arquivo")),
+            "arquivo": _texto(_pega(a, "arquivo")),
             "linha": linha,
             "titulo": titulo,
             "porque": _texto(a.get("porque")),
@@ -407,7 +431,8 @@ def analisa(diff: str, prov: Provedor, chave: str, arquivos=(), prazo: float | N
         if estado != "ok":
             parcial = r if r is not None else resgata(content)
             bloq, aviso, _ = classifica(parcial["achados"], list(arquivos)) if parcial else ([], [], 0)
-            grave = r is None and any(_sev(s) in ("critica", "alta") for s in SEV_CRU.findall(content))
+            grave = r is None and any(not aspa or _sev(s) in ("critica", "alta")
+                                      for s, aspa in SEV_CRU.findall(content))
             if bloq or aviso or grave:
                 # ponytail: para no 1º corte com achado, sem tentar teto maior;
                 # achado leve cortado vira 3. Mesclar tentativas se isso for comum.
@@ -440,14 +465,16 @@ def desaspa(tok: str) -> str | None:
 def arquivos_do_diff(diff: str) -> list[str | None]:
     """Um item por cabeçalho `diff --git`; None onde o cabeçalho não se lê
     (quem chama decide -- main não aprova com arquivo que ficou sem nome)."""
-    fora = []
-    for m in CABECALHO.finditer(diff):
-        lados = LADOS.fullmatch(m.group(1))
-        b = lados and lados.group(1)
-        if b and b.startswith('"'):
-            b = desaspa(b)
-        fora.append(b[2:] if b and b[2:] else None)
-    return fora
+    return [_lados(m.group(1))[1] for m in CABECALHO.finditer(diff)]
+
+
+def _lados(cabecalho: str) -> tuple[str | None, str | None]:
+    """'a/x b/y' -> ('x', 'y'); None no lado que não se lê."""
+    def nome(tok):
+        t = desaspa(tok) if tok.startswith('"') else tok
+        return t[2:] if t and t[2:] else None
+    m = LADOS.fullmatch(cabecalho)
+    return (nome(m.group(1)), nome(m.group(2))) if m else (None, None)
 
 
 def _ultimo(caminho: str) -> str:
@@ -470,6 +497,35 @@ def blocos(diff: str) -> list[tuple[str | None, str]]:
 def renomeados(diff: str) -> list[str]:
     """Nomes de antes do rename/copy: o modelo pode citar o arquivo por eles."""
     return [desaspa(n) or n if n.startswith('"') else n for n in RENOMEADO.findall(diff)]
+
+
+def _conteudo(bloco: str) -> str:
+    """Os hunks do bloco (do 1º @@ em diante); antes disso só vem metadado do git."""
+    i = bloco.find("\n@@")
+    return bloco[i:] if i != -1 else ""
+
+
+def modos(bloco: str) -> set[str]:
+    return set(MODO_GIT.findall(bloco))
+
+
+def asset_de_verdade(bloco: str) -> bool:
+    """Imagem/fonte que pode ficar fora da análise: todos os nomes do bloco
+    (lado a, lado b, rename/copy from) com extensão de imagem/fonte, só modo
+    100644 (nada de link 120000 nem submódulo 160000) e binário de verdade
+    (o git disse, ou o conteúdo tem NUL). Texto com nome de imagem é código;
+    rename de .ts para .png também."""
+    m = CABECALHO.match(bloco)
+    nomes = [*_lados(m.group(1)), *renomeados(bloco)] if m else [None]
+    return (all(n and eh_asset(n) for n in nomes) and modos(bloco) <= {"100644"}
+            and bool(BINARIO.search(bloco) or "\x00" in _conteudo(bloco)))
+
+
+def binario(bloco: str) -> bool:
+    """Bloco que o modelo não leria: o git não mostrou o texto, ou o texto tem
+    NUL ou U+FFFD (byte que não é UTF-8, trocado na leitura com errors=replace)."""
+    c = _conteudo(bloco)
+    return bool(BINARIO.search(bloco)) or "\x00" in c or "�" in c
 
 
 def filtra_risco(diff: str) -> str:
@@ -710,26 +766,40 @@ def main(argv: list[str]) -> int:
         escreve(placar_path, nao_analisado(motivo, modo))
         print(f"NAO ANALISADO: {motivo}")
         return 3
-    # O que o modelo não vê não pode aprovar: binário (o .gitattributes pode
-    # marcar código como -diff) e submódulo (o código apontado nunca vem).
-    codigo = [(a, p) for a, p in blocos(diff) if not eh_asset(a)]
-    for rotulo, rx in (("arquivo binário não lido", BINARIO), ("submódulo", SUBMODULO)):
-        n = sum(1 for _, p in codigo if rx.search(p))
+    # O que o modelo não vê não pode aprovar. Submódulo e link simbólico, em
+    # QUALQUER bloco (inclusive com nome de imagem): o código apontado nunca vem.
+    todos = blocos(diff)
+    for rotulo, modo_git in (("submódulo", "160000"), ("link simbólico", "120000")):
+        n = sum(1 for _, p in todos if modo_git in modos(p))
         if n:
             escreve(placar_path, nao_analisado(f"{rotulo} ({n} arquivo(s)): o analisador não vê o código", modo))
             print(f"NAO ANALISADO: {rotulo} ({n})")
             return 3
+    # Imagem/fonte binária de verdade sai; todo o resto é código. Binário que
+    # sobrar (o .gitattributes pode marcar código como -diff; wasm, zip, pdf)
+    # chega ao modelo como lixo: não lido.
+    codigo = [(a, p) for a, p in todos if not asset_de_verdade(p)]
+    n = sum(1 for _, p in codigo if binario(p))
+    if n:
+        escreve(placar_path, nao_analisado(f"arquivo binário não lido ({n} arquivo(s)): o analisador não vê o código", modo))
+        print(f"NAO ANALISADO: arquivo binário não lido ({n})")
+        return 3
     ignorados = len(arquivos) - len(codigo)
     faltando = len(set(nomes) - set(arquivos) - set(renomeados(diff)))
     parcial, por = faltando, ["fora do diff"] if faltando else []
     if faltando:
         notas.append(f"{faltando} arquivo(s) alterado(s) que o diff lido não traz.")
     if ignorados:
-        notas.append(f"{ignorados} arquivo(s) de imagem/fonte/snapshot fora da análise (não são código).")
+        notas.append(f"{ignorados} arquivo(s) de imagem/fonte fora da análise (binários, não são código).")
     if not codigo:
-        escreve(placar_path, placar(0, 0, modo, vazio, "", " ".join(notas), parcial + ignorados,
-                                    " + ".join(por + ["nenhum arquivo de código"])))
-        print(f"PARCIAL: nenhum arquivo de código ({ignorados} imagem/fonte/snapshot)")
+        if not parcial:
+            # Todos passaram por asset_de_verdade: nada de código, nada escondido.
+            escreve(placar_path, placar(0, 0, modo, vazio, "",
+                                        f"PR só com arquivos de imagem/fonte ({ignorados}): nada de código para ler."))
+            print(f"só imagem/fonte ({ignorados})")
+            return 0
+        escreve(placar_path, placar(0, 0, modo, vazio, "", " ".join(notas), parcial, " + ".join(por)))
+        print(f"PARCIAL: {parcial} arquivo(s) fora do diff, nenhum arquivo de código")
         return 3
     diff, arquivos = "".join(p for _, p in codigo), [a for a, _ in codigo]
     if len(diff.encode()) > max_kb * 1024:
@@ -741,6 +811,13 @@ def main(argv: list[str]) -> int:
         if not arquivos:
             escreve(placar_path, placar(0, 0, modo, vazio, "", "\n\n".join(notas) + " Nenhum deles neste PR.", parcial, " + ".join(por)))
             print(f"PARCIAL: {parcial} arquivo(s) não lidos (diff grande), nenhum caminho de risco")
+            return 3
+        if len(diff.encode()) > max_kb * 1024:
+            # Nem só os de risco cabem: o modelo não é chamado, nada foi lido.
+            parcial += len(arquivos)
+            notas[-1] = f"Diff acima de {max_kb} KB mesmo só com os caminhos de risco: nenhum arquivo foi lido."
+            escreve(placar_path, placar(0, 0, modo, vazio, "", "\n\n".join(notas), parcial, " + ".join(por)))
+            print(f"PARCIAL: {parcial} arquivo(s) não lidos (diff grande, até os de risco)")
             return 3
     # O modelo pode citar o arquivo pelo nome de antes do rename.
     tocados = arquivos + renomeados(diff)
@@ -831,8 +908,16 @@ def demo() -> None:
     assert eh_de_risco("apps/web/package-lock.json") and eh_de_risco("yarn.lock")
     # Extensão só no último segmento: a pasta x.png de uma rota não é imagem.
     assert eh_asset("public/logo.PNG") and not eh_asset("src/app/api/x.png/route.ts") and not eh_asset("a.svg")
-    assert [_sev(s) for s in ("Crítica", "HIGH", "medium", "urgente", "", None)] == [
-        "critica", "alta", "media", "alta", "media", "media"]
+    assert eh_asset("f.ttf") and not eh_asset("x.test.ts.snap")  # o vitest executa .snap
+    png = "diff --git a/i.png b/i.png\nnew file mode 100644\n--- /dev/null\n+++ b/i.png\n@@ -0,0 +1 @@\n+�PNG\x00\n"
+    assert asset_de_verdade(png) and not asset_de_verdade(png.replace("\x00", ""))  # texto é código
+    assert not asset_de_verdade(png.replace("100644", "120000"))
+    assert not asset_de_verdade("diff --git a/p.ts b/p.png\nrename from p.ts\nrename to p.png\nBinary files a/p.ts and b/p.png differ\n")
+    assert binario(png) and not binario(png.replace("�", "").replace("\x00", ""))
+    assert [_sev(s) for s in ("Crítica", "HIGH", "medium", "urgente", "", None, "baixo", "moderado", "info")] == [
+        "critica", "alta", "media", "alta", "media", "media", "baixa", "media", "baixa"]
+    assert normaliza({"achados": [{"title": "t", "severity": "critical"}]})["achados"][0]["severidade"] == "critica"
+    assert normaliza({"achados": [{"titulo": "t"}]})["achados"][0]["severidade"] == "alta"
 
     achados = normaliza({"achados": [
         {"titulo": "IDOR", "severidade": "alta", "confianca": 0.9, "arquivo": "src/app/api/pay/route.ts", "linha": 3},

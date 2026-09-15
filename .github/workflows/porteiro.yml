@@ -47,9 +47,9 @@ jobs:
           fetch-depth: 0
 
       # Diff da base até a ponta do PR, SEM pathspec de exclusão: um
-      # ':(exclude)*.png' também some com a pasta src/app/api/x.png/. Imagem,
-      # fonte e snapshot saem no script, pelo último segmento do caminho;
-      # lockfile é caminho de risco e é lido.
+      # ':(exclude)*.png' também some com a pasta src/app/api/x.png/. Imagem e
+      # fonte binárias saem no script (último segmento do caminho, todos os
+      # nomes do bloco, binário de verdade); lockfile é caminho de risco e é lido.
       # --text --no-textconv --no-ext-diff: nem `* -diff` no .gitattributes nem
       # um byte NUL escondem o código atrás de "Binary files ... differ" (o que
       # sobrar assim dá 3 no script).
@@ -58,14 +58,16 @@ jobs:
       # formas e dá 3 (não 0) se sobrar cabeçalho que não reconhece.
       # pr.names: o que o PR toca, segundo o git; arquivo que não vier no diff
       # dá PARCIAL (3), nunca 0. Um comando por linha: o teste roda os dois.
+      # --no-renames: `git mv src/proxy.ts src/proxy.png` vira apagar + criar,
+      # e o modelo lê o código apagado (rename 100% não traz conteúdo nenhum).
       - name: Diff do PR
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          git -c core.quotePath=false diff --no-color --text --no-textconv --no-ext-diff "$BASE...$HEAD" > "$RUNNER_TEMP/pr.diff"
-          git -c core.quotePath=false diff --name-only -z "$BASE...$HEAD" > "$RUNNER_TEMP/pr.names"
+          git -c core.quotePath=false diff --no-color --text --no-textconv --no-ext-diff --no-renames "$BASE...$HEAD" > "$RUNNER_TEMP/pr.diff"
+          git -c core.quotePath=false diff --name-only -z --no-renames "$BASE...$HEAD" > "$RUNNER_TEMP/pr.names"
           echo "diff: $(wc -c < "$RUNNER_TEMP/pr.diff") bytes"
 
       # continue-on-error: o placar precisa ser publicado mesmo quando o
