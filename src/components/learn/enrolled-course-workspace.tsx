@@ -1658,13 +1658,13 @@ function LessonContentPanel({
     !locked
     && ((resolvedVideoSource === "upload" && Boolean(primaryHostedVideo))
       || (resolvedVideoSource === "youtube" && Boolean(trustedEmbed)));
-  // Sem video, quem decide o aviso e o CONTEUDO, nao o tipo: aula nova nasce
-  // "video" e o professor nao troca mais o tipo (decisao de 14/09). Aula so
-  // de leitura nao pode dizer "Media not attached yet". O tipo "text" antigo
-  // continua valendo.
+  // Sem video, quem decide o aviso e o CORPO da aula, nao o tipo: aula nova
+  // nasce "video" e o professor nao troca mais o tipo (decisao de 14/09). Aula
+  // so de leitura nao pode dizer "Media not attached yet". A descricao nao
+  // conta: quase toda aula de video tem uma linha de resumo. O tipo "text"
+  // antigo continua valendo.
   const isTextFirstLesson =
-    lesson.type === "text"
-    || Boolean(lesson.contentText?.trim() || lesson.description?.trim());
+    lesson.type === "text" || Boolean(lesson.contentText?.trim());
   // No preview do professor não se guarda posição: ele não é o aluno.
   // Memoizado porque a referência é objeto: uma nova a cada render reabriria
   // a aula (e o evento "abriu" do funil) a cada quadro.
@@ -1736,7 +1736,9 @@ function LessonContentPanel({
               autoplay={autoplay}
             />
           </VideoWatermark>
-        ) : lessonContentPending ? (
+        ) : lessonContentPending || isLoadingAssets ? (
+          // Com os anexos ainda chegando, a aula de video piscava "Media not
+          // attached yet" antes do player aparecer.
           <div className="member-video-empty">
             <PlayCircle size={34} aria-hidden />
             <h5>{t("learn.classroom.lesson.loading")}</h5>

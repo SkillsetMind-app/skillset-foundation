@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
 import type { Course } from "@/domain/learning";
+import { subscribeToCourseAssets } from "@/lib/data/course-assets";
 
 /**
  * A aula selecionada nao estava no endereco: recarregar a pagina ou voltar no
@@ -197,6 +198,7 @@ describe("aviso do player sem video segue o conteudo, nao o tipo", () => {
         lessons: [
           { id: "l1", title: "Leitura", type: "video", duration: "Self-paced", isPreview: true, contentText: "leia isto", description: "" },
           { id: "l2", title: "Vazia", type: "video", duration: "Self-paced", isPreview: false, contentText: null, description: "" },
+          { id: "l3", title: "Video pendente", type: "video", duration: "Self-paced", isPreview: false, contentText: null, description: "Resumo curto" },
         ],
       },
     ],
@@ -216,5 +218,40 @@ describe("aviso do player sem video segue o conteudo, nao o tipo", () => {
 
     expect(playerHeading()).toBe("Vazia");
     expect(playerNotice()).toBe("Media not attached yet");
+  });
+
+  // Quase toda aula de video tem uma linha de resumo: o resumo nao pode
+  // transformar "video ainda nao enviado" em "aula de leitura".
+  it("aula de video com resumo e sem midia continua com o aviso de midia", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l3");
+    render(<EnrolledCourseWorkspace course={semVideo} previewMode />);
+
+    expect(playerHeading()).toBe("Video pendente");
+    expect(playerNotice()).toBe("Media not attached yet");
+  });
+
+  // Enquanto os anexos da aula nao chegam, o aviso e de carregamento: antes a
+  // aula de video piscava "Media not attached yet" ate o player aparecer.
+  it("com os anexos ainda carregando mostra carregando, nao midia faltando", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l3");
+    // O mock padrao nunca responde: a assinatura dos anexos fica pendente.
+    render(<EnrolledCourseWorkspace course={semVideo} previewMode enableFirestoreAssets />);
+
+    expect(playerNotice()).toBe("Loading lesson content...");
+  });
+
+  it("depois que os anexos chegam vazios mostra midia faltando", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l3");
+    vi.mocked(subscribeToCourseAssets).mockImplementation((_courseId, onAssets) => {
+      onAssets([]);
+      return vi.fn();
+    });
+    try {
+      render(<EnrolledCourseWorkspace course={semVideo} previewMode enableFirestoreAssets />);
+
+      expect(playerNotice()).toBe("Media not attached yet");
+    } finally {
+      vi.mocked(subscribeToCourseAssets).mockImplementation(() => vi.fn());
+    }
   });
 });

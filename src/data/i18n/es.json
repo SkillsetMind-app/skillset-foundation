@@ -3686,7 +3686,7 @@
         "moduleDescription": "Descripción del módulo",
         "moduleDescriptionExample": "Descripción opcional del módulo. Ejemplo: Presenta los conceptos necesarios antes de las lecciones prácticas.",
         "helpTopic": "Acceso a las lecciones y disponibilidad gradual",
-        "help": "La vista previa gratuita es opcional y debe ser una lección de este curso; permite conocer el estilo de enseñanza antes de inscribirse. Los días de liberación por lección están en Editar contenido > Ajustes de la lección y solo aparecen cuando el curso usa liberación por lección.",
+        "help": "La vista previa gratuita es opcional y debe ser una lección de este curso; permite conocer el estilo de enseñanza antes de inscribirse. Los días de liberación por lección se definen al abrir la lección (Añadir vídeo o Editar contenido) > Ajustes, y solo aparecen cuando la liberación del curso es Calendario por lección.",
         "moduleForLesson": "Módulo de esta lección",
         "chooseModule": "Elegir módulo",
         "lessonTitle": "Título de la lección",
