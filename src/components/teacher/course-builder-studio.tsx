@@ -975,7 +975,19 @@ export function CourseBuilderStudio() {
     // gravava a copia velha inteira por cima.
     skippedSnapshotRef.current = null;
     // Assincrono: setState direto no corpo do efeito e vetado (react-hooks).
-    queueMicrotask(() => applyServerDraft(skipped));
+    // O microtask confere de novo: entre agendar e rodar, uma edicao pode ter
+    // comitado (o React esvazia os efeitos pendentes antes do render de uma
+    // digitacao). Aplicar as cegas trocava essa edicao pelo snapshot velho e
+    // marcava como salvo. Sujo, ou com save no ar, o snapshot volta ao
+    // guardado (sem trocar um mais novo): o proximo save bem-sucedido o
+    // descarta, e um save que falha o aplica (em persistDraft).
+    queueMicrotask(() => {
+      if (draftDirtyRef.current || inFlightSavesRef.current > 0) {
+        skippedSnapshotRef.current ??= skipped;
+        return;
+      }
+      applyServerDraft(skipped);
+    });
   }, [draftIsDirty, applyServerDraft]);
   useEffect(() => {
     localModulesRef.current = modules;

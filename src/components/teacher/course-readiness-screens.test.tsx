@@ -323,7 +323,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       : screen.getByRole("button", { name: "Publish product" }));
     await screen.findByRole("link", { name: "Activate storefront" });
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
-    expect(screen.getByRole("alert")).toHaveTextContent("Activa tu tienda para habilitar la publicación: es un pago único.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Activa tu tienda para habilitar la publicación: una tarifa única de activación, que se cobra una sola vez por cuenta de creador, nunca por curso.");
     expect(screen.getByRole("link", { name: "Activar tienda" })).toHaveAttribute("href", "/teach/activate");
     expect(updateTeacherCourseBuilder).toHaveBeenCalledOnce();
     expect(publishTeacherCourse).toHaveBeenCalledTimes(operation === "publish" ? 1 : 0);

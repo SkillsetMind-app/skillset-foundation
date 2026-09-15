@@ -11,6 +11,7 @@ import { AuthProvider } from "@/components/auth/auth-provider";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import {
   currentPrivacyVersion,
+  currentTeacherTermsVersion,
   currentTermsVersion,
 } from "@/lib/legal/versions";
 
@@ -19,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   listenToAuthState: vi.fn(),
   getUserProfile: vi.fn(),
   acceptUserTerms: vi.fn(),
+  acceptTeacherTerms: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -35,6 +37,7 @@ vi.mock("@/lib/auth/supabase-auth", () => ({
 vi.mock("@/lib/data/user-profiles", () => ({
   getUserProfile: mocks.getUserProfile,
   acceptUserTerms: mocks.acceptUserTerms,
+  acceptTeacherTerms: mocks.acceptTeacherTerms,
 }));
 
 vi.mock("@/lib/posthog/client", () => ({
@@ -43,6 +46,11 @@ vi.mock("@/lib/posthog/client", () => ({
 }));
 
 const ACCEPT = "Accept and continue";
+// A teacher who accepted the May Teacher Terms, before the 2026-09-15 bump.
+const OUTDATED_TEACHER = { roles: ["teacher"], teacherTermsAcceptedAt: "2026-05-10T00:00:00.000Z", teacherTermsVersion: "2026-05-10" };
+
+// Lets the profile read resolve and the gate render before asserting absence.
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 function LocaleToggle() {
   const { setLocale } = useTranslation();
@@ -85,6 +93,7 @@ describe("LegalAcceptanceGate as the signup recovery path", () => {
     window.sessionStorage.clear();
     mocks.pathname = "/learn";
     mocks.acceptUserTerms.mockResolvedValue(undefined);
+    mocks.acceptTeacherTerms.mockResolvedValue(undefined);
   });
 
   afterEach(cleanup);
@@ -156,6 +165,89 @@ describe("LegalAcceptanceGate as the signup recovery path", () => {
     renderSignedIn();
 
     await waitFor(() => expect(mocks.getUserProfile).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
+  });
+
+  it("asks a teacher to re-accept outdated Teacher Terms, and only those", async () => {
+    mocks.getUserProfile.mockResolvedValue({
+      termsVersion: currentTermsVersion,
+      privacyVersion: currentPrivacyVersion,
+      marketingConsent: false,
+      ...OUTDATED_TEACHER,
+    });
+    renderSignedIn();
+
+    const accept = await screen.findByRole("button", { name: ACCEPT });
+    expect(screen.getByRole("link", { name: "Teacher Terms" }).getAttribute("href")).toBe("/legal/teacher-terms");
+    const boxes = screen.getAllByRole("checkbox");
+    expect(boxes).toHaveLength(1);
+    expect(accept).toHaveProperty("disabled", true);
+    fireEvent.click(boxes[0]);
+    fireEvent.click(accept);
+
+    await waitFor(() => expect(mocks.acceptTeacherTerms).toHaveBeenCalledWith("u-1"));
+    expect(mocks.acceptUserTerms).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull());
+  });
+
+  it("collects all three when both are outdated and keeps the general acceptance when the teacher write fails", async () => {
+    mocks.getUserProfile.mockResolvedValue({
+      termsVersion: null,
+      privacyVersion: null,
+      marketingConsent: false,
+      ...OUTDATED_TEACHER,
+    });
+    mocks.acceptTeacherTerms.mockRejectedValueOnce(new Error("transport details"));
+    renderSignedIn();
+
+    const accept = await screen.findByRole("button", { name: ACCEPT });
+    const [terms, privacy, teacher] = screen.getAllByRole("checkbox");
+    fireEvent.click(terms);
+    fireEvent.click(privacy);
+    expect(accept).toHaveProperty("disabled", true);
+    fireEvent.click(teacher);
+    fireEvent.click(accept);
+
+    await screen.findByText("Could not update your legal acceptance. Please try again.");
+    expect(mocks.acceptUserTerms).toHaveBeenCalledTimes(1);
+    // Only the Teacher Terms are still owed, and the retry stays open.
+    expect(screen.getAllByRole("checkbox")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: ACCEPT }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull());
+    expect(mocks.acceptUserTerms).toHaveBeenCalledTimes(1);
+    expect(mocks.acceptTeacherTerms).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ["a teacher who never accepted Teacher Terms (onboarding owns that)", { roles: ["teacher"] }],
+    ["a learner with an old Teacher Terms stamp", { ...OUTDATED_TEACHER, roles: ["student"] }],
+    ["a teacher on the current Teacher Terms", { ...OUTDATED_TEACHER, teacherTermsVersion: currentTeacherTermsVersion }],
+  ])("does not interrupt %s", async (_label, extra) => {
+    mocks.getUserProfile.mockResolvedValue({
+      termsVersion: currentTermsVersion,
+      privacyVersion: currentPrivacyVersion,
+      marketingConsent: false,
+      ...extra,
+    });
+    renderSignedIn();
+
+    await waitFor(() => expect(mocks.getUserProfile).toHaveBeenCalled());
+    await settle();
+    expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
+  });
+
+  it.each(["/legal/teacher-terms", "/legal/copyright"])("keeps %s readable while a re-acceptance is pending", async (path) => {
+    mocks.pathname = path;
+    mocks.getUserProfile.mockResolvedValue({
+      termsVersion: null,
+      privacyVersion: null,
+      marketingConsent: false,
+      ...OUTDATED_TEACHER,
+    });
+    renderSignedIn();
+
+    await waitFor(() => expect(mocks.getUserProfile).toHaveBeenCalled());
+    await settle();
     expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
   });
 });

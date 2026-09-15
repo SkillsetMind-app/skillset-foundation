@@ -3,7 +3,11 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 const copy = "promiseChangelog";
-const changedOn = "2026-07-24";
+// Newest first. `{date}` in a line becomes the entry's own date.
+const entries = [
+  { date: "2026-09-15", title: "change2Title", lines: ["change2WhatChanged", "change2Why", "change2Effective"] },
+  { date: "2026-07-24", title: "changeTitle", lines: ["whatChanged", "why", "effectiveNew", "effectiveExisting"] },
+];
 
 export async function generateMetadata() {
   const { t } = await getServerTranslation();
@@ -18,7 +22,6 @@ export default async function PromiseChangelogPage() {
   const { locale, t } = await getServerTranslation();
   const dateFormat = new Intl.DateTimeFormat(locale, { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
   const publishedAt = dateFormat.format(new Date("2026-05-11T00:00:00Z"));
-  const effectiveAt = dateFormat.format(new Date(`${changedOn}T00:00:00Z`));
   return (
     <PublicPage
       eyebrow={t(`${copy}.eyebrow`)}
@@ -33,23 +36,21 @@ export default async function PromiseChangelogPage() {
           {t(`${copy}.publication`).replace("{date}", () => publishedAt)}
         </p>
 
-        <div className="mt-8 rounded-[14px] border border-[var(--color-line)] bg-white p-5">
-          <p className="text-sm font-bold text-[var(--color-ink)]">
-            {changedOn} — {t(`${copy}.changeTitle`)}
-          </p>
-          <div className="mt-4 grid gap-2 text-sm leading-7 text-[var(--color-ink-soft)]">
-            <p>
-              {t(`${copy}.whatChanged`)}
-            </p>
-            <p>
-              {t(`${copy}.why`)}
-            </p>
-            <p>{t(`${copy}.effectiveNew`).replace("{date}", () => effectiveAt)}</p>
-            <p>
-              {t(`${copy}.effectiveExisting`).replace("{date}", () => effectiveAt)}
-            </p>
-          </div>
-        </div>
+        {entries.map((entry) => {
+          const effectiveAt = dateFormat.format(new Date(`${entry.date}T00:00:00Z`));
+          return (
+            <div key={entry.date} className="mt-8 rounded-[14px] border border-[var(--color-line)] bg-white p-5">
+              <p className="text-sm font-bold text-[var(--color-ink)]">
+                {entry.date} — {t(`${copy}.${entry.title}`)}
+              </p>
+              <div className="mt-4 grid gap-2 text-sm leading-7 text-[var(--color-ink-soft)]">
+                {entry.lines.map((line) => (
+                  <p key={line}>{t(`${copy}.${line}`).replace("{date}", () => effectiveAt)}</p>
+                ))}
+              </div>
+            </div>
+          );
+        })}
 
         <div className="mt-8 rounded-[14px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-5">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">

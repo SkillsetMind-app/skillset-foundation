@@ -3,7 +3,7 @@
 import { CheckCircle2, ChevronDown, LockKeyhole, PlayCircle, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { LessonUnlockState } from "@/domain/drip-policy";
+import { formatUnlockDate, type LessonUnlockState } from "@/domain/drip-policy";
 import type { CourseModule } from "@/domain/learning";
 import { LessonThumbnail } from "@/components/learn/lesson-thumbnail";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -38,7 +38,7 @@ export function CoursePlaylist({
   onSelect,
   onUncomplete,
 }: CoursePlaylistProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [query, setQuery] = useState("");
   // A aula atual era destacada mas a lista nao rolava ate ela: trocar de aula
   // (ou o avanco automatico) deixava o destaque fora da area visivel da
@@ -157,7 +157,13 @@ export function CoursePlaylist({
                   {group.lessons.map(({ lesson, position }) => {
                     const isCompleted = completedLessonIds.includes(lesson.id);
                     const isSelected = selectedLessonId === lesson.id;
-                    const unlocked = unlockStateById.get(lesson.id)?.unlocked ?? true;
+                    const unlockState = unlockStateById.get(lesson.id);
+                    const unlocked = unlockState?.unlocked ?? true;
+                    // Aula agendada: a data em que abre, não só "Locked".
+                    const lockedLabel = unlockState?.unlocksAt
+                      ? t("learn.classroom.lesson.unlocks").replace("{date}", () =>
+                          formatUnlockDate(unlockState.unlocksAt!, locale))
+                      : t("learn.classroom.curriculum.locked");
 
                     return (
                       <li
@@ -212,7 +218,7 @@ export function CoursePlaylist({
                                 ) : null}
                                 {lesson.duration}
                                 {isCompleted ? ` · ${t("learn.classroom.curriculum.completed")}` : ""}
-                                {!unlocked ? ` · ${t("learn.classroom.curriculum.locked")}` : ""}
+                                {!unlocked ? ` · ${lockedLabel}` : ""}
                               </span>
                             </span>
                           </span>
