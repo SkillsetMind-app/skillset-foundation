@@ -3,6 +3,7 @@ name: Stripe attention
 # Hourly tick for /api/cron/stripe-attention: tells ops when a Stripe event did
 # not finish processing (someone may have paid without getting access). Also
 # knocks on /api/cron/ops-inbox: tickets, reports and verifications waiting.
+# And checks /, /login and /courses answer 200 (uptime alert via the ops relay).
 #
 # Lives here and not in vercel.json because Vercel Hobby crons run at most once
 # a day. The routes decide whether to alert; this job only knocks on the door.
@@ -22,7 +23,9 @@ jobs:
   check:
     name: Check stuck Stripe events and the ops inbox
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Site fully down: 2x60 s cron calls + 3x(2x20 s) page checks + 3x20 s
+    # alerts ~ 5 min. Five would cancel the job right before it alerts.
+    timeout-minutes: 8
     steps:
       # Without the value the call would only ever get 401 — fail loudly instead.
       - name: Call the check
@@ -53,3 +56,36 @@ jobs:
           curl -fsS -o /dev/null -w 'HTTP %{http_code}\n' --max-time 60 \
             -H "Authorization: Bearer $CRON_SECRET" \
             https://www.skillsetmind.com/api/cron/ops-inbox
+
+      # Uptime from outside Vercel: instrumentation.ts only reports 5xx the app
+      # itself sees, so a dead deploy or DNS says nothing. Anything but 200 goes
+      # to the same relay as sendOpsAlert (n8n -> Telegram), URL + code only.
+      # --retry 1 re-tries a timeout/5xx once; 000 means no answer at all.
+      - name: Check the site is up
+        if: ${{ !cancelled() }}
+        env:
+          OPS_ALERT_WEBHOOK_URL: ${{ secrets.OPS_ALERT_WEBHOOK_URL }}
+          OPS_ALERT_WEBHOOK_SECRET: ${{ secrets.OPS_ALERT_WEBHOOK_SECRET }}
+        run: |
+          down=0
+          for url in https://www.skillsetmind.com/ https://www.skillsetmind.com/login https://www.skillsetmind.com/courses; do
+            code=$(curl -sS -L -o /dev/null -w '%{http_code}' --max-time 20 --retry 1 "$url") || true
+            echo "$url HTTP $code"
+            [ "$code" = "200" ] && continue
+            down=1
+            echo "::error title=Site down::$url HTTP $code"
+            if [ -z "$OPS_ALERT_WEBHOOK_URL" ]; then
+              echo "::error title=Uptime alert not sent::Missing repository secret OPS_ALERT_WEBHOOK_URL."
+              continue
+            fi
+            # x-ops-secret only when set, same as alert.ts. No -S and stderr
+            # dropped: curl's own error names the relay host, and the log is public.
+            jq -n --arg s "$url HTTP $code" --arg at "$(date -u +%FT%TZ)" \
+              '{source:"skillsetmind", event:"uptime_down", severity:"critical", summary:$s, at:$at}' \
+              | curl -fs -o /dev/null -w 'alert HTTP %{http_code}\n' --max-time 20 \
+                  -H 'content-type: application/json' \
+                  ${OPS_ALERT_WEBHOOK_SECRET:+-H "x-ops-secret: $OPS_ALERT_WEBHOOK_SECRET"} \
+                  --data-binary @- "$OPS_ALERT_WEBHOOK_URL" 2>/dev/null \
+              || echo "::error title=Uptime alert not delivered::The relay did not accept the alert for $url."
+          done
+          exit $down

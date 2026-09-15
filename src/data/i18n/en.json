@@ -3516,7 +3516,7 @@
       "replaceWithLink": "Replace with link",
       "replaceWithUpload": "Replace with upload",
       "rejected": "Only YouTube and Vimeo video links are accepted. This link was not saved.",
-      "protectionNote": "An embedded video stays a link on YouTube or Vimeo — anyone with that link can watch it outside your course. Upload the file instead and each student gets their own signed playback."
+      "protectionNote": "YouTube and Vimeo videos stay viewable by anyone with the link, even outside SkillsetMind. Upload the video here so playback goes through SkillsetMind's access check."
     },
     "members": {
       "step": "Members Area",
