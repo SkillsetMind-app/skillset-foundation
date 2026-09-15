@@ -372,6 +372,8 @@ export function CreatorCourseDetail({
     && authStatus === "authenticated"
     && Boolean(user)
     && courseIsFree;
+  // The owner never sees padlocks on their own course.
+  const viewerOwnsCourse = Boolean(user && course.ownerId === user.uid);
   const lessons = course.modules.flatMap((module) =>
     module.lessons.map((lesson) => ({
       ...lesson,
@@ -747,9 +749,10 @@ export function CreatorCourseDetail({
                           {isPreview ? ` - ${t("publicCourses.previewShort")}` : ""}
                         </span>
                       );
-                      // The free preview stays as it was; every other lesson
-                      // carries a padlock and opens the buy popup.
-                      return isPreview ? (
+                      // The free preview (and every lesson, for the owner)
+                      // stays as it was; the rest carry a padlock and open the
+                      // buy popup.
+                      return isPreview || viewerOwnsCourse ? (
                         <div key={lesson.id} className={rowClass}>
                           <span className="font-semibold text-[var(--color-ink)]">
                             {lesson.title}
@@ -796,6 +799,8 @@ export function CreatorCourseDetail({
           Antes o cartao subia com a pagina e sumia na primeira rolagem. */}
       <aside
         id="enroll-card"
+        // Focus fallback for the popup's button when no main action is enabled.
+        tabIndex={-1}
         className="min-w-0 h-fit scroll-mt-24 self-start rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] lg:sticky lg:top-24"
       >
         {/* O preco era a quarta de seis linhas de uma lista "At a glance",
@@ -909,6 +914,7 @@ export function CreatorCourseDetail({
           <div className="mt-6 grid gap-3">
             <Link
               href={`/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`}
+              data-cta-focus
               className="button-solid w-full justify-center px-5 py-2.5 text-sm"
             >
               {enrollLabel}
@@ -923,6 +929,7 @@ export function CreatorCourseDetail({
             {canEnrollFree ? (
               <button
                 type="button"
+                data-cta-focus
                 onClick={handleFreeEnrollment}
                 disabled={isEnrollingFree}
                 className="button-solid mt-6 w-full px-5 py-2.5 text-sm disabled:opacity-60"
@@ -932,6 +939,7 @@ export function CreatorCourseDetail({
             ) : (
               <button
                 type="button"
+                data-cta-focus
                 onClick={handleCheckout}
                 disabled={!canCheckout || isCheckingOut}
                 className="button-solid mt-6 w-full px-5 py-2.5 text-sm disabled:opacity-60"
@@ -1037,7 +1045,10 @@ export function CreatorCourseDetail({
         course={isUnlockOpen ? course : null}
         onClose={closeUnlock}
         ctaHref="#enroll-card"
-        note={t("publicCourses.unlockNote")}
+        // The buy card's own label: resolved offer, discount code, interval
+        // and locale. The popup never formats the raw course price.
+        ctaLabel={enrollLabel}
+        note={t(courseIsFree ? "publicCourses.unlockNoteFree" : "publicCourses.unlockNote")}
       />
     ) : null}
     </>

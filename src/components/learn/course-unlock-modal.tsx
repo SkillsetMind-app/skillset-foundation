@@ -65,14 +65,19 @@ export function CourseUnlockModal({
   course,
   onClose,
   ctaHref,
+  ctaLabel,
   note,
   secondaryLink,
 }: {
   course: CourseUnlockModalCourse | null;
   onClose: () => void;
   // Where the buy button goes; defaults to the course page. A "#id" stays on
-  // the same page: the popup closes and the page scrolls to that element.
+  // the same page: the popup closes, the page scrolls to that element and
+  // focus moves to its main action ([data-cta-focus]), or to the element.
   ctaHref?: string;
+  // Button text shown as is. The course page passes its buy card's own label
+  // (resolved offer, interval, locale), so the two never disagree on price.
+  ctaLabel?: string;
   note?: string;
   secondaryLink?: { href: string; label: string };
 }) {
@@ -124,7 +129,12 @@ export function CourseUnlockModal({
     event.preventDefault();
     const target = document.getElementById(href.slice(1));
     onClose();
-    requestAnimationFrame(() => target?.scrollIntoView?.({ behavior: "smooth", block: "start" }));
+    // Runs after the modal has handed focus back to its opener, so this wins.
+    requestAnimationFrame(() => {
+      target?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      const action = target?.querySelector<HTMLElement>("[data-cta-focus]:not([disabled])");
+      (action ?? target)?.focus({ preventScroll: true });
+    });
   }
 
   return (
@@ -180,9 +190,8 @@ export function CourseUnlockModal({
             className="button-solid mt-5 inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 text-sm"
           >
             <Lock aria-hidden="true" size={15} />
-            {price
-              ? `${t("learn.paths.unlock")} - ${price}`
-              : t("learn.paths.unlock")}
+            {ctaLabel
+              ?? (price ? `${t("learn.paths.unlock")} - ${price}` : t("learn.paths.unlock"))}
           </Link>
           {secondaryLink ? (
             <Link
