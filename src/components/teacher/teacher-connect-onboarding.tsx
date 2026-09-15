@@ -90,6 +90,7 @@ function connectFailure(cause: unknown, fallback: "initialize" | "hosted") {
   const key = code === "activation_required" ? "activation"
     : code === "payments_not_configured" ? "configuration"
     : code === "unsupported_country" ? "country"
+    : code === "connect_account_conflict" ? "conflict"
     : code === "unauthenticated" || paymentError?.status === 401 ? "signIn"
     : code === "permission_denied" || paymentError?.status === 403 ? "permission"
     : paymentError?.status === 429 ? "rateLimit"
@@ -100,6 +101,7 @@ function connectFailure(cause: unknown, fallback: "initialize" | "hosted") {
 function connectRecoveryHref(key: string) {
   return key === "activation" ? "/teach/activate"
     : key === "signIn" ? "/login"
+    : key === "country" ? "/contact"
     : ["configuration", "permission", "request"].includes(key) ? "/support"
     : null;
 }
@@ -151,14 +153,26 @@ export function TeacherConnectOnboarding({
     );
   }
 
-  return <ConnectOnboardingFlow {...props} country={country ?? undefined} />;
+  return (
+    <ConnectOnboardingFlow
+      {...props}
+      country={country ?? undefined}
+      // Only a creator still without an account can pick again.
+      onChooseAgain={needsCountry ? () => setCountry(null) : undefined}
+    />
+  );
 }
 
 function ConnectOnboardingFlow({
   onComplete,
   onAvailabilityChange,
   country,
-}: Omit<TeacherConnectOnboardingProps, "needsCountry"> & { country?: string }) {
+  onChooseAgain,
+}: Omit<TeacherConnectOnboardingProps, "needsCountry"> & {
+  country?: string;
+  /** Back to the country picker; only offered for unsupported_country. */
+  onChooseAgain?: () => void;
+}) {
   const { resolvedTheme } = useTheme();
   const { locale, t } = useTranslation();
   const [connect, setConnect] = useState<StripeConnectInstance | null>(null);
@@ -287,6 +301,28 @@ function ConnectOnboardingFlow({
     setLoadError(null);
     setPayoutsUnavailable(false);
     setRetryKey((current) => current + 1);
+  }
+
+  // Unsupported country: retrying (embedded or hosted) would resend the same
+  // country, and the generic fallback blames the browser. Offer the two real
+  // ways out instead: pick again, or talk to support.
+  if (error?.key === "country") {
+    return (
+      <Card padding="none" className="p-5">
+        <p role="alert" className="text-sm leading-7 text-[var(--color-ink-soft)]">
+          {t("connectOnboarding.error.country")}
+          {error.status ? <> {t("activationCheckout.reference")} HTTP {error.status}</> : null}
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {onChooseAgain ? (
+            <Button onClick={onChooseAgain}>{t("connectOnboarding.chooseAnotherCountry")}</Button>
+          ) : null}
+          <Link className="button-outline px-4 py-2.5 text-sm" href={connectRecoveryHref("country")!}>
+            {t("connectOnboarding.recovery.country")}
+          </Link>
+        </div>
+      </Card>
+    );
   }
 
   if (payoutsUnavailable) {

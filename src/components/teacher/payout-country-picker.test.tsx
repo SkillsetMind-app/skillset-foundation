@@ -105,9 +105,28 @@ it("skips the picker when the creator already has an account", async () => {
   expect(sentBody()).toEqual({});
 });
 
-it("explains an unsupported country instead of a generic failure", async () => {
+// Retrying would resend the same country, so the ways out are support or a
+// new choice, never the retry/hosted loop.
+it("explains an unsupported country and offers support or a new choice", async () => {
   mocks.fetch.mockImplementation(() => Promise.resolve(reply(400, "unsupported_country")));
   render(ui("en", true));
+  fireEvent.change(screen.getByLabelText(copy("en", "connectOnboarding.countryLabel")), { target: { value: "GB" } });
   fireEvent.click(screen.getByRole("button", { name: copy("en", "connectOnboarding.countryContinue") }));
   expect(await screen.findByRole("alert")).toHaveTextContent(copy("en", "connectOnboarding.error.country"));
+  expect(screen.getByRole("link", { name: copy("en", "connectOnboarding.recovery.country") }))
+    .toHaveAttribute("href", "/contact");
+  expect(screen.queryByRole("button", { name: copy("en", "connectOnboarding.retry") })).toBeNull();
+  expect(screen.queryByRole("button", { name: copy("en", "connectOnboarding.continueSecure") })).toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: copy("en", "connectOnboarding.chooseAnotherCountry") }));
+  expect(screen.getByLabelText(copy("en", "connectOnboarding.countryLabel"))).toHaveValue("GB");
+  expect(mocks.fetch).toHaveBeenCalledTimes(1);
+});
+
+// Two tabs racing the first create: the loser gets 409 from the server.
+it("tells the creator to refresh when another tab is already creating the account", async () => {
+  mocks.fetch.mockImplementation(() => Promise.resolve(reply(409, "connect_account_conflict")));
+  render(ui("en", true));
+  fireEvent.click(screen.getByRole("button", { name: copy("en", "connectOnboarding.countryContinue") }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(copy("en", "connectOnboarding.error.conflict"));
 });

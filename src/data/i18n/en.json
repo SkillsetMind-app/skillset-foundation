@@ -4564,8 +4564,10 @@
     "countryHint": "Choose the country where you live and keep your bank account. Stripe can't change it after setup.",
     "countryLater": "Latin America and Brazil are coming later.",
     "countryContinue": "Continue",
+    "chooseAnotherCountry": "Choose another country",
     "error": {
       "country": "Payouts aren't available in that country yet. Contact support if this looks wrong.",
+      "conflict": "Your payout account is already being set up in another tab or window. Refresh this page to continue.",
       "initialize": "Stripe Connect could not initialize. Try again or contact support if this continues.",
       "hosted": "We could not open Stripe onboarding. Try again or contact support if this continues.",
       "activation": "Activate your creator account before setting up payouts.",
@@ -4585,7 +4587,8 @@
       "signIn": "Sign in",
       "configuration": "Contact support",
       "permission": "Contact support",
-      "request": "Contact support"
+      "request": "Contact support",
+      "country": "Contact support"
     }
   },
   "billingCheckout": {

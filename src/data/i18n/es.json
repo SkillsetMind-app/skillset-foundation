@@ -4564,8 +4564,10 @@
     "countryHint": "Elige el país donde vives y tienes tu cuenta bancaria. Stripe no puede cambiarlo después de la configuración.",
     "countryLater": "América Latina y Brasil llegarán más adelante.",
     "countryContinue": "Continuar",
+    "chooseAnotherCountry": "Elegir otro país",
     "error": {
       "country": "Las transferencias aún no están disponibles en ese país. Contacta con soporte si crees que es un error.",
+      "conflict": "Tu cuenta de cobro ya se está configurando en otra pestaña o ventana. Recarga esta página para continuar.",
       "initialize": "No se pudo iniciar Stripe Connect. Inténtalo de nuevo o contacta con soporte si el problema continúa.",
       "hosted": "No se pudo abrir el registro de Stripe. Inténtalo de nuevo o contacta con soporte si el problema continúa.",
       "activation": "Activa tu cuenta de creador antes de configurar las transferencias.",
@@ -4585,7 +4587,8 @@
       "signIn": "Iniciar sesión",
       "configuration": "Contactar con soporte",
       "permission": "Contactar con soporte",
-      "request": "Contactar con soporte"
+      "request": "Contactar con soporte",
+      "country": "Contactar con soporte"
     }
   },
   "billingCheckout": {

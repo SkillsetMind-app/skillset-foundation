@@ -478,8 +478,14 @@ export function TeacherWalletPanel() {
           <div className="mt-5">
             {/* Wait for the profile: until it loads we can't tell whether to
                 ask for the payout country, and the Connect routes behind the
-                onboarding are what create the account. */}
-            {isLoading ? null : (
+                onboarding are what create the account. A profile that failed
+                to load is just as unknown: never offer the permanent country
+                choice to someone who may already have an account. */}
+            {isLoading ? null : !profile ? (
+              <p role="alert" className="text-sm leading-7 text-[var(--color-danger-fg)]">
+                {t("teach.earnings.profileError")}
+              </p>
+            ) : (
               <TeacherConnectOnboarding
                 needsCountry={!connected}
                 onComplete={handleOnboardingComplete}

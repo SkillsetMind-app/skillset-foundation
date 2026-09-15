@@ -257,50 +257,87 @@ export async function createFreshConnectedAccount(params: {
 }): Promise<string> {
   const { uid, email, stripe, replacingAccountId, country } = params;
 
-  const account = await stripe.accounts.create(
-    {
-      type: "express",
-      country,
-      email,
-      business_type: "individual",
-      capabilities: {
-        card_payments: { requested: true },
-        transfers: { requested: true },
+  let account: Stripe.Account;
+  try {
+    account = await stripe.accounts.create(
+      {
+        type: "express",
+        country,
+        email,
+        business_type: "individual",
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true },
+        },
+        metadata: { skillsetUserId: uid },
       },
-      metadata: { skillsetUserId: uid },
-    },
-    // Two onboarding requests racing both read a null account id and both mint
-    // an Express account; the loser's is orphaned by the later UPDATE.
-    // The key MUST carry what is being replaced, not just the uid: this same
-    // function is the self-heal recreate path, and a uid-only key lives 24h, so
-    // a heal inside that window would replay the create and hand back the very
-    // orphaned account it is replacing. Racing healers share the stale id, so
-    // they still collapse to one fresh account. The country is in the key too:
-    // a replay for a different country must mint a new account, not return the
-    // one locked to the first choice.
-    {
-      idempotencyKey: `connect_account_${uid}_${replacingAccountId ?? "initial"}_${country}`,
-    },
-  );
+      // Two onboarding requests racing both read a null account id. The FIRST
+      // create uses one key per user and deliberately leaves the country out:
+      // a same-params replay returns the same account, and a different-params
+      // one (two tabs, FR and DE) is rejected by Stripe instead of minting a
+      // second account. A recreate carries the id it replaces: a uid-only key
+      // lives 24h, so a heal inside that window would replay the create and
+      // hand back the very orphaned account it is replacing. Racing healers
+      // share the stale id, so they still collapse to one fresh account.
+      {
+        idempotencyKey: `connect_account_${uid}_${replacingAccountId ?? "initial"}`,
+      },
+    );
+  } catch (error) {
+    if ((error as { type?: string }).type === "StripeIdempotencyError") {
+      throw new PaymentError(
+        "Your payout account is already being set up. Refresh the page and try again.",
+        409,
+        "connect_account_conflict",
+      );
+    }
+    throw error;
+  }
 
+  const now = new Date().toISOString();
+  const payload = {
+    stripe_connected_account_id: account.id,
+    stripe_connect_country: (account.country || country).toUpperCase(),
+    stripe_connect_status: "created",
+    stripe_connect_charges_enabled: Boolean(account.charges_enabled),
+    stripe_connect_payouts_enabled: Boolean(account.payouts_enabled),
+    stripe_connect_updated_at: now,
+    updated_at: now,
+  };
   const supabase = getSupabaseAdminClient();
-  const { error } = await supabase
+
+  if (replacingAccountId) {
+    const { error } = await supabase.from("users").update(payload).eq("uid", uid);
+    if (error) {
+      throw new Error(`Failed to persist connected account: ${error.message}`);
+    }
+    return account.id;
+  }
+
+  // First create: only fill an empty slot, so an account a racing request
+  // already stored is never overwritten (it may carry the creator's KYC).
+  const { data: claimed, error } = await supabase
     .from("users")
-    .update({
-      stripe_connected_account_id: account.id,
-      stripe_connect_country: (account.country || country).toUpperCase(),
-      stripe_connect_status: "created",
-      stripe_connect_charges_enabled: Boolean(account.charges_enabled),
-      stripe_connect_payouts_enabled: Boolean(account.payouts_enabled),
-      stripe_connect_updated_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("uid", uid);
+    .update(payload)
+    .eq("uid", uid)
+    .is("stripe_connected_account_id", null)
+    .select("stripe_connected_account_id");
   if (error) {
     throw new Error(`Failed to persist connected account: ${error.message}`);
   }
+  if (claimed?.length) return account.id;
 
-  return account.id;
+  const storedId = (await getUserRow(uid))?.stripe_connected_account_id ?? null;
+  // Same-key replay of the create that already won: nothing was orphaned.
+  if (storedId === account.id) return account.id;
+  if (!storedId) {
+    throw new Error("Failed to persist connected account: profile row not found.");
+  }
+  // ponytail: the server log is the ops channel for this; no alert pipeline yet.
+  console.error(
+    `[connect] orphaned connected account ${account.id} for user ${uid}; kept stored ${storedId}`,
+  );
+  return storedId;
 }
 
 /**
