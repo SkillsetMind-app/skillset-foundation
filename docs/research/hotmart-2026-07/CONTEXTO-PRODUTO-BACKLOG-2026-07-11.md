@@ -11,7 +11,7 @@
 
 Marketplace de cursos + infraestrutura de negócio para **psicólogos, terapeutas e profissionais de desenvolvimento pessoal** (Brasil + EUA).
 
-- **Entidade:** Skillset USA · operador SkillsetMind, 26 Broadway, New York, NY 10006 · lei de NY + arbitragem AAA
+- **Entidade:** Skillset USA · operador SkillsetMind, 418 Broadway, Ste N, Albany, NY 12207 · lei de NY + arbitragem AAA
 - **Domínio:** skillsetmind.com (www + apex) · e-mails @skillsetmind.com
 - **Posicionamento (validado por pesquisa de dores em Zenklub, BetterHelp, Talkspace, Headway, Hotmart, Kajabi):** o oposto das plataformas extrativas. Aqui **o profissional é dono da audiência, dos dados e do contrato**. A "Skillset Promise" da homepage (fee-lock 24 meses, paridade de features, export ZIP 1-clique, cancelamento 1-clique, proteção de fundos, suporte humano com SLA) é compromisso de produto, não copy de marketing. **Nenhuma feature nova pode violá-la.**
 - **Economia:** plano Free = 8% take rate (92% pro creator) · Plus com comissão até 0% · 30+ moedas via Stripe · wallet com ledger
