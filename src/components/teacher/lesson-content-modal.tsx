@@ -79,7 +79,7 @@ type LessonContentModalProps = {
   };
   // Envio em curso: o builder mantem esta pagina montada ate o envio acabar,
   // mesmo que a URL mude (voltar do navegador, outra aba).
-  onUploadingChange?: (uploading: boolean) => void;
+  onUploadingChange?: (uploading: boolean, failed?: boolean) => void;
   // Arquivo enviado ou apagado: o builder busca de novo a lista do curso, e a
   // prontidao do Publish ve o que mudou.
   onAssetsChanged?: () => void;
@@ -252,6 +252,12 @@ export function LessonContentModal({
   const uploadChosenBeforeLoadRef = useRef(false);
   const replaceButtonRef = useRef<HTMLButtonElement>(null);
   const linkHandleRef = useRef<LessonVideoSourcePickerHandle>(null);
+  // O fim do envio chama a versao mais recente do callback: a URL pode ter
+  // mudado desde o comeco (voltar do navegador) e o builder decide com a atual.
+  const uploadingChangeRef = useRef(onUploadingChange);
+  useEffect(() => {
+    uploadingChangeRef.current = onUploadingChange;
+  });
   useImperativeHandle(leaveFlushRef, () => () => {
     linkHandleRef.current?.flushLink({ silent: true });
   });
@@ -552,6 +558,7 @@ export function LessonContentModal({
     // Duas perguntas para a mesma decisão; agora o toggle da aula manda.
     const uploadAsPreview =
       isPreviewAsset || (isFreePreview && isVideoAssetKind(uploadKind));
+    let failed = false;
 
     try {
       if (useBunny) {
@@ -602,12 +609,13 @@ export function LessonContentModal({
         // generic message that made failures look random. E sem deixar o
         // progresso antigo na tela ao lado da caixa vermelha.
         setUploadProgress(null);
+        failed = true;
         setError({ kind: "upload", cause: caughtError, limitBytes: useBunny ? bunnyVideoMaxBytes : supabaseUploadLimitBytes });
       }
     } finally {
       setCancelUpload(null);
       setIsUploading(false);
-      onUploadingChange?.(false);
+      uploadingChangeRef.current?.(false, failed);
     }
   }
 

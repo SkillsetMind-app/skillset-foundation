@@ -457,7 +457,9 @@ export function CourseBuilderStudio() {
   // Aula com envio em curso: a pagina dela continua na tela (mesma instancia,
   // barra de progresso intacta) e a aba de conteudo fica ativa ate o envio
   // acabar, mesmo que a URL mude (voltar do navegador). Depois volta a seguir a URL.
-  const [uploadingLesson, setUploadingLesson] = useState<{ moduleId: string; lessonId: string } | null>(null);
+  const [uploadingLesson, setUploadingLesson] = useState<
+    { moduleId: string; lessonId: string; failed?: boolean } | null
+  >(null);
   const activeTab: BuilderTab = uploadingLesson
     ? "content"
     : isBuilderTab(requestedTab)
@@ -582,6 +584,16 @@ export function CourseBuilderStudio() {
     )
       ? uploadingLesson
       : urlLessonStudio;
+  // Envio que falhou com a URL em outro lugar: a pagina da aula fica ate a URL
+  // voltar para ela (router.replace) e so entao solta, sem remontar, com o erro
+  // na tela.
+  if (
+    uploadingLesson?.failed
+    && requestedTab === "content"
+    && urlLessonStudio?.lessonId === uploadingLesson.lessonId
+  ) {
+    setUploadingLesson(null);
+  }
   const activeLessonId = activeLessonStudio?.lessonId ?? null;
   // Abre a pagina da aula recem-criada quando o eco confirma o save. Refeita a
   // cada render para ver a URL atual.
@@ -1597,9 +1609,22 @@ export function CourseBuilderStudio() {
         dripStrategy={dripStrategy}
         // Done troca a entrada do historico: modulo > aula > modulo nao se acumula.
         onClose={() => router.replace(builderModuleHref(lessonModule.id), { scroll: false })}
-        onUploadingChange={(uploading) =>
-          setUploadingLesson(uploading ? { moduleId: lessonModule.id, lessonId: lesson.id } : null)
-        }
+        onUploadingChange={(uploading, failed) => {
+          if (uploading) {
+            setUploadingLesson({ moduleId: lessonModule.id, lessonId: lesson.id });
+            return;
+          }
+          // Falhou com a URL em outro lugar (ex.: voltar do navegador): a URL
+          // volta para a aula antes de soltar; senao a pagina com o erro sumia
+          // antes de aparecer.
+          const urlPointsHere = requestedTab === "content" && urlLessonStudio?.lessonId === lesson.id;
+          if (failed && !urlPointsHere) {
+            setUploadingLesson({ moduleId: lessonModule.id, lessonId: lesson.id, failed: true });
+            router.replace(builderLessonHref(lessonModule.id, lesson.id), { scroll: false });
+            return;
+          }
+          setUploadingLesson(null);
+        }}
         onAssetsChanged={refreshCourseAssets}
         onSetFreePreview={() => {
           const next = freePreviewLessonId === lesson.id ? "" : lesson.id;
@@ -2237,7 +2262,7 @@ export function CourseBuilderStudio() {
   // listener attaches only when there is something to lose and the closure
   // always sees current state (no ref, no setState in body -> loop-safe).
   useEffect(() => {
-    if (!draftIsDirty) {
+    if (!draftIsDirty && !uploadingLesson) {
       return;
     }
 
@@ -2248,7 +2273,7 @@ export function CourseBuilderStudio() {
 
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [draftIsDirty]);
+  }, [draftIsDirty, uploadingLesson]);
 
   // O `beforeunload` acima só existe para o navegador: fechar a aba, recarregar,
   // voltar. Ele NÃO dispara em navegação client-side do App Router — e é por ali
@@ -2261,7 +2286,9 @@ export function CourseBuilderStudio() {
   // e clique modificado (ctrl/cmd/meio, que abre em outra aba e não desmonta
   // nada) seguem direto.
   useEffect(() => {
-    if (!draftIsDirty || typeof document === "undefined") {
+    // Rascunho sujo ou envio em curso: sem a camada do antigo modal, a barra
+    // lateral e os links da marca ficam clicaveis no meio de um envio.
+    if ((!draftIsDirty && !uploadingLesson) || typeof document === "undefined") {
       return;
     }
 
@@ -2286,6 +2313,15 @@ export function CourseBuilderStudio() {
         return;
       }
 
+      // Envio em curso: sair desmontaria o builder e o envio seguiria sem dono
+      // (sucesso sem onde gravar, erro sem onde aparecer). Bloqueia e avisa.
+      if (uploadingLesson) {
+        event.preventDefault();
+        event.stopPropagation();
+        window.alert(t("creatorEditor.builder.confirm.uploadInProgress"));
+        return;
+      }
+
       const proceed = window.confirm(
         t("creatorEditor.builder.confirm.leave"),
       );
@@ -2299,7 +2335,7 @@ export function CourseBuilderStudio() {
     document.addEventListener("click", handleClickCapture, true);
     return () =>
       document.removeEventListener("click", handleClickCapture, true);
-  }, [draftIsDirty, t]);
+  }, [draftIsDirty, uploadingLesson, t]);
 
   // Stepper -> section scroll. The ref is read/cleared only here and in the
   // stepper click handler (never during render). useCallback keeps the effect

@@ -152,6 +152,13 @@ async function renderBuilder() {
 }
 
 const card = () => document.querySelector("#builder-sec-modules") as HTMLElement;
+
+function startUpload() {
+  fireEvent.change(screen.getByLabelText("Upload a lesson video"), {
+    target: { files: [new File(["video-bytes"], "aula.mp4", { type: "video/mp4" })] },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
+}
 const linkField = () => screen.getByRole("textbox", { name: "YouTube or Vimeo URL" });
 const lastPayload = () => vi.mocked(updateTeacherCourseBuilder).mock.calls.at(-1)?.[1];
 
@@ -323,6 +330,46 @@ describe("pagina da aula no builder", () => {
     await waitFor(() => expect(screen.getAllByText(missingIntro).length).toBeGreaterThan(0));
     expect(screen.getByRole("button", { name: "Publish product" })).toBeDisabled();
   }, 10000);
+
+  // Sem a camada do antigo modal, a barra lateral ficou clicavel no meio de um
+  // envio: sair desmontava o builder e o envio seguia sem dono.
+  it("durante um envio, link para fora do builder nao navega", async () => {
+    mocks.course = withIntro();
+    vi.mocked(uploadCourseAsset).mockImplementationOnce(() => new Promise<string>(() => {}));
+    const alert = vi.spyOn(window, "alert").mockImplementation(() => {});
+    openAt(introUrl);
+    await renderBuilder();
+    startUpload();
+
+    const leave = document.createElement("a");
+    leave.href = "/teach";
+    leave.textContent = "Courses";
+    view.container.appendChild(leave);
+
+    expect(fireEvent.click(leave)).toBe(false);
+    expect(alert).toHaveBeenCalledOnce();
+    expect(uploadCourseAsset).toHaveBeenCalledTimes(1);
+  });
+
+  // O erro caia na pagina da aula no mesmo instante em que ela saia da tela
+  // (a URL ja estava no modulo): a falha ficava invisivel.
+  it("envio que falha depois do voltar mostra o erro na pagina da aula", async () => {
+    mocks.course = withIntro();
+    let failUpload: (error: Error) => void = () => {};
+    vi.mocked(uploadCourseAsset).mockImplementationOnce(
+      () => new Promise<string>((_resolve, reject) => { failUpload = reject; }),
+    );
+    openAt(introUrl);
+    await renderBuilder();
+    startUpload();
+
+    navigateTo(moduleUrl);
+    await act(async () => failUpload(new Error("network")));
+
+    expect(mocks.router.replace).toHaveBeenLastCalledWith(introUrl, { scroll: false });
+    expect(screen.getByRole("heading", { name: "Intro" })).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+  });
 
   it("link direto na pagina da aula carrega a lista de arquivos do curso", async () => {
     mocks.course = withIntro();
