@@ -1735,7 +1735,7 @@
       "title": "Tus ingresos, tu configuración de pagos.",
       "helpTopic": "Calendario de pagos",
       "helpBody": "Los compradores pagan directamente a tu cuenta de Stripe, así que la plataforma no retiene nada. Después Stripe liquida y transfiere a tu banco según sus propios plazos, que dependen de tu país y del método de pago, y una cuenta nueva espera la verificación antes de su primer pago. Stripe Connect debe tener los cobros y los pagos habilitados antes de que un producto de pago pueda publicarse.",
-      "taxForms": "Stripe emite tus formularios fiscales",
+      "taxForms": "Stripe recoge tus datos fiscales",
       "netEstimate": "Neto estimado del creador",
       "refunded": "Reembolsado",
       "unavailable": "No disponible",
@@ -1751,6 +1751,7 @@
       "statusNotConnected": "Sin conectar",
       "bankNote": "SkillsetMind nunca guarda tus datos bancarios completos. Stripe recoge la identidad, los datos fiscales y los bancarios dentro del flujo de configuración integrado.",
       "connectedAccount": "Cuenta conectada",
+      "payoutCountry": "País de cobro",
       "notActiveYet": "Todavía no activa",
       "notCreated": "Sin crear",
       "charges": "Cobros",
@@ -1785,7 +1786,7 @@
       "statusRefunded": "Reembolsado",
       "statusPartiallyRefunded": "Reembolsado parcialmente",
       "taxCenter": "Centro fiscal",
-      "taxCenterBody": "Los formularios fiscales aparecen cuando tengas volumen real de pagos. Stripe Connect recoge tus datos fiscales y SkillsetMind mantiene el registro de pagos totalmente transparente.",
+      "taxCenterBody": "Stripe Connect recoge tus datos fiscales y SkillsetMind mantiene el registro de pagos totalmente transparente.",
       "payoutsUnavailable": "La venta de pago todavía no está abierta en SkillsetMind: Stripe Connect aún se está configurando de nuestro lado. Todavía no hay ninguna cuenta de Stripe conectada, así que los compradores no tienen dónde pagarte; la configuración se abrirá en esta página automáticamente en cuanto esté lista.",
       "profileError": "No pudimos cargar tu perfil de pagos.",
       "ledgerReadError": "No pudimos cargar tu registro de ingresos.",
@@ -4578,7 +4579,14 @@
     "fallbackTitle": "Continúa con la página segura de registro de Stripe.",
     "fallbackBody": "Puede ocurrir por la configuración de privacidad del navegador, por cookies bloqueadas o cuando Stripe exige un paso de autenticación más fuerte. La configuración de pagos sigue funcionando; esta alternativa te devuelve a SkillsetMind al terminar.",
     "retry": "Reintentar la configuración integrada",
+    "countryLabel": "País de cobro",
+    "countryHint": "Elige el país donde vives y tienes tu cuenta bancaria. Stripe no puede cambiarlo después de la configuración.",
+    "countryLater": "América Latina y Brasil llegarán más adelante.",
+    "countryContinue": "Continuar",
+    "chooseAnotherCountry": "Elegir otro país",
     "error": {
+      "country": "Las transferencias aún no están disponibles en ese país. Contacta con soporte si crees que es un error.",
+      "conflict": "Tu cuenta de cobro se está configurando. Espera un minuto y recarga esta página. Si sigue pasando, contáctanos.",
       "initialize": "No se pudo iniciar Stripe Connect. Inténtalo de nuevo o contacta con soporte si el problema continúa.",
       "hosted": "No se pudo abrir el registro de Stripe. Inténtalo de nuevo o contacta con soporte si el problema continúa.",
       "activation": "Activa tu cuenta de creador antes de configurar las transferencias.",
@@ -4598,7 +4606,9 @@
       "signIn": "Iniciar sesión",
       "configuration": "Contactar con soporte",
       "permission": "Contactar con soporte",
-      "request": "Contactar con soporte"
+      "request": "Contactar con soporte",
+      "country": "Contactar con soporte",
+      "conflict": "Contáctanos"
     }
   },
   "billingCheckout": {

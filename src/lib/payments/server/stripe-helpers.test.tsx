@@ -11,20 +11,31 @@ import {
 import type { ProductOffer } from "@/domain/product-pricing";
 import type { CourseRow } from "@/lib/payments/server/stripe-helpers";
 
-const { supabaseQuery } = vi.hoisted(() => {
-  // One self-returning object covers both chains the create helpers use:
+const { supabaseQuery, userUpdates, db } = vi.hoisted(() => {
+  // One self-returning object covers every chain the create helpers use:
   // .from().select().eq().maybeSingle() for the profile read, and
-  // .from().update().eq() awaited for the write — awaiting a plain
-  // non-thenable destructures to { error: undefined }, the same silent
-  // success the real driver returns on a zero-error UPDATE.
+  // .from().update().eq()[.is().select()] awaited for the write. Awaiting the
+  // chain resolves like the driver: { data: rows the UPDATE touched, error }.
+  const db = {
+    // Rows touched by each awaited UPDATE, in order; an empty queue = one row.
+    updateResults: [] as unknown[][],
+    userRow: null as Record<string, unknown> | null,
+  };
   const q: Record<string, unknown> = {};
+  const updates: Array<Record<string, unknown>> = [];
   Object.assign(q, {
     select: () => q,
     eq: () => q,
-    update: () => q,
-    maybeSingle: async () => ({ data: null, error: null }),
+    is: () => q,
+    update: (payload: Record<string, unknown>) => {
+      updates.push(payload);
+      return q;
+    },
+    maybeSingle: async () => ({ data: db.userRow, error: null }),
+    then: (resolve: (value: unknown) => void) =>
+      resolve({ data: db.updateResults.length ? db.updateResults.shift() : [{}], error: null }),
   });
-  return { supabaseQuery: q };
+  return { supabaseQuery: q, userUpdates: updates, db };
 });
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -181,20 +192,169 @@ describe("idempotency keys on first-use creates", () => {
     const create = vi.fn().mockResolvedValue({ id: "acct_new" });
     const stripe = { accounts: { create } } as unknown as Stripe;
 
-    await createFreshConnectedAccount({ uid: "uid_1", email: undefined, stripe });
+    await createFreshConnectedAccount({ uid: "uid_1", email: undefined, stripe, country: "US" });
     await createFreshConnectedAccount({
       uid: "uid_1",
       email: undefined,
       stripe,
       replacingAccountId: "acct_orphan",
+      country: "US",
     });
 
     expect(create.mock.calls[0][1].idempotencyKey).toBe(
-      "connect_account_uid_1_initial",
+      "connect_account_uid_1_initial_US",
     );
     expect(create.mock.calls[1][1].idempotencyKey).toBe(
       "connect_account_uid_1_acct_orphan",
     );
+  });
+
+  function resetDb() {
+    db.updateResults = [];
+    db.userRow = null;
+    userUpdates.length = 0;
+  }
+
+  // Without a country Stripe silently locks the account to the platform's (US),
+  // and the account can never move.
+  it("creates the account in the chosen country and records it", async () => {
+    resetDb();
+    const create = vi.fn().mockResolvedValue({ id: "acct_gb", country: "GB" });
+    const stripe = { accounts: { create } } as unknown as Stripe;
+
+    await createFreshConnectedAccount({ uid: "uid_1", email: undefined, stripe, country: "GB" });
+
+    expect(create.mock.calls[0][0].country).toBe("GB");
+    expect(create.mock.calls[0][0].business_type).toBe("individual");
+    expect(create.mock.calls[0][1].idempotencyKey).toBe("connect_account_uid_1_initial_GB");
+    expect(userUpdates[0]).toMatchObject({
+      stripe_connected_account_id: "acct_gb",
+      stripe_connect_country: "GB",
+    });
+  });
+
+  // Stripe remembers a key for 24h. Once the slot is emptied (the refresh route
+  // clears an unusable account) the creator may pick another country. With a
+  // country-free key that replays the old key with new params: a 409 loop for
+  // up to a day, since refreshing only reopens the picker.
+  it("keys a first create after a reset by the newly chosen country", async () => {
+    resetDb();
+    const create = vi.fn()
+      .mockResolvedValueOnce({ id: "acct_fr", country: "FR" })
+      .mockResolvedValueOnce({ id: "acct_de", country: "DE" });
+    const stripe = { accounts: { create } } as unknown as Stripe;
+
+    expect(await createFreshConnectedAccount({ uid: "uid_1", email: undefined, stripe, country: "FR" }))
+      .toBe("acct_fr");
+    expect(await createFreshConnectedAccount({ uid: "uid_1", email: undefined, stripe, country: "DE" }))
+      .toBe("acct_de");
+
+    expect(create.mock.calls.map((call) => call[1].idempotencyKey)).toEqual([
+      "connect_account_uid_1_initial_FR",
+      "connect_account_uid_1_initial_DE",
+    ]);
+  });
+
+  // Control: picking the same country again is a replay of the same create.
+  it("replays a first create for the same country", async () => {
+    resetDb();
+    const create = vi.fn().mockResolvedValue({ id: "acct_fr", country: "FR" });
+    const stripe = { accounts: { create } } as unknown as Stripe;
+
+    await createFreshConnectedAccount({ uid: "uid_1", email: undefined, stripe, country: "FR" });
+    await createFreshConnectedAccount({ uid: "uid_1", email: undefined, stripe, country: "FR" });
+
+    const keys = create.mock.calls.map((call) => call[1].idempotencyKey);
+    expect(keys[0]).toBe("connect_account_uid_1_initial_FR");
+    expect(keys[1]).toBe(keys[0]);
+  });
+
+  // A genuine idempotency error (e.g. the first create failed and Stripe stored
+  // that result) is a 409 whose message is true: no guess about other tabs.
+  it("maps a genuine idempotency error to a 409 that says wait and refresh", async () => {
+    resetDb();
+    // Same shape stripe-node gives StripeIdempotencyError (type = class name).
+    const replay = Object.assign(
+      new Error("Keys for idempotent requests can only be used with the same parameters they were first used with."),
+      { type: "StripeIdempotencyError", rawType: "idempotency_error" },
+    );
+    const create = vi.fn().mockRejectedValue(replay);
+    const stripe = { accounts: { create } } as unknown as Stripe;
+
+    const failure = (await createFreshConnectedAccount({ uid: "uid_1", email: undefined, stripe, country: "DE" })
+      .catch((error: unknown) => error)) as Error;
+
+    expect(failure).toMatchObject({ status: 409, code: "connect_account_conflict" });
+    expect(failure.message).toMatch(/wait a minute/i);
+    expect(failure.message).not.toMatch(/tab/i);
+    expect(userUpdates).toHaveLength(0);
+  });
+
+  // The routes treat a stored '' as "no account", but `.is(null)` does not match
+  // it: without its own claim every attempt ends in "profile row not found".
+  it("treats a stored empty-string account id as an empty slot", async () => {
+    resetDb();
+    db.updateResults = [[], [{}]];
+    db.userRow = { stripe_connected_account_id: "" };
+    const create = vi.fn().mockResolvedValue({ id: "acct_new", country: "FR" });
+    const stripe = { accounts: { create } } as unknown as Stripe;
+
+    const id = await createFreshConnectedAccount({ uid: "uid_1", email: undefined, stripe, country: "FR" });
+
+    expect(id).toBe("acct_new");
+  });
+
+  // Two tabs racing with different countries may each mint an account. The one
+  // stored first wins; the other (never onboarded) is logged for ops and never
+  // returned to the client.
+  it("keeps the stored account when a racing first create already won", async () => {
+    resetDb();
+    db.updateResults = [[], []];
+    db.userRow = { stripe_connected_account_id: "acct_winner" };
+    const create = vi.fn().mockResolvedValue({ id: "acct_loser", country: "FR" });
+    const stripe = { accounts: { create } } as unknown as Stripe;
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const id = await createFreshConnectedAccount({ uid: "uid_1", email: undefined, stripe, country: "FR" });
+
+    expect(id).toBe("acct_winner");
+    expect(consoleError.mock.calls.flat().join(" ")).toContain("acct_loser");
+    consoleError.mockRestore();
+  });
+
+  // Control: a same-key replay hands back the account that is already stored.
+  it("returns the stored account quietly on a same-key replay", async () => {
+    resetDb();
+    db.updateResults = [[], []];
+    db.userRow = { stripe_connected_account_id: "acct_same" };
+    const create = vi.fn().mockResolvedValue({ id: "acct_same", country: "FR" });
+    const stripe = { accounts: { create } } as unknown as Stripe;
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const id = await createFreshConnectedAccount({ uid: "uid_1", email: undefined, stripe, country: "FR" });
+
+    expect(id).toBe("acct_same");
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  // Control: a heal replaces a known dead id, so it still writes it directly.
+  it("still records the new account on a self-heal recreate", async () => {
+    resetDb();
+    db.updateResults = [[], []];
+    const create = vi.fn().mockResolvedValue({ id: "acct_healed", country: "FR" });
+    const stripe = { accounts: { create } } as unknown as Stripe;
+
+    const id = await createFreshConnectedAccount({
+      uid: "uid_1",
+      email: undefined,
+      stripe,
+      replacingAccountId: "acct_dead",
+      country: "FR",
+    });
+
+    expect(id).toBe("acct_healed");
+    expect(userUpdates[0]).toMatchObject({ stripe_connected_account_id: "acct_healed" });
   });
 });
 

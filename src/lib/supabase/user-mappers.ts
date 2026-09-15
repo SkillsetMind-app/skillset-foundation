@@ -51,6 +51,7 @@ export function rowToUserProfile(row: UserRow): UserProfile {
     stripeConnectChargesEnabled: row.stripe_connect_charges_enabled ?? undefined,
     stripeConnectPayoutsEnabled: row.stripe_connect_payouts_enabled ?? undefined,
     stripeConnectUpdatedAt: row.stripe_connect_updated_at ?? undefined,
+    stripeConnectCountry: row.stripe_connect_country ?? null,
     creatorVerificationStatus:
       (row.creator_verification_status as UserProfile["creatorVerificationStatus"]) ??
       undefined,
