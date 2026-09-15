@@ -366,6 +366,12 @@ export function EnrolledCourseWorkspace({
     );
   }, [previewMode, workspaceEnrollment]);
 
+  // A RLS só entrega o texto e o material da aula que já abriu (migration
+  // 20260915020000). No sequencial, concluir uma aula abre a próxima sem
+  // escrever nessas tabelas, então o realtime não acorda: recarrega quando o
+  // número de aulas concluídas muda.
+  const releaseRefreshKey = progressState.lessonIds.length;
+
   useEffect(() => {
     if (!enableFirestoreAssets || !workspaceEnrollment) {
       return;
@@ -389,7 +395,7 @@ export function EnrolledCourseWorkspace({
         });
       },
     );
-  }, [course.id, enableFirestoreAssets, workspaceEnrollment]);
+  }, [course.id, enableFirestoreAssets, releaseRefreshKey, workspaceEnrollment]);
 
   // B1: subscribe to the gated lesson content for the active course. Only
   // meaningful for an enrolled (or preview) viewer, who passes the enrollment
@@ -418,7 +424,7 @@ export function EnrolledCourseWorkspace({
         );
       },
     );
-  }, [course.id, workspaceEnrollment]);
+  }, [course.id, releaseRefreshKey, workspaceEnrollment]);
 
   // LESSON_STARTED — fires when the learner navigates to a lesson card.
   // Preview mode (teacher impersonating learner view) is excluded so the
