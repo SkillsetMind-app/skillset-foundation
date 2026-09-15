@@ -253,7 +253,7 @@ describe("sala de aula com matricula real", () => {
     let emit!: (assets: CourseAsset[]) => void;
     vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_id, callback) => {
       emit = callback;
-      return vi.fn();
+      return Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) });
     });
     render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace course={course} tab="materials" enableFirestoreAssets /></I18nProvider>);
     expect(screen.getByText("Cargando recursos del curso...")).toBeInTheDocument();
@@ -276,7 +276,7 @@ describe("sala de aula com matricula real", () => {
     let emit!: (assets: CourseAsset[]) => void;
     vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_id, callback) => {
       emit = callback;
-      return vi.fn();
+      return Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) });
     });
     vi.mocked(getProtectedCourseAssetObjectUrl).mockImplementation(async (asset) => `blob:${asset.id}`);
     const cover: CourseAsset = {
@@ -413,7 +413,7 @@ describe("sala de aula com matricula real", () => {
     let emit!: (assets: CourseAsset[]) => void;
     vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_id, callback) => {
       emit = callback;
-      return vi.fn();
+      return Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) });
     });
     const withPosters: Course = { ...course, modules: [
       { ...course.modules[0], coverAssetId: "old" },
@@ -531,7 +531,7 @@ describe("sala de aula com matricula real", () => {
     let emit!: (assets: CourseAsset[]) => void;
     vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_id, callback) => {
       emit = callback;
-      return vi.fn();
+      return Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) });
     });
     const { container, rerender } = render(<EnrolledCourseWorkspace course={course} enableFirestoreAssets />);
     const thumbnail = (patch: Partial<CourseAsset>): CourseAsset => ({

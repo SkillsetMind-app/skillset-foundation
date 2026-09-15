@@ -327,7 +327,7 @@ describe("Informacoes da aula sob o player", () => {
     let emit!: (assets: CourseAsset[]) => void;
     vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_id, callback) => {
       emit = callback;
-      return vi.fn();
+      return Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) });
     });
     render(<EnrolledCourseWorkspace course={course} enableFirestoreAssets />);
     const asset = (patch: Partial<CourseAsset>): CourseAsset => ({
