@@ -4567,7 +4567,7 @@
     "chooseAnotherCountry": "Choose another country",
     "error": {
       "country": "Payouts aren't available in that country yet. Contact support if this looks wrong.",
-      "conflict": "Your payout account is already being set up in another tab or window. Refresh this page to continue.",
+      "conflict": "Your payout account is being set up. Wait a minute and refresh this page. If this keeps happening, contact us.",
       "initialize": "Stripe Connect could not initialize. Try again or contact support if this continues.",
       "hosted": "We could not open Stripe onboarding. Try again or contact support if this continues.",
       "activation": "Activate your creator account before setting up payouts.",
@@ -4588,7 +4588,8 @@
       "configuration": "Contact support",
       "permission": "Contact support",
       "request": "Contact support",
-      "country": "Contact support"
+      "country": "Contact support",
+      "conflict": "Contact us"
     }
   },
   "billingCheckout": {

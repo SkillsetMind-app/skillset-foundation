@@ -123,10 +123,17 @@ it("explains an unsupported country and offers support or a new choice", async (
   expect(mocks.fetch).toHaveBeenCalledTimes(1);
 });
 
-// Two tabs racing the first create: the loser gets 409 from the server.
-it("tells the creator to refresh when another tab is already creating the account", async () => {
+// A genuine idempotency clash comes back as 409. The truthful ask is "wait and
+// refresh" with a way to reach us: no "another tab" guess, no browser-privacy
+// fallback that blames cookies.
+it("asks the creator to wait and refresh on a 409, with a way to contact us", async () => {
   mocks.fetch.mockImplementation(() => Promise.resolve(reply(409, "connect_account_conflict")));
   render(ui("en", true));
   fireEvent.click(screen.getByRole("button", { name: copy("en", "connectOnboarding.countryContinue") }));
-  expect(await screen.findByRole("alert")).toHaveTextContent(copy("en", "connectOnboarding.error.conflict"));
+  const alert = await screen.findByRole("alert");
+  expect(alert).toHaveTextContent(copy("en", "connectOnboarding.error.conflict"));
+  expect(alert.textContent).not.toMatch(/tab/i);
+  expect(screen.getByRole("link", { name: copy("en", "connectOnboarding.recovery.conflict") }))
+    .toHaveAttribute("href", "/contact");
+  expect(screen.queryByText(copy("en", "connectOnboarding.fallbackBody"), { exact: false })).toBeNull();
 });

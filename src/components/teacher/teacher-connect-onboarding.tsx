@@ -101,7 +101,7 @@ function connectFailure(cause: unknown, fallback: "initialize" | "hosted") {
 function connectRecoveryHref(key: string) {
   return key === "activation" ? "/teach/activate"
     : key === "signIn" ? "/login"
-    : key === "country" ? "/contact"
+    : key === "country" || key === "conflict" ? "/contact"
     : ["configuration", "permission", "request"].includes(key) ? "/support"
     : null;
 }
@@ -303,22 +303,24 @@ function ConnectOnboardingFlow({
     setRetryKey((current) => current + 1);
   }
 
-  // Unsupported country: retrying (embedded or hosted) would resend the same
-  // country, and the generic fallback blames the browser. Offer the two real
-  // ways out instead: pick again, or talk to support.
-  if (error?.key === "country") {
+  // Unsupported country (retrying would resend it) and a 409 while the account
+  // is still being set up: the generic fallback blames the browser, which is
+  // false for both. Say what is true and offer the real ways out: pick again
+  // (country only), or contact us.
+  if (error?.key === "country" || error?.key === "conflict") {
+    const key = error.key;
     return (
       <Card padding="none" className="p-5">
         <p role="alert" className="text-sm leading-7 text-[var(--color-ink-soft)]">
-          {t("connectOnboarding.error.country")}
+          {t(`connectOnboarding.error.${key}`)}
           {error.status ? <> {t("activationCheckout.reference")} HTTP {error.status}</> : null}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          {onChooseAgain ? (
+          {key === "country" && onChooseAgain ? (
             <Button onClick={onChooseAgain}>{t("connectOnboarding.chooseAnotherCountry")}</Button>
           ) : null}
-          <Link className="button-outline px-4 py-2.5 text-sm" href={connectRecoveryHref("country")!}>
-            {t("connectOnboarding.recovery.country")}
+          <Link className="button-outline px-4 py-2.5 text-sm" href={connectRecoveryHref(key)!}>
+            {t(`connectOnboarding.recovery.${key}`)}
           </Link>
         </div>
       </Card>

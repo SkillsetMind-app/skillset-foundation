@@ -271,22 +271,27 @@ export async function createFreshConnectedAccount(params: {
         },
         metadata: { skillsetUserId: uid },
       },
-      // Two onboarding requests racing both read a null account id. The FIRST
-      // create uses one key per user and deliberately leaves the country out:
-      // a same-params replay returns the same account, and a different-params
-      // one (two tabs, FR and DE) is rejected by Stripe instead of minting a
-      // second account. A recreate carries the id it replaces: a uid-only key
-      // lives 24h, so a heal inside that window would replay the create and
-      // hand back the very orphaned account it is replacing. Racing healers
-      // share the stale id, so they still collapse to one fresh account.
+      // The FIRST create is keyed per user AND country. Stripe remembers a key
+      // for 24h: without the country, a creator whose slot was emptied (the
+      // refresh route clears an unusable account) and who then picks another
+      // country would replay the old key with new params and be locked out for
+      // a day. So two tabs racing with different countries may mint two
+      // accounts; the conditional persist below keeps the first and logs the
+      // other (never onboarded, never returned to the client). A recreate
+      // carries the id it replaces: a uid-only key lives 24h, so a heal inside
+      // that window would replay the create and hand back the very orphaned
+      // account it is replacing. Racing healers share the stale id, so they
+      // still collapse to one fresh account.
       {
-        idempotencyKey: `connect_account_${uid}_${replacingAccountId ?? "initial"}`,
+        idempotencyKey: replacingAccountId
+          ? `connect_account_${uid}_${replacingAccountId}`
+          : `connect_account_${uid}_initial_${country}`,
       },
     );
   } catch (error) {
     if ((error as { type?: string }).type === "StripeIdempotencyError") {
       throw new PaymentError(
-        "Your payout account is already being set up. Refresh the page and try again.",
+        "Your payout account is being set up. Wait a minute and refresh. If this keeps happening, contact us.",
         409,
         "connect_account_conflict",
       );
@@ -315,19 +320,23 @@ export async function createFreshConnectedAccount(params: {
   }
 
   // First create: only fill an empty slot, so an account a racing request
-  // already stored is never overwritten (it may carry the creator's KYC).
-  const { data: claimed, error } = await supabase
-    .from("users")
-    .update(payload)
-    .eq("uid", uid)
-    .is("stripe_connected_account_id", null)
-    .select("stripe_connected_account_id");
-  if (error) {
-    throw new Error(`Failed to persist connected account: ${error.message}`);
+  // already stored is never overwritten (it may carry the creator's KYC). The
+  // routes treat '' as "no account" too, but `.is(null)` does not match it, so
+  // an empty string gets its own claim.
+  async function claimEmptySlot(emptyString: boolean) {
+    const update = supabase.from("users").update(payload).eq("uid", uid);
+    const { data, error } = await (emptyString
+      ? update.eq("stripe_connected_account_id", "")
+      : update.is("stripe_connected_account_id", null)
+    ).select("stripe_connected_account_id");
+    if (error) {
+      throw new Error(`Failed to persist connected account: ${error.message}`);
+    }
+    return Boolean(data?.length);
   }
-  if (claimed?.length) return account.id;
+  if ((await claimEmptySlot(false)) || (await claimEmptySlot(true))) return account.id;
 
-  const storedId = (await getUserRow(uid))?.stripe_connected_account_id ?? null;
+  const storedId = (await getUserRow(uid))?.stripe_connected_account_id || null;
   // Same-key replay of the create that already won: nothing was orphaned.
   if (storedId === account.id) return account.id;
   if (!storedId) {
