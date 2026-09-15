@@ -1568,5 +1568,38 @@ describe("Stripe webhook financial integrity", () => {
       await flush();
       expect(resend).not.toHaveBeenCalled();
     });
+
+    // invoice.paid has no early return: a redelivery re-runs the whole handler.
+    // Only the ledger gate keeps it from emailing again, and Stripe retries for
+    // about 3 days while Resend's Idempotency-Key only dedupes for 24 h.
+    it("sends nothing when the same first invoice is delivered again", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(subscription());
+
+      expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
+      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
+      expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
+
+      await flush();
+      expect(resend).toHaveBeenCalledTimes(1);
+      expect(fulfillCalls(admin)).toHaveLength(2);
+    });
+
+    // A failed renewal loses no purchase email; alerting on it would be noise
+    // that spends the 5-minute throttle meant for real losses.
+    it("stays silent on the access-email alert when a renewal's enrollment fails", async () => {
+      const admin = createAdmin("checkout", "fulfill_paid_course_access");
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(subscription());
+      const renewal = paidInvoiceEvent();
+      Object.assign(renewal.data.object, { billing_reason: "subscription_cycle" });
+
+      expect((await postEvent(renewal)).status).toBe(500);
+
+      expect(mocks.notifyOps).not.toHaveBeenCalledWith(lostEmailAlert);
+      await flush();
+      expect(resend).not.toHaveBeenCalled();
+    });
   });
 });
