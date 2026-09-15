@@ -546,6 +546,9 @@ export function CourseBuilderStudio() {
   // Rascunho local para o callback do realtime: so abre estudio de aula que
   // ainda existe aqui.
   const localModulesRef = useRef<TeacherCourseModule[]>([]);
+  // Saves nossos no ar (autosave, Salvar, Publicar). Aqui em cima porque o
+  // efeito do snapshot pulado tambem le.
+  const inFlightSavesRef = useRef(0);
 
   // Copia o snapshot do servidor para o rascunho. So setters (estaveis), entao
   // serve ao callback do realtime e ao efeito que aplica o snapshot pulado.
@@ -940,7 +943,10 @@ export function CourseBuilderStudio() {
   useEffect(() => {
     draftDirtyRef.current = draftIsDirty;
     const skipped = skippedSnapshotRef.current;
-    if (draftIsDirty || !skipped) {
+    // Com save nosso no ar, o guardado pode ser o eco dele mesmo: aplicar
+    // ressuscitava o save e engolia uma volta exata ao estado anterior. O
+    // sucesso descarta o guardado; a falha o aplica (em persistDraft).
+    if (draftIsDirty || !skipped || inFlightSavesRef.current > 0) {
       return;
     }
     // O rascunho voltou a ficar limpo sem save nosso (desfez a edicao, ou o
@@ -1321,7 +1327,6 @@ export function CourseBuilderStudio() {
   // Autosave e o botao Salvar podem estar no ar ao mesmo tempo. O selo so vira
   // "Saved" quando a ULTIMA gravacao pendente volta; antes, a primeira a voltar
   // pintava "Saved" com a outra ainda no ar.
-  const inFlightSavesRef = useRef(0);
   const persistDraft = useCallback(
     async (
       signature: string,
@@ -1344,9 +1349,17 @@ export function CourseBuilderStudio() {
         }
       } finally {
         inFlightSavesRef.current -= 1;
+        // Save nosso falhou com o rascunho limpo: o snapshot guardado durante
+        // o save (que o efeito nao aplica com save no ar) vale agora. No
+        // sucesso ele ja foi descartado acima, entao aqui nao sobra nada.
+        const skipped = skippedSnapshotRef.current;
+        if (inFlightSavesRef.current === 0 && skipped && !draftDirtyRef.current) {
+          skippedSnapshotRef.current = null;
+          applyServerDraft(skipped);
+        }
       }
     },
-    [courseId],
+    [courseId, applyServerDraft],
   );
 
   // Pagina do modulo (?module=M). Funcao de render, nao componente: le o mesmo

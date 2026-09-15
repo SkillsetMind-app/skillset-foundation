@@ -380,6 +380,67 @@ describe("pagina do modulo dentro do builder", () => {
     expect(vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1].title).toBe("Renamed in another tab");
   }, 15000);
 
+  // O eco do save no ar chega antes da resposta HTTP e fica guardado; antes da
+  // resposta, a pessoa volta exatamente ao estado anterior. Aplicar o guardado
+  // ai ressuscitava o save, e a volta nunca era gravada.
+  it("voltar ao estado anterior durante um save no ar nao ressuscita o eco dele", async () => {
+    let emitCourse: (course: TeacherCourse | null) => void = () => {};
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emitCourse = emit;
+      emit(mocks.course);
+      return () => undefined;
+    });
+    let finishFirst = () => {};
+    vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(
+      () => new Promise<void>((resolve) => { finishFirst = resolve; }),
+    );
+    openAt("courseId=course-1&tab=content&module=m1");
+    const card = await renderBuilder();
+    const name = () => within(card).getByRole("textbox", { name: "Module 1" });
+
+    fireEvent.change(name(), { target: { value: "Start here, v1" } });
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1), { timeout: 5000 });
+    const first = vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1];
+    act(() => emitCourse({ ...mocks.course, ...first }));
+    fireEvent.change(name(), { target: { value: "Start here" } });
+    await act(async () => {});
+    expect(name()).toHaveValue("Start here");
+
+    await act(async () => finishFirst());
+    expect(name()).toHaveValue("Start here");
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(2), { timeout: 5000 });
+    expect(vi.mocked(updateTeacherCourseBuilder).mock.calls[1][1].modules?.[0].title).toBe("Start here");
+  }, 15000);
+
+  it("se o save no ar falha com o rascunho limpo, o snapshot guardado vale", async () => {
+    let emitCourse: (course: TeacherCourse | null) => void = () => {};
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emitCourse = emit;
+      emit(mocks.course);
+      return () => undefined;
+    });
+    let failFirst: (error: Error) => void = () => {};
+    vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(
+      () => new Promise<void>((_resolve, reject) => { failFirst = reject; }),
+    );
+    openAt("courseId=course-1&tab=content&module=m1");
+    const card = await renderBuilder();
+    const name = () => within(card).getByRole("textbox", { name: "Module 1" });
+
+    fireEvent.change(name(), { target: { value: "Start here, v1" } });
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1), { timeout: 5000 });
+    const first = vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1];
+    act(() => emitCourse({ ...mocks.course, ...first }));
+    fireEvent.change(name(), { target: { value: "Start here" } });
+    await act(async () => {});
+    // Com o save no ar, a volta da pessoa fica na tela.
+    expect(name()).toHaveValue("Start here");
+
+    // Ele falha, mas o eco ja mostrou o que o servidor gravou.
+    await act(async () => failFirst(new Error("network")));
+    expect(name()).toHaveValue("Start here, v1");
+  }, 15000);
+
   it("sem ?module mostra uma linha por modulo, com nome em negrito e numero de aulas", async () => {
     const card = await renderBuilder();
 
