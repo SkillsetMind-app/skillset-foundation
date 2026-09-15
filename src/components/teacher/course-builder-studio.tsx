@@ -517,6 +517,9 @@ export function CourseBuilderStudio() {
   // triggers a render, and it is read/cleared only inside an event handler or
   // an effect — never during render — to stay clear of react-hooks/refs.
   const pendingScrollRef = useRef<string | null>(null);
+  // Navegacao de modulo pedida pela pessoa (linha, trilha ou modulo novo).
+  // Nula na primeira hidratacao: abrir o builder ja num modulo nao rouba foco.
+  const moduleNavigationRef = useRef<{ returnTo: string | null } | null>(null);
 
   useEffect(() => {
     if (!courseId) {
@@ -566,7 +569,13 @@ export function CourseBuilderStudio() {
         setMembersSubtitle(nextCourse.membersSubtitle ?? "");
         setMembersDescription(nextCourse.membersDescription ?? "");
         setCommunityEnabled(nextCourse.communityEnabled ?? false);
-        setLessonModuleId(nextCourse.modules?.[0]?.id ?? "");
+        // Todo snapshot passa aqui, inclusive o eco do nosso autosave. Voltar
+        // sempre para o 1o modulo mandava a aula seguinte para o modulo errado.
+        setLessonModuleId((current) =>
+          nextCourse.modules?.some((module) => module.id === current)
+            ? current
+            : nextCourse.modules?.[0]?.id ?? "",
+        );
         setError(null);
         // Baseline mirrors exactly what the state setters above produce, so a
         // fresh hydration (or our own write echoing back) is never seen as a
@@ -674,6 +683,28 @@ export function CourseBuilderStudio() {
     ? modules.findIndex((module) => module.id === requestedModuleId)
     : -1;
   const activeModule = activeModuleIndex >= 0 ? modules[activeModuleIndex] : null;
+  const activeModuleId = activeModule?.id ?? null;
+
+  // Os links usam scroll={false}; sem isto o foco caia no <body> e o topo da
+  // pagina do modulo ficava fora da tela. Abrir: rola ate o cartao e foca o
+  // titulo. Voltar: foca a linha do modulo de onde a pessoa saiu.
+  useEffect(() => {
+    const navigation = moduleNavigationRef.current;
+    if (!navigation || typeof document === "undefined") {
+      return;
+    }
+    moduleNavigationRef.current = null;
+
+    if (activeModuleId) {
+      document.getElementById("builder-sec-modules")?.scrollIntoView?.({ block: "start" });
+      document.getElementById("builder-module-heading")?.focus({ preventScroll: true });
+      return;
+    }
+
+    Array.from(document.querySelectorAll<HTMLElement>("[data-module-row]"))
+      .find((row) => row.dataset.moduleRow === navigation.returnTo)
+      ?.focus();
+  }, [activeModuleId]);
   const allLessons = modules.flatMap((module) =>
     module.lessons.map((lesson) => ({
       ...lesson,
@@ -940,6 +971,7 @@ export function CourseBuilderStudio() {
     setModuleTitle("");
     setModuleSummary("");
     // O modulo recem-criado abre na pagina dele: e nele que a proxima aula entra.
+    moduleNavigationRef.current = { returnTo: null };
     router.push(builderModuleHref(nextModule.id), { scroll: false });
     setIsModuleFormOpen(false);
     setError(null);
@@ -960,7 +992,10 @@ export function CourseBuilderStudio() {
       return;
     }
 
-    if (!lessonModuleId) {
+    // O modulo do formulario aberto manda; `lessonModuleId` fica de reserva.
+    const targetModuleId = lessonFormModuleId || lessonModuleId;
+
+    if (!targetModuleId) {
       setError({ code: "chooseModule" });
       return;
     }
@@ -978,7 +1013,7 @@ export function CourseBuilderStudio() {
     // do formulario (decisao de 14/09). O conteudo entra em "Edit content".
     setModules((current) =>
       current.map((module) =>
-        module.id === lessonModuleId
+        module.id === targetModuleId
           ? {
               ...module,
               lessons: [
@@ -1007,7 +1042,7 @@ export function CourseBuilderStudio() {
     // Video-first flow: the lesson studio (Video tab) opens automatically as
     // soon as autosave persists the lesson — no hunting for the studio button.
     pendingLessonStudioRef.current = {
-      moduleId: lessonModuleId,
+      moduleId: targetModuleId,
       lessonId: nextLessonId,
     };
     setSuccess("lessonAdded");
@@ -1244,6 +1279,9 @@ export function CourseBuilderStudio() {
               <Link
                 href={builderModuleHref(null)}
                 scroll={false}
+                onClick={() => {
+                  moduleNavigationRef.current = { returnTo: module.id };
+                }}
                 className="inline-flex min-h-11 items-center text-[var(--color-primary)] underline-offset-2 hover:underline"
               >
                 {title || course?.title || t("publicCourses.course")}
@@ -1268,7 +1306,13 @@ export function CourseBuilderStudio() {
             />
           ) : null}
           <div className="grid min-w-0 content-start gap-3">
-            <h4 className="display-title text-2xl text-[var(--color-ink)]">{moduleName}</h4>
+            <h4
+              id="builder-module-heading"
+              tabIndex={-1}
+              className="display-title text-2xl text-[var(--color-ink)] outline-none"
+            >
+              {moduleName}
+            </h4>
             <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
               {t("creatorEditor.builder.curriculum.moduleNumber").replace("{index}", () => String(moduleIndex + 1))}
               <input
@@ -2517,6 +2561,10 @@ export function CourseBuilderStudio() {
                     <Link
                       href={builderModuleHref(module.id)}
                       scroll={false}
+                      data-module-row={module.id}
+                      onClick={() => {
+                        moduleNavigationRef.current = { returnTo: null };
+                      }}
                       className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-[10px]"
                     >
                       {/* Recorte redondo da capa vertical 2:3. */}
