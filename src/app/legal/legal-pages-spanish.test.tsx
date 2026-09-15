@@ -4,11 +4,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import PrivacyPage, { generateMetadata as privacyMetadata } from "./privacy/page";
 import TermsPage, { generateMetadata as termsMetadata } from "./terms/page";
 import TeacherTermsPage, { generateMetadata as teacherMetadata } from "./teacher-terms/page";
+import CopyrightPage, { generateMetadata as copyrightMetadata } from "./copyright/page";
 import RefundPolicyPage, { generateMetadata as refundMetadata } from "@/app/refund-policy/page";
 import { LegalText } from "@/components/site/legal-article";
-import { refundWindowDays } from "@/data/plans";
+import { helpFaqCategories } from "@/data/help-faq";
+import { activationFeeUsd, refundWindowDays } from "@/data/plans";
 import { LOCALE_COOKIE, type Locale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
+import { currentPrivacyVersion, currentTeacherTermsVersion, currentTermsVersion } from "@/lib/legal/versions";
+import { automaticRefundProgressCap } from "@/lib/payments/rules";
 import englishReference from "./legal-english-reference.test.json";
 
 const request = vi.hoisted(() => ({ locale: undefined as string | undefined }));
@@ -27,7 +31,8 @@ afterEach(() => { cleanup(); request.locale = undefined; });
 const pages = [
   { key: "privacy", Page: PrivacyPage, metadata: privacyMetadata, path: "/legal/privacy", sections: 12, texts: 44, title: "Política de privacidad" },
   { key: "terms", Page: TermsPage, metadata: termsMetadata, path: "/legal/terms", sections: 18, texts: 37, title: "Condiciones de servicio" },
-  { key: "teacherTerms", Page: TeacherTermsPage, metadata: teacherMetadata, path: "/legal/teacher-terms", sections: 12, texts: 26, title: "Condiciones para educadores" },
+  { key: "teacherTerms", Page: TeacherTermsPage, metadata: teacherMetadata, path: "/legal/teacher-terms", sections: 13, texts: 31, title: "Condiciones para educadores" },
+  { key: "copyright", Page: CopyrightPage, metadata: copyrightMetadata, path: "/legal/copyright", sections: 5, texts: 19, title: "Política de derechos de autor (DMCA)" },
   { key: "refund", Page: RefundPolicyPage, metadata: refundMetadata, path: "/refund-policy", sections: 7, texts: 10, title: "Política de reembolsos y devoluciones" },
 ] as const;
 
@@ -39,7 +44,9 @@ function legalDictionary(locale: Locale) {
 }
 
 function interpolate(value: string) {
-  return value.replaceAll("{days}", () => String(refundWindowDays));
+  return value
+    .replaceAll("{days}", () => String(refundWindowDays))
+    .replaceAll("{amount}", () => String(activationFeeUsd));
 }
 
 function plain(value: string) {
@@ -48,7 +55,7 @@ function plain(value: string) {
 
 const destinations = {
   terms: "/legal/terms", privacy: "/legal/privacy", teacherTerms: "/legal/teacher-terms",
-  promise: "/promise", pricing: "/pricing", account: "/account",
+  copyright: "/legal/copyright", promise: "/promise", pricing: "/pricing", account: "/account",
   support: "mailto:support@skillsetmind.com", legal: "mailto:legal@skillsetmind.com",
 };
 
@@ -72,7 +79,7 @@ describe("legal document translation from the request cookie", () => {
       expect(Array.from(main.querySelectorAll("p, li, h3"), (node) => node.textContent?.replace(/\s+/g, " ").trim())).toEqual(
         [dictionary.common.kicker, ...blocks.slice(0, 2).map(plain), effective, ...blocks.slice(2).map(plain)],
       );
-      const links = blocks.flatMap((block) => [...block.matchAll(/<(terms|privacy|teacherTerms|promise|pricing|account|support|legal)>([^<>]*)<\/\1>/g)]);
+      const links = blocks.flatMap((block) => [...block.matchAll(/<(terms|privacy|teacherTerms|copyright|promise|pricing|account|support|legal)>([^<>]*)<\/\1>/g)]);
       expect(within(main).getAllByRole("link").map((node) => [node.getAttribute("href"), node.textContent])).toEqual(
         links.map(([, tag, label]) => [destinations[tag as keyof typeof destinations], label]),
       );
@@ -80,7 +87,7 @@ describe("legal document translation from the request cookie", () => {
         const contents = blocks.flatMap((block) => [...interpolate(block).matchAll(new RegExp(`<${tag}>([^<>]*)</${tag}>`, "g"))].map((match) => match[1]));
         expect(Array.from(main.querySelectorAll(tag), (node) => node.textContent)).toEqual(contents);
       }
-      expect(main.textContent).not.toMatch(/legalPages\.|\{days\}|\{date\}|<\/?(?:strong|em|terms|support|legal|account|privacy|teacherTerms|pricing|promise)>/);
+      expect(main.textContent).not.toMatch(/legalPages\.|\{days\}|\{amount\}|\{date\}|<\/?(?:strong|em|terms|support|legal|account|privacy|teacherTerms|copyright|pricing|promise)>/);
       expect(main.querySelector("p p")).toBeNull();
       const meta = await metadata();
       expect(meta.title).toContain(document.title);
@@ -95,7 +102,7 @@ describe("legal document translation from the request cookie", () => {
       request.locale = cookie;
       const view = render(await Page());
       expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(englishReference[key].title);
-      expect(screen.getByText("Effective July 5, 2026")).toBeInTheDocument();
+      expect(screen.getByText("Effective September 15, 2026")).toBeInTheDocument();
       view.unmount();
     }
   });
@@ -120,7 +127,7 @@ describe("legal document translation from the request cookie", () => {
         expect(translated).not.toMatch(/<[^>]+\s[^>]*>|<\/?(?:script|iframe|img|Link|a)\b/);
       }
     }
-    expect(es.common.effectiveDate).toBe("5 de julio de 2026");
+    expect(es.common.effectiveDate).toBe("15 de septiembre de 2026");
   });
 
   it.each(["en", "es"] as const)("discloses provider data and conditional use in %s, without promising prompt redaction", async (locale) => {
@@ -173,7 +180,7 @@ describe("legal document translation from the request cookie", () => {
     expect(screen.getByRole("main")).toHaveTextContent("salvo cuando la ley lo exija");
     view.unmount();
     view = render(await TeacherTermsPage());
-    expect(screen.getByRole("main")).toHaveTextContent("normalmente de 7 a 14 días, y hasta 30 días en Brasil");
+    expect(screen.getByRole("main")).toHaveTextContent("normalmente de 7 a 14 días, y más en algunos países; el calendario lo fija Stripe");
     expect(screen.getByRole("main")).toHaveTextContent("SkillsetMind no puede dispensar");
     expect(screen.getByRole("main")).toHaveTextContent("no retiran automáticamente un curso de la publicación");
     view.unmount();
@@ -183,6 +190,80 @@ describe("legal document translation from the request cookie", () => {
     expect(screen.getByRole("main")).toHaveTextContent("USD 100");
     expect(screen.getByRole("main")).toHaveTextContent("No son psicoterapia");
     expect(screen.getByRole("main")).toHaveTextContent("esta sección no afecta a esos derechos");
+  });
+
+  it("never describes Brazil as a payout country before it is supported", () => {
+    // Payouts cover the US, CA, GB, CH and EU/EEA; Latin America and Brazil come later.
+    const brazilPayout = /days in Brazil|d[ií]as en Brasil|Brazil included|incluido Brasil, ese/;
+    for (const locale of ["en", "es"] as const) {
+      expect(JSON.stringify(getDictionary(locale))).not.toMatch(brazilPayout);
+    }
+    expect(JSON.stringify(helpFaqCategories)).not.toMatch(brazilPayout);
+  });
+
+  it("shows the effective date that the stored legal versions record", () => {
+    for (const version of [currentTermsVersion, currentPrivacyVersion, currentTeacherTermsVersion]) {
+      for (const locale of ["en", "es"] as const) {
+        const formatted = new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es", { dateStyle: "long", timeZone: "UTC" })
+          .format(new Date(`${version}T00:00:00Z`));
+        expect(formatted, `${locale} ${version}`).toBe(legalDictionary(locale).common.effectiveDate);
+      }
+    }
+  });
+
+  it.each(["en", "es"] as const)("states the product's refund rule in the %s Terms", async (locale) => {
+    request.locale = locale;
+    render(await TermsPage());
+    const refunds = screen.getByRole("heading", { name: legalDictionary(locale).terms.heading7 }).parentElement!;
+    expect(refunds).toHaveTextContent(`${refundWindowDays}`);
+    expect(refunds).toHaveTextContent(`${automaticRefundProgressCap}%`);
+    expect(refunds).toHaveTextContent(locale === "en" ? "once per course" : "una vez por curso");
+    expect(refunds.textContent).not.toMatch(/substantially completed|completado sustancialmente/);
+  });
+
+  it.each(["en", "es"] as const)("names SKILLSET USA INC. and routes %s copyright notices to legal@ and the DMCA page", async (locale) => {
+    request.locale = locale;
+    let view = render(await TermsPage());
+    const ip = screen.getByRole("heading", { name: legalDictionary(locale).terms.heading11 }).parentElement!;
+    expect(within(ip).getByRole("link", { name: locale === "en" ? "Copyright (DMCA) Policy" : "Política de derechos de autor (DMCA)" })).toHaveAttribute("href", "/legal/copyright");
+    expect(within(ip).getByRole("link", { name: "legal@skillsetmind.com" })).toHaveAttribute("href", "mailto:legal@skillsetmind.com");
+    expect(screen.getByRole("main")).toHaveTextContent("SKILLSET USA INC.");
+    expect(screen.getByRole("main").textContent).not.toMatch(/Skillset USA/);
+    view.unmount();
+    view = render(await PrivacyPage());
+    expect(screen.getByRole("main")).toHaveTextContent("SKILLSET USA INC.");
+    expect(screen.getByRole("main").textContent).not.toMatch(/Skillset USA/);
+    view.unmount();
+  });
+
+  it.each(["en", "es"] as const)("publishes the %s DMCA notice, counter-notice and repeat-infringer rules without an EIN", async (locale) => {
+    request.locale = locale;
+    render(await CopyrightPage());
+    const main = screen.getByRole("main");
+    expect(main).toHaveTextContent("§512(c)(3)");
+    expect(main).toHaveTextContent("§512(g)(3)");
+    expect(main).toHaveTextContent("SKILLSET USA INC.");
+    expect(main).toHaveTextContent(locale === "en"
+      ? "registration with the U.S. Copyright Office is in progress"
+      : "(U.S. Copyright Office) está en trámite");
+    expect(main).toHaveTextContent(locale === "en" ? "repeat infringers" : "de forma reiterada");
+    expect(within(main).getAllByRole("link", { name: "legal@skillsetmind.com" })[0]).toHaveAttribute("href", "mailto:legal@skillsetmind.com");
+    expect(main.textContent).not.toMatch(/\b\d{2}-\d{7}\b|\bEIN\b/);
+  });
+
+  it.each(["en", "es"] as const)("tells %s teachers the activation fee, eligibility and who carries refunds and disputes", async (locale) => {
+    request.locale = locale;
+    render(await TeacherTermsPage());
+    const doc = legalDictionary(locale).teacherTerms as Record<string, string>;
+    const section = (n: number) => screen.getByRole("heading", { name: doc[`heading${n}`] }).parentElement!;
+    expect(section(2)).toHaveTextContent(locale === "en"
+      ? "the United States, Canada, the United Kingdom, Switzerland, and the countries of the European Union and the European Economic Area. Latin America, including Brazil, is planned for later."
+      : "Estados Unidos, Canadá, el Reino Unido, Suiza y los países de la Unión Europea y del Espacio Económico Europeo. América Latina, incluido Brasil, está prevista más adelante.");
+    expect(section(7)).toHaveTextContent(locale === "en" ? "not returned when a sale is lost to a dispute" : "no se devuelve cuando una venta se pierde en una disputa");
+    expect(section(7)).toHaveTextContent(locale === "en" ? "may debit your bank account" : "cargar el importe en tu cuenta bancaria");
+    expect(section(8)).toHaveTextContent(`US$${activationFeeUsd}`);
+    expect(section(8)).toHaveTextContent(locale === "en" ? "within 7 days of payment" : "dentro de los 7 días siguientes al pago");
+    expect(section(8)).toHaveTextContent(locale === "en" ? "does not refund the fee you paid" : "no da derecho al reembolso");
   });
 });
 

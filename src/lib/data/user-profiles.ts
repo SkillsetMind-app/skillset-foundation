@@ -560,3 +560,23 @@ export async function acceptUserTerms(uid: string, marketingConsent: boolean) {
     throw error;
   }
 }
+
+// Re-acceptance of a newer Teacher Terms version. The first acceptance stays in
+// onboarding (completeUserOnboarding), which is what grants the teacher role.
+export async function acceptTeacherTerms(uid: string) {
+  const supabase = getSupabaseBrowserClient();
+  const timestamp = nowIso();
+
+  const { error } = await supabase
+    .from("users")
+    .update({
+      teacher_terms_accepted_at: timestamp,
+      teacher_terms_version: currentTeacherTermsVersion,
+      updated_at: timestamp,
+    })
+    .eq("uid", uid);
+
+  if (error) {
+    throw error;
+  }
+}

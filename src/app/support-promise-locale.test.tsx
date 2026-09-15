@@ -48,7 +48,7 @@ describe("support and Promise server pages use the cookie and real dictionaries"
   });
 
   it("requires every changelog translation in the shipped dictionaries, without English fallback", () => {
-    for (const key of ["eyebrow", "title", "description", "publishedOn", "publication", "changeTitle", "whatChanged", "why", "effectiveNew", "effectiveExisting", "futureFormat", "futureTitle", "futureChange", "futureWhy", "futureNew", "futureExisting"]) {
+    for (const key of ["eyebrow", "title", "description", "publishedOn", "publication", "changeTitle", "whatChanged", "why", "effectiveNew", "effectiveExisting", "change2Title", "change2WhatChanged", "change2Why", "change2Effective", "futureFormat", "futureTitle", "futureChange", "futureWhy", "futureNew", "futureExisting"]) {
       const path = `promiseChangelog.${key}`;
       const english = translate(getDictionary("en"), path);
       const spanish = translate(getDictionary("es"), path);
@@ -82,11 +82,14 @@ describe("support and Promise server pages use the cookie and real dictionaries"
     expect(screen.getByText(t("publication").replace("{date}", published))).toHaveTextContent("90");
     expect(screen.getByText(t("effectiveNew").replace("{date}", effective))).toBeInTheDocument();
     expect(screen.getByText(t("effectiveExisting").replace("{date}", effective))).toHaveTextContent("90");
-    for (const key of ["eyebrow", "description", "whatChanged", "why", "futureFormat", "futureChange", "futureWhy", "futureNew", "futureExisting"]) {
+    for (const key of ["eyebrow", "description", "whatChanged", "why", "change2WhatChanged", "change2Why", "futureFormat", "futureChange", "futureWhy", "futureNew", "futureExisting"]) {
       expect(t(key)).not.toBe(`promiseChangelog.${key}`);
       expect(screen.getByText(t(key))).toBeInTheDocument();
     }
     expect(screen.getByText((_text, element) => element?.tagName === "P" && element.textContent?.startsWith("2026-07-24") === true)).toHaveTextContent(t("changeTitle"));
+    const rewritten = format.format(new Date("2026-09-15T00:00:00Z"));
+    expect(screen.getByText((_text, element) => element?.tagName === "P" && element.textContent?.startsWith("2026-09-15") === true)).toHaveTextContent(t("change2Title"));
+    expect(screen.getByText(t("change2Effective").replace("{date}", rewritten))).toHaveTextContent("90");
     expect(screen.getByText((_text, element) => element?.tagName === "STRONG" && element.textContent?.startsWith("YYYY-MM-DD") === true)).toHaveTextContent(t("futureTitle"));
     const body = screen.getByRole("main").textContent ?? "";
     expect(body).not.toMatch(/promiseChangelog\.|\{date\}/);
@@ -98,5 +101,29 @@ describe("support and Promise server pages use the cookie and real dictionaries"
       expect(body).toContain("comerciante registrado (merchant of record)");
       expect(body).not.toMatch(/What changed:|Why:|Effective from:|Effective for existing creators:|Future entry format/);
     }
+  });
+
+  it.each(["en", "es"] as const)("makes one reply-time promise in %s and no 24h/72h, one-click or arbitration promise", locale => {
+    const dictionary = getDictionary(locale);
+    const reply = locale === "en" ? "2 business days (Mon–Fri)" : "2 días hábiles (de lunes a viernes)";
+    for (const key of [
+      "platform.help.replyTime",
+      "publicPages.help.payment_payout_or_course_review_questions",
+      "publicPages.promise.your_buyers_pay_your_stripe_account",
+      "publicPages.promise.financial_questions_refunds_payouts_holds_chargebacks",
+      "legalPages.refund.text7",
+    ]) {
+      expect(translate(dictionary, key), key).toContain(reply);
+    }
+    const strings = (value: unknown, path: string): [string, string][] =>
+      typeof value === "string" ? [[path, value]]
+        : value && typeof value === "object"
+          ? Object.entries(value).flatMap(([key, child]) => strings(child, path ? `${path}.${key}` : key))
+          : [];
+    // The changelog quotes the old 24/72-hour targets on purpose: it records them.
+    const live = strings(dictionary, "").filter(([path]) => !path.startsWith("promiseChangelog."));
+    expect(live.filter(([, text]) => /\b(24|72)[- ]?(hours?|h|horas)\b/i.test(text)).map(([path]) => path)).toEqual([]);
+    const promise = live.filter(([path]) => path.startsWith("publicPages.promise.") || path.startsWith("home.promise."));
+    expect(promise.filter(([, text]) => /one[- ]click|un clic|arbitra/i.test(text)).map(([path]) => path)).toEqual([]);
   });
 });
