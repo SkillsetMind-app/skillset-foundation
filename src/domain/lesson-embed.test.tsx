@@ -35,6 +35,11 @@ describe("trusted lesson embeds", () => {
     });
   });
 
+  it("returns the video id, so the classroom can use the YouTube cover", () => {
+    expect(getTrustedLessonEmbed("https://youtu.be/dQw4w9WgXcQ")?.videoId).toBe("dQw4w9WgXcQ");
+    expect(getTrustedLessonEmbed("https://vimeo.com/123456789")?.videoId).toBe("123456789");
+  });
+
   it("rejects untrusted or malformed embeds", () => {
     expect(getTrustedLessonEmbed("javascript:alert(1)")).toBeNull();
     expect(getTrustedLessonEmbed("https://example.com/watch?v=dQw4w9WgXcQ")).toBeNull();

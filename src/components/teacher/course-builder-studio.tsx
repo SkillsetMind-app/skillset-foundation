@@ -100,6 +100,7 @@ import { defaultSkillsetCurrency } from "@/lib/payments/currencies";
 import { CurrencySelect } from "@/components/teacher/currency-select";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
 import { getCourseReadiness, getLessonIdsWithMedia } from "@/domain/course-readiness";
+import { moveLessonTo } from "@/domain/curriculum-move";
 
 const builderTabs = [
   { value: "details", label: "creatorEditor.builder.steps.details.tab", sub: "creatorEditor.builder.steps.details.tabHelp" },
@@ -209,6 +210,19 @@ function isPlainLeftClick(event: {
     && !event.altKey
   );
 }
+
+// Tipo proprio no arrastar: soltar texto qualquer numa linha de modulo nao
+// move nada.
+const lessonDragType = "application/x-skillset-lesson";
+
+// Liberacao que recalcula a posicao da aula a cada leitura (lesson_is_released
+// no banco e getLessonUnlockState): mover muda quando a aula abre e pode
+// trancar de novo quem ja tinha acesso. time_drip_custom usa o dia de cada aula.
+const positionalDripStrategies: ReadonlySet<DripStrategy> = new Set<DripStrategy>([
+  "sequential_progress",
+  "time_drip_module",
+  "time_drip_lesson",
+]);
 
 function createLocalId(prefix: string) {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -503,6 +517,10 @@ export function CourseBuilderStudio() {
   // que abre a aba. Cada modulo e uma linha; o clique abre a pagina dele.
   const [isModuleFormRequested, setIsModuleFormOpen] = useState(false);
   const [lessonFormModuleId, setLessonFormModuleId] = useState("");
+  // Seletor "Move to module…" por aula: escolher so marca o destino e o botao
+  // Move aplica (no Chrome/Edge as setas do teclado disparam change na hora).
+  const [moveTargets, setMoveTargets] = useState<Record<string, string>>({});
+  const [moveStatus, setMoveStatus] = useState<{ moduleId: string; text: string } | null>(null);
   const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
   const [error, setError] = useState<BuilderError | null>(null);
   const [success, setSuccess] = useState<"lessonAdded" | "draftSaved" | "published" | null>(null);
@@ -1308,6 +1326,48 @@ export function CourseBuilderStudio() {
     setSuccess(null);
   }
 
+  // Mover para outro modulo: vai para o fim dele, como o mesmo objeto (mesmo
+  // id). Estudio aberto ou a abrir passam a mirar o modulo novo; senao
+  // procurariam a aula no modulo antigo e ficariam sem aula.
+  function moveLessonToModule(lessonId: string, targetModuleId: string): boolean {
+    if (!isEditable) {
+      return false;
+    }
+
+    const target = modules.find((module) => module.id === targetModuleId);
+    // Ja esta nesse modulo (ex.: soltou na propria linha): nada muda.
+    if (!target || target.lessons.some((lesson) => lesson.id === lessonId)) {
+      return false;
+    }
+
+    // ponytail: com liberacao por posicao, mover pode trancar de novo quem ja
+    // tinha acesso, porque a posicao e recalculada a cada leitura. Por ora a
+    // pessoa confirma; a correcao de raiz (aula concluida conta como liberada,
+    // no drip-policy.ts e em lesson_is_released) precisa de migration e fica
+    // agendada a parte.
+    if (
+      positionalDripStrategies.has(dripStrategy)
+      && !window.confirm(t("creatorEditor.builder.curriculum.moveConfirm"))
+    ) {
+      return false;
+    }
+
+    setModules((currentModules) => {
+      const current = currentModules.find((module) => module.id === targetModuleId);
+      return current
+        ? moveLessonTo(currentModules, lessonId, targetModuleId, current.lessons.length)
+        : currentModules;
+    });
+    setActiveLessonStudio((current) =>
+      current?.lessonId === lessonId ? { moduleId: targetModuleId, lessonId } : current,
+    );
+    if (pendingLessonStudioRef.current?.lessonId === lessonId) {
+      pendingLessonStudioRef.current = { moduleId: targetModuleId, lessonId };
+    }
+    setSuccess(null);
+    return true;
+  }
+
   function deleteLesson(moduleId: string, lessonId: string) {
     if (!isEditable) {
       return;
@@ -1548,6 +1608,20 @@ export function CourseBuilderStudio() {
           </form>
         ) : null}
 
+        {/* Liberacao por posicao (sequencia, por modulo, por aula): mover muda
+            quando a aula abre e qual vem antes. Avisa antes, e o mover pede
+            confirmacao. Com dia proprio por aula (custom), nada muda. */}
+        {positionalDripStrategies.has(dripStrategy) && modules.length > 1 && module.lessons.length > 0 ? (
+          <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
+            {t("creatorEditor.builder.curriculum.moveDripWarning")}
+          </p>
+        ) : null}
+        {moveStatus?.moduleId === module.id ? (
+          <p role="status" className="text-xs font-semibold text-[var(--color-primary)]">
+            {moveStatus.text}
+          </p>
+        ) : null}
+
         {module.lessons.length === 0 ? (
           <p className="rounded-[10px] border fine-rule bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("creatorEditor.builder.curriculum.moduleEmpty")}
@@ -1644,6 +1718,67 @@ export function CourseBuilderStudio() {
                   >
                     {t("creatorEditor.builder.curriculum.down")}
                   </button>
+                  {/* Caminho de teclado (e o acessivel) para mudar de modulo:
+                      o seletor so marca o destino e o botao Move aplica. */}
+                  {modules.length > 1 ? (
+                    <>
+                      <select
+                        value={moveTargets[lesson.id] ?? ""}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          setMoveTargets((current) => ({ ...current, [lesson.id]: value }));
+                        }}
+                        disabled={!isEditable}
+                        aria-label={t("creatorEditor.builder.curriculum.moveLessonTo").replace(
+                          "{title}",
+                          () => lesson.title || t("creatorEditor.builder.curriculum.untitledLesson"),
+                        )}
+                        className="rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)] disabled:opacity-50"
+                      >
+                        <option value="">{t("creatorEditor.builder.curriculum.moveToModule")}</option>
+                        {modules.map((other, otherIndex) =>
+                          other.id === module.id ? null : (
+                            <option key={other.id} value={other.id}>
+                              {t("creatorEditor.builder.curriculum.moduleOption")
+                                .replace("{index}", () => String(otherIndex + 1))
+                                .replace("{title}", () => other.title || t("creatorEditor.builder.curriculum.untitledModule"))}
+                            </option>
+                          ),
+                        )}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const targetId = moveTargets[lesson.id];
+                          const target = modules.find((item) => item.id === targetId);
+                          if (!target || !moveLessonToModule(lesson.id, target.id)) {
+                            return;
+                          }
+                          setMoveTargets((current) => {
+                            const next = { ...current };
+                            delete next[lesson.id];
+                            return next;
+                          });
+                          setMoveStatus({
+                            moduleId: module.id,
+                            text: t("creatorEditor.builder.curriculum.moveDone")
+                              .replace("{title}", () => lesson.title || t("creatorEditor.builder.curriculum.untitledLesson"))
+                              .replace("{module}", () => target.title || t("creatorEditor.builder.curriculum.untitledModule")),
+                          });
+                          // A linha sai desta pagina: o foco vai para o titulo do modulo.
+                          document.getElementById("builder-module-heading")?.focus();
+                        }}
+                        disabled={!isEditable || !moveTargets[lesson.id]}
+                        aria-label={t("creatorEditor.builder.curriculum.moveLessonButton").replace(
+                          "{title}",
+                          () => lesson.title || t("creatorEditor.builder.curriculum.untitledLesson"),
+                        )}
+                        className="button-outline px-3 py-2 text-xs disabled:opacity-50"
+                      >
+                        {t("creatorEditor.builder.curriculum.moveButton")}
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </div>
 
@@ -2759,6 +2894,20 @@ export function CourseBuilderStudio() {
                 return (
                   <article
                     key={module.id}
+                    // Soltar aqui uma aula arrastada a leva para o fim deste modulo.
+                    onDragOver={(event) => {
+                      // So aceita o arrastar de uma aula; texto ou arquivo nao.
+                      if (isEditable && Array.from(event.dataTransfer.types).includes(lessonDragType)) {
+                        event.preventDefault();
+                      }
+                    }}
+                    onDrop={(event) => {
+                      const lessonId = event.dataTransfer.getData(lessonDragType);
+                      if (lessonId) {
+                        event.preventDefault();
+                        moveLessonToModule(lessonId, module.id);
+                      }
+                    }}
                     className="flex flex-wrap items-center gap-3 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3"
                   >
                     <Link
@@ -2820,6 +2969,26 @@ export function CourseBuilderStudio() {
                         {t("creatorEditor.builder.curriculum.delete")}
                       </button>
                     </div>
+                    {isEditable && modules.length > 1 && module.lessons.length > 0 ? (
+                      // Caminho do mouse; o acessivel e o seletor da pagina do modulo.
+                      <ul aria-hidden="true" className="flex basis-full flex-wrap gap-1.5">
+                        {module.lessons.map((lesson) => (
+                          <li key={lesson.id}>
+                            <span
+                              draggable
+                              onDragStart={(event) => {
+                                event.dataTransfer.setData(lessonDragType, lesson.id);
+                                event.dataTransfer.effectAllowed = "move";
+                              }}
+                              title={t("creatorEditor.builder.curriculum.dragLessonHint")}
+                              className="inline-flex cursor-grab rounded-[8px] border border-[var(--color-line)] bg-white px-2 py-1 text-xs text-[var(--color-ink-soft)]"
+                            >
+                              {lesson.title || t("creatorEditor.builder.curriculum.untitledLesson")}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </article>
                 );
               })}
