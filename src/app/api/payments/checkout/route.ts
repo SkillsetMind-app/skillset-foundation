@@ -422,6 +422,9 @@ export async function POST(request: Request) {
                 connectedAccountId,
                 platformFeeBps: String(platformFeeBps),
                 currency: currency.toUpperCase(),
+                // The purchase email is sent from invoice.paid, which never
+                // sees this session's locale.
+                locale,
                 ...(priced.offerId ? { offerId: priced.offerId } : {}),
                 ...(priced.priceId ? { priceId: priced.priceId } : {}),
                 // The webhook only ever sees the subscription, so the

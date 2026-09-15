@@ -3724,11 +3724,10 @@
         "addFirstModule": "Añade tu primer módulo",
         "addLessonToModule": "Añadir lección al módulo {index}",
         "moreOptions": "Más opciones",
-        "showLessons": "Mostrar las lecciones del módulo {index}",
-        "hideLessons": "Ocultar las lecciones del módulo {index}",
         "cancel": "Cancelar",
         "openMediaLibrary": "Abrir la biblioteca de archivos",
-        "closeMediaLibrary": "Ocultar la biblioteca de archivos"
+        "closeMediaLibrary": "Ocultar la biblioteca de archivos",
+        "breadcrumb": "Ruta de navegación"
       },
       "summary": {
         "month": " / mes",

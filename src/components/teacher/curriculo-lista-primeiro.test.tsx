@@ -84,12 +84,21 @@ vi.mock("@/components/teacher/course-asset-uploader", () => ({
   CourseAssetUploader: () => <div>BIBLIOTECA DE MIDIA</div>,
 }));
 
-function renderBuilder() {
-  return render(
+function tree() {
+  return (
     <I18nProvider initialLocale="en">
       <CourseBuilderStudio />
-    </I18nProvider>,
+    </I18nProvider>
   );
+}
+
+function renderBuilder() {
+  return render(tree());
+}
+
+// Fatia 4: capa, descricao e aulas moram na pagina do modulo (?module=M).
+function abrirModulo(id: string) {
+  mocks.searchParams = new URLSearchParams(`courseId=course-1&tab=content&module=${id}`);
 }
 
 function curriculumCard() {
@@ -101,6 +110,7 @@ function curriculumCard() {
 describe("aba Curriculum: a lista de modulos vem primeiro", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.searchParams = new URLSearchParams("courseId=course-1&tab=content");
   });
 
   afterEach(() => {
@@ -114,8 +124,9 @@ describe("aba Curriculum: a lista de modulos vem primeiro", () => {
     const card = curriculumCard();
     expect(card.querySelectorAll("form")).toHaveLength(0);
     expect(card.querySelectorAll("article")).toHaveLength(2);
-    expect(screen.getByRole("textbox", { name: "Module 1" })).toHaveValue("Start here");
-    expect(screen.getByRole("textbox", { name: "Module 2" })).toHaveValue("Deep work");
+    // Uma linha por modulo; o nome se edita na pagina dele.
+    expect(within(card).getByRole("link", { name: /Start here/ })).toBeInTheDocument();
+    expect(within(card).getByRole("link", { name: /Deep work/ })).toBeInTheDocument();
     // O select que a pessoa tinha de acertar a cada aula nao existe mais.
     expect(screen.queryByRole("combobox", { name: "Module for this lesson" })).not.toBeInTheDocument();
     // A lista e a primeira coisa da aba, nao a terceira.
@@ -141,11 +152,17 @@ describe("aba Curriculum: a lista de modulos vem primeiro", () => {
       target: { value: "Recovery" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create module" }));
-    expect(screen.getByRole("textbox", { name: "Module 3" })).toHaveValue("Recovery");
+    expect(within(curriculumCard()).getByRole("link", { name: /Recovery/ })).toBeInTheDocument();
     expect(curriculumCard().querySelectorAll("form")).toHaveLength(0);
+    // O modulo novo abre na pagina dele.
+    expect(mocks.router.push).toHaveBeenLastCalledWith(
+      expect.stringMatching(/[?&]module=module-/),
+      { scroll: false },
+    );
   });
 
-  it("cria a aula dentro do modulo da linha, sem select de modulo", async () => {
+  it("cria a aula dentro do modulo aberto, sem select de modulo", async () => {
+    abrirModulo("m2");
     renderBuilder();
     await screen.findByRole("heading", { name: mocks.course.title });
 
@@ -158,10 +175,13 @@ describe("aba Curriculum: a lista de modulos vem primeiro", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Add lesson" }));
 
-    const [first, second] = Array.from(curriculumCard().querySelectorAll("article")) as HTMLElement[];
-    expect(within(first).getByText("0 lessons")).toBeInTheDocument();
-    expect(within(second).getByText("1 lesson")).toBeInTheDocument();
-    expect(within(second).getAllByRole("textbox", { name: "Lesson title" })[1]).toHaveValue("Focus blocks");
+    expect(within(curriculumCard()).getByText("1 lesson")).toBeInTheDocument();
+    expect(within(curriculumCard()).getAllByRole("textbox", { name: "Lesson title" })[1]).toHaveValue("Focus blocks");
+    fireEvent.click(screen.getAllByRole("button", { name: "Save draft" })[0]);
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalled());
+    const saved = vi.mocked(updateTeacherCourseBuilder).mock.calls.at(-1)?.[1].modules;
+    expect(saved?.[0].lessons).toEqual([]);
+    expect(saved?.[1].lessons).toEqual([expect.objectContaining({ title: "Focus blocks" })]);
   });
 
   // O cabecalho do curriculo dizia "1 modules / 1 lessons" e a estrutura,
@@ -200,9 +220,9 @@ describe("aba Curriculum: a lista de modulos vem primeiro", () => {
 
   it("envia a capa pelo modulo certo e grava o asset sem tocar nas aulas", async () => {
     vi.mocked(uploadCourseAsset).mockResolvedValueOnce("poster-new");
+    abrirModulo("m2");
     renderBuilder();
     await screen.findByRole("heading", { name: mocks.course.title });
-    fireEvent.click(screen.getByRole("button", { name: "Show the lessons in module 2" }));
     const poster = screen.getByRole("region", { name: "Module cover" });
     expect(poster.querySelector('.aspect-\\[2\\/3\\]')).not.toBeNull();
     const description = screen.getByRole("textbox", { name: "Module 2 description" });
@@ -221,11 +241,15 @@ describe("aba Curriculum: a lista de modulos vem primeiro", () => {
   });
 
   it("nao permite capa em modulo ainda nao salvo nem pede minutos da aula", async () => {
-    renderBuilder();
+    const { rerender } = renderBuilder();
     await screen.findByRole("heading", { name: mocks.course.title });
     fireEvent.click(screen.getByRole("button", { name: "Add module" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Module title" }), { target: { value: "New module" } });
     fireEvent.click(screen.getByRole("button", { name: "Create module" }));
+    // O modulo novo abre na pagina dele: segue a URL que o builder empurrou.
+    const destino = String(mocks.router.push.mock.calls.at(-1)?.[0]);
+    mocks.searchParams = new URL(destino, "https://example.test").searchParams;
+    rerender(tree());
     expect(screen.getByLabelText("Module cover", { selector: "input" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Add lesson to module 3" }));
     expect(screen.queryByRole("textbox", { name: "Lesson duration" })).not.toBeInTheDocument();
@@ -234,9 +258,9 @@ describe("aba Curriculum: a lista de modulos vem primeiro", () => {
 
   it("recusa arquivo invalido e permite repetir uma capa cujo envio falhou", async () => {
     vi.mocked(uploadCourseAsset).mockRejectedValueOnce(new Error("network"));
+    abrirModulo("m1");
     renderBuilder();
     await screen.findByRole("heading", { name: mocks.course.title });
-    fireEvent.click(screen.getByRole("button", { name: "Show the lessons in module 1" }));
     fireEvent.change(screen.getByLabelText("Module cover", { selector: "input" }), {
       target: { files: [new File(["video"], "lesson.mp4", { type: "video/mp4" })] },
     });
@@ -263,9 +287,9 @@ describe("aba Curriculum: a lista de modulos vem primeiro", () => {
       },
     ];
     try {
+      abrirModulo("m1");
       renderBuilder();
       await screen.findByRole("heading", { name: mocks.course.title });
-      fireEvent.click(screen.getByRole("button", { name: "Show the lessons in module 1" }));
 
       expect(screen.getByRole("textbox", { name: "Lesson title" })).toHaveValue("Welcome");
       expect(screen.getByRole("button", { name: "Add video" })).toBeInTheDocument();
@@ -301,9 +325,9 @@ describe("aba Curriculum: a lista de modulos vem primeiro", () => {
     };
     mocks.course.modules = [{ id: "m1", title: "Start here", lessons: [aulaAntiga] }];
     try {
+      abrirModulo("m1");
       renderBuilder();
       await screen.findByRole("heading", { name: mocks.course.title });
-      fireEvent.click(screen.getByRole("button", { name: "Show the lessons in module 1" }));
       fireEvent.change(screen.getByRole("textbox", { name: "Lesson title" }), {
         target: { value: "Renamed lesson" },
       });
