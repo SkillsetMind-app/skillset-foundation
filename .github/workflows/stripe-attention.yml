@@ -1,0 +1,39 @@
+name: Stripe attention
+
+# Hourly tick for /api/cron/stripe-attention: tells ops when a Stripe event did
+# not finish processing (someone may have paid without getting access).
+#
+# Lives here and not in vercel.json because Vercel Hobby crons run at most once
+# a day. The route decides whether to alert; this job only knocks on the door.
+
+permissions: {}
+
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: stripe-attention
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check stuck Stripe events
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Without the value the call would only ever get 401 — fail loudly instead.
+      - name: Call the check
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error title=Stripe attention not configured::Missing repository secret CRON_SECRET (same value as on Vercel)."
+            exit 1
+          fi
+          # The repo is public, so this log is too: print the status line only,
+          # never the JSON body. -f still fails the run on 401/500.
+          curl -fsS -o /dev/null -w 'HTTP %{http_code}\n' --max-time 60 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://www.skillsetmind.com/api/cron/stripe-attention
