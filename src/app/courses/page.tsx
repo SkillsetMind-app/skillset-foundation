@@ -21,7 +21,7 @@ export default async function CoursesPage() {
   return (
     <div className="page-shell">
       <SiteNav />
-      <main className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
+      <main id="conteudo" className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
         <div className="marketplace-page-header mb-8">
           <div className="marketplace-page-header__grid">
             <div>

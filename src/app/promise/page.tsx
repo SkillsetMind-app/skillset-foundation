@@ -72,7 +72,7 @@ export default async function PromisePage() {
   return (
     <div className="page-shell">
       <SiteNav />
-      <main>
+      <main id="conteudo">
         <section className="relative overflow-hidden bg-[var(--color-primary)] text-white">
           <div className="absolute inset-0 bg-gradient-to-br from-[#07172a] via-[#102944] to-[#1a365d]" />
           <div

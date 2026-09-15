@@ -9,10 +9,17 @@ const mocks = vi.hoisted(() => ({
   subscriptionCancel: vi.fn(),
   paymentIntentRetrieve: vi.fn(),
   disputesList: vi.fn(),
+  notifyOps: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
   getSupabaseAdminClient: mocks.getAdmin,
+}));
+
+// Observed, not sent: the real helper throttles per event for 5 minutes, which
+// would make one test's alert hide the next one's.
+vi.mock("@/lib/ops/alert", () => ({
+  notifyOps: mocks.notifyOps,
 }));
 
 vi.mock("@/lib/payments/server/stripe", () => ({
@@ -59,6 +66,9 @@ type AdminState = {
   orderRow: Record<string, unknown>;
   paymentWrites: Array<Record<string, unknown>>;
   orderWrites: Array<Record<string, unknown>>;
+  // payout_ledger ids written in checkout mode, so a redelivery meets the
+  // same re-arm gate it would in production.
+  ledgerIds: Set<string>;
 };
 
 type Filter = { column: string; value: unknown };
@@ -113,6 +123,7 @@ function createAdmin(
     },
     paymentWrites: [],
     orderWrites: [],
+    ledgerIds: new Set(),
   };
 
   class Query {
@@ -233,6 +244,10 @@ function createAdmin(
           state.enrollmentInserts.push({ ...this.values });
         }
 
+        if (this.table === "payout_ledger" && this.operation === "insert") {
+          state.ledgerIds.add(String(this.values.id));
+        }
+
         if (this.table === "payments") state.paymentWrites.push({ ...this.values });
         if (this.table === "orders") state.orderWrites.push({ ...this.values });
 
@@ -304,6 +319,8 @@ function createAdmin(
           this.filterValue("id") === "order_1"
           || this.filterValue("payment_id") === "pi_1";
         data = matched ? { ...state.ledger } : null;
+      } else if (this.table === "payout_ledger" && state.ledgerIds.has(String(this.filterValue("id")))) {
+        data = { id: this.filterValue("id") };
       }
 
       return {
@@ -401,6 +418,14 @@ function createAdmin(
 
       return { data: null, error: null };
     }),
+    auth: {
+      admin: {
+        getUserById: vi.fn(async (uid: string) => ({
+          data: { user: { id: uid, email: "buyer@example.test" } },
+          error: null,
+        })),
+      },
+    },
     state,
   };
 
@@ -573,6 +598,11 @@ describe("Stripe webhook financial integrity", () => {
     });
     mocks.subscriptionCancel.mockReset().mockResolvedValue({ status: "canceled" });
     mocks.disputesList.mockReset().mockResolvedValue({ data: [] });
+    mocks.notifyOps.mockReset();
+    // Outside the access-email block no case has a Resend key: the sender
+    // skips with a warning and never reaches the network.
+    vi.stubEnv("RESEND_API_KEY", "");
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
     mocks.isStripeConfigured.mockReturnValue(true);
     mocks.paymentIntentRetrieve
       .mockReset()
@@ -1360,6 +1390,216 @@ describe("Stripe webhook financial integrity", () => {
       // Nao-200: o Stripe reenvia depois que a fulfilment terminar, em vez de o
       // reembolso ser perdido para sempre.
       expect(response.status).not.toBe(200);
+    });
+  });
+
+  // Quem fechava a aba depois de pagar ficava so com o recibo do Stripe: sem
+  // link do curso, sem saber como entrar. O webhook agora manda UM email.
+  describe("access email after a paid sale", () => {
+    const courseUrl = "https://www.skillsetmind.com/learn/courses/course_1";
+    const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+    // Resend's HTTP API is the boundary: everything up to the request is real.
+    const resend = vi.fn<typeof fetch>();
+    const lostEmailAlert = expect.objectContaining({
+      event: "stripe.webhook.access_email_failed",
+      context: { courseId: "course_1", userId: "user_1" },
+    });
+
+    function sentEmails() {
+      return resend.mock.calls.map(([url, init]) => ({
+        url: String(url),
+        headers: new Headers(init?.headers),
+        body: JSON.parse(String(init?.body)) as {
+          from: string; to: string[]; subject: string; html: string; text: string;
+        },
+      }));
+    }
+
+    function subscription(metadata: Record<string, string> = {}) {
+      return {
+        metadata: { purpose: "course_subscription", courseId: "course_1", userId: "user_1", teacherId: "teacher_1", ...metadata },
+        items: { data: [{ current_period_end: 1_800_000_000 }] },
+        customer: "cus_1",
+        status: "active",
+        cancel_at_period_end: false,
+      };
+    }
+
+    function firstInvoiceEvent() {
+      const event = paidInvoiceEvent();
+      Object.assign(event.data.object, { billing_reason: "subscription_create" });
+      return event;
+    }
+
+    beforeEach(() => {
+      // Empty falls back to SITE_URL, the canonical www origin.
+      vi.stubEnv("SKILLSET_APP_URL", "");
+      vi.stubEnv("RESEND_API_KEY", "re_fixture");
+      resend.mockReset().mockImplementation(async () => new Response('{"id":"email_1"}', { status: 200 }));
+      vi.stubGlobal("fetch", resend);
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("sends one purchase email keyed by the ledger id, with the course and the account", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+
+      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
+      const [email] = sentEmails();
+      expect(email.url).toBe("https://api.resend.com/emails");
+      expect(email.headers.get("Idempotency-Key")).toBe("order_1");
+      expect(email.body).toMatchObject({
+        from: "SkillsetMind <no-reply@skillsetmind.com>",
+        to: ["buyer@example.test"],
+        subject: "Your course is ready: Course",
+      });
+      expect(email.body.html).toContain(`href="${courseUrl}"`);
+      expect(email.body.text).toContain(courseUrl);
+      expect(email.body.text).toContain("Sign in with buyer@example.test");
+      expect(email.body.text).toContain("support@skillsetmind.com");
+      expect(admin.auth.admin.getUserById).toHaveBeenCalledWith("user_1");
+    });
+
+    it("writes in Spanish when the buyer checked out in Spanish", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = checkoutEvent();
+      Object.assign(event.data.object, { locale: "es" });
+
+      expect((await postEvent(event)).status).toBe(200);
+
+      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
+      const [email] = sentEmails();
+      expect(email.body.subject).toBe("Tu curso está listo: Course");
+      expect(email.body.text).toContain("Inicia sesión con buyer@example.test");
+    });
+
+    it("sends nothing on a redelivery of the same event", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = checkoutEvent();
+
+      expect((await postEvent(event)).status).toBe(200);
+      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
+      expect((await postEvent(event)).status).toBe(200);
+
+      await flush();
+      expect(resend).toHaveBeenCalledTimes(1);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+    });
+
+    it.each([
+      ["a Resend 4xx", async () => new Response("{}", { status: 422 })],
+      ["a Resend 5xx", async () => new Response("{}", { status: 503 })],
+      ["a network error", async (): Promise<Response> => { throw new TypeError("fetch failed"); }],
+    ])("keeps the enrollment, answers 2xx and alerts with the ids on %s", async (_label, answer) => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      resend.mockImplementation(answer);
+
+      const response = await postEvent(checkoutEvent());
+
+      expect(response.status).toBe(200);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+      expect(admin.state.doneEvents).toContain("evt_checkout");
+      await vi.waitFor(() => expect(mocks.notifyOps).toHaveBeenCalledWith(lostEmailAlert));
+      expect(resend).toHaveBeenCalledTimes(1);
+    });
+
+    it("skips without a Resend key: no request, no throw, one warning", async () => {
+      vi.stubEnv("RESEND_API_KEY", "");
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+
+      await vi.waitFor(() => expect(console.warn).toHaveBeenCalledTimes(1));
+      expect(resend).not.toHaveBeenCalled();
+      expect(mocks.notifyOps).not.toHaveBeenCalled();
+    });
+
+    it("sends nothing when the sale is refunded", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
+
+      admin.state.mode = "refund";
+      expect((await postEvent(refundEvent("evt_refund_access", 10000))).status).toBe(200);
+
+      await flush();
+      expect(resend).toHaveBeenCalledTimes(1);
+    });
+
+    it("sends on a subscription's first invoice, not on its renewals", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(subscription({ locale: "es" }));
+
+      expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
+      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
+      const [email] = sentEmails();
+      expect(email.headers.get("Idempotency-Key")).toBe("in_paid_1");
+      expect(email.body.to).toEqual(["buyer@example.test"]);
+      expect(email.body.subject).toBe("Tu curso está listo: Course");
+
+      const renewal = paidInvoiceEvent();
+      renewal.id = "evt_invoice_renewal";
+      Object.assign(renewal.data.object, { id: "in_paid_2", payment_intent: "pi_paid_2", billing_reason: "subscription_cycle" });
+      expect((await postEvent(renewal)).status).toBe(200);
+
+      await flush();
+      expect(resend).toHaveBeenCalledTimes(1);
+    });
+
+    it("alerts with the ids when a first invoice's enrollment fails after its gate row", async () => {
+      const admin = createAdmin("checkout", "fulfill_paid_course_access");
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(subscription());
+
+      expect((await postEvent(firstInvoiceEvent())).status).toBe(500);
+
+      expect(mocks.notifyOps).toHaveBeenCalledWith(lostEmailAlert);
+      await flush();
+      expect(resend).not.toHaveBeenCalled();
+    });
+
+    // invoice.paid has no early return: a redelivery re-runs the whole handler.
+    // Only the ledger gate keeps it from emailing again, and Stripe retries for
+    // about 3 days while Resend's Idempotency-Key only dedupes for 24 h.
+    it("sends nothing when the same first invoice is delivered again", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(subscription());
+
+      expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
+      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
+      expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
+
+      await flush();
+      expect(resend).toHaveBeenCalledTimes(1);
+      expect(fulfillCalls(admin)).toHaveLength(2);
+    });
+
+    // A failed renewal loses no purchase email; alerting on it would be noise
+    // that spends the 5-minute throttle meant for real losses.
+    it("stays silent on the access-email alert when a renewal's enrollment fails", async () => {
+      const admin = createAdmin("checkout", "fulfill_paid_course_access");
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(subscription());
+      const renewal = paidInvoiceEvent();
+      Object.assign(renewal.data.object, { billing_reason: "subscription_cycle" });
+
+      expect((await postEvent(renewal)).status).toBe(500);
+
+      expect(mocks.notifyOps).not.toHaveBeenCalledWith(lostEmailAlert);
+      await flush();
+      expect(resend).not.toHaveBeenCalled();
     });
   });
 });

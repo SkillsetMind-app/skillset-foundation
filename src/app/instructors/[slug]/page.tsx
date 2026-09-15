@@ -40,7 +40,7 @@ export default async function InstructorDetailPage({
   return (
     <div className="page-shell">
       <SiteNav />
-      <main className="mx-auto w-full max-w-7xl px-6 py-12 sm:px-8 sm:py-16">
+      <main id="conteudo" className="mx-auto w-full max-w-7xl px-6 py-12 sm:px-8 sm:py-16">
         <InstructorProfileView key={slug} uid={slug} />
       </main>
       <SiteFooter />

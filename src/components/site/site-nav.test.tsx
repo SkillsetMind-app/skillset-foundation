@@ -42,6 +42,19 @@ function linkNames(nav: HTMLElement): string[] {
 }
 
 describe("SiteNav", () => {
+  // Quem navega pelo teclado ou por leitor de tela pula a barra inteira: o
+  // primeiro elemento focavel leva ao <main id="conteudo"> da pagina.
+  it("o primeiro elemento focavel e o pular para o conteudo, escondido ate ter foco", () => {
+    const { container } = render(<SiteNav />);
+    const focusable = container.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+
+    expect(focusable[0]).toHaveTextContent("Skip to content");
+    expect(focusable[0]).toHaveAttribute("href", "#conteudo");
+    expect(focusable[0]).toHaveClass("sr-only", "focus:not-sr-only");
+  });
+
   it("reserves the phone header for the brand mark, language, account and menu", () => {
     auth.user = { uid: "u-1", email: "person@example.com", displayName: "Test Person", roles: ["teacher"] } as SkillsetUser;
     render(<SiteNav />);

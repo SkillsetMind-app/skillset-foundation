@@ -118,7 +118,8 @@
     "openMenu": "Abrir menú",
     "closeMenu": "Cerrar menú",
     "primaryNavLabel": "Navegación principal",
-    "mobileNavLabel": "Navegación móvil"
+    "mobileNavLabel": "Navegación móvil",
+    "skipToContent": "Ir al contenido"
   },
   "footer": {
     "tagline": "La plataforma de cursos para psicólogos, coaches, facilitadores y expertos en desarrollo personal. Expertos verificados, sin retención de la plataforma sobre tu dinero, certificados verificables.",
@@ -3717,11 +3718,10 @@
         "addFirstModule": "Añade tu primer módulo",
         "addLessonToModule": "Añadir lección al módulo {index}",
         "moreOptions": "Más opciones",
-        "showLessons": "Mostrar las lecciones del módulo {index}",
-        "hideLessons": "Ocultar las lecciones del módulo {index}",
         "cancel": "Cancelar",
         "openMediaLibrary": "Abrir la biblioteca de archivos",
-        "closeMediaLibrary": "Ocultar la biblioteca de archivos"
+        "closeMediaLibrary": "Ocultar la biblioteca de archivos",
+        "breadcrumb": "Ruta de navegación"
       },
       "summary": {
         "month": " / mes",
