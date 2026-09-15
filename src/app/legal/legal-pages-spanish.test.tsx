@@ -193,7 +193,7 @@ describe("legal document translation from the request cookie", () => {
   });
 
   it("never describes Brazil as a payout country before it is supported", () => {
-    // Payouts cover the US, CA, GB, CH and EU/EEA; Latin America and Brazil come later.
+    // Payouts cover the US, CA, GB, CH, the EU, LI and NO; Latin America and Brazil come later.
     const brazilPayout = /days in Brazil|d[ií]as en Brasil|Brazil included|incluido Brasil, ese/;
     for (const locale of ["en", "es"] as const) {
       expect(JSON.stringify(getDictionary(locale))).not.toMatch(brazilPayout);
@@ -257,8 +257,10 @@ describe("legal document translation from the request cookie", () => {
     const doc = legalDictionary(locale).teacherTerms as Record<string, string>;
     const section = (n: number) => screen.getByRole("heading", { name: doc[`heading${n}`] }).parentElement!;
     expect(section(2)).toHaveTextContent(locale === "en"
-      ? "the United States, Canada, the United Kingdom, Switzerland, and the countries of the European Union and the European Economic Area. Latin America, including Brazil, is planned for later."
-      : "Estados Unidos, Canadá, el Reino Unido, Suiza y los países de la Unión Europea y del Espacio Económico Europeo. América Latina, incluido Brasil, está prevista más adelante.");
+      ? "the United States, Canada, the United Kingdom, Switzerland, the European Union, Liechtenstein and Norway. Latin America, including Brazil, is planned for later."
+      : "Estados Unidos, Canadá, el Reino Unido, Suiza, la Unión Europea, Liechtenstein y Noruega. América Latina, incluido Brasil, está prevista más adelante.");
+    // CONNECT_PAYOUT_COUNTRIES leaves Iceland out (recipient-only), so no "EEA".
+    expect(section(2).textContent).not.toMatch(/Economic Area|Espacio Económico|Iceland|Islandia/);
     expect(section(7)).toHaveTextContent(locale === "en" ? "not returned when a sale is lost to a dispute" : "no se devuelve cuando una venta se pierde en una disputa");
     expect(section(7)).toHaveTextContent(locale === "en" ? "may debit your bank account" : "cargar el importe en tu cuenta bancaria");
     expect(section(8)).toHaveTextContent(`US$${activationFeeUsd}`);

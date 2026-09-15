@@ -90,6 +90,9 @@ describe("support and Promise server pages use the cookie and real dictionaries"
     const rewritten = format.format(new Date("2026-09-15T00:00:00Z"));
     expect(screen.getByText((_text, element) => element?.tagName === "P" && element.textContent?.startsWith("2026-09-15") === true)).toHaveTextContent(t("change2Title"));
     expect(screen.getByText(t("change2Effective").replace("{date}", rewritten))).toHaveTextContent("90");
+    // Immediate effect is only honest because nothing a creator received was taken away.
+    expect(t("change2Effective")).toContain(locale === "en" ? "removes no service a creator was receiving" : "no elimina ningún servicio que un creador estuviera recibiendo");
+    expect(t("change2Effective")).toContain(locale === "en" ? "were never actually delivered" : "nunca llegaron a prestarse");
     expect(screen.getByText((_text, element) => element?.tagName === "STRONG" && element.textContent?.startsWith("YYYY-MM-DD") === true)).toHaveTextContent(t("futureTitle"));
     const body = screen.getByRole("main").textContent ?? "";
     expect(body).not.toMatch(/promiseChangelog\.|\{date\}/);

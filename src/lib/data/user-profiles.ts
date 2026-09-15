@@ -544,7 +544,7 @@ export async function acceptUserTerms(uid: string, marketingConsent: boolean) {
   const supabase = getSupabaseBrowserClient();
   const timestamp = nowIso();
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("users")
     .update({
       terms_accepted_at: timestamp,
@@ -554,10 +554,20 @@ export async function acceptUserTerms(uid: string, marketingConsent: boolean) {
       marketing_consent: marketingConsent,
       updated_at: timestamp,
     })
-    .eq("uid", uid);
+    .eq("uid", uid)
+    .select("uid");
 
   if (error) {
     throw error;
+  }
+  requireUpdatedRow(data);
+}
+
+// An update that RLS filters to zero rows returns no error. Treating it as
+// success records nothing, and the acceptance modal comes back on every load.
+function requireUpdatedRow(rows: ReadonlyArray<unknown> | null) {
+  if (!rows?.length) {
+    throw new Error("Legal acceptance was not saved: no profile row was updated.");
   }
 }
 
@@ -567,16 +577,18 @@ export async function acceptTeacherTerms(uid: string) {
   const supabase = getSupabaseBrowserClient();
   const timestamp = nowIso();
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("users")
     .update({
       teacher_terms_accepted_at: timestamp,
       teacher_terms_version: currentTeacherTermsVersion,
       updated_at: timestamp,
     })
-    .eq("uid", uid);
+    .eq("uid", uid)
+    .select("uid");
 
   if (error) {
     throw error;
   }
+  requireUpdatedRow(data);
 }
