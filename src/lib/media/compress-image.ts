@@ -38,10 +38,18 @@ function renamed(name: string, type: string): string {
   return `${base}.${type === "image/webp" ? "webp" : "jpg"}`;
 }
 
+// Formatos que todo navegador mostra: só esses podem subir sem conversão.
+const KEEPABLE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
 export async function compressImage(file: File): Promise<File> {
   // Recusa antes de abrir: 10 MB é o teto combinado para a foto de origem.
   if (file.size > MAX_SOURCE_IMAGE_BYTES) {
     throw new ImageTooLargeError();
+  }
+
+  // GIF pode ser animado; o canvas guardaria só o primeiro quadro.
+  if (file.type === "image/gif") {
+    return file;
   }
 
   let bitmap: ImageBitmap;
@@ -54,22 +62,42 @@ export async function compressImage(file: File): Promise<File> {
   }
 
   try {
-    const box = cropTo(bitmap.width, bitmap.height, TARGET_WIDTH / TARGET_HEIGHT);
+    const ratio = TARGET_WIDTH / TARGET_HEIGHT;
+    const box = cropTo(bitmap.width, bitmap.height, ratio);
+    // Não amplia: foto estreita sai com a largura do recorte, ainda 2:3.
+    const width = Math.min(TARGET_WIDTH, box.w);
+    const height = Math.round(width / ratio);
     const canvas = document.createElement("canvas");
-    canvas.width = TARGET_WIDTH;
-    canvas.height = TARGET_HEIGHT;
+    canvas.width = width;
+    canvas.height = height;
     const context = canvas.getContext("2d");
     if (!context) {
       return file;
     }
 
-    context.drawImage(bitmap, box.x, box.y, box.w, box.h, 0, 0, TARGET_WIDTH, TARGET_HEIGHT);
+    const draw = () => {
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      context.drawImage(bitmap, box.x, box.y, box.w, box.h, 0, 0, width, height);
+    };
+    draw();
     // Navegador sem codificador WebP devolve outro tipo (PNG): aí vai JPEG.
     let blob = await encode(canvas, "image/webp");
     if (!blob || blob.type !== "image/webp") {
+      // JPEG não tem transparência: sem fundo branco, o transparente sai preto.
+      context.fillStyle = "#fff";
+      context.fillRect(0, 0, width, height);
+      draw();
       blob = await encode(canvas, "image/jpeg");
     }
     if (!blob || (blob.type !== "image/webp" && blob.type !== "image/jpeg")) {
+      return file;
+    }
+
+    // Já 2:3, num formato que todo navegador mostra, e a conversão não
+    // diminuiu: sobe o original.
+    const alreadyCover = Math.abs(bitmap.width / bitmap.height - ratio) < 0.01;
+    if (blob.size >= file.size && alreadyCover && KEEPABLE_TYPES.includes(file.type)) {
       return file;
     }
 

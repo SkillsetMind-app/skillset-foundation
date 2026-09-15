@@ -27,16 +27,32 @@ describe("cropTo", () => {
 
 describe("compressImage", () => {
   const drawImage = vi.fn();
+  const fillRect = vi.fn();
+  const context = {
+    drawImage,
+    fillRect,
+    fillStyle: "",
+    imageSmoothingEnabled: false,
+    imageSmoothingQuality: "low",
+  };
   let toBlob: ReturnType<typeof vi.spyOn>;
+
+  function bitmapOf(width: number, height: number) {
+    return { width, height, close: vi.fn() } as unknown as ImageBitmap;
+  }
 
   beforeEach(() => {
     drawImage.mockReset();
+    fillRect.mockReset();
+    context.fillStyle = "";
+    context.imageSmoothingEnabled = false;
+    context.imageSmoothingQuality = "low";
     vi.stubGlobal(
       "createImageBitmap",
-      vi.fn(async () => ({ width: 3000, height: 2000, close: vi.fn() })),
+      vi.fn(async () => bitmapOf(3000, 2000)),
     );
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
-      { drawImage } as unknown as CanvasRenderingContext2D,
+      context as unknown as CanvasRenderingContext2D,
     );
     toBlob = vi
       .spyOn(HTMLCanvasElement.prototype, "toBlob")
@@ -58,6 +74,56 @@ describe("compressImage", () => {
     expect(toBlob).toHaveBeenCalledWith(expect.any(Function), "image/webp", 0.82);
     expect(out.type).toBe("image/webp");
     expect(out.name).toBe("capa.webp");
+    // WebP guarda a transparência: nada de fundo branco aqui.
+    expect(fillRect).not.toHaveBeenCalled();
+  });
+
+  it("liga a suavização alta antes de desenhar (a redução fica sem serrilhado)", async () => {
+    let qualityAtDraw = "";
+    drawImage.mockImplementation(() => {
+      qualityAtDraw = context.imageSmoothingQuality;
+    });
+
+    await compressImage(new File(["original"], "capa.png", { type: "image/png" }));
+
+    expect(qualityAtDraw).toBe("high");
+  });
+
+  it("foto pequena não é ampliada: 500x600 sai 400x600, ainda 2:3", async () => {
+    vi.mocked(createImageBitmap).mockResolvedValueOnce(bitmapOf(500, 600));
+    const sizes: Array<[number, number]> = [];
+    toBlob.mockImplementation(function (this: HTMLCanvasElement, callback: BlobCallback, type?: string) {
+      sizes.push([this.width, this.height]);
+      callback(new Blob(["comprimido"], { type }));
+    });
+
+    await compressImage(new File(["original"], "capa.png", { type: "image/png" }));
+
+    expect(drawImage).toHaveBeenCalledWith(expect.anything(), 50, 0, 400, 600, 0, 0, 400, 600);
+    expect(sizes).toEqual([[400, 600]]);
+  });
+
+  it("já 2:3, tipo comum e a compressão não diminuiu: fica o original", async () => {
+    vi.mocked(createImageBitmap).mockResolvedValue(bitmapOf(640, 960));
+    // "comprimido" (10 bytes) não é menor que "original" (8 bytes).
+    const png = new File(["original"], "capa.png", { type: "image/png" });
+
+    await expect(compressImage(png)).resolves.toBe(png);
+
+    // HEIC não fica como está: nem todo navegador mostra.
+    const heic = new File(["original"], "capa.heic", { type: "image/heic" });
+    expect((await compressImage(heic)).type).toBe("image/webp");
+  });
+
+  it("GIF (pode ser animado) sobe o original, mas o teto de 10 MB continua", async () => {
+    const gif = new File(["GIF89a"], "capa.gif", { type: "image/gif" });
+
+    await expect(compressImage(gif)).resolves.toBe(gif);
+    expect(createImageBitmap).not.toHaveBeenCalled();
+
+    const bigGif = new File(["x"], "enorme.gif", { type: "image/gif" });
+    Object.defineProperty(bigGif, "size", { value: MAX_SOURCE_IMAGE_BYTES + 1 });
+    await expect(compressImage(bigGif)).rejects.toBeInstanceOf(ImageTooLargeError);
   });
 
   it("navegador sem WebP (o toBlob devolve outro tipo) cai para JPEG", async () => {
@@ -70,6 +136,23 @@ describe("compressImage", () => {
     expect(toBlob).toHaveBeenLastCalledWith(expect.any(Function), "image/jpeg", 0.82);
     expect(out.type).toBe("image/jpeg");
     expect(out.name).toBe("capa.jpg");
+  });
+
+  it("no JPEG pinta o fundo de branco antes de desenhar (PNG transparente não fica preto)", async () => {
+    toBlob.mockImplementation((callback: BlobCallback, type?: string) => {
+      callback(new Blob(["comprimido"], { type: type === "image/webp" ? "image/png" : type }));
+    });
+    let colorAtFill = "";
+    fillRect.mockImplementation(() => {
+      colorAtFill = context.fillStyle;
+    });
+
+    await compressImage(new File(["original"], "capa.png", { type: "image/png" }));
+
+    expect(fillRect).toHaveBeenCalledWith(0, 0, 640, 960);
+    expect(colorAtFill).toBe("#fff");
+    const lastDraw = drawImage.mock.invocationCallOrder.at(-1) ?? 0;
+    expect(fillRect.mock.invocationCallOrder[0]).toBeLessThan(lastDraw);
   });
 
   it("recusa arquivo acima de 10 MB antes de comprimir", async () => {
