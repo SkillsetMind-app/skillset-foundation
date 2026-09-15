@@ -100,6 +100,7 @@ import { defaultSkillsetCurrency } from "@/lib/payments/currencies";
 import { CurrencySelect } from "@/components/teacher/currency-select";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
 import { getCourseReadiness } from "@/domain/course-readiness";
+import { moveLessonTo } from "@/domain/curriculum-move";
 
 const builderTabs = [
   { value: "details", label: "creatorEditor.builder.steps.details.tab", sub: "creatorEditor.builder.steps.details.tabHelp" },
@@ -209,6 +210,10 @@ function isPlainLeftClick(event: {
     && !event.altKey
   );
 }
+
+// Tipo proprio no arrastar: soltar texto qualquer numa linha de modulo nao
+// move nada.
+const lessonDragType = "application/x-skillset-lesson";
 
 function createLocalId(prefix: string) {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -1296,6 +1301,29 @@ export function CourseBuilderStudio() {
     setSuccess(null);
   }
 
+  // Mover para outro modulo: vai para o fim dele, como o mesmo objeto (mesmo
+  // id). Estudio aberto ou a abrir passam a mirar o modulo novo; senao
+  // procurariam a aula no modulo antigo e ficariam sem aula.
+  function moveLessonToModule(lessonId: string, targetModuleId: string) {
+    if (!isEditable) {
+      return;
+    }
+
+    setModules((currentModules) => {
+      const target = currentModules.find((module) => module.id === targetModuleId);
+      return target
+        ? moveLessonTo(currentModules, lessonId, targetModuleId, target.lessons.length)
+        : currentModules;
+    });
+    setActiveLessonStudio((current) =>
+      current?.lessonId === lessonId ? { moduleId: targetModuleId, lessonId } : current,
+    );
+    if (pendingLessonStudioRef.current?.lessonId === lessonId) {
+      pendingLessonStudioRef.current = { moduleId: targetModuleId, lessonId };
+    }
+    setSuccess(null);
+  }
+
   function deleteLesson(moduleId: string, lessonId: string) {
     if (!isEditable) {
       return;
@@ -1536,6 +1564,14 @@ export function CourseBuilderStudio() {
           </form>
         ) : null}
 
+        {/* Liberacao programada ou em sequencia: mover muda quando a aula abre
+            e qual vem antes. Avisa antes; mover continua funcionando. */}
+        {dripStrategy !== "instant" && modules.length > 1 && module.lessons.length > 0 ? (
+          <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
+            {t("creatorEditor.builder.curriculum.moveDripWarning")}
+          </p>
+        ) : null}
+
         {module.lessons.length === 0 ? (
           <p className="rounded-[10px] border fine-rule bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("creatorEditor.builder.curriculum.moduleEmpty")}
@@ -1632,6 +1668,34 @@ export function CourseBuilderStudio() {
                   >
                     {t("creatorEditor.builder.curriculum.down")}
                   </button>
+                  {/* Caminho de teclado (e o acessivel) para mudar de modulo. */}
+                  {modules.length > 1 ? (
+                    <select
+                      value=""
+                      onChange={(event) => {
+                        if (event.target.value) {
+                          moveLessonToModule(lesson.id, event.target.value);
+                        }
+                      }}
+                      disabled={!isEditable}
+                      aria-label={t("creatorEditor.builder.curriculum.moveLessonTo").replace(
+                        "{title}",
+                        () => lesson.title || t("creatorEditor.builder.curriculum.untitledLesson"),
+                      )}
+                      className="rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)] disabled:opacity-50"
+                    >
+                      <option value="">{t("creatorEditor.builder.curriculum.moveToModule")}</option>
+                      {modules.map((other, otherIndex) =>
+                        other.id === module.id ? null : (
+                          <option key={other.id} value={other.id}>
+                            {t("creatorEditor.builder.curriculum.moduleOption")
+                              .replace("{index}", () => String(otherIndex + 1))
+                              .replace("{title}", () => other.title || t("creatorEditor.builder.curriculum.untitledModule"))}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  ) : null}
                 </div>
               </div>
 
@@ -2747,6 +2811,19 @@ export function CourseBuilderStudio() {
                 return (
                   <article
                     key={module.id}
+                    // Soltar aqui uma aula arrastada a leva para o fim deste modulo.
+                    onDragOver={(event) => {
+                      if (isEditable) {
+                        event.preventDefault();
+                      }
+                    }}
+                    onDrop={(event) => {
+                      const lessonId = event.dataTransfer.getData(lessonDragType);
+                      if (lessonId) {
+                        event.preventDefault();
+                        moveLessonToModule(lessonId, module.id);
+                      }
+                    }}
                     className="flex flex-wrap items-center gap-3 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3"
                   >
                     <Link
@@ -2808,6 +2885,26 @@ export function CourseBuilderStudio() {
                         {t("creatorEditor.builder.curriculum.delete")}
                       </button>
                     </div>
+                    {isEditable && modules.length > 1 && module.lessons.length > 0 ? (
+                      // Caminho do mouse; o acessivel e o seletor da pagina do modulo.
+                      <ul aria-hidden="true" className="flex basis-full flex-wrap gap-1.5">
+                        {module.lessons.map((lesson) => (
+                          <li key={lesson.id}>
+                            <span
+                              draggable
+                              onDragStart={(event) => {
+                                event.dataTransfer.setData(lessonDragType, lesson.id);
+                                event.dataTransfer.effectAllowed = "move";
+                              }}
+                              title={t("creatorEditor.builder.curriculum.dragLessonHint")}
+                              className="inline-flex cursor-grab rounded-[8px] border border-[var(--color-line)] bg-white px-2 py-1 text-xs text-[var(--color-ink-soft)]"
+                            >
+                              {lesson.title || t("creatorEditor.builder.curriculum.untitledLesson")}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </article>
                 );
               })}

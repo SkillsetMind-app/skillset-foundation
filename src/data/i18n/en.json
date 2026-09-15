@@ -3734,7 +3734,12 @@
         "cancel": "Cancel",
         "openMediaLibrary": "Open media library",
         "closeMediaLibrary": "Hide media library",
-        "breadcrumb": "Breadcrumb"
+        "breadcrumb": "Breadcrumb",
+        "moveToModule": "Move to module…",
+        "moveLessonTo": "Move \"{title}\" to another module",
+        "moduleOption": "Module {index}: {title}",
+        "moveDripWarning": "This course releases lessons over time: moving a lesson changes when it opens and which lesson comes before it.",
+        "dragLessonHint": "Drag onto another module to move this lesson"
       },
       "summary": {
         "month": " / month",

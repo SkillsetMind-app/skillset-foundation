@@ -3734,7 +3734,12 @@
         "cancel": "Cancelar",
         "openMediaLibrary": "Abrir la biblioteca de archivos",
         "closeMediaLibrary": "Ocultar la biblioteca de archivos",
-        "breadcrumb": "Ruta de navegación"
+        "breadcrumb": "Ruta de navegación",
+        "moveToModule": "Mover a otro módulo…",
+        "moveLessonTo": "Mover \"{title}\" a otro módulo",
+        "moduleOption": "Módulo {index}: {title}",
+        "moveDripWarning": "Este curso libera las lecciones con el tiempo: mover una lección cambia cuándo se abre y qué lección va antes.",
+        "dragLessonHint": "Arrastra a otro módulo para mover esta lección"
       },
       "summary": {
         "month": " / mes",
