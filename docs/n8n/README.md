@@ -52,7 +52,7 @@ Duas coisas importantes de entender antes:
 1. Abra seu n8n no navegador e faça login.
    *Se o endereço do n8n não abrir, ele está fora do ar ou o domínio expirou —
    resolva isso primeiro, nada abaixo vai funcionar. (Registro do time em
-   2026-08-01: o endereço `n8n.srv1429716.hstgr.cloud` não estava respondendo.)*
+   2026-08-01: o endereço `SEU-N8N` não estava respondendo.)*
 2. No menu lateral, clique em **Workflows**.
 3. Botão **⋯** (três pontinhos) no canto superior direito → **Import from File…**
 4. Escolha o arquivo `docs/n8n/teacher-advisor.flow.json` deste projeto.
