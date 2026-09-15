@@ -1,3 +1,6 @@
+import { isAuthSessionMissingError } from "@supabase/supabase-js";
+
+import { hasPermission, isRole, type Role } from "@/lib/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // Server-only (o segmento `/server/` é o marcador deste repo, como em
@@ -104,6 +107,90 @@ export async function getPublicCourseByRef(
     // A página tem caminho de fallback (o client component continua buscando),
     // então uma falha de leitura aqui degrada o metadata — nunca derruba a rota.
     return null;
+  }
+}
+
+export type CourseRefAccess = "visible" | "missing" | "unknown";
+
+const ACCESS_FIELDS = "id, status, owner_id";
+
+type AccessRow = { id: string; status: string | null; owner_id: string | null };
+
+/**
+ * O que a página /courses/[ref] faz com um ref que não é do catálogo estático
+ * nem curso publicado encontrado.
+ *
+ * A leitura usa o cliente da SESSÃO do pedido, então a RLS decide o que existe
+ * para quem pede: o dono (courses_select_owner), o admin aal2
+ * (courses_select_admin) e o aluno matriculado (courses_select_enrolled) leem
+ * rascunho e arquivado; o público só lê publicado e em revisão
+ * (courses_select_public). Como "em revisão" é legível por qualquer um, ali
+ * exige-se ser o dono ou o admin.
+ *
+ * - "visible": renderiza (prévia do dono/admin, ou curso publicado).
+ * - "missing": 404 de verdade.
+ * - "unknown": a leitura falhou; quem chama NÃO deve responder 404 — um
+ *   soluço do banco não pode derrubar a página de um curso publicado.
+ */
+export async function getCourseRefAccess(ref: string): Promise<CourseRefAccess> {
+  try {
+    const supabase = await createSupabaseServerClient();
+
+    // courses.id é TEXT: um title_key não faz esta busca falhar, só não acha
+    // nada. Erro aqui é falha de verdade — e seguir para o title_key, vazio nos
+    // links que levam o id cru (cancel_url do Stripe, "ver página pública",
+    // perfil do professor), daria 404 num curso no ar.
+    const byId = await supabase
+      .from("courses")
+      .select(ACCESS_FIELDS)
+      .eq("id", ref)
+      .maybeSingle();
+    if (byId.error) return "unknown";
+    let row = (byId.data as AccessRow | null) ?? null;
+
+    if (!row) {
+      const byKey = await supabase
+        .from("courses")
+        .select(ACCESS_FIELDS)
+        .eq("title_key", ref)
+        .limit(1);
+      if (byKey.error) return "unknown";
+      row = (byKey.data?.[0] as AccessRow | undefined) ?? null;
+    }
+
+    if (!row) return "missing";
+    if (row.status === "published") return "visible";
+    // courses_select_public só expõe published e in_review. Rascunho,
+    // needs_changes ou inactive que voltou é a RLS autorizando ESTE leitor
+    // (dono, admin aal2 ou aluno matriculado) — não depende de getUser, que
+    // pode falhar com o JWT ainda válido.
+    if (row.status !== "in_review") return "visible";
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (!user) {
+      // Sem sessão, ou sessão devendo o segundo fator: visitante anônimo.
+      // Qualquer outra falha do Auth não é resposta e não vira 404.
+      const anonymous = !userError
+        || isAuthSessionMissingError(userError)
+        || userError.code === "mfa_required";
+      return anonymous ? "missing" : "unknown";
+    }
+    if (row.owner_id === user.id) return "visible";
+
+    // Mesmo teste do cliente (creator-course-detail: hasPermission(roles,
+    // "platform.accessAdmin")), com os papéis do perfil da sessão. Papel
+    // operacional só vale em sessão aal2 (20260912010000).
+    const profile = await supabase.from("users").select("roles").eq("uid", user.id).maybeSingle();
+    if (profile.error) return "unknown";
+    const roles = Array.isArray(profile.data?.roles)
+      ? profile.data.roles.filter((role): role is Role => typeof role === "string" && isRole(role))
+      : [];
+    if (!hasPermission({ roles }, "platform.accessAdmin")) return "missing";
+    const assurance = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (assurance.error) return "unknown";
+    return assurance.data.currentLevel === "aal2" ? "visible" : "missing";
+  } catch {
+    return "unknown";
   }
 }
 

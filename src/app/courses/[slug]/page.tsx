@@ -3,6 +3,7 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Target } from "lucide-react";
 
@@ -11,7 +12,7 @@ import { CreatorCourseDetail } from "@/components/courses/creator-course-detail"
 import { JsonLd } from "@/components/seo/json-ld";
 import { SiteNav } from "@/components/site/site-nav";
 import { getCourseBySlug, getCourseSlugs } from "@/lib/data/catalog";
-import { getPublicCourseByRef } from "@/lib/data/server/public-course";
+import { getCourseRefAccess, getPublicCourseByRef } from "@/lib/data/server/public-course";
 import { buildCourseJsonLd } from "@/lib/seo/course-jsonld";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
@@ -76,10 +77,20 @@ export default async function CourseDetailPage({
   if (!course) {
     const published = await getPublicCourseByRef(slug);
 
+    // Curso não publicado, removido ou slug inválido respondia 200 com uma
+    // página vazia: ruim para a qualidade da página de anúncio e para o
+    // buscador. Aqui, ANTES de qualquer Suspense, vira 404 de verdade. O dono
+    // (e o admin) continuam vendo o rascunho: a leitura usa a sessão do pedido
+    // e a RLS decide. Falha de leitura ("unknown") não vira 404: um soluço do
+    // banco não pode derrubar a página de um curso publicado.
+    if (!published && (await getCourseRefAccess(slug)) === "missing") {
+      notFound();
+    }
+
     return (
       <div className="page-shell">
         <SiteNav />
-        <main className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
+        <main id="conteudo" className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
           {/* Título e resumo saem daqui, do SERVER COMPONENT, e não de dentro do
               Suspense abaixo. Motivo concreto: CreatorCourseDetail chama
               useSearchParams(), então numa rota prerenderizada o Next entrega
@@ -172,7 +183,7 @@ export default async function CourseDetailPage({
           Offer is emitted only when `purchasable`, matching the visible CTA. */}
       <JsonLd data={buildCourseJsonLd(course, { purchasable })} />
       <SiteNav />
-      <main className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
+      <main id="conteudo" className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
         <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
           <section id="overview" className="scroll-mt-24">
             <div className="relative mb-8 aspect-[16/9] overflow-hidden rounded-[20px] shadow-[var(--shadow-soft)]">

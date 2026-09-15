@@ -126,6 +126,15 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
 
   return (
     <>
+      {/* Primeiro elemento focável da página: quem navega pelo teclado ou por
+          leitor de tela pula a barra inteira. Invisível até receber foco. O
+          alvo é o <main id="conteudo"> de cada página pública. */}
+      <a
+        href="#conteudo"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-[10px] focus:bg-white focus:px-4 focus:py-3 focus:text-sm focus:font-semibold focus:text-[var(--color-primary)] focus:shadow-[var(--shadow-soft)]"
+      >
+        {t("nav.skipToContent")}
+      </a>
       <header className={`site-header ${scrolled ? "scrolled" : ""}`}>
       <div className="site-header__inner relative">
         <div className="hidden md:block">
