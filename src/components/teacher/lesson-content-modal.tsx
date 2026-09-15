@@ -151,6 +151,10 @@ export function LessonContentModal({
 }: LessonContentModalProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<LessonModalTab>("video");
+  // Decidido uma vez ao abrir a aula (o builder monta uma instancia por aula):
+  // se dependesse do valor vivo, apagar a nota desmontava o campo no mesmo
+  // toque e o professor nao conseguia desfazer.
+  const [hadOldNote] = useState(() => Boolean(lesson.description?.trim()));
   const [assets, setAssets] = useState<CourseAsset[]>([]);
   const [uploadKind, setUploadKind] = useState<CourseAssetKind>("lesson_video");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -568,32 +572,42 @@ export function LessonContentModal({
                   disabled={!isEditable}
                 />
               </label>
+              {/* Um campo so, em texto simples, no campo PROTEGIDO (contentText:
+                  course_lesson_content, fora do JSON publico). Links viram
+                  clicaveis na area de membros (decisao de 14/09). */}
               <label className="lesson-modal-field">
                 <span>
                   {t("creatorEditor.lesson.description")}
-                  <small>{t("creatorEditor.lesson.descriptionHelp")}</small>
-                </span>
-                <textarea
-                  value={lesson.description}
-                  onChange={(event) => onUpdateLesson({ description: event.target.value })}
-                  disabled={!isEditable}
-                  rows={5}
-                  placeholder={t("creatorEditor.lesson.descriptionPlaceholder")}
-                />
-              </label>
-              <label className="lesson-modal-field">
-                <span>
-                  {t("creatorEditor.lesson.text")}
-                  <small>{t("creatorEditor.lesson.textHelp")}</small>
+                  {/* A aula de previa gratis tem o texto lido por qualquer um
+                      na pagina do curso: "so inscritos" enganaria o professor. */}
+                  <small>
+                    {t(isFreePreview
+                      ? "creatorEditor.lesson.descriptionHelpPreview"
+                      : "creatorEditor.lesson.descriptionHelp")}
+                  </small>
                 </span>
                 <textarea
                   value={lesson.contentText ?? ""}
                   onChange={(event) => onUpdateLesson({ contentText: event.target.value || null })}
                   disabled={!isEditable}
                   rows={7}
-                  placeholder={t("creatorEditor.lesson.textPlaceholder")}
+                  placeholder={t("creatorEditor.lesson.descriptionPlaceholder")}
                 />
               </label>
+              {/* A descricao publica antiga nunca e apagada: fica recolhida e
+                  editavel, e o aluno continua vendo onde ja via. */}
+              {hadOldNote ? (
+                <details className="lesson-modal-field">
+                  <summary>{t("creatorEditor.lesson.oldNote")}</summary>
+                  <textarea
+                    value={lesson.description}
+                    onChange={(event) => onUpdateLesson({ description: event.target.value })}
+                    disabled={!isEditable}
+                    rows={3}
+                    aria-label={t("creatorEditor.lesson.oldNote")}
+                  />
+                </details>
+              ) : null}
               <div className="lesson-modal-note">
                 <ImageIcon aria-hidden="true" size={17} />
                 <p>

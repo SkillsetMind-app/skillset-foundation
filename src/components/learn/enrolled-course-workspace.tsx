@@ -79,6 +79,7 @@ import {
   getProtectedCourseAssetObjectUrl,
   subscribeToCourseAssets,
 } from "@/lib/data/course-assets";
+import { linkify } from "@/lib/format/linkify";
 import {
   resolveLessonContent,
   subscribeToLessonContent,
@@ -1793,7 +1794,7 @@ function LessonContentPanel({
         ) : null}
         {!locked && lesson.contentText ? (
           <div className="mt-4 whitespace-pre-line rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-            {lesson.contentText}
+            {linkify(lesson.contentText)}
           </div>
         ) : null}
         {!locked && safeLessonExternalUrl && !trustedEmbed ? (

@@ -96,6 +96,7 @@ function renderModal(
   moduleTitle = "Módulo 1",
   localized = false,
   dripStrategy: DripStrategy = "instant",
+  isFreePreview = false,
 ) {
   const lesson: TeacherLesson = {
     id: "lesson-1",
@@ -127,7 +128,7 @@ function renderModal(
       lesson={nextLesson}
       lessonIndex={0}
       isEditable
-      isFreePreview={false}
+      isFreePreview={isFreePreview}
       dripStrategy={dripStrategy}
       onClose={onClose}
       onSetFreePreview={vi.fn()}
@@ -177,6 +178,82 @@ describe("LessonContentModal — dias de espera", () => {
     renderModal({ dripDelayDays: 7 }, "Módulo 1", false, "time_drip_custom");
     fireEvent.click(screen.getByRole("button", { name: /^Settings/ }));
     expect(screen.getByDisplayValue("7")).toBeInTheDocument();
+  });
+});
+
+// Decisao de 14/09: a descricao da aula e UM campo de texto simples, gravado no
+// campo protegido (contentText). A nota publica antiga nunca e apagada.
+describe("LessonContentModal — descricao", () => {
+  const oldNoteLabel = "Old public note (shown to students above the description; anyone can read it)";
+
+  beforeEach(() => {
+    currentAssets = [];
+    vi.clearAllMocks();
+  });
+
+  it("a descricao grava no texto protegido e a nota publica antiga fica recolhida", () => {
+    const { onUpdateLesson } = renderModal({ description: "old", contentText: null });
+    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+
+    const oldNote = screen
+      .getByText(oldNoteLabel)
+      .closest("details") as HTMLElement;
+    expect(oldNote).not.toBeNull();
+    expect(oldNote).not.toHaveAttribute("open");
+    expect(within(oldNote).getByRole("textbox", { hidden: true })).toHaveValue("old");
+
+    fireEvent.change(
+      screen.getByPlaceholderText("Explain what the student is about to learn and why it matters."),
+      { target: { value: "Leia isto" } },
+    );
+    expect(onUpdateLesson).toHaveBeenLastCalledWith({ contentText: "Leia isto" });
+    expect(onUpdateLesson).not.toHaveBeenCalledWith(
+      expect.objectContaining({ description: expect.anything() }),
+    );
+  });
+
+  it("a nota antiga continua editavel e some quando a aula nao tem nota", () => {
+    const { onUpdateLesson, unmount } = renderModal({ description: "old", contentText: "corpo" });
+    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+
+    expect(screen.getByPlaceholderText("Explain what the student is about to learn and why it matters.")).toHaveValue("corpo");
+    fireEvent.change(
+      screen.getByRole("textbox", { name: oldNoteLabel, hidden: true }),
+      { target: { value: "old!" } },
+    );
+    expect(onUpdateLesson).toHaveBeenLastCalledWith({ description: "old!" });
+    unmount();
+
+    renderModal({ description: "", contentText: "corpo" });
+    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    expect(screen.queryByText(oldNoteLabel)).not.toBeInTheDocument();
+  });
+
+  // Apagar a nota antiga desmontava o campo no mesmo toque: o professor nao
+  // conseguia redigitar nem desfazer, e o autosave gravava "".
+  it("apagar a nota antiga nao some com o campo", () => {
+    const { onUpdateLesson } = renderModal({ description: "old", contentText: null }, "Módulo 1", true);
+    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    const note = () => screen.queryByRole("textbox", { name: oldNoteLabel, hidden: true });
+
+    fireEvent.change(note() as HTMLElement, { target: { value: "" } });
+    expect(onUpdateLesson).toHaveBeenLastCalledWith({ description: "" });
+    expect(note()).toBeInTheDocument();
+    fireEvent.change(note() as HTMLElement, { target: { value: "de volta" } });
+    expect(onUpdateLesson).toHaveBeenLastCalledWith({ description: "de volta" });
+  });
+
+  // O texto da aula de previa gratis e lido por qualquer um na pagina do curso.
+  it("na aula de previa gratis a ajuda avisa que o texto e publico", () => {
+    const { unmount } = renderModal({}, "Módulo 1", false, "instant", true);
+    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    expect(screen.getByText(/anyone can read this text on the course page/)).toBeInTheDocument();
+    expect(screen.queryByText(/for enrolled students/)).not.toBeInTheDocument();
+    unmount();
+
+    renderModal();
+    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    expect(screen.getByText(/for enrolled students/)).toBeInTheDocument();
   });
 });
 
