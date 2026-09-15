@@ -364,7 +364,14 @@ describe("LessonContentModal — um video por aula", () => {
     expect(confirm).toHaveBeenCalledExactlyOnceWith("Remove the old link? Students will lose the button that opens it.");
     expect(onUpdateLesson).not.toHaveBeenCalled();
     expect(screen.getByRole("region", { name: "Old link" })).toHaveTextContent(drive);
+    // Recusou: o campo volta ao salvo e avisa. Sair de novo (X, aba, troca)
+    // nao pergunta outra vez nem come o clique.
+    expect(linkField()).toHaveValue("");
+    expect(screen.getByRole("status")).toHaveTextContent("Link not saved. The old link stays.");
+    fireEvent.blur(linkField());
+    expect(confirm).toHaveBeenCalledOnce();
 
+    fireEvent.change(linkField(), { target: { value: vimeo } });
     fireEvent.blur(linkField());
     expect(confirm).toHaveBeenCalledTimes(2);
     expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ videoSource: "youtube", externalUrl: vimeo });
@@ -430,6 +437,46 @@ describe("LessonContentModal — um video por aula", () => {
     fireEvent.blur(linkField());
     expect(onUpdateLesson).toHaveBeenLastCalledWith({ videoSource: "youtube", externalUrl: vimeo });
   });
+
+  // Esc e clique fora desmontam o campo sem um blur que chegue ao React 19: o
+  // link digitado e nunca desfocado se perdia ao fechar.
+  it("Esc e clique fora gravam o link digitado antes de fechar", () => {
+    const first = renderModal();
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    fireEvent.change(linkField(), { target: { value: vimeo } });
+    fireEvent.keyDown(linkField(), { key: "Escape" });
+    expect(first.onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ videoSource: "youtube", externalUrl: vimeo });
+    expect(first.onClose).toHaveBeenCalledOnce();
+    expect(first.onUpdateLesson.mock.invocationCallOrder[0]).toBeLessThan(first.onClose.mock.invocationCallOrder[0]);
+    first.unmount();
+
+    const second = renderModal();
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    fireEvent.change(linkField(), { target: { value: vimeo } });
+    fireEvent.mouseDown(document.querySelector(".lesson-modal-overlay") as HTMLElement);
+    expect(second.onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ videoSource: "youtube", externalUrl: vimeo });
+    expect(second.onClose).toHaveBeenCalledOnce();
+  });
+
+  // A pagina publica do curso so le "upload" da fonte gravada: com a fonte em
+  // null, o video da previa gratis sumia da pagina de vendas.
+  it("apagar o link com um envio salvo grava a fonte no envio, nao em null", () => {
+    currentAssets = [videoAsset()];
+    const { onUpdateLesson, lesson } = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Módulo 1", true);
+
+    fireEvent.change(linkField(), { target: { value: "" } });
+    fireEvent.blur(linkField());
+
+    expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ externalUrl: null, videoSource: "upload" });
+    const saved = { ...lesson, ...onUpdateLesson.mock.calls[0][0] } as TeacherLesson;
+    // O mesmo calculo da previa na pagina de vendas (creator-course-detail).
+    expect(resolveLessonVideoSource({
+      declared: saved.videoSource,
+      hasVideoAsset: saved.videoSource === "upload",
+      hasTrustedEmbed: false,
+    })).toBe("upload");
+    expect(deleteCourseAsset).not.toHaveBeenCalled();
+  });
 });
 
 describe("LessonContentModal — video tab", () => {
@@ -445,6 +492,21 @@ describe("LessonContentModal — video tab", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+  });
+
+  // Tirar o link antigo no meio de um envio sumia com o botao focado e o foco
+  // caia no body (o botao de troca fica desabilitado); o aviso nunca saia.
+  it("durante um envio, Remove old link fica desabilitado", async () => {
+    let finish!: () => void;
+    uploadCourseAsset.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    renderModal({ externalUrl: "https://drive.example.test/file/d/abc/view" });
+    chooseVideoFile();
+    fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
+
+    await screen.findByRole("progressbar", { name: "Uploading..." });
+    expect(screen.getByRole("button", { name: "Remove old link" })).toBeDisabled();
+    await act(async () => { finish(); });
+    expect(screen.getByRole("button", { name: "Remove old link" })).toBeEnabled();
   });
 
   it("keeps selected video, local preview and upload in the device column without publishing", () => {

@@ -15,6 +15,7 @@ import {
 import {
   LessonVideoSourcePicker,
   type LessonVideoMode,
+  type LessonVideoSourcePickerHandle,
 } from "@/components/teacher/lesson-video-source-picker";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
@@ -171,6 +172,8 @@ export function LessonContentModal({
   const [success, setSuccess] = useState<"uploaded" | "deleted" | "oldLinkRemoved" | null>(null);
   const [assetsLoaded, setAssetsLoaded] = useState(false);
   const replaceButtonRef = useRef<HTMLButtonElement>(null);
+  const linkHandleRef = useRef<LessonVideoSourcePickerHandle>(null);
+  const [linkNotSaved, setLinkNotSaved] = useState(false);
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
   const lessonAssets = assets.filter((asset) => asset.lessonId === lesson.id);
   const videoAssets = lessonAssets.filter((asset) => isVideoAssetKind(asset.kind));
@@ -224,6 +227,8 @@ export function LessonContentModal({
       return;
     }
 
+    // O link digitado e ainda nao gravado (sem blur) vai antes de fechar.
+    linkHandleRef.current?.flushLink();
     onClose();
   }
 
@@ -245,6 +250,7 @@ export function LessonContentModal({
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && !isUploading) {
+        linkHandleRef.current?.flushLink();
         onClose();
       }
     }
@@ -505,8 +511,10 @@ export function LessonContentModal({
                     : t("creatorEditor.lesson.embedEmpty")
                 }
                 replaceButtonRef={replaceButtonRef}
+                linkHandleRef={linkHandleRef}
                 onModeChange={(next) => {
                   setVideoModeChoice(next);
+                  setLinkNotSaved(false);
                   resetUploadState("lesson_video");
                   // Se a midia de destino ja existe, a troca vale para o aluno
                   // na hora: grava so a fonte. Nada e apagado. Sem midia, a
@@ -524,17 +532,27 @@ export function LessonContentModal({
                 onLinkChange={(nextUrl) => {
                   // Mexeu no link: a aba fica no link mesmo que a fonte mude.
                   setVideoModeChoice("link");
+                  setLinkNotSaved(false);
                   if (!nextUrl) {
+                    // Com envio salvo, a fonte volta para ele: a pagina publica
+                    // do curso so le "upload" da fonte gravada
+                    // (creator-course-detail), e o video da previa gratis
+                    // sumia da pagina de vendas com a fonte em null.
+                    const source = primaryVideo
+                      ? "upload"
+                      : lesson.videoSource === "youtube" ? null : lesson.videoSource;
                     onUpdateLesson({
                       externalUrl: null,
-                      ...(lesson.videoSource === "youtube" ? { videoSource: null } : {}),
+                      ...(source !== lesson.videoSource ? { videoSource: source } : {}),
                     });
                     return;
                   }
                   // O link aceito substitui o link antigo (Drive etc.): pede a
-                  // mesma confirmacao do botao de tirar. Recusou, nada muda.
+                  // mesma confirmacao do botao de tirar. Recusou, nada muda e
+                  // o campo volta ao salvo.
                   if (oldLink && !window.confirm(t("creatorEditor.lesson.removeOldLinkConfirm"))) {
-                    return;
+                    setLinkNotSaved(true);
+                    return false;
                   }
                   onUpdateLesson({ videoSource: "youtube", externalUrl: nextUrl });
                 }}
@@ -581,7 +599,9 @@ export function LessonContentModal({
                   <button
                     type="button"
                     className="button-outline justify-self-start px-3 py-2 text-xs disabled:opacity-60"
-                    disabled={!isEditable}
+                    // Durante o envio o botao de troca fica desabilitado: o
+                    // foco nao teria para onde ir e o aviso se perdia.
+                    disabled={!isEditable || isUploading}
                     onClick={() => {
                       if (window.confirm(t("creatorEditor.lesson.removeOldLinkConfirm"))) {
                         onUpdateLesson({ externalUrl: null });
@@ -601,7 +621,9 @@ export function LessonContentModal({
                   aviso; sem ele, este. Nunca dois ao mesmo tempo. */}
               {videoMode === "upload" && isUploadPanelOpen ? null : (
                 <p role="status" className="text-sm text-[var(--color-ink-soft)]">
-                  {success === "oldLinkRemoved" ? successMessage : ""}
+                  {success === "oldLinkRemoved"
+                    ? successMessage
+                    : linkNotSaved ? t("creatorEditor.lesson.linkNotSaved") : ""}
                 </p>
               )}
 

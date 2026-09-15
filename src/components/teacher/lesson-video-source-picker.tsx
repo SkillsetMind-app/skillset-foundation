@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, type DragEvent, type ReactNode, type Ref } from "react";
+import { useId, useImperativeHandle, useState, type DragEvent, type ReactNode, type Ref } from "react";
 import { HelpCircle, Link2, ShieldAlert, UploadCloud } from "lucide-react";
 
 import { Tooltip } from "@/components/shared/tooltip";
@@ -8,6 +8,11 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 
 export type LessonVideoMode = "upload" | "link";
+
+// O modal chama flushLink antes de fechar por Esc ou clique fora: nesses
+// caminhos o campo e desmontado sem blur que chegue ao React 19, e o link
+// digitado se perdia.
+export type LessonVideoSourcePickerHandle = { flushLink: () => void };
 
 // Sem esquema ("youtube.com/watch?v=..."), assume https:// antes de validar; o
 // link gravado ja sai normalizado.
@@ -22,7 +27,7 @@ function normalizeLink(value: string) {
 // listado no modal, com o proprio botao de apagar.
 // ponytail: o ref sai de `props` na desestruturacao; se ficasse, a regra
 // react-hooks/refs tratava todo `props.x` como leitura de ref no render.
-export function LessonVideoSourcePicker({ replaceButtonRef, ...props }: {
+export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...props }: {
   mode: LessonVideoMode;
   disabled?: boolean;
   accept: string;
@@ -31,11 +36,14 @@ export function LessonVideoSourcePicker({ replaceButtonRef, ...props }: {
   onModeChange: (next: LessonVideoMode) => void;
   onSelectFile: (file: File) => void;
   // So recebe link aceito (YouTube/Vimeo), ou null quando o professor apaga o
-  // link aceito que o campo mostrava. Link recusado nunca sai daqui.
-  onLinkChange: (next: string | null) => void;
+  // link aceito que o campo mostrava. Link recusado nunca sai daqui. Devolve
+  // false quando o modal nao gravou (o professor nao confirmou): o campo volta
+  // ao que esta salvo.
+  onLinkChange: (next: string | null) => boolean | void;
   uploadPanel?: ReactNode;
   // Alvo estavel de foco para o modal (ex.: depois de tirar o link antigo).
   replaceButtonRef?: Ref<HTMLButtonElement>;
+  linkHandleRef?: Ref<LessonVideoSourcePickerHandle>;
 }) {
   const { t } = useTranslation();
   const urlInputId = useId();
@@ -47,7 +55,6 @@ export function LessonVideoSourcePicker({ replaceButtonRef, ...props }: {
   // mostra a parte, so leitura.
   const [draft, setDraft] = useState(() => (savedIsEmbed ? props.externalUrl : ""));
   const [rejected, setRejected] = useState(false);
-  const pastedRef = useRef(false);
 
   function selectFile(file: File) {
     // Escolher um arquivo NÃO declara a fonte da aula. Antes declarava, e isso
@@ -91,13 +98,22 @@ export function LessonVideoSourcePicker({ replaceButtonRef, ...props }: {
     }
 
     setRejected(false);
-    setDraft(url);
     // Campo vazio tira o link aceito que ele mostrava. Um link antigo nunca
     // aparece aqui (a base e ""), entao nunca e apagado por este caminho.
-    if (url !== (savedIsEmbed ? props.externalUrl : "")) {
-      props.onLinkChange(url || null);
-    }
+    const saved = savedIsEmbed ? props.externalUrl : "";
+    const kept = url === saved || props.onLinkChange(url || null) !== false;
+    // Nao gravou: o campo volta ao salvo, senao cada blur seguinte (X, aba,
+    // "Replace with upload") perguntava de novo e comia o clique.
+    setDraft(kept ? url : saved);
   }
+
+  useImperativeHandle(linkHandleRef, () => ({
+    flushLink: () => {
+      if (props.mode === "link") {
+        commitLink(draft);
+      }
+    },
+  }));
 
   return (
     <div className="lesson-video-source-picker">
@@ -172,16 +188,21 @@ export function LessonVideoSourcePicker({ replaceButtonRef, ...props }: {
               aria-invalid={rejected || undefined}
               aria-describedby={rejected ? errorId : undefined}
               placeholder="https://www.youtube.com/watch?v=..."
-              onPaste={() => {
-                pastedRef.current = true;
+              // Colar e um valor inteiro: vira o campo todo e grava na hora. Le
+              // o texto da area de transferencia em vez de marcar "colou" para
+              // o proximo onChange: colar o mesmo texto (ou imagem, ou nada)
+              // nao dispara onChange, e a marca presa gravava a tecla seguinte.
+              onPaste={(event) => {
+                const text = event.clipboardData?.getData("text") ?? "";
+                if (text.trim()) {
+                  event.preventDefault();
+                  setDraft(text);
+                  commitLink(text);
+                }
               }}
               onChange={(event) => {
                 setDraft(event.target.value);
                 setRejected(false);
-                if (pastedRef.current) {
-                  pastedRef.current = false;
-                  commitLink(event.target.value);
-                }
               }}
               onBlur={(event) => commitLink(event.currentTarget.value)}
               onKeyDown={(event) => {

@@ -38,6 +38,8 @@ function videoFile(name = "lesson.mp4") {
 // aceita. Nada e buscado; o resto usa example.test.
 const vimeo = "https://vimeo.com/123456";
 const urlField = () => screen.queryByRole("textbox", { name: "YouTube or Vimeo URL" });
+// jsdom nao tem DataTransfer: a colagem leva so o getData que o campo le.
+const clipboard = (text: string) => ({ getData: () => text });
 
 describe("LessonVideoSourcePicker", () => {
   // Um video por aula (decisao de 14/09): o envio OU o link, nunca os dois.
@@ -109,8 +111,8 @@ describe("LessonVideoSourcePicker", () => {
     expect(props.onLinkChange).toHaveBeenCalledExactlyOnceWith(vimeo);
 
     // Colar e um valor inteiro: valida na hora, e o erro acompanha aria-invalid.
-    fireEvent.paste(urlField() as HTMLElement);
-    fireEvent.change(urlField() as HTMLElement, { target: { value: "https://example.test/v.mp4" } });
+    fireEvent.paste(urlField() as HTMLElement, { clipboardData: clipboard("https://example.test/v.mp4") });
+    expect(urlField()).toHaveValue("https://example.test/v.mp4");
     expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(urlField()).toHaveAttribute("aria-invalid", "true");
     fireEvent.change(urlField() as HTMLElement, { target: { value: "https://example.test/v" } });
@@ -139,6 +141,34 @@ describe("LessonVideoSourcePicker", () => {
     expect(props.onLinkChange).not.toHaveBeenCalled();
     fireEvent.blur(urlField() as HTMLElement);
     expect(props.onLinkChange).toHaveBeenCalledExactlyOnceWith(null);
+  });
+
+  it("colar um link aceito grava na hora, sem esperar o blur", () => {
+    const props = renderPicker({ mode: "link" });
+
+    fireEvent.paste(urlField() as HTMLElement, { clipboardData: clipboard(` ${vimeo} `) });
+
+    expect(props.onLinkChange).toHaveBeenCalledExactlyOnceWith(vimeo);
+    expect(urlField()).toHaveValue(vimeo);
+  });
+
+  // A marca de "colou" so saia no onChange. Colar o mesmo texto (ou imagem, ou
+  // nada) nao dispara onChange, e a tecla seguinte era tratada como colagem:
+  // o Backspace gravava https://vimeo.com/12345, outro video valido.
+  it("colar o mesmo link e apagar um caractere nao grava outro video; colar vazio nao acusa erro", () => {
+    const props = renderPicker({ mode: "link", externalUrl: vimeo });
+
+    fireEvent.paste(urlField() as HTMLElement, { clipboardData: clipboard(vimeo) });
+    fireEvent.change(urlField() as HTMLElement, { target: { value: vimeo.slice(0, -1) } });
+    expect(props.onLinkChange).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    fireEvent.change(urlField() as HTMLElement, { target: { value: "" } });
+    fireEvent.paste(urlField() as HTMLElement, { clipboardData: clipboard("") });
+    fireEvent.change(urlField() as HTMLElement, { target: { value: "v" } });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(urlField()).not.toHaveAttribute("aria-invalid");
+    expect(props.onLinkChange).not.toHaveBeenCalled();
   });
 
   // Um link antigo (Drive etc.) nao entra no campo. Digitar e apagar ali nao
