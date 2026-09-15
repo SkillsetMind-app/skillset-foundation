@@ -46,22 +46,26 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Diff da base até a ponta do PR. Lockfile, snapshots e imagens ficam
-      # fora: não há porta para abrir ali, e é o que mais estoura o teto.
+      # Diff da base até a ponta do PR, SEM pathspec de exclusão: um
+      # ':(exclude)*.png' também some com a pasta src/app/api/x.png/. Imagem,
+      # fonte e snapshot saem no script, pelo último segmento do caminho;
+      # lockfile é caminho de risco e é lido.
+      # --text --no-textconv --no-ext-diff: nem `* -diff` no .gitattributes nem
+      # um byte NUL escondem o código atrás de "Binary files ... differ" (o que
+      # sobrar assim dá 3 no script).
       # core.quotePath=false: caminho não-ASCII sai cru no cabeçalho. Aspas,
       # barra invertida e controle continuam entre aspas; o script lê as duas
       # formas e dá 3 (não 0) se sobrar cabeçalho que não reconhece.
+      # pr.names: o que o PR toca, segundo o git; arquivo que não vier no diff
+      # dá PARCIAL (3), nunca 0. Um comando por linha: o teste roda os dois.
       - name: Diff do PR
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          git -c core.quotePath=false diff --no-color "$BASE...$HEAD" -- . \
-            ':(exclude)package-lock.json' ':(exclude)*.snap' \
-            ':(exclude)*.png' ':(exclude)*.jpg' ':(exclude)*.jpeg' ':(exclude)*.svg' \
-            ':(exclude)*.ico' ':(exclude)*.woff' ':(exclude)*.woff2' \
-            > "$RUNNER_TEMP/pr.diff"
+          git -c core.quotePath=false diff --no-color --text --no-textconv --no-ext-diff "$BASE...$HEAD" > "$RUNNER_TEMP/pr.diff"
+          git -c core.quotePath=false diff --name-only -z "$BASE...$HEAD" > "$RUNNER_TEMP/pr.names"
           echo "diff: $(wc -c < "$RUNNER_TEMP/pr.diff") bytes"
 
       # continue-on-error: o placar precisa ser publicado mesmo quando o
@@ -87,7 +91,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           REPO: ${{ github.repository }}
-        run: python3 scripts/porteiro.py --diff "$RUNNER_TEMP/pr.diff" --placar "$RUNNER_TEMP/placar.md"
+        run: python3 scripts/porteiro.py --diff "$RUNNER_TEMP/pr.diff" --nomes "$RUNNER_TEMP/pr.names" --placar "$RUNNER_TEMP/placar.md"
 
       # Um comentário só por PR, atualizado a cada push (--edit-last edita o
       # último comentário do próprio bot; se não existe, cria).
