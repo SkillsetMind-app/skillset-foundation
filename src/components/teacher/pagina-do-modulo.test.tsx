@@ -233,6 +233,214 @@ describe("pagina do modulo dentro do builder", () => {
     expect(document.activeElement).toBe(within(card()).getByRole("link", { name: /Deep work/ }));
   });
 
+  // Perda de conteudo: o snapshot do realtime (eco de um save ANTERIOR)
+  // sobrescrevia o rascunho local com edicao ainda nao gravada, e o autosave
+  // nunca a regravava. A aula sumia da tela e o estudio nunca abria.
+  it("eco de um save anterior nao apaga edicao local ainda nao gravada", async () => {
+    let emitCourse: (course: TeacherCourse | null) => void = () => {};
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emitCourse = emit;
+      emit(mocks.course);
+      return () => undefined;
+    });
+    let finishFirst = () => {};
+    vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(
+      () => new Promise<void>((resolve) => { finishFirst = resolve; }),
+    );
+    openAt("courseId=course-1&tab=content&module=m1");
+    const card = await renderBuilder();
+
+    // 1) Autosave de um titulo sai e fica no ar.
+    fireEvent.change(within(card).getByRole("textbox", { name: "Module 1" }), {
+      target: { value: "Start here, renamed" },
+    });
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1), { timeout: 5000 });
+    const first = vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1];
+
+    // 2) Edicao nova enquanto ele esta no ar: uma aula.
+    fireEvent.click(within(card).getByRole("button", { name: "Add lesson to module 1" }));
+    const form = card.querySelector("form") as HTMLElement;
+    fireEvent.change(within(form).getByRole("textbox", { name: "Lesson title" }), {
+      target: { value: "Fresh lesson" },
+    });
+    fireEvent.click(within(form).getByRole("button", { name: "Add lesson" }));
+
+    // 3) Chega o eco do 1o save (sem a aula) e depois o save volta.
+    act(() => emitCourse({ ...mocks.course, ...first }));
+    await act(async () => finishFirst());
+
+    // A aula continua na tela, na pagina do modulo...
+    expect(within(card).getByRole("navigation", { name: "Breadcrumb" })).toBeInTheDocument();
+    expect(within(card).getAllByRole("textbox", { name: "Lesson title" }).map((input) => (input as HTMLInputElement).value))
+      .toContain("Fresh lesson");
+    // ...e no autosave seguinte.
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(2), { timeout: 5000 });
+    const second = vi.mocked(updateTeacherCourseBuilder).mock.calls[1][1];
+    expect(second.modules?.[0]).toEqual(expect.objectContaining({
+      title: "Start here, renamed",
+      lessons: [expect.objectContaining({ title: "Fresh lesson" })],
+    }));
+    // O eco desse save confirma a aula e abre o estudio nela.
+    act(() => emitCourse({ ...mocks.course, ...second }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("m1:Fresh lesson");
+  }, 15000);
+
+  // Ctrl/Cmd/Shift/Alt+clique ou botao do meio abrem outra aba: esta aba nao
+  // navega, entao nao pode ficar pedido de foco para o proximo voltar/avancar.
+  it("clique que abre outra aba nao deixa pedido de foco pendurado", async () => {
+    const { rerender } = render(tree());
+    await screen.findByRole("heading", { name: mocks.course.title });
+    const card = () => document.querySelector("#builder-sec-modules") as HTMLElement;
+
+    for (const init of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }, { button: 1 }]) {
+      fireEvent.click(within(card()).getByRole("link", { name: /Deep work/ }), init);
+    }
+    // Depois, o voltar/avancar do navegador troca a URL sem clique nesta aba.
+    openAt("courseId=course-1&tab=content&module=m2");
+    rerender(tree());
+    expect(document.activeElement).toBe(document.body);
+
+    fireEvent.click(within(card()).getByRole("link", { name: mocks.course.title }), { ctrlKey: true });
+    openAt("courseId=course-1&tab=content");
+    rerender(tree());
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  // Aula L sai no autosave e e apagada antes do eco. O eco (com L) abria um
+  // estudio "fantasma" para L, sem modal, e a proxima aula nova nunca abria.
+  it("aula apagada antes do eco nao abre estudio fantasma nem trava a proxima", async () => {
+    let emitCourse: (course: TeacherCourse | null) => void = () => {};
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emitCourse = emit;
+      emit(mocks.course);
+      return () => undefined;
+    });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    try {
+      openAt("courseId=course-1&tab=content&module=m1");
+      const card = await renderBuilder();
+      const form = () => card.querySelector("form") as HTMLElement;
+
+      fireEvent.click(within(card).getByRole("button", { name: "Add lesson to module 1" }));
+      fireEvent.change(within(form()).getByRole("textbox", { name: "Lesson title" }), {
+        target: { value: "Lesson L" },
+      });
+      fireEvent.click(within(form()).getByRole("button", { name: "Add lesson" }));
+      await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1), { timeout: 5000 });
+      const first = vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1];
+
+      fireEvent.click(within(card).getByRole("button", { name: "Delete lesson" }));
+      act(() => emitCourse({ ...mocks.course, ...first }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+      // A proxima aula nova ainda abre o estudio sozinha.
+      fireEvent.change(within(form()).getByRole("textbox", { name: "Lesson title" }), {
+        target: { value: "Lesson M" },
+      });
+      fireEvent.click(within(form()).getByRole("button", { name: "Add lesson" }));
+      await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(2), { timeout: 5000 });
+      const second = vi.mocked(updateTeacherCourseBuilder).mock.calls[1][1];
+      expect(second.modules?.[0].lessons.map((lesson) => lesson.title)).toEqual(["Lesson M"]);
+      act(() => emitCourse({ ...mocks.course, ...second }));
+      expect(screen.getByRole("dialog")).toHaveTextContent("m1:Lesson M");
+    } finally {
+      confirm.mockRestore();
+    }
+  }, 15000);
+
+  // Snapshot novo (outra aba, ou a pagina de vendas no Manage) chega com o
+  // rascunho sujo e fica de fora. Se a pessoa desfaz a edicao, o rascunho fica
+  // limpo com a copia velha, e a proxima edicao qualquer a gravava por cima.
+  it("snapshot pulado com rascunho sujo vale quando o rascunho volta a ficar limpo", async () => {
+    let emitCourse: (course: TeacherCourse | null) => void = () => {};
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emitCourse = emit;
+      emit(mocks.course);
+      return () => undefined;
+    });
+    openAt("courseId=course-1&tab=content&module=m1");
+    const card = await renderBuilder();
+    const name = () => within(card).getByRole("textbox", { name: "Module 1" });
+
+    fireEvent.change(name(), { target: { value: "Start here, draft" } });
+    act(() => emitCourse({ ...mocks.course, title: "Renamed in another tab" }));
+    // Desfaz: o rascunho volta a bater com o ultimo save.
+    fireEvent.change(name(), { target: { value: "Start here" } });
+
+    expect(await screen.findByRole("heading", { name: "Renamed in another tab" })).toBeInTheDocument();
+    // Nenhum autosave da copia velha.
+    await new Promise((resolve) => setTimeout(resolve, 2200));
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+
+    // A proxima edicao qualquer grava por cima da copia nova, nao da velha.
+    fireEvent.change(within(card).getByRole("textbox", { name: "Module 1 description" }), {
+      target: { value: "Fresh summary" },
+    });
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1), { timeout: 5000 });
+    expect(vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1].title).toBe("Renamed in another tab");
+  }, 15000);
+
+  // O eco do save no ar chega antes da resposta HTTP e fica guardado; antes da
+  // resposta, a pessoa volta exatamente ao estado anterior. Aplicar o guardado
+  // ai ressuscitava o save, e a volta nunca era gravada.
+  it("voltar ao estado anterior durante um save no ar nao ressuscita o eco dele", async () => {
+    let emitCourse: (course: TeacherCourse | null) => void = () => {};
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emitCourse = emit;
+      emit(mocks.course);
+      return () => undefined;
+    });
+    let finishFirst = () => {};
+    vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(
+      () => new Promise<void>((resolve) => { finishFirst = resolve; }),
+    );
+    openAt("courseId=course-1&tab=content&module=m1");
+    const card = await renderBuilder();
+    const name = () => within(card).getByRole("textbox", { name: "Module 1" });
+
+    fireEvent.change(name(), { target: { value: "Start here, v1" } });
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1), { timeout: 5000 });
+    const first = vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1];
+    act(() => emitCourse({ ...mocks.course, ...first }));
+    fireEvent.change(name(), { target: { value: "Start here" } });
+    await act(async () => {});
+    expect(name()).toHaveValue("Start here");
+
+    await act(async () => finishFirst());
+    expect(name()).toHaveValue("Start here");
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(2), { timeout: 5000 });
+    expect(vi.mocked(updateTeacherCourseBuilder).mock.calls[1][1].modules?.[0].title).toBe("Start here");
+  }, 15000);
+
+  it("se o save no ar falha com o rascunho limpo, o snapshot guardado vale", async () => {
+    let emitCourse: (course: TeacherCourse | null) => void = () => {};
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emitCourse = emit;
+      emit(mocks.course);
+      return () => undefined;
+    });
+    let failFirst: (error: Error) => void = () => {};
+    vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(
+      () => new Promise<void>((_resolve, reject) => { failFirst = reject; }),
+    );
+    openAt("courseId=course-1&tab=content&module=m1");
+    const card = await renderBuilder();
+    const name = () => within(card).getByRole("textbox", { name: "Module 1" });
+
+    fireEvent.change(name(), { target: { value: "Start here, v1" } });
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1), { timeout: 5000 });
+    const first = vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1];
+    act(() => emitCourse({ ...mocks.course, ...first }));
+    fireEvent.change(name(), { target: { value: "Start here" } });
+    await act(async () => {});
+    // Com o save no ar, a volta da pessoa fica na tela.
+    expect(name()).toHaveValue("Start here");
+
+    // Ele falha, mas o eco ja mostrou o que o servidor gravou.
+    await act(async () => failFirst(new Error("network")));
+    expect(name()).toHaveValue("Start here, v1");
+  }, 15000);
+
   it("sem ?module mostra uma linha por modulo, com nome em negrito e numero de aulas", async () => {
     const card = await renderBuilder();
 

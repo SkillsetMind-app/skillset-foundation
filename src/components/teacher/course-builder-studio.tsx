@@ -191,6 +191,24 @@ const paymentModelOptions: PlanSelectorOption<TeacherCoursePaymentType>[] = [
   },
 ];
 
+// Ctrl/Cmd/Shift/Alt ou botao que nao e o esquerdo: o navegador abre outra aba
+// e esta aqui nao navega. Nada que dependa de "a pessoa saiu daqui" pode rodar.
+function isPlainLeftClick(event: {
+  button: number;
+  metaKey: boolean;
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+}) {
+  return (
+    event.button === 0
+    && !event.metaKey
+    && !event.ctrlKey
+    && !event.shiftKey
+    && !event.altKey
+  );
+}
+
 function createLocalId(prefix: string) {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return `${prefix}-${crypto.randomUUID()}`;
@@ -520,6 +538,65 @@ export function CourseBuilderStudio() {
   // Navegacao de modulo pedida pela pessoa (linha, trilha ou modulo novo).
   // Nula na primeira hidratacao: abrir o builder ja num modulo nao rouba foco.
   const moduleNavigationRef = useRef<{ returnTo: string | null } | null>(null);
+  // Espelho de `draftIsDirty` para o callback do realtime, que nao ve o render.
+  const draftDirtyRef = useRef(false);
+  // Ultimo snapshot que chegou com rascunho sujo e ficou de fora. Vale se o
+  // rascunho voltar a ficar limpo sem save nosso; um save nosso o descarta.
+  const skippedSnapshotRef = useRef<TeacherCourse | null>(null);
+  // Rascunho local para o callback do realtime: so abre estudio de aula que
+  // ainda existe aqui.
+  const localModulesRef = useRef<TeacherCourseModule[]>([]);
+  // Saves nossos no ar (autosave, Salvar, Publicar). Aqui em cima porque o
+  // efeito do snapshot pulado tambem le.
+  const inFlightSavesRef = useRef(0);
+
+  // Copia o snapshot do servidor para o rascunho. So setters (estaveis), entao
+  // serve ao callback do realtime e ao efeito que aplica o snapshot pulado.
+  const applyServerDraft = useCallback((nextCourse: TeacherCourse) => {
+    setTitle(nextCourse.title);
+    setSummary(nextCourse.summary);
+    setCategory(nextCourse.category);
+    setSelectedCategories(
+      normalizeCourseCategories([
+        ...(nextCourse.categories ?? []),
+        nextCourse.category,
+      ]),
+    );
+    setLearningOutcomes(nextCourse.learningOutcomes ?? []);
+    setModules(nextCourse.modules ?? []);
+    setPriceAmount(
+      typeof nextCourse.priceAmountMinor === "number"
+        ? String(nextCourse.priceAmountMinor / 100)
+        : "",
+    );
+    setCurrency(nextCourse.currency ?? defaultSkillsetCurrency);
+    setPaymentType(
+      nextCourse.paymentType ??
+        (nextCourse.priceAmountMinor === 0 ? "free" : "one_time"),
+    );
+    setInstallmentsEnabled(Boolean(nextCourse.installmentsEnabled));
+    setInstallmentsMax(String(nextCourse.installmentsMax ?? 12));
+    setDripStrategy(nextCourse.dripStrategy ?? "instant");
+    setDripIntervalDays(String(nextCourse.dripIntervalDays ?? 1));
+    setFreePreviewLessonId(nextCourse.freePreviewLessonId ?? "");
+    setMembersTheme(nextCourse.membersTheme ?? "light");
+    setMembersCoverAssetId(nextCourse.membersCoverAssetId ?? null);
+    setMembersTitle(nextCourse.membersTitle ?? "");
+    setMembersSubtitle(nextCourse.membersSubtitle ?? "");
+    setMembersDescription(nextCourse.membersDescription ?? "");
+    setCommunityEnabled(nextCourse.communityEnabled ?? false);
+    // Todo snapshot passa aqui, inclusive o eco do nosso autosave. Voltar
+    // sempre para o 1o modulo mandava a aula seguinte para o modulo errado.
+    setLessonModuleId((current) =>
+      nextCourse.modules?.some((module) => module.id === current)
+        ? current
+        : nextCourse.modules?.[0]?.id ?? "",
+    );
+    // Baseline mirrors exactly what the state setters above produce, so a
+    // fresh hydration (or our own write echoing back) is never seen as a
+    // user edit.
+    setSavedSignature(builderDraftSignatureFromCourse(nextCourse));
+  }, []);
 
   useEffect(() => {
     if (!courseId) {
@@ -537,50 +614,7 @@ export function CourseBuilderStudio() {
         }
 
         setCourse(nextCourse);
-        setTitle(nextCourse.title);
-        setSummary(nextCourse.summary);
-        setCategory(nextCourse.category);
-        setSelectedCategories(
-          normalizeCourseCategories([
-            ...(nextCourse.categories ?? []),
-            nextCourse.category,
-          ]),
-        );
-        setLearningOutcomes(nextCourse.learningOutcomes ?? []);
-        setModules(nextCourse.modules ?? []);
-        setPriceAmount(
-          typeof nextCourse.priceAmountMinor === "number"
-            ? String(nextCourse.priceAmountMinor / 100)
-            : "",
-        );
-        setCurrency(nextCourse.currency ?? defaultSkillsetCurrency);
-        setPaymentType(
-          nextCourse.paymentType ??
-            (nextCourse.priceAmountMinor === 0 ? "free" : "one_time"),
-        );
-        setInstallmentsEnabled(Boolean(nextCourse.installmentsEnabled));
-        setInstallmentsMax(String(nextCourse.installmentsMax ?? 12));
-        setDripStrategy(nextCourse.dripStrategy ?? "instant");
-        setDripIntervalDays(String(nextCourse.dripIntervalDays ?? 1));
-        setFreePreviewLessonId(nextCourse.freePreviewLessonId ?? "");
-        setMembersTheme(nextCourse.membersTheme ?? "light");
-        setMembersCoverAssetId(nextCourse.membersCoverAssetId ?? null);
-        setMembersTitle(nextCourse.membersTitle ?? "");
-        setMembersSubtitle(nextCourse.membersSubtitle ?? "");
-        setMembersDescription(nextCourse.membersDescription ?? "");
-        setCommunityEnabled(nextCourse.communityEnabled ?? false);
-        // Todo snapshot passa aqui, inclusive o eco do nosso autosave. Voltar
-        // sempre para o 1o modulo mandava a aula seguinte para o modulo errado.
-        setLessonModuleId((current) =>
-          nextCourse.modules?.some((module) => module.id === current)
-            ? current
-            : nextCourse.modules?.[0]?.id ?? "",
-        );
         setError(null);
-        // Baseline mirrors exactly what the state setters above produce, so a
-        // fresh hydration (or our own write echoing back) is never seen as a
-        // user edit. Async callback -> setState is allowed here.
-        setSavedSignature(builderDraftSignatureFromCourse(nextCourse));
 
         // Video-first flow: a lesson added through the form auto-opens its
         // studio (Video tab) as soon as hydration confirms autosave persisted
@@ -597,19 +631,43 @@ export function CourseBuilderStudio() {
           )
         ) {
           pendingLessonStudioRef.current = null;
-          // Never replace a studio that is already open: the modal is keyed by
-          // lesson id, so swapping lessons would remount it mid-upload and drop
-          // the progress bar and the close guard of the lesson in progress.
-          setActiveLessonStudio((current) => current ?? pendingStudio);
-          setSuccess(null);
+          // Aula que ja nao existe no rascunho (apagada antes do eco): abrir o
+          // estudio dela deixava um estudio "fantasma", sem modal, que travava
+          // a abertura da proxima aula e a recarga dos arquivos do curso.
+          const stillInDraft = localModulesRef.current.some(
+            (module) =>
+              module.id === pendingStudio.moduleId &&
+              module.lessons.some((lesson) => lesson.id === pendingStudio.lessonId),
+          );
+          if (stillInDraft) {
+            // Never replace a studio that is already open: the modal is keyed by
+            // lesson id, so swapping lessons would remount it mid-upload and drop
+            // the progress bar and the close guard of the lesson in progress.
+            setActiveLessonStudio((current) => current ?? pendingStudio);
+            setSuccess(null);
+          }
         }
+
+        // O snapshot pode chegar atras do rascunho: eco de um save anterior com
+        // autosave no ar, debounce correndo ou aula/modulo recem-criado. Antes,
+        // sobrescrever apagava a edicao local e o autosave nunca a regravava.
+        // Com rascunho sujo, o local manda e o proximo autosave grava por cima.
+        // ponytail: local vence enquanto houver edicao pendente, ate sobre
+        // mudanca de outra aba; resolver conflito entre abas se virar caso real.
+        if (draftDirtyRef.current) {
+          skippedSnapshotRef.current = nextCourse;
+          return;
+        }
+
+        skippedSnapshotRef.current = null;
+        applyServerDraft(nextCourse);
       },
       () => {
         setIsLoading(false);
         setError({ code: "load" });
       },
     );
-  }, [courseId]);
+  }, [courseId, applyServerDraft]);
 
   // One-shot (re)load instead of a realtime channel: the lesson studio modal
   // already owns the `course_assets:{id}` realtime topic while it is open, and
@@ -882,6 +940,27 @@ export function CourseBuilderStudio() {
   const canAutosaveDraft = isEditable && autosaveBlockedReason === null;
   const draftIsDirty =
     savedSignature !== null && builderDraftSignature !== savedSignature;
+  useEffect(() => {
+    draftDirtyRef.current = draftIsDirty;
+    const skipped = skippedSnapshotRef.current;
+    // Com save nosso no ar, o guardado pode ser o eco dele mesmo: aplicar
+    // ressuscitava o save e engolia uma volta exata ao estado anterior. O
+    // sucesso descarta o guardado; a falha o aplica (em persistDraft).
+    if (draftIsDirty || !skipped || inFlightSavesRef.current > 0) {
+      return;
+    }
+    // O rascunho voltou a ficar limpo sem save nosso (desfez a edicao, ou o
+    // autosave foi bloqueado/falhou e a pessoa voltou atras). O servidor pode
+    // ter coisa mais nova, de outra aba ou da pagina de vendas no Manage, que
+    // usa a mesma RPC de troca total. Sem isto, a proxima edicao qualquer
+    // gravava a copia velha inteira por cima.
+    skippedSnapshotRef.current = null;
+    // Assincrono: setState direto no corpo do efeito e vetado (react-hooks).
+    queueMicrotask(() => applyServerDraft(skipped));
+  }, [draftIsDirty, applyServerDraft]);
+  useEffect(() => {
+    localModulesRef.current = modules;
+  }, [modules]);
   // Preço e parcelas só ficam inválidos por digitação (a hidratação sempre
   // produz valor válido ou vazio). Um preço inválido que normaliza para o mesmo
   // valor da base ("invalid" e vazio viram null) não muda a assinatura, e o
@@ -1142,6 +1221,9 @@ export function CourseBuilderStudio() {
 
       return nextModules;
     });
+    if (pendingLessonStudioRef.current?.moduleId === moduleId) {
+      pendingLessonStudioRef.current = null;
+    }
     setSuccess(null);
   }
 
@@ -1226,6 +1308,12 @@ export function CourseBuilderStudio() {
       setFreePreviewLessonId("");
     }
 
+    // Aula apagada antes do eco do save que a levou: o eco nao pode abrir o
+    // estudio dela.
+    if (pendingLessonStudioRef.current?.lessonId === lessonId) {
+      pendingLessonStudioRef.current = null;
+    }
+
     if (
       activeLessonStudio?.moduleId === moduleId
       && activeLessonStudio.lessonId === lessonId
@@ -1239,7 +1327,6 @@ export function CourseBuilderStudio() {
   // Autosave e o botao Salvar podem estar no ar ao mesmo tempo. O selo so vira
   // "Saved" quando a ULTIMA gravacao pendente volta; antes, a primeira a voltar
   // pintava "Saved" com a outra ainda no ar.
-  const inFlightSavesRef = useRef(0);
   const persistDraft = useCallback(
     async (
       signature: string,
@@ -1255,14 +1342,24 @@ export function CourseBuilderStudio() {
       try {
         await updateTeacherCourseBuilder(courseId, payload);
         setSavedSignature(signature);
+        // O servidor agora tem o nosso rascunho; o proximo eco traz o resto.
+        skippedSnapshotRef.current = null;
         if (inFlightSavesRef.current === 1) {
           setAutosaveState("saved");
         }
       } finally {
         inFlightSavesRef.current -= 1;
+        // Save nosso falhou com o rascunho limpo: o snapshot guardado durante
+        // o save (que o efeito nao aplica com save no ar) vale agora. No
+        // sucesso ele ja foi descartado acima, entao aqui nao sobra nada.
+        const skipped = skippedSnapshotRef.current;
+        if (inFlightSavesRef.current === 0 && skipped && !draftDirtyRef.current) {
+          skippedSnapshotRef.current = null;
+          applyServerDraft(skipped);
+        }
       }
     },
-    [courseId],
+    [courseId, applyServerDraft],
   );
 
   // Pagina do modulo (?module=M). Funcao de render, nao componente: le o mesmo
@@ -1279,8 +1376,10 @@ export function CourseBuilderStudio() {
               <Link
                 href={builderModuleHref(null)}
                 scroll={false}
-                onClick={() => {
-                  moduleNavigationRef.current = { returnTo: module.id };
+                onClick={(event) => {
+                  if (isPlainLeftClick(event)) {
+                    moduleNavigationRef.current = { returnTo: module.id };
+                  }
                 }}
                 className="inline-flex min-h-11 items-center text-[var(--color-primary)] underline-offset-2 hover:underline"
               >
@@ -1763,10 +1862,7 @@ export function CourseBuilderStudio() {
     }
 
     const handleClickCapture = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0) {
-        return;
-      }
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      if (event.defaultPrevented || !isPlainLeftClick(event)) {
         return;
       }
 
@@ -2562,8 +2658,10 @@ export function CourseBuilderStudio() {
                       href={builderModuleHref(module.id)}
                       scroll={false}
                       data-module-row={module.id}
-                      onClick={() => {
-                        moduleNavigationRef.current = { returnTo: null };
+                      onClick={(event) => {
+                        if (isPlainLeftClick(event)) {
+                          moduleNavigationRef.current = { returnTo: null };
+                        }
                       }}
                       className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-[10px]"
                     >
