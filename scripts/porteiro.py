@@ -374,6 +374,15 @@ def _tem_achado(v) -> bool:
         for x in v)
 
 
+def _grave_solto(v) -> bool:
+    """Severidade crítica/alta (em TEXTO, qualquer grafia de chave) em qualquer
+    ponto de v. "stats":{"severity":{"critica":0}} não é texto: não conta."""
+    if isinstance(v, dict):
+        return (any(isinstance(v.get(k), str) and _sev(v[k]) in ("critica", "alta") for k in CHAVES["severidade"])
+                or any(map(_grave_solto, v.values())))
+    return isinstance(v, list) and any(map(_grave_solto, v))
+
+
 def _pega(a: dict, campo: str, padrao=None):
     """1º valor preenchido entre as chaves aceitas do campo (pt ou inglês)."""
     return next((a[k] for k in CHAVES[campo] if _preenchido(a.get(k))), padrao)
@@ -387,10 +396,14 @@ def normaliza(bruto: dict | None) -> dict | None:
     severidades, vale a mais grave. Lista só com entradas inválidas => None.
     Entrada com campos mas sem severidade e sem título em nenhuma grafia
     => None, a menos que haja bloqueante: não é "nenhum achado". Achado fora
-    da lista (outra chave do topo, ex. "vulnerabilities":[...]) => None."""
+    da lista (outra chave do topo, ex. "vulnerabilities":[...]) => None.
+    Severidade crítica/alta fora da lista, em qualquer profundidade (inclusive
+    no próprio topo: {"findings":[],"severidade":"critica"}) => None: a main
+    lia isso como grave (3), então nunca é resposta limpa."""
     if not isinstance(bruto, dict) or not isinstance(bruto.get("achados"), list):
         return None
-    if any(_tem_achado(v) for k, v in bruto.items() if k != "achados"):
+    resto = {k: v for k, v in bruto.items() if k != "achados"}
+    if any(map(_tem_achado, resto.values())) or _grave_solto(resto):
         return None
     fora, sem_nada = [], 0
     for a in bruto["achados"]:
@@ -604,9 +617,10 @@ def asset_de_verdade(bloco: str) -> bool:
     if BINARIO.search(bloco) or re.search(r"^deleted file mode ", bloco, re.M):
         return True
     primeira = _primeira_nova(bloco)
-    # TTF/AVIF começam em \x00; a main mostrava o texto deles ao modelo, então
-    # só NUL prova binário ali (um \x89 na frente de um script não).
-    inicio = ("\x00",) if _ultimo(nomes[1]).lower().endswith((".ttf", ".avif")) else INICIO_ASSET
+    # O pathspec da main (':(exclude)*.png') tem caixa: x.PNG, x.Jpg, .ttf e
+    # .avif iam ao modelo. Nesses só NUL prova binário (um \x89 na frente de um
+    # script não); U+FFFD só vale nos nomes que a main excluía, em minúsculas.
+    inicio = INICIO_ASSET if nomes[1].endswith((".png", ".jpg", ".jpeg", ".ico")) else ("\x00",)
     return _tem_binario(_novas(bloco)) and primeira is not None and primeira.startswith(inicio)
 
 
