@@ -159,6 +159,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     cleanup();
     mocks.searchParams.delete("section");
     mocks.searchParams.delete("tab");
+    mocks.searchParams.delete("module");
     mocks.searchParams.set("courseId", "course-1");
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
@@ -280,28 +281,29 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     fireEvent.click(screen.getByRole("button", { name: "Eliminar" }));
     const related = count === 0 ? "" : count === 1 ? " y su 1 lección" : " y sus 2 lecciones";
     expect(confirm).toHaveBeenCalledExactlyOnceWith(`¿Eliminar el módulo "${title}"${related}? No se podrá deshacer después del guardado automático.`);
-    expect(screen.getByRole("textbox", { name: "Módulo 1" })).toHaveValue(title);
-    // A lista abre recolhida: as aulas do modulo aparecem quando ele abre.
-    fireEvent.click(screen.getByRole("button", { name: "Mostrar las lecciones del módulo 1" }));
-    expect(screen.queryAllByRole("textbox", { name: "Título de la lección" })).toHaveLength(count);
+    // A linha do modulo mostra o nome literal e quantas aulas ele tem; as
+    // aulas em si moram na pagina do modulo (?module=M).
+    const row = document.querySelector("#builder-sec-modules article") as HTMLElement;
+    expect(row.querySelector("strong")?.textContent).toBe(title);
+    expect(within(row).getByText(count === 1 ? "1 lección" : `${count} lecciones`)).toBeInTheDocument();
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
     expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
   });
 
-  it("localizes an existing module validation error and retains the unsaved lesson fields", async () => {
+  it("localizes an existing module validation error and retains the unsaved module fields", async () => {
     renderBuilder("content");
     await screen.findByRole("heading", { name: mocks.course.title });
-    // A aula agora nasce dentro do modulo, e o formulario do modulo e um pedido.
-    fireEvent.click(screen.getByRole("button", { name: "Add lesson to module 1" }));
-    const lesson = screen.getByRole("textbox", { name: "Lesson title" });
-    fireEvent.change(lesson, { target: { value: "Lección $$ $& sin enviar" } });
+    // O formulario do modulo e um pedido na lista; a aula nasce na pagina do
+    // modulo (?module=M), entao os dois formularios nao dividem mais a tela.
     fireEvent.click(screen.getByRole("button", { name: "Add module" }));
+    const description = screen.getByRole("textbox", { name: "Module description" });
+    fireEvent.change(description, { target: { value: "Descripción $$ $& sin enviar" } });
     fireEvent.click(screen.getByRole("button", { name: "Create module" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Add a module title before creating the module.");
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Escribe un título antes de crear el módulo.");
-    expect(screen.getByRole("textbox", { name: "Título de la lección" })).toBe(lesson);
-    expect(lesson).toHaveValue("Lección $$ $& sin enviar");
+    expect(screen.getByRole("textbox", { name: "Descripción del módulo" })).toBe(description);
+    expect(description).toHaveValue("Descripción $$ $& sin enviar");
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   });
 
@@ -346,6 +348,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       return () => {};
     });
     vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(() => new Promise<void>((resolve) => { finishSave = resolve; }));
+    mocks.searchParams.set("module", "m1");
     renderBuilder("content");
     await act(async () => {});
     fireEvent.click(screen.getByRole("button", { name: "Add lesson to module 1" }));
@@ -1007,6 +1010,7 @@ describe("Painel: o que falta para publicar vem primeiro e cada linha leva a alg
     cleanup();
     mocks.searchParams.delete("section");
     mocks.searchParams.delete("tab");
+    mocks.searchParams.delete("module");
     vi.restoreAllMocks();
   });
 
