@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, type FormEvent, type Ref } from "react";
 import {
   CheckCircle2,
   FileText,
@@ -55,6 +55,8 @@ import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 
 type LessonContentModalProps = {
+  // Builder saindo da pagina: grava, sem prompt, o link digitado e sem blur.
+  leaveFlushRef?: Ref<() => void>;
   course: TeacherCourse;
   module: TeacherCourseModule;
   moduleIndex: number;
@@ -184,6 +186,7 @@ export function LessonContentModal({
   onClose,
   onSetFreePreview,
   onUpdateLesson,
+  leaveFlushRef,
 }: LessonContentModalProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<LessonModalTab>("video");
@@ -217,6 +220,9 @@ export function LessonContentModal({
   const uploadChosenBeforeLoadRef = useRef(false);
   const replaceButtonRef = useRef<HTMLButtonElement>(null);
   const linkHandleRef = useRef<LessonVideoSourcePickerHandle>(null);
+  useImperativeHandle(leaveFlushRef, () => () => {
+    linkHandleRef.current?.flushLink({ silent: true });
+  });
   // Contador, nao booleano: cada recusa vira um no novo no role="status" e e
   // anunciada de novo. null = sem aviso.
   const [linkNotSaved, setLinkNotSaved] = useState<number | null>(null);
@@ -695,7 +701,7 @@ export function LessonContentModal({
                 }}
                 // Fonte e link numa gravacao so, e so com link aceito. Nenhum
                 // course_assets e apagado aqui: o envio antigo segue na lista.
-                onLinkChange={(nextUrl) => {
+                onLinkChange={(nextUrl, options) => {
                   // Mexeu no link: a aba fica no link mesmo que a fonte mude.
                   setVideoModeChoice("link");
                   if (!nextUrl) {
@@ -716,7 +722,8 @@ export function LessonContentModal({
                   // O link aceito substitui o link antigo (Drive etc.): pede a
                   // mesma confirmacao do botao de tirar. Recusou, nada muda e
                   // o campo volta ao salvo.
-                  if (oldLink && !window.confirm(t("creatorEditor.lesson.removeOldLinkConfirm"))) {
+                  // Saindo da pagina (silent) nao da para perguntar: nao grava.
+                  if (oldLink && (options?.silent || !window.confirm(t("creatorEditor.lesson.removeOldLinkConfirm")))) {
                     setLinkNotSaved((count) => (count ?? 0) + 1);
                     return false;
                   }

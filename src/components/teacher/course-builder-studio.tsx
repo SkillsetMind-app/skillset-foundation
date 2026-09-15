@@ -25,6 +25,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -549,6 +550,12 @@ export function CourseBuilderStudio() {
   // Saves nossos no ar (autosave, Salvar, Publicar). Aqui em cima porque o
   // efeito do snapshot pulado tambem le.
   const inFlightSavesRef = useRef(0);
+  // Timer do debounce do autosave, para a descarga ao sair poder cancela-lo.
+  const autosaveTimerRef = useRef<number | undefined>(undefined);
+  // Estudio aberto: grava (sem prompt) o link digitado e ainda sem blur.
+  const studioLeaveFlushRef = useRef<(() => void) | null>(null);
+  // Descarga ao sair, refeita a cada render para ver o estado atual.
+  const flushOnLeaveRef = useRef<(withStudio: boolean) => void>(() => {});
 
   // Copia o snapshot do servidor para o rascunho. So setters (estaveis), entao
   // serve ao callback do realtime e ao efeito que aplica o snapshot pulado.
@@ -1236,7 +1243,7 @@ export function CourseBuilderStudio() {
       return;
     }
 
-    setModules((currentModules) =>
+    const applyPatch = (currentModules: TeacherCourseModule[]) =>
       currentModules.map((module) =>
         module.id === moduleId
           ? {
@@ -1246,8 +1253,11 @@ export function CourseBuilderStudio() {
               ),
             }
           : module,
-      ),
-    );
+      );
+    // Ja no ref, sem esperar o render: a descarga ao sair (com o builder
+    // desmontando) le daqui o link que o estudio acabou de gravar.
+    localModulesRef.current = applyPatch(localModulesRef.current);
+    setModules(applyPatch);
     setSuccess(null);
   }
 
@@ -1812,6 +1822,7 @@ export function CourseBuilderStudio() {
     const handle = window.setTimeout(() => {
       void runAutosave(signatureAtSchedule, payloadAtSchedule);
     }, 1800);
+    autosaveTimerRef.current = handle;
 
     return () => window.clearTimeout(handle);
   }, [
@@ -1826,6 +1837,78 @@ export function CourseBuilderStudio() {
     modules,
     runAutosave,
   ]);
+
+  // Sair pelo voltar/avancar do navegador, gesto do trackpad ou Alt+Esquerda
+  // desmonta o builder sem clique em link: o timer de 1,8 s morria junto e a
+  // edicao ia com ele (beforeunload nao dispara no App Router). A descarga manda
+  // o rascunho pendente na hora, pelo mesmo persistDraft do autosave.
+  useEffect(() => {
+    flushOnLeaveRef.current = (withStudio) => {
+      try {
+        // Link digitado no estudio e ainda sem blur vai primeiro, sem prompt.
+        // So saindo de verdade: com a aba apenas escondida, a pessoa volta ao
+        // campo e decide ela mesma.
+        if (withStudio) {
+          studioLeaveFlushRef.current?.();
+        }
+        // Save, autosave ou Publicar no ar: nao comeca uma segunda troca total
+        // (o Publicar pausa o autosave de proposito entre gravar e publicar).
+        // O caminho no ar e o autosave normal levam o resto.
+        // ponytail: desmontar de verdade com save no ar pula a descarga, e o
+        // que foi editado depois dele se perde; enfileirar se virar caso real.
+        if (isAutosavingRef.current || inFlightSavesRef.current > 0 || isSaving || isSubmitting) {
+          return;
+        }
+        if (!courseId || !canAutosaveDraft || savedSignature === null) {
+          return;
+        }
+        // Modulos do ref: ja trazem o link que acabou de ser gravado acima.
+        const payload = {
+          ...builderDraftPayload,
+          modules: sanitizeModules(localModulesRef.current),
+        };
+        const signature = JSON.stringify(payload);
+        if (signature === savedSignature) {
+          return;
+        }
+        window.clearTimeout(autosaveTimerRef.current);
+        // Pelo runAutosave (que chama o persistDraft): o save fica marcado como
+        // o autosave no ar, e um timer novo com o mesmo payload nao o reenvia.
+        // Ele ja trata o erro, entao nada escapa daqui.
+        void runAutosave(signature, payload);
+      } catch {
+        // Sair nunca pode quebrar a desmontagem.
+      }
+    };
+  });
+
+  // pagehide cobre fechar/recarregar e o bfcache; visibilitychange('hidden')
+  // chega antes, e e o unico aviso confiavel no celular. Aba escondida nao mexe
+  // no estudio: trocar de app e voltar nao pode apagar o link digitado.
+  // ponytail: fechar a aba de verdade pode cortar o fetch no meio; fetch com
+  // keepalive no cliente Supabase se isso aparecer em producao.
+  useEffect(() => {
+    const flush = () => flushOnLeaveRef.current(true);
+    const flushWhenHidden = () => {
+      if (document.visibilityState === "hidden") {
+        flushOnLeaveRef.current(false);
+      }
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", flushWhenHidden);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", flushWhenHidden);
+    };
+  }, []);
+
+  // Layout, nao passivo: na desmontagem o React limpa o pai antes dos filhos,
+  // entao o handle do link do estudio (efeito de layout do filho) ainda existe
+  // aqui. Numa limpeza passiva ele ja teria sido solto.
+  useLayoutEffect(() => {
+    const flushRef = flushOnLeaveRef;
+    return () => flushRef.current(true);
+  }, []);
 
   // Browser-level guard for the gap autosave can't cover: the debounce window
   // and a *failed* autosave both leave edits unpersisted. Warn before the tab
@@ -2975,6 +3058,7 @@ export function CourseBuilderStudio() {
           // Uma instancia por aula: o estado do estudio (aba, envio, se a
           // nota publica antiga aparece) nao vaza de uma aula para outra.
           key={activeLessonStudioLesson.id}
+          leaveFlushRef={studioLeaveFlushRef}
           course={course}
           module={activeLessonStudioModule}
           moduleIndex={activeLessonStudioModuleIndex}

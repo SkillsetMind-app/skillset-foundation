@@ -5586,6 +5586,11 @@
       }
     }
   },
+  "whatsappContact": {
+    "cta": "Escríbenos por WhatsApp",
+    "message": "Hola, equipo de SkillsetMind. Necesito ayuda con:",
+    "replyPromise": "Intentamos responder en un plazo de 2 días hábiles (lun–vie)."
+  },
   "siteMetadata": {
     "title": "SkillsetMind | Coaching, desarrollo personal y potencial humano",
     "description": "Una plataforma vertical de negocio y aprendizaje para coaching, desarrollo personal y potencial humano."
