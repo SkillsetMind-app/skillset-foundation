@@ -50,5 +50,118 @@ class ErroDaZaiTest(unittest.TestCase):
         self.assertIn("1302", log)
 
 
+VAZIO_JSON = '{"achados":[]}'
+FAIL_JSON = json.dumps({"achados": [
+    {"titulo": "IDOR", "arquivo": "a", "severidade": "alta", "confianca": 0.9}]})
+TODAS = {"GLM_API_KEY": CHAVE, "KIMI_API_KEY": CHAVE, "OPENAI_API_KEY": CHAVE}
+Z1113 = (429, {"code": "1113", "message": "m"})
+KIMI_QUOTA = (429, {"type": "exceeded_current_quota_error", "message": "m"})
+OPENAI_QUOTA = (429, {"code": "insufficient_quota", "type": "insufficient_quota", "message": "m"})
+
+
+class CadeiaDeReservaTest(unittest.TestCase):
+    """Sem veredito do provedor da vez, o próximo analisa. Veredito válido não cai."""
+
+    def roda(self, por_modelo, env=TODAS, modo="barra"):
+        pedidos = []
+
+        def responde(req, timeout=None):
+            corpo = json.loads(req.data)
+            pedidos.append((req.full_url, corpo))
+            r = por_modelo[corpo["model"]]
+            if isinstance(r, tuple):
+                raise urllib.error.HTTPError(req.full_url, r[0], "x", {},
+                                             io.BytesIO(json.dumps({"error": r[1]}).encode()))
+            return io.BytesIO(json.dumps({"choices": [{"message": {"content": r},
+                              "finish_reason": "stop"}], "usage": {"total_tokens": 10}}).encode())
+
+        saida = io.StringIO()
+        with patch.dict(os.environ, dict(env, PORTEIRO_MODO=modo), clear=True), \
+             patch("builtins.open", mock_open(read_data="diff --git a/a b/a\n+x")), \
+             patch.object(porteiro, "escreve") as escreve, \
+             patch.object(porteiro, "manda_detalhe", return_value="no Telegram"), \
+             patch.object(porteiro.time, "sleep") as dorme, \
+             patch("urllib.request.urlopen", side_effect=responde), \
+             redirect_stdout(saida):
+            codigo = porteiro.main(["--diff", "d", "--placar", "p"])
+        placar = escreve.call_args.args[1]
+        self.assertNotIn(CHAVE, saida.getvalue() + placar)
+        self.dormidas = dorme.call_count
+        return codigo, placar, [c["model"] for _, c in pedidos], pedidos
+
+    def test_1113_no_zai_usa_kimi_k3(self):
+        codigo, placar, modelos, _ = self.roda({"glm-5": Z1113, "kimi-k3": VAZIO_JSON})
+        self.assertEqual((codigo, modelos, self.dormidas), (0, ["glm-5", "kimi-k3"], 0))
+        self.assertIn("Kimi kimi-k3 (reserva)", placar)
+        self.assertIn("código 1113", placar)
+
+    def test_kimi_sem_cota_usa_k26(self):
+        codigo, placar, modelos, _ = self.roda(
+            {"glm-5": Z1113, "kimi-k3": KIMI_QUOTA, "kimi-k2.6": VAZIO_JSON})
+        self.assertEqual((codigo, modelos, self.dormidas), (0, ["glm-5", "kimi-k3", "kimi-k2.6"], 0))
+        self.assertIn("Kimi kimi-k2.6 (reserva)", placar)
+
+    def test_k26_falha_usa_openai(self):
+        codigo, placar, modelos, pedidos = self.roda(
+            {"glm-5": Z1113, "kimi-k3": KIMI_QUOTA,
+             "kimi-k2.6": (401, {"type": "invalid_authentication_error"}), "gpt-6-astra": VAZIO_JSON})
+        self.assertEqual((codigo, modelos), (0, ["glm-5", "kimi-k3", "kimi-k2.6", "gpt-6-astra"]))
+        self.assertIn("OpenAI gpt-6-astra (reserva)", placar)
+        url, corpo = pedidos[-1]
+        self.assertEqual(url, "https://api.openai.com/v1/chat/completions")
+        self.assertNotIn("temperature", corpo)
+        self.assertNotIn("max_tokens", corpo)  # gpt-5.x recusa; usa max_completion_tokens
+        self.assertGreaterEqual(corpo["max_completion_tokens"], 8192)
+
+    def test_todas_falham_fail_closed(self):
+        for modo in ("avisa", "barra"):
+            codigo, placar, modelos, _ = self.roda(
+                {"glm-5": Z1113, "kimi-k3": KIMI_QUOTA, "kimi-k2.6": "desculpe, não sei",
+                 "gpt-6-astra": OPENAI_QUOTA}, modo=modo)
+            self.assertEqual(codigo, 3)
+            # k2.6 respondeu fora do formato 3x (os três tetos) antes de cair.
+            self.assertEqual(modelos, ["glm-5", "kimi-k3"] + ["kimi-k2.6"] * 3 + ["gpt-6-astra"])
+            self.assertIn("NÃO ANALISADO", placar)
+            self.assertIn("nenhuma IA disponível", placar)
+            for trecho in ("z.ai glm-5: saldo da z.ai zerado (código 1113)",
+                           "Kimi kimi-k3: saldo da Kimi zerado (código exceeded_current_quota_error)",
+                           "Kimi kimi-k2.6: não devolveu JSON",
+                           "OpenAI gpt-6-astra: saldo da OpenAI zerado (código insufficient_quota)"):
+                self.assertIn(trecho, placar)
+
+    def test_sem_chave_e_pulado(self):
+        codigo, placar, modelos, _ = self.roda({"kimi-k3": VAZIO_JSON}, env={"KIMI_API_KEY": CHAVE})
+        self.assertEqual((codigo, modelos), (0, ["kimi-k3"]))
+        self.assertIn("Kimi kimi-k3 (reserva)", placar)
+        self.assertIn("z.ai glm-5: sem chave", placar)
+        codigo, placar, modelos, _ = self.roda({}, env={})
+        self.assertEqual((codigo, modelos), (3, []))
+        self.assertIn("sem chave do analisador", placar)
+
+    def test_veredito_fail_do_primario_nao_cai(self):
+        codigo, placar, modelos, _ = self.roda({"glm-5": FAIL_JSON, "kimi-k3": VAZIO_JSON})
+        self.assertEqual((codigo, modelos), (1, ["glm-5"]))
+        self.assertIn("1 bloqueante", placar)
+        self.assertNotIn("reserva", placar)
+
+    def test_corpo_moonshot_sem_temperature_e_teto_8192(self):
+        _, _, _, pedidos = self.roda({"glm-5": Z1113, "kimi-k3": VAZIO_JSON})
+        (url_z, zai), (url_k, kimi) = pedidos
+        self.assertEqual(url_k, "https://api.moonshot.ai/v1/chat/completions")
+        self.assertNotIn("temperature", kimi)
+        self.assertGreaterEqual(kimi["max_tokens"], 8192)
+        # O primário continua igual: z.ai, glm-5, temperature 0.1, teto 4000.
+        self.assertEqual((url_z, zai["temperature"], zai["max_tokens"]), (porteiro.URL, 0.1, 4000))
+
+    def test_cadeia_e_modelo_primario_configuraveis(self):
+        _, _, modelos, _ = self.roda({"glm-4.6": VAZIO_JSON},
+                                     env=dict(TODAS, PORTEIRO_MODELO="glm-4.6"))
+        self.assertEqual(modelos, ["glm-4.6"])
+        _, placar, modelos, _ = self.roda({"gpt-x": Z1113, "glm-5": VAZIO_JSON},
+                                          env=dict(TODAS, PORTEIRO_CADEIA="openai:gpt-x, zai:glm-5"))
+        self.assertEqual(modelos, ["gpt-x", "glm-5"])
+        self.assertIn("z.ai glm-5 (reserva)", placar)
+
+
 if __name__ == "__main__":
     unittest.main()

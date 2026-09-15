@@ -38,7 +38,8 @@ jobs:
     name: Porteiro de PR (segurança, GLM-5)
     if: github.event.pull_request.draft == false && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 30: cada reserva de raciocínio leva ~1 min por tentativa (até 3 tetos).
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -62,11 +63,17 @@ jobs:
 
       # continue-on-error: o placar precisa ser publicado mesmo quando o
       # veredito é "não analisado" ou "bloqueante". O passo final replica a falha.
-      - name: Analisa com o GLM-5
+      # Cadeia de reserva: sem veredito do GLM (sem saldo, chave recusada,
+      # API fora), tenta Kimi k3 -> Kimi k2.6 -> OpenAI. Secret que não existe
+      # chega vazio e o provedor é pulado. vars.PORTEIRO_CADEIA muda ordem/modelos.
+      - name: Analisa com o GLM-5 (e reservas)
         id: analisa
         continue-on-error: true
         env:
           GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+          KIMI_API_KEY: ${{ secrets.KIMI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PORTEIRO_CADEIA: ${{ vars.PORTEIRO_CADEIA }}
           OPS_ALERT_WEBHOOK_URL: ${{ secrets.OPS_ALERT_WEBHOOK_URL }}
           OPS_ALERT_WEBHOOK_SECRET: ${{ secrets.OPS_ALERT_WEBHOOK_SECRET }}
           PORTEIRO_MODO: ${{ vars.PORTEIRO_MODO || 'avisa' }}

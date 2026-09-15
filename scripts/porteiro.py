@@ -14,25 +14,32 @@ que qualquer pessoa lê. Por isso a regra que governa o arquivo inteiro:
     privado: o webhook ops-alert do n8n, que relaya para o Telegram. Se o canal
     não estiver configurado, o detalhe é descartado -- não cai no log.
 
-Sem chave do GLM o script NÃO passa verde: escreve "NÃO ANALISADO" e sai com 3.
-Um portão que aprova por omissão é pior que portão nenhum (o check de RLS
-ficou dois meses verde sem rodar por exatamente isso).
+Cadeia de reserva: se a IA da vez não dá veredito (sem saldo, chave recusada,
+rate limit/5xx/timeout depois das repetições, resposta fora do formato), a
+próxima da cadeia analisa: z.ai GLM -> Kimi k3 -> Kimi k2.6 -> OpenAI. Um
+veredito válido NUNCA cai para a próxima: "bloqueante" de qualquer uma barra.
+Se nenhuma der veredito, o script NÃO passa verde: escreve "NÃO ANALISADO" e
+sai com 3. Um portão que aprova por omissão é pior que portão nenhum (o check
+de RLS ficou dois meses verde sem rodar por exatamente isso).
 
 Uso (GitHub Action ou local):
     python3 scripts/porteiro.py --diff pr.diff --placar placar.md
     python3 scripts/porteiro.py --demo          # auto-teste, sem rede
 
 Ambiente:
-    GLM_API_KEY              obrigatória (secret do repo; fork não recebe)
+    GLM_API_KEY              IA primária (secret do repo; fork não recebe)
+    KIMI_API_KEY             reserva Moonshot; vazia = pulada ("sem chave")
+    OPENAI_API_KEY           reserva OpenAI; vazia = pulada ("sem chave")
     PORTEIRO_MODO            avisa (padrão) | barra  -- em "barra", bloqueante => exit 1
     PORTEIRO_MODELO          glm-5 (medido: 20/20 no controle, ~$0,009/análise)
+    PORTEIRO_CADEIA          opcional; ordem e modelos, ex. "zai:glm-5,kimi:kimi-k3,openai:gpt-5.5"
     PORTEIRO_MAX_DIFF_KB     120 -- acima disso só os caminhos de risco entram
     OPS_ALERT_WEBHOOK_URL    canal privado (n8n -> Telegram); opcional
     OPS_ALERT_WEBHOOK_SECRET vai no cabeçalho x-ops-secret; opcional
     PR_NUMBER / PR_URL / REPO  só para o texto do alerta
 
-Saídas: 0 ok · 1 bloqueante em modo "barra" · 3 não analisado (sem chave ou
-API esgotada) · 2 erro de uso.
+Saídas: 0 ok · 1 bloqueante em modo "barra" · 3 não analisado (nenhuma IA
+com chave e saldo deu veredito) · 2 erro de uso.
 """
 from __future__ import annotations
 
@@ -44,11 +51,52 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from typing import NamedTuple
 
 URL = "https://api.z.ai/api/paas/v4/chat/completions"
 MODELO_PADRAO = "glm-5"
 # glm-5 é modelo de RACIOCÍNIO: gasta centenas de reasoning_tokens antes do
 # content. Teto baixo pode esgotar no raciocínio antes de produzir o JSON.
+
+
+class Provedor(NamedTuple):
+    id: str      # zai | kimi | openai -- escolhe o formato do pedido
+    nome: str    # como aparece no placar
+    url: str
+    var: str     # variável da chave; vazia => pulado ("sem chave")
+    modelo: str
+
+    @property
+    def rotulo(self) -> str:
+        return f"{self.nome} {self.modelo}"
+
+
+PROVEDORES = {
+    "zai": ("z.ai", URL, "GLM_API_KEY"),
+    "kimi": ("Kimi", "https://api.moonshot.ai/v1/chat/completions", "KIMI_API_KEY"),
+    "openai": ("OpenAI", "https://api.openai.com/v1/chat/completions", "OPENAI_API_KEY"),
+}
+# Ordem = prioridade. O 1º é o primário; os outros só entram sem veredito dele.
+# gpt-6-astra: o modelo mais capaz da OpenAI; a chave usa em /chat/completions
+# com json_object (medido 15/09/2026). Se sair do preview, PORTEIRO_CADEIA com
+# openai:gpt-5.5 (também medido) resolve sem mexer no código.
+CADEIA_PADRAO = "zai:{primario},kimi:kimi-k3,kimi:kimi-k2.6,openai:gpt-6-astra"
+# Sem saldo/cota: repetir não adianta, vai direto para a próxima IA.
+SEM_SALDO = {"1113", "insufficient_quota", "exceeded_current_quota_error"}
+
+
+def le_cadeia(env) -> list[Provedor]:
+    def monta(texto: str) -> list[Provedor]:
+        fora = []
+        for item in texto.split(","):
+            pid, _, modelo = (x.strip() for x in item.partition(":"))
+            if pid in PROVEDORES and modelo:
+                fora.append(Provedor(pid, *PROVEDORES[pid], modelo))
+            elif item.strip():
+                print(f"cadeia: item ignorado ({item.strip()[:40]})")
+        return fora
+    padrao = CADEIA_PADRAO.format(primario=env.get("PORTEIRO_MODELO") or MODELO_PADRAO)
+    return monta(env.get("PORTEIRO_CADEIA") or "") or monta(padrao)
 
 # Quando o diff passa do teto, só o que toca auth, dinheiro e política entra.
 CAMINHOS_DE_RISCO = (
@@ -87,32 +135,44 @@ ARQUIVO_DO_DIFF = re.compile(r"^diff --git a/(.+?) b/(.+)$", re.M)
 # GLM (mesma mecânica medida em skillset-ops/protecao-glm/analisa.py)
 # --------------------------------------------------------------------------
 class SaldoZerado(RuntimeError):
-    """z.ai código 1113: sem saldo até recarregar. Repetir só queima 93 s."""
+    """Sem saldo/cota (z.ai 1113, OpenAI insufficient_quota, Moonshot
+    exceeded_current_quota_error). Repetir só queima 93 s."""
 
 
-def codigo_zai(e: urllib.error.HTTPError) -> str:
-    """error.code do corpo de erro da z.ai (1113 sem saldo, 1302 rate limit).
-    Só dígitos saem daqui: o corpo em si nunca chega ao log público."""
+def codigo_erro(e: urllib.error.HTTPError) -> str:
+    """error.code (z.ai 1113/1302, OpenAI) ou error.type (Moonshot) do corpo
+    de erro. Só um identificador curto sai daqui: o corpo nunca chega ao log."""
     try:
-        c = str(json.loads(e.read())["error"]["code"])
+        err = json.loads(e.read())["error"]
+        c = str(err.get("code") or err.get("type") or "")
     except Exception:
         return ""
-    return c if c.isdigit() and len(c) <= 6 else ""
+    return c if re.fullmatch(r"[A-Za-z0-9_.-]{1,40}", c) else ""
 
 
-def chama(diff: str, modelo: str, max_tokens: int, chave: str) -> tuple[str, dict]:
-    corpo = json.dumps({
-        "model": modelo,
+def corpo_pedido(diff: str, prov: Provedor, max_tokens: int) -> dict:
+    c = {
+        "model": prov.modelo,
         "messages": [
             {"role": "system", "content": SISTEMA},
             {"role": "user", "content": "Analise este diff:\n\n" + diff},
         ],
         "response_format": {"type": "json_object"},
-        "max_tokens": max_tokens,
-        "temperature": 0.1,
-    }).encode()
+    }
+    if prov.id == "zai":
+        c.update(max_tokens=max_tokens, temperature=0.1)
+    else:
+        # Kimi (k3, k2.6) e OpenAI (gpt-5.x) raciocinam: o teto é raciocínio +
+        # resposta (piso 8192, senão volta em branco com HTTP 200) e temperature
+        # diferente de 1 dá HTTP 400. Por isso temperature não vai.
+        c["max_completion_tokens" if prov.id == "openai" else "max_tokens"] = max(max_tokens, 8192)
+    return c
+
+
+def chama(diff: str, prov: Provedor, max_tokens: int, chave: str) -> tuple[str, dict]:
+    corpo = json.dumps(corpo_pedido(diff, prov, max_tokens)).encode()
     req = urllib.request.Request(
-        URL, data=corpo,
+        prov.url, data=corpo,
         headers={"Content-Type": "application/json",
                  "Authorization": "Bearer " + chave})
     ultimo = None
@@ -122,10 +182,10 @@ def chama(diff: str, modelo: str, max_tokens: int, chave: str) -> tuple[str, dic
                 dados = json.load(r)
             break
         except urllib.error.HTTPError as e:
-            cod = codigo_zai(e)
+            cod = codigo_erro(e)
             ultimo = f"HTTP {e.code}" + (f", código {cod}" if cod else "")
-            if cod == "1113":
-                raise SaldoZerado("saldo da z.ai zerado (código 1113) — recarregar")
+            if cod in SEM_SALDO:
+                raise SaldoZerado(f"saldo da {prov.nome} zerado (código {cod}) — recarregar")
             if e.code not in (408, 429, 500, 502, 503, 504):
                 raise RuntimeError(f"API recusou ({ultimo})")
         except (OSError, json.JSONDecodeError) as e:
@@ -188,12 +248,12 @@ def normaliza(bruto: dict | None) -> dict | None:
     return {"achados": fora}
 
 
-def analisa(diff: str, modelo: str, chave: str) -> tuple[dict, dict]:
+def analisa(diff: str, prov: Provedor, chave: str) -> tuple[dict, dict]:
     """Três tetos para raciocínio + JSON final. Esgotou => falhou=True."""
-    tel = {"modelo": modelo, "tentativas": [], "segundos": 0.0, "tokens": 0}
+    tel = {"modelo": prov.rotulo, "tentativas": [], "segundos": 0.0, "tokens": 0}
     t0 = time.monotonic()
     for tentativa, teto in enumerate((4000, 16000, 32000), start=1):
-        content, usage = chama(diff, modelo, teto, chave)
+        content, usage = chama(diff, prov, teto, chave)
         tel["tokens"] += usage["total_tokens"]
         r = normaliza(extrai_json(content))
         estado = ("vazio" if not content else "json_malformado" if r is None
@@ -381,13 +441,13 @@ def main(argv: list[str]) -> int:
     modo = os.environ.get("PORTEIRO_MODO", "avisa").strip().lower()
     if modo not in ("avisa", "barra"):
         modo = "avisa"
-    modelo = os.environ.get("PORTEIRO_MODELO", MODELO_PADRAO)
+    cadeia = le_cadeia(os.environ)
+    modelo = cadeia[0].rotulo
     max_kb = int(os.environ.get("PORTEIRO_MAX_DIFF_KB", "120"))
 
-    chave = os.environ.get("GLM_API_KEY")
-    if not chave:
+    if not any(os.environ.get(p.var) for p in cadeia):
         escreve(placar_path, nao_analisado("sem chave do analisador neste job (PR de fork não recebe secret)", modo))
-        print("NAO ANALISADO: GLM_API_KEY ausente")
+        print("NAO ANALISADO: nenhuma chave de IA neste job")
         return 3
 
     with open(diff_path, encoding="utf-8", errors="replace") as f:
@@ -407,17 +467,29 @@ def main(argv: list[str]) -> int:
             print("diff grande sem caminho de risco")
             return 0
 
-    try:
-        r, tel = analisa(diff, modelo, chave)
-    except RuntimeError as e:
-        escreve(placar_path, nao_analisado(
-            str(e) if isinstance(e, SaldoZerado) else f"o analisador não respondeu ({e})", modo))
-        print(f"NAO ANALISADO: {e}")
+    # Só "sem veredito" passa adiante. Veredito válido (inclusive bloqueante)
+    # para aqui: cair para a próxima IA seria procurar quem aprove.
+    falhas = []
+    for n, prov in enumerate(cadeia):
+        try:
+            chave = os.environ.get(prov.var)
+            if not chave:
+                raise RuntimeError("sem chave")
+            print(f"provedor: {prov.rotulo}" + (" (reserva)" if n else ""), flush=True)
+            r, tel = analisa(diff, prov, chave)
+            if not tel.get("falhou"):
+                break
+            raise RuntimeError("não devolveu JSON em 3 tentativas")
+        except RuntimeError as e:
+            falhas.append(f"{prov.rotulo}: {e}")
+            print(f"sem veredito: {falhas[-1]}", flush=True)
+    else:
+        escreve(placar_path, nao_analisado("nenhuma IA disponível — " + " · ".join(falhas), modo))
+        print("NAO ANALISADO: nenhuma IA disponível")
         return 3
-    if tel.get("falhou"):
-        escreve(placar_path, nao_analisado("o analisador não devolveu JSON em 3 tentativas", modo))
-        print("NAO ANALISADO: resposta vazia/malformada 3x")
-        return 3
+    if n:
+        tel["modelo"] += " (reserva)"
+        nota = (nota + "\n\n" if nota else "") + "IA reserva — sem veredito antes: " + " · ".join(falhas) + "."
 
     bloq, aviso = classifica(r["achados"], arquivos)
     canal = manda_detalhe(bloq, aviso) if (bloq or aviso) else ""
@@ -495,7 +567,7 @@ def demo() -> None:
 
     with patch("urllib.request.urlopen", side_effect=resposta_longa) as request, \
          redirect_stdout(io.StringIO()):
-        result, telemetry = analisa("diff demo", MODELO_PADRAO, "demo")
+        result, telemetry = analisa("diff demo", le_cadeia({})[0], "demo")
     assert result == VAZIO and not telemetry.get("falhou"), "raciocínio esgotou os três tetos"
     assert request.call_count == 3 and telemetry["tentativas"] == ["vazio", "vazio", "ok"]
 
