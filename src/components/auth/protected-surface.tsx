@@ -12,10 +12,12 @@ import { hasAnyPermission, type Permission } from "@/lib/permissions";
 
 type ProtectedSurfaceProps = {
   permissions: readonly Permission[];
+  /** Signed out, offer /contact instead of account creation (the /support wall). */
+  contactWhenSignedOut?: boolean;
   children: ReactNode;
 };
 
-export function ProtectedSurface({ permissions, children }: ProtectedSurfaceProps) {
+export function ProtectedSurface({ permissions, contactWhenSignedOut = false, children }: ProtectedSurfaceProps) {
   const { status, user } = useAuth();
   const { t } = useTranslation();
   const pathname = usePathname() ?? "";
@@ -68,7 +70,9 @@ export function ProtectedSurface({ permissions, children }: ProtectedSurfaceProp
         title={t("auth.guard.signInTitle")}
         description={t("auth.guard.signInDescription")}
         cta={{ href: loginHref, label: t("auth.guard.signIn") }}
-        secondary={{ href: getAuthRoute("signup", null, destination), label: t("auth.guard.createAccount") }}
+        secondary={contactWhenSignedOut
+          ? { href: "/contact", label: t("auth.guard.contactSupport") }
+          : { href: getAuthRoute("signup", null, destination), label: t("auth.guard.createAccount") }}
       />
     );
   }

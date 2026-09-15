@@ -78,4 +78,29 @@ describe("ProtectedSurface — senha aceita, codigo ainda nao", () => {
       window.history.replaceState(null, "", originalUrl);
     }
   });
+
+  // /support signed out used to offer only "Sign in" / "Create account": a
+  // visitor who could not sign in had no way to reach anyone.
+  it("points a signed-out visitor to /contact when the page asks for it", () => {
+    mocks.session = { status: "unauthenticated", user: null };
+
+    render(
+      <ProtectedSurface permissions={["auth.signOut"]} contactWhenSignedOut>
+        <p>conteudo protegido</p>
+      </ProtectedSurface>,
+    );
+
+    expect(screen.getByRole("link", { name: "auth.guard.contactSupport" }).getAttribute("href")).toBe("/contact");
+    expect(screen.getByRole("link", { name: "auth.guard.signIn" }).getAttribute("href")).toMatch(/^\/login\?returnTo=/);
+    expect(screen.queryByText("conteudo protegido")).toBeNull();
+  });
+
+  it("keeps account creation on every other signed-out wall", () => {
+    mocks.session = { status: "unauthenticated", user: null };
+
+    renderGuarded();
+
+    expect(screen.getByRole("link", { name: "auth.guard.createAccount" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "auth.guard.contactSupport" })).toBeNull();
+  });
 });
