@@ -180,6 +180,53 @@ describe("LessonContentModal — dias de espera", () => {
   });
 });
 
+// Decisao de 14/09: a descricao da aula e UM campo de texto simples, gravado no
+// campo protegido (contentText). A nota publica antiga nunca e apagada.
+describe("LessonContentModal — descricao", () => {
+  beforeEach(() => {
+    currentAssets = [];
+    vi.clearAllMocks();
+  });
+
+  it("a descricao grava no texto protegido e a nota publica antiga fica recolhida", () => {
+    const { onUpdateLesson } = renderModal({ description: "old", contentText: null });
+    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+
+    const oldNote = screen
+      .getByText("Old public note (visible on the course page)")
+      .closest("details") as HTMLElement;
+    expect(oldNote).not.toBeNull();
+    expect(oldNote).not.toHaveAttribute("open");
+    expect(within(oldNote).getByRole("textbox", { hidden: true })).toHaveValue("old");
+
+    fireEvent.change(
+      screen.getByPlaceholderText("Explain what the student is about to learn and why it matters."),
+      { target: { value: "Leia isto" } },
+    );
+    expect(onUpdateLesson).toHaveBeenLastCalledWith({ contentText: "Leia isto" });
+    expect(onUpdateLesson).not.toHaveBeenCalledWith(
+      expect.objectContaining({ description: expect.anything() }),
+    );
+  });
+
+  it("a nota antiga continua editavel e some quando a aula nao tem nota", () => {
+    const { onUpdateLesson, unmount } = renderModal({ description: "old", contentText: "corpo" });
+    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+
+    expect(screen.getByPlaceholderText("Explain what the student is about to learn and why it matters.")).toHaveValue("corpo");
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Old public note (visible on the course page)", hidden: true }),
+      { target: { value: "old!" } },
+    );
+    expect(onUpdateLesson).toHaveBeenLastCalledWith({ description: "old!" });
+    unmount();
+
+    renderModal({ description: "", contentText: "corpo" });
+    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    expect(screen.queryByText("Old public note (visible on the course page)")).not.toBeInTheDocument();
+  });
+});
+
 describe("LessonContentModal — video tab", () => {
   beforeEach(() => {
     currentAssets = [];

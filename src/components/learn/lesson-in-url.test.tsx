@@ -183,6 +183,34 @@ describe("relogio da aula so com duracao", () => {
 // Aula nova nasce "video" e o tipo nao se troca mais (decisao de 14/09). Sem
 // video, o aviso do player sai do conteudo: aula de leitura nao pode dizer
 // "Media not attached yet".
+// Decisao de 14/09: o texto da aula e simples, e os links viram clicaveis na
+// area de membros sem HTML cru. A quebra de linha do professor continua.
+describe("texto da aula com links", () => {
+  it("vira link clicavel e mantem a quebra de linha", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    const comLink = {
+      ...course,
+      modules: [
+        {
+          ...course.modules[0],
+          lessons: [
+            { id: "l1", title: "Leitura", type: "video", duration: "Self-paced", isPreview: true, contentText: "linha 1\nveja https://a.com/x.", description: "" },
+          ],
+        },
+      ],
+    } as unknown as Course;
+    render(<EnrolledCourseWorkspace course={comLink} previewMode />);
+
+    const body = document.getElementById("member-lesson-content") as HTMLElement;
+    const link = body.querySelector('a[href="https://a.com/x"]');
+    expect(link).not.toBeNull();
+    expect(link).toHaveTextContent("https://a.com/x");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer nofollow ugc");
+    expect(body.textContent).toContain("linha 1\nveja https://a.com/x.");
+  });
+});
+
 describe("aviso do player sem video segue o conteudo, nao o tipo", () => {
   function playerNotice() {
     return document

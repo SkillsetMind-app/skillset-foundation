@@ -568,32 +568,36 @@ export function LessonContentModal({
                   disabled={!isEditable}
                 />
               </label>
+              {/* Um campo so, em texto simples, no campo PROTEGIDO (contentText:
+                  course_lesson_content, fora do JSON publico). Links viram
+                  clicaveis na area de membros (decisao de 14/09). */}
               <label className="lesson-modal-field">
                 <span>
                   {t("creatorEditor.lesson.description")}
                   <small>{t("creatorEditor.lesson.descriptionHelp")}</small>
                 </span>
                 <textarea
-                  value={lesson.description}
-                  onChange={(event) => onUpdateLesson({ description: event.target.value })}
-                  disabled={!isEditable}
-                  rows={5}
-                  placeholder={t("creatorEditor.lesson.descriptionPlaceholder")}
-                />
-              </label>
-              <label className="lesson-modal-field">
-                <span>
-                  {t("creatorEditor.lesson.text")}
-                  <small>{t("creatorEditor.lesson.textHelp")}</small>
-                </span>
-                <textarea
                   value={lesson.contentText ?? ""}
                   onChange={(event) => onUpdateLesson({ contentText: event.target.value || null })}
                   disabled={!isEditable}
                   rows={7}
-                  placeholder={t("creatorEditor.lesson.textPlaceholder")}
+                  placeholder={t("creatorEditor.lesson.descriptionPlaceholder")}
                 />
               </label>
+              {/* A descricao publica antiga nunca e apagada: fica recolhida e
+                  editavel, e o aluno continua vendo onde ja via. */}
+              {lesson.description ? (
+                <details className="lesson-modal-field">
+                  <summary>{t("creatorEditor.lesson.oldNote")}</summary>
+                  <textarea
+                    value={lesson.description}
+                    onChange={(event) => onUpdateLesson({ description: event.target.value })}
+                    disabled={!isEditable}
+                    rows={3}
+                    aria-label={t("creatorEditor.lesson.oldNote")}
+                  />
+                </details>
+              ) : null}
               <div className="lesson-modal-note">
                 <ImageIcon aria-hidden="true" size={17} />
                 <p>
