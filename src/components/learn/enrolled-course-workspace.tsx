@@ -427,10 +427,10 @@ export function EnrolledCourseWorkspace({
     pending: new Map<string, { unlocksAt: number | null; tries: number }>(),
     retryTimer: undefined as number | undefined,
   });
-  // A mesma fila, em estado: o painel mostra "carregando" só para a aula que
-  // acabou de abrir e ainda não chegou, nunca para as que já estavam abertas.
-  // A aula sai da fila quando chega ou quando as tentativas acabam (aí o painel
-  // mostra o vazio de verdade, não carrega para sempre).
+  // Aulas cuja recarga de abertura está no ar: o painel mostra "carregando" só
+  // para elas, nunca para as que já estavam abertas. Quando essa recarga volta,
+  // a aula sai daqui e a tela mostra o estado real (as novas tentativas da fila
+  // seguem por trás, sem "carregando").
   const [releasingLessonIds, setReleasingLessonIds] = useState<ReadonlySet<string>>(() => new Set());
 
   // O retrato de partida só sai depois que o banco entregou a primeira carga:
@@ -507,6 +507,9 @@ export function EnrolledCourseWorkspace({
   // A recarga só sai quando o conjunto de abertas ou o de concluídas muda.
   // Efeito de layout: a aula que abre neste render entra na fila (e o painel
   // mostra "carregando") antes da pintura, sem piscar o aviso de vazio.
+  // ponytail: jsdom não distingue efeito de layout de efeito passivo (o act
+  // roda os dois antes de devolver), então nenhum teste guarda esta escolha.
+  // Trocar por useEffect volta a pintar o aviso de vazio por um quadro.
   useLayoutEffect(() => {
     if (unlockedKey === null) {
       return;
@@ -523,12 +526,22 @@ export function EnrolledCourseWorkspace({
       || latestAssets.current.some(
         (asset) => asset.lessonId === lessonId && asset.kind !== "lesson_thumbnail",
       );
-    // Copia a fila para o estado que o painel lê (mesmo Set se nada mudou).
-    const syncReleasing = () => {
-      const ids = [...tracker.pending.keys()];
-      setReleasingLessonIds((current) =>
-        current.size === ids.length && ids.every((id) => current.has(id)) ? current : new Set(ids),
-      );
+    // Liga ou desliga o "carregando" das aulas dadas (só elas).
+    const markReleasing = (lessonIds: string[], on: boolean) => {
+      if (lessonIds.length === 0) {
+        return;
+      }
+      setReleasingLessonIds((current) => {
+        const next = new Set(current);
+        for (const lessonId of lessonIds) {
+          if (on) {
+            next.add(lessonId);
+          } else {
+            next.delete(lessonId);
+          }
+        }
+        return next;
+      });
     };
     // Tira da fila a aula que chegou, ou que já gastou as tentativas, e arma a
     // próxima tentativa se sobrou aula. Relógio do aparelho adiantado: até 3
@@ -553,7 +566,6 @@ export function EnrolledCourseWorkspace({
           void reload();
         }, RELEASE_RETRY_MS);
       }
-      syncReleasing();
     };
     const reload = async () => {
       await Promise.all([
@@ -585,8 +597,12 @@ export function EnrolledCourseWorkspace({
         tracker.pending.set(id, { unlocksAt, tries: 0 });
       }
     }
-    syncReleasing();
-    void reload();
+    // "Carregando" só enquanto a recarga que abriu a aula está no ar. Depois
+    // dela a tela mostra o estado real; as novas tentativas seguem por trás e,
+    // se o conteúdo chegar numa delas, ele simplesmente aparece.
+    const opened = unlocked.filter(({ id }) => !before.has(id)).map(({ id }) => id);
+    markReleasing(opened, true);
+    void reload().finally(() => markReleasing(opened, false));
   }, [completedKey, course.id, unlockedKey]);
 
   useEffect(() => {
@@ -1158,7 +1174,10 @@ export function EnrolledCourseWorkspace({
               Boolean(
                 enableFirestoreAssets
                   && (!assetsState.ready || assetsState.key !== course.id),
-              ) || selectedLessonReleasing
+              )
+              // Aula com texto no próprio currículo já tem o que mostrar: o
+              // player fica em "Text-first lesson", não em "carregando".
+              || (selectedLessonReleasing && !resolvedSelectedLesson?.contentText?.trim())
             }
             isLoadingContent={isLessonContentLoading || selectedLessonReleasing}
             lesson={resolvedSelectedLesson}

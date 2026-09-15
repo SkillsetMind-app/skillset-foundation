@@ -42,6 +42,9 @@ const db = vi.hoisted(() => {
     serverOpen: new Set<string>(),
     // Tabelas cujo próximo select volta com erro.
     failNext: new Set<string>(),
+    // Com hold, as respostas ficam paradas até o teste soltar (recarga "no ar").
+    hold: false,
+    held: [] as Array<() => void>,
     selects: {} as Record<string, number>,
     subscribes: 0,
     signs: 0,
@@ -71,12 +74,20 @@ const db = vi.hoisted(() => {
       {
         get: (_target, prop) =>
           prop === "then"
-            ? (resolve: (value: unknown) => void) =>
-                resolve(
-                  failed
-                    ? { data: null, error: { message: "falha simulada" } }
-                    : { data: rowsFor(table), error: null },
-                )
+            ? (resolve: (value: unknown) => void) => {
+                // As linhas saem na hora da entrega, com a "RLS" de então.
+                const deliver = () =>
+                  resolve(
+                    failed
+                      ? { data: null, error: { message: "falha simulada" } }
+                      : { data: rowsFor(table), error: null },
+                  );
+                if (state.hold) {
+                  state.held.push(deliver);
+                } else {
+                  deliver();
+                }
+              }
             : () => builder,
       },
     );
@@ -220,6 +231,17 @@ async function flush(ms = 0) {
   });
 }
 
+// Solta as respostas paradas pelo hold e deixa a sala assentar.
+async function releaseHeld() {
+  db.state.hold = false;
+  await act(async () => {
+    for (const deliver of db.state.held.splice(0)) {
+      deliver();
+    }
+  });
+  await flush();
+}
+
 async function mount(course: Course, lesson = "l1") {
   db.state.searchParams = new URLSearchParams(`lesson=${lesson}`);
   render(<EnrolledCourseWorkspace course={course} enableFirestoreAssets />);
@@ -250,6 +272,8 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     };
     db.state.serverOpen = new Set(["l1"]);
     db.state.failNext = new Set();
+    db.state.hold = false;
+    db.state.held = [];
     db.state.selects = {};
     db.state.subscribes = 0;
     db.state.signs = 0;
@@ -477,15 +501,16 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     );
   }
 
-  it("a aula que abre pelo prazo mostra carregando, não o aviso de vazio, até a recarga chegar", async () => {
+  it("a aula que abre pelo prazo mostra carregando enquanto a recarga está no ar", async () => {
     await mount(timeDripCourse, "l2");
 
-    // Prazo + folga, com o banco ainda fechado (relógio do aparelho adiantado).
+    // Prazo + folga; a recarga sai e fica no ar.
+    db.state.serverOpen.add("l2");
+    db.state.hold = true;
     await flush(day + 6 * second);
     expect(playerNotice()).toBe("Loading lesson content...");
 
-    db.state.serverOpen.add("l2");
-    await flush(30 * second);
+    await releaseHeld();
     expect(screen.getByText("Texto da aula dois")).toBeTruthy();
     expect(playerNotice()).toBe("Text-first lesson");
   });
@@ -517,14 +542,71 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     expect(playerNotice()).toBe("Text-first lesson");
   });
 
-  it("a aula que continua vazia sai do carregando depois das tentativas", async () => {
+  it("a aula que volta vazia mostra o estado real logo depois da primeira recarga", async () => {
     await mount(timeDripCourse, "l2");
 
+    db.state.hold = true;
     await flush(day + 6 * second);
     expect(playerNotice()).toBe("Loading lesson content...");
 
-    // O banco nunca entrega: depois das 3 tentativas, o vazio de verdade.
+    // Banco ainda fechado: a recarga volta sem a aula. A tela mostra o real na
+    // hora; as tentativas seguem por trás sem segurar o "carregando".
+    await releaseHeld();
+    expect(playerNotice()).toBe("Text-first lesson");
     await flush(10 * minute);
+    expect(playerNotice()).toBe("Text-first lesson");
+  });
+
+  it("no sequencial, a próxima aula sem conteúdo protegido mostra o estado real logo depois da primeira recarga", async () => {
+    // Aula 2 sem linha protegida: quiz, texto só no currículo ou embed.
+    db.state.tables = {
+      course_assets: [assetRow("video-l1", "l1", "lesson_video", "video/mp4")],
+      course_lesson_content: [contentRow("l1", "Texto da aula um")],
+    };
+    await mount(sequentialCourse, "l2");
+
+    db.state.serverOpen.add("l2");
+    await act(async () => {
+      db.state.completed?.(["l1"]);
+    });
+    await flush();
+
+    expect(playerNotice()).toBe("Text-first lesson");
+  });
+
+  it("a aula que abre com o texto no próprio currículo mostra 'Text-first lesson', não carregando", async () => {
+    const inlineTextCourse = {
+      ...timeDripCourse,
+      modules: [
+        {
+          ...timeDripCourse.modules[0],
+          lessons: [
+            timeDripCourse.modules[0].lessons[0],
+            {
+              id: "l2",
+              title: "Lesson two",
+              type: "text",
+              duration: "7 min",
+              isPreview: false,
+              contentText: "Texto no currículo da aula dois",
+            },
+          ],
+        },
+      ],
+    } as unknown as Course;
+    db.state.tables = {
+      course_assets: [assetRow("video-l1", "l1", "lesson_video", "video/mp4")],
+      course_lesson_content: [contentRow("l1", "Texto da aula um")],
+    };
+    await mount(inlineTextCourse, "l2");
+
+    db.state.serverOpen.add("l2");
+    db.state.hold = true;
+    await flush(day + 6 * second);
+    expect(playerNotice()).toBe("Text-first lesson");
+    expect(screen.getByText("Texto no currículo da aula dois")).toBeTruthy();
+
+    await releaseHeld();
     expect(playerNotice()).toBe("Text-first lesson");
   });
 });
