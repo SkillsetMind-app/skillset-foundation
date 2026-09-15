@@ -14,29 +14,43 @@ que qualquer pessoa lê. Por isso a regra que governa o arquivo inteiro:
     privado: o webhook ops-alert do n8n, que relaya para o Telegram. Se o canal
     não estiver configurado, o detalhe é descartado -- não cai no log.
 
-Sem chave do GLM o script NÃO passa verde: escreve "NÃO ANALISADO" e sai com 3.
-Um portão que aprova por omissão é pior que portão nenhum (o check de RLS
-ficou dois meses verde sem rodar por exatamente isso).
+Cadeia de reserva: se a IA da vez não dá veredito (sem saldo, chave recusada,
+rate limit/5xx/timeout depois das repetições, resposta fora do formato), a
+próxima da cadeia analisa: z.ai GLM -> Kimi k3 -> Kimi k2.6 -> OpenAI. Um
+veredito válido NUNCA cai para a próxima: "bloqueante" de qualquer uma barra.
+Resposta cortada que já aponta achado também não cai (a próxima IA poderia
+devolver lista vazia e aprovar) -- nem quando o JSON veio pela metade: vale
+cada achado que chegou inteiro, e "severidade" critica/alta no texto cru já
+encerra com 3. Filtro de conteúdo/recusa encerra a cadeia com 3 (texto
+plantado no diff não escolhe o analisador).
+Se nenhuma der veredito, o script NÃO passa verde: escreve "NÃO ANALISADO" e
+sai com 3. Um portão que aprova por omissão é pior que portão nenhum (o check
+de RLS ficou dois meses verde sem rodar por exatamente isso).
 
 Uso (GitHub Action ou local):
     python3 scripts/porteiro.py --diff pr.diff --placar placar.md
     python3 scripts/porteiro.py --demo          # auto-teste, sem rede
 
 Ambiente:
-    GLM_API_KEY              obrigatória (secret do repo; fork não recebe)
+    GLM_API_KEY              IA primária (secret do repo; fork não recebe)
+    KIMI_API_KEY             reserva Moonshot; vazia = pulada ("sem chave")
+    OPENAI_API_KEY           reserva OpenAI; vazia = pulada ("sem chave")
     PORTEIRO_MODO            avisa (padrão) | barra  -- em "barra", bloqueante => exit 1
     PORTEIRO_MODELO          glm-5 (medido: 20/20 no controle, ~$0,009/análise)
+    PORTEIRO_CADEIA          opcional; ordem e modelos, ex. "zai:glm-5,kimi:kimi-k3,openai:gpt-5.5"
     PORTEIRO_MAX_DIFF_KB     120 -- acima disso só os caminhos de risco entram
     OPS_ALERT_WEBHOOK_URL    canal privado (n8n -> Telegram); opcional
     OPS_ALERT_WEBHOOK_SECRET vai no cabeçalho x-ops-secret; opcional
     PR_NUMBER / PR_URL / REPO  só para o texto do alerta
 
-Saídas: 0 ok · 1 bloqueante em modo "barra" · 3 não analisado (sem chave ou
-API esgotada) · 2 erro de uso.
+Saídas: 0 ok · 1 bloqueante em modo "barra" · 3 não analisado (nenhuma IA
+com chave e saldo deu veredito, cabeçalho do diff ilegível, ou PARCIAL: diff
+grande com arquivo que ficou sem ler) · 2 erro de uso.
 """
 from __future__ import annotations
 
 import fnmatch
+import http.client
 import json
 import os
 import re
@@ -44,17 +58,72 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from typing import NamedTuple
 
 URL = "https://api.z.ai/api/paas/v4/chat/completions"
 MODELO_PADRAO = "glm-5"
 # glm-5 é modelo de RACIOCÍNIO: gasta centenas de reasoning_tokens antes do
 # content. Teto baixo pode esgotar no raciocínio antes de produzir o JSON.
 
+
+class Provedor(NamedTuple):
+    id: str      # zai | kimi | openai -- escolhe o formato do pedido
+    nome: str    # como aparece no placar
+    url: str
+    var: str     # variável da chave; vazia => pulado ("sem chave")
+    modelo: str
+
+    @property
+    def rotulo(self) -> str:
+        return f"{self.nome} {self.modelo}"
+
+
+PROVEDORES = {
+    "zai": ("z.ai", URL, "GLM_API_KEY"),
+    "kimi": ("Kimi", "https://api.moonshot.ai/v1/chat/completions", "KIMI_API_KEY"),
+    "openai": ("OpenAI", "https://api.openai.com/v1/chat/completions", "OPENAI_API_KEY"),
+}
+# Ordem = prioridade. O 1º é o primário; os outros só entram sem veredito dele.
+# Só entra aqui reserva que passou no controle adversarial do portão (15/09/2026:
+# as quatro, 8/8 cada; glm-5 20/20 em 02/09). gpt-5.5 fica por último caso o
+# gpt-6-astra saia do preview. Ordem diferente: PORTEIRO_CADEIA, sem mexer no código.
+CADEIA_PADRAO = "zai:{primario},kimi:kimi-k3,kimi:kimi-k2.6,openai:gpt-6-astra,openai:gpt-5.5"
+# Sem saldo/cota: repetir não adianta, vai direto para a próxima IA.
+SEM_SALDO = {"1113", "insufficient_quota", "exceeded_current_quota_error"}
+# Filtro de conteúdo / recusa de segurança: fail-closed, nunca a próxima IA.
+# z.ai 1301 (HTTP 400) e finish "sensitive"; Moonshot type content_filter;
+# OpenAI invalid_prompt / content_policy_violation e message.refusal.
+FILTRO = {"1301", "content_filter", "content_policy_violation", "invalid_prompt"}
+FINISH = ("stop", "length", "tool_calls", "content_filter", "sensitive", "network_error")
+FINISH_FILTRADO = {"content_filter", "sensitive"}
+# Tempo: o job tem 30 min e o passo de análise 27. 4 provedores x 6 min = 24
+# cabem em PRAZO_TOTAL; sem teto, um provedor sozinho levava 6x300 s + backoff.
+# ponytail: se todos travam, o 5º (gpt-5.5) só tem o 1 min que sobra (média
+# medida: 16 s). Mais reservas pedem PRAZO_TOTAL e timeout-minutes maiores.
+TIMEOUT_HTTP = 180     # por chamada; o teto de 32k tokens do glm-5 precisa de folga
+PRAZO_PROVEDOR = 360   # para de repetir um provedor depois disso
+PRAZO_TOTAL = 25 * 60  # a cadeia inteira
+MIN_CHAMADA = 30       # menos que isso de prazo restante: nem começa a chamada
+
+
+def le_cadeia(env) -> list[Provedor]:
+    def monta(texto: str) -> list[Provedor]:
+        fora = []
+        for item in texto.split(","):
+            pid, _, modelo = (x.strip() for x in item.partition(":"))
+            if pid in PROVEDORES and modelo:
+                fora.append(Provedor(pid, *PROVEDORES[pid], modelo))
+            elif item.strip():
+                print(f"cadeia: item ignorado ({item.strip()[:40]})")
+        return fora
+    padrao = CADEIA_PADRAO.format(primario=env.get("PORTEIRO_MODELO") or MODELO_PADRAO)
+    return monta(env.get("PORTEIRO_CADEIA") or "") or monta(padrao)
+
 # Quando o diff passa do teto, só o que toca auth, dinheiro e política entra.
 CAMINHOS_DE_RISCO = (
     "src/lib/payments/*", "src/app/api/*", "src/proxy.ts", "supabase/*",
     "*auth*", "*policy*", "*policies*", "src/lib/ops/*", "src/lib/supabase/*",
-    ".github/workflows/*",
+    ".github/workflows/*", "scripts/porteiro.py", "scripts/test_porteiro.py",
 )
 
 SISTEMA = """Voce e um analista de seguranca de aplicacao revisando um diff.
@@ -80,125 +149,204 @@ confianca e float 0.0-1.0. Sem achados: {"achados":[]}"""
 VAZIO = {"achados": []}
 SEVERIDADES = {"critica", "alta", "media", "baixa"}
 CERCA = re.compile(r"^```(?:json)?|```$", re.M)
-ARQUIVO_DO_DIFF = re.compile(r"^diff --git a/(.+?) b/(.+)$", re.M)
+# O git põe entre aspas (escape estilo C) o caminho com aspas, barra invertida,
+# caractere de controle e -- sem core.quotePath=false -- qualquer não-ASCII.
+CABECALHO = re.compile(r"^diff --git (.*)$", re.M)
+LADOS = re.compile(r'(?:"a/(?:[^"\\]|\\.)*"|a/.+?) ("b/(?:[^"\\]|\\.)*"|b/.+)')
+# Achado grave no texto cru de uma resposta que não fechou o JSON.
+GRAVE = re.compile(r'"severidade"\s*:\s*"(?:critica|alta)"', re.I)
+ABRE_ACHADOS = re.compile(r'"achados"\s*:\s*\[')
 
 
 # --------------------------------------------------------------------------
 # GLM (mesma mecânica medida em skillset-ops/protecao-glm/analisa.py)
 # --------------------------------------------------------------------------
 class SaldoZerado(RuntimeError):
-    """z.ai código 1113: sem saldo até recarregar. Repetir só queima 93 s."""
+    """Sem saldo/cota (z.ai 1113, OpenAI insufficient_quota, Moonshot
+    exceeded_current_quota_error). Repetir só queima 93 s."""
 
 
-def codigo_zai(e: urllib.error.HTTPError) -> str:
-    """error.code do corpo de erro da z.ai (1113 sem saldo, 1302 rate limit).
-    Só dígitos saem daqui: o corpo em si nunca chega ao log público."""
+class Recusado(Exception):
+    """Filtro de conteúdo ou recusa de segurança. NÃO é RuntimeError de
+    propósito: não cai para a próxima IA, encerra a cadeia com 3."""
+
+
+def codigo_erro(e: urllib.error.HTTPError) -> str:
+    """error.code (z.ai 1113/1302, OpenAI) ou error.type (Moonshot) do corpo
+    de erro. Só um identificador curto sai daqui: o corpo nunca chega ao log."""
     try:
-        c = str(json.loads(e.read())["error"]["code"])
+        err = json.loads(e.read())["error"]
+        c = str(err.get("code") or err.get("type") or "")
     except Exception:
         return ""
-    return c if c.isdigit() and len(c) <= 6 else ""
+    return c if re.fullmatch(r"[A-Za-z0-9_.-]{1,40}", c) else ""
 
 
-def chama(diff: str, modelo: str, max_tokens: int, chave: str) -> tuple[str, dict]:
-    corpo = json.dumps({
-        "model": modelo,
+def corpo_pedido(diff: str, prov: Provedor, max_tokens: int) -> dict:
+    c = {
+        "model": prov.modelo,
         "messages": [
             {"role": "system", "content": SISTEMA},
             {"role": "user", "content": "Analise este diff:\n\n" + diff},
         ],
         "response_format": {"type": "json_object"},
-        "max_tokens": max_tokens,
-        "temperature": 0.1,
-    }).encode()
+    }
+    if prov.id == "zai":
+        c.update(max_tokens=max_tokens, temperature=0.1)
+    else:
+        # Kimi (k3, k2.6) e OpenAI (gpt-5.x) raciocinam: o teto é raciocínio +
+        # resposta (piso 8192, senão volta em branco com HTTP 200) e temperature
+        # diferente de 1 dá HTTP 400. Por isso temperature não vai.
+        c["max_completion_tokens" if prov.id == "openai" else "max_tokens"] = max(max_tokens, 8192)
+    return c
+
+
+def chama(diff: str, prov: Provedor, max_tokens: int, chave: str, prazo: float) -> tuple[str, dict]:
+    corpo = json.dumps(corpo_pedido(diff, prov, max_tokens)).encode()
     req = urllib.request.Request(
-        URL, data=corpo,
+        prov.url, data=corpo,
         headers={"Content-Type": "application/json",
                  "Authorization": "Bearer " + chave})
     ultimo = None
     for tentativa in range(6):
+        restante = prazo - time.monotonic()
+        if restante < MIN_CHAMADA:
+            raise RuntimeError(f"prazo esgotado ({ultimo or 'antes da chamada'})")
         try:
-            with urllib.request.urlopen(req, timeout=300) as r:
+            # ponytail: timeout é por operação de socket, não total; um servidor
+            # que pinga byte a byte passa do prazo. Stream + relógio se acontecer.
+            with urllib.request.urlopen(req, timeout=min(TIMEOUT_HTTP, restante)) as r:
                 dados = json.load(r)
             break
         except urllib.error.HTTPError as e:
-            cod = codigo_zai(e)
+            cod = codigo_erro(e)
             ultimo = f"HTTP {e.code}" + (f", código {cod}" if cod else "")
-            if cod == "1113":
-                raise SaldoZerado("saldo da z.ai zerado (código 1113) — recarregar")
+            if cod in FILTRO:
+                raise Recusado(f"recusou o diff (filtro de conteúdo, código {cod})")
+            if cod in SEM_SALDO:
+                raise SaldoZerado(f"saldo da {prov.nome} zerado (código {cod}) — recarregar")
             if e.code not in (408, 429, 500, 502, 503, 504):
                 raise RuntimeError(f"API recusou ({ultimo})")
-        except (OSError, json.JSONDecodeError) as e:
+        except (OSError, ValueError, http.client.HTTPException) as e:
+            # ValueError cobre JSONDecodeError e UnicodeDecodeError.
             ultimo = type(e).__name__
         if tentativa == 5:
             raise RuntimeError(f"API falhou 6 vezes seguidas ({ultimo})")
-        time.sleep(min(2 ** tentativa * 3, 60))
-    esc = dados.get("choices") or [{}]
-    content = esc[0].get("message", {}).get("content")
-    tokens = (dados.get("usage") or {}).get("total_tokens", 0)
-    finish = esc[0].get("finish_reason")
+        time.sleep(min(2 ** tentativa * 3, 60, max(0.0, prazo - time.monotonic())))
+    # Corpo de formato estranho (null, lista, message string) = tentativa vazia.
+    dados = dados if isinstance(dados, dict) else {}
+    esc = dados.get("choices")
+    esc = esc[0] if isinstance(esc, list) and esc and isinstance(esc[0], dict) else {}
+    msg = esc.get("message") if isinstance(esc.get("message"), dict) else {}
+    content = msg.get("content")
+    uso = dados.get("usage") if isinstance(dados.get("usage"), dict) else {}
+    tokens = uso.get("total_tokens", 0)
+    finish = "content_filter" if msg.get("refusal") else esc.get("finish_reason")
     return (content.strip() if isinstance(content, str) else ""), {
         "total_tokens": tokens if type(tokens) is int and tokens >= 0 else 0,
-        "finish_reason": finish if finish in ("stop", "length", "tool_calls", "content_filter") else "other",
+        "finish_reason": finish if finish in FINISH else "other",
     }
 
 
 def extrai_json(texto: str) -> dict | None:
     if not texto:
         return None
+    # ValueError cobre JSONDecodeError e o teto de 4300 dígitos de int;
+    # RecursionError (é RuntimeError!) vem de aninhamento fundo.
     for cand in (texto, CERCA.sub("", texto).strip()):
         try:
             return json.loads(cand)
-        except json.JSONDecodeError:
+        except (ValueError, RecursionError):
             pass
     i, f = texto.find("{"), texto.rfind("}")
     if i != -1 and f > i:
         try:
             return json.loads(texto[i:f + 1])
-        except json.JSONDecodeError:
+        except (ValueError, RecursionError):
             pass
     return None
 
 
+def _texto(v) -> str:
+    # str() de lista aninhada recursa; o campo que não é escalar vira vazio.
+    return v if isinstance(v, str) else "" if v is None or isinstance(v, (list, dict)) else str(v)
+
+
 def normaliza(bruto: dict | None) -> dict | None:
+    """Entrada inválida é pulada, não derruba a lista (um bloqueante bom ao lado
+    de um `null` continua valendo). Crítica/alta sem título não some: vira
+    "(sem título)" e ainda barra. Lista só com entradas inválidas => None."""
     if not isinstance(bruto, dict) or not isinstance(bruto.get("achados"), list):
         return None
     fora = []
     for a in bruto["achados"]:
-        if not isinstance(a, dict) or not isinstance(a.get("titulo"), str) or not a["titulo"].strip():
-            return None
-        sev = str(a.get("severidade", "media")).lower().strip()
+        if not isinstance(a, dict):
+            continue
+        sev = a.get("severidade")
+        sev = sev.lower().strip() if isinstance(sev, str) else "media"
+        titulo = a.get("titulo")
+        if not isinstance(titulo, str) or not titulo.strip():
+            if sev not in ("critica", "alta"):
+                continue
+            titulo = "(sem título)"
         try:
-            conf = max(0.0, min(1.0, float(a.get("confianca", 0.5))))
-        except (TypeError, ValueError):
+            conf = float(a.get("confianca", 0.5))
+            conf = max(0.0, min(1.0, conf)) if conf == conf else 0.5  # NaN
+        except (TypeError, ValueError, OverflowError):
             conf = 0.5
         try:
             linha = int(a.get("linha") or 0)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             linha = 0
         fora.append({
             "severidade": sev if sev in SEVERIDADES else "media",
-            "arquivo": str(a.get("arquivo") or ""),
+            "arquivo": _texto(a.get("arquivo")),
             "linha": linha,
-            "titulo": str(a["titulo"]),
-            "porque": str(a.get("porque") or ""),
-            "como_explorar": str(a.get("como_explorar") or ""),
+            "titulo": titulo,
+            "porque": _texto(a.get("porque")),
+            "como_explorar": _texto(a.get("como_explorar")),
             "confianca": conf,
         })
+    if bruto["achados"] and not fora:
+        return None
     return {"achados": fora}
 
 
-def analisa(diff: str, modelo: str, chave: str) -> tuple[dict, dict]:
-    """Três tetos para raciocínio + JSON final. Esgotou => falhou=True."""
-    tel = {"modelo": modelo, "tentativas": [], "segundos": 0.0, "tokens": 0}
+def resgata(texto: str) -> dict | None:
+    """Resposta cortada no meio da lista: lê os achados objeto a objeto e fica
+    com os que chegaram inteiros. O pedaço pela metade não conta."""
+    m = ABRE_ACHADOS.search(texto)
+    if not m:
+        return None
+    dec, i, objs = json.JSONDecoder(), m.end(), []
+    while True:
+        while i < len(texto) and texto[i] in " \t\r\n,":
+            i += 1
+        try:
+            obj, i = dec.raw_decode(texto, i)
+        except (ValueError, RecursionError):
+            break
+        objs.append(obj)
+    return normaliza({"achados": objs}) if objs else None
+
+
+def analisa(diff: str, prov: Provedor, chave: str, arquivos=(), prazo: float | None = None) -> tuple[dict, dict]:
+    """Três tetos para raciocínio + JSON final. Esgotou => falhou=True.
+    Resposta cortada ou ilegível que JÁ aponta achado é o veredito
+    (tel["cortado"]): pedir de novo, aqui ou à próxima IA, seria procurar quem
+    aprove. Vale o achado que chegou inteiro e, sem ele, o indício cru de
+    crítica/alta (tel["indicio"])."""
+    prazo = prazo or time.monotonic() + PRAZO_PROVEDOR
+    tel = {"modelo": prov.rotulo, "tentativas": [], "segundos": 0.0, "tokens": 0}
     t0 = time.monotonic()
     for tentativa, teto in enumerate((4000, 16000, 32000), start=1):
-        content, usage = chama(diff, modelo, teto, chave)
+        content, usage = chama(diff, prov, teto, chave, prazo)
         tel["tokens"] += usage["total_tokens"]
         r = normaliza(extrai_json(content))
+        fim = usage["finish_reason"]
         estado = ("vazio" if not content else "json_malformado" if r is None
-                  else "truncado" if usage["finish_reason"] == "length"
-                  else "interrompido" if usage["finish_reason"] != "stop" else "ok")
+                  else "truncado" if fim == "length"
+                  else "interrompido" if fim != "stop" else "ok")
         tel["tentativas"].append(estado)
         # Só enums e contagens. Nunca content, reasoning, erro ou achados.
         print("tentativa: " + json.dumps({
@@ -206,9 +354,22 @@ def analisa(diff: str, modelo: str, chave: str) -> tuple[dict, dict]:
             "tokens": usage["total_tokens"], "finish_reason": usage["finish_reason"],
             "resultado": estado,
         }), flush=True)
-        if estado == "ok":
+        if estado != "ok":
+            parcial = r if r is not None else resgata(content)
+            bloq, aviso, _ = classifica(parcial["achados"], list(arquivos)) if parcial else ([], [], 0)
+            grave = r is None and bool(GRAVE.search(content))
+            if bloq or aviso or grave:
+                # ponytail: para no 1º corte com achado, sem tentar teto maior;
+                # achado leve cortado vira 3. Mesclar tentativas se isso for comum.
+                tel["cortado"] = estado
+                if grave and not bloq:
+                    tel["indicio"] = True
+                r = parcial or dict(VAZIO)
+        if estado == "ok" or "cortado" in tel:
             tel["segundos"] = round(time.monotonic() - t0, 1)
             return r, tel
+        if fim in FINISH_FILTRADO:
+            raise Recusado(f"recusou o diff (filtro de conteúdo, finish_reason {fim})")
     tel["segundos"] = round(time.monotonic() - t0, 1)
     tel["falhou"] = True
     return dict(VAZIO), tel
@@ -217,8 +378,26 @@ def analisa(diff: str, modelo: str, chave: str) -> tuple[dict, dict]:
 # --------------------------------------------------------------------------
 # Diff: quais arquivos, e o corte pelos caminhos de risco
 # --------------------------------------------------------------------------
-def arquivos_do_diff(diff: str) -> list[str]:
-    return [m.group(2) for m in ARQUIVO_DO_DIFF.finditer(diff)]
+def desaspa(tok: str) -> str | None:
+    """'"b/a\\303\\247.ts"' -> 'b/aç.ts' (o inverso do quote_c_style do git:
+    \\ooo são bytes UTF-8; \\t \\n \\" \\\\ os de sempre)."""
+    try:
+        return tok[1:-1].encode("utf-8").decode("unicode_escape").encode("latin-1").decode("utf-8", "replace")
+    except UnicodeError:
+        return None
+
+
+def arquivos_do_diff(diff: str) -> list[str | None]:
+    """Um item por cabeçalho `diff --git`; None onde o cabeçalho não se lê
+    (quem chama decide -- main não aprova com arquivo que ficou sem nome)."""
+    fora = []
+    for m in CABECALHO.finditer(diff):
+        lados = LADOS.fullmatch(m.group(1))
+        b = lados and lados.group(1)
+        if b and b.startswith('"'):
+            b = desaspa(b)
+        fora.append(b[2:] if b and b[2:] else None)
+    return fora
 
 
 def eh_de_risco(caminho: str) -> bool:
@@ -228,38 +407,45 @@ def eh_de_risco(caminho: str) -> bool:
 def filtra_risco(diff: str) -> str:
     """Mantém só os blocos `diff --git` cujo arquivo casa com CAMINHOS_DE_RISCO."""
     partes = re.split(r"(?m)^(?=diff --git )", diff)
-    return "".join(p for p in partes if p.startswith("diff --git ")
-                   and eh_de_risco(ARQUIVO_DO_DIFF.match(p).group(2)))
+    return "".join(p for p in partes if (a := arquivos_do_diff(p)) and a[0] and eh_de_risco(a[0]))
 
 
 # --------------------------------------------------------------------------
 # Classificação: só dois níveis existem
 # --------------------------------------------------------------------------
-def classifica(achados: list[dict], arquivos: list[str]) -> tuple[list[dict], list[dict]]:
+def classifica(achados: list[dict], arquivos: list[str]) -> tuple[list[dict], list[dict], int]:
     """Descarta achado em arquivo que o PR não toca (o modelo às vezes cita a
-    base, que ele nem viu). O resto vira bloqueante ou aviso."""
+    base, que ele nem viu). O resto vira bloqueante ou aviso. Devolve também
+    quantos foram descartados (só o canal privado vê a contagem)."""
     tocados = set(arquivos)
-    bloq, aviso = [], []
+    bloq, aviso, fora = [], [], 0
     for a in achados:
-        arq = a["arquivo"].lstrip("./")
+        # "b/src/x.ts" e "src\x.ts" são o mesmo arquivo que o diff chama src/x.ts.
+        arq = a["arquivo"].replace("\\", "/").lstrip("./")
+        if arq[:2] in ("a/", "b/"):
+            arq = arq[2:]
         if arq and tocados and arq not in tocados and not any(t.endswith(arq) for t in tocados):
+            fora += 1
             continue
         if a["severidade"] in ("critica", "alta") and a["confianca"] >= 0.6:
             bloq.append(a)
         else:
             aviso.append(a)
-    return bloq, aviso
+    return bloq, aviso, fora
 
 
 # --------------------------------------------------------------------------
 # Saídas
 # --------------------------------------------------------------------------
-def placar(bloq: int, aviso: int, modo: str, tel: dict, canal: str, nota: str = "") -> str:
+def placar(bloq: int, aviso: int, modo: str, tel: dict, canal: str, nota: str = "", parcial: int = 0) -> str:
     total = bloq + aviso
     if total == 0:
-        linha = "✅ **0 achados**"
+        linha = "0 achados nos arquivos lidos" if parcial else "✅ **0 achados**"
     else:
         linha = f"{'🛑' if bloq else '⚠️'} **{total} achado{'s' if total != 1 else ''} · {bloq} bloqueante{'s' if bloq != 1 else ''}** · detalhe {canal}"
+    if parcial:
+        # Parte do PR ficou sem ler: nunca "✅", e o check falha (um humano decide).
+        linha = f"🟡 **PARCIAL — {parcial} arquivo(s) não lidos (diff grande)** · o check falha: um humano decide\n\n{linha}"
     efeito = ("barra o merge" if bloq and modo == "barra"
               else "só avisa" if modo == "avisa" else "barra se houver bloqueante")
     rodape = f"modo `{modo}` ({efeito}) · {tel.get('modelo', '?')} · {tel.get('segundos', '?')}s · {tel.get('tokens', 0)} tokens"
@@ -278,12 +464,13 @@ TETO_RELAY = 500     # o nó "Formatar mensagem" do n8n descarta >600 e corta o 
 TETO_DETALHE = 3000  # o mesmo nó corta `detalhe` em 3000 (teto do Telegram é 4096)
 
 
-def resumo_telegram(bloq: list[dict], aviso: list[dict], pr: str, pr_url: str) -> str:
+def resumo_telegram(bloq: list[dict], aviso: list[dict], pr: str, pr_url: str, sem_veredito: int = 0) -> str:
     """O `summary` é a manchete: quantos achados, onde e o quê. O relay do n8n
     exige source=skillsetmind, descarta acima de 600 caracteres e corta em 500,
     então isto nunca passa de TETO_RELAY. O porquê e o como explorar vão no
     campo `detalhe` (ver detalhe_telegram)."""
-    cabeca = f"Porteiro PR #{pr}: {len(bloq)} bloqueante(s), {len(aviso)} aviso(s)\n{pr_url}\n"
+    cabeca = (f"Porteiro PR #{pr}: {len(bloq)} bloqueante(s), {len(aviso)} aviso(s)"
+              + (f", {sem_veredito} IA(s) sem veredito" if sem_veredito else "") + f"\n{pr_url}\n")
     linhas, resto = [], 0
     for tag, grupo in (("!!", bloq), ("!", aviso)):
         for a in grupo:
@@ -321,27 +508,35 @@ def detalhe_telegram(bloq: list[dict], aviso: list[dict]) -> str:
     return "\n\n".join(linhas)[:TETO_DETALHE]
 
 
-def corpo_alerta(bloq: list[dict], aviso: list[dict], pr: str, pr_url: str) -> dict:
+def corpo_alerta(bloq: list[dict], aviso: list[dict], pr: str, pr_url: str, falhas=(), fora: int = 0) -> dict:
     """O JSON que vai ao relay. Função pura, para o auto-teste conferir o
     contrato sem rede: `source` é o que o porteiro do nó exige, e `detalhe` é
-    o campo que carrega o porquê e o ataque."""
+    o campo que carrega o porquê e o ataque. `falhas` (saldo, chave, código de
+    erro de cada IA sem veredito) e `fora` (achados descartados por citar
+    arquivo que o PR não toca) também só existem aqui, nunca no placar."""
+    detalhe = detalhe_telegram(bloq, aviso)
+    if fora:
+        detalhe = (f"descartados: {fora} achado(s) em arquivo que o PR não toca"
+                   + ("\n\n" + detalhe if detalhe else ""))[:TETO_DETALHE]
+    if falhas:
+        detalhe = ("sem veredito: " + " · ".join(falhas) + ("\n\n" + detalhe if detalhe else ""))[:TETO_DETALHE]
     return {
         "source": "skillsetmind",
         "event": "porteiro_pr",
         "severity": "critical" if bloq else "warn",
-        "summary": resumo_telegram(bloq, aviso, pr, pr_url),
-        "detalhe": detalhe_telegram(bloq, aviso),
+        "summary": resumo_telegram(bloq, aviso, pr, pr_url, len(falhas)),
+        "detalhe": detalhe,
         "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
 
 
-def manda_detalhe(bloq: list[dict], aviso: list[dict]) -> str:
+def manda_detalhe(bloq: list[dict], aviso: list[dict], falhas=(), fora: int = 0) -> str:
     """Canal privado. Devolve o texto para o placar ('no Telegram' / 'indisponível')."""
     url = os.environ.get("OPS_ALERT_WEBHOOK_URL")
     if not url:
         return "indisponível (canal privado não configurado)"
     pr, pr_url = (os.environ.get(k, "?") for k in ("PR_NUMBER", "PR_URL"))
-    corpo = json.dumps(corpo_alerta(bloq, aviso, pr, pr_url)).encode()
+    corpo = json.dumps(corpo_alerta(bloq, aviso, pr, pr_url, falhas, fora)).encode()
     cab = {"Content-Type": "application/json"}
     seg = os.environ.get("OPS_ALERT_WEBHOOK_SECRET")
     if seg:
@@ -360,6 +555,20 @@ def manda_detalhe(bloq: list[dict], aviso: list[dict]) -> str:
 def escreve(caminho: str, texto: str) -> None:
     with open(caminho, "w", encoding="utf-8") as f:
         f.write(texto)
+
+
+def log_falhas(falhas, canal: str) -> None:
+    """Log público. O código curto de cada IA sem veredito só aparece quando o
+    canal privado NÃO recebeu o motivo -- aí é o único rastro que sobra. Nunca
+    a frase (saldo, chave): só HTTP n / código x / classe do erro."""
+    if not falhas or canal == "no Telegram":
+        return
+    curtos = []
+    for f in falhas:
+        rotulo, _, motivo = f.partition(": ")
+        cod = re.findall(r"HTTP \d+|código [\w.-]+|\b[A-Z]\w*Error\b", motivo)
+        curtos.append(f"{rotulo}: {', '.join(cod) or motivo.split(' (')[0][:40]}")
+    print(f"sem veredito, detalhe {canal}: " + " · ".join(curtos), flush=True)
 
 
 # --------------------------------------------------------------------------
@@ -381,51 +590,110 @@ def main(argv: list[str]) -> int:
     modo = os.environ.get("PORTEIRO_MODO", "avisa").strip().lower()
     if modo not in ("avisa", "barra"):
         modo = "avisa"
-    modelo = os.environ.get("PORTEIRO_MODELO", MODELO_PADRAO)
+    cadeia = le_cadeia(os.environ)
+    modelo = cadeia[0].rotulo
     max_kb = int(os.environ.get("PORTEIRO_MAX_DIFF_KB", "120"))
 
-    chave = os.environ.get("GLM_API_KEY")
-    if not chave:
+    if not any(os.environ.get(p.var) for p in cadeia):
         escreve(placar_path, nao_analisado("sem chave do analisador neste job (PR de fork não recebe secret)", modo))
-        print("NAO ANALISADO: GLM_API_KEY ausente")
+        print("NAO ANALISADO: nenhuma chave de IA neste job")
         return 3
 
     with open(diff_path, encoding="utf-8", errors="replace") as f:
         diff = f.read()
-    arquivos = arquivos_do_diff(diff)
-    nota = ""
-    if not diff.strip() or not arquivos:
+    notas = []
+    if not diff.strip():
         escreve(placar_path, placar(0, 0, modo, {"modelo": modelo, "segundos": 0, "tokens": 0}, "", "Diff vazio: nada a analisar."))
         print("diff vazio")
         return 0
+    arquivos = arquivos_do_diff(diff)
+    if not arquivos or None in arquivos:
+        # Diff com conteúdo e arquivo sem nome legível: aprovar seria às cegas.
+        motivo = (f"{arquivos.count(None)} arquivo(s) do diff com cabeçalho não reconhecido" if arquivos
+                  else "diff sem nenhum cabeçalho de arquivo reconhecido")
+        escreve(placar_path, nao_analisado(motivo, modo))
+        print(f"NAO ANALISADO: {motivo}")
+        return 3
+    parcial = 0
     if len(diff.encode()) > max_kb * 1024:
         diff = filtra_risco(diff)
-        arquivos = arquivos_do_diff(diff)
-        nota = f"Diff acima de {max_kb} KB: só os caminhos de risco (auth, dinheiro, API, banco) foram lidos — {len(arquivos)} arquivo(s)."
+        lidos = arquivos_do_diff(diff)
+        parcial, arquivos = len(arquivos) - len(lidos), lidos
+        notas.append(f"Diff acima de {max_kb} KB: só os caminhos de risco (auth, dinheiro, API, banco) foram lidos — {len(arquivos)} arquivo(s).")
         if not arquivos:
-            escreve(placar_path, placar(0, 0, modo, {"modelo": modelo, "segundos": 0, "tokens": 0}, "", nota + " Nenhum deles neste PR."))
-            print("diff grande sem caminho de risco")
-            return 0
+            escreve(placar_path, placar(0, 0, modo, {"modelo": modelo, "segundos": 0, "tokens": 0}, "", notas[0] + " Nenhum deles neste PR.", parcial))
+            print(f"PARCIAL: {parcial} arquivo(s) não lidos (diff grande), nenhum caminho de risco")
+            return 3
 
-    try:
-        r, tel = analisa(diff, modelo, chave)
-    except RuntimeError as e:
-        escreve(placar_path, nao_analisado(
-            str(e) if isinstance(e, SaldoZerado) else f"o analisador não respondeu ({e})", modo))
-        print(f"NAO ANALISADO: {e}")
-        return 3
-    if tel.get("falhou"):
-        escreve(placar_path, nao_analisado("o analisador não devolveu JSON em 3 tentativas", modo))
-        print("NAO ANALISADO: resposta vazia/malformada 3x")
+    # Só "sem veredito" passa adiante. Veredito válido (inclusive bloqueante),
+    # resposta cortada com achado e filtro de conteúdo param aqui: cair para a
+    # próxima IA seria procurar quem aprove.
+    fim = time.monotonic() + PRAZO_TOTAL
+    falhas = []
+    for n, prov in enumerate(cadeia):
+        try:
+            chave = os.environ.get(prov.var)
+            if not chave:
+                raise RuntimeError("sem chave")
+            print(f"provedor: {prov.rotulo}" + (" (reserva)" if n else ""), flush=True)
+            r, tel = analisa(diff, prov, chave, arquivos, min(fim, time.monotonic() + PRAZO_PROVEDOR))
+            if not tel.get("falhou"):
+                break
+            raise RuntimeError("não devolveu JSON em 3 tentativas")
+        except Recusado as e:
+            # Motivo (inclusive das IAs antes desta) vai ao canal privado antes do placar.
+            falhas.append(f"{prov.rotulo}: {e}")
+            canal = manda_detalhe([], [], falhas)
+            log_falhas(falhas, canal)
+            escreve(placar_path, nao_analisado(
+                f"{prov.rotulo} {e}. Nenhuma outra IA é consultada: texto plantado no diff não escolhe o analisador"
+                f" · motivo {canal}", modo))
+            print(f"NAO ANALISADO: {prov.rotulo} recusou o diff (filtro de conteúdo)")
+            return 3
+        except RecursionError:
+            # É RuntimeError: sem esta linha cairia para a próxima IA.
+            escreve(placar_path, nao_analisado(
+                f"{prov.rotulo} devolveu resposta aninhada demais para ler. Nenhuma outra IA é consultada", modo))
+            print(f"NAO ANALISADO: {prov.rotulo} resposta aninhada demais")
+            return 3
+        except RuntimeError as e:
+            falhas.append(f"{prov.rotulo}: {e}")
+            print(f"sem veredito: {prov.rotulo} (motivo no canal privado)", flush=True)
+    else:
+        # Motivo de cada IA (saldo, chave) só no canal privado; o placar é público.
+        canal = manda_detalhe([], [], falhas)
+        log_falhas(falhas, canal)
+        k = len(falhas)
+        escreve(placar_path, nao_analisado(f"nenhuma IA disponível ({k} provedor{'es' if k != 1 else ''}) · motivo {canal}", modo))
+        print("NAO ANALISADO: nenhuma IA disponível")
         return 3
 
-    bloq, aviso = classifica(r["achados"], arquivos)
-    canal = manda_detalhe(bloq, aviso) if (bloq or aviso) else ""
-    escreve(placar_path, placar(len(bloq), len(aviso), modo, tel, canal, nota))
+    bloq, aviso, fora = classifica(r["achados"], arquivos)
+    privado = falhas + ([f"{prov.rotulo}: resposta cortada ({tel['cortado']}) com indício de achado grave"]
+                        if tel.get("indicio") else [])
+    canal = manda_detalhe(bloq, aviso, privado, fora) if (bloq or aviso or privado or fora) else ""
+    log_falhas(falhas, canal)
+    if n:
+        tel["modelo"] += " (reserva)"
+        notas.append(f"IA reserva — {len(falhas)} antes dela sem veredito (motivo {canal}).")
+    if tel.get("cortado"):
+        if not bloq:
+            motivo = ("resposta cortada com indício de achado grave" if tel.get("indicio")
+                      else f"apontou {len(aviso)} achado(s) numa resposta cortada")
+            escreve(placar_path, nao_analisado(
+                f"{motivo} ({tel['modelo']}, {tel['cortado']}) · detalhe {canal}. "
+                "Nenhuma outra IA é consultada: ela poderia apagá-los", modo))
+            print(f"NAO ANALISADO: achado em resposta cortada ({tel['cortado']})")
+            return 3
+        notas.append(f"Resposta cortada ({tel['cortado']}): o bloqueante vale e nenhuma outra IA é consultada.")
+    escreve(placar_path, placar(len(bloq), len(aviso), modo, tel, canal, "\n\n".join(notas), parcial))
     # Só contagens no log público. Nunca o achado.
     print(f"placar: {len(bloq)} bloqueante(s), {len(aviso)} aviso(s); modo={modo}; "
-          f"{tel['segundos']}s; {tel['tokens']} tokens; detalhe {canal or 'n/a'}")
-    return 1 if (bloq and modo == "barra") else 0
+          f"{tel['segundos']}s; {tel['tokens']} tokens; detalhe {canal or 'n/a'}"
+          + (f"; PARCIAL: {parcial} arquivo(s) não lidos" if parcial else ""))
+    if bloq and modo == "barra":
+        return 1
+    return 3 if parcial else 0
 
 
 # --------------------------------------------------------------------------
@@ -435,6 +703,10 @@ def demo() -> None:
          "diff --git a/README.md b/README.md\n--- a\n+++ b\n@@ -1 +1 @@\n+y\n")
     assert arquivos_do_diff(d) == ["src/app/api/pay/route.ts", "README.md"]
     assert arquivos_do_diff(filtra_risco(d)) == ["src/app/api/pay/route.ts"]
+    # Cabeçalho entre aspas do git (não-ASCII em octal, aspas escapadas).
+    q = 'diff --git "a/src/a\\303\\247\\303\\243o.ts" "b/src/a\\303\\247\\303\\243o.ts"\n+x\n'
+    assert arquivos_do_diff(q + 'diff --git "a/x\\"y" "b/x\\"y"\n+z\n') == ["src/ação.ts", 'x"y']
+    assert arquivos_do_diff("diff --git c/x d/x\n+x\n") == [None]
     assert eh_de_risco("supabase/migrations/x.sql") and not eh_de_risco("README.md")
 
     achados = normaliza({"achados": [
@@ -443,9 +715,13 @@ def demo() -> None:
         {"titulo": "fora", "severidade": "critica", "confianca": 1.0, "arquivo": "src/outro.ts"},
         {"titulo": "leve", "severidade": "baixa", "arquivo": "README.md"},
     ]})["achados"]
-    bloq, aviso = classifica(achados, arquivos_do_diff(d))
+    bloq, aviso, fora = classifica(achados, arquivos_do_diff(d))
     assert [a["titulo"] for a in bloq] == ["IDOR"], bloq
     assert [a["titulo"] for a in aviso] == ["fraco", "leve"], aviso
+    assert fora == 1
+    # Resposta cortada no meio da lista: o achado inteiro sobrevive.
+    corte = '{"achados":[{"titulo":"IDOR","severidade":"alta","confianca":0.9,"arquivo":"a"},{"titulo":"x'
+    assert extrai_json(corte) is None and [a["titulo"] for a in resgata(corte)["achados"]] == ["IDOR"]
 
     muitos = [dict(achados[0], titulo="t" * 120, linha=i) for i in range(30)]
     r = resumo_telegram(muitos, [], "999", "https://github.com/x/y/pull/999")
@@ -471,6 +747,9 @@ def demo() -> None:
     assert c["severity"] == "critical" and "ataque:" in c["detalhe"], c
     assert len(c["summary"]) <= TETO_RELAY and len(c["detalhe"]) <= TETO_DETALHE
     assert corpo_alerta([], rico, "7", "u")["severity"] == "warn"
+    f = corpo_alerta([], [], "7", "u", ["z.ai glm-5: saldo zerado (código 1113)"])
+    assert "código 1113" in f["detalhe"] and "1 IA(s) sem veredito" in f["summary"], f
+    assert eh_de_risco("scripts/porteiro.py") and eh_de_risco(".github/workflows/porteiro.yml")
 
     p = placar(1, 2, "avisa", {"modelo": "glm-5", "segundos": 30, "tokens": 900}, "no Telegram")
     assert "3 achados · 1 bloqueante" in p and "só avisa" in p and "IDOR" not in p
@@ -495,7 +774,7 @@ def demo() -> None:
 
     with patch("urllib.request.urlopen", side_effect=resposta_longa) as request, \
          redirect_stdout(io.StringIO()):
-        result, telemetry = analisa("diff demo", MODELO_PADRAO, "demo")
+        result, telemetry = analisa("diff demo", le_cadeia({})[0], "demo")
     assert result == VAZIO and not telemetry.get("falhou"), "raciocínio esgotou os três tetos"
     assert request.call_count == 3 and telemetry["tentativas"] == ["vazio", "vazio", "ok"]
 
@@ -506,7 +785,8 @@ def demo() -> None:
         ([('{"achados":[{}]}', "stop", 12)] * 3, 3, ["json_malformado"] * 3),
         ([("", "length", 12)] * 3, 3, ["vazio"] * 3),
         ([('{"achados":[]}', "length", 12)] * 3, 3, ["truncado"] * 3),
-        ([('{"achados":[]}', "content_filter", 12)] * 3, 3, ["interrompido"] * 3),
+        # Filtro de conteúdo encerra na 1ª resposta, sem teto maior nem reserva.
+        ([('{"achados":[]}', "content_filter", 12)], 3, ["interrompido"]),
         ([('{"achados":[]}', "unknown", 12)] * 3, 3, ["interrompido"] * 3),
         ([("PRIVATE_SENTINEL", "PRIVATE_SENTINEL", "PRIVATE_SENTINEL")] * 3,
          3, ["json_malformado"] * 3),
@@ -521,7 +801,7 @@ def demo() -> None:
             assert main(["--diff", "demo", "--placar", "demo"]) == expected_exit
         assert request.call_count == len(replies)
         for i, call in enumerate(request.call_args_list):
-            assert call.kwargs["timeout"] == 300
+            assert call.kwargs["timeout"] == TIMEOUT_HTTP
             payload = json.loads(call.args[0].data)
             assert payload.get("response_format") == {"type": "json_object"}
             assert payload["max_tokens"] == [4000, 16000, 32000][i]
@@ -533,7 +813,7 @@ def demo() -> None:
             assert entry["tentativa"] == i + 1 and entry["teto"] == [4000, 16000, 32000][i]
             assert entry["chars"] == len(reply[0])
             assert entry["tokens"] == (reply[2] if type(reply[2]) is int else 0)
-            assert entry["finish_reason"] == (reply[1] if reply[1] in ("stop", "length", "tool_calls", "content_filter") else "other")
+            assert entry["finish_reason"] == (reply[1] if reply[1] in FINISH else "other")
         assert "PRIVATE_SENTINEL" not in output.getvalue() + str(write.call_args)
         if expected_exit == 3:
             assert "NÃO ANALISADO" in write.call_args.args[1]
