@@ -80,6 +80,7 @@ describe("getLessonUnlockState", () => {
         unlocked: false,
         unlocksAt: null,
         reason: "previous_lesson_required",
+        previousLessonId: "lesson-1",
       });
 
       // This is the auto-advance chain: finishing lesson-2 has to open lesson-3
@@ -181,5 +182,21 @@ describe("getLessonUnlockState", () => {
       expect(state.unlocked).toBe(false);
       expect(state.unlocksAt?.toISOString()).toBe("2026-01-03T00:00:00.000Z");
     });
+  });
+
+  // A tela da aula trancada diz QUAL aula terminar e leva até ela.
+  it("sequential A, B: B locked names A as the lesson to finish first", () => {
+    const course = {
+      dripStrategy: "sequential_progress" as const,
+      modules: [{ lessons: [{ id: "A" }, { id: "B" }] }],
+    };
+
+    expect(getLessonUnlockState(course, { id: "B" }, enrollment, [], oneDayIn)).toEqual({
+      unlocked: false,
+      unlocksAt: null,
+      reason: "previous_lesson_required",
+      previousLessonId: "A",
+    });
+    expect(getLessonUnlockState(course, { id: "B" }, enrollment, ["A"], oneDayIn).unlocked).toBe(true);
   });
 });

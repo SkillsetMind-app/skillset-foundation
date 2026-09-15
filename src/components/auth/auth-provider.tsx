@@ -14,6 +14,7 @@ import {
 
 import type { AuthSession } from "@/domain/auth";
 import {
+  acceptTeacherTerms,
   acceptUserTerms,
   getUserProfile,
 } from "@/lib/data/user-profiles";
@@ -24,6 +25,7 @@ import {
 } from "@/lib/auth/supabase-auth";
 import {
   currentPrivacyVersion,
+  currentTeacherTermsVersion,
   currentTermsVersion,
 } from "@/lib/legal/versions";
 import { ViewAsBanner } from "@/components/admin/view-as";
@@ -161,16 +163,22 @@ function LegalAcceptanceGate() {
   // next one, and so the no-user case is derived (no setState in the effect).
   const [acceptance, setAcceptance] = useState<{
     uid: string;
-    needsAcceptance: boolean;
+    general: boolean;
+    teacher: boolean;
   } | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [teacherTermsAccepted, setTeacherTermsAccepted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const uid = status === "authenticated" ? user?.uid ?? null : null;
-  const needsAcceptance = Boolean(
-    uid && acceptance?.uid === uid && acceptance.needsAcceptance,
-  );
+  const current = uid && acceptance?.uid === uid ? acceptance : null;
+  const needsGeneral = Boolean(current?.general);
+  const needsTeacher = Boolean(current?.teacher);
+  const needsAcceptance = needsGeneral || needsTeacher;
+  const canAccept =
+    (!needsGeneral || (termsAccepted && privacyAccepted))
+    && (!needsTeacher || teacherTermsAccepted);
 
   // One profile read per signed-in uid — NOT per navigation. The legal
   // versions a profile accepted can't change from client-side route changes,
@@ -194,12 +202,20 @@ function LegalAcceptanceGate() {
 
       setAcceptance({
         uid: checkedUid,
-        needsAcceptance:
+        general:
           profile?.termsVersion !== currentTermsVersion
           || profile?.privacyVersion !== currentPrivacyVersion,
+        // Re-acceptance only: a teacher who accepted an older version. The
+        // first acceptance belongs to onboarding, which grants the role.
+        teacher: Boolean(
+          profile?.roles?.includes("teacher")
+          && profile.teacherTermsAcceptedAt
+          && profile.teacherTermsVersion !== currentTeacherTermsVersion,
+        ),
       });
       setTermsAccepted(false);
       setPrivacyAccepted(false);
+      setTeacherTermsAccepted(false);
       setError("");
     }
 
@@ -219,17 +235,25 @@ function LegalAcceptanceGate() {
     || pathname.startsWith("/welcome");
 
   async function handleAccept() {
-    if (!user || !termsAccepted || !privacyAccepted) {
+    if (!user || !canAccept) {
       return;
     }
 
     setIsSaving(true);
     setError("");
+    const acceptingUid = user.uid;
 
     try {
-      const profile = await getUserProfile(user.uid);
-      await acceptUserTerms(user.uid, profile?.marketingConsent ?? false);
-      setAcceptance({ uid: user.uid, needsAcceptance: false });
+      if (needsGeneral) {
+        const profile = await getUserProfile(acceptingUid);
+        await acceptUserTerms(acceptingUid, profile?.marketingConsent ?? false);
+        // Recorded: a later Teacher Terms failure only re-asks for that one.
+        setAcceptance({ uid: acceptingUid, general: false, teacher: needsTeacher });
+      }
+      if (needsTeacher) {
+        await acceptTeacherTerms(acceptingUid);
+      }
+      setAcceptance({ uid: acceptingUid, general: false, teacher: false });
     } catch {
       setError("legalAcceptance.error");
     } finally {
@@ -255,6 +279,7 @@ function LegalAcceptanceGate() {
         </p>
 
         <div className="mt-5 grid gap-3">
+          {needsGeneral ? <>
           <label className="flex gap-3 rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
             <input
               type="checkbox"
@@ -292,6 +317,28 @@ function LegalAcceptanceGate() {
               .
             </span>
           </label>
+          </> : null}
+
+          {needsTeacher ? (
+            <label className="flex gap-3 rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+              <input
+                type="checkbox"
+                checked={teacherTermsAccepted}
+                onChange={(event) => setTeacherTermsAccepted(event.target.checked)}
+                className="mt-1 size-4 accent-[var(--color-primary)]"
+              />
+              <span>
+                {t("legalAcceptance.agreeTeacherTerms")}{" "}
+                <Link
+                  href="/legal/teacher-terms"
+                  className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+                >
+                  {t("legalAcceptance.teacherTerms")}
+                </Link>
+                .
+              </span>
+            </label>
+          ) : null}
         </div>
 
         {error ? (
@@ -302,7 +349,7 @@ function LegalAcceptanceGate() {
 
         <button
           type="button"
-          disabled={isSaving || !termsAccepted || !privacyAccepted}
+          disabled={isSaving || !canAccept}
           onClick={handleAccept}
           className="button-solid mt-5 w-full px-4 py-2.5 text-sm disabled:opacity-60"
         >

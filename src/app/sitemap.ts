@@ -37,6 +37,7 @@ const publicRoutes: Array<{
   { path: "/legal/terms", changeFrequency: "yearly", priority: 0.3 },
   { path: "/legal/privacy", changeFrequency: "yearly", priority: 0.3 },
   { path: "/legal/teacher-terms", changeFrequency: "yearly", priority: 0.3 },
+  { path: "/legal/copyright", changeFrequency: "yearly", priority: 0.3 },
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

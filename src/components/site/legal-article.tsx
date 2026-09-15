@@ -52,6 +52,7 @@ const legalLinks = {
   terms: "/legal/terms",
   privacy: "/legal/privacy",
   teacherTerms: "/legal/teacher-terms",
+  copyright: "/legal/copyright",
   promise: "/promise",
   pricing: "/pricing",
   account: "/account",
@@ -60,9 +61,9 @@ const legalLinks = {
 } as const;
 
 export function LegalText({ text }: { text: string }) {
-  const parts = text.split(/(<(?:strong|em|terms|privacy|teacherTerms|promise|pricing|account|support|legal)>[^<>]*<\/(?:strong|em|terms|privacy|teacherTerms|promise|pricing|account|support|legal)>)/g);
+  const parts = text.split(/(<(?:strong|em|terms|privacy|teacherTerms|copyright|promise|pricing|account|support|legal)>[^<>]*<\/(?:strong|em|terms|privacy|teacherTerms|copyright|promise|pricing|account|support|legal)>)/g);
   return parts.map((part, index) => {
-    const match = /^<(strong|em|terms|privacy|teacherTerms|promise|pricing|account|support|legal)>([^<>]*)<\/\1>$/.exec(part);
+    const match = /^<(strong|em|terms|privacy|teacherTerms|copyright|promise|pricing|account|support|legal)>([^<>]*)<\/\1>$/.exec(part);
     if (!match) return part;
     const [, tag, content] = match;
     if (tag === "strong") {

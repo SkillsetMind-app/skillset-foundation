@@ -1179,3 +1179,205 @@ describe("LessonContentModal — video tab", () => {
     expect(uploadCourseAsset).not.toHaveBeenCalled();
   });
 });
+
+// Video on Bunny: the studio asks for the processing state every 10 s until it
+// is ready or failed, and writes the duration once when it is ready. fetch is
+// mocked: nothing reaches the app route or Bunny.
+describe("LessonContentModal — processamento na Bunny", () => {
+  type Reply = { status: number | null; encodeProgress: number | null; lengthSeconds: number | null };
+  const fetchMock = vi.fn();
+  const replyWith = (...replies: Reply[]) => {
+    fetchMock.mockReset();
+    for (const reply of replies) {
+      fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => reply });
+    }
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => replies[replies.length - 1] });
+  };
+  const flush = () => act(async () => { await vi.advanceTimersByTimeAsync(0); });
+  const tenSeconds = () => act(async () => { await vi.advanceTimersByTimeAsync(10_000); });
+
+  beforeEach(() => {
+    currentAssets = [videoAsset({ bunnyVideoId: "bunny-1" })];
+    bunnyConfig.isBunnyConfigured = false;
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("shows Processing then Ready, stops polling and writes the duration once", async () => {
+    replyWith(
+      { status: 3, encodeProgress: 40, lengthSeconds: null },
+      { status: 4, encodeProgress: 100, lengthSeconds: 125 },
+    );
+    const { onUpdateLesson } = renderModal({ videoSource: "upload", durationMinutes: 1 }, "Módulo 1", true);
+
+    await flush();
+    expect(screen.getByText("Processing 40%")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/teach/video/status?assetId=asset-1");
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+
+    await tenSeconds();
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ durationMinutes: 3 });
+
+    await tenSeconds();
+    await tenSeconds();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(onUpdateLesson).toHaveBeenCalledOnce();
+  });
+
+  it("shows the failure text on a failed status and stops polling, without a duration", async () => {
+    replyWith({ status: 5, encodeProgress: 0, lengthSeconds: null });
+    const { onUpdateLesson } = renderModal({ videoSource: "upload" });
+
+    await flush();
+    expect(screen.getByText("Failed — upload again")).toBeInTheDocument();
+    await tenSeconds();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+  });
+
+  it("closing the studio stops polling, and a duration that already matches is not written", async () => {
+    replyWith({ status: 2, encodeProgress: 10, lengthSeconds: null });
+    const first = renderModal({ videoSource: "upload" });
+    await flush();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    first.unmount();
+    await tenSeconds();
+    await tenSeconds();
+    expect(fetchMock).toHaveBeenCalledOnce();
+
+    replyWith({ status: 4, encodeProgress: 100, lengthSeconds: 180 });
+    const second = renderModal({ videoSource: "upload", durationMinutes: 3 });
+    await flush();
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+    expect(second.onUpdateLesson).not.toHaveBeenCalled();
+  });
+
+  it("keeps polling after a 429, like after a 5xx", async () => {
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 429, json: async () => ({}) });
+    fetchMock.mockResolvedValue({
+      ok: true, status: 200, json: async () => ({ status: 4, encodeProgress: 100, lengthSeconds: 60 }),
+    });
+    const { onUpdateLesson } = renderModal({ videoSource: "upload" });
+
+    await flush();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    await tenSeconds();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+    expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ durationMinutes: 1 });
+  });
+
+  // 7 (JIT segmenting) does not play yet: only 4 and 8 are ready.
+  it("treats status 7 as still processing and keeps polling until 8", async () => {
+    replyWith(
+      { status: 7, encodeProgress: 60, lengthSeconds: 90 },
+      { status: 8, encodeProgress: 100, lengthSeconds: 90 },
+    );
+    const { onUpdateLesson } = renderModal({ videoSource: "upload" });
+
+    await flush();
+    expect(screen.getByText("Processing 60%")).toBeInTheDocument();
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+    await tenSeconds();
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+    expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ durationMinutes: 2 });
+    await tenSeconds();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps polling while ready without a length, and writes the duration when it arrives", async () => {
+    replyWith(
+      { status: 4, encodeProgress: 100, lengthSeconds: null },
+      { status: 4, encodeProgress: 100, lengthSeconds: 0 },
+      { status: 4, encodeProgress: 100, lengthSeconds: 200 },
+    );
+    const { onUpdateLesson } = renderModal({ videoSource: "upload" });
+
+    await flush();
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+    await tenSeconds();
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+    await tenSeconds();
+    expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ durationMinutes: 4 });
+    await tenSeconds();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("stops asking for a missing length after 30 more polls", async () => {
+    replyWith({ status: 4, encodeProgress: 100, lengthSeconds: null });
+    const { onUpdateLesson } = renderModal({ videoSource: "upload" });
+
+    await flush();
+    for (let poll = 0; poll < 40; poll += 1) {
+      await tenSeconds();
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(31);
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+  });
+
+  // A rotated key or a Bunny outage answered 503 forever: the studio polled
+  // every 10 s with no end.
+  it("stops after 30 retries in a row on 5xx or 429 and says to reopen the lesson", async () => {
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue({ ok: false, status: 503, json: async () => ({}) });
+    const { onUpdateLesson } = renderModal({ videoSource: "upload" });
+
+    await flush();
+    for (let poll = 0; poll < 40; poll += 1) {
+      await tenSeconds();
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(31);
+    expect(screen.getByText("Status unavailable, reopen the lesson to check again")).toBeInTheDocument();
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+  });
+
+  it("an answer between failures resets the retry count", async () => {
+    fetchMock.mockReset();
+    const failure = { ok: false, status: 429, json: async () => ({}) };
+    const answer = (status: number, lengthSeconds: number | null) => ({
+      ok: true, status: 200, json: async () => ({ status, encodeProgress: 50, lengthSeconds }),
+    });
+    for (let call = 0; call < 29; call += 1) fetchMock.mockResolvedValueOnce(failure);
+    fetchMock.mockResolvedValueOnce(answer(3, null));
+    for (let call = 0; call < 29; call += 1) fetchMock.mockResolvedValueOnce(failure);
+    fetchMock.mockResolvedValue(answer(4, 60));
+    renderModal({ videoSource: "upload" });
+
+    await flush();
+    for (let poll = 0; poll < 60; poll += 1) {
+      await tenSeconds();
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(60);
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+    expect(screen.queryByText("Status unavailable, reopen the lesson to check again")).not.toBeInTheDocument();
+  });
+
+  it("stops at once when the route answers 404 (video deleted on Bunny)", async () => {
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue({ ok: false, status: 404, json: async () => ({}) });
+    renderModal({ videoSource: "upload" });
+
+    await flush();
+    await tenSeconds();
+    await tenSeconds();
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("does not poll for a video that is not on Bunny", async () => {
+    currentAssets = [videoAsset()];
+    renderModal({ videoSource: "upload" });
+
+    await flush();
+    await tenSeconds();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

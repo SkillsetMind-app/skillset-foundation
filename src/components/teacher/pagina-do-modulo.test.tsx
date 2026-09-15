@@ -441,6 +441,50 @@ describe("pagina do modulo dentro do builder", () => {
     expect(name()).toHaveValue("Start here, v1");
   }, 15000);
 
+  // Perda real (do #376), antes vista como teste intermitente. Ordem forcada:
+  // o save volta mas o commit dele ainda nao aconteceu; o eco chega nesse meio,
+  // le o rascunho ainda "sujo" e vai para o guardado; o commit deixa o rascunho
+  // limpo e agenda aplicar o guardado num microtask; a pessoa digita antes de
+  // o microtask rodar. Aplicar as cegas trocava a digitacao pelo eco velho e
+  // marcava como salvo: a edicao nunca chegava ao servidor.
+  it("snapshot guardado nao apaga a edicao feita logo depois de o save voltar", async () => {
+    let emitCourse: (course: TeacherCourse | null) => void = () => {};
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emitCourse = emit;
+      emit(mocks.course);
+      return () => undefined;
+    });
+    let finishFirst = () => {};
+    vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(
+      () => new Promise<void>((resolve) => { finishFirst = resolve; }),
+    );
+    openAt("courseId=course-1&tab=content&module=m1");
+    const card = await renderBuilder();
+    const name = () => within(card).getByRole("textbox", { name: "Module 1" });
+
+    fireEvent.change(name(), { target: { value: "Start here, v1" } });
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1), { timeout: 5000 });
+    const first = vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1];
+
+    // 1) O save volta: so microtasks rodam, o React ainda nao comita.
+    finishFirst();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    // 2) O eco chega antes do commit e vai para o guardado; o commit, no fim
+    //    do mesmo act, deixa o rascunho limpo e agenda aplicar o guardado.
+    act(() => emitCourse({ ...mocks.course, ...first }));
+    // 3) A pessoa digita antes de o microtask rodar (sem await no meio).
+    fireEvent.change(name(), { target: { value: "Start here, v2" } });
+    // 4) Agora o microtask roda.
+    await act(async () => {});
+
+    expect(name()).toHaveValue("Start here, v2");
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(2), { timeout: 5000 });
+    expect(vi.mocked(updateTeacherCourseBuilder).mock.calls[1][1].modules?.[0].title).toBe("Start here, v2");
+  }, 15000);
+
   it("sem ?module mostra uma linha por modulo, com nome em negrito e numero de aulas", async () => {
     const card = await renderBuilder();
 

@@ -3,7 +3,7 @@
 import { CheckCircle2, LockKeyhole, PlayCircle, Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { LessonUnlockState } from "@/domain/drip-policy";
+import { formatUnlockDate, type LessonUnlockState } from "@/domain/drip-policy";
 import type { CourseModule } from "@/domain/learning";
 import { LessonThumbnail } from "@/components/learn/lesson-thumbnail";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -167,8 +167,13 @@ export function LessonListOverlay({
                       {group.lessons.map(({ lesson, position }) => {
                         const isCompleted = completedLessonIds.includes(lesson.id);
                         const isSelected = selectedLessonId === lesson.id;
-                        const unlocked =
-                          unlockStateById.get(lesson.id)?.unlocked ?? true;
+                        const unlockState = unlockStateById.get(lesson.id);
+                        const unlocked = unlockState?.unlocked ?? true;
+                        // Aula agendada: a data em que abre, não só "Locked".
+                        const lockedLabel = unlockState?.unlocksAt
+                          ? t("learn.classroom.lesson.unlocks").replace("{date}", () =>
+                              formatUnlockDate(unlockState.unlocksAt!, locale))
+                          : t("learn.classroom.curriculum.locked");
 
                         return (
                           <li key={lesson.id}>
@@ -205,7 +210,7 @@ export function LessonListOverlay({
                                   <span className="mt-0.5 block text-xs text-[var(--color-ink-soft)]">
                                     {lesson.duration}
                                     {isCompleted ? ` · ${t("learn.classroom.curriculum.completed")}` : ""}
-                                    {!unlocked ? ` · ${t("learn.classroom.curriculum.locked")}` : ""}
+                                    {!unlocked ? ` · ${lockedLabel}` : ""}
                                   </span>
                                 </span>
                               </span>
