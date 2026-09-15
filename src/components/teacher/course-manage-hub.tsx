@@ -404,9 +404,12 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     );
   }
 
-  // A mesma lista que o construtor mostra no chip, na barra e no rodape. Antes
-  // o Manage tinha regra propria (titulo+resumo num item so, sem parcelas) e
-  // o mesmo curso aparecia com tres porcentagens diferentes.
+  // A mesma lista que o construtor mostra no chip, na barra e no rodape, menos
+  // um item: "conteudo em toda aula" (lessonMedia) precisa da lista de arquivos,
+  // que o Manage nao carrega, entao aqui ele fica de fora e a porcentagem pode
+  // diferir da do construtor. O aviso "aulas sem conteudo" do painel cobre o
+  // mesmo caso com a mesma regra (getLessonIdsWithMedia). Antes o Manage tinha
+  // regra propria e o mesmo curso aparecia com tres porcentagens diferentes.
   const readiness = getCourseReadiness(course, account, t);
   const pricing = getCoursePricingShape(course);
   const paid = !pricing.free;

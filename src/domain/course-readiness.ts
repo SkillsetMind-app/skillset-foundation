@@ -1,4 +1,5 @@
 import { isVideoAssetKind, type CourseAsset } from "@/domain/course-asset";
+import { getSafeExternalUrl } from "@/domain/external-url";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import {
   countCourseLessons,
@@ -32,9 +33,14 @@ export type CourseReadinessInput = Pick<
   lessonIdsWithMedia?: ReadonlySet<string>;
 };
 
-// Aula com conteudo: video enviado, link do YouTube/Vimeo aceito, texto ou ao
-// menos um arquivo de material. Uma aula so com PDF e uma aula valida. Sem
-// isso, um curso podia ser publicado e vendido com aulas vazias.
+// Aula com conteudo. A MESMA regra do aviso "aulas sem conteudo" do painel
+// (getCourseMaintenanceIssues, que chama esta funcao) e do selo Done do estudio:
+// - video enviado;
+// - link: o do YouTube/Vimeo toca na aula, e um link antigo (Drive etc.) vira o
+//   botao "Open resource" do aluno, entao tambem conta;
+// - texto da aula ou a descricao antiga (aula de texto legada);
+// - ao menos um arquivo de material: uma aula so com PDF e uma aula valida.
+// Sem isso, um curso podia ser publicado e vendido com aulas vazias.
 export function getLessonIdsWithMedia(
   modules: Pick<TeacherCourseModule, "lessons">[],
   assets: Pick<CourseAsset, "kind" | "lessonId">[],
@@ -47,7 +53,12 @@ export function getLessonIdsWithMedia(
   }
   for (const courseModule of modules) {
     for (const lesson of courseModule.lessons) {
-      if (getTrustedLessonEmbed(lesson.externalUrl) || lesson.contentText?.trim()) {
+      if (
+        getTrustedLessonEmbed(lesson.externalUrl)
+        || getSafeExternalUrl(lesson.externalUrl)
+        || lesson.contentText?.trim()
+        || lesson.description?.trim()
+      ) {
         ids.add(lesson.id);
       }
     }
@@ -121,10 +132,15 @@ export function getCourseReadiness(
   const lessons = modules.flatMap((courseModule) => courseModule.lessons);
   const withMedia = course.lessonIdsWithMedia;
   const lessonsWithoutMedia = withMedia ? lessons.filter((lesson) => !withMedia.has(lesson.id)) : [];
-  // As tres primeiras aulas vazias, pelo titulo que o professor deu.
-  const missingLessonTitles = (untitled: string) =>
-    lessonsWithoutMedia.slice(0, 3).map((lesson) => lesson.title.trim() || untitled).join(", ")
-    + (lessonsWithoutMedia.length > 3 ? "…" : "");
+  // As tres primeiras aulas vazias, pelo titulo que o professor deu, e quantas
+  // mais faltam ("e N mais", como o aviso do painel; nada de "…" antes do ponto).
+  const missingLessonsText = (untitled: string, one: string, more: string) => {
+    const names = lessonsWithoutMedia.slice(0, 3).map((lesson) => lesson.title.trim() || untitled).join(", ");
+    const extra = lessonsWithoutMedia.length - 3;
+    return (extra > 0 ? more : one)
+      .replace("{count}", () => String(extra))
+      .replace("{lessons}", () => names);
+  };
 
   const items: CourseReadinessItem[] = [
     {
@@ -187,7 +203,11 @@ export function getCourseReadiness(
           group: "content" as const,
           label: "Lesson content",
           hint: lessonsWithoutMedia.length
-            ? `Add a video, text or file to every lesson. Missing: ${missingLessonTitles("Untitled lesson")}.`
+            ? `Add a video, text or file to every lesson. ${missingLessonsText(
+                "Untitled lesson",
+                "Missing: {lessons}.",
+                "Missing: {lessons} and {count} more.",
+              )}`
             : "Add a video, text or file to every lesson.",
           done: lessonsWithoutMedia.length === 0,
           optional: false,
@@ -256,8 +276,11 @@ export function getCourseReadiness(
         item.id === "verification" && item.optional ? "optionalHint" : "hint"
       }`);
       if (item.id === "lessonMedia" && !item.done) {
-        const missing = missingLessonTitles(t("creatorEditor.lesson.untitled"));
-        item.hint += ` ${t("creatorEditor.readiness.items.lessonMedia.missing").replace("{lessons}", () => missing)}`;
+        item.hint += ` ${missingLessonsText(
+          t("creatorEditor.lesson.untitled"),
+          t("creatorEditor.readiness.items.lessonMedia.missing"),
+          t("creatorEditor.readiness.items.lessonMedia.missingMore"),
+        )}`;
       }
     }
   }

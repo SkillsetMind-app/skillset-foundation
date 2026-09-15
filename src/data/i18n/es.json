@@ -3939,7 +3939,8 @@
         "lessonMedia": {
           "label": "Contenido de las lecciones",
           "hint": "Añade un video, texto o archivo a cada lección.",
-          "missing": "Faltan: {lessons}."
+          "missing": "Faltan: {lessons}.",
+          "missingMore": "Faltan: {lessons} y {count} más."
         },
         "pricing": {
           "label": "Precios",
