@@ -467,14 +467,24 @@ export function CourseBuilderStudio() {
   // Pagina do modulo: so a URL muda (?module=M), como nas abas. Sem rota nova,
   // o modulo divide o rascunho, o autosave e o botao Salvar com o resto.
   const requestedModuleId = searchParams.get("module");
+  // Pagina da aula (?lesson=L ao lado do ?module=M): a mesma ideia do modulo.
+  const requestedLessonId = searchParams.get("lesson");
   function builderModuleHref(moduleId: string | null) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", "content");
+    params.delete("lesson");
     if (moduleId) {
       params.set("module", moduleId);
     } else {
       params.delete("module");
     }
+    return `/teach/builder?${params.toString()}`;
+  }
+  function builderLessonHref(moduleId: string, lessonId: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", "content");
+    params.set("module", moduleId);
+    params.set("lesson", lessonId);
     return `/teach/builder?${params.toString()}`;
   }
   const { user } = useAuth();
@@ -532,8 +542,25 @@ export function CourseBuilderStudio() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeLessonStudio, setActiveLessonStudio] =
-    useState<ActiveLessonStudio>(null);
+  // A aula aberta vem da URL (?module=M&lesson=L), como o modulo: o voltar do
+  // navegador funciona. Aula que nao existe (mais) nesse modulo cai na pagina
+  // do modulo, nunca numa tela vazia.
+  const activeLessonStudio: ActiveLessonStudio =
+    requestedModuleId
+    && requestedLessonId
+    && modules.some(
+      (module) =>
+        module.id === requestedModuleId
+        && module.lessons.some((lesson) => lesson.id === requestedLessonId),
+    )
+      ? { moduleId: requestedModuleId, lessonId: requestedLessonId }
+      : null;
+  const activeLessonId = activeLessonStudio?.lessonId ?? null;
+  // Abre a pagina da aula recem-criada quando o eco confirma o save. Refeita a
+  // cada render para ver a URL atual.
+  const openPendingLessonRef = useRef<(target: { moduleId: string; lessonId: string }) => void>(
+    () => {},
+  );
   const [courseAssets, setCourseAssets] = useState<CourseAsset[]>([]);
   // So com a lista de arquivos na mao a prontidao cobra conteudo em toda aula:
   // antes (ou se a busca falhar) o item fica de fora, como no Manage, em vez de
@@ -669,10 +696,9 @@ export function CourseBuilderStudio() {
               module.lessons.some((lesson) => lesson.id === pendingStudio.lessonId),
           );
           if (stillInDraft) {
-            // Never replace a studio that is already open: the modal is keyed by
-            // lesson id, so swapping lessons would remount it mid-upload and drop
-            // the progress bar and the close guard of the lesson in progress.
-            setActiveLessonStudio((current) => current ?? pendingStudio);
+            // Nunca troca uma aula ja aberta: o estudio e por id de aula, e trocar
+            // no meio de um envio perderia a barra de progresso e a trava de sair.
+            openPendingLessonRef.current(pendingStudio);
             setSuccess(null);
           }
         }
@@ -703,7 +729,7 @@ export function CourseBuilderStudio() {
   // Phoenix allows one join per topic per socket — so the builder refreshes on
   // mount and whenever the studio closes (the only place lesson videos change).
   useEffect(() => {
-    if (!courseId || activeLessonStudio) {
+    if (!courseId || activeLessonId) {
       return;
     }
 
@@ -722,7 +748,16 @@ export function CourseBuilderStudio() {
     return () => {
       cancelled = true;
     };
-  }, [courseId, activeLessonStudio]);
+  }, [courseId, activeLessonId]);
+
+  useEffect(() => {
+    openPendingLessonRef.current = (target) => {
+      if (activeLessonStudio) {
+        return;
+      }
+      router.push(builderLessonHref(target.moduleId, target.lessonId), { scroll: false });
+    };
+  });
 
   const lessonIdsWithVideo = useMemo(() => {
     const ids = new Set<string>();
@@ -772,6 +807,14 @@ export function CourseBuilderStudio() {
     : -1;
   const activeModule = activeModuleIndex >= 0 ? modules[activeModuleIndex] : null;
   const activeModuleId = activeModule?.id ?? null;
+  // Trocou de modulo (clique, voltar, avancar): o aviso de "movida" era do
+  // modulo anterior e sai. Ajuste no render, o padrao do React para estado que
+  // depende do valor anterior, em vez de setState num efeito.
+  const [moveStatusScope, setMoveStatusScope] = useState(activeModuleId);
+  if (moveStatusScope !== activeModuleId) {
+    setMoveStatusScope(activeModuleId);
+    setMoveStatus(null);
+  }
 
   // Os links usam scroll={false}; sem isto o foco caia no <body> e o topo da
   // pagina do modulo ficava fora da tela. Abrir: rola ate o cartao e foca o
@@ -1327,10 +1370,17 @@ export function CourseBuilderStudio() {
   }
 
   // Mover para outro modulo: vai para o fim dele, como o mesmo objeto (mesmo
-  // id). Estudio aberto ou a abrir passam a mirar o modulo novo; senao
-  // procurariam a aula no modulo antigo e ficariam sem aula.
+  // id). O estudio a abrir (aula recem-criada) passa a mirar o modulo novo;
+  // senao procuraria a aula no modulo antigo e ficaria sem aula. (Mover so
+  // existe na pagina do modulo e na lista: nunca com a pagina da aula aberta.)
   function moveLessonToModule(lessonId: string, targetModuleId: string): boolean {
     if (!isEditable) {
+      return false;
+    }
+
+    // Aula que nao e deste curso (arrastada de outra aba): nada muda, e nem
+    // aparece a confirmacao.
+    if (!modules.some((module) => module.lessons.some((lesson) => lesson.id === lessonId))) {
       return false;
     }
 
@@ -1358,9 +1408,6 @@ export function CourseBuilderStudio() {
         ? moveLessonTo(currentModules, lessonId, targetModuleId, current.lessons.length)
         : currentModules;
     });
-    setActiveLessonStudio((current) =>
-      current?.lessonId === lessonId ? { moduleId: targetModuleId, lessonId } : current,
-    );
     if (pendingLessonStudioRef.current?.lessonId === lessonId) {
       pendingLessonStudioRef.current = { moduleId: targetModuleId, lessonId };
     }
@@ -1408,13 +1455,6 @@ export function CourseBuilderStudio() {
       pendingLessonStudioRef.current = null;
     }
 
-    if (
-      activeLessonStudio?.moduleId === moduleId
-      && activeLessonStudio.lessonId === lessonId
-    ) {
-      setActiveLessonStudio(null);
-    }
-
     setSuccess(null);
   }
 
@@ -1458,6 +1498,54 @@ export function CourseBuilderStudio() {
 
   // Pagina do modulo (?module=M). Funcao de render, nao componente: le o mesmo
   // estado do builder, entao nao existe segunda copia do rascunho.
+  // Pagina da aula (?module=M&lesson=L): o corpo do estudio na propria pagina,
+  // com a trilha Curso > Modulo > Aula no lugar do modal. Mesmo rascunho,
+  // mesmo autosave e mesmo Salvar do resto do builder.
+  function renderLessonPage() {
+    if (!course || !activeLessonStudioModule || !activeLessonStudioLesson) {
+      return null;
+    }
+    const lessonModule = activeLessonStudioModule;
+    const lesson = activeLessonStudioLesson;
+
+    return (
+      <LessonContentModal
+        // Uma instancia por aula: o estado do estudio (aba, envio, se a
+        // nota publica antiga aparece) nao vaza de uma aula para outra.
+        key={lesson.id}
+        variant="page"
+        crumbs={{
+          courseLabel: title || course.title || t("publicCourses.course"),
+          courseHref: builderModuleHref(null),
+          moduleLabel: lessonModule.title || t("creatorEditor.builder.curriculum.untitledModule"),
+          moduleHref: builderModuleHref(lessonModule.id),
+        }}
+        leaveFlushRef={studioLeaveFlushRef}
+        course={course}
+        module={lessonModule}
+        moduleIndex={activeLessonStudioModuleIndex}
+        lesson={lesson}
+        lessonIndex={activeLessonStudioLessonIndex}
+        isEditable={isEditable}
+        isFreePreview={freePreviewLessonId === lesson.id}
+        dripStrategy={dripStrategy}
+        onClose={() => router.push(builderModuleHref(lessonModule.id), { scroll: false })}
+        onSetFreePreview={() => {
+          const next = freePreviewLessonId === lesson.id ? "" : lesson.id;
+          setFreePreviewLessonId(next);
+          // A flag do curso sozinha não abre o vídeo para quem ainda não
+          // comprou: a busca anônima filtra por is_preview no asset. Sem este
+          // passo, marcar a prévia depois do upload deixava a loja com
+          // "Video unavailable" e nenhum aviso no estúdio.
+          void syncLessonPreviewAssets(course.id, next).catch(() => {
+            // Falha aqui não pode derrubar o builder; o publish revalida.
+          });
+        }}
+        onUpdateLesson={(patch) => updateLesson(lessonModule.id, lesson.id, patch)}
+      />
+    );
+  }
+
   function renderModulePage(module: TeacherCourseModule, moduleIndex: number) {
     const isLessonFormOpen = lessonFormModuleId === module.id;
     const moduleName = module.title || t("creatorEditor.builder.curriculum.untitledModule");
@@ -1616,11 +1704,11 @@ export function CourseBuilderStudio() {
             {t("creatorEditor.builder.curriculum.moveDripWarning")}
           </p>
         ) : null}
-        {moveStatus?.moduleId === module.id ? (
-          <p role="status" className="text-xs font-semibold text-[var(--color-primary)]">
-            {moveStatus.text}
-          </p>
-        ) : null}
+        {/* Sempre na tela: o leitor de tela so anuncia mudanca de texto numa
+            regiao que ja existia, inclusive a primeira. */}
+        <p role="status" className="text-xs font-semibold text-[var(--color-primary)]">
+          {moveStatus?.moduleId === module.id ? moveStatus.text : ""}
+        </p>
 
         {module.lessons.length === 0 ? (
           <p className="rounded-[10px] border fine-rule bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -1637,10 +1725,7 @@ export function CourseBuilderStudio() {
                   <button
                     type="button"
                     onClick={() =>
-                      setActiveLessonStudio({
-                        moduleId: module.id,
-                        lessonId: lesson.id,
-                      })
+                      router.push(builderLessonHref(module.id, lesson.id), { scroll: false })
                     }
                     className="button-solid inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                     title={
@@ -1768,7 +1853,12 @@ export function CourseBuilderStudio() {
                           // A linha sai desta pagina: o foco vai para o titulo do modulo.
                           document.getElementById("builder-module-heading")?.focus();
                         }}
-                        disabled={!isEditable || !moveTargets[lesson.id]}
+                        // So com um destino que ainda existe e nao e o proprio
+                        // modulo (o destino marcado pode ter sido apagado).
+                        disabled={
+                          !isEditable
+                          || !modules.some((item) => item.id === moveTargets[lesson.id] && item.id !== module.id)
+                        }
                         aria-label={t("creatorEditor.builder.curriculum.moveLessonButton").replace(
                           "{title}",
                           () => lesson.title || t("creatorEditor.builder.curriculum.untitledLesson"),
@@ -2790,7 +2880,9 @@ export function CourseBuilderStudio() {
             id="builder-sec-modules"
             className="scroll-mt-24 rounded-[14px] border fine-rule bg-white p-4"
           >
-            {activeModule ? renderModulePage(activeModule, activeModuleIndex) : (
+            {activeModule ? (
+              activeLessonStudioLesson ? renderLessonPage() : renderModulePage(activeModule, activeModuleIndex)
+            ) : (
             <>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -3246,44 +3338,6 @@ export function CourseBuilderStudio() {
           </div>
         ) : null}
       </div>
-      {course && activeLessonStudioModule && activeLessonStudioLesson ? (
-        <LessonContentModal
-          // Uma instancia por aula: o estado do estudio (aba, envio, se a
-          // nota publica antiga aparece) nao vaza de uma aula para outra.
-          key={activeLessonStudioLesson.id}
-          leaveFlushRef={studioLeaveFlushRef}
-          course={course}
-          module={activeLessonStudioModule}
-          moduleIndex={activeLessonStudioModuleIndex}
-          lesson={activeLessonStudioLesson}
-          lessonIndex={activeLessonStudioLessonIndex}
-          isEditable={isEditable}
-          isFreePreview={freePreviewLessonId === activeLessonStudioLesson.id}
-          dripStrategy={dripStrategy}
-          onClose={() => setActiveLessonStudio(null)}
-          onSetFreePreview={() => {
-            const next =
-              freePreviewLessonId === activeLessonStudioLesson.id
-                ? ""
-                : activeLessonStudioLesson.id;
-            setFreePreviewLessonId(next);
-            // A flag do curso sozinha não abre o vídeo para quem ainda não
-            // comprou: a busca anônima filtra por is_preview no asset. Sem este
-            // passo, marcar a prévia depois do upload deixava a loja com
-            // "Video unavailable" e nenhum aviso no estúdio.
-            void syncLessonPreviewAssets(course.id, next).catch(() => {
-              // Falha aqui não pode derrubar o builder; o publish revalida.
-            });
-          }}
-          onUpdateLesson={(patch) =>
-            updateLesson(
-              activeLessonStudioModule.id,
-              activeLessonStudioLesson.id,
-              patch,
-            )
-          }
-        />
-      ) : null}
     </div>
   );
 }

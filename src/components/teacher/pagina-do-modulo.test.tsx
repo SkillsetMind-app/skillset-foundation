@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within, type RenderResult } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -110,8 +110,18 @@ function tree() {
   );
 }
 
+let view: RenderResult;
+
+// A aula abre como pagina (?lesson=L) e volta ao modulo pelo router: segue a
+// ultima URL que o builder pediu, como o navegador faria.
+function followPush() {
+  const href = String(mocks.router.push.mock.calls.at(-1)?.[0]);
+  openAt(href.slice(href.indexOf("?") + 1));
+  view.rerender(tree());
+}
+
 async function renderBuilder() {
-  render(tree());
+  view = render(tree());
   await screen.findByRole("heading", { name: mocks.course.title });
   const card = document.querySelector("#builder-sec-modules");
   if (!card) throw new Error("a aba de conteudo nao abriu");
@@ -197,8 +207,10 @@ describe("pagina do modulo dentro do builder", () => {
     await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1), { timeout: 5000 });
     const first = vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1];
     act(() => emitCourse({ ...mocks.course, ...first }));
+    followPush();
     expect(screen.getByRole("dialog")).toHaveTextContent("m2:Lesson A");
     fireEvent.click(screen.getByRole("button", { name: "Close studio" }));
+    followPush();
 
     // Mesma pagina, mesmo formulario aberto, depois do eco.
     fireEvent.change(within(form()).getByRole("textbox", { name: "Lesson title" }), {
@@ -214,6 +226,7 @@ describe("pagina do modulo dentro do builder", () => {
       "Lesson B",
     ]);
     act(() => emitCourse({ ...mocks.course, ...second }));
+    followPush();
     expect(screen.getByRole("dialog")).toHaveTextContent("m2:Lesson B");
   }, 15000);
 
@@ -282,6 +295,7 @@ describe("pagina do modulo dentro do builder", () => {
     }));
     // O eco desse save confirma a aula e abre o estudio nela.
     act(() => emitCourse({ ...mocks.course, ...second }));
+    followPush();
     expect(screen.getByRole("dialog")).toHaveTextContent("m1:Fresh lesson");
   }, 15000);
 
@@ -342,6 +356,7 @@ describe("pagina do modulo dentro do builder", () => {
       const second = vi.mocked(updateTeacherCourseBuilder).mock.calls[1][1];
       expect(second.modules?.[0].lessons.map((lesson) => lesson.title)).toEqual(["Lesson M"]);
       act(() => emitCourse({ ...mocks.course, ...second }));
+      followPush();
       expect(screen.getByRole("dialog")).toHaveTextContent("m1:Lesson M");
     } finally {
       confirm.mockRestore();
