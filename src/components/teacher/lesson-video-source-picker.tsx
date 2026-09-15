@@ -64,6 +64,7 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
   const urlInputId = useId();
   const errorId = useId();
   const hintId = useId();
+  const noteId = useId();
   const [isDragActive, setIsDragActive] = useState(false);
   const savedIsEmbed = Boolean(getTrustedLessonEmbed(props.externalUrl));
   // Rascunho local: o que o professor digita so vira dado quando e link aceito.
@@ -216,7 +217,7 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
               disabled={props.disabled}
               readOnly={locked}
               aria-invalid={rejected || undefined}
-              aria-describedby={rejected ? errorId : locked ? hintId : undefined}
+              aria-describedby={[rejected ? errorId : locked ? hintId : null, noteId].filter(Boolean).join(" ")}
               placeholder="https://www.youtube.com/watch?v=..."
               // O navegador cola no cursor ou na selecao (e o Ctrl+Z desfaz);
               // aqui so se anota o valor que a colagem deve produzir, e o
@@ -263,9 +264,11 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
               <small>{props.embedStatus}</small>
             )}
             {/* The protection trade-off belongs next to the link: an embed is
-                still a public link on YouTube or Vimeo; only Upload gets
-                per-student signed playback. */}
-            <small className="mt-1 flex items-start gap-1.5 text-[var(--color-ink-muted)]">
+                still a public link on YouTube or Vimeo; an Upload plays
+                through SkillsetMind's access check (which still lets anyone
+                watch the course's free-preview lesson). Always part of the
+                field's description, next to the error or hint. */}
+            <small id={noteId} className="mt-1 flex items-start gap-1.5 text-[var(--color-ink-muted)]">
               <ShieldAlert aria-hidden="true" size={13} className="mt-px shrink-0" />
               <span>
                 {t("creatorEditor.videoSource.protectionNote")}

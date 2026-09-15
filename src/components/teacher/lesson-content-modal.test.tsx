@@ -662,7 +662,7 @@ describe("LessonContentModal — um video por aula", () => {
     const linkMode = renderModal({ videoSource: "youtube", externalUrl: youtube });
     const hint = screen.getByText("We could not load lesson assets.");
     expect(hint).toHaveAttribute("role", "status");
-    expect(linkField()).toHaveAccessibleDescription("We could not load lesson assets.");
+    expect(linkField()).toHaveAccessibleDescription(/^We could not load lesson assets\. YouTube and Vimeo videos/);
     linkMode.unmount();
 
     // Sem link, a aba abre no modo envio: o aviso tambem aparece ali.
