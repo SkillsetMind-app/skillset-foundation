@@ -779,6 +779,9 @@ export function EnrolledCourseWorkspace({
             currency: course.currency,
           }}
           ctaHref={`/courses/${course.slug}`}
+          // No price here: the modal's fallback formats the raw course price
+          // in English. The course page owns the real, resolved price.
+          ctaLabel={t("learn.paths.unlock")}
           secondaryLink={{ href: "/learn", label: t("learn.classroom.workspace.backToLearning") }}
           onClose={() => router.push("/learn")}
         />

@@ -93,6 +93,15 @@ describe("classroom without an enrollment", () => {
     expect(mocks.getProtectedCourseAssetObjectUrl).not.toHaveBeenCalled();
   });
 
+  // The modal's fallback printed "Unlock course - $129.00" from the raw
+  // course price, always in English. The course page owns the price.
+  it("the popup button says 'Unlock course' with no price", () => {
+    render(<EnrolledCourseWorkspace course={course} />);
+
+    const cta = within(screen.getByRole("dialog")).getAllByRole("link")[0];
+    expect(cta.textContent?.trim()).toBe("Unlock course");
+  });
+
   it("closing the popup goes back to my learning", () => {
     render(<EnrolledCourseWorkspace course={course} />);
 
