@@ -43,6 +43,7 @@ import {
   isValidExternalEventUrl,
 } from "@/domain/course-event";
 import {
+  formatUnlockDate,
   getLessonUnlockState,
   type LessonUnlockState,
 } from "@/domain/drip-policy";
@@ -805,6 +806,9 @@ export function EnrolledCourseWorkspace({
     ? lessonUnlockStateById.get(selectedLesson.id)
       ?? { unlocked: true, unlocksAt: null, reason: "available" }
     : null;
+  // Sequencial trancado: a aula que falta concluir (nome + botão na tela).
+  const previousRequiredLesson =
+    allLessons.find((lesson) => lesson.id === selectedLessonUnlockState?.previousLessonId) ?? null;
   // B1: prefer the gated subcollection content for the rendered lesson; fall
   // back to the inline course-doc field when the subcollection doc is absent
   // (un-migrated course, or content not yet streamed).
@@ -1187,6 +1191,8 @@ export function EnrolledCourseWorkspace({
             moduleTitle={selectedModule?.title ?? null}
             onEnded={handleLessonEnded}
             unlockState={selectedLessonUnlockState}
+            previousRequiredLesson={previousRequiredLesson}
+            onSelectLesson={selectLesson}
             previewMode={previewMode}
             lessonComments={
               // Sob o player e "Informacoes da aula" (paridade Hotmart, P3):
@@ -1639,21 +1645,25 @@ const lessonTypeLabels: Record<LessonType, string> = {
   external_embed: "learn.classroom.lesson.types.external_embed",
 };
 
-function formatUnlockMessage(unlockState: LessonUnlockState, locale: string, t: (key: string) => string) {
+function formatUnlockMessage(
+  unlockState: LessonUnlockState,
+  locale: string,
+  t: (key: string) => string,
+  // Sequencial: o nome da aula que falta concluir, quando se sabe qual é.
+  previousTitle: string | null = null,
+) {
   if (unlockState.unlocked) {
     return t("learn.classroom.lesson.available");
   }
 
   if (unlockState.reason === "previous_lesson_required") {
-    return t("learn.classroom.lesson.previousRequired");
+    return previousTitle
+      ? t("learn.classroom.lesson.previousRequiredNamed").replace("{title}", () => previousTitle)
+      : t("learn.classroom.lesson.previousRequired");
   }
 
   if (unlockState.unlocksAt) {
-    const date = new Intl.DateTimeFormat(locale, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }).format(unlockState.unlocksAt);
+    const date = formatUnlockDate(unlockState.unlocksAt, locale);
     return t("learn.classroom.lesson.unlocks").replace("{date}", () => date);
   }
 
@@ -1861,7 +1871,9 @@ function LessonContentPanel({
   onCancelNextUp,
   onEnded,
   onPlayNextUp,
+  onSelectLesson,
   previewMode,
+  previousRequiredLesson = null,
   unlockState,
 }: {
   assets: CourseAsset[];
@@ -1885,7 +1897,11 @@ function LessonContentPanel({
   /** Modulo da aula, para "Informacoes da aula". */
   moduleTitle: string | null;
   onEnded: () => void;
+  /** Abre outra aula da sala (o botão "Go to that lesson" da aula trancada). */
+  onSelectLesson?: (lessonId: string) => void;
   previewMode: boolean;
+  /** Sequencial trancado: a aula que falta concluir antes desta. */
+  previousRequiredLesson?: Pick<Lesson, "id" | "title"> | null;
   unlockState: LessonUnlockState | null;
 }) {
   const { t, locale } = useTranslation();
@@ -1971,7 +1987,20 @@ function LessonContentPanel({
           <div className="member-video-empty">
             <LockKeyhole size={28} aria-hidden />
             <h5>{t("learn.classroom.lesson.locked")}</h5>
-            <p>{unlockState ? formatUnlockMessage(unlockState, locale, t) : t("learn.classroom.curriculum.locked")}</p>
+            <p>
+              {unlockState
+                ? formatUnlockMessage(unlockState, locale, t, previousRequiredLesson?.title ?? null)
+                : t("learn.classroom.curriculum.locked")}
+            </p>
+            {previousRequiredLesson && onSelectLesson ? (
+              <button
+                type="button"
+                onClick={() => onSelectLesson(previousRequiredLesson.id)}
+                className="button-outline mt-3 px-4 py-2 text-sm"
+              >
+                {t("learn.classroom.lesson.goToPreviousLesson")}
+              </button>
+            ) : null}
           </div>
         ) : resolvedVideoSource === "upload" && primaryHostedVideo?.bunnyVideoId ? (
           <VideoWatermark>

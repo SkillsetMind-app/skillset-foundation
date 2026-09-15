@@ -19,8 +19,8 @@ const PLATFORM_OVERVIEW = `SkillsetMind is an online course marketplace where ex
 - Students can message the course teacher from inside the course; teachers reply from Studio → Messages. There is no student-to-student messaging.
 - Curated learning paths (ordered course sequences) can appear on the student learning dashboard with rolled-up progress.
 - SkillsetMind issues course certificates that can be verified online.
-- The platform interface is available in English, Portuguese, and Spanish.
-- Support: the /support page, or email support@skillsetmind.com. Legal terms live at /legal/terms, /legal/privacy, and /legal/teacher-terms.`;
+- The platform interface is available in English and Spanish.
+- Support: the /support page, or email support@skillsetmind.com. We aim to reply within 2 business days (Mon–Fri); never promise a faster reply. Legal terms live at /legal/terms, /legal/privacy, /legal/teacher-terms, and /legal/copyright.`;
 
 function plansSection(): string {
   const rows = plans.map((plan) => {
