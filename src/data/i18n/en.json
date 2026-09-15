@@ -3263,6 +3263,7 @@
     },
     "errors": {
       "mfaRequired": "Enter the code from your authenticator app to finish signing in.",
+      "sessionRevoked": "You were signed out because the access on your account changed. Sign in again to continue. If this keeps happening, contact support.",
       "invalidCredentials": "Incorrect email or password.",
       "emailNotConfirmed": "Verify your email to finish signing in. Check your inbox for the link.",
       "accountExists": "An account already exists with this email.",
