@@ -443,9 +443,17 @@ select pg_temp.denied($q$update public.users set stripe_connect_status='connecte
 select pg_temp.denied($q$update public.users set stripe_connect_charges_enabled=not coalesce(stripe_connect_charges_enabled,false) where uid=auth.uid()::text$q$, 'P0001');
 select pg_temp.denied($q$update public.users set stripe_connect_payouts_enabled=not coalesce(stripe_connect_payouts_enabled,false) where uid=auth.uid()::text$q$, 'P0001');
 select pg_temp.denied($q$update public.users set stripe_connect_updated_at=now() where uid=auth.uid()::text$q$, 'P0001');
+select pg_temp.denied($q$update public.users set stripe_connect_country='GB' where uid=auth.uid()::text$q$, 'P0001');
 select pg_temp.denied($q$update public.users set stripe_customer_id='cus_smoke_forbidden' where uid=auth.uid()::text$q$, 'P0001');
 select pg_temp.denied($q$update public.users set current_plan_id='smoke_forbidden_plan' where uid=auth.uid()::text$q$, 'P0001');
 reset role;
+-- The server may write the payout country, but only as uppercase ISO alpha-2.
+select set_config('skillset.trusted_write', 'on', true);
+select pg_temp.denied($q$update public.users set stripe_connect_country='gb' where uid='81000000-0000-4000-8000-000000000002'$q$, '23514');
+update public.users set stripe_connect_country='GB' where uid='81000000-0000-4000-8000-000000000002';
+select pg_temp.assert_true((select stripe_connect_country='GB' from public.users
+  where uid='81000000-0000-4000-8000-000000000002'), 'trusted write could not record payout country');
+select set_config('skillset.trusted_write', 'off', true);
 select pg_temp.actor(4);
 set local role authenticated;
 update public.users set roles='["teacher"]', teacher_terms_accepted_at='2026-09-10T01:00:00Z',
