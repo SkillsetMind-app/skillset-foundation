@@ -484,7 +484,8 @@ def analisa(diff: str, prov: Provedor, chave: str, arquivos=(), prazo: float | N
     for tentativa, teto in enumerate((4000, 16000, 32000), start=1):
         content, usage = chama(diff, prov, teto, chave, prazo)
         tel["tokens"] += usage["total_tokens"]
-        r = normaliza(extrai_json(content))
+        j = extrai_json(content)
+        r = normaliza(j)
         fim = usage["finish_reason"]
         estado = ("vazio" if not content else "json_malformado" if r is None
                   else "truncado" if fim == "length"
@@ -502,8 +503,13 @@ def analisa(diff: str, prov: Provedor, chave: str, arquivos=(), prazo: float | N
             # Achado que começou e não fechou (título primeiro, chave em inglês,
             # corte no nome da chave ou antes da aspa do valor) também é
             # indício: a severidade dele nunca chegou, e ninguém pode apagá-lo.
+            # SEV_CRU e _le_listas leem o texto CRU: nome de campo escrito em
+            # escape ("severity") passa por fora dos dois. No objeto já
+            # decodificado o escape virou o campo de verdade, então _grave_solto
+            # vê o que o texto escondeu — senão a 2ª tentativa reabre a votação.
             grave = r is None and (any(not aspa or _sev(s) in ("critica", "alta")
-                                       for s, aspa in SEV_CRU.findall(content)) or _le_listas(content)[1])
+                                       for s, aspa in SEV_CRU.findall(content))
+                                   or _le_listas(content)[1] or _grave_solto(j))
             if bloq or aviso or grave:
                 # ponytail: para no 1º corte com achado, sem tentar teto maior;
                 # achado leve cortado vira 3. Mesclar tentativas se isso for comum.
@@ -1100,6 +1106,9 @@ def demo() -> None:
         ([("", "length", 12), ('{"achados":', "length", 12),
           ('{"achados":[]}', "stop", 12)], 0, ["vazio", "json_malformado", "ok"]),
         ([('{"achados":[{}]}', "stop", 12)] * 3, 3, ["json_malformado"] * 3),
+        # Campo de gravidade escrito em escape: o texto cru esconde, o objeto
+        # decodificado não. Uma resposta só — não pode haver 2ª tentativa.
+        ([('{"achados":[],"' + chr(92) + 'u0073everity":"critical"}', "stop", 12)], 3, ["json_malformado"]),
         ([("", "length", 12)] * 3, 3, ["vazio"] * 3),
         ([('{"achados":[]}', "length", 12)] * 3, 3, ["truncado"] * 3),
         # Filtro de conteúdo encerra na 1ª resposta, sem teto maior nem reserva.
