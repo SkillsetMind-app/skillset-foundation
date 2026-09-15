@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CreatorCourseDetail } from "@/components/courses/creator-course-detail";
@@ -346,7 +346,7 @@ const launchOffer = {
   id: "offer-1", courseId: "course-1", name: "Launch", publicCode: "LAUNCH", active: true,
   prices: [{ id: "price-1", offerId: "offer-1", amountMinor: 4900, currency: "USD", paymentType: "one_time", active: true }],
 };
-function withOffers(offers = [launchOffer]) {
+function withOffers(offers: object[] = [launchOffer]) {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers }) })));
 }
 
@@ -526,5 +526,133 @@ describe("checkout errors in the current locale", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Inscribirse —/ }));
     expect(await screen.findByText("No pudimos iniciar el pago seguro. Inténtalo de nuevo o contacta con soporte.")).toBeInTheDocument();
     expect(screen.queryByText(/PRIVATE_INTERNAL_DETAIL|This coupon has expired/)).not.toBeInTheDocument();
+  });
+});
+
+// Padlocked lesson + buy popup: the buyer stays on this page. The popup uses
+// only public course fields; no lesson content is fetched for the visitor.
+describe("CreatorCourseDetail — padlocked lessons and the buy popup", () => {
+  const mutable = fixtures.course as TeacherCourse;
+  const original = { modules: mutable.modules, freePreviewLessonId: mutable.freePreviewLessonId };
+
+  afterEach(() => {
+    mutable.modules = original.modules;
+    mutable.freePreviewLessonId = original.freePreviewLessonId;
+  });
+
+  it("clicking a locked lesson opens a dialog with the course title; its button goes to #enroll-card", async () => {
+    render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findAllByText("$149.00");
+
+    fireEvent.click(screen.getByRole("button", { name: /Why focus breaks/ }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Deep Focus Systems" })).toBeInTheDocument();
+    const cta = within(dialog).getByRole("link", { name: "Enroll — $149.00" });
+    expect(cta).toHaveAttribute("href", "#enroll-card");
+
+    // Same page: the popup closes and nothing navigates away.
+    fireEvent.click(cta);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(fixtures.router.push).not.toHaveBeenCalled();
+
+    // Anonymous visitor: no lesson content fetch, and the only network call is
+    // the public offers list.
+    expect(getLessonContentDoc).not.toHaveBeenCalled();
+    for (const [url] of vi.mocked(fetch).mock.calls) {
+      expect(String(url)).not.toMatch(/lesson|video/i);
+    }
+  });
+
+  it("the free-preview lesson is still not locked", async () => {
+    mutable.freePreviewLessonId = "lesson-2";
+    mutable.modules = [{
+      ...original.modules[0],
+      lessons: [
+        ...original.modules[0].lessons,
+        { id: "lesson-2", title: "Free taste", type: "video", description: "" },
+      ],
+    }];
+    vi.mocked(getLessonContentDoc).mockResolvedValue(null as never);
+    render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findAllByText("$149.00");
+
+    expect(screen.queryByRole("button", { name: /Free taste/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Why focus breaks/ })).toHaveAttribute("aria-haspopup", "dialog");
+    // Only the preview row can ever be read by a visitor.
+    for (const [, lessonId] of vi.mocked(getLessonContentDoc).mock.calls) {
+      expect(lessonId).toBe("lesson-2");
+    }
+  });
+
+  // The popup used to format course.priceAmountMinor itself, in English: a
+  // default offer, a discount code, a subscription or a Spanish visitor made it
+  // disagree with the buy card. Now it carries the card's own label.
+  const cardAction = (container: HTMLElement) =>
+    container.querySelector<HTMLElement>("#enroll-card [data-cta-focus]");
+
+  it.each([
+    ["a default offer that differs from the course field", () => {
+      withOffers([{ ...launchOffer, isDefault: true }]);
+    }, "Enroll — $49.00"],
+    ["an ?offer= discount code", () => {
+      fixtures.query = "offer=LAUNCH";
+      withOffers([
+        {
+          ...launchOffer, id: "offer-std", publicCode: null, isDefault: true,
+          prices: [{ ...launchOffer.prices[0], id: "price-std", offerId: "offer-std", amountMinor: 14900 }],
+        },
+        launchOffer,
+      ]);
+    }, "Enroll — $49.00"],
+    ["a monthly subscription", () => {
+      Object.assign(fixtures.course, { paymentType: "subscription_monthly" });
+    }, "Subscribe — $149.00 / month"],
+    ["a Spanish visitor", () => {
+      fixtures.locale = "es";
+    }, "Inscribirse —"],
+  ])("the popup button says exactly what the buy card says: %s", async (_case, setup, expected) => {
+    setup();
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await waitFor(() => expect(cardAction(container)).toHaveTextContent(expected));
+
+    fireEvent.click(screen.getByRole("button", { name: /Why focus breaks/ }));
+
+    const popupCta = within(screen.getByRole("dialog")).getAllByRole("link")[0];
+    expect(popupCta.textContent?.trim()).toBe(cardAction(container)?.textContent?.trim());
+  });
+
+  it("a free course gets free wording and no price", async () => {
+    Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
+    withOffers([]);
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await waitFor(() => expect(cardAction(container)).toHaveTextContent("Enroll free"));
+
+    fireEvent.click(screen.getByRole("button", { name: /Why focus breaks/ }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Enroll free to watch every lesson.")).toBeInTheDocument();
+    expect(within(dialog).getByRole("link", { name: "Enroll free" })).toHaveAttribute("href", "#enroll-card");
+    expect(dialog).not.toHaveTextContent(/\$|Buy the course/);
+  });
+
+  it("after the popup button, focus lands on the buy card's main button", async () => {
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findAllByText("$149.00");
+
+    fireEvent.click(screen.getByRole("button", { name: /Why focus breaks/ }));
+    fireEvent.click(within(screen.getByRole("dialog")).getAllByRole("link")[0]);
+
+    await waitFor(() => expect(cardAction(container)).toHaveFocus());
+  });
+
+  it("the course owner sees no padlocks on their own course", async () => {
+    fixtures.auth.status = "authenticated";
+    fixtures.auth.user = { uid: "teacher-1" };
+    render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findAllByText("$149.00");
+
+    expect(screen.queryByRole("button", { name: /Why focus breaks/ })).not.toBeInTheDocument();
+    expect(screen.getByText("Why focus breaks")).toBeInTheDocument();
   });
 });

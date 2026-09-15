@@ -45,6 +45,36 @@ describe("CourseUnlockModal", () => {
     expect(cta).toHaveTextContent("$249.00");
   });
 
+  it("with an anchor ctaHref it stays on the page: closes, then scrolls to the target", () => {
+    const onClose = vi.fn();
+    const target = document.createElement("aside");
+    target.id = "enroll-card";
+    target.scrollIntoView = vi.fn();
+    document.body.appendChild(target);
+    const frame = vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      callback(0);
+      return 0;
+    });
+    render(
+      <CourseUnlockModal
+        course={course()}
+        onClose={onClose}
+        ctaHref="#enroll-card"
+        secondaryLink={{ href: "/learn", label: "Back to my learning" }}
+      />,
+    );
+
+    const cta = screen.getByRole("link", { name: /Unlock course/ });
+    expect(cta).toHaveAttribute("href", "#enroll-card");
+    fireEvent.click(cta);
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(target.scrollIntoView).toHaveBeenCalledOnce();
+    expect(screen.getByRole("link", { name: "Back to my learning" })).toHaveAttribute("href", "/learn");
+
+    frame.mockRestore();
+    target.remove();
+  });
+
   it("closes on Escape so the dashboard is never trapped behind it", () => {
     const onClose = vi.fn();
     render(<CourseUnlockModal course={course()} onClose={onClose} />);
