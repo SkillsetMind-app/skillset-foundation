@@ -63,6 +63,7 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
   const { t } = useTranslation();
   const urlInputId = useId();
   const errorId = useId();
+  const hintId = useId();
   const [isDragActive, setIsDragActive] = useState(false);
   const savedIsEmbed = Boolean(getTrustedLessonEmbed(props.externalUrl));
   // Rascunho local: o que o professor digita so vira dado quando e link aceito.
@@ -215,7 +216,7 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
               disabled={props.disabled}
               readOnly={locked}
               aria-invalid={rejected || undefined}
-              aria-describedby={rejected ? errorId : undefined}
+              aria-describedby={rejected ? errorId : locked ? hintId : undefined}
               placeholder="https://www.youtube.com/watch?v=..."
               // O navegador cola no cursor ou na selecao (e o Ctrl+Z desfaz);
               // aqui so se anota o valor que a colagem deve produzir, e o
@@ -255,8 +256,11 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
               <small id={errorId} role="alert" className="font-semibold text-[var(--color-danger-fg)]">
                 {t("creatorEditor.videoSource.rejected")}
               </small>
+            ) : locked ? (
+              // Carregando, ou o erro de carga: anunciado e ligado ao campo.
+              <small id={hintId} role="status">{props.linkLockedHint}</small>
             ) : (
-              <small>{props.linkLockedHint ?? props.embedStatus}</small>
+              <small>{props.embedStatus}</small>
             )}
             {/* The protection trade-off belongs next to the link: an embed is
                 still a public link on YouTube or Vimeo; only Upload gets
