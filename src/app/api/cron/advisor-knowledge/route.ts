@@ -1,8 +1,7 @@
-import { timingSafeEqual } from "node:crypto";
-
 import { NextResponse } from "next/server";
 
 import { syncKnowledgeDoc } from "@/lib/assistant/knowledge-sync";
+import { isCronRequest } from "@/lib/cron/authorized";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 // GET /api/cron/advisor-knowledge — reindexes the owner-edited knowledge Doc
@@ -31,18 +30,8 @@ export const dynamic = "force-dynamic";
 // room to spare.
 export const maxDuration = 60;
 
-function authorized(header: string | null, secret: string): boolean {
-  const expected = Buffer.from(`Bearer ${secret}`);
-  const received = Buffer.from(header ?? "");
-  // timingSafeEqual throws when the buffers differ in length, so length is
-  // compared first — that comparison leaks the secret's length and nothing more,
-  // while the byte comparison stays constant-time.
-  return expected.length === received.length && timingSafeEqual(expected, received);
-}
-
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || !authorized(request.headers.get("authorization"), secret)) {
+  if (!isCronRequest(request)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
