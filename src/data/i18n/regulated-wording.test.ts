@@ -81,6 +81,7 @@ describe("interface copy names no regulated audience", () => {
     );
 
     expect(source.legalPages.terms.text10.toLowerCase()).toContain(termsDenial);
-    expect(source.legalPages.teacherTerms.text11.toLowerCase()).toContain(teacherDenial);
+    // text12 since the 2026-09-15 renumbering (eligibility became text5).
+    expect(source.legalPages.teacherTerms.text12.toLowerCase()).toContain(teacherDenial);
   });
 });

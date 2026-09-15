@@ -175,6 +175,17 @@ describe("CoursePlaylist", () => {
     expect(container.querySelectorAll(".member-playlist__lesson")).toHaveLength(1);
   });
 
+  it("aula agendada mostra a data em que abre, nao so 'Locked'", () => {
+    const scheduled = new Map<string, LessonUnlockState>([
+      ["l3", { unlocked: false, unlocksAt: new Date("2026-03-05T12:00:00.000Z"), reason: "scheduled" }],
+    ]);
+    renderPlaylist({ unlockStateById: scheduled });
+
+    fireEvent.click(screen.getByRole("button", { name: /Advanced/ }));
+
+    expect(screen.getByRole("button", { name: /Deep dive/ })).toHaveTextContent("Unlocks Mar 5, 2026");
+  });
+
   it("trocar de aula rola a lista ate a aula atual — a pessoa nao perde o lugar", () => {
     // A aula atual era destacada, mas a lista ficava onde estava: o destaque
     // caia fora da area visivel e a pessoa tinha que cacar onde parou.
