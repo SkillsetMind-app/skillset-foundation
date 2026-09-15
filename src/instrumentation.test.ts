@@ -177,17 +177,36 @@ describe("onRequestError", () => {
     expect(fetchMock.mock.calls.map((call) => sentBody(call).context.route)).toEqual(["/api/checkout", "/learn/courses/[slug]"]);
   });
 
-  // Envio que nao chegou ao relay nao pode calar a rota por 5 minutos.
-  it("envio perdido devolve a vaga: o proximo erro da rota tenta de novo", async () => {
-    fetchMock.mockImplementationOnce(() => Promise.resolve(new Response("fora", { status: 502 })));
-    const onRequestError = await loadFresh();
+  // Envio que o relay nao confirmou: nao cala a rota por 5 minutos, mas tambem
+  // nao a libera na hora. Um relay que entrega no Telegram e responde depois de
+  // 4 s da "falha" com a mensagem entregue; liberar na hora inundaria o canal.
+  it("envio perdido encurta a vaga para 60 s: nada antes, nova tentativa depois", async () => {
+    // So o relogio e falso: o teto de 4 s do envio continua no timer real.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const t0 = new Date("2026-09-15T12:00:00Z").getTime();
+      vi.setSystemTime(t0);
+      fetchMock.mockImplementationOnce(() => Promise.resolve(new Response("fora", { status: 502 })));
+      const onRequestError = await loadFresh();
 
-    await onRequestError(new Error("a"), request, context);
-    await onRequestError(new Error("b"), request, context);
-    await onRequestError(new Error("c"), request, context);
+      await onRequestError(new Error("a"), request, context);
+      vi.setSystemTime(t0 + 30_000);
+      await onRequestError(new Error("b"), request, context);
+      // Dentro de 60 s da falha: segurado.
+      expect(fetchMock).toHaveBeenCalledOnce();
 
-    // 1a perdida, 2a entregue, 3a segurada pelo throttle.
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+      vi.setSystemTime(t0 + 61_000);
+      await onRequestError(new Error("c"), request, context);
+      // Depois de 60 s: tenta de novo, e este chega.
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+
+      vi.setSystemTime(t0 + 120_000);
+      await onRequestError(new Error("d"), request, context);
+      // Entregue: volta aos 5 minutos.
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it.each([

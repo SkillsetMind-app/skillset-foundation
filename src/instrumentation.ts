@@ -59,8 +59,9 @@ function shortHash(text: string): string {
 // Um aviso por rota a cada 5 minutos, por instancia. Por ROTA, e nao pelo
 // evento: um erro inofensivo e recorrente numa rota nao pode esconder o do
 // checkout. A vaga e reservada antes do envio (um erro que volte a este gancho
-// pela mesma rota para aqui) e devolvida se o envio nao chegou ao relay.
+// pela mesma rota para aqui) e encurtada para 60 s se o relay nao confirmou.
 const THROTTLE_MS = 5 * 60 * 1000;
+const LOST_SEND_RETRY_MS = 60 * 1000;
 const MAX_ROUTES = 200;
 const lastSentAt = new Map<string, number>();
 
@@ -117,9 +118,13 @@ export const onRequestError: Instrumentation.onRequestError = async (error, requ
   keepAliveUntil(pending);
 
   const delivered = await pending;
-  // Envio perdido nao pode calar a rota por 5 minutos: devolve a vaga, se
-  // nenhum envio mais novo a pegou nesse meio tempo.
+  // Envio que o relay nao confirmou nao pode calar a rota por 5 minutos, mas
+  // tambem nao pode liberar a rota na hora: um relay que entrega no Telegram e
+  // demora mais de 4 s para responder da "falha" com a mensagem entregue, e uma
+  // rota quebrada avisaria a cada poucos segundos. A vaga encurta para 60 s,
+  // se nenhum envio mais novo a pegou: no pior caso, 1 aviso por minuto por
+  // rota por instancia, e um aviso perdido volta em ate um minuto.
   if (!delivered && lastSentAt.get(key) === reservedAt) {
-    lastSentAt.delete(key);
+    lastSentAt.set(key, Date.now() - THROTTLE_MS + LOST_SEND_RETRY_MS);
   }
 };
