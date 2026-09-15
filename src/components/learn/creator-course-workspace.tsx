@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -75,6 +75,21 @@ export function CreatorCourseWorkspace({
   const isLoadingCourse = Boolean(
     canOpenCourse && (!courseState.ready || courseState.key !== courseId),
   );
+
+  const router = useRouter();
+  // Once the paid enrollment has opened the course, the checkout marker has
+  // done its job. Left in the URL it rode along into lesson links, bookmarks
+  // and new tabs, and every reopen looked like a fresh purchase. One replace,
+  // keeping every other param (the lesson, for one).
+  const checkoutCourseOpened = cameFromCheckout && canOpenCourse && Boolean(course);
+  useEffect(() => {
+    if (!checkoutCourseOpened) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("checkout");
+    const query = params.toString();
+    const path = window.location.pathname;
+    router.replace(query ? `${path}?${query}` : path, { scroll: false });
+  }, [checkoutCourseOpened, router, searchParams]);
 
   useEffect(() => {
     if (!cameFromCheckout) {
