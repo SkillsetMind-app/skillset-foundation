@@ -242,6 +242,26 @@ describe("LessonVideoSourcePicker", () => {
     expect(onLinkChange).not.toHaveBeenCalled();
   });
 
+  // Auditoria student-video-access-server-side: link do YouTube/Vimeo e um
+  // embed publico; drip e matricula nao o protegem. O aviso fica sob o campo.
+  it("avisa sob o campo de link que o video do YouTube/Vimeo nao e protegido", () => {
+    render(
+      <I18nProvider initialLocale="en">
+        <ChangeLanguage />
+        <LessonVideoSourcePicker mode="link" accept="video/*" externalUrl=""
+          embedStatus="" onModeChange={vi.fn()} onSelectFile={vi.fn()} onLinkChange={vi.fn()} />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByText(
+      "YouTube and Vimeo videos stay viewable by anyone with the link, even outside SkillsetMind. Upload the video here to keep it for enrolled students only.",
+    )).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByText(
+      "Cualquiera que tenga el enlace puede ver los videos de YouTube y Vimeo, incluso fuera de SkillsetMind. Sube el video aquí para que solo lo vean los estudiantes inscritos.",
+    )).toBeInTheDocument();
+  });
+
   it("mantem a area de soltar ativa ao trocar de idioma", () => {
     const onSelectFile = vi.fn();
     render(
