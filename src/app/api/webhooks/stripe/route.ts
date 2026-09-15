@@ -21,7 +21,7 @@ import {
 } from "@/lib/payments/rules";
 import { fromStripeAmount, toStripeAmount } from "@/lib/payments/currencies";
 import { getAppUrl } from "@/lib/payments/server/app-url";
-import { sendPurchaseAccessEmail } from "@/lib/payments/server/purchase-access-email";
+import { sendCreatorSaleEmail, sendPurchaseAccessEmail } from "@/lib/payments/server/purchase-access-email";
 import { getStripeClient, isStripeConfigured } from "@/lib/payments/server/stripe";
 import {
   courseSubscriptionInterval,
@@ -224,8 +224,19 @@ function reportLostAccessEmail(
   });
 }
 
+// Runs the task once the response is out; after() keeps the instance alive
+// until it lands. after() throws outside a request scope (tests, scripts):
+// run inline there.
+function afterResponse(task: () => Promise<void>): void {
+  try {
+    after(task);
+  } catch {
+    void task();
+  }
+}
+
 function queuePurchaseAccessEmail(admin: Admin, sale: AccessEmailSale): void {
-  const send = async () => {
+  afterResponse(async () => {
     try {
       const { data, error } = await admin.auth.admin.getUserById(sale.userId);
       const email = data?.user?.email;
@@ -241,13 +252,52 @@ function queuePurchaseAccessEmail(admin: Admin, sale: AccessEmailSale): void {
     } catch (error) {
       reportLostAccessEmail(sale, error);
     }
-  };
-  try {
-    after(send);
-  } catch {
-    // after() throws outside a request scope (tests, scripts): send inline.
-    void send();
-  }
+  });
+}
+
+// --- "new sale" email to the creator ----------------------------------------
+// Queued at the same point, behind the same gate, as the buyer's email: once
+// per paid sale, never on renewals or redeliveries. Its Idempotency-Key gets a
+// suffix because Resend rejects one key reused for a different email. It says
+// "a new student" and carries no buyer data. A failure is logged and alerted
+// under its own event, so it cannot throttle away a lost buyer email.
+type CreatorSale = {
+  ownerId: string;
+  courseId: string;
+  courseTitle: string;
+  /** Gross sale amount, stored as value x 100. */
+  amountMinor: number;
+  currency: string;
+  ledgerId: string;
+};
+
+function queueCreatorSaleEmail(admin: Admin, sale: CreatorSale): void {
+  // A $0 order (100% coupon) grants access but is not a sale to announce.
+  if (sale.amountMinor <= 0) return;
+  afterResponse(async () => {
+    try {
+      const { data, error } = await admin.auth.admin.getUserById(sale.ownerId);
+      const email = data?.user?.email;
+      if (error || !email) throw new Error("Course owner has no email to notify.");
+      await sendCreatorSaleEmail({
+        email,
+        courseTitle: sale.courseTitle,
+        amountMinor: sale.amountMinor,
+        currency: sale.currency,
+        salesUrl: `${getAppUrl()}/teach/sales`,
+        idempotencyKey: `${sale.ledgerId}:creator-sale`,
+      });
+    } catch (error) {
+      console.error("Creator sale email failed", { courseId: sale.courseId, ownerId: sale.ownerId }, error);
+      notifyOps({
+        event: "stripe.webhook.creator_sale_email_failed",
+        severity: "warn",
+        summary:
+          "A creator was not emailed about a new sale. The sale and the student's access are fine; it still shows on their sales page.",
+        context: { courseId: sale.courseId, ownerId: sale.ownerId },
+      });
+    }
+  });
 }
 
 // --- one-time checkout fulfilment -------------------------------------------
@@ -552,6 +602,14 @@ async function handleCheckoutCompleted(
     ledgerId: orderId,
     locale: normalizeLocale(session.locale),
   });
+  queueCreatorSaleEmail(admin, {
+    ownerId: course.owner_id,
+    courseId,
+    courseTitle: course.title,
+    amountMinor: grossAmountMinor,
+    currency: order.currency,
+    ledgerId: orderId,
+  });
 
   // Release the in-flight checkout lock now that the purchase settled — only if
   // it still belongs to THIS order (a sibling attempt's lock must survive). [B3]
@@ -794,6 +852,14 @@ async function handleCourseSubscriptionInvoicePaid(
         ledgerId: invoice.id,
         // Written by checkout on the subscription; older ones fall back to English.
         locale: normalizeLocale(typeof meta.locale === "string" ? meta.locale : null),
+      });
+      queueCreatorSaleEmail(admin, {
+        ownerId: course.owner_id,
+        courseId,
+        courseTitle: course.title,
+        amountMinor: grossAmountMinor,
+        currency: currencyUpper,
+        ledgerId: invoice.id,
       });
     }
   }

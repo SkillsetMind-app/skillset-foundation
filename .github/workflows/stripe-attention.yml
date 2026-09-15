@@ -1,10 +1,11 @@
 name: Stripe attention
 
 # Hourly tick for /api/cron/stripe-attention: tells ops when a Stripe event did
-# not finish processing (someone may have paid without getting access).
+# not finish processing (someone may have paid without getting access). Also
+# knocks on /api/cron/ops-inbox: tickets, reports and verifications waiting.
 #
 # Lives here and not in vercel.json because Vercel Hobby crons run at most once
-# a day. The route decides whether to alert; this job only knocks on the door.
+# a day. The routes decide whether to alert; this job only knocks on the door.
 
 permissions: {}
 
@@ -19,7 +20,7 @@ concurrency:
 
 jobs:
   check:
-    name: Check stuck Stripe events
+    name: Check stuck Stripe events and the ops inbox
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -37,3 +38,18 @@ jobs:
           curl -fsS -o /dev/null -w 'HTTP %{http_code}\n' --max-time 60 \
             -H "Authorization: Bearer $CRON_SECRET" \
             https://www.skillsetmind.com/api/cron/stripe-attention
+
+      # Tickets, reports and verifications waiting for staff. Runs even when the
+      # Stripe step failed, so one red check never mutes the other.
+      - name: Call the ops inbox check
+        if: ${{ !cancelled() }}
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error title=Ops inbox not configured::Missing repository secret CRON_SECRET (same value as on Vercel)."
+            exit 1
+          fi
+          curl -fsS -o /dev/null -w 'HTTP %{http_code}\n' --max-time 60 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://www.skillsetmind.com/api/cron/ops-inbox
