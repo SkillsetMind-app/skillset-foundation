@@ -133,17 +133,6 @@ type ActiveLessonStudio = {
   lessonId: string;
 } | null;
 
-const lessonTypes: { value: LessonType; label: string }[] = [
-  { value: "video", label: "publicCourses.lessonTypes.video" },
-  { value: "text", label: "publicCourses.lessonTypes.text" },
-  // Quiz/assignment authoring is hidden until a real assessment engine exists
-  // (no question/submission/grading model). See
-  // docs/plans/2026-06-23-launch-readiness.md (B8).
-  { value: "live_recording", label: "publicCourses.lessonTypes.live_recording" },
-  { value: "download", label: "publicCourses.lessonTypes.download" },
-  { value: "external_embed", label: "publicCourses.lessonTypes.external_embed" },
-];
-
 const dripStrategies: { value: DripStrategy; label: string; detail: string }[] = [
   {
     value: "instant",
@@ -478,11 +467,6 @@ export function CourseBuilderStudio() {
   const [moduleError, setModuleError] = useState(false);
   const [lessonModuleId, setLessonModuleId] = useState("");
   const [lessonTitle, setLessonTitle] = useState("");
-  const [lessonType, setLessonType] = useState<LessonType>("video");
-  const [lessonDescription, setLessonDescription] = useState("");
-  const [lessonDripDelayDays, setLessonDripDelayDays] = useState("");
-  const [lessonContentText, setLessonContentText] = useState("");
-  const [lessonExternalUrl, setLessonExternalUrl] = useState("");
   const [lessonIsFreePreview, setLessonIsFreePreview] = useState(false);
   // Os dois formularios agora sao pedidos, nao paisagem: a lista de modulos e
   // que abre a aba. Modulo recolhido mostra uma linha; abre no clique, ao
@@ -594,7 +578,10 @@ export function CourseBuilderStudio() {
           )
         ) {
           pendingLessonStudioRef.current = null;
-          setActiveLessonStudio(pendingStudio);
+          // Never replace a studio that is already open: the modal is keyed by
+          // lesson id, so swapping lessons would remount it mid-upload and drop
+          // the progress bar and the close guard of the lesson in progress.
+          setActiveLessonStudio((current) => current ?? pendingStudio);
           setSuccess(null);
         }
       },
@@ -982,8 +969,9 @@ export function CourseBuilderStudio() {
     }
 
     const nextLessonId = createLocalId("lesson");
-    const nextDripDelayDays = normalizeDripDelayDays(lessonDripDelayDays);
 
+    // Aula nova nasce so com o titulo: tipo, drip, nota, texto e link sairam
+    // do formulario (decisao de 14/09). O conteudo entra em "Edit content".
     setModules((current) =>
       current.map((module) =>
         module.id === lessonModuleId
@@ -994,12 +982,12 @@ export function CourseBuilderStudio() {
                 {
                   id: nextLessonId,
                   title: nextTitle,
-                  type: lessonType,
-                  description: lessonDescription.trim(),
+                  type: "video",
+                  description: "",
                   durationMinutes: null,
-                  dripDelayDays: nextDripDelayDays,
-                  contentText: lessonContentText.trim() || null,
-                  externalUrl: lessonExternalUrl.trim() || null,
+                  dripDelayDays: null,
+                  contentText: null,
+                  externalUrl: null,
                 },
               ],
             }
@@ -1010,10 +998,6 @@ export function CourseBuilderStudio() {
       setFreePreviewLessonId(nextLessonId);
     }
     setLessonTitle("");
-    setLessonDescription("");
-    setLessonDripDelayDays("");
-    setLessonContentText("");
-    setLessonExternalUrl("");
     setLessonIsFreePreview(false);
     setError(null);
     // Video-first flow: the lesson studio (Video tab) opens automatically as
@@ -2341,84 +2325,29 @@ export function CourseBuilderStudio() {
                               {t("creatorEditor.builder.curriculum.help")}
                             </InlineHelp>
                           </h5>
-                          <div className="grid gap-3 md:grid-cols-[180px_minmax(0,1fr)]">
-                            <select
-                              value={lessonType}
-                              onChange={(event) => setLessonType(event.target.value as LessonType)}
-                              disabled={!isEditable}
-                              aria-label={t("creatorEditor.builder.curriculum.lessonType")}
-                              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                            >
-                              {lessonTypes.map((item) => (
-                                <option key={item.value} value={item.value}>
-                                  {t(item.label)}
-                                </option>
-                              ))}
-                            </select>
-                            <input
-                              value={lessonTitle}
-                              onChange={(event) => setLessonTitle(event.target.value)}
-                              disabled={!isEditable}
-                              aria-label={t("creatorEditor.builder.curriculum.lessonTitle")}
-                              placeholder={t("creatorEditor.builder.curriculum.lessonTitle")}
-                              className="min-w-0 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                            />
-                          </div>
-                          {/* Drip, link, nota, texto e previa gratis sao a
-                              minoria dos casos: ficam a um clique daqui. */}
+                          <input
+                            value={lessonTitle}
+                            onChange={(event) => setLessonTitle(event.target.value)}
+                            disabled={!isEditable}
+                            aria-label={t("creatorEditor.builder.curriculum.lessonTitle")}
+                            placeholder={t("creatorEditor.builder.curriculum.lessonTitle")}
+                            className="min-w-0 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                          />
+                          {/* Previa gratis e a minoria dos casos: fica a um clique daqui. */}
                           <details className="rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3">
                             <summary className="cursor-pointer text-xs font-semibold text-[var(--color-ink-soft)]">
                               {t("creatorEditor.builder.curriculum.moreOptions")}
                             </summary>
-                            <div className="mt-3 grid gap-3">
-                              <div className="grid gap-3 md:grid-cols-[160px_minmax(0,1fr)]">
-                                <input
-                                  value={lessonDripDelayDays}
-                                  onChange={(event) => setLessonDripDelayDays(event.target.value)}
-                                  disabled={!isEditable}
-                                  inputMode="numeric"
-                                  aria-label={t("creatorEditor.builder.curriculum.delayLabel")}
-                                  placeholder={t("creatorEditor.builder.curriculum.delayPlaceholder")}
-                                  className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                                />
-                                <input
-                                  value={lessonExternalUrl}
-                                  onChange={(event) => setLessonExternalUrl(event.target.value)}
-                                  disabled={!isEditable}
-                                  aria-label={t("creatorEditor.builder.curriculum.externalLabel")}
-                                  placeholder={t("creatorEditor.builder.curriculum.externalPlaceholder")}
-                                  className="min-w-0 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                                />
-                              </div>
-                              <textarea
-                                value={lessonDescription}
-                                onChange={(event) => setLessonDescription(event.target.value)}
+                            <label className="mt-3 flex items-start gap-3 rounded-[10px] border fine-rule bg-white p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+                              <input
+                                type="checkbox"
+                                checked={lessonIsFreePreview}
                                 disabled={!isEditable}
-                                rows={2}
-                                aria-label={t("creatorEditor.builder.curriculum.noteLabel")}
-                                placeholder={t("creatorEditor.builder.curriculum.notePlaceholder")}
-                                className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                                onChange={(event) => setLessonIsFreePreview(event.target.checked)}
+                                className="mt-1"
                               />
-                              <textarea
-                                value={lessonContentText}
-                                onChange={(event) => setLessonContentText(event.target.value)}
-                                disabled={!isEditable}
-                                rows={3}
-                                aria-label={t("creatorEditor.builder.curriculum.textLabel")}
-                                placeholder={t("creatorEditor.builder.curriculum.textPlaceholder")}
-                                className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                              />
-                              <label className="flex items-start gap-3 rounded-[10px] border fine-rule bg-white p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-                                <input
-                                  type="checkbox"
-                                  checked={lessonIsFreePreview}
-                                  disabled={!isEditable}
-                                  onChange={(event) => setLessonIsFreePreview(event.target.checked)}
-                                  className="mt-1"
-                                />
-                                {t("creatorEditor.builder.curriculum.makePreview")}
-                              </label>
-                            </div>
+                              {t("creatorEditor.builder.curriculum.makePreview")}
+                            </label>
                           </details>
                           <div className="flex flex-wrap gap-2">
                             <button
@@ -2498,7 +2427,10 @@ export function CourseBuilderStudio() {
                                 </span>
                               )}
                             </div>
-                            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_190px_140px_auto] lg:items-end">
+                            {/* A linha mostra so o titulo: tipo, dias de espera, nota,
+                                texto e link sairam da tela (decisao de 14/09), mas
+                                continuam no dado — updateLesson so aplica o patch. */}
+                            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                               <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
                                 {t("creatorEditor.builder.curriculum.lessonTitle")}
                                 <input
@@ -2509,41 +2441,6 @@ export function CourseBuilderStudio() {
                                     })
                                   }
                                   disabled={!isEditable}
-                                  className="rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                                />
-                              </label>
-                              <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                                {t("creatorEditor.builder.curriculum.type")}
-                                <select
-                                  value={lesson.type}
-                                  onChange={(event) =>
-                                    updateLesson(module.id, lesson.id, {
-                                      type: event.target.value as LessonType,
-                                    })
-                                  }
-                                  disabled={!isEditable}
-                                  className="rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                                >
-                                  {lessonTypes.map((item) => (
-                                    <option key={item.value} value={item.value}>
-                                      {t(item.label)}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
-                              <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                                {t("creatorEditor.builder.curriculum.delayDays")}
-                                <input
-                                  value={lesson.dripDelayDays ?? ""}
-                                  onChange={(event) =>
-                                    updateLesson(module.id, lesson.id, {
-                                      dripDelayDays: normalizeDripDelayDays(
-                                        event.target.value,
-                                      ),
-                                    })
-                                  }
-                                  disabled={!isEditable}
-                                  inputMode="numeric"
                                   className="rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                                 />
                               </label>
@@ -2569,45 +2466,6 @@ export function CourseBuilderStudio() {
                                 </button>
                               </div>
                             </div>
-
-                            <textarea
-                              value={lesson.description}
-                              onChange={(event) =>
-                                updateLesson(module.id, lesson.id, {
-                                  description: event.target.value,
-                                })
-                              }
-                              disabled={!isEditable}
-                              rows={2}
-                              aria-label={t("creatorEditor.builder.curriculum.noteNumber").replace("{index}", () => String(lessonIndex + 1))}
-                              placeholder={t("creatorEditor.builder.curriculum.editNotePlaceholder")}
-                              className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                            />
-                            <textarea
-                              value={lesson.contentText ?? ""}
-                              onChange={(event) =>
-                                updateLesson(module.id, lesson.id, {
-                                  contentText: event.target.value || null,
-                                })
-                              }
-                              disabled={!isEditable}
-                              rows={3}
-                              aria-label={t("creatorEditor.builder.curriculum.textNumber").replace("{index}", () => String(lessonIndex + 1))}
-                              placeholder={t("creatorEditor.builder.curriculum.editTextPlaceholder")}
-                              className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                            />
-                            <input
-                              value={lesson.externalUrl ?? ""}
-                              onChange={(event) =>
-                                updateLesson(module.id, lesson.id, {
-                                  externalUrl: event.target.value || null,
-                                })
-                              }
-                              disabled={!isEditable}
-                              aria-label={t("creatorEditor.builder.curriculum.externalNumber").replace("{index}", () => String(lessonIndex + 1))}
-                              placeholder={t("creatorEditor.builder.curriculum.editExternalPlaceholder")}
-                              className="rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                            />
 
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div className="flex flex-wrap gap-2">
@@ -2901,6 +2759,9 @@ export function CourseBuilderStudio() {
       </div>
       {course && activeLessonStudioModule && activeLessonStudioLesson ? (
         <LessonContentModal
+          // Uma instancia por aula: o estado do estudio (aba, envio, se a
+          // nota publica antiga aparece) nao vaza de uma aula para outra.
+          key={activeLessonStudioLesson.id}
           course={course}
           module={activeLessonStudioModule}
           moduleIndex={activeLessonStudioModuleIndex}
@@ -2908,6 +2769,7 @@ export function CourseBuilderStudio() {
           lessonIndex={activeLessonStudioLessonIndex}
           isEditable={isEditable}
           isFreePreview={freePreviewLessonId === activeLessonStudioLesson.id}
+          dripStrategy={dripStrategy}
           onClose={() => setActiveLessonStudio(null)}
           onSetFreePreview={() => {
             const next =

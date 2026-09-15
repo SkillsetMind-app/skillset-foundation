@@ -5,6 +5,7 @@ import { CreatorCourseDetail } from "@/components/courses/creator-course-detail"
 import { startCourseCheckout, enrollInFreeCreatorCourse } from "@/lib/payments/checkout";
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
 import { getCourseLanding } from "@/lib/data/course-landings";
+import { getLessonContentDoc } from "@/lib/data/lesson-content";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
@@ -90,7 +91,11 @@ vi.mock("@/lib/data/course-landings", () => ({
 
 vi.mock("@/lib/data/lesson-content", () => ({
   getLessonContentDoc: vi.fn(),
-  resolveLessonContent: () => ({ contentText: null, externalUrl: null }),
+  // Devolve o que a aula traz em linha (o fixture padrao nao traz nada).
+  resolveLessonContent: (
+    _doc: unknown,
+    lesson: { contentText?: string | null; externalUrl?: string | null },
+  ) => ({ contentText: lesson.contentText ?? null, externalUrl: lesson.externalUrl ?? null }),
 }));
 
 vi.mock("@/lib/payments/checkout", () => ({
@@ -142,6 +147,31 @@ describe("CreatorCourseDetail", () => {
     // Clamp, não 60px fixos.
     expect(title).toHaveClass("page-title");
     expect(title.className).not.toMatch(/text-6xl/);
+  });
+
+  // A aula de previa gratis mostra o texto na pagina do curso: as mesmas
+  // quebras de linha e links clicaveis da area de membros, sem HTML cru.
+  it("texto da aula de previa gratis vira link e mantem a quebra de linha", async () => {
+    vi.mocked(getLessonContentDoc).mockResolvedValue(null);
+    const course = fixtures.course as TeacherCourse;
+    const lesson = course.modules[0].lessons[0];
+    course.freePreviewLessonId = "lesson-1";
+    lesson.contentText = "linha 1\nveja https://a.com/x.";
+    try {
+      render(<CreatorCourseDetail courseIdOverride="course-1" />);
+      await screen.findAllByText("$149.00");
+
+      const preview = document.getElementById("free-preview") as HTMLElement;
+      const link = preview.querySelector('a[href="https://a.com/x"]');
+      expect(link).not.toBeNull();
+      expect(link).toHaveAttribute("target", "_blank");
+      expect(link).toHaveAttribute("rel", "noopener noreferrer nofollow ugc");
+      expect(link?.parentElement).toHaveClass("whitespace-pre-line");
+      expect(preview.textContent).toContain("linha 1\nveja https://a.com/x.");
+    } finally {
+      delete course.freePreviewLessonId;
+      delete lesson.contentText;
+    }
   });
 
   it("com hideHeader não repete o título que a página já renderizou no servidor", async () => {

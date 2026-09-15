@@ -250,4 +250,72 @@ describe("aba Curriculum: a lista de modulos vem primeiro", () => {
     expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   });
+
+  // Decisao de 14/09: a aula mostra so o titulo e o botao de conteudo. Tipo,
+  // dias de espera, nota, texto e link sairam da tela (nao do banco).
+  it("linha e formulario da aula mostram so o titulo", async () => {
+    const modulesOriginais = mocks.course.modules;
+    mocks.course.modules = [
+      {
+        id: "m1",
+        title: "Start here",
+        lessons: [{ id: "l1", title: "Welcome", type: "text", description: "" }],
+      },
+    ];
+    try {
+      renderBuilder();
+      await screen.findByRole("heading", { name: mocks.course.title });
+      fireEvent.click(screen.getByRole("button", { name: "Show the lessons in module 1" }));
+
+      expect(screen.getByRole("textbox", { name: "Lesson title" })).toHaveValue("Welcome");
+      expect(screen.getByRole("button", { name: "Add video" })).toBeInTheDocument();
+      expect(screen.queryByRole("combobox", { name: "Type" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("textbox", { name: "Delay days" })).not.toBeInTheDocument();
+      for (const name of ["Lesson 1 note or outcome", "Lesson 1 text content", "Lesson 1 external link"]) {
+        expect(screen.queryByRole("textbox", { name })).not.toBeInTheDocument();
+      }
+
+      fireEvent.click(screen.getByRole("button", { name: "Add lesson to module 1" }));
+      const form = curriculumCard().querySelector("form") as HTMLElement;
+      expect(within(form).queryByRole("combobox")).not.toBeInTheDocument();
+      expect(within(form).getAllByRole("textbox")).toHaveLength(1);
+    } finally {
+      mocks.course.modules = modulesOriginais;
+    }
+  });
+
+  // Guarda de compatibilidade: a RPC grava content_text/external_url com o
+  // que vier no payload (chave ausente vira NULL). Mexer no titulo de uma aula
+  // antiga tem de devolver os seis campos intactos, mesmo fora da tela.
+  it("editar o titulo de aula antiga preserva os campos que sairam da tela", async () => {
+    const modulesOriginais = mocks.course.modules;
+    const aulaAntiga = {
+      id: "l1",
+      title: "Old lesson",
+      type: "quiz" as const,
+      durationMinutes: 12,
+      dripDelayDays: 5,
+      contentText: "x",
+      externalUrl: "https://drive.google.com/x",
+      description: "n",
+    };
+    mocks.course.modules = [{ id: "m1", title: "Start here", lessons: [aulaAntiga] }];
+    try {
+      renderBuilder();
+      await screen.findByRole("heading", { name: mocks.course.title });
+      fireEvent.click(screen.getByRole("button", { name: "Show the lessons in module 1" }));
+      fireEvent.change(screen.getByRole("textbox", { name: "Lesson title" }), {
+        target: { value: "Renamed lesson" },
+      });
+
+      // Autosave de verdade (debounce de 1,8 s), sem clicar em salvar.
+      await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalled(), { timeout: 5000 });
+      const lessons = vi.mocked(updateTeacherCourseBuilder).mock.calls.at(-1)?.[1].modules?.[0].lessons;
+      expect(lessons).toEqual([
+        expect.objectContaining({ ...aulaAntiga, title: "Renamed lesson" }),
+      ]);
+    } finally {
+      mocks.course.modules = modulesOriginais;
+    }
+  }, 10000);
 });
