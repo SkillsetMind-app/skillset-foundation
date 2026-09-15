@@ -9,17 +9,17 @@ const mocks = vi.hoisted(() => ({
   subscriptionCancel: vi.fn(),
   paymentIntentRetrieve: vi.fn(),
   disputesList: vi.fn(),
-  sendAccessEmail: vi.fn(),
+  notifyOps: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
   getSupabaseAdminClient: mocks.getAdmin,
 }));
 
-// The email sender is the boundary: the webhook decides WHEN to send, the
-// module decides HOW. Mocked for every test here so no case reaches Supabase.
-vi.mock("@/lib/payments/server/purchase-access-email", () => ({
-  sendPurchaseAccessEmail: mocks.sendAccessEmail,
+// Observed, not sent: the real helper throttles per event for 5 minutes, which
+// would make one test's alert hide the next one's.
+vi.mock("@/lib/ops/alert", () => ({
+  notifyOps: mocks.notifyOps,
 }));
 
 vi.mock("@/lib/payments/server/stripe", () => ({
@@ -598,7 +598,11 @@ describe("Stripe webhook financial integrity", () => {
     });
     mocks.subscriptionCancel.mockReset().mockResolvedValue({ status: "canceled" });
     mocks.disputesList.mockReset().mockResolvedValue({ data: [] });
-    mocks.sendAccessEmail.mockReset().mockResolvedValue(undefined);
+    mocks.notifyOps.mockReset();
+    // Outside the access-email block no case has a Resend key: the sender
+    // skips with a warning and never reaches the network.
+    vi.stubEnv("RESEND_API_KEY", "");
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
     mocks.isStripeConfigured.mockReturnValue(true);
     mocks.paymentIntentRetrieve
       .mockReset()
@@ -1394,84 +1398,155 @@ describe("Stripe webhook financial integrity", () => {
   describe("access email after a paid sale", () => {
     const courseUrl = "https://www.skillsetmind.com/learn/courses/course_1";
     const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+    // Resend's HTTP API is the boundary: everything up to the request is real.
+    const resend = vi.fn<typeof fetch>();
+    const lostEmailAlert = expect.objectContaining({
+      event: "stripe.webhook.access_email_failed",
+      context: { courseId: "course_1", userId: "user_1" },
+    });
+
+    function sentEmails() {
+      return resend.mock.calls.map(([url, init]) => ({
+        url: String(url),
+        headers: new Headers(init?.headers),
+        body: JSON.parse(String(init?.body)) as {
+          from: string; to: string[]; subject: string; html: string; text: string;
+        },
+      }));
+    }
+
+    function subscription(metadata: Record<string, string> = {}) {
+      return {
+        metadata: { purpose: "course_subscription", courseId: "course_1", userId: "user_1", teacherId: "teacher_1", ...metadata },
+        items: { data: [{ current_period_end: 1_800_000_000 }] },
+        customer: "cus_1",
+        status: "active",
+        cancel_at_period_end: false,
+      };
+    }
+
+    function firstInvoiceEvent() {
+      const event = paidInvoiceEvent();
+      Object.assign(event.data.object, { billing_reason: "subscription_create" });
+      return event;
+    }
 
     beforeEach(() => {
       // Empty falls back to SITE_URL, the canonical www origin.
       vi.stubEnv("SKILLSET_APP_URL", "");
+      vi.stubEnv("RESEND_API_KEY", "re_fixture");
+      resend.mockReset().mockImplementation(async () => new Response('{"id":"email_1"}', { status: 200 }));
+      vi.stubGlobal("fetch", resend);
     });
 
-    it("sends the buyer one email with a link into the course", async () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("sends one purchase email keyed by the ledger id, with the course and the account", async () => {
       const admin = createAdmin("checkout");
       mocks.getAdmin.mockReturnValue(admin);
 
       expect((await postEvent(checkoutEvent())).status).toBe(200);
 
-      await vi.waitFor(() => expect(mocks.sendAccessEmail).toHaveBeenCalledTimes(1));
-      expect(mocks.sendAccessEmail).toHaveBeenCalledWith({ email: "buyer@example.test", courseUrl });
+      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
+      const [email] = sentEmails();
+      expect(email.url).toBe("https://api.resend.com/emails");
+      expect(email.headers.get("Idempotency-Key")).toBe("order_1");
+      expect(email.body).toMatchObject({
+        from: "SkillsetMind <no-reply@skillsetmind.com>",
+        to: ["buyer@example.test"],
+        subject: "Your course is ready: Course",
+      });
+      expect(email.body.html).toContain(`href="${courseUrl}"`);
+      expect(email.body.text).toContain(courseUrl);
+      expect(email.body.text).toContain("Sign in with buyer@example.test");
+      expect(email.body.text).toContain("support@skillsetmind.com");
       expect(admin.auth.admin.getUserById).toHaveBeenCalledWith("user_1");
     });
 
-    it("sends once when Stripe delivers the same event twice", async () => {
+    it("writes in Spanish when the buyer checked out in Spanish", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = checkoutEvent();
+      Object.assign(event.data.object, { locale: "es" });
+
+      expect((await postEvent(event)).status).toBe(200);
+
+      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
+      const [email] = sentEmails();
+      expect(email.body.subject).toBe("Tu curso está listo: Course");
+      expect(email.body.text).toContain("Inicia sesión con buyer@example.test");
+    });
+
+    it("sends nothing on a redelivery of the same event", async () => {
       const admin = createAdmin("checkout");
       mocks.getAdmin.mockReturnValue(admin);
       const event = checkoutEvent();
 
       expect((await postEvent(event)).status).toBe(200);
+      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
       expect((await postEvent(event)).status).toBe(200);
 
-      await vi.waitFor(() => expect(mocks.sendAccessEmail).toHaveBeenCalledTimes(1));
       await flush();
-      expect(mocks.sendAccessEmail).toHaveBeenCalledTimes(1);
+      expect(resend).toHaveBeenCalledTimes(1);
       expect(fulfillCalls(admin)).toHaveLength(1);
     });
 
-    it("keeps the enrollment and answers 2xx when the email cannot be sent", async () => {
+    it.each([
+      ["a Resend 4xx", async () => new Response("{}", { status: 422 })],
+      ["a Resend 5xx", async () => new Response("{}", { status: 503 })],
+      ["a network error", async (): Promise<Response> => { throw new TypeError("fetch failed"); }],
+    ])("keeps the enrollment, answers 2xx and alerts with the ids on %s", async (_label, answer) => {
       const admin = createAdmin("checkout");
       mocks.getAdmin.mockReturnValue(admin);
-      mocks.sendAccessEmail.mockImplementation(() => {
-        throw new Error("mail relay down");
-      });
+      resend.mockImplementation(answer);
 
       const response = await postEvent(checkoutEvent());
 
       expect(response.status).toBe(200);
       expect(fulfillCalls(admin)).toHaveLength(1);
       expect(admin.state.doneEvents).toContain("evt_checkout");
-      await vi.waitFor(() => expect(mocks.sendAccessEmail).toHaveBeenCalledTimes(1));
-      await vi.waitFor(() =>
-        expect(console.error).toHaveBeenCalledWith("Purchase access email failed", expect.any(Error)),
-      );
+      await vi.waitFor(() => expect(mocks.notifyOps).toHaveBeenCalledWith(lostEmailAlert));
+      expect(resend).toHaveBeenCalledTimes(1);
+    });
+
+    it("skips without a Resend key: no request, no throw, one warning", async () => {
+      vi.stubEnv("RESEND_API_KEY", "");
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+
+      await vi.waitFor(() => expect(console.warn).toHaveBeenCalledTimes(1));
+      expect(resend).not.toHaveBeenCalled();
+      expect(mocks.notifyOps).not.toHaveBeenCalled();
     });
 
     it("sends nothing when the sale is refunded", async () => {
       const admin = createAdmin("checkout");
       mocks.getAdmin.mockReturnValue(admin);
       expect((await postEvent(checkoutEvent())).status).toBe(200);
-      await vi.waitFor(() => expect(mocks.sendAccessEmail).toHaveBeenCalledTimes(1));
+      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
 
       admin.state.mode = "refund";
       expect((await postEvent(refundEvent("evt_refund_access", 10000))).status).toBe(200);
 
       await flush();
-      expect(mocks.sendAccessEmail).toHaveBeenCalledTimes(1);
+      expect(resend).toHaveBeenCalledTimes(1);
     });
 
     it("sends on a subscription's first invoice, not on its renewals", async () => {
       const admin = createAdmin("checkout");
       mocks.getAdmin.mockReturnValue(admin);
-      mocks.subscriptionRetrieve.mockResolvedValue({
-        metadata: { purpose: "course_subscription", courseId: "course_1", userId: "user_1", teacherId: "teacher_1" },
-        items: { data: [{ current_period_end: 1_800_000_000 }] },
-        customer: "cus_1",
-        status: "active",
-        cancel_at_period_end: false,
-      });
+      mocks.subscriptionRetrieve.mockResolvedValue(subscription({ locale: "es" }));
 
-      const first = paidInvoiceEvent();
-      Object.assign(first.data.object, { billing_reason: "subscription_create" });
-      expect((await postEvent(first)).status).toBe(200);
-      await vi.waitFor(() => expect(mocks.sendAccessEmail).toHaveBeenCalledTimes(1));
-      expect(mocks.sendAccessEmail).toHaveBeenCalledWith({ email: "buyer@example.test", courseUrl });
+      expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
+      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
+      const [email] = sentEmails();
+      expect(email.headers.get("Idempotency-Key")).toBe("in_paid_1");
+      expect(email.body.to).toEqual(["buyer@example.test"]);
+      expect(email.body.subject).toBe("Tu curso está listo: Course");
 
       const renewal = paidInvoiceEvent();
       renewal.id = "evt_invoice_renewal";
@@ -1479,7 +1554,19 @@ describe("Stripe webhook financial integrity", () => {
       expect((await postEvent(renewal)).status).toBe(200);
 
       await flush();
-      expect(mocks.sendAccessEmail).toHaveBeenCalledTimes(1);
+      expect(resend).toHaveBeenCalledTimes(1);
+    });
+
+    it("alerts with the ids when a first invoice's enrollment fails after its gate row", async () => {
+      const admin = createAdmin("checkout", "fulfill_paid_course_access");
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(subscription());
+
+      expect((await postEvent(firstInvoiceEvent())).status).toBe(500);
+
+      expect(mocks.notifyOps).toHaveBeenCalledWith(lostEmailAlert);
+      await flush();
+      expect(resend).not.toHaveBeenCalled();
     });
   });
 });

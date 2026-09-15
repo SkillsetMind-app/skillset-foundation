@@ -1,38 +1,34 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ signInWithOtp: vi.fn() }));
+import { buildPurchaseAccessEmail, sendPurchaseAccessEmail } from "@/lib/payments/server/purchase-access-email";
 
-vi.mock("@/lib/supabase/admin", () => ({
-  getSupabaseAdminClient: () => ({ auth: { signInWithOtp: mocks.signInWithOtp } }),
-}));
+const sale = {
+  email: "buyer@example.test",
+  courseTitle: "Course",
+  courseUrl: "https://www.skillsetmind.com/learn/courses/course_1",
+  locale: "en" as const,
+  idempotencyKey: "order_1",
+};
 
-import { sendPurchaseAccessEmail } from "@/lib/payments/server/purchase-access-email";
-
-describe("sendPurchaseAccessEmail", () => {
-  beforeEach(() => {
-    mocks.signInWithOtp.mockReset().mockResolvedValue({ error: null });
+describe("purchase access email", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
   });
 
-  it("sends a sign-in link that lands on the course, never creating an account", async () => {
-    await sendPurchaseAccessEmail({
-      email: "buyer@example.test",
-      courseUrl: "https://www.skillsetmind.com/learn/courses/course_1",
-    });
+  it("escapes a creator's title in the HTML and keeps it readable in text", () => {
+    const email = buildPurchaseAccessEmail({ ...sale, courseTitle: "<script>alert(1)</script>\nPart 2" });
 
-    expect(mocks.signInWithOtp).toHaveBeenCalledWith({
-      email: "buyer@example.test",
-      options: {
-        shouldCreateUser: false,
-        emailRedirectTo: "https://www.skillsetmind.com/auth/confirm?next=%2Flearn%2Fcourses%2Fcourse_1",
-      },
-    });
+    expect(email.html).not.toContain("<script>");
+    expect(email.html).toContain("&lt;script&gt;alert(1)&lt;/script&gt; Part 2");
+    expect(email.text).toContain("<script>alert(1)</script> Part 2");
+    expect(email.subject).toBe("Your course is ready: <script>alert(1)</script> Part 2");
   });
 
-  it("throws when Supabase refuses the send, so the caller can alert", async () => {
-    mocks.signInWithOtp.mockResolvedValue({ error: { message: "rate limited" } });
+  it("throws on a Resend error so the webhook can alert", async () => {
+    vi.stubEnv("RESEND_API_KEY", "re_fixture");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 500 })));
 
-    await expect(
-      sendPurchaseAccessEmail({ email: "buyer@example.test", courseUrl: "https://www.skillsetmind.com/learn/courses/course_1" }),
-    ).rejects.toThrow("rate limited");
+    await expect(sendPurchaseAccessEmail(sale)).rejects.toThrow("Resend answered 500.");
   });
 });

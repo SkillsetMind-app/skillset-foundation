@@ -2,6 +2,7 @@ import { after, NextResponse } from "next/server";
 import type Stripe from "stripe";
 
 import { ACTIVATION_FEE_CHECKOUT_PURPOSE, planByStripePriceId } from "@/data/plans";
+import { normalizeLocale, type Locale } from "@/lib/i18n/config";
 import { notifyOps } from "@/lib/ops/alert";
 import { buildCourseSubscriptionSaleRecords } from "@/lib/payments/course-subscription-sale";
 import {
@@ -185,38 +186,60 @@ async function markStripeEventFailed(
 
 // --- access email after a paid sale -----------------------------------------
 // A buyer who closes the tab after paying used to get only the Stripe receipt:
-// no course link, no sign-in instructions. This queues ONE email whose button
-// signs them in and opens the course.
+// no course link, no sign-in instructions. This queues ONE purchase email with
+// the course title, a plain link to the course and the account to sign in with.
 //
-// Once per sale: callers queue it right after inserting the sale's
-// payout_ledger row — the row that already gates fulfilment. A replayed or
-// redelivered event returns at that gate (or dies on the row's primary key)
-// before reaching the send, so no migration and no new flag. At-most-once by
-// design: a lost email costs a support ticket, a duplicate reads as spam.
+// Once per sale, two locks deep: callers queue it right after inserting the
+// sale's payout_ledger row — the row that already gates fulfilment, so a
+// replayed or redelivered event returns before reaching the send — and the
+// ledger id travels as Resend's Idempotency-Key, so even a double queue sends
+// once. No migration, no new flag. At-most-once by design: a lost email costs
+// a support ticket, a duplicate reads as spam.
 //
-// It never touches the enrollment. It runs after the response (the
-// notifyOps pattern), so Stripe gets its 2xx without waiting on mail, and any
-// failure — lookup or send — is logged and alerted, never thrown.
-function queuePurchaseAccessEmail(admin: Admin, userId: string, courseId: string): void {
+// It never touches the enrollment. It runs after the response (the notifyOps
+// pattern), so Stripe gets its 2xx without waiting on mail, and any failure —
+// lookup or send — is logged and alerted, never thrown.
+type AccessEmailSale = {
+  userId: string;
+  courseId: string;
+  courseTitle: string;
+  /** payout_ledger id: the order id, or the invoice id for a subscription. */
+  ledgerId: string;
+  locale: Locale;
+};
+
+// The one place a lost access email becomes visible. Ids only: never the
+// buyer's address, which would leave the building with the alert.
+function reportLostAccessEmail(
+  { userId, courseId }: Pick<AccessEmailSale, "userId" | "courseId">,
+  error: unknown,
+): void {
+  console.error("Purchase access email failed", { courseId, userId }, error);
+  notifyOps({
+    event: "stripe.webhook.access_email_failed",
+    severity: "warn",
+    summary:
+      "A paid sale's access email did not go out. The buyer only has the Stripe receipt; expect a support message.",
+    context: { courseId, userId },
+  });
+}
+
+function queuePurchaseAccessEmail(admin: Admin, sale: AccessEmailSale): void {
   const send = async () => {
     try {
-      const { data, error } = await admin.auth.admin.getUserById(userId);
+      const { data, error } = await admin.auth.admin.getUserById(sale.userId);
       const email = data?.user?.email;
       if (error || !email) throw new Error("Buyer account has no email to send access to.");
       await sendPurchaseAccessEmail({
         email,
+        courseTitle: sale.courseTitle,
         // Same classroom path checkout's success_url lands on.
-        courseUrl: `${getAppUrl()}/learn/courses/${encodeURIComponent(courseId)}`,
+        courseUrl: `${getAppUrl()}/learn/courses/${encodeURIComponent(sale.courseId)}`,
+        locale: sale.locale,
+        idempotencyKey: sale.ledgerId,
       });
     } catch (error) {
-      console.error("Purchase access email failed", error);
-      notifyOps({
-        event: "stripe.webhook.access_email_failed",
-        severity: "warn",
-        summary:
-          "A buyer paid and has course access, but the access email did not go out. They only have the Stripe receipt; expect a support message.",
-        context: { courseId },
-      });
+      reportLostAccessEmail(sale, error);
     }
   };
   try {
@@ -522,7 +545,13 @@ async function handleCheckoutCompleted(
   );
   // Enrollment and the once-per-order gate are both written: safe to tell the
   // buyer, and a replay can no longer reach this line.
-  queuePurchaseAccessEmail(admin, userId, courseId);
+  queuePurchaseAccessEmail(admin, {
+    userId,
+    courseId,
+    courseTitle: course.title,
+    ledgerId: orderId,
+    locale: normalizeLocale(session.locale),
+  });
 
   // Release the in-flight checkout lock now that the purchase settled — only if
   // it still belongs to THIS order (a sibling attempt's lock must survive). [B3]
@@ -746,11 +775,27 @@ async function handleCourseSubscriptionInvoicePaid(
   // The RPC serializes with creator revocation and preserves progress.
   const entitled = subscription.status === "active" || subscription.status === "trialing";
   if (entitled) {
-    await requireSupabaseWrite(
-      admin.rpc("fulfill_paid_course_access", { p_user_id: userId, p_course_id: courseId, p_source: "subscription", p_subscription_id: subscriptionId }),
-      "Fulfill subscription enrollment",
-    );
-    if (firstSale) queuePurchaseAccessEmail(admin, userId, courseId);
+    try {
+      await requireSupabaseWrite(
+        admin.rpc("fulfill_paid_course_access", { p_user_id: userId, p_course_id: courseId, p_source: "subscription", p_subscription_id: subscriptionId }),
+        "Fulfill subscription enrollment",
+      );
+    } catch (error) {
+      // The gate row above is already written, so Stripe's retry grants the
+      // course but never reaches the email again. Make that loss visible.
+      if (firstSale) reportLostAccessEmail({ userId, courseId }, error);
+      throw error;
+    }
+    if (firstSale) {
+      queuePurchaseAccessEmail(admin, {
+        userId,
+        courseId,
+        courseTitle: course.title,
+        ledgerId: invoice.id,
+        // Written by checkout on the subscription; older ones fall back to English.
+        locale: normalizeLocale(typeof meta.locale === "string" ? meta.locale : null),
+      });
+    }
   }
 
   // Mirror the subscription for the learner's cancel UI + lifecycle handler.
