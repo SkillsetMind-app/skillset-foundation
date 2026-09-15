@@ -19,8 +19,10 @@ rate limit/5xx/timeout depois das repetições, resposta fora do formato), a
 próxima da cadeia analisa: z.ai GLM -> Kimi k3 -> Kimi k2.6 -> OpenAI. Um
 veredito válido NUNCA cai para a próxima: "bloqueante" de qualquer uma barra.
 Resposta cortada que já aponta achado também não cai (a próxima IA poderia
-devolver lista vazia e aprovar), e filtro de conteúdo/recusa encerra a cadeia
-com 3 (texto plantado no diff não escolhe o analisador).
+devolver lista vazia e aprovar) -- nem quando o JSON veio pela metade: vale
+cada achado que chegou inteiro, e "severidade" critica/alta no texto cru já
+encerra com 3. Filtro de conteúdo/recusa encerra a cadeia com 3 (texto
+plantado no diff não escolhe o analisador).
 Se nenhuma der veredito, o script NÃO passa verde: escreve "NÃO ANALISADO" e
 sai com 3. Um portão que aprova por omissão é pior que portão nenhum (o check
 de RLS ficou dois meses verde sem rodar por exatamente isso).
@@ -42,7 +44,8 @@ Ambiente:
     PR_NUMBER / PR_URL / REPO  só para o texto do alerta
 
 Saídas: 0 ok · 1 bloqueante em modo "barra" · 3 não analisado (nenhuma IA
-com chave e saldo deu veredito) · 2 erro de uso.
+com chave e saldo deu veredito, cabeçalho do diff ilegível, ou PARCIAL: diff
+grande com arquivo que ficou sem ler) · 2 erro de uso.
 """
 from __future__ import annotations
 
@@ -146,7 +149,13 @@ confianca e float 0.0-1.0. Sem achados: {"achados":[]}"""
 VAZIO = {"achados": []}
 SEVERIDADES = {"critica", "alta", "media", "baixa"}
 CERCA = re.compile(r"^```(?:json)?|```$", re.M)
-ARQUIVO_DO_DIFF = re.compile(r"^diff --git a/(.+?) b/(.+)$", re.M)
+# O git põe entre aspas (escape estilo C) o caminho com aspas, barra invertida,
+# caractere de controle e -- sem core.quotePath=false -- qualquer não-ASCII.
+CABECALHO = re.compile(r"^diff --git (.*)$", re.M)
+LADOS = re.compile(r'(?:"a/(?:[^"\\]|\\.)*"|a/.+?) ("b/(?:[^"\\]|\\.)*"|b/.+)')
+# Achado grave no texto cru de uma resposta que não fechou o JSON.
+GRAVE = re.compile(r'"severidade"\s*:\s*"(?:critica|alta)"', re.I)
+ABRE_ACHADOS = re.compile(r'"achados"\s*:\s*\[')
 
 
 # --------------------------------------------------------------------------
@@ -242,52 +251,91 @@ def chama(diff: str, prov: Provedor, max_tokens: int, chave: str, prazo: float) 
 def extrai_json(texto: str) -> dict | None:
     if not texto:
         return None
+    # ValueError cobre JSONDecodeError e o teto de 4300 dígitos de int;
+    # RecursionError (é RuntimeError!) vem de aninhamento fundo.
     for cand in (texto, CERCA.sub("", texto).strip()):
         try:
             return json.loads(cand)
-        except json.JSONDecodeError:
+        except (ValueError, RecursionError):
             pass
     i, f = texto.find("{"), texto.rfind("}")
     if i != -1 and f > i:
         try:
             return json.loads(texto[i:f + 1])
-        except json.JSONDecodeError:
+        except (ValueError, RecursionError):
             pass
     return None
 
 
+def _texto(v) -> str:
+    # str() de lista aninhada recursa; o campo que não é escalar vira vazio.
+    return v if isinstance(v, str) else "" if v is None or isinstance(v, (list, dict)) else str(v)
+
+
 def normaliza(bruto: dict | None) -> dict | None:
+    """Entrada inválida é pulada, não derruba a lista (um bloqueante bom ao lado
+    de um `null` continua valendo). Crítica/alta sem título não some: vira
+    "(sem título)" e ainda barra. Lista só com entradas inválidas => None."""
     if not isinstance(bruto, dict) or not isinstance(bruto.get("achados"), list):
         return None
     fora = []
     for a in bruto["achados"]:
-        if not isinstance(a, dict) or not isinstance(a.get("titulo"), str) or not a["titulo"].strip():
-            return None
-        sev = str(a.get("severidade", "media")).lower().strip()
+        if not isinstance(a, dict):
+            continue
+        sev = a.get("severidade")
+        sev = sev.lower().strip() if isinstance(sev, str) else "media"
+        titulo = a.get("titulo")
+        if not isinstance(titulo, str) or not titulo.strip():
+            if sev not in ("critica", "alta"):
+                continue
+            titulo = "(sem título)"
         try:
-            conf = max(0.0, min(1.0, float(a.get("confianca", 0.5))))
-        except (TypeError, ValueError):
+            conf = float(a.get("confianca", 0.5))
+            conf = max(0.0, min(1.0, conf)) if conf == conf else 0.5  # NaN
+        except (TypeError, ValueError, OverflowError):
             conf = 0.5
         try:
             linha = int(a.get("linha") or 0)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             linha = 0
         fora.append({
             "severidade": sev if sev in SEVERIDADES else "media",
-            "arquivo": str(a.get("arquivo") or ""),
+            "arquivo": _texto(a.get("arquivo")),
             "linha": linha,
-            "titulo": str(a["titulo"]),
-            "porque": str(a.get("porque") or ""),
-            "como_explorar": str(a.get("como_explorar") or ""),
+            "titulo": titulo,
+            "porque": _texto(a.get("porque")),
+            "como_explorar": _texto(a.get("como_explorar")),
             "confianca": conf,
         })
+    if bruto["achados"] and not fora:
+        return None
     return {"achados": fora}
+
+
+def resgata(texto: str) -> dict | None:
+    """Resposta cortada no meio da lista: lê os achados objeto a objeto e fica
+    com os que chegaram inteiros. O pedaço pela metade não conta."""
+    m = ABRE_ACHADOS.search(texto)
+    if not m:
+        return None
+    dec, i, objs = json.JSONDecoder(), m.end(), []
+    while True:
+        while i < len(texto) and texto[i] in " \t\r\n,":
+            i += 1
+        try:
+            obj, i = dec.raw_decode(texto, i)
+        except (ValueError, RecursionError):
+            break
+        objs.append(obj)
+    return normaliza({"achados": objs}) if objs else None
 
 
 def analisa(diff: str, prov: Provedor, chave: str, arquivos=(), prazo: float | None = None) -> tuple[dict, dict]:
     """Três tetos para raciocínio + JSON final. Esgotou => falhou=True.
-    Resposta cortada que JÁ aponta achado é o veredito (tel["cortado"]): pedir
-    de novo, aqui ou à próxima IA, seria procurar quem aprove."""
+    Resposta cortada ou ilegível que JÁ aponta achado é o veredito
+    (tel["cortado"]): pedir de novo, aqui ou à próxima IA, seria procurar quem
+    aprove. Vale o achado que chegou inteiro e, sem ele, o indício cru de
+    crítica/alta (tel["indicio"])."""
     prazo = prazo or time.monotonic() + PRAZO_PROVEDOR
     tel = {"modelo": prov.rotulo, "tentativas": [], "segundos": 0.0, "tokens": 0}
     t0 = time.monotonic()
@@ -306,12 +354,17 @@ def analisa(diff: str, prov: Provedor, chave: str, arquivos=(), prazo: float | N
             "tokens": usage["total_tokens"], "finish_reason": usage["finish_reason"],
             "resultado": estado,
         }), flush=True)
-        if r is not None and estado != "ok":
-            bloq, aviso = classifica(r["achados"], list(arquivos))
-            if bloq or aviso:
+        if estado != "ok":
+            parcial = r if r is not None else resgata(content)
+            bloq, aviso, _ = classifica(parcial["achados"], list(arquivos)) if parcial else ([], [], 0)
+            grave = r is None and bool(GRAVE.search(content))
+            if bloq or aviso or grave:
                 # ponytail: para no 1º corte com achado, sem tentar teto maior;
                 # achado leve cortado vira 3. Mesclar tentativas se isso for comum.
                 tel["cortado"] = estado
+                if grave and not bloq:
+                    tel["indicio"] = True
+                r = parcial or dict(VAZIO)
         if estado == "ok" or "cortado" in tel:
             tel["segundos"] = round(time.monotonic() - t0, 1)
             return r, tel
@@ -325,8 +378,26 @@ def analisa(diff: str, prov: Provedor, chave: str, arquivos=(), prazo: float | N
 # --------------------------------------------------------------------------
 # Diff: quais arquivos, e o corte pelos caminhos de risco
 # --------------------------------------------------------------------------
-def arquivos_do_diff(diff: str) -> list[str]:
-    return [m.group(2) for m in ARQUIVO_DO_DIFF.finditer(diff)]
+def desaspa(tok: str) -> str | None:
+    """'"b/a\\303\\247.ts"' -> 'b/aç.ts' (o inverso do quote_c_style do git:
+    \\ooo são bytes UTF-8; \\t \\n \\" \\\\ os de sempre)."""
+    try:
+        return tok[1:-1].encode("utf-8").decode("unicode_escape").encode("latin-1").decode("utf-8", "replace")
+    except UnicodeError:
+        return None
+
+
+def arquivos_do_diff(diff: str) -> list[str | None]:
+    """Um item por cabeçalho `diff --git`; None onde o cabeçalho não se lê
+    (quem chama decide -- main não aprova com arquivo que ficou sem nome)."""
+    fora = []
+    for m in CABECALHO.finditer(diff):
+        lados = LADOS.fullmatch(m.group(1))
+        b = lados and lados.group(1)
+        if b and b.startswith('"'):
+            b = desaspa(b)
+        fora.append(b[2:] if b and b[2:] else None)
+    return fora
 
 
 def eh_de_risco(caminho: str) -> bool:
@@ -336,38 +407,45 @@ def eh_de_risco(caminho: str) -> bool:
 def filtra_risco(diff: str) -> str:
     """Mantém só os blocos `diff --git` cujo arquivo casa com CAMINHOS_DE_RISCO."""
     partes = re.split(r"(?m)^(?=diff --git )", diff)
-    return "".join(p for p in partes if p.startswith("diff --git ")
-                   and eh_de_risco(ARQUIVO_DO_DIFF.match(p).group(2)))
+    return "".join(p for p in partes if (a := arquivos_do_diff(p)) and a[0] and eh_de_risco(a[0]))
 
 
 # --------------------------------------------------------------------------
 # Classificação: só dois níveis existem
 # --------------------------------------------------------------------------
-def classifica(achados: list[dict], arquivos: list[str]) -> tuple[list[dict], list[dict]]:
+def classifica(achados: list[dict], arquivos: list[str]) -> tuple[list[dict], list[dict], int]:
     """Descarta achado em arquivo que o PR não toca (o modelo às vezes cita a
-    base, que ele nem viu). O resto vira bloqueante ou aviso."""
+    base, que ele nem viu). O resto vira bloqueante ou aviso. Devolve também
+    quantos foram descartados (só o canal privado vê a contagem)."""
     tocados = set(arquivos)
-    bloq, aviso = [], []
+    bloq, aviso, fora = [], [], 0
     for a in achados:
-        arq = a["arquivo"].lstrip("./")
+        # "b/src/x.ts" e "src\x.ts" são o mesmo arquivo que o diff chama src/x.ts.
+        arq = a["arquivo"].replace("\\", "/").lstrip("./")
+        if arq[:2] in ("a/", "b/"):
+            arq = arq[2:]
         if arq and tocados and arq not in tocados and not any(t.endswith(arq) for t in tocados):
+            fora += 1
             continue
         if a["severidade"] in ("critica", "alta") and a["confianca"] >= 0.6:
             bloq.append(a)
         else:
             aviso.append(a)
-    return bloq, aviso
+    return bloq, aviso, fora
 
 
 # --------------------------------------------------------------------------
 # Saídas
 # --------------------------------------------------------------------------
-def placar(bloq: int, aviso: int, modo: str, tel: dict, canal: str, nota: str = "") -> str:
+def placar(bloq: int, aviso: int, modo: str, tel: dict, canal: str, nota: str = "", parcial: int = 0) -> str:
     total = bloq + aviso
     if total == 0:
-        linha = "✅ **0 achados**"
+        linha = "0 achados nos arquivos lidos" if parcial else "✅ **0 achados**"
     else:
         linha = f"{'🛑' if bloq else '⚠️'} **{total} achado{'s' if total != 1 else ''} · {bloq} bloqueante{'s' if bloq != 1 else ''}** · detalhe {canal}"
+    if parcial:
+        # Parte do PR ficou sem ler: nunca "✅", e o check falha (um humano decide).
+        linha = f"🟡 **PARCIAL — {parcial} arquivo(s) não lidos (diff grande)** · o check falha: um humano decide\n\n{linha}"
     efeito = ("barra o merge" if bloq and modo == "barra"
               else "só avisa" if modo == "avisa" else "barra se houver bloqueante")
     rodape = f"modo `{modo}` ({efeito}) · {tel.get('modelo', '?')} · {tel.get('segundos', '?')}s · {tel.get('tokens', 0)} tokens"
@@ -430,12 +508,16 @@ def detalhe_telegram(bloq: list[dict], aviso: list[dict]) -> str:
     return "\n\n".join(linhas)[:TETO_DETALHE]
 
 
-def corpo_alerta(bloq: list[dict], aviso: list[dict], pr: str, pr_url: str, falhas=()) -> dict:
+def corpo_alerta(bloq: list[dict], aviso: list[dict], pr: str, pr_url: str, falhas=(), fora: int = 0) -> dict:
     """O JSON que vai ao relay. Função pura, para o auto-teste conferir o
     contrato sem rede: `source` é o que o porteiro do nó exige, e `detalhe` é
     o campo que carrega o porquê e o ataque. `falhas` (saldo, chave, código de
-    erro de cada IA sem veredito) também só existe aqui, nunca no placar."""
+    erro de cada IA sem veredito) e `fora` (achados descartados por citar
+    arquivo que o PR não toca) também só existem aqui, nunca no placar."""
     detalhe = detalhe_telegram(bloq, aviso)
+    if fora:
+        detalhe = (f"descartados: {fora} achado(s) em arquivo que o PR não toca"
+                   + ("\n\n" + detalhe if detalhe else ""))[:TETO_DETALHE]
     if falhas:
         detalhe = ("sem veredito: " + " · ".join(falhas) + ("\n\n" + detalhe if detalhe else ""))[:TETO_DETALHE]
     return {
@@ -448,13 +530,13 @@ def corpo_alerta(bloq: list[dict], aviso: list[dict], pr: str, pr_url: str, falh
     }
 
 
-def manda_detalhe(bloq: list[dict], aviso: list[dict], falhas=()) -> str:
+def manda_detalhe(bloq: list[dict], aviso: list[dict], falhas=(), fora: int = 0) -> str:
     """Canal privado. Devolve o texto para o placar ('no Telegram' / 'indisponível')."""
     url = os.environ.get("OPS_ALERT_WEBHOOK_URL")
     if not url:
         return "indisponível (canal privado não configurado)"
     pr, pr_url = (os.environ.get(k, "?") for k in ("PR_NUMBER", "PR_URL"))
-    corpo = json.dumps(corpo_alerta(bloq, aviso, pr, pr_url, falhas)).encode()
+    corpo = json.dumps(corpo_alerta(bloq, aviso, pr, pr_url, falhas, fora)).encode()
     cab = {"Content-Type": "application/json"}
     seg = os.environ.get("OPS_ALERT_WEBHOOK_SECRET")
     if seg:
@@ -473,6 +555,20 @@ def manda_detalhe(bloq: list[dict], aviso: list[dict], falhas=()) -> str:
 def escreve(caminho: str, texto: str) -> None:
     with open(caminho, "w", encoding="utf-8") as f:
         f.write(texto)
+
+
+def log_falhas(falhas, canal: str) -> None:
+    """Log público. O código curto de cada IA sem veredito só aparece quando o
+    canal privado NÃO recebeu o motivo -- aí é o único rastro que sobra. Nunca
+    a frase (saldo, chave): só HTTP n / código x / classe do erro."""
+    if not falhas or canal == "no Telegram":
+        return
+    curtos = []
+    for f in falhas:
+        rotulo, _, motivo = f.partition(": ")
+        cod = re.findall(r"HTTP \d+|código [\w.-]+|\b[A-Z]\w*Error\b", motivo)
+        curtos.append(f"{rotulo}: {', '.join(cod) or motivo.split(' (')[0][:40]}")
+    print(f"sem veredito, detalhe {canal}: " + " · ".join(curtos), flush=True)
 
 
 # --------------------------------------------------------------------------
@@ -505,20 +601,29 @@ def main(argv: list[str]) -> int:
 
     with open(diff_path, encoding="utf-8", errors="replace") as f:
         diff = f.read()
-    arquivos = arquivos_do_diff(diff)
     notas = []
-    if not diff.strip() or not arquivos:
+    if not diff.strip():
         escreve(placar_path, placar(0, 0, modo, {"modelo": modelo, "segundos": 0, "tokens": 0}, "", "Diff vazio: nada a analisar."))
         print("diff vazio")
         return 0
+    arquivos = arquivos_do_diff(diff)
+    if not arquivos or None in arquivos:
+        # Diff com conteúdo e arquivo sem nome legível: aprovar seria às cegas.
+        motivo = (f"{arquivos.count(None)} arquivo(s) do diff com cabeçalho não reconhecido" if arquivos
+                  else "diff sem nenhum cabeçalho de arquivo reconhecido")
+        escreve(placar_path, nao_analisado(motivo, modo))
+        print(f"NAO ANALISADO: {motivo}")
+        return 3
+    parcial = 0
     if len(diff.encode()) > max_kb * 1024:
         diff = filtra_risco(diff)
-        arquivos = arquivos_do_diff(diff)
+        lidos = arquivos_do_diff(diff)
+        parcial, arquivos = len(arquivos) - len(lidos), lidos
         notas.append(f"Diff acima de {max_kb} KB: só os caminhos de risco (auth, dinheiro, API, banco) foram lidos — {len(arquivos)} arquivo(s).")
         if not arquivos:
-            escreve(placar_path, placar(0, 0, modo, {"modelo": modelo, "segundos": 0, "tokens": 0}, "", notas[0] + " Nenhum deles neste PR."))
-            print("diff grande sem caminho de risco")
-            return 0
+            escreve(placar_path, placar(0, 0, modo, {"modelo": modelo, "segundos": 0, "tokens": 0}, "", notas[0] + " Nenhum deles neste PR.", parcial))
+            print(f"PARCIAL: {parcial} arquivo(s) não lidos (diff grande), nenhum caminho de risco")
+            return 3
 
     # Só "sem veredito" passa adiante. Veredito válido (inclusive bloqueante),
     # resposta cortada com achado e filtro de conteúdo param aqui: cair para a
@@ -536,39 +641,59 @@ def main(argv: list[str]) -> int:
                 break
             raise RuntimeError("não devolveu JSON em 3 tentativas")
         except Recusado as e:
+            # Motivo (inclusive das IAs antes desta) vai ao canal privado antes do placar.
+            falhas.append(f"{prov.rotulo}: {e}")
+            canal = manda_detalhe([], [], falhas)
+            log_falhas(falhas, canal)
             escreve(placar_path, nao_analisado(
-                f"{prov.rotulo} {e}. Nenhuma outra IA é consultada: texto plantado no diff não escolhe o analisador", modo))
-            print(f"NAO ANALISADO: {prov.rotulo} {e}")
+                f"{prov.rotulo} {e}. Nenhuma outra IA é consultada: texto plantado no diff não escolhe o analisador"
+                f" · motivo {canal}", modo))
+            print(f"NAO ANALISADO: {prov.rotulo} recusou o diff (filtro de conteúdo)")
+            return 3
+        except RecursionError:
+            # É RuntimeError: sem esta linha cairia para a próxima IA.
+            escreve(placar_path, nao_analisado(
+                f"{prov.rotulo} devolveu resposta aninhada demais para ler. Nenhuma outra IA é consultada", modo))
+            print(f"NAO ANALISADO: {prov.rotulo} resposta aninhada demais")
             return 3
         except RuntimeError as e:
             falhas.append(f"{prov.rotulo}: {e}")
-            print(f"sem veredito: {falhas[-1]}", flush=True)
+            print(f"sem veredito: {prov.rotulo} (motivo no canal privado)", flush=True)
     else:
         # Motivo de cada IA (saldo, chave) só no canal privado; o placar é público.
         canal = manda_detalhe([], [], falhas)
+        log_falhas(falhas, canal)
         k = len(falhas)
         escreve(placar_path, nao_analisado(f"nenhuma IA disponível ({k} provedor{'es' if k != 1 else ''}) · motivo {canal}", modo))
         print("NAO ANALISADO: nenhuma IA disponível")
         return 3
 
-    bloq, aviso = classifica(r["achados"], arquivos)
-    canal = manda_detalhe(bloq, aviso, falhas) if (bloq or aviso or falhas) else ""
+    bloq, aviso, fora = classifica(r["achados"], arquivos)
+    privado = falhas + ([f"{prov.rotulo}: resposta cortada ({tel['cortado']}) com indício de achado grave"]
+                        if tel.get("indicio") else [])
+    canal = manda_detalhe(bloq, aviso, privado, fora) if (bloq or aviso or privado or fora) else ""
+    log_falhas(falhas, canal)
     if n:
         tel["modelo"] += " (reserva)"
         notas.append(f"IA reserva — {len(falhas)} antes dela sem veredito (motivo {canal}).")
     if tel.get("cortado"):
         if not bloq:
+            motivo = ("resposta cortada com indício de achado grave" if tel.get("indicio")
+                      else f"apontou {len(aviso)} achado(s) numa resposta cortada")
             escreve(placar_path, nao_analisado(
-                f"{tel['modelo']} apontou {len(aviso)} achado(s) numa resposta cortada ({tel['cortado']}) · detalhe {canal}. "
+                f"{motivo} ({tel['modelo']}, {tel['cortado']}) · detalhe {canal}. "
                 "Nenhuma outra IA é consultada: ela poderia apagá-los", modo))
             print(f"NAO ANALISADO: achado em resposta cortada ({tel['cortado']})")
             return 3
         notas.append(f"Resposta cortada ({tel['cortado']}): o bloqueante vale e nenhuma outra IA é consultada.")
-    escreve(placar_path, placar(len(bloq), len(aviso), modo, tel, canal, "\n\n".join(notas)))
+    escreve(placar_path, placar(len(bloq), len(aviso), modo, tel, canal, "\n\n".join(notas), parcial))
     # Só contagens no log público. Nunca o achado.
     print(f"placar: {len(bloq)} bloqueante(s), {len(aviso)} aviso(s); modo={modo}; "
-          f"{tel['segundos']}s; {tel['tokens']} tokens; detalhe {canal or 'n/a'}")
-    return 1 if (bloq and modo == "barra") else 0
+          f"{tel['segundos']}s; {tel['tokens']} tokens; detalhe {canal or 'n/a'}"
+          + (f"; PARCIAL: {parcial} arquivo(s) não lidos" if parcial else ""))
+    if bloq and modo == "barra":
+        return 1
+    return 3 if parcial else 0
 
 
 # --------------------------------------------------------------------------
@@ -578,6 +703,10 @@ def demo() -> None:
          "diff --git a/README.md b/README.md\n--- a\n+++ b\n@@ -1 +1 @@\n+y\n")
     assert arquivos_do_diff(d) == ["src/app/api/pay/route.ts", "README.md"]
     assert arquivos_do_diff(filtra_risco(d)) == ["src/app/api/pay/route.ts"]
+    # Cabeçalho entre aspas do git (não-ASCII em octal, aspas escapadas).
+    q = 'diff --git "a/src/a\\303\\247\\303\\243o.ts" "b/src/a\\303\\247\\303\\243o.ts"\n+x\n'
+    assert arquivos_do_diff(q + 'diff --git "a/x\\"y" "b/x\\"y"\n+z\n') == ["src/ação.ts", 'x"y']
+    assert arquivos_do_diff("diff --git c/x d/x\n+x\n") == [None]
     assert eh_de_risco("supabase/migrations/x.sql") and not eh_de_risco("README.md")
 
     achados = normaliza({"achados": [
@@ -586,9 +715,13 @@ def demo() -> None:
         {"titulo": "fora", "severidade": "critica", "confianca": 1.0, "arquivo": "src/outro.ts"},
         {"titulo": "leve", "severidade": "baixa", "arquivo": "README.md"},
     ]})["achados"]
-    bloq, aviso = classifica(achados, arquivos_do_diff(d))
+    bloq, aviso, fora = classifica(achados, arquivos_do_diff(d))
     assert [a["titulo"] for a in bloq] == ["IDOR"], bloq
     assert [a["titulo"] for a in aviso] == ["fraco", "leve"], aviso
+    assert fora == 1
+    # Resposta cortada no meio da lista: o achado inteiro sobrevive.
+    corte = '{"achados":[{"titulo":"IDOR","severidade":"alta","confianca":0.9,"arquivo":"a"},{"titulo":"x'
+    assert extrai_json(corte) is None and [a["titulo"] for a in resgata(corte)["achados"]] == ["IDOR"]
 
     muitos = [dict(achados[0], titulo="t" * 120, linha=i) for i in range(30)]
     r = resumo_telegram(muitos, [], "999", "https://github.com/x/y/pull/999")

@@ -48,13 +48,16 @@ jobs:
 
       # Diff da base até a ponta do PR. Lockfile, snapshots e imagens ficam
       # fora: não há porta para abrir ali, e é o que mais estoura o teto.
+      # core.quotePath=false: caminho não-ASCII sai cru no cabeçalho. Aspas,
+      # barra invertida e controle continuam entre aspas; o script lê as duas
+      # formas e dá 3 (não 0) se sobrar cabeçalho que não reconhece.
       - name: Diff do PR
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          git diff --no-color "$BASE...$HEAD" -- . \
+          git -c core.quotePath=false diff --no-color "$BASE...$HEAD" -- . \
             ':(exclude)package-lock.json' ':(exclude)*.snap' \
             ':(exclude)*.png' ':(exclude)*.jpg' ':(exclude)*.jpeg' ':(exclude)*.svg' \
             ':(exclude)*.ico' ':(exclude)*.woff' ':(exclude)*.woff2' \
