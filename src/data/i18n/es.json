@@ -3742,7 +3742,11 @@
         "moveLessonTo": "Mover \"{title}\" a otro módulo",
         "moduleOption": "Módulo {index}: {title}",
         "moveDripWarning": "Este curso libera las lecciones con el tiempo: mover una lección cambia cuándo se abre y qué lección va antes.",
-        "dragLessonHint": "Arrastra a otro módulo para mover esta lección"
+        "dragLessonHint": "Arrastra a otro módulo para mover esta lección",
+        "moveConfirm": "Los estudiantes que ya abrieron esta lección pueden perder el acceso hasta volver a llegar a ella en el nuevo orden. ¿Mover de todos modos?",
+        "moveButton": "Mover",
+        "moveLessonButton": "Mover \"{title}\"",
+        "moveDone": "\"{title}\" se movió a {module}."
       },
       "summary": {
         "month": " / mes",
