@@ -330,7 +330,10 @@ describe("sala de aula com matricula real", () => {
     render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace
       course={{ ...course, dripStrategy: "sequential_progress" }} /></I18nProvider>);
     expect(screen.getByRole("heading", { name: "Lección bloqueada" })).toBeInTheDocument();
-    expect(screen.getByText("Completa la lección anterior para desbloquearla")).toBeInTheDocument();
+    // A tela diz qual aula concluir e leva até ela (antes: só "Completa la
+    // lección anterior para desbloquearla").
+    expect(screen.getByText('Termina "Lesson one" primero')).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ir a esa lección" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Lección bloqueada" })).toBeDisabled();
     expect(screen.queryByText("Two")).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
