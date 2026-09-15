@@ -3738,7 +3738,16 @@
         "cancel": "Cancel",
         "openMediaLibrary": "Open media library",
         "closeMediaLibrary": "Hide media library",
-        "breadcrumb": "Breadcrumb"
+        "breadcrumb": "Breadcrumb",
+        "moveToModule": "Move to module…",
+        "moveLessonTo": "Move \"{title}\" to another module",
+        "moduleOption": "Module {index}: {title}",
+        "moveDripWarning": "This course releases lessons over time: moving a lesson changes when it opens and which lesson comes before it.",
+        "dragLessonHint": "Drag onto another module to move this lesson",
+        "moveConfirm": "Students who already opened this lesson may lose access until they reach it again in the new order. Move anyway?",
+        "moveButton": "Move",
+        "moveLessonButton": "Move \"{title}\"",
+        "moveDone": "\"{title}\" moved to {module}."
       },
       "summary": {
         "month": " / month",
