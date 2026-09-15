@@ -925,6 +925,27 @@ export function EnrolledCourseWorkspace({
       }
     }
   }
+  // Aula ABERTA sem capa própria e com link do YouTube: a capa do próprio
+  // vídeo. A aula trancada fica sem: o link dela nunca chega à página (a RLS
+  // esconde), e mesmo um link no currículo não vira capa enquanto ela está
+  // fechada. Vimeo e Bunny ficam de fora. O id já vem limpo
+  // ([a-zA-Z0-9_-]) de getTrustedLessonEmbed; o CSP (img-src https:) já cobre
+  // i.ytimg.com.
+  for (const lesson of allLessons) {
+    if (thumbnailUrlByLessonId.has(lesson.id) || !lessonUnlockStateById.get(lesson.id)?.unlocked) {
+      continue;
+    }
+    // Sem objeto de conteúdo, sem capa: o preview do professor pode receber
+    // null daqui (preview-tabs.test.tsx dubla assim) e a sala não pode cair.
+    const content = resolveLessonContent(lessonContentMap?.get(lesson.id), lesson);
+    if (!content) {
+      continue;
+    }
+    const embed = getTrustedLessonEmbed(content?.externalUrl);
+    if (embed?.provider === "youtube") {
+      thumbnailUrlByLessonId.set(lesson.id, `https://i.ytimg.com/vi/${embed.videoId}/hqdefault.jpg`);
+    }
+  }
   async function toggleLessonCompletion(lessonId: string, completed: boolean) {
     if (previewMode) {
       setError("creatorEditor.preview.readOnly");
