@@ -306,6 +306,80 @@ describe("pagina do modulo dentro do builder", () => {
     expect(document.activeElement).toBe(document.body);
   });
 
+  // Aula L sai no autosave e e apagada antes do eco. O eco (com L) abria um
+  // estudio "fantasma" para L, sem modal, e a proxima aula nova nunca abria.
+  it("aula apagada antes do eco nao abre estudio fantasma nem trava a proxima", async () => {
+    let emitCourse: (course: TeacherCourse | null) => void = () => {};
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emitCourse = emit;
+      emit(mocks.course);
+      return () => undefined;
+    });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    try {
+      openAt("courseId=course-1&tab=content&module=m1");
+      const card = await renderBuilder();
+      const form = () => card.querySelector("form") as HTMLElement;
+
+      fireEvent.click(within(card).getByRole("button", { name: "Add lesson to module 1" }));
+      fireEvent.change(within(form()).getByRole("textbox", { name: "Lesson title" }), {
+        target: { value: "Lesson L" },
+      });
+      fireEvent.click(within(form()).getByRole("button", { name: "Add lesson" }));
+      await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1), { timeout: 5000 });
+      const first = vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1];
+
+      fireEvent.click(within(card).getByRole("button", { name: "Delete lesson" }));
+      act(() => emitCourse({ ...mocks.course, ...first }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+      // A proxima aula nova ainda abre o estudio sozinha.
+      fireEvent.change(within(form()).getByRole("textbox", { name: "Lesson title" }), {
+        target: { value: "Lesson M" },
+      });
+      fireEvent.click(within(form()).getByRole("button", { name: "Add lesson" }));
+      await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(2), { timeout: 5000 });
+      const second = vi.mocked(updateTeacherCourseBuilder).mock.calls[1][1];
+      expect(second.modules?.[0].lessons.map((lesson) => lesson.title)).toEqual(["Lesson M"]);
+      act(() => emitCourse({ ...mocks.course, ...second }));
+      expect(screen.getByRole("dialog")).toHaveTextContent("m1:Lesson M");
+    } finally {
+      confirm.mockRestore();
+    }
+  }, 15000);
+
+  // Snapshot novo (outra aba, ou a pagina de vendas no Manage) chega com o
+  // rascunho sujo e fica de fora. Se a pessoa desfaz a edicao, o rascunho fica
+  // limpo com a copia velha, e a proxima edicao qualquer a gravava por cima.
+  it("snapshot pulado com rascunho sujo vale quando o rascunho volta a ficar limpo", async () => {
+    let emitCourse: (course: TeacherCourse | null) => void = () => {};
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emitCourse = emit;
+      emit(mocks.course);
+      return () => undefined;
+    });
+    openAt("courseId=course-1&tab=content&module=m1");
+    const card = await renderBuilder();
+    const name = () => within(card).getByRole("textbox", { name: "Module 1" });
+
+    fireEvent.change(name(), { target: { value: "Start here, draft" } });
+    act(() => emitCourse({ ...mocks.course, title: "Renamed in another tab" }));
+    // Desfaz: o rascunho volta a bater com o ultimo save.
+    fireEvent.change(name(), { target: { value: "Start here" } });
+
+    expect(await screen.findByRole("heading", { name: "Renamed in another tab" })).toBeInTheDocument();
+    // Nenhum autosave da copia velha.
+    await new Promise((resolve) => setTimeout(resolve, 2200));
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+
+    // A proxima edicao qualquer grava por cima da copia nova, nao da velha.
+    fireEvent.change(within(card).getByRole("textbox", { name: "Module 1 description" }), {
+      target: { value: "Fresh summary" },
+    });
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1), { timeout: 5000 });
+    expect(vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1].title).toBe("Renamed in another tab");
+  }, 15000);
+
   it("sem ?module mostra uma linha por modulo, com nome em negrito e numero de aulas", async () => {
     const card = await renderBuilder();
 

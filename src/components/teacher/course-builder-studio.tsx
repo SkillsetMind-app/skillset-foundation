@@ -540,6 +540,60 @@ export function CourseBuilderStudio() {
   const moduleNavigationRef = useRef<{ returnTo: string | null } | null>(null);
   // Espelho de `draftIsDirty` para o callback do realtime, que nao ve o render.
   const draftDirtyRef = useRef(false);
+  // Ultimo snapshot que chegou com rascunho sujo e ficou de fora. Vale se o
+  // rascunho voltar a ficar limpo sem save nosso; um save nosso o descarta.
+  const skippedSnapshotRef = useRef<TeacherCourse | null>(null);
+  // Rascunho local para o callback do realtime: so abre estudio de aula que
+  // ainda existe aqui.
+  const localModulesRef = useRef<TeacherCourseModule[]>([]);
+
+  // Copia o snapshot do servidor para o rascunho. So setters (estaveis), entao
+  // serve ao callback do realtime e ao efeito que aplica o snapshot pulado.
+  const applyServerDraft = useCallback((nextCourse: TeacherCourse) => {
+    setTitle(nextCourse.title);
+    setSummary(nextCourse.summary);
+    setCategory(nextCourse.category);
+    setSelectedCategories(
+      normalizeCourseCategories([
+        ...(nextCourse.categories ?? []),
+        nextCourse.category,
+      ]),
+    );
+    setLearningOutcomes(nextCourse.learningOutcomes ?? []);
+    setModules(nextCourse.modules ?? []);
+    setPriceAmount(
+      typeof nextCourse.priceAmountMinor === "number"
+        ? String(nextCourse.priceAmountMinor / 100)
+        : "",
+    );
+    setCurrency(nextCourse.currency ?? defaultSkillsetCurrency);
+    setPaymentType(
+      nextCourse.paymentType ??
+        (nextCourse.priceAmountMinor === 0 ? "free" : "one_time"),
+    );
+    setInstallmentsEnabled(Boolean(nextCourse.installmentsEnabled));
+    setInstallmentsMax(String(nextCourse.installmentsMax ?? 12));
+    setDripStrategy(nextCourse.dripStrategy ?? "instant");
+    setDripIntervalDays(String(nextCourse.dripIntervalDays ?? 1));
+    setFreePreviewLessonId(nextCourse.freePreviewLessonId ?? "");
+    setMembersTheme(nextCourse.membersTheme ?? "light");
+    setMembersCoverAssetId(nextCourse.membersCoverAssetId ?? null);
+    setMembersTitle(nextCourse.membersTitle ?? "");
+    setMembersSubtitle(nextCourse.membersSubtitle ?? "");
+    setMembersDescription(nextCourse.membersDescription ?? "");
+    setCommunityEnabled(nextCourse.communityEnabled ?? false);
+    // Todo snapshot passa aqui, inclusive o eco do nosso autosave. Voltar
+    // sempre para o 1o modulo mandava a aula seguinte para o modulo errado.
+    setLessonModuleId((current) =>
+      nextCourse.modules?.some((module) => module.id === current)
+        ? current
+        : nextCourse.modules?.[0]?.id ?? "",
+    );
+    // Baseline mirrors exactly what the state setters above produce, so a
+    // fresh hydration (or our own write echoing back) is never seen as a
+    // user edit.
+    setSavedSignature(builderDraftSignatureFromCourse(nextCourse));
+  }, []);
 
   useEffect(() => {
     if (!courseId) {
@@ -574,11 +628,21 @@ export function CourseBuilderStudio() {
           )
         ) {
           pendingLessonStudioRef.current = null;
-          // Never replace a studio that is already open: the modal is keyed by
-          // lesson id, so swapping lessons would remount it mid-upload and drop
-          // the progress bar and the close guard of the lesson in progress.
-          setActiveLessonStudio((current) => current ?? pendingStudio);
-          setSuccess(null);
+          // Aula que ja nao existe no rascunho (apagada antes do eco): abrir o
+          // estudio dela deixava um estudio "fantasma", sem modal, que travava
+          // a abertura da proxima aula e a recarga dos arquivos do curso.
+          const stillInDraft = localModulesRef.current.some(
+            (module) =>
+              module.id === pendingStudio.moduleId &&
+              module.lessons.some((lesson) => lesson.id === pendingStudio.lessonId),
+          );
+          if (stillInDraft) {
+            // Never replace a studio that is already open: the modal is keyed by
+            // lesson id, so swapping lessons would remount it mid-upload and drop
+            // the progress bar and the close guard of the lesson in progress.
+            setActiveLessonStudio((current) => current ?? pendingStudio);
+            setSuccess(null);
+          }
         }
 
         // O snapshot pode chegar atras do rascunho: eco de um save anterior com
@@ -588,59 +652,19 @@ export function CourseBuilderStudio() {
         // ponytail: local vence enquanto houver edicao pendente, ate sobre
         // mudanca de outra aba; resolver conflito entre abas se virar caso real.
         if (draftDirtyRef.current) {
+          skippedSnapshotRef.current = nextCourse;
           return;
         }
 
-        setTitle(nextCourse.title);
-        setSummary(nextCourse.summary);
-        setCategory(nextCourse.category);
-        setSelectedCategories(
-          normalizeCourseCategories([
-            ...(nextCourse.categories ?? []),
-            nextCourse.category,
-          ]),
-        );
-        setLearningOutcomes(nextCourse.learningOutcomes ?? []);
-        setModules(nextCourse.modules ?? []);
-        setPriceAmount(
-          typeof nextCourse.priceAmountMinor === "number"
-            ? String(nextCourse.priceAmountMinor / 100)
-            : "",
-        );
-        setCurrency(nextCourse.currency ?? defaultSkillsetCurrency);
-        setPaymentType(
-          nextCourse.paymentType ??
-            (nextCourse.priceAmountMinor === 0 ? "free" : "one_time"),
-        );
-        setInstallmentsEnabled(Boolean(nextCourse.installmentsEnabled));
-        setInstallmentsMax(String(nextCourse.installmentsMax ?? 12));
-        setDripStrategy(nextCourse.dripStrategy ?? "instant");
-        setDripIntervalDays(String(nextCourse.dripIntervalDays ?? 1));
-        setFreePreviewLessonId(nextCourse.freePreviewLessonId ?? "");
-        setMembersTheme(nextCourse.membersTheme ?? "light");
-        setMembersCoverAssetId(nextCourse.membersCoverAssetId ?? null);
-        setMembersTitle(nextCourse.membersTitle ?? "");
-        setMembersSubtitle(nextCourse.membersSubtitle ?? "");
-        setMembersDescription(nextCourse.membersDescription ?? "");
-        setCommunityEnabled(nextCourse.communityEnabled ?? false);
-        // Todo snapshot passa aqui, inclusive o eco do nosso autosave. Voltar
-        // sempre para o 1o modulo mandava a aula seguinte para o modulo errado.
-        setLessonModuleId((current) =>
-          nextCourse.modules?.some((module) => module.id === current)
-            ? current
-            : nextCourse.modules?.[0]?.id ?? "",
-        );
-        // Baseline mirrors exactly what the state setters above produce, so a
-        // fresh hydration (or our own write echoing back) is never seen as a
-        // user edit. Async callback -> setState is allowed here.
-        setSavedSignature(builderDraftSignatureFromCourse(nextCourse));
+        skippedSnapshotRef.current = null;
+        applyServerDraft(nextCourse);
       },
       () => {
         setIsLoading(false);
         setError({ code: "load" });
       },
     );
-  }, [courseId]);
+  }, [courseId, applyServerDraft]);
 
   // One-shot (re)load instead of a realtime channel: the lesson studio modal
   // already owns the `course_assets:{id}` realtime topic while it is open, and
@@ -915,7 +939,22 @@ export function CourseBuilderStudio() {
     savedSignature !== null && builderDraftSignature !== savedSignature;
   useEffect(() => {
     draftDirtyRef.current = draftIsDirty;
-  }, [draftIsDirty]);
+    const skipped = skippedSnapshotRef.current;
+    if (draftIsDirty || !skipped) {
+      return;
+    }
+    // O rascunho voltou a ficar limpo sem save nosso (desfez a edicao, ou o
+    // autosave foi bloqueado/falhou e a pessoa voltou atras). O servidor pode
+    // ter coisa mais nova, de outra aba ou da pagina de vendas no Manage, que
+    // usa a mesma RPC de troca total. Sem isto, a proxima edicao qualquer
+    // gravava a copia velha inteira por cima.
+    skippedSnapshotRef.current = null;
+    // Assincrono: setState direto no corpo do efeito e vetado (react-hooks).
+    queueMicrotask(() => applyServerDraft(skipped));
+  }, [draftIsDirty, applyServerDraft]);
+  useEffect(() => {
+    localModulesRef.current = modules;
+  }, [modules]);
   // Preço e parcelas só ficam inválidos por digitação (a hidratação sempre
   // produz valor válido ou vazio). Um preço inválido que normaliza para o mesmo
   // valor da base ("invalid" e vazio viram null) não muda a assinatura, e o
@@ -1176,6 +1215,9 @@ export function CourseBuilderStudio() {
 
       return nextModules;
     });
+    if (pendingLessonStudioRef.current?.moduleId === moduleId) {
+      pendingLessonStudioRef.current = null;
+    }
     setSuccess(null);
   }
 
@@ -1260,6 +1302,12 @@ export function CourseBuilderStudio() {
       setFreePreviewLessonId("");
     }
 
+    // Aula apagada antes do eco do save que a levou: o eco nao pode abrir o
+    // estudio dela.
+    if (pendingLessonStudioRef.current?.lessonId === lessonId) {
+      pendingLessonStudioRef.current = null;
+    }
+
     if (
       activeLessonStudio?.moduleId === moduleId
       && activeLessonStudio.lessonId === lessonId
@@ -1289,6 +1337,8 @@ export function CourseBuilderStudio() {
       try {
         await updateTeacherCourseBuilder(courseId, payload);
         setSavedSignature(signature);
+        // O servidor agora tem o nosso rascunho; o proximo eco traz o resto.
+        skippedSnapshotRef.current = null;
         if (inFlightSavesRef.current === 1) {
           setAutosaveState("saved");
         }
