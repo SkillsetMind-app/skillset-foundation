@@ -5212,7 +5212,7 @@
     "privacy": {
       "title": "Privacy Policy",
       "description": "How SkillsetMind collects, uses, and protects your data.",
-      "text1": "This policy explains what personal information SkillsetMind collects, why, who it is shared with, and the rights you have over it. It applies to visitors, learners, and educators. The data controller is SKILLSET USA INC., 26 Broadway, New York, NY 10006, United States (\"SkillsetMind,\" \"we,\" \"us\").",
+      "text1": "This policy explains what personal information SkillsetMind collects, why, who it is shared with, and the rights you have over it. It applies to visitors, learners, and educators. The data controller is SKILLSET USA INC., 418 Broadway, Ste N, Albany, NY 12207, United States (\"SkillsetMind,\" \"we,\" \"us\").",
       "text2": "Short version: we collect what the platform needs to run — your account, your learning activity, your purchases — plus product analytics you can opt out of. We do not sell your personal information.",
       "text3": "<strong>Account data</strong> — name, email address, password (stored hashed by Supabase Auth), and your role on the platform (learner and/or educator).",
       "text4": "<strong>Profile data</strong> — information you add to your profile, such as a photo, bio, or professional background (for educators).",
@@ -5308,7 +5308,7 @@
       "text34": "Unresolved disputes will be settled by binding individual arbitration under the Consumer Arbitration Rules of the American Arbitration Association (AAA), seated in New York, New York, and each party waives class actions and jury trials to the extent permitted by law. Either party may instead bring an individual claim in small-claims court. If you reside in a jurisdiction whose law guarantees you access to your local courts or protections that cannot be waived (including consumers in the European Union and Brazil), those rights are not affected by this section.",
       "text35": "We may update these Terms as the platform evolves. For material changes we will update the effective date above and notify you by email or in-product notice before the changes take effect. Continuing to use SkillsetMind after that date means you accept the revised Terms.",
       "text36": "These Terms are written in English. Translations may be provided for convenience; if there is a conflict, the English version controls except where local law requires otherwise.",
-      "text37": "SKILLSET USA INC., 26 Broadway, New York, NY 10006, United States. Questions about these Terms: <support>support@skillsetmind.com</support> or <legal>legal@skillsetmind.com</legal>.",
+      "text37": "SKILLSET USA INC., 418 Broadway, Ste N, Albany, NY 12207, United States. Questions about these Terms: <support>support@skillsetmind.com</support> or <legal>legal@skillsetmind.com</legal>.",
       "heading1": "1. Acceptance and eligibility",
       "heading2": "2. Your account and roles",
       "heading3": "3. The platform and marketplace standards",

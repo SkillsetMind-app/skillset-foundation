@@ -236,6 +236,19 @@ describe("legal document translation from the request cookie", () => {
     view.unmount();
   });
 
+  it.each(["en", "es"] as const)("gives the %s legal address from the NY DOS filing and IRS CP575A", async (locale) => {
+    // Confirmed 2026-09-15 against the NY DOS filing receipt and the IRS CP575A letter.
+    request.locale = locale;
+    const country = locale === "en" ? "United States" : "Estados Unidos";
+    for (const Page of [TermsPage, PrivacyPage]) {
+      const view = render(await Page());
+      const main = screen.getByRole("main");
+      expect(main).toHaveTextContent(`SKILLSET USA INC., 418 Broadway, Ste N, Albany, NY 12207, ${country}`);
+      expect(main.textContent).not.toMatch(/26 Broadway|10006/);
+      view.unmount();
+    }
+  });
+
   it.each(["en", "es"] as const)("publishes the %s DMCA notice, counter-notice and repeat-infringer rules without an EIN", async (locale) => {
     request.locale = locale;
     render(await CopyrightPage());
