@@ -47,6 +47,8 @@ import {
   enrollInFreeCreatorCourse,
   startCourseCheckout,
 } from "@/lib/payments/checkout";
+import { track } from "@/lib/posthog/events";
+import { CourseViewedTracker } from "@/lib/posthog/page-trackers";
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
 
 type CreatorCourseDetailProps = {
@@ -483,6 +485,13 @@ export function CreatorCourseDetail({
     const checkoutCourseId = course.id;
     setCheckoutError("");
     setIsCheckingOut(true);
+    // CHECKOUT_STARTED: ids plus the money convention (minor + currency). The
+    // coupon is text the buyer typed, so it stays out of analytics.
+    track.checkoutStarted({
+      course_id: checkoutCourseId,
+      price_minor: resolvedPrice.amountMinor,
+      currency: resolvedPrice.currency,
+    });
 
     try {
       await startCourseCheckout(checkoutCourseId, {
@@ -529,6 +538,16 @@ export function CreatorCourseDetail({
 
   return (
     <>
+    {/* COURSE_VIEWED on the public course page, once the price is resolved so
+        is_free and currency are real. The checkout-only page is a step of the
+        purchase, not a view. Ids only: no title, no teacher name. */}
+    {!checkoutOnly && pricingReady ? (
+      <CourseViewedTracker
+        course_id={course.id}
+        is_free={courseIsFree}
+        currency={resolvedPrice?.currency}
+      />
+    ) : null}
     <div className={checkoutOnly ? "mx-auto grid w-full min-w-0 max-w-2xl gap-6" : "grid gap-8 pb-24 lg:grid-cols-[1.15fr_0.85fr] lg:pb-0"}>
       <section className="min-w-0">
         {hideHeader ? null : (

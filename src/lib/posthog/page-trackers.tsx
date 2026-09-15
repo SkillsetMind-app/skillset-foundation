@@ -9,22 +9,51 @@
  * whether a course view came from search, marketplace, direct link, etc.
  */
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { track } from "@/lib/posthog/events";
-import type { CourseViewedProps } from "@/lib/posthog/events";
+import type { CourseViewedProps, PurchaseCompletedProps } from "@/lib/posthog/events";
 
 export function CourseViewedTracker(props: CourseViewedProps) {
-  // course_id / slug / source are stable for the page, so we only want
-  // ONE event per mount even under React Strict Mode double-invoke in dev.
-  // The `initialized` guard in client.ts already short-circuits double
-  // capture before PostHog is ready, but we still wrap in a ref-style
-  // useEffect with a primitive dep set to avoid duplicates.
-  const { course_id, slug, source } = props;
+  // One event per course per mount. Switching offers can change currency or
+  // free/paid, and that is the same view, not a new one: the values sent are
+  // the ones current when this course first rendered here.
+  const latest = useRef(props);
+  useEffect(() => {
+    latest.current = props;
+  });
+  const { course_id } = props;
 
   useEffect(() => {
-    track.courseViewed({ course_id, slug, source });
-  }, [course_id, slug, source]);
+    const { slug, source, is_free, currency } = latest.current;
+    track.courseViewed({ course_id, slug, source, is_free, currency });
+  }, [course_id]);
+
+  return null;
+}
+
+const PURCHASE_KEY = "skillset.posthog.purchase_completed.";
+
+/**
+ * purchase_completed, at most once per course per browser. The mark lives in
+ * localStorage (every tab, every later visit): the success URL gets reloaded,
+ * bookmarked and reopened in new tabs, and each of those used to count another
+ * sale. It is set the first time the paid course opens after a checkout
+ * return, whether or not the event was sent, so a consent Accept on a later
+ * day can never count an old purchase as a new one.
+ */
+export function PurchaseCompletedTracker({ course_id }: PurchaseCompletedProps) {
+  useEffect(() => {
+    const key = `${PURCHASE_KEY}${course_id}`;
+    try {
+      if (window.localStorage.getItem(key)) return;
+      window.localStorage.setItem(key, "1");
+    } catch {
+      // ponytail: storage blocked -> dropping ?checkout from the URL is the
+      // only guard left against a repeat.
+    }
+    track.purchaseCompleted({ course_id });
+  }, [course_id]);
 
   return null;
 }

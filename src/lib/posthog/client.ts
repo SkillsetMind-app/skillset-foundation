@@ -57,13 +57,26 @@ export function applyAnalyticsConsent(granted: boolean): void {
   }
 }
 
+/**
+ * Hand a product event to PostHog. Returns true only when it was handed over.
+ */
 export function captureEvent(
   name: string,
   properties?: Record<string, unknown>,
-): void {
-  if (typeof window === "undefined") return;
-  if (!initialized) return;
+): boolean {
+  if (typeof window === "undefined") return false;
+  // Same rule as init's opt-out default: nothing is sent without an explicit
+  // Accept. Checked here too so a product event never depends on PostHog's own
+  // opt-in state having been applied yet.
+  if (getStoredCookieConsent() !== "accepted") return false;
+  // Page trackers fire from their own effects, and React runs a child's
+  // effects before the provider's init effect, so the first event of every
+  // full page load hit an uninitialized client and was silently dropped.
+  // initPostHog is idempotent (and a no-op without a key).
+  initPostHog();
+  if (!initialized) return false;
   posthog.capture(name, properties);
+  return true;
 }
 
 /**

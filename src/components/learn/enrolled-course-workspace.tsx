@@ -198,6 +198,9 @@ export function EnrolledCourseWorkspace({
     setLessonChoice({ seenParam: lessonParam, id: lessonId });
 
     const params = new URLSearchParams(searchParams?.toString() ?? "");
+    // The Stripe return marker must not ride along into every lesson URL: a
+    // copied, bookmarked or reopened link would look like a fresh purchase.
+    params.delete("checkout");
     params.set("lesson", lessonId);
     router.replace(`${basePath}?${params.toString()}`, { scroll: false });
 

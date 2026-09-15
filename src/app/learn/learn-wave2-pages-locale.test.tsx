@@ -47,7 +47,10 @@ vi.mock("@/components/auth/onboarding-choice", () => {
 });
 vi.mock("@/lib/data/catalog", () => ({ getCourseBySlug: () => null }));
 vi.mock("@/lib/learn/server/member-area", () => ({ getMemberArea: async () => ({ brand: null, theme: "dark" }) }));
-vi.mock("@/lib/posthog/page-trackers", () => ({ CourseViewedTracker: () => null }));
+vi.mock("@/lib/posthog/page-trackers", () => ({
+  CourseViewedTracker: () => null,
+  PurchaseCompletedTracker: () => null,
+}));
 
 beforeEach(() => {
   mocks.locale = "es";
