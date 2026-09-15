@@ -3419,7 +3419,12 @@
       "previewTitle": "Vista previa del video",
       "savedProcessing": "La subida está guardada. Los videos nuevos pueden seguir procesándose antes de poder reproducirse.",
       "embedDetected": "Video de {provider} detectado.",
-      "embedInvalid": "El enlace está guardado, pero no se reproducirá en el aula. Usa una URL de video estándar de YouTube o Vimeo.",
+      "oldLink": "Enlace antiguo",
+      "oldLinkHelp": "Este enlace no es un video, así que no se reproduce en el aula. Los estudiantes siguen teniendo un botón que lo abre.",
+      "removeOldLink": "Quitar enlace antiguo",
+      "removeOldLinkConfirm": "¿Quitar el enlace antiguo? Los estudiantes perderán el botón que lo abre.",
+      "linkNotSaved": "Enlace no guardado. El enlace antiguo se mantiene.",
+      "linkLoading": "Cargando los archivos de la lección...",
       "embedEmpty": "Pega un enlace si el video ya está alojado fuera de SkillsetMind.",
       "uploadVideo": "Subir video de la lección",
       "uploadVideoHelp": "MP4, MOV, WebM o cualquier archivo de video compatible con el navegador.",
@@ -3473,7 +3478,8 @@
       },
       "success": {
         "uploaded": "Archivo subido a esta lección.",
-        "deleted": "Archivo eliminado."
+        "deleted": "Archivo eliminado.",
+        "oldLinkRemoved": "Enlace antiguo quitado."
       },
       "deleteConfirm": "¿Eliminar \"{fileName}\"? El archivo se eliminará de forma permanente.",
       "thumbnailAlt": "Miniatura de la lección: {fileName}",
@@ -3491,7 +3497,10 @@
       "browseHelp": "o haz clic para buscarlo: MP4, MOV, WebM y otros archivos de video.",
       "url": "URL de YouTube o Vimeo",
       "helpLabel": "Cómo funciona el campo de URL de YouTube o Vimeo",
-      "help": "Pega el enlace de la página del video, por ejemplo https://www.youtube.com/watch?v=… o una URL de Vimeo. Lo convertimos en un video insertado que protege la privacidad y se reproduce en el aula con la identidad del estudiante como marca de agua. Sigue siendo un enlace de YouTube o Vimeo: quien acceda a él puede verlo fuera de tu curso. Si subes el archivo, la reproducción se firma para cada estudiante.",
+      "help": "Solo se aceptan enlaces de video de YouTube y Vimeo: pega el enlace de la página del video, por ejemplo https://www.youtube.com/watch?v=… o https://vimeo.com/…. Otros enlaces no se guardan. Lo convertimos en un video insertado que protege la privacidad y se reproduce en el aula con la identidad del estudiante como marca de agua. Sigue siendo un enlace de YouTube o Vimeo: quien acceda a él puede verlo fuera de tu curso. Si subes el archivo, la reproducción se firma para cada estudiante.",
+      "replaceWithLink": "Reemplazar por enlace",
+      "replaceWithUpload": "Reemplazar por archivo",
+      "rejected": "Solo se aceptan enlaces de video de YouTube y Vimeo. Este enlace no se guardó.",
       "protectionNote": "Un video insertado sigue siendo un enlace de YouTube o Vimeo: cualquiera que tenga ese enlace puede verlo fuera de tu curso. Si subes el archivo, cada estudiante obtiene su propia reproducción firmada."
     },
     "members": {

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import type { CourseAsset } from "@/domain/course-asset";
 import type { DripStrategy } from "@/domain/drip-policy";
-import type { TeacherCourse, TeacherLesson } from "@/domain/teacher-course";
+import { resolveLessonVideoSource, type TeacherCourse, type TeacherLesson } from "@/domain/teacher-course";
 
 const deleteCourseAsset = vi.fn<(asset: CourseAsset) => Promise<void>>(
   async () => {},
@@ -16,6 +16,8 @@ const uploadLessonVideoToBunny = vi.fn<(input: unknown) => Promise<void>>(
 );
 let currentAssets: CourseAsset[] = [];
 let emitAssets: (assets: CourseAsset[]) => void;
+// "wait" segura a primeira entrega dos arquivos; "fail" simula erro de carga.
+let subscribeOutcome: "emit" | "wait" | "fail" = "emit";
 const subscribed = vi.fn();
 const router = vi.hoisted(() => ({ refresh: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
@@ -53,10 +55,12 @@ vi.mock("@/lib/data/course-assets", () => ({
   subscribeToCourseAssets: (
     _courseId: string,
     onAssets: (assets: CourseAsset[]) => void,
+    onError: (error: Error) => void,
   ) => {
     subscribed();
     emitAssets = onAssets;
-    onAssets(currentAssets);
+    if (subscribeOutcome === "emit") onAssets(currentAssets);
+    if (subscribeOutcome === "fail") onError(new Error("load-failed"));
     return () => {};
   },
 }));
@@ -257,6 +261,319 @@ describe("LessonContentModal — descricao", () => {
   });
 });
 
+// Decisao de 14/09: um video por aula, envio OU link do YouTube/Vimeo, nunca
+// os dois. Trocar e explicito e nunca apaga um course_assets.
+describe("LessonContentModal — um video por aula", () => {
+  const linkField = () => screen.queryByRole("textbox", { name: "YouTube or Vimeo URL" }) as HTMLElement;
+  const drive = "https://drive.example.test/file/d/abc/view";
+  const youtube = "https://www.youtube.com/watch?v=abc";
+  const vimeo = "https://vimeo.com/123456";
+
+  beforeEach(() => {
+    currentAssets = [];
+    bunnyConfig.isBunnyConfigured = false;
+    vi.clearAllMocks();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    subscribeOutcome = "emit";
+  });
+
+  it("com video enviado, o campo de link so aparece depois de Replace with link", () => {
+    currentAssets = [videoAsset()];
+    renderModal({ videoSource: "upload" });
+
+    expect(linkField()).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    expect(linkField()).toBeInTheDocument();
+    expect(screen.queryByLabelText("Upload a lesson video")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Lesson video")).not.toBeInTheDocument();
+  });
+
+  it("link que nao e YouTube nem Vimeo mostra erro e nao grava", () => {
+    const { onUpdateLesson } = renderModal();
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+
+    fireEvent.change(linkField(), { target: { value: "https://example.test/v.mp4" } });
+    fireEvent.blur(linkField());
+
+    expect(screen.getByText("Only YouTube and Vimeo video links are accepted. This link was not saved.")).toBeInTheDocument();
+    expect(linkField()).toHaveAttribute("aria-invalid", "true");
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+  });
+
+  // O host precisa ser do YouTube ou do Vimeo: e a lista que getTrustedLessonEmbed
+  // aceita. O player e mock, nada e buscado.
+  it("trocar para link grava fonte e link juntos e nunca apaga o envio", () => {
+    currentAssets = [videoAsset()];
+    const { onUpdateLesson } = renderModal({ videoSource: "upload" });
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+
+    fireEvent.change(linkField(), { target: { value: vimeo } });
+    fireEvent.blur(linkField());
+
+    expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({
+      videoSource: "youtube",
+      externalUrl: vimeo,
+    });
+    expect(deleteCourseAsset).not.toHaveBeenCalled();
+    // O envio antigo segue listado, com o proprio botao de apagar.
+    expect(screen.getByRole("button", { name: /delete/i })).toBeInTheDocument();
+  });
+
+  it("link antigo que nao e video aparece so leitura como Old link", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Módulo 1", true);
+
+    const old = screen.getByRole("region", { name: "Old link" });
+    expect(old).toHaveTextContent(drive);
+    expect(screen.queryByDisplayValue(drive)).not.toBeInTheDocument();
+
+    // O campo de link comeca vazio; digitar e apagar nao tira o link antigo.
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    expect(linkField()).toHaveValue("");
+    fireEvent.change(linkField(), { target: { value: "abc" } });
+    fireEvent.change(linkField(), { target: { value: "" } });
+    fireEvent.blur(linkField());
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+
+    fireEvent.click(within(old).getByRole("button", { name: "Remove old link" }));
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ externalUrl: null });
+    // A secao some com o link: o foco vai para um botao que fica e o aviso
+    // sai pelo role="status".
+    expect(screen.queryByRole("region", { name: "Old link" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Replace with upload" })).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent("Old link removed.");
+  });
+
+  it("recusar a confirmacao de tirar o link antigo nao muda nada", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Módulo 1", true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove old link" }));
+
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+    expect(screen.getByRole("region", { name: "Old link" })).toHaveTextContent(drive);
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+
+  // O primeiro link aceito sobrescrevia o link antigo sem perguntar: a unica
+  // confirmacao estava no botao de tirar.
+  it("link do Vimeo numa aula com link antigo pede a confirmacao antes de gravar", () => {
+    const confirm = vi.spyOn(window, "confirm")
+      .mockReturnValueOnce(false).mockReturnValueOnce(false).mockReturnValueOnce(true);
+    const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Módulo 1", true);
+    const notice = "Link not saved. The old link stays.";
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+
+    fireEvent.change(linkField(), { target: { value: vimeo } });
+    fireEvent.blur(linkField());
+    expect(confirm).toHaveBeenCalledExactlyOnceWith("Remove the old link? Students will lose the button that opens it.");
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+    expect(screen.getByRole("region", { name: "Old link" })).toHaveTextContent(drive);
+    // Recusou: o campo volta ao salvo e avisa. Sair de novo (X, aba, troca)
+    // nao pergunta outra vez nem come o clique.
+    expect(linkField()).toHaveValue("");
+    expect(screen.getByRole("status")).toHaveTextContent(notice);
+    const firstNotice = screen.getByText(notice);
+    fireEvent.blur(linkField());
+    expect(confirm).toHaveBeenCalledOnce();
+
+    // A segunda recusa vira um no novo no status, para ser anunciada de novo.
+    fireEvent.change(linkField(), { target: { value: vimeo } });
+    fireEvent.blur(linkField());
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(screen.getByText(notice)).not.toBe(firstNotice);
+
+    fireEvent.change(linkField(), { target: { value: vimeo } });
+    fireEvent.blur(linkField());
+    expect(confirm).toHaveBeenCalledTimes(3);
+    expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ videoSource: "youtube", externalUrl: vimeo });
+    expect(confirm.mock.invocationCallOrder[2]).toBeLessThan(onUpdateLesson.mock.invocationCallOrder[0]);
+    expect(screen.queryByRole("region", { name: "Old link" })).not.toBeInTheDocument();
+    // Gravou: o aviso de "nao salvo" sai.
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+
+  it("o aviso de link nao salvo some depois de tirar o link antigo e ao trocar de aba", () => {
+    vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    renderModal({ externalUrl: drive }, "Módulo 1", true);
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    fireEvent.change(linkField(), { target: { value: vimeo } });
+    fireEvent.blur(linkField());
+    expect(screen.getByRole("status")).toHaveTextContent("Link not saved. The old link stays.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove old link" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Old link removed.");
+    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Video/ }));
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+
+  // A troca so mexia na tela: com a midia de destino ja salva, o aluno
+  // continuava vendo a fonte antiga.
+  it("com envio e link salvos, trocar grava a fonte e o aluno ve a troca, sem apagar nada", () => {
+    currentAssets = [videoAsset()];
+    const { onUpdateLesson, lesson } = renderModal(
+      { videoSource: "youtube", externalUrl: youtube, durationMinutes: 12, contentText: "corpo" },
+      "Módulo 1",
+      true,
+    );
+    const saved = () =>
+      Object.assign({}, lesson, ...onUpdateLesson.mock.calls.map(([patch]) => patch)) as TeacherLesson;
+    // O mesmo calculo do player da area de membros (enrolled-course-workspace).
+    const learnerSees = () =>
+      resolveLessonVideoSource({ declared: saved().videoSource, hasVideoAsset: true, hasTrustedEmbed: true });
+    expect(learnerSees()).toBe("youtube");
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace with upload" }));
+    expect(onUpdateLesson).toHaveBeenLastCalledWith({ videoSource: "upload" });
+    expect(learnerSees()).toBe("upload");
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    expect(onUpdateLesson).toHaveBeenLastCalledWith({ videoSource: "youtube" });
+    expect(learnerSees()).toBe("youtube");
+
+    expect(onUpdateLesson).toHaveBeenCalledTimes(2);
+    expect(saved()).toEqual({ ...lesson, videoSource: "youtube" });
+    expect(deleteCourseAsset).not.toHaveBeenCalled();
+  });
+
+  it("sem a midia de destino, trocar fica so na tela ate um link ou um envio", () => {
+    const { onUpdateLesson, unmount } = renderModal({ videoSource: "youtube", externalUrl: youtube });
+    fireEvent.click(screen.getByRole("button", { name: "Replace with upload" }));
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+    unmount();
+
+    currentAssets = [videoAsset()];
+    const second = renderModal({ videoSource: "upload" });
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    expect(second.onUpdateLesson).not.toHaveBeenCalled();
+  });
+
+  // O modo era rederivado dos dados salvos a cada render: apagar o link
+  // mandava a aba de volta ao envio e tirava o campo que o professor digitava.
+  it("apagar o link de uma aula do YouTube mantem o campo na tela", () => {
+    const { onUpdateLesson } = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Módulo 1", true);
+    expect(linkField()).toHaveValue(youtube);
+
+    fireEvent.change(linkField(), { target: { value: "" } });
+    expect(linkField()).toBeInTheDocument();
+    fireEvent.blur(linkField());
+    expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ externalUrl: null, videoSource: null });
+    expect(linkField()).toBeInTheDocument();
+    expect(linkField()).toHaveValue("");
+
+    fireEvent.change(linkField(), { target: { value: vimeo } });
+    fireEvent.blur(linkField());
+    expect(onUpdateLesson).toHaveBeenLastCalledWith({ videoSource: "youtube", externalUrl: vimeo });
+  });
+
+  // Esc e clique fora desmontam o campo sem um blur que chegue ao React 19: o
+  // link digitado e nunca desfocado se perdia ao fechar.
+  it("Esc e clique fora gravam o link digitado antes de fechar", () => {
+    const first = renderModal();
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    fireEvent.change(linkField(), { target: { value: vimeo } });
+    fireEvent.keyDown(linkField(), { key: "Escape" });
+    expect(first.onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ videoSource: "youtube", externalUrl: vimeo });
+    expect(first.onClose).toHaveBeenCalledOnce();
+    expect(first.onUpdateLesson.mock.invocationCallOrder[0]).toBeLessThan(first.onClose.mock.invocationCallOrder[0]);
+    first.unmount();
+
+    const second = renderModal();
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    fireEvent.change(linkField(), { target: { value: vimeo } });
+    fireEvent.mouseDown(document.querySelector(".lesson-modal-overlay") as HTMLElement);
+    expect(second.onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ videoSource: "youtube", externalUrl: vimeo });
+    expect(second.onClose).toHaveBeenCalledOnce();
+  });
+
+  // A pagina publica do curso so le "upload" da fonte gravada: com a fonte em
+  // null, o video da previa gratis sumia da pagina de vendas.
+  it("apagar o link com um envio salvo grava a fonte no envio, nao em null", () => {
+    currentAssets = [videoAsset()];
+    const { onUpdateLesson, lesson } = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Módulo 1", true);
+
+    fireEvent.change(linkField(), { target: { value: "" } });
+    fireEvent.blur(linkField());
+
+    expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ externalUrl: null, videoSource: "upload" });
+    const saved = { ...lesson, ...onUpdateLesson.mock.calls[0][0] } as TeacherLesson;
+    // O mesmo calculo da previa na pagina de vendas (creator-course-detail).
+    expect(resolveLessonVideoSource({
+      declared: saved.videoSource,
+      hasVideoAsset: saved.videoSource === "upload",
+      hasTrustedEmbed: false,
+    })).toBe("upload");
+    expect(deleteCourseAsset).not.toHaveBeenCalled();
+  });
+
+  // Fechar calado perdia o link: recusado, ou com a troca nao confirmada.
+  it("Esc com link recusado deixa o estudio aberto e mostra o erro", () => {
+    const { onUpdateLesson, onClose } = renderModal();
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    fireEvent.change(linkField(), { target: { value: "https://example.test/v.mp4" } });
+
+    fireEvent.keyDown(linkField(), { key: "Escape" });
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Only YouTube and Vimeo video links are accepted.");
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+  });
+
+  it("Esc e Cancelar na confirmacao deixam o estudio aberto; o Esc seguinte fecha", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const { onUpdateLesson, onClose } = renderModal({ externalUrl: drive }, "Módulo 1", true);
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    fireEvent.change(linkField(), { target: { value: vimeo } });
+
+    fireEvent.keyDown(linkField(), { key: "Escape" });
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+    expect(screen.getByRole("status")).toHaveTextContent("Link not saved. The old link stays.");
+
+    // O campo voltou ao salvo: nada mais a perder, o Esc seguinte fecha.
+    fireEvent.keyDown(linkField(), { key: "Escape" });
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  // Antes de os arquivos chegarem, primaryVideo e null: apagar o link gravava
+  // a fonte em null mesmo com um envio salvo.
+  it("antes de os arquivos da aula chegarem, o link e so leitura e apagar nao grava nada", () => {
+    subscribeOutcome = "wait";
+    currentAssets = [videoAsset()];
+    const { onUpdateLesson } = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Módulo 1", true);
+
+    expect(linkField()).toHaveAttribute("readonly");
+    expect(screen.getByText("Loading this lesson's files...")).toBeInTheDocument();
+    fireEvent.change(linkField(), { target: { value: "" } });
+    fireEvent.blur(linkField());
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+
+    act(() => emitAssets(currentAssets));
+    expect(linkField()).not.toHaveAttribute("readonly");
+    fireEvent.change(linkField(), { target: { value: "" } });
+    fireEvent.blur(linkField());
+    expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ externalUrl: null, videoSource: "upload" });
+  });
+
+  it("se os arquivos da aula nao carregam, o link fica so leitura com o erro de carga", () => {
+    subscribeOutcome = "fail";
+    const { onUpdateLesson } = renderModal({ videoSource: "youtube", externalUrl: youtube });
+
+    expect(linkField()).toHaveAttribute("readonly");
+    expect(screen.getByText("We could not load lesson assets.")).toBeInTheDocument();
+    fireEvent.change(linkField(), { target: { value: "" } });
+    fireEvent.blur(linkField());
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+  });
+});
+
 describe("LessonContentModal — video tab", () => {
   beforeEach(() => {
     currentAssets = [];
@@ -267,7 +584,25 @@ describe("LessonContentModal — video tab", () => {
       static revokeObjectURL = vi.fn();
     });
   });
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  // Tirar o link antigo no meio de um envio sumia com o botao focado e o foco
+  // caia no body (o botao de troca fica desabilitado); o aviso nunca saia.
+  it("durante um envio, Remove old link fica desabilitado", async () => {
+    let finish!: () => void;
+    uploadCourseAsset.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    renderModal({ externalUrl: "https://drive.example.test/file/d/abc/view" });
+    chooseVideoFile();
+    fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
+
+    await screen.findByRole("progressbar", { name: "Uploading..." });
+    expect(screen.getByRole("button", { name: "Remove old link" })).toBeDisabled();
+    await act(async () => { finish(); });
+    expect(screen.getByRole("button", { name: "Remove old link" })).toBeEnabled();
+  });
 
   it("keeps selected video, local preview and upload in the device column without publishing", () => {
     const { onUpdateLesson, unmount } = renderModal();
@@ -284,7 +619,9 @@ describe("LessonContentModal — video tab", () => {
     expect(preview).toHaveAttribute("controls");
     expect(preview).not.toHaveAttribute("autoplay");
     expect(URL.createObjectURL).toHaveBeenCalledExactlyOnceWith(file);
-    expect(form.compareDocumentPosition(screen.getByLabelText("YouTube or Vimeo URL")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Um video por aula: com o envio na tela, o campo de link nao aparece.
+    expect(screen.queryByLabelText("YouTube or Vimeo URL")).not.toBeInTheDocument();
+    expect(form.compareDocumentPosition(screen.getByRole("button", { name: "Replace with link" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(onUpdateLesson).not.toHaveBeenCalled();
     expect(uploadCourseAsset).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: /^Video/ })).toHaveTextContent("Selected");
@@ -352,6 +689,7 @@ describe("LessonContentModal — video tab", () => {
 
   it("dismisses URL help with Escape while keeping the lesson open and focused", () => {
     const { onClose } = renderModal();
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     const help = screen.getByRole("button", { name: "How the YouTube or Vimeo URL field works" });
     act(() => help.focus());
     expect(screen.getByRole("tooltip")).toBeInTheDocument();
@@ -366,6 +704,7 @@ describe("LessonContentModal — video tab", () => {
 
   it("dismisses hovered URL help before Escape reaches the lesson, without moving input focus", () => {
     const { onClose } = renderModal();
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     const input = screen.getByPlaceholderText("https://www.youtube.com/watch?v=...");
     act(() => input.focus());
     fireEvent.mouseEnter(screen.getByRole("button", { name: "How the YouTube or Vimeo URL field works" }));
@@ -403,6 +742,8 @@ describe("LessonContentModal — video tab", () => {
         target: { value: "Descrição autoral — não traduzir" },
       });
       fireEvent.click(screen.getByRole("button", { name: /^Video/ }));
+      // A aula tem link do YouTube: a aba abre no link, e o envio e uma troca explicita.
+      fireEvent.click(screen.getByRole("button", { name: "Replace with upload" }));
       const file = chooseVideoFile("Aula $& — ação.mp4");
       const fileInput = screen.getByLabelText("Lesson video");
       fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
@@ -414,7 +755,8 @@ describe("LessonContentModal — video tab", () => {
       expect(screen.getByRole("button", { name: "Cancelar subida" })).toBeEnabled();
       expect(screen.getByLabelText("Video de la lección")).toBe(fileInput);
       expect(screen.getByText(/Aula \$& — ação\.mp4/)).toBeInTheDocument();
-      expect(screen.getByDisplayValue(url)).toBeDisabled();
+      // O link salvo nunca foi tocado pela troca nem pelo envio.
+      expect(onUpdateLesson).not.toHaveBeenCalledWith(expect.objectContaining({ externalUrl: expect.anything() }));
       for (const name of [/^Video/, /^Descripción/, /^Materiales/, /^Ajustes/]) {
         expect(screen.getByRole("button", { name })).toBeDisabled();
       }
@@ -546,6 +888,8 @@ describe("LessonContentModal — video tab", () => {
       externalUrl: "https://www.youtube.com/watch?v=abc",
     });
 
+    // Um video por aula: o envio aparece pela troca explicita.
+    fireEvent.click(screen.getByRole("button", { name: "Replace with upload" }));
     chooseVideoFile();
 
     expect(
