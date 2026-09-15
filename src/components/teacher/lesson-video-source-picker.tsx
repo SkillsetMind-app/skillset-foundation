@@ -14,7 +14,11 @@ export type LessonVideoMode = "upload" | "link";
 // digitado se perdia. "rejected" e "declined" seguram o modal aberto, com o
 // erro ou o aviso na tela, em vez de perder o link calado.
 export type LinkCommitResult = "saved" | "unchanged" | "rejected" | "declined";
-export type LessonVideoSourcePickerHandle = { flushLink: () => LinkCommitResult };
+// `silent`: descarga ao sair da pagina. Nunca abre confirmacao; o que pediria
+// uma ("declined") simplesmente nao e gravado.
+export type LessonVideoSourcePickerHandle = {
+  flushLink: (options?: { silent?: boolean }) => LinkCommitResult;
+};
 
 // Um input type="url" tira quebras de linha e os espacos das pontas do valor:
 // o valor esperado de uma colagem e comparado ja limpo.
@@ -47,7 +51,7 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
   // link aceito que o campo mostrava. Link recusado nunca sai daqui. Devolve
   // false quando o modal nao gravou (o professor nao confirmou): o campo volta
   // ao que esta salvo.
-  onLinkChange: (next: string | null) => boolean | void;
+  onLinkChange: (next: string | null, options?: { silent?: boolean }) => boolean | void;
   uploadPanel?: ReactNode;
   // Alvo estavel de foco para o modal (ex.: depois de tirar o link antigo).
   replaceButtonRef?: Ref<HTMLButtonElement>;
@@ -103,7 +107,7 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
 
   // Grava so ao sair do campo, no Enter ou ao colar: salvar a cada tecla
   // gravava ids de video truncados e acusava erro no meio da digitacao.
-  function commitLink(value: string): LinkCommitResult {
+  function commitLink(value: string, silent = false): LinkCommitResult {
     if (locked) {
       return "unchanged";
     }
@@ -123,7 +127,9 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
       setDraft(url);
       return "unchanged";
     }
-    const kept = props.onLinkChange(url || null) !== false;
+    const kept = (silent
+      ? props.onLinkChange(url || null, { silent: true })
+      : props.onLinkChange(url || null)) !== false;
     // Nao gravou: o campo volta ao salvo, senao cada blur seguinte (X, aba,
     // "Replace with upload") perguntava de novo e comia o clique.
     setDraft(kept ? url : saved);
@@ -131,7 +137,7 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
   }
 
   useImperativeHandle(linkHandleRef, () => ({
-    flushLink: () => (props.mode === "link" ? commitLink(draft) : "unchanged"),
+    flushLink: (options) => (props.mode === "link" ? commitLink(draft, options?.silent) : "unchanged"),
   }));
 
   return (
