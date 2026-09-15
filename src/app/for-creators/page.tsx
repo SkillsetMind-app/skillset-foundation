@@ -2,7 +2,7 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import Link from "next/link";
 
 import { PublicPage } from "@/components/site/public-page";
-import { planById } from "@/data/plans";
+import { activationFeeUsd, isActivationFeeConfigured, planById } from "@/data/plans";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 
@@ -20,6 +20,7 @@ export async function generateMetadata() {
 
 export default async function ForCreatorsPage() {
   const { t } = await getServerTranslation();
+  const feeOn = isActivationFeeConfigured();
   const creatorTools = [
     t("publicPages.creators.course_builder_with_modules_lessons_previews"),
     t("publicPages.creators.protected_student_workspace_with_progress_files"),
@@ -92,11 +93,22 @@ export default async function ForCreatorsPage() {
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">
             {t("publicPages.creators.creator_path")}
           </p>
+          {/* Same condition as the /pricing fee line: the activation path and
+              the US$ fee only show while the fee can actually be charged. */}
           <h2 className="display-title mt-3 text-4xl">
-            {t("publicPages.creators.start_as_a_creator_publish_after")}
+            {t(feeOn ? "publicPages.creators.start_as_a_creator_publish_after" : "publicPages.creators.draft_then_publish")}
           </h2>
           <p className="mt-4 text-sm leading-7 text-white/78">
-            {t("publicPages.creators.creators_can_draft_courses_immediately_professional")}
+            {t(feeOn ? "publicPages.creators.creators_can_draft_courses_immediately_professional" : "publicPages.creators.creators_can_draft_after_verification")}
+          </p>
+          {/* ponytail: same wording as /fees-and-payouts, so the two pages cannot drift. */}
+          {feeOn ? (
+            <p className="mt-3 text-sm leading-7 text-white/78">
+              {t("publicPages.fees.activation_fee_detail").replace("{amount}", String(activationFeeUsd))}
+            </p>
+          ) : null}
+          <p className="mt-3 text-sm leading-7 text-white/78">
+            {t("publicPages.fees.payout_countries_detail")}
           </p>
           <Link href="/auth?mode=signup&path=teacher" className="button-solid-light mt-6 px-4 py-2.5 text-sm">
             {t("publicPages.creators.create_account")}

@@ -119,7 +119,7 @@ describe("SiteNav", () => {
     expect(screen.getByRole("link", { name: /My courses/ })).toHaveAttribute("href", "https://consumer.skillsetmind.com/auth?mode=signin&path=student");
     expect(screen.getByRole("link", { name: /Manage my business/ })).toHaveAttribute("href", "https://app.skillsetmind.com/auth?mode=signin&path=teacher");
     expect(screen.getByRole("link", { name: /Manage my business/ })).toHaveAttribute("target", "_blank");
-    expect(screen.getAllByRole("link", { name: "Get started free" })[0]).toHaveAttribute("href", "/auth?mode=signup");
+    expect(screen.getAllByRole("link", { name: "Create account" })[0]).toHaveAttribute("href", "/auth?mode=signup");
 
     fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
     const panel = document.getElementById("site-mobile-menu")!;

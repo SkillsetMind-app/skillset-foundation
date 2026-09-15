@@ -3,7 +3,7 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import Link from "next/link";
 
 import { PublicPage } from "@/components/site/public-page";
-import { plans, refundWindowDays } from "@/data/plans";
+import { activationFeeUsd, isActivationFeeConfigured, plans, refundWindowDays } from "@/data/plans";
 
 
 
@@ -24,6 +24,17 @@ export default async function FeesAndPayoutsPage() {
       t("publicPages.fees.plan_based_every_plan_includes_the").replace("{value0}", String(plans
         .map((plan) => `${plan.name} ${plan.commissionPercent}%`)
         .join(" · "))),
+    ],
+    // Same condition as the /pricing fee line: no card for a fee that cannot be charged.
+    ...(isActivationFeeConfigured()
+      ? [[
+          t("publicPages.fees.activation_fee"),
+          t("publicPages.fees.activation_fee_detail").replace("{amount}", String(activationFeeUsd)),
+        ]]
+      : []),
+    [
+      t("publicPages.fees.payout_countries"),
+      t("publicPages.fees.payout_countries_detail"),
     ],
     [
       t("publicPages.fees.stripe_processing_fee"),

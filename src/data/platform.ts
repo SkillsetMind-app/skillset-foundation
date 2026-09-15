@@ -1,6 +1,6 @@
 /**
  * Money formatter shared by marketing and account pages. Plan economics
- * (commission rates, monthly prices, break-even points) live in
+ * (commission rates, monthly prices) live in
  * `src/data/plans.ts` — import from there.
  */
 export function formatUsd(amount: number): string {

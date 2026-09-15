@@ -56,18 +56,8 @@ export type Plan = {
   stripePriceIds: StripePriceIds | null;
   /** One-line positioning tagline. */
   tagline: string;
-  /** Who this plan is for. */
+  /** Who this plan is for. Never an income band: public copy makes no earnings claims. */
   audience: string;
-  /**
-   * Approximate monthly GMV (in USD) where moving UP to this plan becomes
-   * cheaper than staying on the cheaper plan. Computed from:
-   *   (delta_subscription) / (delta_commission_rate)
-   * Free → Starter: $19 / (0.10 - 0.05) = $380 GMV
-   * Starter → Pro:  ($89 - $19) / (0.05 - 0.03) = $3,500 GMV
-   * Pro → Plus:     ($199 - $89) / (0.03 - 0.02) = $11,000 GMV
-   * Null on Free (no plan beneath it to compare against).
-   */
-  breakEvenGmvUsd: number | null;
   /** Headline bullets shown on the pricing page. */
   highlights: ReadonlyArray<string>;
 };
@@ -86,10 +76,9 @@ export const plans: ReadonlyArray<Plan> = [
     stripePriceIds: null,
     tagline: "Start selling without a subscription.",
     audience: "New creators validating an idea.",
-    breakEvenGmvUsd: null,
     highlights: [
       "No monthly fee — you only pay when you sell",
-      "Publish and sell immediately",
+      "Publish once your course passes the launch checks",
       "Stripe checkout in 30 currencies",
       "Buyers pay your own Stripe account — no platform hold on your money",
       "SkillsetMind Verified certificates",
@@ -107,8 +96,7 @@ export const plans: ReadonlyArray<Plan> = [
       yearlyId: "price_1TZFTnPvg1vJW0IjjaQXBpDW",
     },
     tagline: "Half the commission, small monthly cost.",
-    audience: "Creators earning around $400–$3,500 a month.",
-    breakEvenGmvUsd: 380,
+    audience: "Creators who sell every month.",
     highlights: [
       "Everything in Free",
       "Commission drops from 10% to 5%",
@@ -126,8 +114,7 @@ export const plans: ReadonlyArray<Plan> = [
       yearlyId: "price_1TZFToPvg1vJW0IjDHGPIzH0",
     },
     tagline: "A lower commission for established catalogs.",
-    audience: "Creators earning around $3,500–$11,000 a month.",
-    breakEvenGmvUsd: 3500,
+    audience: "Creators with an established catalog.",
     highlights: [
       "Everything in Starter",
       "Commission drops to 3%",
@@ -145,8 +132,7 @@ export const plans: ReadonlyArray<Plan> = [
       yearlyId: "price_1TZFTpPvg1vJW0IjgE9PQ5To",
     },
     tagline: "The lowest commission for high-volume creators.",
-    audience: "Creators earning $11,000 a month and up.",
-    breakEvenGmvUsd: 11000,
+    audience: "Creators with a large catalog and steady sales.",
     highlights: [
       "Everything in Pro",
       "Lowest commission — 2% per sale",

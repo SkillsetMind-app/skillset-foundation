@@ -31,7 +31,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       },
       {
         q: "How do I create my SkillsetMind account?",
-        a: "Click Get started free on the homepage. You can sign up as a learner or jump straight to the teacher application from the For creators page. The same account works for learning and teaching.",
+        a: "Click Create account at the top of any page; creating an account is free. You can sign up as a learner, or go straight to the creator sign-up from the For creators page. The same account works for learning and teaching.",
       },
     ],
   },
@@ -41,7 +41,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
     items: [
       {
         q: "Can creators upload courses themselves?",
-        a: "Yes. Creators can draft and build products before professional verification is complete. Once their professional credential is approved and the product checks pass, they publish directly and public links, catalog visibility, and sales open immediately.",
+        a: "Yes, without a manual review of each course. While SkillsetMind requires studio activation, a creator completes the one-time activation checkout before drafting, uploading or publishing, and where professional verification is required it must be approved before they can pay. Once the studio is active, a product that passes the launch checks is published directly by its creator; paid products also need a Stripe account that can accept charges before checkout opens.",
       },
       {
         id: "course-categories",
@@ -71,7 +71,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
     items: [
       {
         q: "Which plan should I start on?",
-        a: "Start on Free if you're validating an idea — there's no subscription and you keep 90% of every $100 sale before Stripe fees. Move to Starter ($19/mo, 5% commission) once you cross about $380/mo in sales. Pro and Plus pay back as you scale further. The pricing page lays out the break-even point for each plan.",
+        a: "Start on Free if you're validating an idea — there's no subscription and you keep 90% of every $100 sale before Stripe fees. Paid plans add a monthly fee and lower the commission. The pricing page shows what each plan takes from a sample $100 sale.",
       },
       {
         q: "What happens when I upgrade or downgrade?",

@@ -16,11 +16,13 @@ import { describe, expect, it } from "vitest";
 // teaches. Psychology as a SUBJECT is fine and deliberately absent from this
 // list; see the comment at the top of src/domain/teacher-course.ts.
 //
-// "Psychologist" / "psicólogo" were on this list until 2026-08-29 and are the
-// owner's deliberate exception: the marketing copy names psychologists as the
-// audience it sells to. The words that describe DELIVERING care — therapist,
-// psychotherapy, counselor — stay blocked, because those claim the service,
-// not the reader.
+// "Psychologist" / "psicólogo" were on this list until 2026-08-29. Since
+// 2026-09-15 the marketing copy no longer names them as the audience (coaches,
+// facilitators and mentors instead; see src/app/public-copy-claims.test.tsx),
+// but they stay off this list because the verification form still offers
+// "Psychologist" as a profession to verify. The words that describe DELIVERING
+// care — therapist, psychotherapy, counselor — stay blocked, because those
+// claim the service, not the reader.
 const REGULATED_AUDIENCE = [
   "therapist",
   "terapeuta",

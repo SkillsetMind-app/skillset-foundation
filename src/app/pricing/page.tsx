@@ -132,11 +132,6 @@ export default async function PricingPage() {
                 <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
                   {t(`publicPages.plans.${plan.id}.audience`)}
                 </p>
-                {plan.breakEvenGmvUsd ? (
-                  <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
-                    {t("publicPages.pricing.worth_it_from")}{formatUsdWhole(plan.breakEvenGmvUsd)}{t("publicPages.pricing.mo_in_sales")}
-                  </p>
-                ) : null}
                 {/* Tied to isActivationFeeConfigured(), not to a hardcoded flag:
                     the fee ships dormant (placeholder Stripe Price), so this line
                     must not claim a charge that cannot happen yet. It appears on
