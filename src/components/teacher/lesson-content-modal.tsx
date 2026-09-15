@@ -99,6 +99,14 @@ function getLessonErrorMessage(error: LessonError | null, t: (key: string) => st
 // Author preview never advances or records a student's lesson progress.
 function handlePreviewEnded() {}
 
+// O link digitado e ainda nao gravado (sem blur) vai antes de fechar. Link
+// recusado ou troca nao confirmada seguram o modal aberto, com o erro ou o
+// aviso na tela: fechar calado perdia o que o professor digitou.
+function flushLinkAllowsClose(handle: LessonVideoSourcePickerHandle | null) {
+  const result = handle?.flushLink();
+  return result !== "rejected" && result !== "declined";
+}
+
 const lessonModalTabs: Array<{
   value: LessonModalTab;
   icon: LucideIcon;
@@ -173,7 +181,9 @@ export function LessonContentModal({
   const [assetsLoaded, setAssetsLoaded] = useState(false);
   const replaceButtonRef = useRef<HTMLButtonElement>(null);
   const linkHandleRef = useRef<LessonVideoSourcePickerHandle>(null);
-  const [linkNotSaved, setLinkNotSaved] = useState(false);
+  // Contador, nao booleano: cada recusa vira um no novo no role="status" e e
+  // anunciada de novo. null = sem aviso.
+  const [linkNotSaved, setLinkNotSaved] = useState<number | null>(null);
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
   const lessonAssets = assets.filter((asset) => asset.lessonId === lesson.id);
   const videoAssets = lessonAssets.filter((asset) => isVideoAssetKind(asset.kind));
@@ -227,8 +237,9 @@ export function LessonContentModal({
       return;
     }
 
-    // O link digitado e ainda nao gravado (sem blur) vai antes de fechar.
-    linkHandleRef.current?.flushLink();
+    if (!flushLinkAllowsClose(linkHandleRef.current)) {
+      return;
+    }
     onClose();
   }
 
@@ -249,8 +260,7 @@ export function LessonContentModal({
   // in-flight upload, matching requestClose below.
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !isUploading) {
-        linkHandleRef.current?.flushLink();
+      if (event.key === "Escape" && !isUploading && flushLinkAllowsClose(linkHandleRef.current)) {
         onClose();
       }
     }
@@ -271,6 +281,7 @@ export function LessonContentModal({
 
   function handleTabChange(nextTab: LessonModalTab) {
     setTab(nextTab);
+    setLinkNotSaved(null);
 
     if (nextTab === "video") {
       resetUploadState("lesson_video");
@@ -512,9 +523,14 @@ export function LessonContentModal({
                 }
                 replaceButtonRef={replaceButtonRef}
                 linkHandleRef={linkHandleRef}
+                // Sem os arquivos da aula nao da para saber se ha envio: apagar
+                // o link agora gravaria a fonte em null com um envio salvo.
+                linkLockedHint={assetsLoaded
+                  ? undefined
+                  : error?.kind === "load" ? errorMessage : t("creatorEditor.lesson.linkLoading")}
                 onModeChange={(next) => {
                   setVideoModeChoice(next);
-                  setLinkNotSaved(false);
+                  setLinkNotSaved(null);
                   resetUploadState("lesson_video");
                   // Se a midia de destino ja existe, a troca vale para o aluno
                   // na hora: grava so a fonte. Nada e apagado. Sem midia, a
@@ -532,8 +548,8 @@ export function LessonContentModal({
                 onLinkChange={(nextUrl) => {
                   // Mexeu no link: a aba fica no link mesmo que a fonte mude.
                   setVideoModeChoice("link");
-                  setLinkNotSaved(false);
                   if (!nextUrl) {
+                    setLinkNotSaved(null);
                     // Com envio salvo, a fonte volta para ele: a pagina publica
                     // do curso so le "upload" da fonte gravada
                     // (creator-course-detail), e o video da previa gratis
@@ -551,9 +567,10 @@ export function LessonContentModal({
                   // mesma confirmacao do botao de tirar. Recusou, nada muda e
                   // o campo volta ao salvo.
                   if (oldLink && !window.confirm(t("creatorEditor.lesson.removeOldLinkConfirm"))) {
-                    setLinkNotSaved(true);
+                    setLinkNotSaved((count) => (count ?? 0) + 1);
                     return false;
                   }
+                  setLinkNotSaved(null);
                   onUpdateLesson({ videoSource: "youtube", externalUrl: nextUrl });
                 }}
                 onSelectFile={(file) => {
@@ -608,6 +625,7 @@ export function LessonContentModal({
                         // Esta secao some junto com o link: o foco vai para um
                         // botao que fica, e o aviso sai pelo role="status".
                         setSuccess("oldLinkRemoved");
+                        setLinkNotSaved(null);
                         replaceButtonRef.current?.focus();
                       }
                     }}
@@ -623,7 +641,7 @@ export function LessonContentModal({
                 <p role="status" className="text-sm text-[var(--color-ink-soft)]">
                   {success === "oldLinkRemoved"
                     ? successMessage
-                    : linkNotSaved ? t("creatorEditor.lesson.linkNotSaved") : ""}
+                    : linkNotSaved ? <span key={linkNotSaved}>{t("creatorEditor.lesson.linkNotSaved")}</span> : ""}
                 </p>
               )}
 

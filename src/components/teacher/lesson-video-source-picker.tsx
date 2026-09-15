@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useImperativeHandle, useState, type DragEvent, type ReactNode, type Ref } from "react";
+import { useId, useImperativeHandle, useRef, useState, type DragEvent, type ReactNode, type Ref } from "react";
 import { HelpCircle, Link2, ShieldAlert, UploadCloud } from "lucide-react";
 
 import { Tooltip } from "@/components/shared/tooltip";
@@ -11,8 +11,16 @@ export type LessonVideoMode = "upload" | "link";
 
 // O modal chama flushLink antes de fechar por Esc ou clique fora: nesses
 // caminhos o campo e desmontado sem blur que chegue ao React 19, e o link
-// digitado se perdia.
-export type LessonVideoSourcePickerHandle = { flushLink: () => void };
+// digitado se perdia. "rejected" e "declined" seguram o modal aberto, com o
+// erro ou o aviso na tela, em vez de perder o link calado.
+export type LinkCommitResult = "saved" | "unchanged" | "rejected" | "declined";
+export type LessonVideoSourcePickerHandle = { flushLink: () => LinkCommitResult };
+
+// Um input type="url" tira quebras de linha e os espacos das pontas do valor:
+// o valor esperado de uma colagem e comparado ja limpo.
+function cleanUrlInput(value: string) {
+  return value.replace(/[\r\n]/g, "").trim();
+}
 
 // Sem esquema ("youtube.com/watch?v=..."), assume https:// antes de validar; o
 // link gravado ja sai normalizado.
@@ -44,6 +52,9 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
   // Alvo estavel de foco para o modal (ex.: depois de tirar o link antigo).
   replaceButtonRef?: Ref<HTMLButtonElement>;
   linkHandleRef?: Ref<LessonVideoSourcePickerHandle>;
+  // Com texto, o campo de link fica so leitura e mostra este aviso (ex.: os
+  // arquivos da aula ainda nao chegaram).
+  linkLockedHint?: string;
 }) {
   const { t } = useTranslation();
   const urlInputId = useId();
@@ -55,6 +66,9 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
   // mostra a parte, so leitura.
   const [draft, setDraft] = useState(() => (savedIsEmbed ? props.externalUrl : ""));
   const [rejected, setRejected] = useState(false);
+  // Valor que a ultima colagem deve produzir; o onChange seguinte o consome.
+  const pastedValueRef = useRef<string | null>(null);
+  const locked = Boolean(props.linkLockedHint);
 
   function selectFile(file: File) {
     // Escolher um arquivo NÃO declara a fonte da aula. Antes declarava, e isso
@@ -89,30 +103,35 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
 
   // Grava so ao sair do campo, no Enter ou ao colar: salvar a cada tecla
   // gravava ids de video truncados e acusava erro no meio da digitacao.
-  function commitLink(value: string) {
+  function commitLink(value: string): LinkCommitResult {
+    if (locked) {
+      return "unchanged";
+    }
+
     const url = normalizeLink(value);
 
     if (url && !getTrustedLessonEmbed(url)) {
       setRejected(true);
-      return;
+      return "rejected";
     }
 
     setRejected(false);
     // Campo vazio tira o link aceito que ele mostrava. Um link antigo nunca
     // aparece aqui (a base e ""), entao nunca e apagado por este caminho.
     const saved = savedIsEmbed ? props.externalUrl : "";
-    const kept = url === saved || props.onLinkChange(url || null) !== false;
+    if (url === saved) {
+      setDraft(url);
+      return "unchanged";
+    }
+    const kept = props.onLinkChange(url || null) !== false;
     // Nao gravou: o campo volta ao salvo, senao cada blur seguinte (X, aba,
     // "Replace with upload") perguntava de novo e comia o clique.
     setDraft(kept ? url : saved);
+    return kept ? "saved" : "declined";
   }
 
   useImperativeHandle(linkHandleRef, () => ({
-    flushLink: () => {
-      if (props.mode === "link") {
-        commitLink(draft);
-      }
-    },
+    flushLink: () => (props.mode === "link" ? commitLink(draft) : "unchanged"),
   }));
 
   return (
@@ -185,24 +204,35 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
               type="url"
               value={draft}
               disabled={props.disabled}
+              readOnly={locked}
               aria-invalid={rejected || undefined}
               aria-describedby={rejected ? errorId : undefined}
               placeholder="https://www.youtube.com/watch?v=..."
-              // Colar e um valor inteiro: vira o campo todo e grava na hora. Le
-              // o texto da area de transferencia em vez de marcar "colou" para
-              // o proximo onChange: colar o mesmo texto (ou imagem, ou nada)
-              // nao dispara onChange, e a marca presa gravava a tecla seguinte.
+              // O navegador cola no cursor ou na selecao (e o Ctrl+Z desfaz);
+              // aqui so se anota o valor que a colagem deve produzir, e o
+              // onChange seguinte grava se o valor bater. Colar o mesmo texto
+              // (ou nada) nao dispara onChange, e a anotacao nao bate com a
+              // tecla seguinte, entao nenhuma tecla vira colagem.
               onPaste={(event) => {
                 const text = event.clipboardData?.getData("text") ?? "";
-                if (text.trim()) {
-                  event.preventDefault();
-                  setDraft(text);
-                  commitLink(text);
-                }
+                const input = event.currentTarget;
+                const start = input.selectionStart ?? input.value.length;
+                const end = input.selectionEnd ?? start;
+                pastedValueRef.current = text
+                  ? input.value.slice(0, start) + text + input.value.slice(end)
+                  : null;
               }}
               onChange={(event) => {
+                const pasted = pastedValueRef.current;
+                pastedValueRef.current = null;
+                if (locked) {
+                  return;
+                }
                 setDraft(event.target.value);
                 setRejected(false);
+                if (pasted !== null && cleanUrlInput(pasted) === cleanUrlInput(event.target.value)) {
+                  commitLink(event.target.value);
+                }
               }}
               onBlur={(event) => commitLink(event.currentTarget.value)}
               onKeyDown={(event) => {
@@ -217,7 +247,7 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
                 {t("creatorEditor.videoSource.rejected")}
               </small>
             ) : (
-              <small>{props.embedStatus}</small>
+              <small>{props.linkLockedHint ?? props.embedStatus}</small>
             )}
             {/* The protection trade-off belongs next to the link: an embed is
                 still a public link on YouTube or Vimeo; only Upload gets

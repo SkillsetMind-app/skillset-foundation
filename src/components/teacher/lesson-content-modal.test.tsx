@@ -16,6 +16,8 @@ const uploadLessonVideoToBunny = vi.fn<(input: unknown) => Promise<void>>(
 );
 let currentAssets: CourseAsset[] = [];
 let emitAssets: (assets: CourseAsset[]) => void;
+// "wait" segura a primeira entrega dos arquivos; "fail" simula erro de carga.
+let subscribeOutcome: "emit" | "wait" | "fail" = "emit";
 const subscribed = vi.fn();
 const router = vi.hoisted(() => ({ refresh: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
@@ -53,10 +55,12 @@ vi.mock("@/lib/data/course-assets", () => ({
   subscribeToCourseAssets: (
     _courseId: string,
     onAssets: (assets: CourseAsset[]) => void,
+    onError: (error: Error) => void,
   ) => {
     subscribed();
     emitAssets = onAssets;
-    onAssets(currentAssets);
+    if (subscribeOutcome === "emit") onAssets(currentAssets);
+    if (subscribeOutcome === "fail") onError(new Error("load-failed"));
     return () => {};
   },
 }));
@@ -270,7 +274,10 @@ describe("LessonContentModal — um video por aula", () => {
     bunnyConfig.isBunnyConfigured = false;
     vi.clearAllMocks();
   });
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    subscribeOutcome = "emit";
+  });
 
   it("com video enviado, o campo de link so aparece depois de Replace with link", () => {
     currentAssets = [videoAsset()];
@@ -355,8 +362,10 @@ describe("LessonContentModal — um video por aula", () => {
   // O primeiro link aceito sobrescrevia o link antigo sem perguntar: a unica
   // confirmacao estava no botao de tirar.
   it("link do Vimeo numa aula com link antigo pede a confirmacao antes de gravar", () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    const confirm = vi.spyOn(window, "confirm")
+      .mockReturnValueOnce(false).mockReturnValueOnce(false).mockReturnValueOnce(true);
     const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Módulo 1", true);
+    const notice = "Link not saved. The old link stays.";
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
 
     fireEvent.change(linkField(), { target: { value: vimeo } });
@@ -367,16 +376,40 @@ describe("LessonContentModal — um video por aula", () => {
     // Recusou: o campo volta ao salvo e avisa. Sair de novo (X, aba, troca)
     // nao pergunta outra vez nem come o clique.
     expect(linkField()).toHaveValue("");
-    expect(screen.getByRole("status")).toHaveTextContent("Link not saved. The old link stays.");
+    expect(screen.getByRole("status")).toHaveTextContent(notice);
+    const firstNotice = screen.getByText(notice);
     fireEvent.blur(linkField());
     expect(confirm).toHaveBeenCalledOnce();
 
+    // A segunda recusa vira um no novo no status, para ser anunciada de novo.
     fireEvent.change(linkField(), { target: { value: vimeo } });
     fireEvent.blur(linkField());
     expect(confirm).toHaveBeenCalledTimes(2);
+    expect(screen.getByText(notice)).not.toBe(firstNotice);
+
+    fireEvent.change(linkField(), { target: { value: vimeo } });
+    fireEvent.blur(linkField());
+    expect(confirm).toHaveBeenCalledTimes(3);
     expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ videoSource: "youtube", externalUrl: vimeo });
-    expect(confirm.mock.invocationCallOrder[1]).toBeLessThan(onUpdateLesson.mock.invocationCallOrder[0]);
+    expect(confirm.mock.invocationCallOrder[2]).toBeLessThan(onUpdateLesson.mock.invocationCallOrder[0]);
     expect(screen.queryByRole("region", { name: "Old link" })).not.toBeInTheDocument();
+    // Gravou: o aviso de "nao salvo" sai.
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+
+  it("o aviso de link nao salvo some depois de tirar o link antigo e ao trocar de aba", () => {
+    vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    renderModal({ externalUrl: drive }, "Módulo 1", true);
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    fireEvent.change(linkField(), { target: { value: vimeo } });
+    fireEvent.blur(linkField());
+    expect(screen.getByRole("status")).toHaveTextContent("Link not saved. The old link stays.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove old link" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Old link removed.");
+    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Video/ }));
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 
   // A troca so mexia na tela: com a midia de destino ja salva, o aluno
@@ -476,6 +509,68 @@ describe("LessonContentModal — um video por aula", () => {
       hasTrustedEmbed: false,
     })).toBe("upload");
     expect(deleteCourseAsset).not.toHaveBeenCalled();
+  });
+
+  // Fechar calado perdia o link: recusado, ou com a troca nao confirmada.
+  it("Esc com link recusado deixa o estudio aberto e mostra o erro", () => {
+    const { onUpdateLesson, onClose } = renderModal();
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    fireEvent.change(linkField(), { target: { value: "https://example.test/v.mp4" } });
+
+    fireEvent.keyDown(linkField(), { key: "Escape" });
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Only YouTube and Vimeo video links are accepted.");
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+  });
+
+  it("Esc e Cancelar na confirmacao deixam o estudio aberto; o Esc seguinte fecha", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const { onUpdateLesson, onClose } = renderModal({ externalUrl: drive }, "Módulo 1", true);
+    fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
+    fireEvent.change(linkField(), { target: { value: vimeo } });
+
+    fireEvent.keyDown(linkField(), { key: "Escape" });
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+    expect(screen.getByRole("status")).toHaveTextContent("Link not saved. The old link stays.");
+
+    // O campo voltou ao salvo: nada mais a perder, o Esc seguinte fecha.
+    fireEvent.keyDown(linkField(), { key: "Escape" });
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  // Antes de os arquivos chegarem, primaryVideo e null: apagar o link gravava
+  // a fonte em null mesmo com um envio salvo.
+  it("antes de os arquivos da aula chegarem, o link e so leitura e apagar nao grava nada", () => {
+    subscribeOutcome = "wait";
+    currentAssets = [videoAsset()];
+    const { onUpdateLesson } = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Módulo 1", true);
+
+    expect(linkField()).toHaveAttribute("readonly");
+    expect(screen.getByText("Loading this lesson's files...")).toBeInTheDocument();
+    fireEvent.change(linkField(), { target: { value: "" } });
+    fireEvent.blur(linkField());
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+
+    act(() => emitAssets(currentAssets));
+    expect(linkField()).not.toHaveAttribute("readonly");
+    fireEvent.change(linkField(), { target: { value: "" } });
+    fireEvent.blur(linkField());
+    expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ externalUrl: null, videoSource: "upload" });
+  });
+
+  it("se os arquivos da aula nao carregam, o link fica so leitura com o erro de carga", () => {
+    subscribeOutcome = "fail";
+    const { onUpdateLesson } = renderModal({ videoSource: "youtube", externalUrl: youtube });
+
+    expect(linkField()).toHaveAttribute("readonly");
+    expect(screen.getByText("We could not load lesson assets.")).toBeInTheDocument();
+    fireEvent.change(linkField(), { target: { value: "" } });
+    fireEvent.blur(linkField());
+    expect(onUpdateLesson).not.toHaveBeenCalled();
   });
 });
 

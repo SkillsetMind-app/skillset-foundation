@@ -41,6 +41,18 @@ const urlField = () => screen.queryByRole("textbox", { name: "YouTube or Vimeo U
 // jsdom nao tem DataTransfer: a colagem leva so o getData que o campo le.
 const clipboard = (text: string) => ({ getData: () => text });
 
+// Simula a colagem do navegador: o evento paste (que o campo le) e depois a
+// insercao do texto no cursor ou na selecao, que o jsdom nao faz sozinho.
+function paste(field: HTMLInputElement, text: string) {
+  const start = field.selectionStart ?? field.value.length;
+  const end = field.selectionEnd ?? start;
+  const next = field.value.slice(0, start) + text + field.value.slice(end);
+  fireEvent.paste(field, { clipboardData: clipboard(text) });
+  if (text && next !== field.value) {
+    fireEvent.change(field, { target: { value: next } });
+  }
+}
+
 describe("LessonVideoSourcePicker", () => {
   // Um video por aula (decisao de 14/09): o envio OU o link, nunca os dois.
   it("no modo envio mostra so a area de envio e o botao de trocar para link", () => {
@@ -110,8 +122,9 @@ describe("LessonVideoSourcePicker", () => {
     fireEvent.keyDown(urlField() as HTMLElement, { key: "Enter" });
     expect(props.onLinkChange).toHaveBeenCalledExactlyOnceWith(vimeo);
 
-    // Colar e um valor inteiro: valida na hora, e o erro acompanha aria-invalid.
-    fireEvent.paste(urlField() as HTMLElement, { clipboardData: clipboard("https://example.test/v.mp4") });
+    // Colar valida na hora, e o erro acompanha aria-invalid.
+    fireEvent.change(urlField() as HTMLElement, { target: { value: "" } });
+    paste(urlField() as HTMLInputElement, "https://example.test/v.mp4");
     expect(urlField()).toHaveValue("https://example.test/v.mp4");
     expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(urlField()).toHaveAttribute("aria-invalid", "true");
@@ -146,10 +159,36 @@ describe("LessonVideoSourcePicker", () => {
   it("colar um link aceito grava na hora, sem esperar o blur", () => {
     const props = renderPicker({ mode: "link" });
 
-    fireEvent.paste(urlField() as HTMLElement, { clipboardData: clipboard(` ${vimeo} `) });
+    paste(urlField() as HTMLInputElement, ` ${vimeo} `);
 
     expect(props.onLinkChange).toHaveBeenCalledExactlyOnceWith(vimeo);
     expect(urlField()).toHaveValue(vimeo);
+  });
+
+  // A colagem trocava o campo inteiro: digitar "https://youtu.be/" e colar o
+  // id virava "https://abc..." e era recusado.
+  it("colar no cursor completa o que ja foi digitado", () => {
+    const props = renderPicker({ mode: "link" });
+    const field = urlField() as HTMLInputElement;
+    fireEvent.change(field, { target: { value: "https://youtu.be/" } });
+    field.setSelectionRange(17, 17);
+
+    paste(field, "abc123XYZ_-");
+
+    expect(props.onLinkChange).toHaveBeenCalledExactlyOnceWith("https://youtu.be/abc123XYZ_-");
+    expect(field).toHaveValue("https://youtu.be/abc123XYZ_-");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("colar sobre um trecho selecionado troca so esse trecho", () => {
+    const props = renderPicker({ mode: "link", externalUrl: vimeo });
+    const field = urlField() as HTMLInputElement;
+    field.setSelectionRange("https://vimeo.com/".length, vimeo.length);
+
+    paste(field, "654321");
+
+    expect(props.onLinkChange).toHaveBeenCalledExactlyOnceWith("https://vimeo.com/654321");
+    expect(field).toHaveValue("https://vimeo.com/654321");
   });
 
   // A marca de "colou" so saia no onChange. Colar o mesmo texto (ou imagem, ou
@@ -158,14 +197,17 @@ describe("LessonVideoSourcePicker", () => {
   it("colar o mesmo link e apagar um caractere nao grava outro video; colar vazio nao acusa erro", () => {
     const props = renderPicker({ mode: "link", externalUrl: vimeo });
 
-    fireEvent.paste(urlField() as HTMLElement, { clipboardData: clipboard(vimeo) });
-    fireEvent.change(urlField() as HTMLElement, { target: { value: vimeo.slice(0, -1) } });
+    const field = urlField() as HTMLInputElement;
+    // O mesmo texto sobre a mesma selecao: o valor nao muda, nao ha onChange.
+    field.setSelectionRange(0, vimeo.length);
+    paste(field, vimeo);
+    fireEvent.change(field, { target: { value: vimeo.slice(0, -1) } });
     expect(props.onLinkChange).not.toHaveBeenCalled();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 
-    fireEvent.change(urlField() as HTMLElement, { target: { value: "" } });
-    fireEvent.paste(urlField() as HTMLElement, { clipboardData: clipboard("") });
-    fireEvent.change(urlField() as HTMLElement, { target: { value: "v" } });
+    fireEvent.change(field, { target: { value: "" } });
+    paste(field, "");
+    fireEvent.change(field, { target: { value: "v" } });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(urlField()).not.toHaveAttribute("aria-invalid");
     expect(props.onLinkChange).not.toHaveBeenCalled();

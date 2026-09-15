@@ -3424,6 +3424,7 @@
       "removeOldLink": "Quitar enlace antiguo",
       "removeOldLinkConfirm": "¿Quitar el enlace antiguo? Los estudiantes perderán el botón que lo abre.",
       "linkNotSaved": "Enlace no guardado. El enlace antiguo se mantiene.",
+      "linkLoading": "Cargando los archivos de la lección...",
       "embedEmpty": "Pega un enlace si el video ya está alojado fuera de SkillsetMind.",
       "uploadVideo": "Subir video de la lección",
       "uploadVideoHelp": "MP4, MOV, WebM o cualquier archivo de video compatible con el navegador.",

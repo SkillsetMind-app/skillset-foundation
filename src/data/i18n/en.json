@@ -3424,6 +3424,7 @@
       "removeOldLink": "Remove old link",
       "removeOldLinkConfirm": "Remove the old link? Students will lose the button that opens it.",
       "linkNotSaved": "Link not saved. The old link stays.",
+      "linkLoading": "Loading this lesson's files...",
       "embedEmpty": "Paste a link when the video already lives outside SkillsetMind.",
       "uploadVideo": "Upload lesson video",
       "uploadVideoHelp": "MP4, MOV, WebM or any browser-supported video file.",
