@@ -1,7 +1,10 @@
+import { isVideoAssetKind, type CourseAsset } from "@/domain/course-asset";
+import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import {
   countCourseLessons,
   normalizeCourseCategories,
   type TeacherCourse,
+  type TeacherCourseModule,
 } from "@/domain/teacher-course";
 
 // O que a pessoa sofria: o construtor tinha DUAS listas de "o que falta para
@@ -23,7 +26,34 @@ export type CourseReadinessInput = Pick<
   | "installmentsMax"
   | "coverImageUrl"
   | "learningOutcomes"
->;
+> & {
+  // Aulas com conteudo (ver getLessonIdsWithMedia). Quem nao tem a lista de
+  // arquivos (o Manage) nao passa: o item some e a porcentagem nao muda.
+  lessonIdsWithMedia?: ReadonlySet<string>;
+};
+
+// Aula com conteudo: video enviado, link do YouTube/Vimeo aceito, texto ou ao
+// menos um arquivo de material. Uma aula so com PDF e uma aula valida. Sem
+// isso, um curso podia ser publicado e vendido com aulas vazias.
+export function getLessonIdsWithMedia(
+  modules: Pick<TeacherCourseModule, "lessons">[],
+  assets: Pick<CourseAsset, "kind" | "lessonId">[],
+): Set<string> {
+  const ids = new Set<string>();
+  for (const asset of assets) {
+    if (asset.lessonId && (isVideoAssetKind(asset.kind) || asset.kind === "lesson_material")) {
+      ids.add(asset.lessonId);
+    }
+  }
+  for (const courseModule of modules) {
+    for (const lesson of courseModule.lessons) {
+      if (getTrustedLessonEmbed(lesson.externalUrl) || lesson.contentText?.trim()) {
+        ids.add(lesson.id);
+      }
+    }
+  }
+  return ids;
+}
 
 // Travas que nao sao do curso, sao do professor. So o Manage as conhecia; o
 // construtor deixava a pessoa clicar em Publish e descobrir pelo erro do
@@ -41,6 +71,7 @@ export type CourseReadinessItemId =
   | "cover"
   | "module"
   | "lesson"
+  | "lessonMedia"
   | "pricing"
   | "installments"
   | "outcomes"
@@ -87,6 +118,13 @@ export function getCourseReadiness(
   const priceAmountMinor = course.priceAmountMinor ?? 0;
   const modules = course.modules ?? [];
   const paid = paymentType !== "free" && priceAmountMinor > 0;
+  const lessons = modules.flatMap((courseModule) => courseModule.lessons);
+  const withMedia = course.lessonIdsWithMedia;
+  const lessonsWithoutMedia = withMedia ? lessons.filter((lesson) => !withMedia.has(lesson.id)) : [];
+  // As tres primeiras aulas vazias, pelo titulo que o professor deu.
+  const missingLessonTitles = (untitled: string) =>
+    lessonsWithoutMedia.slice(0, 3).map((lesson) => lesson.title.trim() || untitled).join(", ")
+    + (lessonsWithoutMedia.length > 3 ? "…" : "");
 
   const items: CourseReadinessItem[] = [
     {
@@ -141,6 +179,20 @@ export function getCourseReadiness(
       done: countCourseLessons(modules) > 0,
       optional: false,
     },
+    // So com a lista de aulas com conteudo e ao menos uma aula: sem aula, o
+    // item "lesson" ja cobra, e listar este daria um "feito" de graca.
+    ...(withMedia && lessons.length > 0
+      ? [{
+          id: "lessonMedia" as const,
+          group: "content" as const,
+          label: "Lesson content",
+          hint: lessonsWithoutMedia.length
+            ? `Add a video, text or file to every lesson. Missing: ${missingLessonTitles("Untitled lesson")}.`
+            : "Add a video, text or file to every lesson.",
+          done: lessonsWithoutMedia.length === 0,
+          optional: false,
+        }]
+      : []),
     {
       id: "pricing",
       group: "sale",
@@ -203,6 +255,10 @@ export function getCourseReadiness(
       item.hint = t(`creatorEditor.readiness.items.${item.id}.${
         item.id === "verification" && item.optional ? "optionalHint" : "hint"
       }`);
+      if (item.id === "lessonMedia" && !item.done) {
+        const missing = missingLessonTitles(t("creatorEditor.lesson.untitled"));
+        item.hint += ` ${t("creatorEditor.readiness.items.lessonMedia.missing").replace("{lessons}", () => missing)}`;
+      }
     }
   }
 

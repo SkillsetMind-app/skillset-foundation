@@ -3929,6 +3929,11 @@
           "label": "Lección",
           "hint": "Añade al menos una lección."
         },
+        "lessonMedia": {
+          "label": "Contenido de las lecciones",
+          "hint": "Añade un video, texto o archivo a cada lección.",
+          "missing": "Faltan: {lessons}."
+        },
         "pricing": {
           "label": "Precios",
           "hint": "Define un precio mayor que $0 o elige Gratis."

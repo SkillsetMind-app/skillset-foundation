@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
+import type { CourseAsset } from "@/domain/course-asset";
 import {
   getCourseReadiness,
+  getLessonIdsWithMedia,
   groupCourseReadiness,
   type CourseReadinessInput,
 } from "@/domain/course-readiness";
+import type { TeacherLesson } from "@/domain/teacher-course";
 
 const lesson = { id: "l1", title: "Welcome", type: "video" as const, description: "" };
 
@@ -160,6 +163,90 @@ describe("getCourseReadiness", () => {
     expect(readiness.items.some((item) => item.id === "payouts")).toBe(false);
     expect(readiness.items.find((item) => item.id === "verification")?.optional).toBe(true);
     expect(readiness.ready).toBe(true);
+  });
+});
+
+// Auditoria (content-publish-without-media): um curso podia ser publicado e
+// vendido com aulas sem video, sem texto e sem arquivo.
+describe("lessonMedia: toda aula precisa de conteudo", () => {
+  const withVideo: TeacherLesson = { id: "l1", title: "Welcome", type: "video", description: "" };
+  const empty: TeacherLesson = { id: "l2", title: "Empty lesson", type: "video", description: "" };
+  const courseWith = (...lessons: TeacherLesson[]): CourseReadinessInput => ({
+    ...complete,
+    modules: [{ id: "m1", title: "Start here", lessons }],
+  });
+  const asset = (kind: CourseAsset["kind"], lessonId: string) => ({ kind, lessonId });
+  const readinessOf = (
+    course: CourseReadinessInput,
+    assets: Array<Pick<CourseAsset, "kind" | "lessonId">> = [],
+    t?: (key: string) => string,
+  ) => getCourseReadiness({
+    ...course,
+    lessonIdsWithMedia: getLessonIdsWithMedia(course.modules, assets),
+  }, undefined, t);
+
+  it("2 aulas, uma com video e uma vazia: nao esta pronto e a dica cita a vazia", () => {
+    const readiness = readinessOf(courseWith(withVideo, empty), [asset("lesson_video", "l1")]);
+
+    expect(readiness.ready).toBe(false);
+    expect(readiness.pending.map((item) => item.id)).toEqual(["lessonMedia"]);
+    expect(readiness.next?.hint).toBe("Add a video, text or file to every lesson. Missing: Empty lesson.");
+    expect(readiness.items.find((item) => item.id === "lessonMedia")?.group).toBe("content");
+  });
+
+  it("texto na aula vazia deixa pronto", () => {
+    const readiness = readinessOf(
+      courseWith(withVideo, { ...empty, contentText: "Read this before the next lesson." }),
+      [asset("lesson_video", "l1")],
+    );
+
+    expect(readiness.ready).toBe(true);
+    expect(readiness.items.find((item) => item.id === "lessonMedia")).toMatchObject({
+      done: true,
+      hint: "Add a video, text or file to every lesson.",
+    });
+  });
+
+  it("uma aula so com PDF conta; so espacos no texto nao", () => {
+    expect(readinessOf(courseWith(withVideo, empty), [
+      asset("lesson_video", "l1"), asset("lesson_material", "l2"),
+    ]).ready).toBe(true);
+    expect(readinessOf(courseWith({ ...empty, contentText: "   " })).ready).toBe(false);
+  });
+
+  it("link aceito do YouTube/Vimeo conta; outro link ou capa da aula nao", () => {
+    expect(readinessOf(courseWith({ ...empty, externalUrl: "https://vimeo.com/123456" })).ready).toBe(true);
+    expect(readinessOf(courseWith({ ...empty, externalUrl: "https://drive.example.test/file/d/x/view" })).ready)
+      .toBe(false);
+    expect(readinessOf(courseWith(empty), [asset("lesson_thumbnail", "l2")]).ready).toBe(false);
+  });
+
+  it("sem a lista (Manage) o item nao aparece e a porcentagem nao muda", () => {
+    const readiness = getCourseReadiness(courseWith(withVideo, empty));
+
+    expect(readiness.items.some((item) => item.id === "lessonMedia")).toBe(false);
+    expect(readiness.ready).toBe(true);
+    expect(readiness.percent).toBe(100);
+  });
+
+  it("sem aula nenhuma o item nao aparece: o item lesson ja cobra", () => {
+    const readiness = readinessOf(courseWith());
+
+    expect(readiness.items.some((item) => item.id === "lessonMedia")).toBe(false);
+    expect(readiness.pending.map((item) => item.id)).toEqual(["lesson"]);
+  });
+
+  it("a dica cita so as tres primeiras aulas vazias, e traduz sem mexer nos titulos", () => {
+    const lessons = ["Aula $& um", "Two", "", "Four"].map((title, index) => ({
+      ...empty, id: `e${index}`, title,
+    }));
+    const en = readinessOf(courseWith(...lessons), [], (key) => translate(getDictionary("en"), key));
+    const es = readinessOf(courseWith(...lessons), [], (key) => translate(getDictionary("es"), key));
+
+    expect(en.next?.hint).toBe("Add a video, text or file to every lesson. Missing: Aula $& um, Two, Untitled lesson….");
+    expect(es.next?.label).toBe("Contenido de las lecciones");
+    expect(es.next?.hint).toBe("Añade un video, texto o archivo a cada lección. Faltan: Aula $& um, Two, Lección sin título….");
+    expect(en).toEqual(readinessOf(courseWith(...lessons)));
   });
 });
 
