@@ -399,6 +399,10 @@ export function CreatorCourseDetail({
   const viewerOwnsCourse = Boolean(user && course.ownerId === user.uid);
   const viewerHasAccess =
     viewerOwnsCourse || (user != null && viewerEnrollmentKey === `${user.uid}__${course.id}`);
+  // An enrolled learner (not the owner) is sent to the classroom instead of
+  // being offered the purchase: checkout would refuse with alreadyEnrolled.
+  const viewerIsLearner = viewerHasAccess && !viewerOwnsCourse;
+  const classroomHref = `/learn/courses/${course.id}`;
   const lessons = course.modules.flatMap((module) =>
     module.lessons.map((lesson) => ({
       ...lesson,
@@ -977,6 +981,14 @@ export function CreatorCourseDetail({
               className="button-outline w-full justify-center px-5 py-2.5 text-sm"
             >{t("publicCourses.signIn")}</Link>
           </div>
+        ) : viewerIsLearner ? (
+          <Link
+            href={classroomHref}
+            data-cta-focus
+            className="button-solid mt-6 w-full justify-center px-5 py-2.5 text-sm"
+          >
+            {t("publicCourses.continueLearning")}
+          </Link>
         ) : (
           <>
             {canEnrollFree ? (
@@ -1083,15 +1095,24 @@ export function CreatorCourseDetail({
             {priceLabel}
           </p>
         </div>
-        <Link
-          href="#enroll-card"
-          className="button-solid inline-flex min-h-11 shrink-0 items-center px-3.5 py-2 text-xs"
-        >{t("publicCourses.enroll")}</Link>
+        {viewerIsLearner ? (
+          <Link
+            href={classroomHref}
+            className="button-solid inline-flex min-h-11 shrink-0 items-center px-3.5 py-2 text-xs"
+          >{t("publicCourses.continueLearning")}</Link>
+        ) : (
+          <Link
+            href="#enroll-card"
+            className="button-solid inline-flex min-h-11 shrink-0 items-center px-3.5 py-2 text-xs"
+          >{t("publicCourses.enroll")}</Link>
+        )}
       </div>
     </div> : null}
     {!checkoutOnly ? (
       <CourseUnlockModal
-        course={isUnlockOpen ? course : null}
+        // Closes itself when access loads late: a learner who clicked a
+        // padlock before their enrollment arrived must not keep a buy popup.
+        course={isUnlockOpen && !viewerHasAccess ? course : null}
         onClose={closeUnlock}
         ctaHref="#enroll-card"
         // The buy card's own button text: resolved offer, discount code,
