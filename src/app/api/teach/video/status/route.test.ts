@@ -105,9 +105,20 @@ it("answers 503 when Bunny fails, so the studio can try again later", async () =
   expect(await response.json()).toEqual({ error: "Video host unavailable." });
 });
 
-it("limits each owner to 600 checks per hour and answers 429 over it, without calling Bunny", async () => {
+// Deleted on Bunny is permanent: 404 makes the studio stop, instead of the
+// 503 it would keep retrying.
+it("answers 404 when the video was deleted on Bunny", async () => {
+  fetchMock.mockResolvedValue({ ok: false, status: 404, json: async () => ({}) });
+
+  const response = await GET(statusRequest());
+
+  expect(response.status).toBe(404);
+  expect(await response.json()).toEqual({ error: "Video not found." });
+});
+
+it("limits each owner to 1000 checks per hour and answers 429 over it, without calling Bunny", async () => {
   expect((await GET(statusRequest())).status).toBe(200);
-  expect(mocks.rateLimit).toHaveBeenCalledWith("teach_video_status_real-owner", 600, 60 * 60 * 1000);
+  expect(mocks.rateLimit).toHaveBeenCalledWith("teach_video_status_real-owner", 1000, 60 * 60 * 1000);
 
   fetchMock.mockClear();
   mocks.rateLimit.mockRejectedValueOnce(

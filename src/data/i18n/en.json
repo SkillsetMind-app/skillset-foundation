@@ -3421,6 +3421,7 @@
       "videoProcessing": "Processing {percent}%",
       "videoReady": "Ready",
       "videoFailed": "Failed — upload again",
+      "videoStatusUnavailable": "Status unavailable, reopen the lesson to check again",
       "embedDetected": "{provider} embed detected.",
       "oldLink": "Old link",
       "oldLinkHelp": "This link is not a video, so it does not play in the classroom. Students still get a button that opens it.",

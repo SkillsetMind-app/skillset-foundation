@@ -3421,6 +3421,7 @@
       "videoProcessing": "Procesando {percent}%",
       "videoReady": "Listo",
       "videoFailed": "Falló — vuelve a subirlo",
+      "videoStatusUnavailable": "Estado no disponible, vuelve a abrir la lección para revisarlo",
       "embedDetected": "Video de {provider} detectado.",
       "oldLink": "Enlace antiguo",
       "oldLinkHelp": "Este enlace no es un video, así que no se reproduce en el aula. Los estudiantes siguen teniendo un botón que lo abre.",

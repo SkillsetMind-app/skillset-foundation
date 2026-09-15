@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { getBunnyVideoStatus, hasValidBunnyAssetPath } from "@/lib/bunny/server";
+import {
+  BunnyVideoNotFoundError,
+  getBunnyVideoStatus,
+  hasValidBunnyAssetPath,
+} from "@/lib/bunny/server";
 import { enforceRateLimit, paymentErrorResponse } from "@/lib/payments/server/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -30,9 +34,9 @@ export async function GET(request: Request) {
   }
 
   // Every call hits Bunny with our key. Normal polling is 360/hour per open
-  // studio; 600/hour leaves room for a second one.
+  // studio; 1000/hour covers two open at once (720) with room to spare.
   try {
-    await enforceRateLimit(`teach_video_status_${auth.user.id}`, 600, 60 * 60 * 1000);
+    await enforceRateLimit(`teach_video_status_${auth.user.id}`, 1000, 60 * 60 * 1000);
   } catch (error) {
     return paymentErrorResponse(error);
   }
@@ -81,8 +85,12 @@ export async function GET(request: Request) {
       { status, encodeProgress, lengthSeconds },
       { headers: { "Cache-Control": "no-store" } },
     );
-  } catch {
-    // Bunny env missing or upstream error: the studio keeps polling later.
+  } catch (error) {
+    // Deleted on Bunny: permanent, so 404 and the studio stops asking.
+    if (error instanceof BunnyVideoNotFoundError) {
+      return notFound();
+    }
+    // Bunny env missing or upstream error: the studio retries later (capped).
     return NextResponse.json({ error: "Video host unavailable." }, { status: 503 });
   }
 }

@@ -72,6 +72,15 @@ export async function createBunnyVideo(title: string): Promise<string> {
   return data.guid;
 }
 
+// The video no longer exists on Bunny (deleted there). Permanent: the status
+// route answers 404 and the studio stops asking.
+export class BunnyVideoNotFoundError extends Error {
+  constructor() {
+    super("Bunny video not found");
+    this.name = "BunnyVideoNotFoundError";
+  }
+}
+
 export type BunnyVideoStatus = {
   status: number | null;
   encodeProgress: number | null;
@@ -91,6 +100,9 @@ export async function getBunnyVideoStatus(videoId: string): Promise<BunnyVideoSt
     signal: AbortSignal.timeout(8000),
   });
 
+  if (res.status === 404) {
+    throw new BunnyVideoNotFoundError();
+  }
   if (!res.ok) {
     throw new Error(`Bunny get video failed: ${res.status}`);
   }

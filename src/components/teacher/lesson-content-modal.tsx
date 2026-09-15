@@ -119,6 +119,9 @@ function isBunnyReady(status: number | null) {
 // Ready but no length yet: Bunny can report the length a little later. Keep
 // asking so the duration still gets written, but never forever.
 const MAX_READY_POLLS_WITHOUT_LENGTH = 30;
+// 5xx, 429 or a network error in a row (about 5 min at 10 s): a deleted video
+// or a rotated key would otherwise retry forever. Any answer resets it.
+const MAX_FAILED_POLLS_IN_A_ROW = 30;
 
 // O link digitado e ainda nao gravado (sem blur) vai antes de fechar. Link
 // recusado ou troca nao confirmada seguram o modal aberto, com o erro ou o
@@ -203,6 +206,8 @@ export function LessonContentModal({
   // Latest Bunny processing answer for the lesson video, and the asset whose
   // duration was already written (only once per video).
   const [bunnyProcessing, setBunnyProcessing] = useState<BunnyProcessing | null>(null);
+  // Asset whose status checks gave up after too many failures in a row.
+  const [bunnyUnavailableFor, setBunnyUnavailableFor] = useState<string | null>(null);
   const durationWrittenForRef = useRef<string | null>(null);
   // Estado proprio, fora de `error`: resetUploadState (troca de aba ou de
   // modo) limpava o erro de carga e o aviso do link voltava a "Loading...".
@@ -314,8 +319,10 @@ export function LessonContentModal({
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     let readyPollsWithoutLength = 0;
+    let failedPollsInARow = 0;
 
     async function poll() {
+      let failed = false;
       try {
         const response = await fetch(`/api/teach/video/status?assetId=${encodeURIComponent(assetId)}`, {
           cache: "no-store",
@@ -326,6 +333,7 @@ export function LessonContentModal({
           if (controller.signal.aborted) {
             return;
           }
+          failedPollsInARow = 0;
           setBunnyProcessing({ assetId, ...data });
           if (isBunnyFailed(data.status)) {
             return;
@@ -340,11 +348,18 @@ export function LessonContentModal({
           // Signed out, not the owner, or gone: asking again will not help.
           // Too many checks (429) and 5xx try again in 10 s.
           return;
+        } else {
+          failed = true;
         }
       } catch {
         if (controller.signal.aborted) {
           return;
         }
+        failed = true;
+      }
+      if (failed && ++failedPollsInARow > MAX_FAILED_POLLS_IN_A_ROW) {
+        setBunnyUnavailableFor(assetId);
+        return;
       }
       timer = setTimeout(poll, 10_000);
     }
@@ -375,7 +390,9 @@ export function LessonContentModal({
   }, [bunnyProcessing, lesson.durationMinutes, onUpdateLesson]);
 
   const processing = bunnyProcessing?.assetId === primaryVideo?.id ? bunnyProcessing : null;
-  const bunnyStatusLine = !processing || processing.status === null
+  const bunnyStatusLine = bunnyUnavailableFor !== null && bunnyUnavailableFor === primaryVideo?.id
+    ? t("creatorEditor.lesson.videoStatusUnavailable")
+    : !processing || processing.status === null
     ? t("creatorEditor.lesson.savedProcessing")
     : isBunnyFailed(processing.status)
       ? t("creatorEditor.lesson.videoFailed")

@@ -1324,6 +1324,54 @@ describe("LessonContentModal — processamento na Bunny", () => {
     expect(onUpdateLesson).not.toHaveBeenCalled();
   });
 
+  // A rotated key or a Bunny outage answered 503 forever: the studio polled
+  // every 10 s with no end.
+  it("stops after 30 retries in a row on 5xx or 429 and says to reopen the lesson", async () => {
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue({ ok: false, status: 503, json: async () => ({}) });
+    const { onUpdateLesson } = renderModal({ videoSource: "upload" });
+
+    await flush();
+    for (let poll = 0; poll < 40; poll += 1) {
+      await tenSeconds();
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(31);
+    expect(screen.getByText("Status unavailable, reopen the lesson to check again")).toBeInTheDocument();
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+  });
+
+  it("an answer between failures resets the retry count", async () => {
+    fetchMock.mockReset();
+    const failure = { ok: false, status: 429, json: async () => ({}) };
+    const answer = (status: number, lengthSeconds: number | null) => ({
+      ok: true, status: 200, json: async () => ({ status, encodeProgress: 50, lengthSeconds }),
+    });
+    for (let call = 0; call < 29; call += 1) fetchMock.mockResolvedValueOnce(failure);
+    fetchMock.mockResolvedValueOnce(answer(3, null));
+    for (let call = 0; call < 29; call += 1) fetchMock.mockResolvedValueOnce(failure);
+    fetchMock.mockResolvedValue(answer(4, 60));
+    renderModal({ videoSource: "upload" });
+
+    await flush();
+    for (let poll = 0; poll < 60; poll += 1) {
+      await tenSeconds();
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(60);
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+    expect(screen.queryByText("Status unavailable, reopen the lesson to check again")).not.toBeInTheDocument();
+  });
+
+  it("stops at once when the route answers 404 (video deleted on Bunny)", async () => {
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue({ ok: false, status: 404, json: async () => ({}) });
+    renderModal({ videoSource: "upload" });
+
+    await flush();
+    await tenSeconds();
+    await tenSeconds();
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
   it("does not poll for a video that is not on Bunny", async () => {
     currentAssets = [videoAsset()];
     renderModal({ videoSource: "upload" });
