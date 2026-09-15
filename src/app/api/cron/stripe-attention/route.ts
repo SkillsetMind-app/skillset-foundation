@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 import { isCronRequest } from "@/lib/cron/authorized";
-import { notifyOps } from "@/lib/ops/alert";
+import { sendOpsAlert } from "@/lib/ops/alert";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 // GET /api/cron/stripe-attention — tells a human when a Stripe event did not
@@ -21,6 +21,11 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 //   - otherwise, one reminder a day at 12:00 UTC while the list is not empty.
 // Everything else stays silent. The alert carries the count and the oldest
 // age only: no event id, no email, no amount.
+//
+// When there IS something to report and nobody could be told (no relay URL,
+// relay down, relay refused), the answer is 500: the GitHub run turns red and
+// its failure email is the second channel. A green run means a human was told
+// or there was nothing to tell.
 
 export const dynamic = "force-dynamic";
 
@@ -64,21 +69,26 @@ export async function GET(request: Request) {
     : new Date(now).getUTCHours() === REMINDER_UTC_HOUR ? "daily"
     : null;
 
-  let alerted = false;
-  if (reason) {
-    try {
-      notifyOps({
-        event: "stripe.events.needing_attention",
-        severity: "critical",
-        summary: `${count} Stripe event(s) did not finish processing; the oldest is ${oldestHours} h old. Someone may have paid without getting access. Check the stripe_events_needing_attention view.`,
-        context: { count, oldest_hours: oldestHours, reason },
-      });
-      alerted = true;
-    } catch (cause) {
-      // notifyOps is built not to throw; if it ever does, the run still answers.
-      console.error("Stripe attention alert could not be sent", cause);
-    }
+  if (!reason) {
+    return NextResponse.json({ ok: true, count, oldest_hours: oldestHours, alerted: false });
   }
 
-  return NextResponse.json({ ok: true, count, oldest_hours: oldestHours, alerted });
+  const failure = !process.env.OPS_ALERT_WEBHOOK_URL ? "alert_channel_missing"
+    : await sendOpsAlert({
+      event: "stripe.events.needing_attention",
+      severity: "critical",
+      summary: `${count} Stripe event(s) did not finish processing; the oldest is ${oldestHours} h old. Someone may have paid without getting access. Check the stripe_events_needing_attention view.`,
+      context: { count, oldest_hours: oldestHours, reason },
+    }) ? null
+    : "alert_not_delivered";
+
+  if (failure) {
+    console.error("Stripe attention alert did not reach anyone", failure);
+    return NextResponse.json(
+      { ok: false, reason: failure, count, oldest_hours: oldestHours, alerted: false },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({ ok: true, count, oldest_hours: oldestHours, alerted: true });
 }

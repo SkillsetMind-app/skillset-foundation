@@ -32,6 +32,8 @@ jobs:
             echo "::error title=Stripe attention not configured::Missing repository secret CRON_SECRET (same value as on Vercel)."
             exit 1
           fi
-          curl -fsS --max-time 60 \
+          # The repo is public, so this log is too: print the status line only,
+          # never the JSON body. -f still fails the run on 401/500.
+          curl -fsS -o /dev/null -w 'HTTP %{http_code}\n' --max-time 60 \
             -H "Authorization: Bearer $CRON_SECRET" \
             https://www.skillsetmind.com/api/cron/stripe-attention
