@@ -6,7 +6,7 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import PricingPage from "@/app/pricing/page";
-import CreatorsPage from "@/app/for-creators/page";
+import CreatorsPage, { generateMetadata as creatorsMetadata } from "@/app/for-creators/page";
 import FeesPage from "@/app/fees-and-payouts/page";
 import en from "@/data/i18n/en.json";
 import es from "@/data/i18n/es.json";
@@ -63,8 +63,8 @@ describe("www positioning", () => {
 
 describe("creator fee disclosure", () => {
   const expected = {
-    en: ["US$25", "activation checkout yourself", "once per creator account", "United States", "Canada", "United Kingdom", "Switzerland", "European Union", "Liechtenstein", "Norway", "Brazil"],
-    es: ["US$25", "pago de activación en el estudio", "una sola vez por cuenta de creador", "Estados Unidos", "Canadá", "Reino Unido", "Suiza", "Unión Europea", "Liechtenstein", "Noruega", "Brasil"],
+    en: ["US$25", "activation checkout yourself", "once per creator account", "only while SkillsetMind requires activation", "must be approved before you can pay", "United States", "Canada", "United Kingdom", "Switzerland", "European Union", "Liechtenstein", "Norway", "Brazil"],
+    es: ["US$25", "pago de activación en el estudio", "una sola vez por cuenta de creador", "mientras SkillsetMind exija la activación", "debe estar aprobada antes de que puedas pagar", "Estados Unidos", "Canadá", "Reino Unido", "Suiza", "Unión Europea", "Liechtenstein", "Noruega", "Brasil"],
   } as const;
 
   it.each([
@@ -76,5 +76,17 @@ describe("creator fee disclosure", () => {
     state.locale = locale;
     const { container } = render(await Page());
     for (const text of expected[locale]) expect(container.textContent).toContain(text);
+  });
+
+  // Production gates /teach behind the fee (ActivationGate), so the page must
+  // not promise drafting before it, nor sell the Free plan as "start free".
+  it.each(["en", "es"])("%s /for-creators never promises drafting before activation or a free start", async (locale) => {
+    state.locale = locale;
+    const { container } = render(await CreatorsPage());
+    const { description } = await creatorsMetadata();
+    for (const text of [container.textContent, String(description)]) {
+      expect(text).not.toMatch(/draft courses immediately|preparar cursos de inmediato|Start free|Empieza gratis/i);
+    }
+    expect(container.textContent).toMatch(/no monthly fee|sin mensualidad/);
   });
 });

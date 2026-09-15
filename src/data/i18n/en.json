@@ -444,7 +444,7 @@
     },
     "creators": {
       "eyebrow": "For coaches, facilitators & mentors",
-      "title": "Reach more people than your practice ever could.",
+      "title": "Reach more people than your live sessions ever could.",
       "ctaStart": "Start teaching",
       "ctaPromise": "Read the Creator Promise",
       "bullet1": "Keep {keep}% on Free, before Stripe processing fees. Scale to Plus and your commission can drop to 2%.",
@@ -2889,7 +2889,7 @@
       "professional_verification_up_front_then_automated": "Professional verification up front, then automated compliance checks that never block your launch.",
       "shareable_course_links_for_simple_launch": "Shareable course links for simple launch campaigns.",
       "teach_on_skillsetmind": "Teach on SkillsetMind",
-      "publish_professional_courses_to_a_global": "Publish professional courses to a global audience. Start free at {value0}% commission, buyers pay your Stripe account directly, course community and certificates included on every plan.",
+      "publish_professional_courses_to_a_global": "Publish professional courses to a global audience. Start on the Free plan (no monthly fee) at {value0}% commission, buyers pay your Stripe account directly, course community and certificates included on every plan.",
       "for_creators": "For creators",
       "teach_with_a_real_course_operating": "Teach with a real course operating system.",
       "skillsetmind_is_designed_for_experts_who": "For coaches, facilitators and mentors who already teach live and want to sell their method as a course with a paid community, with no monthly fee.",
@@ -2897,11 +2897,11 @@
       "to_start": "Monthly fee",
       "direct": "Direct",
       "buyer_pays_you": "Buyer pays you",
-      "buyers_are_charged_on_your_own": "Buyers are charged on your own Stripe account — no platform hold on your money. Start free; upgrade to drop commission to 5%, 3%, or 2%.",
+      "buyers_are_charged_on_your_own": "Buyers are charged on your own Stripe account — no platform hold on your money. Start on the Free plan (no monthly fee) at 10% commission; upgrade to drop it to 5%, 3%, or 2%.",
       "see_all_four_plans": "See all four plans",
       "creator_path": "Creator path",
-      "start_as_a_creator_publish_after": "Start as a creator, publish after verification.",
-      "creators_can_draft_courses_immediately_professional": "Creators can draft courses immediately. Professional verification and deterministic launch checks protect marketplace quality without making every course wait for manual approval.",
+      "start_as_a_creator_publish_after": "Activate your studio once, then draft and publish.",
+      "creators_can_draft_courses_immediately_professional": "Once your one-time activation is complete (and your professional verification is approved, where required), you can draft courses in the studio. Deterministic launch checks then protect marketplace quality without making every course wait for manual approval.",
       "create_account": "Create account"
     },
     "promise": {
@@ -3126,7 +3126,7 @@
       "full_plan_comparison_sample_breakdowns_and": "Full plan comparison and sample breakdowns are on the",
       "pricing_page": "pricing page",
       "activation_fee": "One-time activation fee",
-      "activation_fee_detail": "A one-time activation fee of US${amount} unlocks the creator studio: drafting courses, uploading video, creating coupons, connecting a custom domain, and publishing. It is charged only when you complete the activation checkout yourself in the studio, never automatically, and once per creator account, never per course. It is not a subscription.",
+      "activation_fee_detail": "A one-time activation fee of US${amount} unlocks the creator studio: drafting courses, uploading video, creating coupons, connecting a custom domain, and publishing. It is charged only while SkillsetMind requires activation, and only when you complete the activation checkout yourself in the studio, never automatically; once per creator account, never per course. Where professional verification is required, it must be approved before you can pay. It is not a subscription.",
       "payout_countries": "Payout countries",
       "payout_countries_detail": "Payouts go to your own Stripe account in a country where SkillsetMind supports Stripe payouts: currently the United States, Canada, the United Kingdom, Switzerland, the European Union, Liechtenstein and Norway. Latin America, including Brazil, is planned for later. Availability depends on Stripe and may change."
     },

@@ -444,7 +444,7 @@
     },
     "creators": {
       "eyebrow": "Para coaches, facilitadores y mentores",
-      "title": "Llega a más gente de la que tu consulta jamás podría.",
+      "title": "Llega a más gente de la que tus sesiones en vivo jamás podrían.",
       "ctaStart": "Empieza a enseñar",
       "ctaPromise": "Lee la Promesa al Creador",
       "bullet1": "Quédate con {keep}% en Free, antes de las comisiones de procesamiento de Stripe. Sube a Plus y tu comisión puede bajar a 2%.",
@@ -2889,7 +2889,7 @@
       "professional_verification_up_front_then_automated": "Verificación profesional inicial y después controles automáticos de cumplimiento que nunca bloquean tu lanzamiento.",
       "shareable_course_links_for_simple_launch": "Enlaces de cursos para compartir en campañas de lanzamiento sencillas.",
       "teach_on_skillsetmind": "Enseña en SkillsetMind",
-      "publish_professional_courses_to_a_global": "Publica cursos profesionales para una audiencia global. Empieza gratis con una comisión del {value0}%; los compradores pagan directamente a tu cuenta de Stripe. Comunidad del curso y certificados incluidos en todos los planes.",
+      "publish_professional_courses_to_a_global": "Publica cursos profesionales para una audiencia global. Empieza en el plan Free (sin mensualidad) con una comisión del {value0}%; los compradores pagan directamente a tu cuenta de Stripe. Comunidad del curso y certificados incluidos en todos los planes.",
       "for_creators": "Para creadores",
       "teach_with_a_real_course_operating": "Enseña con un sistema completo para gestionar cursos.",
       "skillsetmind_is_designed_for_experts_who": "Para coaches, facilitadores y mentores que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago, sin mensualidad.",
@@ -2897,11 +2897,11 @@
       "to_start": "Mensualidad",
       "direct": "Directo",
       "buyer_pays_you": "El comprador te paga",
-      "buyers_are_charged_on_your_own": "Los compradores pagan en tu propia cuenta de Stripe: la plataforma no retiene tu dinero. Empieza gratis y mejora tu plan para reducir la comisión al 5%, 3% o 2%.",
+      "buyers_are_charged_on_your_own": "Los compradores pagan en tu propia cuenta de Stripe: la plataforma no retiene tu dinero. Empieza en el plan Free (sin mensualidad) con una comisión del 10% y mejora tu plan para reducirla al 5%, 3% o 2%.",
       "see_all_four_plans": "Ver los cuatro planes",
       "creator_path": "El camino del creador",
-      "start_as_a_creator_publish_after": "Empieza como creador y publica después de la verificación.",
-      "creators_can_draft_courses_immediately_professional": "Los creadores pueden preparar cursos de inmediato. La verificación profesional y los controles de lanzamiento con reglas definidas protegen la calidad del catálogo sin que cada curso tenga que esperar una aprobación manual.",
+      "start_as_a_creator_publish_after": "Activa tu estudio una vez; después, prepara y publica.",
+      "creators_can_draft_courses_immediately_professional": "Cuando completas la activación única (y tu verificación profesional está aprobada, cuando se exige), puedes preparar cursos en el estudio. Después, los controles de lanzamiento con reglas definidas protegen la calidad del catálogo sin que cada curso tenga que esperar una aprobación manual.",
       "create_account": "Crear cuenta"
     },
     "promise": {
@@ -3126,7 +3126,7 @@
       "full_plan_comparison_sample_breakdowns_and": "La comparación completa de planes y los ejemplos de desglose están en la",
       "pricing_page": "página de precios",
       "activation_fee": "Tarifa única de activación",
-      "activation_fee_detail": "Una tarifa única de activación de US${amount} desbloquea el estudio del creador: crear borradores de cursos, subir videos, crear cupones, conectar un dominio propio y publicar. Solo se cobra cuando completas tú mismo el pago de activación en el estudio, nunca automáticamente, y una sola vez por cuenta de creador, nunca por curso. No es una suscripción.",
+      "activation_fee_detail": "Una tarifa única de activación de US${amount} desbloquea el estudio del creador: crear borradores de cursos, subir videos, crear cupones, conectar un dominio propio y publicar. Solo se cobra mientras SkillsetMind exija la activación, y solo cuando completas tú mismo el pago de activación en el estudio, nunca automáticamente; una sola vez por cuenta de creador, nunca por curso. Cuando se exige la verificación profesional, debe estar aprobada antes de que puedas pagar. No es una suscripción.",
       "payout_countries": "Países con transferencias",
       "payout_countries_detail": "Las transferencias llegan a tu propia cuenta de Stripe en un país donde SkillsetMind admite transferencias de Stripe: actualmente Estados Unidos, Canadá, el Reino Unido, Suiza, la Unión Europea, Liechtenstein y Noruega. América Latina, incluido Brasil, está prevista más adelante. La disponibilidad depende de Stripe y puede cambiar."
     },
