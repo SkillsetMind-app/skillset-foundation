@@ -114,6 +114,43 @@ export async function sendOpsAlert(alert: OpsAlert): Promise<boolean> {
   }
 }
 
+type PlatformRequestContext = { waitUntil?: (promise: Promise<unknown>) => void };
+
+// The same request context Next itself reads (next/dist/server/after/
+// builtin-request-context): on Vercel it carries waitUntil, which keeps the
+// instance alive until the promise settles.
+function platformRequestContext(): PlatformRequestContext | undefined {
+  const store = (globalThis as unknown as Record<symbol, { get?: () => PlatformRequestContext | undefined } | undefined>)[
+    Symbol.for("@next/request-context")
+  ];
+  return store?.get?.();
+}
+
+/**
+ * Keeps the instance alive until `pending` settles, without waiting on it:
+ * after() inside a request scope, otherwise the platform's waitUntil. For work
+ * that is ALREADY running when nobody may await it (React drops the promise of
+ * an error hook during a render). Never throws; false = nothing could take it.
+ */
+export function keepAliveUntil(pending: Promise<unknown>): boolean {
+  try {
+    after(() => pending);
+    return true;
+  } catch {
+    // after() throws outside a request scope; the platform context may not.
+  }
+  try {
+    const context = platformRequestContext();
+    if (context?.waitUntil) {
+      context.waitUntil(pending);
+      return true;
+    }
+  } catch {
+    // A broken platform context must not turn an alert into a thrown error.
+  }
+  return false;
+}
+
 export function notifyOps(alert: OpsAlert): void {
   const url = process.env.OPS_ALERT_WEBHOOK_URL;
   if (!url) {
@@ -134,8 +171,11 @@ export function notifyOps(alert: OpsAlert): void {
   try {
     after(send);
   } catch {
-    // after() throws outside a request scope (a script, a test). Fall back to
-    // the unawaited call: best-effort, but losing the alert entirely is worse.
-    void send();
+    // after() throws outside a request scope (a script, a test, or code that
+    // runs after the request left its scope). Hand the send to the platform's
+    // waitUntil when there is one, so the instance stays up until it lands;
+    // otherwise it is a best-effort unawaited call, which still beats losing
+    // the alert entirely.
+    keepAliveUntil(send());
   }
 }
