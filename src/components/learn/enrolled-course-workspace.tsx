@@ -1678,10 +1678,14 @@ function LessonContentPanel({
             {lesson.title}
           </h4>
         </div>
-        <span className="member-meta-chip">
-          <Clock size={14} aria-hidden />
-          {lesson.duration}
-        </span>
+        {/* Sem duracao real (o fallback "Self-paced" de published-courses)
+            nao ha relogio a mostrar: a duracao nao se digita mais. */}
+        {/\d/.test(lesson.duration) ? (
+          <span className="member-meta-chip">
+            <Clock size={14} aria-hidden />
+            {lesson.duration}
+          </span>
+        ) : null}
       </div>
 
       <VideoDock title={lesson.title} enabled={hasPlayableVideo} closeLabel={t("learn.classroom.lesson.closeMiniPlayer")}>

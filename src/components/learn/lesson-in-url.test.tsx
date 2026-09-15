@@ -145,3 +145,36 @@ describe("a aula atual vive no endereco", () => {
     expect(playerHeading()).toBe("Lesson one");
   });
 });
+
+// A duracao nao se digita mais (decisao de 14/09): a maioria das aulas chega
+// com o fallback "Self-paced" de published-courses. O relogio so aparece com
+// duracao de verdade.
+describe("relogio da aula so com duracao", () => {
+  function lessonClock() {
+    return document
+      .getElementById("member-lesson-player")
+      ?.querySelector(".member-lesson-panel__head .member-meta-chip") ?? null;
+  }
+
+  beforeEach(() => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+  });
+
+  it("aula sem duracao nao mostra o relogio", () => {
+    const [aula] = course.modules[0].lessons;
+    const semDuracao = {
+      ...course,
+      modules: [{ ...course.modules[0], lessons: [{ ...aula, duration: "Self-paced" }] }],
+    } as Course;
+    render(<EnrolledCourseWorkspace course={semDuracao} previewMode />);
+
+    expect(playerHeading()).toBe("Lesson one");
+    expect(lessonClock()).toBeNull();
+  });
+
+  it("aula com duracao mostra o relogio", () => {
+    render(<EnrolledCourseWorkspace course={course} previewMode />);
+
+    expect(lessonClock()).toHaveTextContent("5 min");
+  });
+});
