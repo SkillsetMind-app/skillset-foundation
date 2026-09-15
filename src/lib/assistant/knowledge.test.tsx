@@ -7,6 +7,12 @@ import { buildAssistantKnowledge } from "@/lib/assistant/knowledge";
 describe("buildAssistantKnowledge", () => {
   const knowledge = buildAssistantKnowledge();
 
+  it("names only the shipped interface languages and the one reply target", () => {
+    expect(knowledge).toContain("available in English and Spanish.");
+    expect(knowledge).not.toContain("Portuguese");
+    expect(knowledge).toContain("within 2 business days (Mon–Fri)");
+  });
+
   it("includes every plan with its price and commission", () => {
     for (const plan of plans) {
       expect(knowledge).toContain(plan.name);
