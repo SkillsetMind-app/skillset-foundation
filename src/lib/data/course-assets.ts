@@ -414,17 +414,46 @@ export async function countCourseAssets(courseIds: string[]): Promise<number> {
   return count ?? 0;
 }
 
+// Mesmo objeto para a linha que não mudou. ProtectedAssetPreview assina a URL
+// de novo quando recebe um objeto novo: um vídeo enviado recomeçaria no meio e
+// um PDF baixaria de novo a cada recarga, mesmo sem nada ter mudado.
+function keepUnchangedAssets(previous: CourseAsset[], next: CourseAsset[]): CourseAsset[] {
+  const previousById = new Map(previous.map((asset) => [asset.id, asset]));
+  return next.map((asset) => {
+    const old = previousById.get(asset.id);
+    const keys = Object.keys(asset) as (keyof CourseAsset)[];
+    const unchanged = Boolean(old)
+      && keys.length === Object.keys(old!).length
+      && keys.every((key) => old![key] === asset[key]);
+    return unchanged ? old! : asset;
+  });
+}
+
+/**
+ * Canal realtime dos anexos do curso. O retorno desliga o canal e traz
+ * `reload()`: busca de novo SEM mexer no canal. A sala usa quando uma aula abre
+ * pelo calendário, momento em que nada muda no banco e o realtime não acorda.
+ */
 export function subscribeToCourseAssets(
   courseId: string,
   callback: (assets: CourseAsset[]) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
+  let active = true;
+  let latestLoad = 0;
+  let delivered: CourseAsset[] = [];
 
   const load = async () => {
+    const thisLoad = ++latestLoad;
     try {
-      callback(await fetchCourseAssets(courseId));
+      const assets = await fetchCourseAssets(courseId);
+      // Canal desligado, ou uma carga mais nova já saiu: esta resposta é velha.
+      if (!active || thisLoad !== latestLoad) return;
+      delivered = keepUnchangedAssets(delivered, assets);
+      callback(delivered);
     } catch (error) {
+      if (!active || thisLoad !== latestLoad) return;
       onError(error instanceof Error ? error : new Error(String(error)));
     }
   };
@@ -447,9 +476,13 @@ export function subscribeToCourseAssets(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  return Object.assign(
+    () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }
 
 /**

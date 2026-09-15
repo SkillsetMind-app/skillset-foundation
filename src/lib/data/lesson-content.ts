@@ -30,19 +30,30 @@ function rowToLessonContent(row: LessonContentRow): LessonContent {
  * preferring the table value and falling back to the inline field when a row is
  * absent (un-migrated course during transition). Mirrors the
  * subscribeToCourseAssets onSnapshot style.
+ *
+ * O retorno desliga o canal e traz `reload()`: busca de novo SEM mexer no
+ * canal (a sala usa quando uma aula abre pelo calendário, sem escrita no banco).
  */
 export function subscribeToLessonContent(
   courseId: string,
   callback: (content: Map<string, LessonContent>) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
+  let active = true;
+  let latestLoad = 0;
 
   const load = async () => {
+    const thisLoad = ++latestLoad;
     const { data, error } = await supabase
       .from("course_lesson_content")
       .select("*")
       .eq("course_id", courseId);
+
+    // Canal desligado, ou uma carga mais nova já saiu: esta resposta é velha.
+    if (!active || thisLoad !== latestLoad) {
+      return;
+    }
 
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
@@ -75,9 +86,13 @@ export function subscribeToLessonContent(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  return Object.assign(
+    () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }
 
 /**

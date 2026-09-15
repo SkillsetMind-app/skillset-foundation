@@ -851,7 +851,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     let emitAssets: (assets: CourseAsset[]) => void = () => {};
     vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_id, emit) => {
       emitAssets = emit;
-      return () => {};
+      return Object.assign(() => {}, { reload: async () => undefined });
     });
     vi.mocked(uploadCourseAsset).mockResolvedValueOnce("new-cover");
     renderMembers();

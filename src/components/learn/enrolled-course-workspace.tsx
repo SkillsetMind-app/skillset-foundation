@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ChevronDown,
   ChevronLeft,
@@ -86,9 +86,19 @@ import {
 } from "@/lib/data/lesson-content";
 import { track } from "@/lib/posthog/events";
 
-// Teto do timer de liberação: prazos distantes são rearmados a cada 24h em vez
-// de confiar num único setTimeout de semanas (aba dormindo, relógio mudado).
+// Liberação de aula pelo calendário (migration 20260915020000).
+// Folga depois do prazo: o relógio do aparelho pode estar à frente do banco.
+const RELEASE_GRACE_MS = 5_000;
+// O banco ainda não abriu a aula (relógio adiantado): tenta de novo, com teto.
+const RELEASE_RETRY_MS = 30_000;
+const RELEASE_RETRIES = 3;
+// Prazos distantes são rearmados a cada 24h (setTimeout estoura acima de ~24
+// dias). O tique que não abre nada não busca nada.
 const MAX_RELEASE_WAIT_MS = 24 * 60 * 60 * 1000;
+
+// `reload` é opcional aqui: os testes que dublam os módulos de dados devolvem
+// só a função de desligar.
+type ReloadableSubscription = (() => void) & { reload?: () => Promise<void> };
 
 type EnrolledCourseWorkspaceProps = {
   course: Course;
@@ -370,73 +380,129 @@ export function EnrolledCourseWorkspace({
     );
   }, [previewMode, workspaceEnrollment]);
 
-  // A RLS só entrega o texto, o link e o material da aula que já abriu
-  // (migration 20260915020000), e nada no banco muda quando uma aula abre:
-  // concluir a anterior (sequencial) ou vencer o prazo não escreve nessas
-  // tabelas, então o realtime não acorda. A chave de recarga junta o conjunto
-  // de aulas concluídas (a lista já chega ordenada) e um tique do relógio.
-  const [releaseTick, setReleaseTick] = useState(0);
-  const releaseRefreshKey = `${progressState.lessonIds.join("|")}:${releaseTick}`;
+  // Liberação pelo calendário (migration 20260915020000). A RLS só entrega o
+  // texto, o link e o material da aula que já abriu, e nada no banco muda
+  // quando ela abre, então o realtime não acorda. A sala acompanha o conjunto
+  // de aulas abertas pelo relógio (na montagem, no próximo prazo + folga e ao
+  // voltar para a aba) e o conjunto de concluídas. Quando um dos dois muda,
+  // pede uma recarga avulsa aos dois canais, sem reinscrevê-los. Tique ou volta
+  // para a aba que não abre nada não busca nada.
+  const [clockNow, setClockNow] = useState(() => Date.now());
+  const assetsSubscription = useRef<ReloadableSubscription | null>(null);
+  const contentSubscription = useRef<ReloadableSubscription | null>(null);
+  const latestAssets = useRef<CourseAsset[]>([]);
+  const latestContent = useRef<Map<string, LessonContent>>(new Map());
+  const releaseSnapshot = useRef<{ unlocked: string[]; completed: string } | null>(null);
 
-  // O tique bate no próximo prazo ainda no futuro (teto de 24h, rearmado a
-  // cada tique) e quando a aba volta a ficar visível: timer de aba em segundo
-  // plano atrasa, e o relógio pode ter passado de vários prazos.
-  // ponytail: o prazo é o relógio do aparelho. Aparelho adiantado em relação
-  // ao banco busca cedo demais e só pega a aula no próximo tique ou ao voltar
-  // para a aba.
-  useEffect(() => {
-    if (previewMode || !workspaceEnrollment) {
-      return;
-    }
-
-    const now = Date.now();
-    let nextUnlockAt = Number.POSITIVE_INFINITY;
+  // No preview o professor já lê tudo (é o dono): nada a acompanhar.
+  let unlockedKey: string | null = null;
+  let nextUnlockAt: number | null = null;
+  if (
+    !previewMode
+    && workspaceEnrollment
+    && progressState.ready
+    && progressState.key === workspaceEnrollment.id
+  ) {
+    const unlocked: string[] = [];
     for (const lesson of course.modules.flatMap((module) => module.lessons)) {
       const state = getLessonUnlockState(
         course,
         lesson,
         workspaceEnrollment,
         progressState.lessonIds,
-        new Date(now),
+        new Date(clockNow),
       );
-      const unlocksAt = state.unlocksAt?.getTime();
-      if (!state.unlocked && unlocksAt !== undefined && unlocksAt > now) {
-        nextUnlockAt = Math.min(nextUnlockAt, unlocksAt);
+      if (state.unlocked) {
+        unlocked.push(lesson.id);
+      } else if (state.unlocksAt) {
+        nextUnlockAt = Math.min(nextUnlockAt ?? Number.POSITIVE_INFINITY, state.unlocksAt.getTime());
       }
     }
-    if (nextUnlockAt === Number.POSITIVE_INFINITY) {
-      return;
-    }
+    unlockedKey = unlocked.join("|");
+  }
+  // A lista de concluídas já chega ordenada (subscribeToCompletedLessons).
+  const completedKey = progressState.lessonIds.join("|");
 
-    const timer = window.setTimeout(
-      () => setReleaseTick((tick) => tick + 1),
-      Math.min(nextUnlockAt - now, MAX_RELEASE_WAIT_MS),
-    );
-    return () => window.clearTimeout(timer);
-  }, [course, previewMode, progressState.lessonIds, releaseTick, workspaceEnrollment]);
-
+  // Próximo prazo + folga. Prazo distante: acorda em 24h, não abre nada, não
+  // busca nada, e rearma (clockNow mudou).
   useEffect(() => {
-    if (previewMode || !workspaceEnrollment) {
+    if (nextUnlockAt === null) {
       return;
     }
 
+    const wait = Math.min(Math.max(0, nextUnlockAt - Date.now()), MAX_RELEASE_WAIT_MS);
+    const timer = window.setTimeout(() => setClockNow(Date.now()), wait + RELEASE_GRACE_MS);
+    return () => window.clearTimeout(timer);
+  }, [clockNow, nextUnlockAt]);
+
+  // Timer de aba em segundo plano atrasa: ao voltar, confere o relógio.
+  useEffect(() => {
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        setReleaseTick((tick) => tick + 1);
+        setClockNow(Date.now());
       }
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, [previewMode, workspaceEnrollment]);
+  }, []);
+
+  // A recarga só sai quando o conjunto de abertas ou o de concluídas muda. O
+  // primeiro retrato depois de carregar só é guardado: a carga inicial dos
+  // canais já trouxe o que o banco liberava.
+  useEffect(() => {
+    if (unlockedKey === null) {
+      releaseSnapshot.current = null;
+      return;
+    }
+
+    const unlocked = unlockedKey === "" ? [] : unlockedKey.split("|");
+    const previous = releaseSnapshot.current;
+    releaseSnapshot.current = { unlocked, completed: completedKey };
+    if (!previous || (previous.unlocked.join("|") === unlockedKey && previous.completed === completedKey)) {
+      return;
+    }
+
+    const opened = unlocked.filter((id) => !previous.unlocked.includes(id));
+    let cancelled = false;
+    let retryTimer: number | undefined;
+    const reload = async (retriesLeft: number) => {
+      await Promise.all([
+        contentSubscription.current?.reload?.(),
+        assetsSubscription.current?.reload?.(),
+      ]);
+      if (cancelled || retriesLeft === 0) {
+        return;
+      }
+      // Relógio do aparelho adiantado: o banco ainda não abriu a aula. Tenta de
+      // novo em 30s, até 3 vezes. A miniatura é pública e já vinha antes.
+      const missing = opened.some(
+        (lessonId) =>
+          !latestContent.current.has(lessonId)
+          && !latestAssets.current.some(
+            (asset) => asset.lessonId === lessonId && asset.kind !== "lesson_thumbnail",
+          ),
+      );
+      if (missing) {
+        retryTimer = window.setTimeout(() => void reload(retriesLeft - 1), RELEASE_RETRY_MS);
+      }
+    };
+    void reload(RELEASE_RETRIES);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(retryTimer);
+    };
+  }, [completedKey, unlockedKey]);
 
   useEffect(() => {
     if (!enableFirestoreAssets || !workspaceEnrollment) {
       return;
     }
 
-    return subscribeToCourseAssets(
+    const subscription = subscribeToCourseAssets(
       course.id,
       (assets) => {
+        latestAssets.current = assets;
         setAssetsState({
           assets,
           key: course.id,
@@ -452,7 +518,9 @@ export function EnrolledCourseWorkspace({
         });
       },
     );
-  }, [course.id, enableFirestoreAssets, releaseRefreshKey, workspaceEnrollment]);
+    assetsSubscription.current = subscription;
+    return subscription;
+  }, [course.id, enableFirestoreAssets, workspaceEnrollment]);
 
   // B1: subscribe to the gated lesson content for the active course. Only
   // meaningful for an enrolled (or preview) viewer, who passes the enrollment
@@ -463,9 +531,10 @@ export function EnrolledCourseWorkspace({
       return;
     }
 
-    return subscribeToLessonContent(
+    const subscription = subscribeToLessonContent(
       course.id,
       (content) => {
+        latestContent.current = content;
         setLessonContentState({ content, key: course.id, ready: true });
       },
       () => {
@@ -481,7 +550,9 @@ export function EnrolledCourseWorkspace({
         );
       },
     );
-  }, [course.id, releaseRefreshKey, workspaceEnrollment]);
+    contentSubscription.current = subscription;
+    return subscription;
+  }, [course.id, workspaceEnrollment]);
 
   // LESSON_STARTED — fires when the learner navigates to a lesson card.
   // Preview mode (teacher impersonating learner view) is excluded so the
@@ -605,7 +676,8 @@ export function EnrolledCourseWorkspace({
   const lessonUnlockStateById = new Map(
     allLessons.map((lesson) => [
         lesson.id,
-        getLessonUnlockState(course, lesson, workspaceEnrollment, completedLessonIds),
+        // O relógio da recarga (clockNow): a aula abre na tela junto com a busca.
+        getLessonUnlockState(course, lesson, workspaceEnrollment, completedLessonIds, new Date(clockNow)),
     ]),
   );
   const selectedLesson =
