@@ -65,6 +65,55 @@ function shouldSend(key: string, now: number): boolean {
   return true;
 }
 
+function post(url: string, alert: OpsAlert, now: number): Promise<Response> {
+  return fetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      // Channel credential, not customer data — it authenticates this
+      // platform to its own relay, so it does not break the "carries no
+      // secrets" promise above.
+      //
+      // Unset means the header is simply absent rather than empty, which is
+      // what lets the sending side ship before the receiving side starts
+      // checking. The two must roll out in that order: a relay that requires
+      // the header before the platform sends it turns every real alert into
+      // a silent rejection, and the channel goes mute with nobody noticing.
+      ...(process.env.OPS_ALERT_WEBHOOK_SECRET
+        ? { "x-ops-secret": process.env.OPS_ALERT_WEBHOOK_SECRET }
+        : {}),
+    },
+    body: JSON.stringify({
+      source: "skillsetmind",
+      event: alert.event,
+      severity: alert.severity,
+      summary: alert.summary,
+      context: alert.context ?? {},
+      at: new Date(now).toISOString(),
+    }),
+    // A relay that hangs must not hold an instance open indefinitely.
+    signal: AbortSignal.timeout(4_000),
+  });
+}
+
+/**
+ * Awaitable twin of notifyOps for callers whose whole job IS the alert (a cron
+ * check). Same body, headers and timeout, but no throttle and no after(): it
+ * reports whether the relay accepted it, so the caller can fail loudly when
+ * nobody was told. false = no URL configured, relay unreachable, or non-2xx.
+ */
+export async function sendOpsAlert(alert: OpsAlert): Promise<boolean> {
+  const url = process.env.OPS_ALERT_WEBHOOK_URL;
+  if (!url) {
+    return false;
+  }
+  try {
+    return (await post(url, alert, Date.now())).ok;
+  } catch {
+    return false;
+  }
+}
+
 export function notifyOps(alert: OpsAlert): void {
   const url = process.env.OPS_ALERT_WEBHOOK_URL;
   if (!url) {
@@ -77,34 +126,7 @@ export function notifyOps(alert: OpsAlert): void {
   }
 
   const send = () =>
-    fetch(url, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        // Channel credential, not customer data — it authenticates this
-        // platform to its own relay, so it does not break the "carries no
-        // secrets" promise above.
-        //
-        // Unset means the header is simply absent rather than empty, which is
-        // what lets the sending side ship before the receiving side starts
-        // checking. The two must roll out in that order: a relay that requires
-        // the header before the platform sends it turns every real alert into
-        // a silent rejection, and the channel goes mute with nobody noticing.
-        ...(process.env.OPS_ALERT_WEBHOOK_SECRET
-          ? { "x-ops-secret": process.env.OPS_ALERT_WEBHOOK_SECRET }
-          : {}),
-      },
-      body: JSON.stringify({
-        source: "skillsetmind",
-        event: alert.event,
-        severity: alert.severity,
-        summary: alert.summary,
-        context: alert.context ?? {},
-        at: new Date(now).toISOString(),
-      }),
-      // A relay that hangs must not hold an instance open indefinitely.
-      signal: AbortSignal.timeout(4_000),
-    }).catch(() => {
+    post(url, alert, now).catch(() => {
       // Swallowed on purpose. A failed alert is not worth a failed request, and
       // logging here would just add noise to the log nobody reads.
     });

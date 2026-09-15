@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import type { LoadError } from "@stripe/connect-js";
 import { afterAll, afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -113,7 +113,11 @@ it("keeps platform unavailability distinct and retries only on explicit check", 
   const onAvailabilityChange = vi.fn();
   mount({ onAvailabilityChange });
   await screen.findByRole("heading", { name: copy("es", "connectOnboarding.unavailableTitle") });
-  expect(onAvailabilityChange).toHaveBeenLastCalledWith(true);
+  // O titulo aparece no commit; o aviso ao pai sai de um useEffect, que o React
+  // roda numa tarefa SEGUINTE do scheduler. Num runner lento o findByRole volta
+  // entre as duas e a ultima chamada ainda e o `false` da montagem. Esperar o
+  // proprio aviso, nao o titulo como indicio dele.
+  await waitFor(() => expect(onAvailabilityChange).toHaveBeenLastCalledWith(true));
   expect(screen.queryByRole("alert")).toBeNull();
   expect(mocks.initialize).not.toHaveBeenCalled();
   fireEvent.click(screen.getByText("EN"));
