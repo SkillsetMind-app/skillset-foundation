@@ -35,7 +35,8 @@ type FailurePoint =
   | "orders.update"
   | "fulfill_paid_course_access"
   | "payout_ledger.insert"
-  | "course_subscriptions.update";
+  | "course_subscriptions.update"
+  | "certificates.update";
 
 type RefundClaim = {
   state: "pending" | "done";
@@ -69,6 +70,9 @@ type AdminState = {
   // payout_ledger ids written in checkout mode, so a redelivery meets the
   // same re-arm gate it would in production.
   ledgerIds: Set<string>;
+  // The buyer's certificate for this course, and how many writes changed it.
+  certificate: Record<string, unknown>;
+  certificateWrites: number;
 };
 
 type Filter = { column: string; value: unknown };
@@ -124,6 +128,8 @@ function createAdmin(
     paymentWrites: [],
     orderWrites: [],
     ledgerIds: new Set(),
+    certificate: { enrollment_id: "user_1__course_1", status: "issued" },
+    certificateWrites: 0,
   };
 
   class Query {
@@ -246,6 +252,15 @@ function createAdmin(
 
         if (this.table === "payout_ledger" && this.operation === "insert") {
           state.ledgerIds.add(String(this.values.id));
+        }
+
+        // An update lands only when every filter matches the row, like PostgREST.
+        if (this.table === "certificates" && this.operation === "update") {
+          const row = state.certificate;
+          if (this.filters.every(({ column, value }) => row[column] === value)) {
+            Object.assign(row, this.values);
+            state.certificateWrites += 1;
+          }
         }
 
         if (this.table === "payments") state.paymentWrites.push({ ...this.values });
@@ -420,8 +435,10 @@ function createAdmin(
     }),
     auth: {
       admin: {
+        // The course owner (teacher_1) has their own address, so an email
+        // that reaches the wrong person shows up as the wrong recipient.
         getUserById: vi.fn(async (uid: string) => ({
-          data: { user: { id: uid, email: "buyer@example.test" } },
+          data: { user: { id: uid, email: uid === "teacher_1" ? "creator@example.test" : "buyer@example.test" } },
           error: null,
         })),
       },
@@ -1031,6 +1048,39 @@ describe("Stripe webhook financial integrity", () => {
         stripe_connect_payouts_enabled: true,
       }),
     );
+    // Control: a payload without a country must not null the stored one.
+    expect(admin.state.userUpdates.some((update: Record<string, unknown>) =>
+      "stripe_connect_country" in update)).toBe(false);
+  });
+
+  // Lazy backfill: accounts minted before the column existed get their country
+  // the next time Stripe reports on them.
+  it("records the connected account's payout country from account.updated", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+
+    const response = await postEvent({
+      id: "evt_account_updated_country",
+      type: "account.updated",
+      account: "acct_teacher",
+      data: {
+        object: {
+          id: "acct_teacher",
+          object: "account",
+          country: "gb",
+          charges_enabled: false,
+          payouts_enabled: false,
+        },
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(admin.state.userUpdates).toContainEqual(
+      expect.objectContaining({
+        stripe_connected_account_id: "acct_teacher",
+        stripe_connect_country: "GB",
+      }),
+    );
   });
 
   it("records refunds without moving any money (direct-charge invariant)", async () => {
@@ -1415,6 +1465,10 @@ describe("Stripe webhook financial integrity", () => {
       }));
     }
 
+    const emailsTo = (address: string) => sentEmails().filter((email) => email.body.to.includes(address));
+    const buyerEmails = () => emailsTo("buyer@example.test");
+    const creatorEmails = () => emailsTo("creator@example.test");
+
     function subscription(metadata: Record<string, string> = {}) {
       return {
         metadata: { purpose: "course_subscription", courseId: "course_1", userId: "user_1", teacherId: "teacher_1", ...metadata },
@@ -1449,8 +1503,8 @@ describe("Stripe webhook financial integrity", () => {
 
       expect((await postEvent(checkoutEvent())).status).toBe(200);
 
-      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
-      const [email] = sentEmails();
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
+      const [email] = buyerEmails();
       expect(email.url).toBe("https://api.resend.com/emails");
       expect(email.headers.get("Idempotency-Key")).toBe("order_1");
       expect(email.body).toMatchObject({
@@ -1473,8 +1527,8 @@ describe("Stripe webhook financial integrity", () => {
 
       expect((await postEvent(event)).status).toBe(200);
 
-      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
-      const [email] = sentEmails();
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
+      const [email] = buyerEmails();
       expect(email.body.subject).toBe("Tu curso está listo: Course");
       expect(email.body.text).toContain("Inicia sesión con buyer@example.test");
     });
@@ -1485,11 +1539,11 @@ describe("Stripe webhook financial integrity", () => {
       const event = checkoutEvent();
 
       expect((await postEvent(event)).status).toBe(200);
-      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
       expect((await postEvent(event)).status).toBe(200);
 
       await flush();
-      expect(resend).toHaveBeenCalledTimes(1);
+      expect(buyerEmails()).toHaveLength(1);
       expect(fulfillCalls(admin)).toHaveLength(1);
     });
 
@@ -1508,17 +1562,18 @@ describe("Stripe webhook financial integrity", () => {
       expect(fulfillCalls(admin)).toHaveLength(1);
       expect(admin.state.doneEvents).toContain("evt_checkout");
       await vi.waitFor(() => expect(mocks.notifyOps).toHaveBeenCalledWith(lostEmailAlert));
-      expect(resend).toHaveBeenCalledTimes(1);
+      expect(buyerEmails()).toHaveLength(1);
     });
 
-    it("skips without a Resend key: no request, no throw, one warning", async () => {
+    it("skips without a Resend key: no request, no throw, one warning per email", async () => {
       vi.stubEnv("RESEND_API_KEY", "");
       const admin = createAdmin("checkout");
       mocks.getAdmin.mockReturnValue(admin);
 
       expect((await postEvent(checkoutEvent())).status).toBe(200);
 
-      await vi.waitFor(() => expect(console.warn).toHaveBeenCalledTimes(1));
+      // One per skipped email: the buyer's and the creator's.
+      await vi.waitFor(() => expect(console.warn).toHaveBeenCalledTimes(2));
       expect(resend).not.toHaveBeenCalled();
       expect(mocks.notifyOps).not.toHaveBeenCalled();
     });
@@ -1527,13 +1582,13 @@ describe("Stripe webhook financial integrity", () => {
       const admin = createAdmin("checkout");
       mocks.getAdmin.mockReturnValue(admin);
       expect((await postEvent(checkoutEvent())).status).toBe(200);
-      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
 
       admin.state.mode = "refund";
       expect((await postEvent(refundEvent("evt_refund_access", 10000))).status).toBe(200);
 
       await flush();
-      expect(resend).toHaveBeenCalledTimes(1);
+      expect(buyerEmails()).toHaveLength(1);
     });
 
     it("sends on a subscription's first invoice, not on its renewals", async () => {
@@ -1542,8 +1597,8 @@ describe("Stripe webhook financial integrity", () => {
       mocks.subscriptionRetrieve.mockResolvedValue(subscription({ locale: "es" }));
 
       expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
-      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
-      const [email] = sentEmails();
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
+      const [email] = buyerEmails();
       expect(email.headers.get("Idempotency-Key")).toBe("in_paid_1");
       expect(email.body.to).toEqual(["buyer@example.test"]);
       expect(email.body.subject).toBe("Tu curso está listo: Course");
@@ -1554,7 +1609,7 @@ describe("Stripe webhook financial integrity", () => {
       expect((await postEvent(renewal)).status).toBe(200);
 
       await flush();
-      expect(resend).toHaveBeenCalledTimes(1);
+      expect(buyerEmails()).toHaveLength(1);
     });
 
     it("alerts with the ids when a first invoice's enrollment fails after its gate row", async () => {
@@ -1578,11 +1633,11 @@ describe("Stripe webhook financial integrity", () => {
       mocks.subscriptionRetrieve.mockResolvedValue(subscription());
 
       expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
-      await vi.waitFor(() => expect(resend).toHaveBeenCalledTimes(1));
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
       expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
 
       await flush();
-      expect(resend).toHaveBeenCalledTimes(1);
+      expect(buyerEmails()).toHaveLength(1);
       expect(fulfillCalls(admin)).toHaveLength(2);
     });
 
@@ -1600,6 +1655,209 @@ describe("Stripe webhook financial integrity", () => {
       expect(mocks.notifyOps).not.toHaveBeenCalledWith(lostEmailAlert);
       await flush();
       expect(resend).not.toHaveBeenCalled();
+    });
+
+    describe("new-sale email to the creator", () => {
+      it("sends one creator email per paid sale, keyed apart from the buyer's", async () => {
+        const admin = createAdmin("checkout");
+        mocks.getAdmin.mockReturnValue(admin);
+
+        expect((await postEvent(checkoutEvent())).status).toBe(200);
+
+        await vi.waitFor(() => expect(creatorEmails()).toHaveLength(1));
+        const [email] = creatorEmails();
+        expect(email.headers.get("Idempotency-Key")).toBe("order_1:creator-sale");
+        expect(email.body).toMatchObject({
+          from: "SkillsetMind <no-reply@skillsetmind.com>",
+          to: ["creator@example.test"],
+          subject: "New sale: Course",
+        });
+        expect(email.body.text).toContain("Amount: $100.00");
+        expect(email.body.text).toContain("https://www.skillsetmind.com/teach/sales");
+        expect(email.body.text).toContain("Stripe pays this sale out to your own Stripe account.");
+        expect(admin.auth.admin.getUserById).toHaveBeenCalledWith("teacher_1");
+        await flush();
+        expect(creatorEmails()).toHaveLength(1);
+      });
+
+      it("says nothing about the buyer", async () => {
+        const admin = createAdmin("checkout");
+        mocks.getAdmin.mockReturnValue(admin);
+
+        expect((await postEvent(checkoutEvent())).status).toBe(200);
+
+        await vi.waitFor(() => expect(creatorEmails()).toHaveLength(1));
+        const [email] = creatorEmails();
+        const everything = [email.body.subject, email.body.html, email.body.text].join("\n");
+        expect(everything).toContain("A new student");
+        expect(everything).not.toContain("buyer@example.test");
+        expect(everything).not.toContain("user_1");
+      });
+
+      it("sends none when the same first invoice is delivered again", async () => {
+        const admin = createAdmin("checkout");
+        mocks.getAdmin.mockReturnValue(admin);
+        mocks.subscriptionRetrieve.mockResolvedValue(subscription());
+
+        expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
+        await vi.waitFor(() => expect(creatorEmails()).toHaveLength(1));
+        expect(creatorEmails()[0].headers.get("Idempotency-Key")).toBe("in_paid_1:creator-sale");
+        expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
+
+        await flush();
+        expect(creatorEmails()).toHaveLength(1);
+      });
+
+      it("sends none on a renewal", async () => {
+        const admin = createAdmin("checkout");
+        mocks.getAdmin.mockReturnValue(admin);
+        mocks.subscriptionRetrieve.mockResolvedValue(subscription());
+        const renewal = paidInvoiceEvent();
+        Object.assign(renewal.data.object, { billing_reason: "subscription_cycle" });
+
+        expect((await postEvent(renewal)).status).toBe(200);
+
+        await flush();
+        expect(creatorEmails()).toHaveLength(0);
+        expect(fulfillCalls(admin)).toHaveLength(1);
+      });
+
+      // Free enrollment never reaches this webhook (it is a client RPC). The
+      // webhook's version of "free" is a $0 order, which is not a sale.
+      it("sends none for a free ($0) enrollment", async () => {
+        const admin = createAdmin("checkout");
+        admin.state.orderRow.amount_minor = 0;
+        mocks.getAdmin.mockReturnValue(admin);
+        const event = checkoutEvent();
+        Object.assign(event.data.object, { amount_total: 0 });
+
+        expect((await postEvent(event)).status).toBe(200);
+
+        await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
+        await flush();
+        expect(creatorEmails()).toHaveLength(0);
+      });
+
+      it("keeps the enrollment and answers 200 when the creator email fails", async () => {
+        const admin = createAdmin("checkout");
+        mocks.getAdmin.mockReturnValue(admin);
+        resend.mockImplementation(async (_url, init) =>
+          String(init?.body).includes("creator@example.test")
+            ? new Response("{}", { status: 503 })
+            : new Response('{"id":"email_1"}', { status: 200 }),
+        );
+
+        const response = await postEvent(checkoutEvent());
+
+        expect(response.status).toBe(200);
+        expect(fulfillCalls(admin)).toHaveLength(1);
+        expect(admin.state.doneEvents).toContain("evt_checkout");
+        await vi.waitFor(() => expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+          event: "stripe.webhook.creator_sale_email_failed",
+          context: { courseId: "course_1", ownerId: "teacher_1" },
+        })));
+        expect(buyerEmails()).toHaveLength(1);
+        expect(mocks.notifyOps).not.toHaveBeenCalledWith(lostEmailAlert);
+      });
+    });
+  });
+
+  // Um reembolso integral ou um chargeback perdido tira o curso; o certificado
+  // que ele rendeu sai junto, e a pagina publica para de atestar.
+  describe("certificate withdrawn with the purchase", () => {
+    function fullRefundEvent(id: string) {
+      const event = refundEvent(id, 10000);
+      event.data.object.refunded = true;
+      return event;
+    }
+
+    function connectedDispute(id: string, status: string) {
+      return { ...disputeClosedEvent(id, status), account: "acct_teacher" };
+    }
+
+    it("withdraws the certificate on a full refund as refund_revoked", async () => {
+      const admin = createAdmin("refund");
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(fullRefundEvent("evt_full_refund"))).status).toBe(200);
+
+      expect(admin.state.certificate.status).toBe("refund_revoked");
+      expect(admin.state.enrollmentUpdates).toContainEqual(
+        expect.objectContaining({ id: "user_1__course_1", status: "refunded" }),
+      );
+    });
+
+    it("keeps the certificate on a partial refund", async () => {
+      const admin = createAdmin("refund");
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(refundEvent("evt_partial_refund", 3000))).status).toBe(200);
+
+      expect(admin.state.certificate.status).toBe("issued");
+      expect(admin.state.certificateWrites).toBe(0);
+    });
+
+    it("withdraws the certificate as refund_revoked when a chargeback is lost", async () => {
+      const admin = createAdmin("refund");
+      admin.state.ledger.status = "disputed";
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(connectedDispute("evt_dispute_lost_certificate", "lost"))).status).toBe(200);
+
+      expect(admin.state.certificate.status).toBe("refund_revoked");
+    });
+
+    it("keeps the certificate when a chargeback is won", async () => {
+      const admin = createAdmin("refund");
+      admin.state.ledger.status = "disputed";
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(connectedDispute("evt_dispute_won_certificate", "won"))).status).toBe(200);
+
+      expect(admin.state.certificate.status).toBe("issued");
+      expect(admin.state.certificateWrites).toBe(0);
+    });
+
+    it("treats a repeated full refund as already done: 200 both times, one write", async () => {
+      const admin = createAdmin("refund");
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = fullRefundEvent("evt_full_refund_twice");
+
+      expect((await postEvent(event)).status).toBe(200);
+      expect((await postEvent(event)).status).toBe(200);
+
+      expect(admin.state.certificate.status).toBe("refund_revoked");
+      expect(admin.state.certificateWrites).toBe(1);
+    });
+
+    // An ops revocation is final (issue_skillset_certificate refuses to
+    // re-issue 'revoked'). A refund must never turn it into 'refund_revoked',
+    // which a rebuy would re-issue.
+    it("leaves an ops-revoked certificate untouched on a full refund", async () => {
+      const admin = createAdmin("refund");
+      admin.state.certificate.status = "revoked";
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(fullRefundEvent("evt_full_refund_ops_revoked"))).status).toBe(200);
+
+      expect(admin.state.certificate.status).toBe("revoked");
+      expect(admin.state.certificateWrites).toBe(0);
+    });
+
+    it("keeps the refund and the access revocation when the certificate write fails", async () => {
+      const admin = createAdmin("refund", "certificates.update");
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(fullRefundEvent("evt_full_refund_certificate_down"))).status).toBe(200);
+
+      expect(admin.state.enrollmentUpdates).toContainEqual(
+        expect.objectContaining({ id: "user_1__course_1", status: "refunded" }),
+      );
+      expect(admin.state.doneEvents).toContain("evt_full_refund_certificate_down");
+      expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+        event: "stripe.webhook.certificate_revoke_failed",
+        context: { courseId: "course_1", userId: "user_1" },
+      }));
     });
   });
 });

@@ -14,15 +14,18 @@ import {
   isConnectNotEnabledError,
   runWithOrphanedAccountSelfHeal,
 } from "@/lib/payments/connect-self-heal";
+import { isConnectPayoutCountry } from "@/lib/payments/connect-countries";
 
 // Ported from Firebase callable createTeacherStripeAccountLink
 // (functions/src/index.ts). Mints a Stripe Connect account-onboarding link for
 // a teacher, self-healing an orphaned connected account once.
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const uid = await requireUserId();
 
     await enforceRateLimit(`stripe_onboarding_${uid}`, 10, 3600000);
+
+    const body = (await request.json().catch(() => null)) as { country?: unknown } | null;
 
     const user = await getUserRow(uid);
     if (!user) {
@@ -42,13 +45,26 @@ export async function POST() {
     // mint a Stripe connected account.
     await assertCreatorActivated();
 
+    const storedAccountId = user.stripe_connected_account_id || null;
+    // The client's country only chooses the FIRST account. Once one exists, the
+    // stored country wins (a heal must not move a creator to another country).
+    const requestedCountry = typeof body?.country === "string" ? body.country.toUpperCase() : "";
+    if (!storedAccountId && !isConnectPayoutCountry(requestedCountry)) {
+      throw new PaymentError(
+        "Payouts are not available in that country yet.",
+        400,
+        "unsupported_country",
+      );
+    }
+    const country = storedAccountId ? user.stripe_connect_country ?? "US" : requestedCountry;
+
     try {
       const stripe = getStripeClient();
       const email = user.email || undefined;
-      let accountId = user.stripe_connected_account_id || null;
+      let accountId = storedAccountId;
 
       if (!accountId) {
-        accountId = await createFreshConnectedAccount({ uid, email, stripe });
+        accountId = await createFreshConnectedAccount({ uid, email, stripe, country });
       }
 
       const appUrl = getAppUrl();
@@ -67,6 +83,7 @@ export async function POST() {
             email,
             stripe,
             replacingAccountId: accountId,
+            country,
           }),
         onRecreate: () => {},
       });

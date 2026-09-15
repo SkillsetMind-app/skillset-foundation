@@ -8,7 +8,58 @@ vi.mock("@/lib/supabase/client", () => ({
   getSupabaseBrowserClient: supabaseMocks.getSupabaseBrowserClient,
 }));
 
-import { updateUserIdentity } from "@/lib/data/user-profiles";
+import {
+  acceptTeacherTerms,
+  acceptUserTerms,
+  updateUserIdentity,
+} from "@/lib/data/user-profiles";
+
+// update().eq().select(): RLS can filter the update to zero rows with no error.
+function buildAcceptClient(rows: Array<{ uid: string }>) {
+  const calls: { payload?: Record<string, unknown>; columns?: string } = {};
+  const client = {
+    from: vi.fn(() => ({
+      update: (payload: Record<string, unknown>) => {
+        calls.payload = payload;
+        return {
+          eq: vi.fn(() => ({
+            select: vi.fn(async (columns: string) => {
+              calls.columns = columns;
+              return { data: rows, error: null };
+            }),
+          })),
+        };
+      },
+    })),
+  };
+  return { client, calls };
+}
+
+const legalWrites = [
+  ["acceptUserTerms", () => acceptUserTerms("u-1", false), "terms_version"],
+  ["acceptTeacherTerms", () => acceptTeacherTerms("u-1"), "teacher_terms_version"],
+] as const;
+
+describe("legal acceptance writes must land on a row", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it.each(legalWrites)("%s throws when RLS filters the update to zero rows", async (_name, accept) => {
+    supabaseMocks.getSupabaseBrowserClient.mockReturnValue(buildAcceptClient([]).client);
+
+    await expect(accept()).rejects.toThrow("no profile row was updated");
+  });
+
+  it.each(legalWrites)("%s resolves when its own row is updated", async (_name, accept, versionColumn) => {
+    const { client, calls } = buildAcceptClient([{ uid: "u-1" }]);
+    supabaseMocks.getSupabaseBrowserClient.mockReturnValue(client);
+
+    await expect(accept()).resolves.toBeUndefined();
+    expect(calls.columns).toBe("uid");
+    expect(calls.payload).toHaveProperty(versionColumn, "2026-09-15");
+  });
+});
 
 const usernameCollision = {
   code: "23505",

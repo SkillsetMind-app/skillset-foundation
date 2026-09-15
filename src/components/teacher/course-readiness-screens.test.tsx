@@ -309,7 +309,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
 
   it.each(["save", "publish"] as const)("keeps the activation recovery link after a %s error changes language", async (operation) => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
-      emit({ ...mocks.course, paymentType: "free", priceAmountMinor: 0, modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text" }] }] });
+      // A aula precisa de conteudo para o Publish destravar (item lessonMedia).
+      emit({ ...mocks.course, paymentType: "free", priceAmountMinor: 0, modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text", contentText: "Read this first." }] }] });
       return () => {};
     });
     const activation = new Error("Pay the one-time activation fee before publishing courses.");
@@ -322,7 +323,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       : screen.getByRole("button", { name: "Publish product" }));
     await screen.findByRole("link", { name: "Activate storefront" });
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
-    expect(screen.getByRole("alert")).toHaveTextContent("Activa tu tienda para habilitar la publicación: es un pago único.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Activa tu tienda para habilitar la publicación: una tarifa única de activación, que se cobra una sola vez por cuenta de creador, nunca por curso.");
     expect(screen.getByRole("link", { name: "Activar tienda" })).toHaveAttribute("href", "/teach/activate");
     expect(updateTeacherCourseBuilder).toHaveBeenCalledOnce();
     expect(publishTeacherCourse).toHaveBeenCalledTimes(operation === "publish" ? 1 : 0);
@@ -971,6 +972,42 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(publishTeacherCourse).not.toHaveBeenCalled();
     expect(mocks.router.push).not.toHaveBeenCalled();
     expect(mocks.router.replace).not.toHaveBeenCalled();
+  });
+
+  // Um curso podia ser publicado com aulas vazias. O Publish do construtor
+  // agora trava e diz qual aula falta; com conteudo nas duas, destrava.
+  it.each([
+    ["uma aula vazia", false],
+    ["conteudo nas duas", true],
+  ] as const)("construtor: Publish com %s", async (_case, filled) => {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({
+        ...mocks.course,
+        paymentType: "free",
+        priceAmountMinor: 0,
+        modules: [{ id: "m1", title: "Start here", lessons: [
+          { id: "l1", title: "Welcome", description: "", type: "video", contentText: "Read this first." },
+          {
+            id: "l2", title: "Empty lesson", description: "", type: "video",
+            ...(filled ? { externalUrl: "https://www.youtube.com/watch?v=abc" } : {}),
+          },
+        ] }],
+      });
+      return () => {};
+    });
+    renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title });
+
+    const hint = "Add a video, text or file to every lesson. Missing: Empty lesson.";
+    const publish = screen.getByRole("button", { name: "Publish product" });
+    if (filled) {
+      expect(publish).toBeEnabled();
+      expect(screen.queryByText(hint)).not.toBeInTheDocument();
+    } else {
+      expect((await screen.findAllByText(hint)).length).toBeGreaterThan(0);
+      expect(publish).toBeDisabled();
+    }
+    expect(publishTeacherCourse).not.toHaveBeenCalled();
   });
 
   it("Manage: barra e contagem mostram os mesmos 67% e as mesmas pendencias", async () => {

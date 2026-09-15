@@ -36,6 +36,7 @@ describe("SiteFooter", () => {
       .filter((link) => link.getAttribute("href") === "/promise");
     expect(promiseLinks).toHaveLength(1);
     expect(screen.queryByText("Creator Promise")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Copyright (DMCA)" })).toHaveAttribute("href", "/legal/copyright");
   });
 
   it("abre o menu de idioma para cima, para não cair fora da página", async () => {

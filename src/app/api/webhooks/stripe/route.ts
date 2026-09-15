@@ -21,7 +21,7 @@ import {
 } from "@/lib/payments/rules";
 import { fromStripeAmount, toStripeAmount } from "@/lib/payments/currencies";
 import { getAppUrl } from "@/lib/payments/server/app-url";
-import { sendPurchaseAccessEmail } from "@/lib/payments/server/purchase-access-email";
+import { sendCreatorSaleEmail, sendPurchaseAccessEmail } from "@/lib/payments/server/purchase-access-email";
 import { getStripeClient, isStripeConfigured } from "@/lib/payments/server/stripe";
 import {
   courseSubscriptionInterval,
@@ -224,8 +224,19 @@ function reportLostAccessEmail(
   });
 }
 
+// Runs the task once the response is out; after() keeps the instance alive
+// until it lands. after() throws outside a request scope (tests, scripts):
+// run inline there.
+function afterResponse(task: () => Promise<void>): void {
+  try {
+    after(task);
+  } catch {
+    void task();
+  }
+}
+
 function queuePurchaseAccessEmail(admin: Admin, sale: AccessEmailSale): void {
-  const send = async () => {
+  afterResponse(async () => {
     try {
       const { data, error } = await admin.auth.admin.getUserById(sale.userId);
       const email = data?.user?.email;
@@ -241,13 +252,52 @@ function queuePurchaseAccessEmail(admin: Admin, sale: AccessEmailSale): void {
     } catch (error) {
       reportLostAccessEmail(sale, error);
     }
-  };
-  try {
-    after(send);
-  } catch {
-    // after() throws outside a request scope (tests, scripts): send inline.
-    void send();
-  }
+  });
+}
+
+// --- "new sale" email to the creator ----------------------------------------
+// Queued at the same point, behind the same gate, as the buyer's email: once
+// per paid sale, never on renewals or redeliveries. Its Idempotency-Key gets a
+// suffix because Resend rejects one key reused for a different email. It says
+// "a new student" and carries no buyer data. A failure is logged and alerted
+// under its own event, so it cannot throttle away a lost buyer email.
+type CreatorSale = {
+  ownerId: string;
+  courseId: string;
+  courseTitle: string;
+  /** Gross sale amount, stored as value x 100. */
+  amountMinor: number;
+  currency: string;
+  ledgerId: string;
+};
+
+function queueCreatorSaleEmail(admin: Admin, sale: CreatorSale): void {
+  // A $0 order (100% coupon) grants access but is not a sale to announce.
+  if (sale.amountMinor <= 0) return;
+  afterResponse(async () => {
+    try {
+      const { data, error } = await admin.auth.admin.getUserById(sale.ownerId);
+      const email = data?.user?.email;
+      if (error || !email) throw new Error("Course owner has no email to notify.");
+      await sendCreatorSaleEmail({
+        email,
+        courseTitle: sale.courseTitle,
+        amountMinor: sale.amountMinor,
+        currency: sale.currency,
+        salesUrl: `${getAppUrl()}/teach/sales`,
+        idempotencyKey: `${sale.ledgerId}:creator-sale`,
+      });
+    } catch (error) {
+      console.error("Creator sale email failed", { courseId: sale.courseId, ownerId: sale.ownerId }, error);
+      notifyOps({
+        event: "stripe.webhook.creator_sale_email_failed",
+        severity: "warn",
+        summary:
+          "A creator was not emailed about a new sale. The sale and the student's access are fine; it still shows on their sales page.",
+        context: { courseId: sale.courseId, ownerId: sale.ownerId },
+      });
+    }
+  });
 }
 
 // --- one-time checkout fulfilment -------------------------------------------
@@ -552,6 +602,14 @@ async function handleCheckoutCompleted(
     ledgerId: orderId,
     locale: normalizeLocale(session.locale),
   });
+  queueCreatorSaleEmail(admin, {
+    ownerId: course.owner_id,
+    courseId,
+    courseTitle: course.title,
+    amountMinor: grossAmountMinor,
+    currency: order.currency,
+    ledgerId: orderId,
+  });
 
   // Release the in-flight checkout lock now that the purchase settled — only if
   // it still belongs to THIS order (a sibling attempt's lock must survive). [B3]
@@ -794,6 +852,14 @@ async function handleCourseSubscriptionInvoicePaid(
         ledgerId: invoice.id,
         // Written by checkout on the subscription; older ones fall back to English.
         locale: normalizeLocale(typeof meta.locale === "string" ? meta.locale : null),
+      });
+      queueCreatorSaleEmail(admin, {
+        ownerId: course.owner_id,
+        courseId,
+        courseTitle: course.title,
+        amountMinor: grossAmountMinor,
+        currency: currencyUpper,
+        ledgerId: invoice.id,
       });
     }
   }
@@ -1198,6 +1264,51 @@ async function handleChargeRefunded(
         .eq("id", `${order.user_id}__${order.course_id}`),
       "Refund course enrollment",
     );
+    await revokeCertificateForPurchase(admin, order.user_id, order.course_id);
+  }
+}
+
+// --- certificate withdrawn with the purchase --------------------------------
+// A full refund or a lost chargeback takes the course back; the certificate it
+// earned goes with it, so the public verification page stops vouching for it.
+// Called only where the enrollment is revoked for that reason.
+//
+// 'refund_revoked', not 'revoked': issue_skillset_certificate refuses to
+// re-issue only 'revoked' (an ops decision) and sets any other existing row
+// back to 'issued'. A buyer who is refunded, buys again and finishes gets the
+// certificate back; an ops revocation stays final.
+//
+// Touches only a certificate still 'issued': a repeated event matches nothing,
+// and an ops 'revoked' row is never downgraded. Never throws: the refund and
+// the access revocation are already written, and a failed certificate write is
+// an alert for a human, not a reason to fail the event.
+//
+// Known limit: the match is user + course, the same as the enrollment
+// revocation it follows — enrollments carry no order id. A late refund or lost
+// chargeback on an OLD order also withdraws the certificate earned under a
+// newer purchase (and that purchase's access). Once access is restored, the
+// learner re-issues it.
+async function revokeCertificateForPurchase(
+  admin: Admin,
+  userId: string,
+  courseId: string,
+): Promise<void> {
+  try {
+    const { error } = await admin
+      .from("certificates")
+      .update({ status: "refund_revoked", updated_at: nowIso() })
+      .eq("enrollment_id", `${userId}__${courseId}`)
+      .eq("status", "issued");
+    if (error) throw new Error(error.message);
+  } catch (error) {
+    console.error("Certificate revocation failed", { courseId, userId }, error);
+    notifyOps({
+      event: "stripe.webhook.certificate_revoke_failed",
+      severity: "warn",
+      summary:
+        "A refunded or charged-back purchase kept its certificate: the revocation write failed. Revoke it by hand.",
+      context: { courseId, userId },
+    });
   }
 }
 
@@ -1365,6 +1476,7 @@ async function handleDisputeClosed(
           .eq("id", `${order.user_id}__${order.course_id}`),
         "Revoke enrollment after lost chargeback",
       );
+      await revokeCertificateForPurchase(admin, order.user_id, order.course_id);
     }
   }
   // Stripe keeps subscriptions running after disputes unless optional account
@@ -1613,6 +1725,9 @@ async function handleConnectedAccountUpdated(
         stripe_connect_status: ready ? "ready" : "onboarding_required",
         stripe_connect_charges_enabled: Boolean(account.charges_enabled),
         stripe_connect_payouts_enabled: Boolean(account.payouts_enabled),
+        // Backfills accounts created before the column existed. Omitted, never
+        // nulled, when Stripe leaves it out of the payload.
+        ...(account.country ? { stripe_connect_country: account.country.toUpperCase() } : {}),
         stripe_connect_updated_at: ts,
         updated_at: ts,
       })

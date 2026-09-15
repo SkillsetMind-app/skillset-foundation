@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, type FormEvent, type Ref } from "react";
 import {
   CheckCircle2,
   FileText,
@@ -12,7 +12,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { LessonVideoSourcePicker } from "@/components/teacher/lesson-video-source-picker";
+import {
+  LessonVideoSourcePicker,
+  type LessonVideoMode,
+  type LessonVideoSourcePickerHandle,
+} from "@/components/teacher/lesson-video-source-picker";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import { TrustedEmbedPlayer } from "@/components/learn/trusted-embed-player";
@@ -51,6 +55,8 @@ import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 
 type LessonContentModalProps = {
+  // Builder saindo da pagina: grava, sem prompt, o link digitado e sem blur.
+  leaveFlushRef?: Ref<() => void>;
   course: TeacherCourse;
   module: TeacherCourseModule;
   moduleIndex: number;
@@ -94,6 +100,38 @@ function getLessonErrorMessage(error: LessonError | null, t: (key: string) => st
 
 // Author preview never advances or records a student's lesson progress.
 function handlePreviewEnded() {}
+
+type BunnyProcessing = {
+  assetId: string;
+  status: number | null;
+  encodeProgress: number | null;
+  lengthSeconds: number | null;
+};
+
+// Bunny "Get Video" status: 0-3 still processing, 4 finished, 5 error,
+// 6 upload failed, 7 JIT segmenting (not playable yet), 8 JIT playlists
+// created (plays). Only 4 and 8 are ready; everything else that is not a
+// failure keeps polling.
+function isBunnyFailed(status: number | null) {
+  return status === 5 || status === 6;
+}
+function isBunnyReady(status: number | null) {
+  return status === 4 || status === 8;
+}
+// Ready but no length yet: Bunny can report the length a little later. Keep
+// asking so the duration still gets written, but never forever.
+const MAX_READY_POLLS_WITHOUT_LENGTH = 30;
+// 5xx, 429 or a network error in a row (about 5 min at 10 s): a deleted video
+// or a rotated key would otherwise retry forever. Any answer resets it.
+const MAX_FAILED_POLLS_IN_A_ROW = 30;
+
+// O link digitado e ainda nao gravado (sem blur) vai antes de fechar. Link
+// recusado ou troca nao confirmada seguram o modal aberto, com o erro ou o
+// aviso na tela: fechar calado perdia o que o professor digitou.
+function flushLinkAllowsClose(handle: LessonVideoSourcePickerHandle | null) {
+  const result = handle?.flushLink();
+  return result !== "rejected" && result !== "declined";
+}
 
 const lessonModalTabs: Array<{
   value: LessonModalTab;
@@ -148,6 +186,7 @@ export function LessonContentModal({
   onClose,
   onSetFreePreview,
   onUpdateLesson,
+  leaveFlushRef,
 }: LessonContentModalProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<LessonModalTab>("video");
@@ -165,7 +204,28 @@ export function LessonContentModal({
   const [cancelUpload, setCancelUpload] = useState<(() => void) | null>(null);
   const [uploadProgress, setUploadProgress] = useState<UploadCourseAssetProgress | null>(null);
   const [error, setError] = useState<LessonError | null>(null);
-  const [success, setSuccess] = useState<"uploaded" | "deleted" | null>(null);
+  const [success, setSuccess] = useState<"uploaded" | "deleted" | "oldLinkRemoved" | null>(null);
+  const [assetsLoaded, setAssetsLoaded] = useState(false);
+  // Latest Bunny processing answer for the lesson video, and the asset whose
+  // duration was already written (only once per video).
+  const [bunnyProcessing, setBunnyProcessing] = useState<BunnyProcessing | null>(null);
+  // Asset whose status checks gave up after too many failures in a row.
+  const [bunnyUnavailableFor, setBunnyUnavailableFor] = useState<string | null>(null);
+  const durationWrittenForRef = useRef<string | null>(null);
+  // Estado proprio, fora de `error`: resetUploadState (troca de aba ou de
+  // modo) limpava o erro de carga e o aviso do link voltava a "Loading...".
+  const [assetsLoadFailed, setAssetsLoadFailed] = useState(false);
+  // "Replace with upload" antes de os arquivos chegarem: a fonte so pode ser
+  // decidida quando se sabe se ha envio.
+  const uploadChosenBeforeLoadRef = useRef(false);
+  const replaceButtonRef = useRef<HTMLButtonElement>(null);
+  const linkHandleRef = useRef<LessonVideoSourcePickerHandle>(null);
+  useImperativeHandle(leaveFlushRef, () => () => {
+    linkHandleRef.current?.flushLink({ silent: true });
+  });
+  // Contador, nao booleano: cada recusa vira um no novo no role="status" e e
+  // anunciada de novo. null = sem aviso.
+  const [linkNotSaved, setLinkNotSaved] = useState<number | null>(null);
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
   const lessonAssets = assets.filter((asset) => asset.lessonId === lesson.id);
   const videoAssets = lessonAssets.filter((asset) => isVideoAssetKind(asset.kind));
@@ -185,12 +245,30 @@ export function LessonContentModal({
   // envio inalcançável numa aula nova — a fonte só vira "upload" no sucesso do
   // envio, e o envio só aparecia se a fonte já fosse "upload".
   const isUploadPanelOpen = resolvedSource === "upload" || selectedFile !== null || success === "uploaded";
+  // Um video por aula: a aba mostra OU o envio OU o link. A aba abre como
+  // resolveLessonVideoSource decide (aula que hoje tem os dois continua como
+  // esta) e essa escolha e fixada UMA vez, quando os arquivos da aula chegam.
+  // Rederivar a cada render tirava o campo de link da tela no meio da
+  // digitacao quando o professor o apagava. A troca e explicita e nao apaga nada.
+  const [videoModeChoice, setVideoModeChoice] = useState<LessonVideoMode | null>(null);
+  const derivedVideoMode: LessonVideoMode = resolvedSource === "youtube" ? "link" : "upload";
+  if (assetsLoaded && videoModeChoice === null) {
+    setVideoModeChoice(derivedVideoMode);
+  }
+  const videoMode = videoModeChoice ?? derivedVideoMode;
+  // Link antigo que nao e video (Drive etc.): so leitura, com botao de tirar.
+  // O aluno continua com o botao "Open resource".
+  const oldLink = lesson.externalUrl?.trim() && !trustedEmbed ? lesson.externalUrl : null;
   const videoStatus = tab === "video" && isUploading
     ? t("creatorEditor.lesson.file.uploading")
     : tab === "video" && selectedFile
       ? t("creatorEditor.lesson.file.selected")
       : t(`creatorEditor.lesson.state.${getAssetStatus(lessonAssets, lesson)}`);
-  const errorMessage = getLessonErrorMessage(error, t);
+  // So vale antes da primeira carga boa: depois dela, um recarregamento em
+  // tempo real que falha deixava o alerta fixo ao lado de uma lista que
+  // continua na tela.
+  const loadErrorMessage = assetsLoadFailed && !assetsLoaded ? getLessonErrorMessage({ kind: "load" }, t) : "";
+  const errorMessage = error ? getLessonErrorMessage(error, t) : loadErrorMessage;
   const successMessage = success ? t(`creatorEditor.lesson.success.${success}`) : "";
 
   const dialogRef = useRef<HTMLElement>(null);
@@ -205,16 +283,129 @@ export function LessonContentModal({
       return;
     }
 
+    if (!flushLinkAllowsClose(linkHandleRef.current)) {
+      return;
+    }
     onClose();
   }
 
   useEffect(() => {
     return subscribeToCourseAssets(
       course.id,
-      setAssets,
-      () => setError({ kind: "load" }),
+      (next) => {
+        setAssets(next);
+        setAssetsLoaded(true);
+        setAssetsLoadFailed(false);
+      },
+      () => setAssetsLoadFailed(true),
     );
   }, [course.id]);
+
+  // O professor escolheu o envio antes de os arquivos chegarem: com eles na
+  // mao e um envio salvo, a fonte vai para "upload", para o aluno ver o que o
+  // estudio mostra. Se a carga falha, nada e gravado.
+  useEffect(() => {
+    if (!assetsLoaded || !uploadChosenBeforeLoadRef.current) {
+      return;
+    }
+    uploadChosenBeforeLoadRef.current = false;
+    if (primaryVideo && lesson.videoSource !== "upload") {
+      onUpdateLesson({ videoSource: "upload" });
+    }
+  }, [assetsLoaded, primaryVideo, lesson.videoSource, onUpdateLesson]);
+
+  // Video on Bunny: ask for its processing state every 10 s until it is ready
+  // or failed. Stops when the studio closes (unmount) or the video changes.
+  const bunnyAssetId = resolvedSource === "upload" && primaryVideo?.bunnyVideoId ? primaryVideo.id : null;
+  useEffect(() => {
+    if (!bunnyAssetId) {
+      return;
+    }
+    const assetId = bunnyAssetId;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let readyPollsWithoutLength = 0;
+    let failedPollsInARow = 0;
+
+    async function poll() {
+      let failed = false;
+      try {
+        const response = await fetch(`/api/teach/video/status?assetId=${encodeURIComponent(assetId)}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (response.ok) {
+          const data = (await response.json()) as Omit<BunnyProcessing, "assetId">;
+          if (controller.signal.aborted) {
+            return;
+          }
+          failedPollsInARow = 0;
+          setBunnyProcessing({ assetId, ...data });
+          if (isBunnyFailed(data.status)) {
+            return;
+          }
+          if (
+            isBunnyReady(data.status)
+            && (data.lengthSeconds || ++readyPollsWithoutLength > MAX_READY_POLLS_WITHOUT_LENGTH)
+          ) {
+            return;
+          }
+        } else if (response.status < 500 && response.status !== 429) {
+          // Signed out, not the owner, or gone: asking again will not help.
+          // Too many checks (429) and 5xx try again in 10 s.
+          return;
+        } else {
+          failed = true;
+        }
+      } catch {
+        if (controller.signal.aborted) {
+          return;
+        }
+        failed = true;
+      }
+      if (failed && ++failedPollsInARow > MAX_FAILED_POLLS_IN_A_ROW) {
+        setBunnyUnavailableFor(assetId);
+        return;
+      }
+      timer = setTimeout(poll, 10_000);
+    }
+
+    void poll();
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [bunnyAssetId]);
+
+  // Duration: the first answer that shows the video ready with a length writes
+  // the minutes (rounded up, at least 1), only if they changed. The normal
+  // autosave takes it to the database.
+  useEffect(() => {
+    const answer = bunnyProcessing;
+    if (
+      !answer || !isBunnyReady(answer.status) || !answer.lengthSeconds
+      || durationWrittenForRef.current === answer.assetId
+    ) {
+      return;
+    }
+    durationWrittenForRef.current = answer.assetId;
+    const minutes = Math.max(1, Math.ceil(answer.lengthSeconds / 60));
+    if (lesson.durationMinutes !== minutes) {
+      onUpdateLesson({ durationMinutes: minutes });
+    }
+  }, [bunnyProcessing, lesson.durationMinutes, onUpdateLesson]);
+
+  const processing = bunnyProcessing?.assetId === primaryVideo?.id ? bunnyProcessing : null;
+  const bunnyStatusLine = bunnyUnavailableFor !== null && bunnyUnavailableFor === primaryVideo?.id
+    ? t("creatorEditor.lesson.videoStatusUnavailable")
+    : !processing || processing.status === null
+    ? t("creatorEditor.lesson.savedProcessing")
+    : isBunnyFailed(processing.status)
+      ? t("creatorEditor.lesson.videoFailed")
+      : isBunnyReady(processing.status)
+        ? t("creatorEditor.lesson.videoReady")
+        : t("creatorEditor.lesson.videoProcessing")
+          .replace("{percent}", () => String(processing.encodeProgress ?? 0));
 
   // The parent mounts this modal conditionally, so it is always "open" while
   // mounted — Escape mirrors the close affordances (X button / Done / overlay).
@@ -222,7 +413,7 @@ export function LessonContentModal({
   // in-flight upload, matching requestClose below.
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !isUploading) {
+      if (event.key === "Escape" && !isUploading && flushLinkAllowsClose(linkHandleRef.current)) {
         onClose();
       }
     }
@@ -243,6 +434,7 @@ export function LessonContentModal({
 
   function handleTabChange(nextTab: LessonModalTab) {
     setTab(nextTab);
+    setLinkNotSaved(null);
 
     if (nextTab === "video") {
       resetUploadState("lesson_video");
@@ -473,27 +665,77 @@ export function LessonContentModal({
             <div className="grid gap-5">
 
               <LessonVideoSourcePicker
-                value={isUploadPanelOpen ? "upload" : resolvedSource}
+                mode={videoMode}
                 disabled={!isEditable || isUploading}
                 accept={courseAssetAcceptTypes[uploadKind]}
                 externalUrl={lesson.externalUrl ?? ""}
                 embedStatus={
                   trustedEmbed
                     ? t("creatorEditor.lesson.embedDetected").replace("{provider}", () => trustedEmbed.provider === "youtube" ? "YouTube" : "Vimeo")
-                    : lesson.externalUrl
-                      ? t("creatorEditor.lesson.embedInvalid")
-                      : t("creatorEditor.lesson.embedEmpty")
+                    : t("creatorEditor.lesson.embedEmpty")
                 }
-                onChange={(videoSource) => onUpdateLesson({ videoSource })}
+                replaceButtonRef={replaceButtonRef}
+                linkHandleRef={linkHandleRef}
+                // Sem os arquivos da aula nao da para saber se ha envio: apagar
+                // o link agora gravaria a fonte em null com um envio salvo.
+                linkLockedHint={assetsLoaded
+                  ? undefined
+                  : loadErrorMessage || t("creatorEditor.lesson.linkLoading")}
+                onModeChange={(next) => {
+                  setVideoModeChoice(next);
+                  uploadChosenBeforeLoadRef.current = next === "upload" && !assetsLoaded;
+                  setLinkNotSaved(null);
+                  resetUploadState("lesson_video");
+                  // Se a midia de destino ja existe, a troca vale para o aluno
+                  // na hora: grava so a fonte. Nada e apagado. Sem midia, a
+                  // troca fica so na tela ate um link ser aceito ou um envio
+                  // terminar. Antes de os arquivos chegarem o modo link e so o
+                  // plano B da tela (nao se sabe se ha envio): gravar "youtube"
+                  // ali tirava o aluno do envio numa ida e volta sem efeito.
+                  if (next === "link" && assetsLoaded && trustedEmbed && lesson.videoSource !== "youtube") {
+                    onUpdateLesson({ videoSource: "youtube" });
+                  }
+                  if (next === "upload" && primaryVideo && lesson.videoSource !== "upload") {
+                    onUpdateLesson({ videoSource: "upload" });
+                  }
+                }}
+                // Fonte e link numa gravacao so, e so com link aceito. Nenhum
+                // course_assets e apagado aqui: o envio antigo segue na lista.
+                onLinkChange={(nextUrl, options) => {
+                  // Mexeu no link: a aba fica no link mesmo que a fonte mude.
+                  setVideoModeChoice("link");
+                  if (!nextUrl) {
+                    setLinkNotSaved(null);
+                    // Com envio salvo, a fonte volta para ele: a pagina publica
+                    // do curso so le "upload" da fonte gravada
+                    // (creator-course-detail), e o video da previa gratis
+                    // sumia da pagina de vendas com a fonte em null.
+                    const source = primaryVideo
+                      ? "upload"
+                      : lesson.videoSource === "youtube" ? null : lesson.videoSource;
+                    onUpdateLesson({
+                      externalUrl: null,
+                      ...(source !== lesson.videoSource ? { videoSource: source } : {}),
+                    });
+                    return;
+                  }
+                  // O link aceito substitui o link antigo (Drive etc.): pede a
+                  // mesma confirmacao do botao de tirar. Recusou, nada muda e
+                  // o campo volta ao salvo.
+                  // Saindo da pagina (silent) nao da para perguntar: nao grava.
+                  if (oldLink && (options?.silent || !window.confirm(t("creatorEditor.lesson.removeOldLinkConfirm")))) {
+                    setLinkNotSaved((count) => (count ?? 0) + 1);
+                    return false;
+                  }
+                  setLinkNotSaved(null);
+                  onUpdateLesson({ videoSource: "youtube", externalUrl: nextUrl });
+                }}
                 onSelectFile={(file) => {
                   setSelectedFile(file);
                   setUploadProgress(null);
                   setSuccess(null);
                   setError(null);
                 }}
-                onExternalUrlChange={(nextUrl) =>
-                  onUpdateLesson({ externalUrl: nextUrl || null })
-                }
                 uploadPanel={isUploadPanelOpen ? (
                   <LessonUploadForm
                     error={errorMessage}
@@ -520,6 +762,50 @@ export function LessonContentModal({
                 ) : undefined}
               />
 
+              {oldLink ? (
+                <section
+                  aria-label={t("creatorEditor.lesson.oldLink")}
+                  className="grid gap-2 rounded-[12px] border border-[var(--color-line)] p-3 text-sm"
+                >
+                  <p className="font-semibold">{t("creatorEditor.lesson.oldLink")}</p>
+                  <p className="break-all text-[var(--color-ink-soft)]">{oldLink}</p>
+                  <p className="text-xs text-[var(--color-ink-soft)]">{t("creatorEditor.lesson.oldLinkHelp")}</p>
+                  <button
+                    type="button"
+                    className="button-outline justify-self-start px-3 py-2 text-xs disabled:opacity-60"
+                    // Durante o envio o botao de troca fica desabilitado: o
+                    // foco nao teria para onde ir e o aviso se perdia.
+                    disabled={!isEditable || isUploading}
+                    onClick={() => {
+                      if (window.confirm(t("creatorEditor.lesson.removeOldLinkConfirm"))) {
+                        onUpdateLesson({ externalUrl: null });
+                        // Esta secao some junto com o link: o foco vai para um
+                        // botao que fica, e o aviso sai pelo role="status".
+                        setSuccess("oldLinkRemoved");
+                        setLinkNotSaved(null);
+                        replaceButtonRef.current?.focus();
+                      }
+                    }}
+                  >
+                    {t("creatorEditor.lesson.removeOldLink")}
+                  </button>
+                </section>
+              ) : null}
+
+              {/* Com o formulario de envio na tela, o role="status" dele da o
+                  aviso; sem ele, este. Nunca dois ao mesmo tempo. O erro de
+                  carga aparece aqui so no modo envio: no modo link ele ja sai
+                  no proprio campo. */}
+              {videoMode === "upload" && isUploadPanelOpen ? null : (
+                <p role="status" className="text-sm text-[var(--color-ink-soft)]">
+                  {success === "oldLinkRemoved"
+                    ? successMessage
+                    : linkNotSaved
+                      ? <span key={linkNotSaved}>{t("creatorEditor.lesson.linkNotSaved")}</span>
+                      : videoMode === "upload" ? loadErrorMessage : ""}
+                </p>
+              )}
+
               {videoAssets.length > 0 ? (
                   <LessonAssetList
                     assets={videoAssets}
@@ -538,7 +824,7 @@ export function LessonContentModal({
                       <>
                         <BunnyVideoPlayer key={primaryVideo.id} assetId={primaryVideo.id} title={lesson.title} />
                         <p className="text-sm text-[var(--color-ink-soft)]">
-                          {t("creatorEditor.lesson.savedProcessing")}
+                          {bunnyStatusLine}
                         </p>
                       </>
                     ) : (

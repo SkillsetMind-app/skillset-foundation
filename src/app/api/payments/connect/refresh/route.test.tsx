@@ -115,6 +115,22 @@ describe("POST /api/payments/connect/refresh", () => {
     expect(admin.updates[0].stripe_connect_payouts_enabled).toBe(true);
   });
 
+  // Lazy backfill for accounts created before stripe_connect_country existed.
+  it("records the payout country Stripe reports", async () => {
+    mocks.retrieveAccount.mockResolvedValue({ charges_enabled: true, payouts_enabled: true, country: "fr" });
+
+    await POST();
+
+    expect(admin.updates[0].stripe_connect_country).toBe("FR");
+  });
+
+  // Control: an account payload without a country must not erase a stored one.
+  it("leaves the stored country alone when Stripe omits it", async () => {
+    await POST();
+
+    expect(admin.updates[0]).not.toHaveProperty("stripe_connect_country");
+  });
+
   // Control: BOTH capabilities are required. Charges without payouts means money
   // arrives and never leaves — that must not read as "ready".
   it("stays onboarding_required when payouts are still disabled", async () => {

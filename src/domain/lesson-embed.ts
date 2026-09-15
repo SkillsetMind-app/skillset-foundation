@@ -1,6 +1,9 @@
 export type TrustedLessonEmbed = {
   provider: "youtube" | "vimeo";
   embedUrl: string;
+  /** O id limpo do vídeo ([a-zA-Z0-9_-] no YouTube, dígitos no Vimeo). A sala
+   *  usa o do YouTube para a capa da aula sem lesson_thumbnail. */
+  videoId: string;
 };
 
 function cleanSegment(value: string | undefined) {
@@ -78,6 +81,7 @@ export function getTrustedLessonEmbed(value?: string | null): TrustedLessonEmbed
       // hydration would fail. The security property that matters is checking
       // event.origin on every inbound message, which the listener does.
       embedUrl: `https://www.youtube-nocookie.com/embed/${youtubeId}?enablejsapi=1`,
+      videoId: youtubeId,
     };
   }
 
@@ -87,6 +91,7 @@ export function getTrustedLessonEmbed(value?: string | null): TrustedLessonEmbed
     return {
       provider: "vimeo",
       embedUrl: `https://player.vimeo.com/video/${vimeoId}`,
+      videoId: vimeoId,
     };
   }
 

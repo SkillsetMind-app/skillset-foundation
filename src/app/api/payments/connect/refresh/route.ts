@@ -51,6 +51,8 @@ export async function POST() {
           stripe_connect_status: status,
           stripe_connect_charges_enabled: Boolean(account.charges_enabled),
           stripe_connect_payouts_enabled: Boolean(account.payouts_enabled),
+          // Lazy backfill for accounts created before the column; never nulled.
+          ...(account.country ? { stripe_connect_country: account.country.toUpperCase() } : {}),
           stripe_connect_updated_at: now,
           updated_at: now,
         })

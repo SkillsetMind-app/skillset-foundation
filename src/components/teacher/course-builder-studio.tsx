@@ -25,6 +25,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -98,7 +99,8 @@ import { track } from "@/lib/posthog/events";
 import { defaultSkillsetCurrency } from "@/lib/payments/currencies";
 import { CurrencySelect } from "@/components/teacher/currency-select";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
-import { getCourseReadiness } from "@/domain/course-readiness";
+import { getCourseReadiness, getLessonIdsWithMedia } from "@/domain/course-readiness";
+import { moveLessonTo } from "@/domain/curriculum-move";
 
 const builderTabs = [
   { value: "details", label: "creatorEditor.builder.steps.details.tab", sub: "creatorEditor.builder.steps.details.tabHelp" },
@@ -190,6 +192,37 @@ const paymentModelOptions: PlanSelectorOption<TeacherCoursePaymentType>[] = [
     icon: CalendarClock,
   },
 ];
+
+// Ctrl/Cmd/Shift/Alt ou botao que nao e o esquerdo: o navegador abre outra aba
+// e esta aqui nao navega. Nada que dependa de "a pessoa saiu daqui" pode rodar.
+function isPlainLeftClick(event: {
+  button: number;
+  metaKey: boolean;
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+}) {
+  return (
+    event.button === 0
+    && !event.metaKey
+    && !event.ctrlKey
+    && !event.shiftKey
+    && !event.altKey
+  );
+}
+
+// Tipo proprio no arrastar: soltar texto qualquer numa linha de modulo nao
+// move nada.
+const lessonDragType = "application/x-skillset-lesson";
+
+// Liberacao que recalcula a posicao da aula a cada leitura (lesson_is_released
+// no banco e getLessonUnlockState): mover muda quando a aula abre e pode
+// trancar de novo quem ja tinha acesso. time_drip_custom usa o dia de cada aula.
+const positionalDripStrategies: ReadonlySet<DripStrategy> = new Set<DripStrategy>([
+  "sequential_progress",
+  "time_drip_module",
+  "time_drip_lesson",
+]);
 
 function createLocalId(prefix: string) {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -484,6 +517,10 @@ export function CourseBuilderStudio() {
   // que abre a aba. Cada modulo e uma linha; o clique abre a pagina dele.
   const [isModuleFormRequested, setIsModuleFormOpen] = useState(false);
   const [lessonFormModuleId, setLessonFormModuleId] = useState("");
+  // Seletor "Move to module…" por aula: escolher so marca o destino e o botao
+  // Move aplica (no Chrome/Edge as setas do teclado disparam change na hora).
+  const [moveTargets, setMoveTargets] = useState<Record<string, string>>({});
+  const [moveStatus, setMoveStatus] = useState<{ moduleId: string; text: string } | null>(null);
   const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
   const [error, setError] = useState<BuilderError | null>(null);
   const [success, setSuccess] = useState<"lessonAdded" | "draftSaved" | "published" | null>(null);
@@ -498,6 +535,10 @@ export function CourseBuilderStudio() {
   const [activeLessonStudio, setActiveLessonStudio] =
     useState<ActiveLessonStudio>(null);
   const [courseAssets, setCourseAssets] = useState<CourseAsset[]>([]);
+  // So com a lista de arquivos na mao a prontidao cobra conteudo em toda aula:
+  // antes (ou se a busca falhar) o item fica de fora, como no Manage, em vez de
+  // acusar de vazia uma aula que so tem envio ou PDF.
+  const [courseAssetsLoaded, setCourseAssetsLoaded] = useState(false);
   const [autosaveState, setAutosaveState] =
     useState<"idle" | "saving" | "saved" | "error">("idle");
   // Signature of the last state we know the server has. Lives in state (not a
@@ -520,6 +561,71 @@ export function CourseBuilderStudio() {
   // Navegacao de modulo pedida pela pessoa (linha, trilha ou modulo novo).
   // Nula na primeira hidratacao: abrir o builder ja num modulo nao rouba foco.
   const moduleNavigationRef = useRef<{ returnTo: string | null } | null>(null);
+  // Espelho de `draftIsDirty` para o callback do realtime, que nao ve o render.
+  const draftDirtyRef = useRef(false);
+  // Ultimo snapshot que chegou com rascunho sujo e ficou de fora. Vale se o
+  // rascunho voltar a ficar limpo sem save nosso; um save nosso o descarta.
+  const skippedSnapshotRef = useRef<TeacherCourse | null>(null);
+  // Rascunho local para o callback do realtime: so abre estudio de aula que
+  // ainda existe aqui.
+  const localModulesRef = useRef<TeacherCourseModule[]>([]);
+  // Saves nossos no ar (autosave, Salvar, Publicar). Aqui em cima porque o
+  // efeito do snapshot pulado tambem le.
+  const inFlightSavesRef = useRef(0);
+  // Timer do debounce do autosave, para a descarga ao sair poder cancela-lo.
+  const autosaveTimerRef = useRef<number | undefined>(undefined);
+  // Estudio aberto: grava (sem prompt) o link digitado e ainda sem blur.
+  const studioLeaveFlushRef = useRef<(() => void) | null>(null);
+  // Descarga ao sair, refeita a cada render para ver o estado atual.
+  const flushOnLeaveRef = useRef<(withStudio: boolean) => void>(() => {});
+
+  // Copia o snapshot do servidor para o rascunho. So setters (estaveis), entao
+  // serve ao callback do realtime e ao efeito que aplica o snapshot pulado.
+  const applyServerDraft = useCallback((nextCourse: TeacherCourse) => {
+    setTitle(nextCourse.title);
+    setSummary(nextCourse.summary);
+    setCategory(nextCourse.category);
+    setSelectedCategories(
+      normalizeCourseCategories([
+        ...(nextCourse.categories ?? []),
+        nextCourse.category,
+      ]),
+    );
+    setLearningOutcomes(nextCourse.learningOutcomes ?? []);
+    setModules(nextCourse.modules ?? []);
+    setPriceAmount(
+      typeof nextCourse.priceAmountMinor === "number"
+        ? String(nextCourse.priceAmountMinor / 100)
+        : "",
+    );
+    setCurrency(nextCourse.currency ?? defaultSkillsetCurrency);
+    setPaymentType(
+      nextCourse.paymentType ??
+        (nextCourse.priceAmountMinor === 0 ? "free" : "one_time"),
+    );
+    setInstallmentsEnabled(Boolean(nextCourse.installmentsEnabled));
+    setInstallmentsMax(String(nextCourse.installmentsMax ?? 12));
+    setDripStrategy(nextCourse.dripStrategy ?? "instant");
+    setDripIntervalDays(String(nextCourse.dripIntervalDays ?? 1));
+    setFreePreviewLessonId(nextCourse.freePreviewLessonId ?? "");
+    setMembersTheme(nextCourse.membersTheme ?? "light");
+    setMembersCoverAssetId(nextCourse.membersCoverAssetId ?? null);
+    setMembersTitle(nextCourse.membersTitle ?? "");
+    setMembersSubtitle(nextCourse.membersSubtitle ?? "");
+    setMembersDescription(nextCourse.membersDescription ?? "");
+    setCommunityEnabled(nextCourse.communityEnabled ?? false);
+    // Todo snapshot passa aqui, inclusive o eco do nosso autosave. Voltar
+    // sempre para o 1o modulo mandava a aula seguinte para o modulo errado.
+    setLessonModuleId((current) =>
+      nextCourse.modules?.some((module) => module.id === current)
+        ? current
+        : nextCourse.modules?.[0]?.id ?? "",
+    );
+    // Baseline mirrors exactly what the state setters above produce, so a
+    // fresh hydration (or our own write echoing back) is never seen as a
+    // user edit.
+    setSavedSignature(builderDraftSignatureFromCourse(nextCourse));
+  }, []);
 
   useEffect(() => {
     if (!courseId) {
@@ -537,50 +643,7 @@ export function CourseBuilderStudio() {
         }
 
         setCourse(nextCourse);
-        setTitle(nextCourse.title);
-        setSummary(nextCourse.summary);
-        setCategory(nextCourse.category);
-        setSelectedCategories(
-          normalizeCourseCategories([
-            ...(nextCourse.categories ?? []),
-            nextCourse.category,
-          ]),
-        );
-        setLearningOutcomes(nextCourse.learningOutcomes ?? []);
-        setModules(nextCourse.modules ?? []);
-        setPriceAmount(
-          typeof nextCourse.priceAmountMinor === "number"
-            ? String(nextCourse.priceAmountMinor / 100)
-            : "",
-        );
-        setCurrency(nextCourse.currency ?? defaultSkillsetCurrency);
-        setPaymentType(
-          nextCourse.paymentType ??
-            (nextCourse.priceAmountMinor === 0 ? "free" : "one_time"),
-        );
-        setInstallmentsEnabled(Boolean(nextCourse.installmentsEnabled));
-        setInstallmentsMax(String(nextCourse.installmentsMax ?? 12));
-        setDripStrategy(nextCourse.dripStrategy ?? "instant");
-        setDripIntervalDays(String(nextCourse.dripIntervalDays ?? 1));
-        setFreePreviewLessonId(nextCourse.freePreviewLessonId ?? "");
-        setMembersTheme(nextCourse.membersTheme ?? "light");
-        setMembersCoverAssetId(nextCourse.membersCoverAssetId ?? null);
-        setMembersTitle(nextCourse.membersTitle ?? "");
-        setMembersSubtitle(nextCourse.membersSubtitle ?? "");
-        setMembersDescription(nextCourse.membersDescription ?? "");
-        setCommunityEnabled(nextCourse.communityEnabled ?? false);
-        // Todo snapshot passa aqui, inclusive o eco do nosso autosave. Voltar
-        // sempre para o 1o modulo mandava a aula seguinte para o modulo errado.
-        setLessonModuleId((current) =>
-          nextCourse.modules?.some((module) => module.id === current)
-            ? current
-            : nextCourse.modules?.[0]?.id ?? "",
-        );
         setError(null);
-        // Baseline mirrors exactly what the state setters above produce, so a
-        // fresh hydration (or our own write echoing back) is never seen as a
-        // user edit. Async callback -> setState is allowed here.
-        setSavedSignature(builderDraftSignatureFromCourse(nextCourse));
 
         // Video-first flow: a lesson added through the form auto-opens its
         // studio (Video tab) as soon as hydration confirms autosave persisted
@@ -597,19 +660,43 @@ export function CourseBuilderStudio() {
           )
         ) {
           pendingLessonStudioRef.current = null;
-          // Never replace a studio that is already open: the modal is keyed by
-          // lesson id, so swapping lessons would remount it mid-upload and drop
-          // the progress bar and the close guard of the lesson in progress.
-          setActiveLessonStudio((current) => current ?? pendingStudio);
-          setSuccess(null);
+          // Aula que ja nao existe no rascunho (apagada antes do eco): abrir o
+          // estudio dela deixava um estudio "fantasma", sem modal, que travava
+          // a abertura da proxima aula e a recarga dos arquivos do curso.
+          const stillInDraft = localModulesRef.current.some(
+            (module) =>
+              module.id === pendingStudio.moduleId &&
+              module.lessons.some((lesson) => lesson.id === pendingStudio.lessonId),
+          );
+          if (stillInDraft) {
+            // Never replace a studio that is already open: the modal is keyed by
+            // lesson id, so swapping lessons would remount it mid-upload and drop
+            // the progress bar and the close guard of the lesson in progress.
+            setActiveLessonStudio((current) => current ?? pendingStudio);
+            setSuccess(null);
+          }
         }
+
+        // O snapshot pode chegar atras do rascunho: eco de um save anterior com
+        // autosave no ar, debounce correndo ou aula/modulo recem-criado. Antes,
+        // sobrescrever apagava a edicao local e o autosave nunca a regravava.
+        // Com rascunho sujo, o local manda e o proximo autosave grava por cima.
+        // ponytail: local vence enquanto houver edicao pendente, ate sobre
+        // mudanca de outra aba; resolver conflito entre abas se virar caso real.
+        if (draftDirtyRef.current) {
+          skippedSnapshotRef.current = nextCourse;
+          return;
+        }
+
+        skippedSnapshotRef.current = null;
+        applyServerDraft(nextCourse);
       },
       () => {
         setIsLoading(false);
         setError({ code: "load" });
       },
     );
-  }, [courseId]);
+  }, [courseId, applyServerDraft]);
 
   // One-shot (re)load instead of a realtime channel: the lesson studio modal
   // already owns the `course_assets:{id}` realtime topic while it is open, and
@@ -625,6 +712,7 @@ export function CourseBuilderStudio() {
       .then((nextAssets) => {
         if (!cancelled) {
           setCourseAssets(nextAssets);
+          setCourseAssetsLoaded(true);
         }
       })
       .catch(() => {
@@ -784,8 +872,15 @@ export function CourseBuilderStudio() {
   // cabecalho media outra coisa (estagios): tres numeros para um curso so.
   // Le do payload normalizado, entao um preco digitado errado conta como
   // preco ausente, igual ao que o servidor gravaria.
+  // Aula sem video, texto nem arquivo trava o Publish (so aqui: o servidor
+  // nao cobra, entao uma chamada direta a API passa, e o dano e so no curso
+  // do proprio professor).
+  const lessonIdsWithMedia = useMemo(
+    () => (courseAssetsLoaded ? getLessonIdsWithMedia(builderDraftPayload.modules, courseAssets) : undefined),
+    [courseAssetsLoaded, builderDraftPayload.modules, courseAssets],
+  );
   const readiness = getCourseReadiness(
-    { ...builderDraftPayload, coverImageUrl: course?.coverImageUrl ?? null },
+    { ...builderDraftPayload, coverImageUrl: course?.coverImageUrl ?? null, lessonIdsWithMedia },
     publishGates,
     t,
   );
@@ -882,6 +977,39 @@ export function CourseBuilderStudio() {
   const canAutosaveDraft = isEditable && autosaveBlockedReason === null;
   const draftIsDirty =
     savedSignature !== null && builderDraftSignature !== savedSignature;
+  useEffect(() => {
+    draftDirtyRef.current = draftIsDirty;
+    const skipped = skippedSnapshotRef.current;
+    // Com save nosso no ar, o guardado pode ser o eco dele mesmo: aplicar
+    // ressuscitava o save e engolia uma volta exata ao estado anterior. O
+    // sucesso descarta o guardado; a falha o aplica (em persistDraft).
+    if (draftIsDirty || !skipped || inFlightSavesRef.current > 0) {
+      return;
+    }
+    // O rascunho voltou a ficar limpo sem save nosso (desfez a edicao, ou o
+    // autosave foi bloqueado/falhou e a pessoa voltou atras). O servidor pode
+    // ter coisa mais nova, de outra aba ou da pagina de vendas no Manage, que
+    // usa a mesma RPC de troca total. Sem isto, a proxima edicao qualquer
+    // gravava a copia velha inteira por cima.
+    skippedSnapshotRef.current = null;
+    // Assincrono: setState direto no corpo do efeito e vetado (react-hooks).
+    // O microtask confere de novo: entre agendar e rodar, uma edicao pode ter
+    // comitado (o React esvazia os efeitos pendentes antes do render de uma
+    // digitacao). Aplicar as cegas trocava essa edicao pelo snapshot velho e
+    // marcava como salvo. Sujo, ou com save no ar, o snapshot volta ao
+    // guardado (sem trocar um mais novo): o proximo save bem-sucedido o
+    // descarta, e um save que falha o aplica (em persistDraft).
+    queueMicrotask(() => {
+      if (draftDirtyRef.current || inFlightSavesRef.current > 0) {
+        skippedSnapshotRef.current ??= skipped;
+        return;
+      }
+      applyServerDraft(skipped);
+    });
+  }, [draftIsDirty, applyServerDraft]);
+  useEffect(() => {
+    localModulesRef.current = modules;
+  }, [modules]);
   // Preço e parcelas só ficam inválidos por digitação (a hidratação sempre
   // produz valor válido ou vazio). Um preço inválido que normaliza para o mesmo
   // valor da base ("invalid" e vazio viram null) não muda a assinatura, e o
@@ -1142,6 +1270,9 @@ export function CourseBuilderStudio() {
 
       return nextModules;
     });
+    if (pendingLessonStudioRef.current?.moduleId === moduleId) {
+      pendingLessonStudioRef.current = null;
+    }
     setSuccess(null);
   }
 
@@ -1154,7 +1285,7 @@ export function CourseBuilderStudio() {
       return;
     }
 
-    setModules((currentModules) =>
+    const applyPatch = (currentModules: TeacherCourseModule[]) =>
       currentModules.map((module) =>
         module.id === moduleId
           ? {
@@ -1164,8 +1295,11 @@ export function CourseBuilderStudio() {
               ),
             }
           : module,
-      ),
-    );
+      );
+    // Ja no ref, sem esperar o render: a descarga ao sair (com o builder
+    // desmontando) le daqui o link que o estudio acabou de gravar.
+    localModulesRef.current = applyPatch(localModulesRef.current);
+    setModules(applyPatch);
     setSuccess(null);
   }
 
@@ -1190,6 +1324,48 @@ export function CourseBuilderStudio() {
       }),
     );
     setSuccess(null);
+  }
+
+  // Mover para outro modulo: vai para o fim dele, como o mesmo objeto (mesmo
+  // id). Estudio aberto ou a abrir passam a mirar o modulo novo; senao
+  // procurariam a aula no modulo antigo e ficariam sem aula.
+  function moveLessonToModule(lessonId: string, targetModuleId: string): boolean {
+    if (!isEditable) {
+      return false;
+    }
+
+    const target = modules.find((module) => module.id === targetModuleId);
+    // Ja esta nesse modulo (ex.: soltou na propria linha): nada muda.
+    if (!target || target.lessons.some((lesson) => lesson.id === lessonId)) {
+      return false;
+    }
+
+    // ponytail: com liberacao por posicao, mover pode trancar de novo quem ja
+    // tinha acesso, porque a posicao e recalculada a cada leitura. Por ora a
+    // pessoa confirma; a correcao de raiz (aula concluida conta como liberada,
+    // no drip-policy.ts e em lesson_is_released) precisa de migration e fica
+    // agendada a parte.
+    if (
+      positionalDripStrategies.has(dripStrategy)
+      && !window.confirm(t("creatorEditor.builder.curriculum.moveConfirm"))
+    ) {
+      return false;
+    }
+
+    setModules((currentModules) => {
+      const current = currentModules.find((module) => module.id === targetModuleId);
+      return current
+        ? moveLessonTo(currentModules, lessonId, targetModuleId, current.lessons.length)
+        : currentModules;
+    });
+    setActiveLessonStudio((current) =>
+      current?.lessonId === lessonId ? { moduleId: targetModuleId, lessonId } : current,
+    );
+    if (pendingLessonStudioRef.current?.lessonId === lessonId) {
+      pendingLessonStudioRef.current = { moduleId: targetModuleId, lessonId };
+    }
+    setSuccess(null);
+    return true;
   }
 
   function deleteLesson(moduleId: string, lessonId: string) {
@@ -1226,6 +1402,12 @@ export function CourseBuilderStudio() {
       setFreePreviewLessonId("");
     }
 
+    // Aula apagada antes do eco do save que a levou: o eco nao pode abrir o
+    // estudio dela.
+    if (pendingLessonStudioRef.current?.lessonId === lessonId) {
+      pendingLessonStudioRef.current = null;
+    }
+
     if (
       activeLessonStudio?.moduleId === moduleId
       && activeLessonStudio.lessonId === lessonId
@@ -1239,7 +1421,6 @@ export function CourseBuilderStudio() {
   // Autosave e o botao Salvar podem estar no ar ao mesmo tempo. O selo so vira
   // "Saved" quando a ULTIMA gravacao pendente volta; antes, a primeira a voltar
   // pintava "Saved" com a outra ainda no ar.
-  const inFlightSavesRef = useRef(0);
   const persistDraft = useCallback(
     async (
       signature: string,
@@ -1255,14 +1436,24 @@ export function CourseBuilderStudio() {
       try {
         await updateTeacherCourseBuilder(courseId, payload);
         setSavedSignature(signature);
+        // O servidor agora tem o nosso rascunho; o proximo eco traz o resto.
+        skippedSnapshotRef.current = null;
         if (inFlightSavesRef.current === 1) {
           setAutosaveState("saved");
         }
       } finally {
         inFlightSavesRef.current -= 1;
+        // Save nosso falhou com o rascunho limpo: o snapshot guardado durante
+        // o save (que o efeito nao aplica com save no ar) vale agora. No
+        // sucesso ele ja foi descartado acima, entao aqui nao sobra nada.
+        const skipped = skippedSnapshotRef.current;
+        if (inFlightSavesRef.current === 0 && skipped && !draftDirtyRef.current) {
+          skippedSnapshotRef.current = null;
+          applyServerDraft(skipped);
+        }
       }
     },
-    [courseId],
+    [courseId, applyServerDraft],
   );
 
   // Pagina do modulo (?module=M). Funcao de render, nao componente: le o mesmo
@@ -1279,8 +1470,10 @@ export function CourseBuilderStudio() {
               <Link
                 href={builderModuleHref(null)}
                 scroll={false}
-                onClick={() => {
-                  moduleNavigationRef.current = { returnTo: module.id };
+                onClick={(event) => {
+                  if (isPlainLeftClick(event)) {
+                    moduleNavigationRef.current = { returnTo: module.id };
+                  }
                 }}
                 className="inline-flex min-h-11 items-center text-[var(--color-primary)] underline-offset-2 hover:underline"
               >
@@ -1415,6 +1608,20 @@ export function CourseBuilderStudio() {
           </form>
         ) : null}
 
+        {/* Liberacao por posicao (sequencia, por modulo, por aula): mover muda
+            quando a aula abre e qual vem antes. Avisa antes, e o mover pede
+            confirmacao. Com dia proprio por aula (custom), nada muda. */}
+        {positionalDripStrategies.has(dripStrategy) && modules.length > 1 && module.lessons.length > 0 ? (
+          <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
+            {t("creatorEditor.builder.curriculum.moveDripWarning")}
+          </p>
+        ) : null}
+        {moveStatus?.moduleId === module.id ? (
+          <p role="status" className="text-xs font-semibold text-[var(--color-primary)]">
+            {moveStatus.text}
+          </p>
+        ) : null}
+
         {module.lessons.length === 0 ? (
           <p className="rounded-[10px] border fine-rule bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("creatorEditor.builder.curriculum.moduleEmpty")}
@@ -1511,6 +1718,67 @@ export function CourseBuilderStudio() {
                   >
                     {t("creatorEditor.builder.curriculum.down")}
                   </button>
+                  {/* Caminho de teclado (e o acessivel) para mudar de modulo:
+                      o seletor so marca o destino e o botao Move aplica. */}
+                  {modules.length > 1 ? (
+                    <>
+                      <select
+                        value={moveTargets[lesson.id] ?? ""}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          setMoveTargets((current) => ({ ...current, [lesson.id]: value }));
+                        }}
+                        disabled={!isEditable}
+                        aria-label={t("creatorEditor.builder.curriculum.moveLessonTo").replace(
+                          "{title}",
+                          () => lesson.title || t("creatorEditor.builder.curriculum.untitledLesson"),
+                        )}
+                        className="rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)] disabled:opacity-50"
+                      >
+                        <option value="">{t("creatorEditor.builder.curriculum.moveToModule")}</option>
+                        {modules.map((other, otherIndex) =>
+                          other.id === module.id ? null : (
+                            <option key={other.id} value={other.id}>
+                              {t("creatorEditor.builder.curriculum.moduleOption")
+                                .replace("{index}", () => String(otherIndex + 1))
+                                .replace("{title}", () => other.title || t("creatorEditor.builder.curriculum.untitledModule"))}
+                            </option>
+                          ),
+                        )}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const targetId = moveTargets[lesson.id];
+                          const target = modules.find((item) => item.id === targetId);
+                          if (!target || !moveLessonToModule(lesson.id, target.id)) {
+                            return;
+                          }
+                          setMoveTargets((current) => {
+                            const next = { ...current };
+                            delete next[lesson.id];
+                            return next;
+                          });
+                          setMoveStatus({
+                            moduleId: module.id,
+                            text: t("creatorEditor.builder.curriculum.moveDone")
+                              .replace("{title}", () => lesson.title || t("creatorEditor.builder.curriculum.untitledLesson"))
+                              .replace("{module}", () => target.title || t("creatorEditor.builder.curriculum.untitledModule")),
+                          });
+                          // A linha sai desta pagina: o foco vai para o titulo do modulo.
+                          document.getElementById("builder-module-heading")?.focus();
+                        }}
+                        disabled={!isEditable || !moveTargets[lesson.id]}
+                        aria-label={t("creatorEditor.builder.curriculum.moveLessonButton").replace(
+                          "{title}",
+                          () => lesson.title || t("creatorEditor.builder.curriculum.untitledLesson"),
+                        )}
+                        className="button-outline px-3 py-2 text-xs disabled:opacity-50"
+                      >
+                        {t("creatorEditor.builder.curriculum.moveButton")}
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </div>
 
@@ -1713,6 +1981,7 @@ export function CourseBuilderStudio() {
     const handle = window.setTimeout(() => {
       void runAutosave(signatureAtSchedule, payloadAtSchedule);
     }, 1800);
+    autosaveTimerRef.current = handle;
 
     return () => window.clearTimeout(handle);
   }, [
@@ -1727,6 +1996,78 @@ export function CourseBuilderStudio() {
     modules,
     runAutosave,
   ]);
+
+  // Sair pelo voltar/avancar do navegador, gesto do trackpad ou Alt+Esquerda
+  // desmonta o builder sem clique em link: o timer de 1,8 s morria junto e a
+  // edicao ia com ele (beforeunload nao dispara no App Router). A descarga manda
+  // o rascunho pendente na hora, pelo mesmo persistDraft do autosave.
+  useEffect(() => {
+    flushOnLeaveRef.current = (withStudio) => {
+      try {
+        // Link digitado no estudio e ainda sem blur vai primeiro, sem prompt.
+        // So saindo de verdade: com a aba apenas escondida, a pessoa volta ao
+        // campo e decide ela mesma.
+        if (withStudio) {
+          studioLeaveFlushRef.current?.();
+        }
+        // Save, autosave ou Publicar no ar: nao comeca uma segunda troca total
+        // (o Publicar pausa o autosave de proposito entre gravar e publicar).
+        // O caminho no ar e o autosave normal levam o resto.
+        // ponytail: desmontar de verdade com save no ar pula a descarga, e o
+        // que foi editado depois dele se perde; enfileirar se virar caso real.
+        if (isAutosavingRef.current || inFlightSavesRef.current > 0 || isSaving || isSubmitting) {
+          return;
+        }
+        if (!courseId || !canAutosaveDraft || savedSignature === null) {
+          return;
+        }
+        // Modulos do ref: ja trazem o link que acabou de ser gravado acima.
+        const payload = {
+          ...builderDraftPayload,
+          modules: sanitizeModules(localModulesRef.current),
+        };
+        const signature = JSON.stringify(payload);
+        if (signature === savedSignature) {
+          return;
+        }
+        window.clearTimeout(autosaveTimerRef.current);
+        // Pelo runAutosave (que chama o persistDraft): o save fica marcado como
+        // o autosave no ar, e um timer novo com o mesmo payload nao o reenvia.
+        // Ele ja trata o erro, entao nada escapa daqui.
+        void runAutosave(signature, payload);
+      } catch {
+        // Sair nunca pode quebrar a desmontagem.
+      }
+    };
+  });
+
+  // pagehide cobre fechar/recarregar e o bfcache; visibilitychange('hidden')
+  // chega antes, e e o unico aviso confiavel no celular. Aba escondida nao mexe
+  // no estudio: trocar de app e voltar nao pode apagar o link digitado.
+  // ponytail: fechar a aba de verdade pode cortar o fetch no meio; fetch com
+  // keepalive no cliente Supabase se isso aparecer em producao.
+  useEffect(() => {
+    const flush = () => flushOnLeaveRef.current(true);
+    const flushWhenHidden = () => {
+      if (document.visibilityState === "hidden") {
+        flushOnLeaveRef.current(false);
+      }
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", flushWhenHidden);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", flushWhenHidden);
+    };
+  }, []);
+
+  // Layout, nao passivo: na desmontagem o React limpa o pai antes dos filhos,
+  // entao o handle do link do estudio (efeito de layout do filho) ainda existe
+  // aqui. Numa limpeza passiva ele ja teria sido solto.
+  useLayoutEffect(() => {
+    const flushRef = flushOnLeaveRef;
+    return () => flushRef.current(true);
+  }, []);
 
   // Browser-level guard for the gap autosave can't cover: the debounce window
   // and a *failed* autosave both leave edits unpersisted. Warn before the tab
@@ -1763,10 +2104,7 @@ export function CourseBuilderStudio() {
     }
 
     const handleClickCapture = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0) {
-        return;
-      }
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      if (event.defaultPrevented || !isPlainLeftClick(event)) {
         return;
       }
 
@@ -2556,14 +2894,30 @@ export function CourseBuilderStudio() {
                 return (
                   <article
                     key={module.id}
+                    // Soltar aqui uma aula arrastada a leva para o fim deste modulo.
+                    onDragOver={(event) => {
+                      // So aceita o arrastar de uma aula; texto ou arquivo nao.
+                      if (isEditable && Array.from(event.dataTransfer.types).includes(lessonDragType)) {
+                        event.preventDefault();
+                      }
+                    }}
+                    onDrop={(event) => {
+                      const lessonId = event.dataTransfer.getData(lessonDragType);
+                      if (lessonId) {
+                        event.preventDefault();
+                        moveLessonToModule(lessonId, module.id);
+                      }
+                    }}
                     className="flex flex-wrap items-center gap-3 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3"
                   >
                     <Link
                       href={builderModuleHref(module.id)}
                       scroll={false}
                       data-module-row={module.id}
-                      onClick={() => {
-                        moduleNavigationRef.current = { returnTo: null };
+                      onClick={(event) => {
+                        if (isPlainLeftClick(event)) {
+                          moduleNavigationRef.current = { returnTo: null };
+                        }
                       }}
                       className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-[10px]"
                     >
@@ -2615,6 +2969,26 @@ export function CourseBuilderStudio() {
                         {t("creatorEditor.builder.curriculum.delete")}
                       </button>
                     </div>
+                    {isEditable && modules.length > 1 && module.lessons.length > 0 ? (
+                      // Caminho do mouse; o acessivel e o seletor da pagina do modulo.
+                      <ul aria-hidden="true" className="flex basis-full flex-wrap gap-1.5">
+                        {module.lessons.map((lesson) => (
+                          <li key={lesson.id}>
+                            <span
+                              draggable
+                              onDragStart={(event) => {
+                                event.dataTransfer.setData(lessonDragType, lesson.id);
+                                event.dataTransfer.effectAllowed = "move";
+                              }}
+                              title={t("creatorEditor.builder.curriculum.dragLessonHint")}
+                              className="inline-flex cursor-grab rounded-[8px] border border-[var(--color-line)] bg-white px-2 py-1 text-xs text-[var(--color-ink-soft)]"
+                            >
+                              {lesson.title || t("creatorEditor.builder.curriculum.untitledLesson")}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </article>
                 );
               })}
@@ -2877,6 +3251,7 @@ export function CourseBuilderStudio() {
           // Uma instancia por aula: o estado do estudio (aba, envio, se a
           // nota publica antiga aparece) nao vaza de uma aula para outra.
           key={activeLessonStudioLesson.id}
+          leaveFlushRef={studioLeaveFlushRef}
           course={course}
           module={activeLessonStudioModule}
           moduleIndex={activeLessonStudioModuleIndex}

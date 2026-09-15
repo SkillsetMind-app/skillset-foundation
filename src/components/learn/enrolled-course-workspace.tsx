@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ChevronDown,
   ChevronLeft,
@@ -28,6 +28,7 @@ import { NextLessonCard } from "@/components/learn/next-lesson-card";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { TrustedEmbedPlayer } from "@/components/learn/trusted-embed-player";
 import { CourseSubscriptionCard } from "@/components/learn/course-subscription-card";
+import { CourseUnlockModal } from "@/components/learn/course-unlock-modal";
 import { VideoDock } from "@/components/learn/video-dock";
 import {
   VideoWatermark,
@@ -42,6 +43,7 @@ import {
   isValidExternalEventUrl,
 } from "@/domain/course-event";
 import {
+  formatUnlockDate,
   getLessonUnlockState,
   type LessonUnlockState,
 } from "@/domain/drip-policy";
@@ -427,6 +429,11 @@ export function EnrolledCourseWorkspace({
     pending: new Map<string, { unlocksAt: number | null; tries: number }>(),
     retryTimer: undefined as number | undefined,
   });
+  // Aulas cuja recarga de abertura está no ar: o painel mostra "carregando" só
+  // para elas, nunca para as que já estavam abertas. Quando essa recarga volta,
+  // a aula sai daqui e a tela mostra o estado real (as novas tentativas da fila
+  // seguem por trás, sem "carregando").
+  const [releasingLessonIds, setReleasingLessonIds] = useState<ReadonlySet<string>>(() => new Set());
 
   // O retrato de partida só sai depois que o banco entregou a primeira carga:
   // ele compara o relógio da tela com o que chegou de fato.
@@ -500,7 +507,12 @@ export function EnrolledCourseWorkspace({
   }, [course.id]);
 
   // A recarga só sai quando o conjunto de abertas ou o de concluídas muda.
-  useEffect(() => {
+  // Efeito de layout: a aula que abre neste render entra na fila (e o painel
+  // mostra "carregando") antes da pintura, sem piscar o aviso de vazio.
+  // ponytail: jsdom não distingue efeito de layout de efeito passivo (o act
+  // roda os dois antes de devolver), então nenhum teste guarda esta escolha.
+  // Trocar por useEffect volta a pintar o aviso de vazio por um quadro.
+  useLayoutEffect(() => {
     if (unlockedKey === null) {
       return;
     }
@@ -516,6 +528,23 @@ export function EnrolledCourseWorkspace({
       || latestAssets.current.some(
         (asset) => asset.lessonId === lessonId && asset.kind !== "lesson_thumbnail",
       );
+    // Liga ou desliga o "carregando" das aulas dadas (só elas).
+    const markReleasing = (lessonIds: string[], on: boolean) => {
+      if (lessonIds.length === 0) {
+        return;
+      }
+      setReleasingLessonIds((current) => {
+        const next = new Set(current);
+        for (const lessonId of lessonIds) {
+          if (on) {
+            next.add(lessonId);
+          } else {
+            next.delete(lessonId);
+          }
+        }
+        return next;
+      });
+    };
     // Tira da fila a aula que chegou, ou que já gastou as tentativas, e arma a
     // próxima tentativa se sobrou aula. Relógio do aparelho adiantado: até 3
     // tentativas perto do prazo (janela de 2 min). Fora dela, ou em aula sem
@@ -570,7 +599,12 @@ export function EnrolledCourseWorkspace({
         tracker.pending.set(id, { unlocksAt, tries: 0 });
       }
     }
-    void reload();
+    // "Carregando" só enquanto a recarga que abriu a aula está no ar. Depois
+    // dela a tela mostra o estado real; as novas tentativas seguem por trás e,
+    // se o conteúdo chegar numa delas, ele simplesmente aparece.
+    const opened = unlocked.filter(({ id }) => !before.has(id)).map(({ id }) => id);
+    markReleasing(opened, true);
+    void reload().finally(() => markReleasing(opened, false));
   }, [completedKey, course.id, unlockedKey]);
 
   useEffect(() => {
@@ -727,26 +761,28 @@ export function EnrolledCourseWorkspace({
       );
     }
 
+    // No enrollment: the same buy popup as the course page and the members
+    // area (cover + buy button to the course page), instead of a full page
+    // "enrollment required" with a link out. Public course fields only: no
+    // lesson content or video is fetched without an enrollment.
     return (
-      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          {t("learn.classroom.workspace.enrollmentRequired")}
-        </p>
-        <h1 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-          {t("learn.classroom.workspace.enrollmentHeading")}
-        </h1>
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          {t("learn.classroom.workspace.enrollmentDetails")}
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link href={`/courses/${course.slug}`} className="button-solid px-4 py-2.5 text-sm">
-            {t("learn.classroom.workspace.openCourse")}
-          </Link>
-          <Link href="/learn" className="button-outline px-4 py-2.5 text-sm">
-            {t("learn.classroom.workspace.backToLearningTitle")}
-          </Link>
-        </div>
-      </section>
+      <>
+        <h1 className="sr-only">{course.title}</h1>
+        <CourseUnlockModal
+          course={{
+            id: course.id,
+            title: course.title,
+            summary: course.summary,
+            category: course.category,
+            coverImageUrl: getSafeMediaUrl(course.image),
+            priceAmountMinor: course.priceAmountMinor,
+            currency: course.currency,
+          }}
+          ctaHref={`/courses/${course.slug}`}
+          secondaryLink={{ href: "/learn", label: t("learn.classroom.workspace.backToLearning") }}
+          onClose={() => router.push("/learn")}
+        />
+      </>
     );
   }
 
@@ -770,6 +806,9 @@ export function EnrolledCourseWorkspace({
     ? lessonUnlockStateById.get(selectedLesson.id)
       ?? { unlocked: true, unlocksAt: null, reason: "available" }
     : null;
+  // Sequencial trancado: a aula que falta concluir (nome + botão na tela).
+  const previousRequiredLesson =
+    allLessons.find((lesson) => lesson.id === selectedLessonUnlockState?.previousLessonId) ?? null;
   // B1: prefer the gated subcollection content for the rendered lesson; fall
   // back to the inline course-doc field when the subcollection doc is absent
   // (un-migrated course, or content not yet streamed).
@@ -783,6 +822,11 @@ export function EnrolledCourseWorkspace({
   const isLessonContentLoading = Boolean(
     workspaceEnrollment
       && (!lessonContentState.ready || lessonContentState.key !== course.id),
+  );
+  // A aula que o relógio acabou de abrir e cujo conteúdo ainda está vindo (só
+  // ela: as outras aulas abertas continuam como estavam).
+  const selectedLessonReleasing = Boolean(
+    selectedLesson && releasingLessonIds.has(selectedLesson.id),
   );
   const resolvedSelectedLesson: Lesson | null = selectedLesson
     ? {
@@ -882,6 +926,27 @@ export function EnrolledCourseWorkspace({
           (assetCountByLessonId.get(asset.lessonId) ?? 0) + 1,
         );
       }
+    }
+  }
+  // Aula ABERTA sem capa própria e com link do YouTube: a capa do próprio
+  // vídeo. A aula trancada fica sem: o link dela nunca chega à página (a RLS
+  // esconde), e mesmo um link no currículo não vira capa enquanto ela está
+  // fechada. Vimeo e Bunny ficam de fora. O id já vem limpo
+  // ([a-zA-Z0-9_-]) de getTrustedLessonEmbed; o CSP (img-src https:) já cobre
+  // i.ytimg.com.
+  for (const lesson of allLessons) {
+    if (thumbnailUrlByLessonId.has(lesson.id) || !lessonUnlockStateById.get(lesson.id)?.unlocked) {
+      continue;
+    }
+    // Sem objeto de conteúdo, sem capa: o preview do professor pode receber
+    // null daqui (preview-tabs.test.tsx dubla assim) e a sala não pode cair.
+    const content = resolveLessonContent(lessonContentMap?.get(lesson.id), lesson);
+    if (!content) {
+      continue;
+    }
+    const embed = getTrustedLessonEmbed(content?.externalUrl);
+    if (embed?.provider === "youtube") {
+      thumbnailUrlByLessonId.set(lesson.id, `https://i.ytimg.com/vi/${embed.videoId}/hqdefault.jpg`);
     }
   }
   async function toggleLessonCompletion(lessonId: string, completed: boolean) {
@@ -1133,15 +1198,22 @@ export function EnrolledCourseWorkspace({
             assets={selectedLessonAssets}
             enrollmentId={workspaceEnrollment?.id ?? null}
             enableFirestoreAssets={enableFirestoreAssets}
-            isLoadingAssets={Boolean(
-              enableFirestoreAssets
-                && (!assetsState.ready || assetsState.key !== course.id),
-            )}
-            isLoadingContent={isLessonContentLoading}
+            isLoadingAssets={
+              Boolean(
+                enableFirestoreAssets
+                  && (!assetsState.ready || assetsState.key !== course.id),
+              )
+              // Aula com texto no próprio currículo já tem o que mostrar: o
+              // player fica em "Text-first lesson", não em "carregando".
+              || (selectedLessonReleasing && !resolvedSelectedLesson?.contentText?.trim())
+            }
+            isLoadingContent={isLessonContentLoading || selectedLessonReleasing}
             lesson={resolvedSelectedLesson}
             moduleTitle={selectedModule?.title ?? null}
             onEnded={handleLessonEnded}
             unlockState={selectedLessonUnlockState}
+            previousRequiredLesson={previousRequiredLesson}
+            onSelectLesson={selectLesson}
             previewMode={previewMode}
             lessonComments={
               // Sob o player e "Informacoes da aula" (paridade Hotmart, P3):
@@ -1594,21 +1666,25 @@ const lessonTypeLabels: Record<LessonType, string> = {
   external_embed: "learn.classroom.lesson.types.external_embed",
 };
 
-function formatUnlockMessage(unlockState: LessonUnlockState, locale: string, t: (key: string) => string) {
+function formatUnlockMessage(
+  unlockState: LessonUnlockState,
+  locale: string,
+  t: (key: string) => string,
+  // Sequencial: o nome da aula que falta concluir, quando se sabe qual é.
+  previousTitle: string | null = null,
+) {
   if (unlockState.unlocked) {
     return t("learn.classroom.lesson.available");
   }
 
   if (unlockState.reason === "previous_lesson_required") {
-    return t("learn.classroom.lesson.previousRequired");
+    return previousTitle
+      ? t("learn.classroom.lesson.previousRequiredNamed").replace("{title}", () => previousTitle)
+      : t("learn.classroom.lesson.previousRequired");
   }
 
   if (unlockState.unlocksAt) {
-    const date = new Intl.DateTimeFormat(locale, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }).format(unlockState.unlocksAt);
+    const date = formatUnlockDate(unlockState.unlocksAt, locale);
     return t("learn.classroom.lesson.unlocks").replace("{date}", () => date);
   }
 
@@ -1816,7 +1892,9 @@ function LessonContentPanel({
   onCancelNextUp,
   onEnded,
   onPlayNextUp,
+  onSelectLesson,
   previewMode,
+  previousRequiredLesson = null,
   unlockState,
 }: {
   assets: CourseAsset[];
@@ -1840,7 +1918,11 @@ function LessonContentPanel({
   /** Modulo da aula, para "Informacoes da aula". */
   moduleTitle: string | null;
   onEnded: () => void;
+  /** Abre outra aula da sala (o botão "Go to that lesson" da aula trancada). */
+  onSelectLesson?: (lessonId: string) => void;
   previewMode: boolean;
+  /** Sequencial trancado: a aula que falta concluir antes desta. */
+  previousRequiredLesson?: Pick<Lesson, "id" | "title"> | null;
   unlockState: LessonUnlockState | null;
 }) {
   const { t, locale } = useTranslation();
@@ -1926,7 +2008,20 @@ function LessonContentPanel({
           <div className="member-video-empty">
             <LockKeyhole size={28} aria-hidden />
             <h5>{t("learn.classroom.lesson.locked")}</h5>
-            <p>{unlockState ? formatUnlockMessage(unlockState, locale, t) : t("learn.classroom.curriculum.locked")}</p>
+            <p>
+              {unlockState
+                ? formatUnlockMessage(unlockState, locale, t, previousRequiredLesson?.title ?? null)
+                : t("learn.classroom.curriculum.locked")}
+            </p>
+            {previousRequiredLesson && onSelectLesson ? (
+              <button
+                type="button"
+                onClick={() => onSelectLesson(previousRequiredLesson.id)}
+                className="button-outline mt-3 px-4 py-2 text-sm"
+              >
+                {t("learn.classroom.lesson.goToPreviousLesson")}
+              </button>
+            ) : null}
           </div>
         ) : resolvedVideoSource === "upload" && primaryHostedVideo?.bunnyVideoId ? (
           <VideoWatermark>

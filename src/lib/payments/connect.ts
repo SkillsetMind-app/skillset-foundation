@@ -54,9 +54,11 @@ export function isConnectNotEnabledError(error: unknown): boolean {
   );
 }
 
-export async function startTeacherStripeOnboarding() {
+// `country` only matters before an account exists; the server ignores it after.
+export async function startTeacherStripeOnboarding(country?: string) {
   const { url } = await postPaymentRoute<{ url: string }>(
     "/api/payments/connect/account-link",
+    country ? { country } : undefined,
   );
 
   if (!url) {
@@ -77,11 +79,11 @@ export async function refreshTeacherStripeAccountStatus() {
  * onboarding component uses to render KYC / bank / identity flow inside
  * the app. The creator never leaves SkillsetMind.
  */
-export async function fetchConnectAccountSessionSecret(): Promise<string> {
+export async function fetchConnectAccountSessionSecret(country?: string): Promise<string> {
   const { clientSecret } = await postPaymentRoute<{
     clientSecret: string;
     accountId: string;
-  }>("/api/payments/connect/account-session");
+  }>("/api/payments/connect/account-session", country ? { country } : undefined);
 
   if (!clientSecret) {
     throw new Error("Stripe did not return a Connect Account Session secret.");

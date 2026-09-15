@@ -152,7 +152,7 @@ describe("carteira do professor em espanhol", () => {
         name: /Tus ingresos, tu configuración de pagos\./,
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Stripe emite tus formularios fiscales")).toBeInTheDocument();
+    expect(screen.getByText("Stripe recoge tus datos fiscales")).toBeInTheDocument();
     expect(screen.getByText("Neto estimado del creador")).toBeInTheDocument();
     expect(screen.getByText("Reembolsado")).toBeInTheDocument();
     expect(

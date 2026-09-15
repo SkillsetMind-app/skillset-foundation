@@ -2261,6 +2261,7 @@ export type Database = {
           roles: Json
           storefront: Json | null
           stripe_connect_charges_enabled: boolean | null
+          stripe_connect_country: string | null
           stripe_connect_payouts_enabled: boolean | null
           stripe_connect_status: string | null
           stripe_connect_updated_at: string | null
@@ -2300,6 +2301,7 @@ export type Database = {
           roles?: Json
           storefront?: Json | null
           stripe_connect_charges_enabled?: boolean | null
+          stripe_connect_country?: string | null
           stripe_connect_payouts_enabled?: boolean | null
           stripe_connect_status?: string | null
           stripe_connect_updated_at?: string | null
@@ -2339,6 +2341,7 @@ export type Database = {
           roles?: Json
           storefront?: Json | null
           stripe_connect_charges_enabled?: boolean | null
+          stripe_connect_country?: string | null
           stripe_connect_payouts_enabled?: boolean | null
           stripe_connect_status?: string | null
           stripe_connect_updated_at?: string | null
