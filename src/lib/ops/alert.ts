@@ -126,6 +126,31 @@ function platformRequestContext(): PlatformRequestContext | undefined {
   return store?.get?.();
 }
 
+/**
+ * Keeps the instance alive until `pending` settles, without waiting on it:
+ * after() inside a request scope, otherwise the platform's waitUntil. For work
+ * that is ALREADY running when nobody may await it (React drops the promise of
+ * an error hook during a render). Never throws; false = nothing could take it.
+ */
+export function keepAliveUntil(pending: Promise<unknown>): boolean {
+  try {
+    after(() => pending);
+    return true;
+  } catch {
+    // after() throws outside a request scope; the platform context may not.
+  }
+  try {
+    const context = platformRequestContext();
+    if (context?.waitUntil) {
+      context.waitUntil(pending);
+      return true;
+    }
+  } catch {
+    // A broken platform context must not turn an alert into a thrown error.
+  }
+  return false;
+}
+
 export function notifyOps(alert: OpsAlert): void {
   const url = process.env.OPS_ALERT_WEBHOOK_URL;
   if (!url) {
@@ -151,11 +176,6 @@ export function notifyOps(alert: OpsAlert): void {
     // waitUntil when there is one, so the instance stays up until it lands;
     // otherwise it is a best-effort unawaited call, which still beats losing
     // the alert entirely.
-    const pending = send();
-    try {
-      platformRequestContext()?.waitUntil?.(pending);
-    } catch {
-      // A broken platform context must not turn an alert into a thrown error.
-    }
+    keepAliveUntil(send());
   }
 }

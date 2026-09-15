@@ -1,17 +1,22 @@
 import type { Instrumentation } from "next";
 
-import { sendOpsAlert } from "@/lib/ops/alert";
+import { keepAliveUntil, sendOpsAlert } from "@/lib/ops/alert";
 
-// Um 500 no checkout, numa aula ou no login so aparecia no log do Vercel, que
+// Um erro no checkout, numa aula ou no login so aparecia no log do Vercel, que
 // ninguem le. Este gancho do Next (onRequestError) recebe todo erro de
 // requisicao no servidor e avisa o Telegram de ops.
 //
-// AGUARDA o envio de proposito. Num 500 de route handler o Next chama este
-// gancho depois de sair de todo escopo de requisicao: ali o after() do
-// notifyOps lanca, e o fetch sem await morre quando a invocacao termina (o
-// mesmo buraco que alert.ts descreve). O Next espera este gancho antes de
-// seguir, entao aguardar o sendOpsAlert (4 s de teto, nunca lanca) garante que
-// o aviso sai. Custo: ate 4 s a mais numa resposta que ja falhou.
+// Duas formas de o Next chamar este gancho, e o envio tem de sobreviver a ambas:
+//  - AGUARDADO: no catch do route handler, no catch externo da pagina e no
+//    proxy, depois de sair do escopo da requisicao. Ali o after() lanca; o
+//    Next espera o gancho, entao o `await` segura a invocacao ate o aviso sair.
+//  - DESCARTADO: nos erros de renderizacao (RSC/SSR) e nas server actions o
+//    gancho entra no onError do React, que chama e JOGA FORA a promessa. Ali o
+//    `await` sozinho vira um fetch que ninguem espera, e a instancia congela
+//    antes de ele sair.
+// Por isso o envio comeca uma vez so, a MESMA promessa vai para o after() (ou
+// para o waitUntil da plataforma, fora do escopo) e so entao e aguardada.
+// sendOpsAlert tem teto de 4 s e nunca lanca.
 //
 // O Next ja registra o erro inteiro no log antes de chamar o gancho, entao
 // aqui nao ha console.error.
@@ -52,9 +57,9 @@ function shortHash(text: string): string {
 }
 
 // Um aviso por rota a cada 5 minutos, por instancia. Por ROTA, e nao pelo
-// evento: um 500 inofensivo e recorrente numa rota nao pode esconder o 500 do
-// checkout. A chave e gravada antes do envio, entao um erro que volte a este
-// gancho pela mesma rota tambem para aqui.
+// evento: um erro inofensivo e recorrente numa rota nao pode esconder o do
+// checkout. A vaga e reservada antes do envio (um erro que volte a este gancho
+// pela mesma rota para aqui) e devolvida se o envio nao chegou ao relay.
 const THROTTLE_MS = 5 * 60 * 1000;
 const MAX_ROUTES = 200;
 const lastSentAt = new Map<string, number>();
@@ -82,18 +87,19 @@ export const onRequestError: Instrumentation.onRequestError = async (error, requ
   }
 
   const route = context.routePath.split("?")[0];
-  if (!shouldSend(`app.server_error:${route}`, Date.now())) {
+  const key = `app.server_error:${route}`;
+  const reservedAt = Date.now();
+  if (!shouldSend(key, reservedAt)) {
     return;
   }
 
   const message = error instanceof Error ? error.message : String(error);
-  // sendOpsAlert nunca lanca e tem teto de 4 s: o aviso nao vira um segundo
-  // erro nem prende a resposta alem disso.
-  await sendOpsAlert({
+  const pending = sendOpsAlert({
     event: "app.server_error",
-    // alert.ts so aceita "warn" | "critical"; um 500 inesperado e falha real.
+    // alert.ts so aceita "warn" | "critical". Sem status no texto: um erro
+    // pego por error.tsx, ou lancado num Suspense depois do shell, sai com 200.
     severity: "critical",
-    summary: "A server request failed with an unexpected error (HTTP 500).",
+    summary: `Server error on ${route} (${context.routeType}).`,
     // So o padrao da rota, o tipo, o metodo, o nome do erro e uma impressao
     // digital. Nunca a URL com query, cabecalhos, cookies, corpo, ids,
     // e-mails ou a mensagem inteira.
@@ -105,4 +111,15 @@ export const onRequestError: Instrumentation.onRequestError = async (error, requ
       fingerprint: digestOf(error) ?? shortHash(message),
     },
   });
+
+  // A mesma promessa vive ate o relay responder mesmo quando ninguem aguarda
+  // este gancho (onError do React). keepAliveUntil nunca lanca.
+  keepAliveUntil(pending);
+
+  const delivered = await pending;
+  // Envio perdido nao pode calar a rota por 5 minutos: devolve a vaga, se
+  // nenhum envio mais novo a pegou nesse meio tempo.
+  if (!delivered && lastSentAt.get(key) === reservedAt) {
+    lastSentAt.delete(key);
+  }
 };
