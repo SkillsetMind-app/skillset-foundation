@@ -158,7 +158,14 @@ export async function getCourseRefAccess(ref: string): Promise<CourseRefAccess> 
       row = (byKey.data?.[0] as AccessRow | undefined) ?? null;
     }
 
-    if (!row) return "missing";
+    if (!row) {
+      // Sessão revogada (conta suspensa e restaurada, convite aceito): o GoTrue
+      // ainda aceita o JWT, mas a policy restritiva account_access_guard esconde
+      // TODA linha dela, curso publicado inclusive. Não achar ali não é "não
+      // existe". Sem sessão no cookie, getUser responde sem ir à rede.
+      const { error: userError } = await supabase.auth.getUser();
+      return userError?.code === "account_access_denied" ? "unknown" : "missing";
+    }
     if (row.status === "published") return "visible";
     // courses_select_public só expõe published e in_review. Rascunho,
     // needs_changes ou inactive que voltou é a RLS autorizando ESTE leitor

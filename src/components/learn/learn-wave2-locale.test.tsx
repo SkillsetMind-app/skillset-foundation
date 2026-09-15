@@ -35,7 +35,12 @@ vi.mock("@/lib/data/published-courses", () => ({
   teacherCourseToCourseCard: (course: unknown) => course,
 }));
 vi.mock("@/lib/data/catalog", () => ({ getFeaturedCourseCards: () => [] }));
-vi.mock("@/lib/posthog/page-trackers", () => ({ CourseViewedTracker: () => null }));
+vi.mock("@/lib/posthog/page-trackers", () => ({
+  CourseViewedTracker: () => null,
+  PurchaseCompletedTracker: ({ course_id }: { course_id: string }) => (
+    <i data-testid="purchase-completed-tracker" data-course={course_id} />
+  ),
+}));
 vi.mock("@/components/learn/enrolled-course-workspace", () => ({
   EnrolledCourseWorkspace: ({ course }: { course: { title: string } }) => <h1>{course.title}</h1>,
 }));
@@ -125,6 +130,29 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     mocks.course.mockImplementation((_id, next) => { next({ title: enrollment.courseTitle }); return () => {}; });
     act(() => { vi.advanceTimersByTime(20_000); });
     expect(screen.getByRole("heading", { name: enrollment.courseTitle })).toBeVisible();
+  });
+
+  // PURCHASE_COMPLETED is wired only where Stripe's success_url lands AND the
+  // paid enrollment has opened the course: an ordinary visit never counts a sale.
+  it("mounts the purchase tracker only after a checkout return opens the course, then drops the marker", () => {
+    mocks.enrollment.mockImplementation((_uid, _id, next) => { next(enrollment); return () => {}; });
+    mocks.course.mockImplementation((_id, next) => { next({ id: "course-es", title: enrollment.courseTitle }); return () => {}; });
+    const visit = show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+    expect(screen.getByRole("heading", { name: enrollment.courseTitle })).toBeVisible();
+    expect(screen.queryByTestId("purchase-completed-tracker")).toBeNull();
+    expect(mocks.router.replace).not.toHaveBeenCalled();
+    visit.unmount();
+
+    mocks.params = new URLSearchParams("checkout=success&lesson=l3");
+    show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+    expect(screen.getByTestId("purchase-completed-tracker")).toHaveAttribute("data-course", "course-es");
+    // The paid course is open, so the checkout marker goes (the lesson stays).
+    // Left in the URL it rode into lesson links, bookmarks and new tabs, and
+    // every reopen counted another sale.
+    expect(mocks.router.replace).toHaveBeenCalledTimes(1);
+    const [url] = mocks.router.replace.mock.calls[0];
+    expect(url).toMatch(/lesson=l3/);
+    expect(url).not.toMatch(/checkout/);
   });
 
   it("relocalizes a retained enrollment error without resubscribing", () => {

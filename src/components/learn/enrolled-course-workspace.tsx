@@ -28,6 +28,7 @@ import { NextLessonCard } from "@/components/learn/next-lesson-card";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { TrustedEmbedPlayer } from "@/components/learn/trusted-embed-player";
 import { CourseSubscriptionCard } from "@/components/learn/course-subscription-card";
+import { CourseUnlockModal } from "@/components/learn/course-unlock-modal";
 import { VideoDock } from "@/components/learn/video-dock";
 import {
   VideoWatermark,
@@ -197,6 +198,9 @@ export function EnrolledCourseWorkspace({
     setLessonChoice({ seenParam: lessonParam, id: lessonId });
 
     const params = new URLSearchParams(searchParams?.toString() ?? "");
+    // The Stripe return marker must not ride along into every lesson URL: a
+    // copied, bookmarked or reopened link would look like a fresh purchase.
+    params.delete("checkout");
     params.set("lesson", lessonId);
     router.replace(`${basePath}?${params.toString()}`, { scroll: false });
 
@@ -760,26 +764,31 @@ export function EnrolledCourseWorkspace({
       );
     }
 
+    // No enrollment: the same buy popup as the course page and the members
+    // area (cover + buy button to the course page), instead of a full page
+    // "enrollment required" with a link out. Public course fields only: no
+    // lesson content or video is fetched without an enrollment.
     return (
-      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          {t("learn.classroom.workspace.enrollmentRequired")}
-        </p>
-        <h1 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-          {t("learn.classroom.workspace.enrollmentHeading")}
-        </h1>
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          {t("learn.classroom.workspace.enrollmentDetails")}
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link href={`/courses/${course.slug}`} className="button-solid px-4 py-2.5 text-sm">
-            {t("learn.classroom.workspace.openCourse")}
-          </Link>
-          <Link href="/learn" className="button-outline px-4 py-2.5 text-sm">
-            {t("learn.classroom.workspace.backToLearningTitle")}
-          </Link>
-        </div>
-      </section>
+      <>
+        <h1 className="sr-only">{course.title}</h1>
+        <CourseUnlockModal
+          course={{
+            id: course.id,
+            title: course.title,
+            summary: course.summary,
+            category: course.category,
+            coverImageUrl: getSafeMediaUrl(course.image),
+            priceAmountMinor: course.priceAmountMinor,
+            currency: course.currency,
+          }}
+          ctaHref={`/courses/${course.slug}`}
+          // No price here: the modal's fallback formats the raw course price
+          // in English. The course page owns the real, resolved price.
+          ctaLabel={t("learn.paths.unlock")}
+          secondaryLink={{ href: "/learn", label: t("learn.classroom.workspace.backToLearning") }}
+          onClose={() => router.push("/learn")}
+        />
+      </>
     );
   }
 

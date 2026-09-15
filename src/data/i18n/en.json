@@ -2733,6 +2733,8 @@
     "seePreview": "See free preview lessons",
     "previewShort": "Preview",
     "locked": "Locked",
+    "unlockNote": "This lesson is part of the full course. Buy the course to watch every lesson.",
+    "unlockNoteFree": "Enroll free to watch every lesson.",
     "previewSelected": "Free preview selected",
     "previewSoon": "Preview coming soon",
     "published": "Published",
@@ -3267,6 +3269,7 @@
     },
     "errors": {
       "mfaRequired": "Enter the code from your authenticator app to finish signing in.",
+      "sessionRevoked": "You were signed out because the access on your account changed. Sign in again to continue. If this keeps happening, contact support.",
       "invalidCredentials": "Incorrect email or password.",
       "emailNotConfirmed": "Verify your email to finish signing in. Check your inbox for the link.",
       "accountExists": "An account already exists with this email.",

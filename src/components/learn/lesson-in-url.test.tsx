@@ -133,6 +133,20 @@ describe("a aula atual vive no endereco", () => {
     expect(scrollIntoView).toHaveBeenCalled();
   });
 
+  // O marcador de volta da Stripe nao pode sobreviver a troca de aula: cada link
+  // de aula copiado ou reaberto contaria outra compra.
+  it("ao trocar de aula, tira o ?checkout do endereco e mantem o resto", () => {
+    mocks.searchParams = new URLSearchParams("checkout=success&campaign=literal");
+    render(<EnrolledCourseWorkspace course={course} previewMode />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Lesson two/ }));
+
+    const [url] = mocks.replace.mock.calls.at(-1)!;
+    expect(url).toMatch(/lesson=l2/);
+    expect(url).toMatch(/campaign=literal/);
+    expect(url).not.toMatch(/checkout/);
+  });
+
   it("voltar no navegador (endereco muda por fora) muda a aula", () => {
     mocks.searchParams = new URLSearchParams("lesson=l2");
     const { rerender } = render(

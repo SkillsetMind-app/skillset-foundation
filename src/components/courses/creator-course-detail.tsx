@@ -5,12 +5,13 @@ import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
 import Link from "next/link";
-import { Star, Target } from "lucide-react";
+import { Lock, Star, Target } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
+import { CourseUnlockModal } from "@/components/learn/course-unlock-modal";
 import {
   CourseInstructorCard,
   CourseReviewsSection,
@@ -33,6 +34,8 @@ import {
   normalizeLearningOutcomes,
   resolveLessonVideoSource,
 } from "@/domain/teacher-course";
+import { canOpenEnrollment } from "@/domain/enrollment";
+import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import { subscribeToViewableTeacherCourse } from "@/lib/data/published-courses";
 import {
   getLessonContentDoc,
@@ -46,6 +49,8 @@ import {
   enrollInFreeCreatorCourse,
   startCourseCheckout,
 } from "@/lib/payments/checkout";
+import { track } from "@/lib/posthog/events";
+import { CourseViewedTracker } from "@/lib/posthog/page-trackers";
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
 
 type CreatorCourseDetailProps = {
@@ -168,6 +173,29 @@ export function CreatorCourseDetail({
   const [isCouponOpen, setIsCouponOpen] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isEnrollingFree, setIsEnrollingFree] = useState(false);
+  // Padlocked lesson in the curriculum: opens the buy popup (cover, title and a
+  // button to the buy card on this same page). Public course fields only.
+  const [isUnlockOpen, setIsUnlockOpen] = useState(false);
+  const closeUnlock = useCallback(() => setIsUnlockOpen(false), []);
+  // A learner who already has access sees the curriculum like the owner: no
+  // padlocks and no buy popup (checkout would refuse with alreadyEnrolled).
+  // Same read as the classroom; a teacher course's enrollment uses its id.
+  // Keyed by user and course, so a stale answer never hides padlocks.
+  const viewerUid = user?.uid ?? null;
+  const enrollmentCourseId = course?.id ?? null;
+  const [viewerEnrollmentKey, setViewerEnrollmentKey] = useState<string | null>(null);
+  useEffect(() => {
+    if (checkoutOnly || !hasBackendConfig || !viewerUid || !enrollmentCourseId) {
+      return;
+    }
+    const key = `${viewerUid}__${enrollmentCourseId}`;
+    return subscribeToEnrollment(
+      viewerUid,
+      enrollmentCourseId,
+      (enrollment) => setViewerEnrollmentKey(enrollment && canOpenEnrollment(enrollment.status) ? key : null),
+      () => undefined,
+    );
+  }, [checkoutOnly, hasBackendConfig, viewerUid, enrollmentCourseId]);
   const [offerLoadError, setOfferLoadError] = useState("");
   const [offerState, setOfferState] = useState<{
     courseId: string | null;
@@ -367,6 +395,10 @@ export function CreatorCourseDetail({
     && authStatus === "authenticated"
     && Boolean(user)
     && courseIsFree;
+  // The owner never sees padlocks on their own course.
+  const viewerOwnsCourse = Boolean(user && course.ownerId === user.uid);
+  const viewerHasAccess =
+    viewerOwnsCourse || (user != null && viewerEnrollmentKey === `${user.uid}__${course.id}`);
   const lessons = course.modules.flatMap((module) =>
     module.lessons.map((lesson) => ({
       ...lesson,
@@ -452,6 +484,17 @@ export function CreatorCourseDetail({
     : pricingReady && hasPaidPrice
       ? `${subscriptionInterval ? t("publicCourses.subscribe") : t("publicCourses.enroll")} — ${priceLabel}`
       : t("publicCourses.enroll");
+  // The text of the buy card's main button. The popup uses this same value, so
+  // the two never disagree, including "Checkout not available yet".
+  const cardActionLabel = authStatus !== "authenticated"
+    ? enrollLabel
+    : canEnrollFree
+      ? isEnrollingFree ? t("publicCourses.addingCourse") : t("publicCourses.enrollFree")
+      : isCheckingOut
+        ? t("publicCourses.openingCheckout")
+        : checkoutEnabled && hasPaidPrice
+          ? enrollLabel
+          : t("publicCourses.checkoutUnavailable");
   // Secoes que EXISTEM nesta pagina. Um menu que oferece "Reviews" para um
   // curso sem resenha leva a pessoa para lugar nenhum, entao cada item so
   // entra quando a secao correspondente vai ser desenhada.
@@ -476,6 +519,13 @@ export function CreatorCourseDetail({
     const checkoutCourseId = course.id;
     setCheckoutError("");
     setIsCheckingOut(true);
+    // CHECKOUT_STARTED: ids plus the money convention (minor + currency). The
+    // coupon is text the buyer typed, so it stays out of analytics.
+    track.checkoutStarted({
+      course_id: checkoutCourseId,
+      price_minor: resolvedPrice.amountMinor,
+      currency: resolvedPrice.currency,
+    });
 
     try {
       await startCourseCheckout(checkoutCourseId, {
@@ -522,6 +572,16 @@ export function CreatorCourseDetail({
 
   return (
     <>
+    {/* COURSE_VIEWED on the public course page, once the price is resolved so
+        is_free and currency are real. The checkout-only page is a step of the
+        purchase, not a view. Ids only: no title, no teacher name. */}
+    {!checkoutOnly && pricingReady ? (
+      <CourseViewedTracker
+        course_id={course.id}
+        is_free={courseIsFree}
+        currency={resolvedPrice?.currency}
+      />
+    ) : null}
     <div className={checkoutOnly ? "mx-auto grid w-full min-w-0 max-w-2xl gap-6" : "grid gap-8 pb-24 lg:grid-cols-[1.15fr_0.85fr] lg:pb-0"}>
       <section className="min-w-0">
         {hideHeader ? null : (
@@ -731,21 +791,44 @@ export function CreatorCourseDetail({
                     {module.title}
                   </h2>
                   <div className="mt-4 grid gap-2">
-                    {module.lessons.map((lesson) => (
-                      <div
-                        key={lesson.id}
-                        className="flex items-center justify-between gap-3 rounded-[10px] bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)]"
-                      >
-                        <span className="font-semibold text-[var(--color-ink)]">
-                          {lesson.title}
-                        </span>
+                    {module.lessons.map((lesson) => {
+                      const isPreview = course.freePreviewLessonId === lesson.id;
+                      const rowClass =
+                        "flex items-center justify-between gap-3 rounded-[10px] bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)]";
+                      const meta = (
                         <span className="shrink-0 text-right uppercase tracking-[0.16em]">
                           {t(`publicCourses.lessonTypes.${lesson.type}`)}
                           {lesson.durationMinutes ? ` - ${lesson.durationMinutes} min` : ""}
-                          {course.freePreviewLessonId === lesson.id ? ` - ${t("publicCourses.previewShort")}` : ""}
+                          {isPreview ? ` - ${t("publicCourses.previewShort")}` : ""}
                         </span>
-                      </div>
-                    ))}
+                      );
+                      // The free preview (and every lesson, for the owner or
+                      // an enrolled learner) stays as it was; the rest carry a
+                      // padlock and open the buy popup.
+                      return isPreview || viewerHasAccess ? (
+                        <div key={lesson.id} className={rowClass}>
+                          <span className="font-semibold text-[var(--color-ink)]">
+                            {lesson.title}
+                          </span>
+                          {meta}
+                        </div>
+                      ) : (
+                        <button
+                          key={lesson.id}
+                          type="button"
+                          aria-haspopup="dialog"
+                          onClick={() => setIsUnlockOpen(true)}
+                          className={`${rowClass} w-full text-left transition hover:bg-[var(--color-surface-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]`}
+                        >
+                          <span className="flex min-w-0 items-center gap-2 font-semibold text-[var(--color-ink)]">
+                            <Lock aria-hidden="true" size={13} className="shrink-0" />
+                            {lesson.title}
+                            <span className="sr-only">{t("publicCourses.locked")}</span>
+                          </span>
+                          {meta}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ))
@@ -769,6 +852,8 @@ export function CreatorCourseDetail({
           Antes o cartao subia com a pagina e sumia na primeira rolagem. */}
       <aside
         id="enroll-card"
+        // Focus fallback for the popup's button when no main action is enabled.
+        tabIndex={-1}
         className="min-w-0 h-fit scroll-mt-24 self-start rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] lg:sticky lg:top-24"
       >
         {/* O preco era a quarta de seis linhas de uma lista "At a glance",
@@ -882,6 +967,7 @@ export function CreatorCourseDetail({
           <div className="mt-6 grid gap-3">
             <Link
               href={`/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`}
+              data-cta-focus
               className="button-solid w-full justify-center px-5 py-2.5 text-sm"
             >
               {enrollLabel}
@@ -896,24 +982,22 @@ export function CreatorCourseDetail({
             {canEnrollFree ? (
               <button
                 type="button"
+                data-cta-focus
                 onClick={handleFreeEnrollment}
                 disabled={isEnrollingFree}
                 className="button-solid mt-6 w-full px-5 py-2.5 text-sm disabled:opacity-60"
               >
-                {isEnrollingFree ? t("publicCourses.addingCourse") : t("publicCourses.enrollFree")}
+                {cardActionLabel}
               </button>
             ) : (
               <button
                 type="button"
+                data-cta-focus
                 onClick={handleCheckout}
                 disabled={!canCheckout || isCheckingOut}
                 className="button-solid mt-6 w-full px-5 py-2.5 text-sm disabled:opacity-60"
               >
-                {isCheckingOut
-                  ? t("publicCourses.openingCheckout")
-                  : checkoutEnabled && hasPaidPrice
-                    ? enrollLabel
-                    : t("publicCourses.checkoutUnavailable")}
+                {cardActionLabel}
               </button>
             )}
             {/* Cupom fora do caminho de quem nao tem um. */}
@@ -1005,6 +1089,18 @@ export function CreatorCourseDetail({
         >{t("publicCourses.enroll")}</Link>
       </div>
     </div> : null}
+    {!checkoutOnly ? (
+      <CourseUnlockModal
+        course={isUnlockOpen ? course : null}
+        onClose={closeUnlock}
+        ctaHref="#enroll-card"
+        // The buy card's own button text: resolved offer, discount code,
+        // interval, locale and signed-in state. The popup never formats the
+        // raw course price.
+        ctaLabel={cardActionLabel}
+        note={t(courseIsFree ? "publicCourses.unlockNoteFree" : "publicCourses.unlockNote")}
+      />
+    ) : null}
     </>
   );
 }

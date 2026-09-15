@@ -64,6 +64,11 @@ export function LoginForm() {
     if (reason === "auth_callback") {
       return { key: "authFlow.callback.sameBrowser" };
     }
+    // The proxy ended a session the account no longer accepts (suspended,
+    // restored, or an accepted invite that required signing in again).
+    if (reason === "session_revoked") {
+      return { key: "authFlow.errors.sessionRevoked" };
+    }
     if (reason === "otp_expired" || reason === "access_denied") {
       return { key: "authFlow.callback.usedOrExpired" };
     }

@@ -475,3 +475,117 @@ describe("security headers across proxy response paths", () => {
     expect(routeRequest.headers.get("content-security-policy")).toBe(response.headers.get("content-security-policy"));
   });
 });
+
+// Suspend-then-restore (and invite acceptance) only moves
+// account_controls.sessions_revoked_before. GoTrue still refreshes the old
+// session, so without this the browser kept a JWT for which the restrictive
+// account_access_guard hides every row: an empty platform and 404 on public
+// courses until the user signed out by hand.
+describe("revoked session", () => {
+  const cleared = { name: "audit-session", value: "", options: { path: "/", maxAge: 0 } };
+
+  function stubSession({
+    user = { id: "user-fixture" } as { id: string } | null,
+    verdict = { data: false, error: null } as unknown,
+  } = {}) {
+    vi.resetModules();
+    mocks.getSupabaseClientConfig.mockReturnValue({
+      url: "https://project.example.test",
+      anonKey: "public-test-fixture",
+    });
+    const rpc = vi.fn(async () => {
+      if (verdict instanceof Error) throw verdict;
+      return verdict;
+    });
+    const signOut = vi.fn();
+    mocks.createServerClient.mockImplementation((_url: string, _key: string, options: { cookies: CookieMethodsServer }) => {
+      // Mirrors @supabase/ssr: a local sign-out writes the removals via setAll.
+      signOut.mockImplementation(async () => {
+        await options.cookies.setAll!([cleared], { "Cache-Control": "private, no-store" });
+        return { error: null };
+      });
+      const getUser = async () => ({ data: { user }, error: null });
+      return { auth: { getUser, signOut }, rpc };
+    });
+    return { rpc, signOut };
+  }
+
+  function request(path: string, method = "GET") {
+    return new NextRequest(`https://www.skillsetmind.com${path}`, {
+      method,
+      headers: { host: "www.skillsetmind.com", cookie: "audit-session=old-fixture" },
+    });
+  }
+
+  it("signs a revoked session out and sends the page to login with a message", async () => {
+    const { rpc, signOut } = stubSession();
+    const { proxy } = await import("@/proxy");
+    const response = await proxy(request("/courses/fixture?tab=reviews"));
+
+    expect(rpc).toHaveBeenCalledWith("account_session_allowed");
+    expect(signOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(response.status).toBe(307);
+    const location = new URL(response.headers.get("location")!);
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("error")).toBe("session_revoked");
+    expect(location.searchParams.get("returnTo")).toBe("/courses/fixture?tab=reviews");
+    expect(response.cookies.get("audit-session")).toMatchObject({ value: "", maxAge: 0 });
+    expect(response.headers.get("cache-control")).toContain("no-store");
+    expect(response.headers.get("content-security-policy")).toContain("script-src 'self' 'nonce-");
+  });
+
+  it.each([
+    ["GET", "/api/learn/progress"],
+    ["POST", "/api/learn/progress"],
+    ["POST", "/courses/fixture"],
+  ])("clears a revoked session on %s %s without redirecting it", async (method, path) => {
+    const { signOut } = stubSession();
+    const { proxy } = await import("@/proxy");
+    const response = await proxy(request(path, method));
+
+    expect(signOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(response.status).toBe(200);
+    expect(response.headers.has("location")).toBe(false);
+    expect(response.cookies.get("audit-session")).toMatchObject({ value: "", maxAge: 0 });
+  });
+
+  it.each([
+    { data: true, error: null },
+    { data: null, error: null },
+    { data: false, error: { message: "fixture outage" } },
+    new Error("fixture network failure"),
+  ])("keeps the session when the verdict is not a definite no %#", async (verdict) => {
+    const { signOut } = stubSession({ verdict });
+    const { proxy } = await import("@/proxy");
+    const response = await proxy(request("/learn"));
+
+    expect(signOut).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(response.headers.has("location")).toBe(false);
+  });
+
+  it("costs an anonymous visitor no status check", async () => {
+    const { rpc, signOut } = stubSession({ user: null });
+    const { proxy } = await import("@/proxy");
+    const response = await proxy(request("/courses/fixture"));
+
+    expect(rpc).not.toHaveBeenCalled();
+    expect(signOut).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+  });
+
+  // A sign-out on these would delete the PKCE verifier of a link or OAuth
+  // sign-in in progress, and on the login page itself it would loop.
+  it.each(["/auth", "/auth/callback?next=%2Flearn", "/auth/confirm?type=email", "/login", "/signup", "/api/auth/pwned-check"])(
+    "leaves the sign-in door %s alone",
+    async (path) => {
+      const { rpc, signOut } = stubSession();
+      const { proxy } = await import("@/proxy");
+      const response = await proxy(request(path));
+
+      expect(rpc).not.toHaveBeenCalled();
+      expect(signOut).not.toHaveBeenCalled();
+      expect(response.headers.has("location")).toBe(false);
+    },
+  );
+});

@@ -2733,6 +2733,8 @@
     "seePreview": "Ver lecciones de vista previa gratuitas",
     "previewShort": "Vista previa",
     "locked": "Bloqueado",
+    "unlockNote": "Esta lección es parte del curso completo. Compra el curso para ver todas las lecciones.",
+    "unlockNoteFree": "Inscríbete gratis para ver todas las lecciones.",
     "previewSelected": "Vista previa gratuita seleccionada",
     "previewSoon": "Vista previa próximamente",
     "published": "Publicado",
@@ -3267,6 +3269,7 @@
     },
     "errors": {
       "mfaRequired": "Introduce el código de tu aplicación de autenticación para terminar de iniciar sesión.",
+      "sessionRevoked": "Cerramos tu sesión porque cambió el acceso a tu cuenta. Inicia sesión de nuevo para continuar. Si vuelve a pasar, contacta con soporte.",
       "invalidCredentials": "Correo electrónico o contraseña incorrectos.",
       "emailNotConfirmed": "Verifica tu correo electrónico para terminar de iniciar sesión. Busca el enlace en tu bandeja de entrada.",
       "accountExists": "Ya existe una cuenta con este correo electrónico.",
