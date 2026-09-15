@@ -2,7 +2,7 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import Link from "next/link";
 
 import { PublicPage } from "@/components/site/public-page";
-import { planById } from "@/data/plans";
+import { activationFeeUsd, planById } from "@/data/plans";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 
@@ -97,6 +97,13 @@ export default async function ForCreatorsPage() {
           </h2>
           <p className="mt-4 text-sm leading-7 text-white/78">
             {t("publicPages.creators.creators_can_draft_courses_immediately_professional")}
+          </p>
+          {/* ponytail: same wording as /fees-and-payouts, so the two pages cannot drift. */}
+          <p className="mt-3 text-sm leading-7 text-white/78">
+            {t("publicPages.fees.activation_fee_detail").replace("{amount}", String(activationFeeUsd))}
+          </p>
+          <p className="mt-3 text-sm leading-7 text-white/78">
+            {t("publicPages.fees.payout_countries_detail")}
           </p>
           <Link href="/auth?mode=signup&path=teacher" className="button-solid-light mt-6 px-4 py-2.5 text-sm">
             {t("publicPages.creators.create_account")}

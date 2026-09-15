@@ -71,7 +71,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
     items: [
       {
         q: "Which plan should I start on?",
-        a: "Start on Free if you're validating an idea — there's no subscription and you keep 90% of every $100 sale before Stripe fees. Move to Starter ($19/mo, 5% commission) once you cross about $380/mo in sales. Pro and Plus pay back as you scale further. The pricing page lays out the break-even point for each plan.",
+        a: "Start on Free if you're validating an idea — there's no subscription and you keep 90% of every $100 sale before Stripe fees. Paid plans add a monthly fee and lower the commission. The pricing page shows what each plan takes from a sample $100 sale.",
       },
       {
         q: "What happens when I upgrade or downgrade?",

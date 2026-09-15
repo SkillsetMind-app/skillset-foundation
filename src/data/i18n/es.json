@@ -122,7 +122,7 @@
     "skipToContent": "Ir al contenido"
   },
   "footer": {
-    "tagline": "La plataforma de cursos para psicólogos, coaches, facilitadores y expertos en desarrollo personal. Expertos verificados, sin retención de la plataforma sobre tu dinero, certificados verificables.",
+    "tagline": "La plataforma de cursos para coaches, facilitadores y mentores que ya enseñan en vivo. Expertos verificados, sin retención de la plataforma sobre tu dinero, certificados verificables.",
     "platform": "Plataforma",
     "creator": "Creador",
     "helpLegal": "Ayuda y legal",
@@ -370,14 +370,14 @@
   },
   "home": {
     "metadata": {
-      "title": "Plataforma de cursos para psicólogos y coaches",
-      "description": "SkillsetMind es donde psicólogos, coaches, facilitadores y otros profesionales verificados del desarrollo personal publican cursos con comunidades privadas, sesiones en vivo y certificados verificables. Nos encargamos del pago y del aula: los compradores pagan directamente a tu propia cuenta de Stripe, así que nunca retenemos tu dinero. Tú enseñas."
+      "title": "Plataforma de cursos para coaches, facilitadores y mentores",
+      "description": "Para coaches, facilitadores y mentores que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago, sin mensualidad. Los compradores pagan directamente a tu propia cuenta de Stripe, así que nunca retenemos tu dinero."
     },
     "hero": {
-      "eyebrow": "Para psicólogos, coaches y expertos en desarrollo personal",
+      "eyebrow": "Para coaches, facilitadores y mentores",
       "title1": "Tu conocimiento cambia vidas.",
       "title2": "Ahora haz que llegue a miles.",
-      "sub": "Hecho para psicólogos, coaches, facilitadores y expertos en desarrollo personal. Sin web que montar, sin herramientas que configurar. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe, así que nunca retenemos tu dinero. Tú enseñas.",
+      "sub": "Para coaches, facilitadores y mentores que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago, sin mensualidad. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe, así que nunca retenemos tu dinero. Tú enseñas.",
       "trust1Title": "Verificado",
       "trust1Desc": "Los profesionales se verifican antes de publicar y los programas activos se supervisan para garantizar el cumplimiento.",
       "trust2Title": "Global",
@@ -443,7 +443,7 @@
       "readFull": "Lee la Promesa completa"
     },
     "creators": {
-      "eyebrow": "Para psicólogos, coaches y expertos en desarrollo personal",
+      "eyebrow": "Para coaches, facilitadores y mentores",
       "title": "Llega a más gente de la que tu consulta jamás podría.",
       "ctaStart": "Empieza a enseñar",
       "ctaPromise": "Lee la Promesa al Creador",
@@ -2844,8 +2844,6 @@
       "mo": "/mes",
       "mo_billed": "/mes, con un cobro de",
       "yearly_2": " al año",
-      "worth_it_from": "Conviene a partir de ",
-      "mo_in_sales": "/mes en ventas",
       "plus_a_one_time": "Más una tarifa única de ",
       "fee_to_activate_your_storefront_paid": " de activación que desbloquea el estudio del creador; se cobra una sola vez por cuenta de creador, nunca por curso. Free sigue sin tener costo mensual.",
       "the_math_on_a_100_usd": "Las cuentas de una venta de $100 USD",
@@ -2894,9 +2892,9 @@
       "publish_professional_courses_to_a_global": "Publica cursos profesionales para una audiencia global. Empieza gratis con una comisión del {value0}%; los compradores pagan directamente a tu cuenta de Stripe. Comunidad del curso y certificados incluidos en todos los planes.",
       "for_creators": "Para creadores",
       "teach_with_a_real_course_operating": "Enseña con un sistema completo para gestionar cursos.",
-      "skillsetmind_is_designed_for_experts_who": "SkillsetMind está diseñado para expertos que quieren publicar productos de aprendizaje estructurados, gestionar alumnos, crear comunidad y cobrar sin tener que combinar herramientas desconectadas.",
+      "skillsetmind_is_designed_for_experts_who": "Para coaches, facilitadores y mentores que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago, sin mensualidad.",
       "commission_on_free": "Comisión en Free",
-      "to_start": "Para empezar",
+      "to_start": "Mensualidad",
       "direct": "Directo",
       "buyer_pays_you": "El comprador te paga",
       "buyers_are_charged_on_your_own": "Los compradores pagan en tu propia cuenta de Stripe: la plataforma no retiene tu dinero. Empieza gratis y mejora tu plan para reducir la comisión al 5%, 3% o 2%.",
@@ -3041,21 +3039,21 @@
       },
       "starter": {
         "tagline": "La mitad de comisión por un pequeño costo mensual.",
-        "audience": "Creadores que ingresan entre $400 y $3,500 al mes aproximadamente.",
+        "audience": "Creadores que venden todos los meses.",
         "highlight0": "Todo lo incluido en Free",
         "highlight1": "La comisión baja del 10% al 5%",
         "highlight2": "La facturación anual ahorra aproximadamente un 17%"
       },
       "pro": {
         "tagline": "Una comisión más baja para catálogos consolidados.",
-        "audience": "Creadores que ingresan entre $3,500 y $11,000 al mes aproximadamente.",
+        "audience": "Creadores con un catálogo consolidado.",
         "highlight0": "Todo lo incluido en Starter",
         "highlight1": "La comisión baja al 3%",
         "highlight2": "Soporte humano prioritario"
       },
       "plus": {
         "tagline": "La comisión más baja para creadores con grandes volúmenes de ventas.",
-        "audience": "Creadores que ingresan $11,000 al mes o más.",
+        "audience": "Creadores con un catálogo amplio y ventas constantes.",
         "highlight0": "Todo lo incluido en Pro",
         "highlight1": "La comisión más baja: 2% por venta",
         "highlight2": "Revisiones dedicadas al lanzamiento"
@@ -3125,8 +3123,12 @@
       "fees_and_payouts": "Comisiones y transferencias",
       "your_buyers_pay_you_directly": "Tus compradores te pagan. Directamente.",
       "skillsetmind_is_not_a_middleman_for": "SkillsetMind no intermedia tu dinero. Los alumnos pagan a tu cuenta de Stripe, Stripe descuenta nuestra comisión en el momento de la venta y el resto ya es tuyo: sin saldo de la plataforma, sin plazo de retención de la plataforma ni espera a que te remitamos el dinero.",
-      "full_plan_comparison_sample_breakdowns_and": "La comparación completa de planes, los ejemplos de desglose y los puntos de equilibrio están en la",
-      "pricing_page": "página de precios"
+      "full_plan_comparison_sample_breakdowns_and": "La comparación completa de planes y los ejemplos de desglose están en la",
+      "pricing_page": "página de precios",
+      "activation_fee": "Tarifa única de activación",
+      "activation_fee_detail": "Una tarifa única de activación de US${amount} desbloquea el estudio del creador: crear borradores de cursos, subir videos, crear cupones, conectar un dominio propio y publicar. Solo se cobra cuando completas tú mismo el pago de activación en el estudio, nunca automáticamente, y una sola vez por cuenta de creador, nunca por curso. No es una suscripción.",
+      "payout_countries": "Países con transferencias",
+      "payout_countries_detail": "Las transferencias llegan a tu propia cuenta de Stripe en un país donde SkillsetMind admite transferencias de Stripe: actualmente Estados Unidos, Canadá, el Reino Unido, Suiza, la Unión Europea, Liechtenstein y Noruega. América Latina, incluido Brasil, está prevista más adelante. La disponibilidad depende de Stripe y puede cambiar."
     },
     "helpSearch": {
       "search_help_articles": "Buscar artículos de ayuda",
@@ -3200,7 +3202,7 @@
         "items": {
           "0": {
             "q": "¿Con qué plan debería empezar?",
-            "a": "Empieza con Free si estás validando una idea: no hay suscripción y conservas el 90% de cada venta de $100 antes de las tarifas de Stripe. Pasa a Starter ($19/mes y 5% de comisión) cuando superes aproximadamente $380/mes en ventas. Pro y Plus compensan a medida que creces. La página de precios muestra el punto de equilibrio de cada plan."
+            "a": "Empieza con Free si estás validando una idea: no hay suscripción y conservas el 90% de cada venta de $100 antes de las tarifas de Stripe. Los planes de pago añaden una cuota mensual y bajan la comisión. La página de precios muestra lo que cada plan descuenta de una venta de ejemplo de $100."
           },
           "1": {
             "q": "¿Qué ocurre cuando mejoro mi plan o cambio a uno inferior?",

@@ -122,7 +122,7 @@
     "skipToContent": "Skip to content"
   },
   "footer": {
-    "tagline": "The course platform for psychologists, coaches, facilitators, and personal-development experts. Verified experts, no platform hold on your money, verifiable certificates.",
+    "tagline": "The course platform for coaches, facilitators and mentors who already teach live. Verified experts, no platform hold on your money, verifiable certificates.",
     "platform": "Platform",
     "creator": "Creator",
     "helpLegal": "Help & legal",
@@ -370,14 +370,14 @@
   },
   "home": {
     "metadata": {
-      "title": "Course platform for psychologists & coaches",
-      "description": "SkillsetMind is where psychologists, coaches, facilitators, and other verified personal-development professionals publish courses with private communities, live sessions, and verifiable certificates. We run checkout and classroom — buyers pay your own Stripe account directly, so we never hold your money. You teach."
+      "title": "Course platform for coaches, facilitators & mentors",
+      "description": "For coaches, facilitators and mentors who already teach live and want to sell their method as a course with a paid community, with no monthly fee. Buyers pay your own Stripe account directly, so we never hold your money."
     },
     "hero": {
-      "eyebrow": "For psychologists, coaches & personal-development experts",
+      "eyebrow": "For coaches, facilitators & mentors",
       "title1": "Your knowledge changes lives.",
       "title2": "Now let it reach thousands.",
-      "sub": "Built for psychologists, coaches, facilitators, and personal-development experts. No site to build, no tools to wire up. We run the checkout and the classroom — your buyers pay your own Stripe account, so we never hold a cent of your money. You teach.",
+      "sub": "For coaches, facilitators and mentors who already teach live and want to sell their method as a course with a paid community, with no monthly fee. We run the checkout and the classroom — your buyers pay your own Stripe account, so we never hold a cent of your money. You teach.",
       "trust1Title": "Verified",
       "trust1Desc": "Professionals are verified before they can publish, and live programs are monitored for compliance.",
       "trust2Title": "Global",
@@ -443,7 +443,7 @@
       "readFull": "Read the full Promise"
     },
     "creators": {
-      "eyebrow": "For psychologists, coaches & personal-development experts",
+      "eyebrow": "For coaches, facilitators & mentors",
       "title": "Reach more people than your practice ever could.",
       "ctaStart": "Start teaching",
       "ctaPromise": "Read the Creator Promise",
@@ -2844,8 +2844,6 @@
       "mo": "/mo",
       "mo_billed": "/mo, billed",
       "yearly_2": " yearly",
-      "worth_it_from": "Worth it from ",
-      "mo_in_sales": "/mo in sales",
       "plus_a_one_time": "Plus a one-time ",
       "fee_to_activate_your_storefront_paid": " activation fee that unlocks the creator studio, charged once per creator account, never per course. Free still has no monthly cost.",
       "the_math_on_a_100_usd": "The math, on a $100 USD sale",
@@ -2894,9 +2892,9 @@
       "publish_professional_courses_to_a_global": "Publish professional courses to a global audience. Start free at {value0}% commission, buyers pay your Stripe account directly, course community and certificates included on every plan.",
       "for_creators": "For creators",
       "teach_with_a_real_course_operating": "Teach with a real course operating system.",
-      "skillsetmind_is_designed_for_experts_who": "SkillsetMind is designed for experts who want to publish structured learning products, manage students, build community, and get paid without stitching together disconnected tools.",
+      "skillsetmind_is_designed_for_experts_who": "For coaches, facilitators and mentors who already teach live and want to sell their method as a course with a paid community, with no monthly fee.",
       "commission_on_free": "Commission on Free",
-      "to_start": "To start",
+      "to_start": "Monthly fee",
       "direct": "Direct",
       "buyer_pays_you": "Buyer pays you",
       "buyers_are_charged_on_your_own": "Buyers are charged on your own Stripe account — no platform hold on your money. Start free; upgrade to drop commission to 5%, 3%, or 2%.",
@@ -3041,21 +3039,21 @@
       },
       "starter": {
         "tagline": "Half the commission, small monthly cost.",
-        "audience": "Creators earning around $400–$3,500 a month.",
+        "audience": "Creators who sell every month.",
         "highlight0": "Everything in Free",
         "highlight1": "Commission drops from 10% to 5%",
         "highlight2": "Annual billing saves ~17%"
       },
       "pro": {
         "tagline": "A lower commission for established catalogs.",
-        "audience": "Creators earning around $3,500–$11,000 a month.",
+        "audience": "Creators with an established catalog.",
         "highlight0": "Everything in Starter",
         "highlight1": "Commission drops to 3%",
         "highlight2": "Priority human support"
       },
       "plus": {
         "tagline": "The lowest commission for high-volume creators.",
-        "audience": "Creators earning $11,000 a month and up.",
+        "audience": "Creators with a large catalog and steady sales.",
         "highlight0": "Everything in Pro",
         "highlight1": "Lowest commission — 2% per sale",
         "highlight2": "Dedicated launch reviews"
@@ -3125,8 +3123,12 @@
       "fees_and_payouts": "Fees and payouts",
       "your_buyers_pay_you_directly": "Your buyers pay you. Directly.",
       "skillsetmind_is_not_a_middleman_for": "SkillsetMind is not a middleman for your money. Learners charge your Stripe account, Stripe deducts our commission at the moment of the sale, and the rest is already yours — no platform balance, no platform holding period, no waiting for us to remit.",
-      "full_plan_comparison_sample_breakdowns_and": "Full plan comparison, sample breakdowns, and break-even points are on the",
-      "pricing_page": "pricing page"
+      "full_plan_comparison_sample_breakdowns_and": "Full plan comparison and sample breakdowns are on the",
+      "pricing_page": "pricing page",
+      "activation_fee": "One-time activation fee",
+      "activation_fee_detail": "A one-time activation fee of US${amount} unlocks the creator studio: drafting courses, uploading video, creating coupons, connecting a custom domain, and publishing. It is charged only when you complete the activation checkout yourself in the studio, never automatically, and once per creator account, never per course. It is not a subscription.",
+      "payout_countries": "Payout countries",
+      "payout_countries_detail": "Payouts go to your own Stripe account in a country where SkillsetMind supports Stripe payouts: currently the United States, Canada, the United Kingdom, Switzerland, the European Union, Liechtenstein and Norway. Latin America, including Brazil, is planned for later. Availability depends on Stripe and may change."
     },
     "helpSearch": {
       "search_help_articles": "Search help articles",
@@ -3200,7 +3202,7 @@
         "items": {
           "0": {
             "q": "Which plan should I start on?",
-            "a": "Start on Free if you're validating an idea — there's no subscription and you keep 90% of every $100 sale before Stripe fees. Move to Starter ($19/mo, 5% commission) once you cross about $380/mo in sales. Pro and Plus pay back as you scale further. The pricing page lays out the break-even point for each plan."
+            "a": "Start on Free if you're validating an idea — there's no subscription and you keep 90% of every $100 sale before Stripe fees. Paid plans add a monthly fee and lower the commission. The pricing page shows what each plan takes from a sample $100 sale."
           },
           "1": {
             "q": "What happens when I upgrade or downgrade?",
