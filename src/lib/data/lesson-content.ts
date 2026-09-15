@@ -43,7 +43,7 @@ export function subscribeToLessonContent(
   let active = true;
   let latestLoad = 0;
 
-  const load = async () => {
+  const load = async (quiet = false) => {
     const thisLoad = ++latestLoad;
     const { data, error } = await supabase
       .from("course_lesson_content")
@@ -56,6 +56,11 @@ export function subscribeToLessonContent(
     }
 
     if (error) {
+      // A recarga avulsa que falha mantém o conteúdo que já está na tela.
+      if (quiet) {
+        console.warn("Lesson content reload failed; keeping the previous content", error);
+        return;
+      }
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
     }
@@ -91,7 +96,7 @@ export function subscribeToLessonContent(
       active = false;
       void supabase.removeChannel(channel);
     },
-    { reload: load },
+    { reload: () => load(true) },
   );
 }
 

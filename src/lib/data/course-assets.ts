@@ -444,7 +444,7 @@ export function subscribeToCourseAssets(
   let latestLoad = 0;
   let delivered: CourseAsset[] = [];
 
-  const load = async () => {
+  const load = async (quiet = false) => {
     const thisLoad = ++latestLoad;
     try {
       const assets = await fetchCourseAssets(courseId);
@@ -454,6 +454,11 @@ export function subscribeToCourseAssets(
       callback(delivered);
     } catch (error) {
       if (!active || thisLoad !== latestLoad) return;
+      // A recarga avulsa que falha mantém a lista que já está na tela.
+      if (quiet) {
+        console.warn("Course assets reload failed; keeping the previous list", error);
+        return;
+      }
       onError(error instanceof Error ? error : new Error(String(error)));
     }
   };
@@ -481,7 +486,7 @@ export function subscribeToCourseAssets(
       active = false;
       void supabase.removeChannel(channel);
     },
-    { reload: load },
+    { reload: () => load(true) },
   );
 }
 

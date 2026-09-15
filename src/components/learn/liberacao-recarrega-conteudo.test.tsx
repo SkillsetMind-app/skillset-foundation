@@ -18,34 +18,43 @@ import type { Course } from "@/domain/learning";
 
 type Row = Record<string, unknown>;
 
+function makeEnrollment() {
+  return {
+    id: "student-1__course-1",
+    userId: "student-1",
+    courseId: "course-1",
+    courseSlug: "demo-course",
+    courseTitle: "Demo course",
+    courseCategory: "Leadership",
+    courseImage: "",
+    status: "active",
+    source: "payment",
+    progressPercent: 0,
+    lastLessonId: null as string | null,
+    createdAt: "2026-03-01T12:00:00.000Z",
+  };
+}
+
 const db = vi.hoisted(() => {
   const state = {
     tables: {} as Record<string, Row[]>,
     // Aulas que a RLS do banco já libera (o relógio do servidor).
     serverOpen: new Set<string>(),
+    // Tabelas cujo próximo select volta com erro.
+    failNext: new Set<string>(),
     selects: {} as Record<string, number>,
     subscribes: 0,
     signs: 0,
     realtime: new Map<string, () => void>(),
     searchParams: new URLSearchParams(),
     completed: null as null | ((ids: string[]) => void),
+    // Matrícula: entregue na hora, ou segurada até o teste emitir.
+    holdEnrollment: false,
+    emitEnrollment: null as null | ((value: unknown) => void),
+    enrollment: null as unknown,
     auth: {
       status: "authenticated",
       user: { uid: "student-1", email: "student@example.test", roles: ["student"] },
-    },
-    enrollment: {
-      id: "student-1__course-1",
-      userId: "student-1",
-      courseId: "course-1",
-      courseSlug: "demo-course",
-      courseTitle: "Demo course",
-      courseCategory: "Leadership",
-      courseImage: "",
-      status: "active",
-      source: "payment",
-      progressPercent: 0,
-      lastLessonId: null,
-      createdAt: "2026-03-01T12:00:00.000Z",
     },
   };
   const rowsFor = (table: string) =>
@@ -56,12 +65,18 @@ const db = vi.hoisted(() => {
   // visíveis naquele momento.
   const from = (table: string) => {
     state.selects[table] = (state.selects[table] ?? 0) + 1;
+    const failed = state.failNext.delete(table);
     const builder: unknown = new Proxy(
       {},
       {
         get: (_target, prop) =>
           prop === "then"
-            ? (resolve: (value: unknown) => void) => resolve({ data: rowsFor(table), error: null })
+            ? (resolve: (value: unknown) => void) =>
+                resolve(
+                  failed
+                    ? { data: null, error: { message: "falha simulada" } }
+                    : { data: rowsFor(table), error: null },
+                )
             : () => builder,
       },
     );
@@ -112,7 +127,10 @@ vi.mock("@/components/auth/auth-provider", () => ({
 
 vi.mock("@/lib/data/enrollments", () => ({
   subscribeToEnrollment: (_uid: string, _slug: string, onNext: (value: unknown) => void) => {
-    onNext(db.state.enrollment);
+    db.state.emitEnrollment = onNext;
+    if (!db.state.holdEnrollment) {
+      onNext(db.state.enrollment);
+    }
     return () => undefined;
   },
 }));
@@ -231,11 +249,15 @@ describe("a sala busca de novo só quando uma aula abre", () => {
       course_lesson_content: [contentRow("l1", "Texto da aula um"), contentRow("l2", "Texto da aula dois")],
     };
     db.state.serverOpen = new Set(["l1"]);
+    db.state.failNext = new Set();
     db.state.selects = {};
     db.state.subscribes = 0;
     db.state.signs = 0;
     db.state.realtime.clear();
     db.state.completed = null;
+    db.state.holdEnrollment = false;
+    db.state.emitEnrollment = null;
+    db.state.enrollment = makeEnrollment();
     window.requestAnimationFrame = (cb: FrameRequestCallback) => {
       cb(0);
       return 0;
@@ -245,6 +267,7 @@ describe("a sala busca de novo só quando uma aula abre", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it("volta para a aba sem aula nova liberada: nada é buscado e o vídeo não é reassinado", async () => {
@@ -301,7 +324,7 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     expect(counts().content).toBe(before.content + 2);
   });
 
-  it("sem a aula no banco, para depois de 3 tentativas extras", async () => {
+  it("perto do prazo, sem a aula no banco, para depois de 3 tentativas extras", async () => {
     await mount(timeDripCourse, "l2");
     const before = counts();
 
@@ -354,5 +377,94 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     });
     await flush();
     expect(counts().content).toBe(before.content + 1);
+  });
+
+  it("concluir uma aula traz a matrícula de novo (objeto novo): sem reinscrever os canais nem reassinar o vídeo", async () => {
+    await mount(sequentialCourse);
+    const before = counts();
+
+    // record_lesson_progress grava em enrollments, e a matrícula chega de novo
+    // pelo realtime como outro objeto.
+    db.state.serverOpen.add("l2");
+    await act(async () => {
+      db.state.completed?.(["l1"]);
+    });
+    await act(async () => {
+      db.state.emitEnrollment?.({ ...makeEnrollment(), progressPercent: 50, lastLessonId: "l1" });
+    });
+    await flush(minute);
+
+    expect(counts()).toEqual({
+      assets: before.assets + 1,
+      content: before.content + 1,
+      subscribes: before.subscribes,
+      signs: before.signs,
+    });
+  });
+
+  it("matrícula que chega depois da montagem: a aula 1 abre na hora, sem recarga extra", async () => {
+    db.state.holdEnrollment = true;
+    await mount(timeDripCourse);
+    await flush(10 * minute);
+
+    // Fluxo do checkout: a matrícula nasce agora, depois da montagem.
+    db.state.enrollment = { ...makeEnrollment(), createdAt: new Date(Date.now()).toISOString() };
+    await act(async () => {
+      db.state.emitEnrollment?.(db.state.enrollment);
+    });
+    await flush();
+    expect(db.state.signs).toBe(1);
+
+    const afterArrival = counts();
+    await flush(10 * second);
+    expect(counts()).toEqual(afterArrival);
+  });
+
+  it("uma conclusão dentro da janela de 30s não cancela a nova tentativa da aula que falta", async () => {
+    await mount(timeDripCourse, "l2");
+
+    // Prazo: a recarga volta sem a aula 2 (relógio do aparelho adiantado).
+    await flush(day + 6 * second);
+    expect(screen.queryByText("Texto da aula dois")).toBeNull();
+
+    // Outra mudança dentro da janela da nova tentativa.
+    await act(async () => {
+      db.state.completed?.(["l1"]);
+    });
+    await flush(10 * second);
+
+    db.state.serverOpen.add("l2");
+    await flush(minute);
+    expect(screen.getByText("Texto da aula dois")).toBeTruthy();
+  });
+
+  it("aula aberta sem conteúdo protegido (sequencial) gasta no máximo uma tentativa extra", async () => {
+    db.state.tables = {
+      course_assets: [assetRow("video-l1", "l1", "lesson_video", "video/mp4")],
+      course_lesson_content: [contentRow("l1", "Texto da aula um")],
+    };
+    await mount(sequentialCourse);
+    const before = counts();
+
+    db.state.serverOpen.add("l2");
+    await act(async () => {
+      db.state.completed?.(["l1"]);
+    });
+    await flush(5 * minute);
+
+    expect(counts().content).toBe(before.content + 1 + 1);
+  });
+
+  it("recarga que falha mantém os anexos na tela, sem estado de erro", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    await mount(timeDripCourse);
+    const before = counts();
+
+    db.state.serverOpen.add("l2");
+    db.state.failNext.add("course_assets");
+    await flush(day + 6 * second);
+
+    expect(document.getElementById("member-lesson-player")).not.toBeNull();
+    expect(counts().signs).toBe(before.signs);
   });
 });
