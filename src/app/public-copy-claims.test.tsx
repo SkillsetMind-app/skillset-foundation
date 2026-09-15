@@ -128,6 +128,8 @@ describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /
       "drafting before verification or activation",
       /before (professional )?verification is complete|draft courses immediately|antes de completar la verificación|preparar cursos de inmediato/i,
     ],
+    // The Free plan still charges the one-time activation, so "you only pay when you sell" is false.
+    ["paying only when you sell", /only pay when you sell|solo pagas cuando vendes/i],
     [
       "a free start",
       /\bstart(ing)? (teaching )?free\b|get started free|teach(ing)? free|free to start|free, takes minutes|empieza (a enseñar )?gratis|enseñar gratis|gratis para empezar|es gratis y toma/i,
@@ -195,7 +197,97 @@ describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /
     state.locale = locale;
     state.fee = fee;
     const { container } = render(wrap(locale, await Page()));
-    if (fee && path !== "home") expect(container.textContent).toMatch(feeSentence);
+    if (fee) expect(container.textContent).toMatch(feeSentence);
     else expect(container.textContent).not.toMatch(feeSentence);
+  });
+});
+
+// Production order: free signup, then professional verification where required,
+// then the one-time activation while it is required, then drafting, then
+// publishing after launch checks. Verification is not universal.
+describe("creator path order and conditions", () => {
+  const whereRequired = /where required|cuando se requiere/i;
+  const whileActivation = /while activation is required|mientras se exija la activación/i;
+  const at = (dict: object, path: string) => path.split(".").reduce<unknown>((node, key) => (node as Record<string, unknown>)[key], dict);
+
+  // Every key here is rendered: the home strips, /teach, /for-creators, /help,
+  // the footer, /trust, the instructor directory and profile, onboarding, the
+  // create-course start and the course builder.
+  it.each(dictionaries)("the %s lines that describe verification say it applies where required", (_locale, dict) => {
+    for (const path of [
+      "home.hero.trust1Desc",
+      "home.how.step1Activation",
+      "home.how.step3Desc",
+      "home.marketplace.sub",
+      "footer.tagline",
+      "teach.page.description",
+      "publicPages.creators.professional_verification_up_front_then_automated",
+      "publicPages.creators.creators_can_draft_after_verification",
+      "publicPages.helpFaq.course-creation.items.4.a",
+      "publicPages.trust.skillsetmind_verifies_professional_eligibility_before_publication",
+      "publicPages.directory.course_pages_still_show_verified_instructor",
+      "publicPages.profile.only_shows_published_courses_from_verified",
+      "onboarding.pathTeachDesc",
+      "courseCreation.privateDraft",
+      "creatorPanel.products.description",
+      "creatorEditor.builder.publish.help",
+    ]) {
+      expect(at(dict, path), path).toMatch(whereRequired);
+    }
+    expect(at(dict, "creatorEditor.builder.publish.help")).not.toMatch(/approved creator|creador aprobado/i);
+  });
+
+  it.each(dictionaries)("the %s activation lines say the activation applies while it is required", (_locale, dict) => {
+    for (const path of ["home.how.step1Activation", "teach.page.description"]) {
+      expect(at(dict, path), path).toMatch(whileActivation);
+    }
+  });
+
+  it("the help FAQ answer shared with the assistant says verification applies where required", () => {
+    const answer = helpFaqCategories.flatMap((category) => category.items).find((item) => item.id === "course-publishing")?.a;
+    expect(answer).toMatch(whereRequired);
+    expect(answer).not.toMatch(/Approved creators/);
+  });
+
+  it.each(dictionaries)("the %s /teach description puts verification before paying and activation before drafting", (_locale, dict) => {
+    expect(dict.teach.page.description).toMatch(/before you can pay|antes de que puedas pagar/);
+    expect(dict.teach.page.description).not.toMatch(/while SkillsetMind verifies|mientras SkillsetMind verifica/i);
+  });
+
+  // Connect Stripe answers 402 until the activation is paid (assertCreatorActivated).
+  it.each(["en", "es"])("%s home step 1 (fee configured) puts the activation before Stripe Express", async (locale) => {
+    state.locale = locale;
+    const text = String(render(await HowItWorksStrip()).container.textContent);
+    expect(text).toContain("US$25");
+    expect(text.indexOf("US$25")).toBeLessThan(text.indexOf("Stripe Express"));
+  });
+
+  it.each([
+    ["en", en],
+    ["es", es],
+  ] as const)("%s home step 1 names the activation only while the fee is configured", async (locale, dict) => {
+    state.locale = locale;
+    const step = dict.home.how.step1Activation.replace("{amount}", "25");
+    expect(render(await HowItWorksStrip()).container.textContent).toContain(step);
+    cleanup();
+    state.fee = false;
+    expect(render(await HowItWorksStrip()).container.textContent).not.toContain(step);
+  });
+
+  it.each([
+    ["en", en],
+    ["es", es],
+  ] as const)("%s /for-creators heading and no-fee paragraph carry their conditions", async (locale, dict) => {
+    state.locale = locale;
+    const withFee = render(await CreatorsPage()).container.textContent;
+    expect(withFee).toContain(dict.publicPages.creators.start_as_a_creator_publish_after);
+    expect(dict.publicPages.creators.start_as_a_creator_publish_after).toMatch(whileActivation);
+    cleanup();
+    state.fee = false;
+    const withoutFee = render(await CreatorsPage()).container.textContent;
+    expect(withoutFee).toContain(dict.publicPages.creators.creators_can_draft_after_verification);
+    expect(dict.publicPages.creators.creators_can_draft_after_verification).toMatch(
+      /^(Drafting courses in the studio is open\. Publishing needs|La preparación de cursos en el estudio está abierta\. Para publicar necesitas)/,
+    );
   });
 });

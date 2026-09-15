@@ -77,7 +77,7 @@ export const plans: ReadonlyArray<Plan> = [
     tagline: "Start selling without a subscription.",
     audience: "New creators validating an idea.",
     highlights: [
-      "No monthly fee — you only pay when you sell",
+      "No monthly fee — commission only when you sell",
       "Publish once your course passes the launch checks",
       "Stripe checkout in 30 currencies",
       "Buyers pay your own Stripe account — no platform hold on your money",

@@ -122,7 +122,7 @@
     "skipToContent": "Skip to content"
   },
   "footer": {
-    "tagline": "The course platform for coaches, facilitators and mentors who already teach live. Verified experts, no platform hold on your money, verifiable certificates.",
+    "tagline": "The course platform for coaches, facilitators and mentors who already teach live. Experts verified where required, no platform hold on your money, verifiable certificates.",
     "platform": "Platform",
     "creator": "Creator",
     "helpLegal": "Help & legal",
@@ -185,9 +185,9 @@
         "teacher": {
           "eyebrow": "SkillsetMind for experts",
           "title": "Teach the world what you know.",
-          "description": "Verify your professional profile, publish your program, sell in 30 currencies, and have buyers pay your own Stripe account directly. No website to build.",
+          "description": "Verify your professional profile where required, publish your program, sell in 30 currencies, and have buyers pay your own Stripe account directly. No website to build.",
           "point1Title": "Verified professionals",
-          "point1Desc": "Professional eligibility is verified before a creator can publish.",
+          "point1Desc": "Where required, professional eligibility is verified before a creator can publish.",
           "point2Title": "Sell in 30 currencies",
           "point2Desc": "Global checkout via Stripe. The charge lands in your own Stripe account.",
           "point3Title": "Verifiable certificates",
@@ -196,7 +196,7 @@
         "learner": {
           "eyebrow": "SkillsetMind for learners",
           "title": "Learn from people who do the work.",
-          "description": "Every program comes from a verified professional and remains subject to marketplace compliance monitoring. Pay in your currency, learn at your pace, and earn certificates anyone can verify.",
+          "description": "Every program comes from an independent professional, verified where required, and remains subject to marketplace compliance monitoring. Pay in your currency, learn at your pace, and earn certificates anyone can verify.",
           "point1Title": "Verified experts",
           "point1Desc": "Professional eligibility is checked before a creator can publish.",
           "point2Title": "Pay in your currency",
@@ -293,7 +293,7 @@
     "pathLearnTitle": "Learn with structure",
     "pathLearnDesc": "Access courses, events, communities, progress, and SkillsetMind Verified certificates.",
     "pathTeachTitle": "Teach and publish",
-    "pathTeachDesc": "Build courses, upload materials, schedule live sessions, and publish after professional verification.",
+    "pathTeachDesc": "Build courses, upload materials, schedule live sessions, and publish after professional verification where required.",
     "pathBothTitle": "Use both sides",
     "pathBothDesc": "Study, teach, and move between the learner area and educator studio from one account.",
     "emailVerificationTitle": "Email verification",
@@ -379,7 +379,7 @@
       "title2": "Now let it reach thousands.",
       "sub": "For coaches, facilitators and mentors who already teach live and want to sell their method as a course with a paid community, with no monthly fee. We run the checkout and the classroom — your buyers pay your own Stripe account, so we never hold a cent of your money. You teach.",
       "trust1Title": "Verified",
-      "trust1Desc": "Professionals are verified before they can publish, and live programs are monitored for compliance.",
+      "trust1Desc": "Where required, professionals are verified before they can publish, and live programs are monitored for compliance.",
       "trust2Title": "Global",
       "trust2Desc": "Multi-currency checkout in 30 currencies via Stripe.",
       "trust3Title": "Verifiable",
@@ -394,15 +394,16 @@
       "title": "Three steps from your method to a published program.",
       "step1Title": "Set up your studio",
       "step1Desc": "Open a Teacher Studio account, accept the Teacher Terms, and connect Stripe Express.",
+      "step1Activation": "Open a Teacher Studio account and accept the Teacher Terms. Where required, get your professional verification approved, then complete the one-time US${amount} activation (while activation is required). Then connect Stripe Express and start building.",
       "step2Title": "Build and publish",
       "step2Desc": "Build your modules and lessons in Course Builder. Set your price, complete the launch checks, and publish when ready.",
       "step3Title": "Reach people anywhere",
-      "step3Desc": "Once your professional verification and launch checks are complete, your course goes live when you publish. Compliance monitoring continues without holding up enrollment. Sell in 30 currencies, with every buyer charged on your own Stripe account — no platform hold."
+      "step3Desc": "Once your launch checks are complete (and your professional verification is approved, where required), your course goes live when you publish. Compliance monitoring continues without holding up enrollment. Sell in 30 currencies, with every buyer charged on your own Stripe account — no platform hold."
     },
     "marketplace": {
       "kicker": "The marketplace",
       "title": "Courses by verified experts, ready to learn.",
-      "sub": "Every course is built by an independent professional verified by SkillsetMind, with live programs monitored for marketplace compliance.",
+      "sub": "Every course is built by an independent professional, verified by SkillsetMind where required, with live programs monitored for marketplace compliance.",
       "browseAll": "Browse all courses",
       "viewCourse": "View course",
       "emptyTitle": "Marketplace opens soon — be one of the first teachers.",
@@ -1658,7 +1659,7 @@
     "page": {
       "eyebrow": "Teacher Studio",
       "title": "Build, ship, get paid.",
-      "description": "Draft a course and prepare the learner experience while SkillsetMind verifies your professional profile. Once approved, publish directly and start selling."
+      "description": "While activation is required, drafting opens after your one-time activation, and professional verification, where required, must be approved before you can pay. Publishing always needs verification (where required) and passing the launch checks."
     },
     "dashboard": {
       "welcomeBackNamed": "Welcome back, {name}.",
@@ -2447,7 +2448,7 @@
     },
     "products": {
       "eyebrow": "Products",
-      "description": "Create private drafts, complete the product checks, and publish directly once your professional verification is approved.",
+      "description": "Create private drafts, complete the product checks, and publish directly once your professional verification is approved (where required).",
       "productWorkspace": "Product workspace",
       "communityWorkspace": "Community workspace",
       "loading": "Loading products...",
@@ -2886,7 +2887,7 @@
       "protected_student_workspace_with_progress_files": "Protected student workspace with progress, files, and certificates.",
       "course_linked_community_events_and_future": "Course-linked community, events, and future notifications.",
       "stripe_connect_onboarding_refund_controls_and": "Stripe Connect onboarding, refund controls, and a full earnings ledger — the record lives here, the money lives in your Stripe account.",
-      "professional_verification_up_front_then_automated": "Professional verification up front, then automated compliance checks that never block your launch.",
+      "professional_verification_up_front_then_automated": "Professional verification up front where required, then automated compliance checks that never block your launch.",
       "shareable_course_links_for_simple_launch": "Shareable course links for simple launch campaigns.",
       "teach_on_skillsetmind": "Teach on SkillsetMind",
       "publish_professional_courses_to_a_global": "Publish professional courses to a global audience. Start on the Free plan (no monthly fee) at {value0}% commission, buyers pay your Stripe account directly, course community and certificates included on every plan.",
@@ -2900,11 +2901,11 @@
       "buyers_are_charged_on_your_own": "Buyers are charged on your own Stripe account — no platform hold on your money. Start on the Free plan (no monthly fee) at 10% commission; upgrade to drop it to 5%, 3%, or 2%.",
       "see_all_four_plans": "See all four plans",
       "creator_path": "Creator path",
-      "start_as_a_creator_publish_after": "Activate your studio once, then draft and publish.",
+      "start_as_a_creator_publish_after": "Activate your studio once (while activation is required), then draft and publish.",
       "creators_can_draft_courses_immediately_professional": "Once your one-time activation is complete (and your professional verification is approved, where required), you can draft courses in the studio. Deterministic launch checks then protect marketplace quality without making every course wait for manual approval.",
       "create_account": "Create account",
       "draft_then_publish": "Draft, then publish when your launch checks pass.",
-      "creators_can_draft_after_verification": "Once your professional verification is approved (where required), you can draft courses in the studio. Deterministic launch checks then protect marketplace quality without making every course wait for manual approval."
+      "creators_can_draft_after_verification": "Drafting courses in the studio is open. Publishing needs your professional verification approved (where required), and deterministic launch checks then protect marketplace quality without making every course wait for manual approval."
     },
     "promise": {
       "fee_lock_for_24_months": "Fee-lock for 24 months",
@@ -2973,7 +2974,7 @@
     "directory": {
       "loading_instructors": "Loading instructors...",
       "instructor_profiles_could_not_load_right": "Instructor profiles could not load right now.",
-      "course_pages_still_show_verified_instructor": "Course pages still show verified instructor identity when a public profile is available.",
+      "course_pages_still_show_verified_instructor": "Course pages still show the instructor's identity, verified where required, when a public profile is available.",
       "first_cohort": "First cohort",
       "public_instructor_profiles_appear_after_review": "Public instructor profiles appear after review.",
       "skillsetmind_only_lists_real_published_profiles": "SkillsetMind only lists real published profiles. New creators can finish onboarding and submit their first reviewed course before they appear here.",
@@ -3005,7 +3006,7 @@
       "browse_all_courses": "Browse all courses",
       "no_public_courses_yet": "No public courses yet",
       "this_instructor_s_first_courses_will": "This instructor's first courses will appear here.",
-      "only_shows_published_courses_from_verified": " only shows published courses from verified professionals on instructor storefronts. Browse the marketplace to see what is live now.",
+      "only_shows_published_courses_from_verified": " only shows published courses on instructor storefronts, and publishing needs professional verification where required. Browse the marketplace to see what is live now.",
       "loading_instructor_profile": "Loading instructor profile...",
       "courses_error": "Instructor courses could not load right now.",
       "fallback_name": "{brand} instructor",
@@ -3032,7 +3033,7 @@
       "free": {
         "tagline": "Start selling without a subscription.",
         "audience": "New creators validating an idea.",
-        "highlight0": "No monthly fee — you only pay when you sell",
+        "highlight0": "No monthly fee — commission only when you sell",
         "highlight1": "Publish once your course passes the launch checks",
         "highlight2": "Stripe checkout in 30 currencies",
         "highlight3": "Buyers pay your own Stripe account — no platform hold on your money",
@@ -3090,7 +3091,7 @@
       "trust_and_safety": "Trust and safety",
       "skillsetmind_is_built_around_controlled_course": "SkillsetMind is built around controlled course publication, protected student access, course payments that go straight to the creator's own Stripe account, moderation, and verifiable learning outcomes.",
       "verified_professionals": "Verified professionals",
-      "skillsetmind_verifies_professional_eligibility_before_publication": "SkillsetMind verifies professional eligibility before publication and monitors live programs for marketplace compliance.",
+      "skillsetmind_verifies_professional_eligibility_before_publication": "Where required, SkillsetMind verifies professional eligibility before publication, and it monitors live programs for marketplace compliance.",
       "protected_access": "Protected access",
       "learning_workspaces_open_only_after_enrollment": "Learning workspaces open only after enrollment — no public links bypass paid access.",
       "refund_controls": "Refund controls",
@@ -3195,7 +3196,7 @@
           },
           "4": {
             "q": "How does publishing work?",
-            "a": "SkillsetMind verifies the professional rather than manually approving every course. Approved creators publish directly after the builder checks the course structure, price, payout setup, and public preview reference. Automated compliance checks may flag exceptional cases after publication without silently taking a product down."
+            "a": "SkillsetMind verifies the professional, where required, rather than manually approving every course. Creators publish directly after the builder checks the course structure, price, payout setup, and public preview reference. Automated compliance checks may flag exceptional cases after publication without silently taking a product down."
           }
         }
       },
@@ -3804,7 +3805,7 @@
         "title": "Publish readiness",
         "heading": "Ready the product for launch",
         "helpTopic": "Course publishing",
-        "help": "SkillsetMind verifies the professional rather than manually approving every course. Once these product checks pass, an approved creator publishes directly and the marketplace link opens immediately.",
+        "help": "SkillsetMind verifies the professional, where required, rather than manually approving every course. Once these product checks pass (and your professional verification is approved, where required), you publish directly and the marketplace link opens right away.",
         "optional": "Optional",
         "checksHelp": "SkillsetMind gates the professional, not each course. Product, pricing, and payout checks run before the marketplace link opens.",
         "finish": "Finish the publication checks to go live.",
@@ -4696,7 +4697,7 @@
     "createError": "We could not create this course. Please try again.",
     "activationError": "Activate your storefront to unlock publishing: a one-time activation fee, charged once per creator account, never per course.",
     "intro": "Pick the access model and the essential information here. Pricing, lessons, and publication continue in the builder.",
-    "privateDraft": "This creates a private draft. Nothing becomes visible or sellable before professional verification and publication.",
+    "privateDraft": "This creates a private draft. Nothing becomes visible or sellable before you publish, and publishing needs professional verification where required.",
     "formatHelp": "The format defines how learners receive access. Commercial terms remain editable in Pricing and offers.",
     "categoryHelp": "Categories determine where buyers discover the product and how SkillsetMind groups related expertise. Choose the most specific fit first; that first selection becomes the primary marketplace category.",
     "products": "My products",
