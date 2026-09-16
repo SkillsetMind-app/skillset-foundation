@@ -70,6 +70,26 @@ jobs:
           git -c core.quotePath=false diff --name-only -z --no-renames "$BASE...$HEAD" > "$RUNNER_TEMP/pr.names"
           echo "diff: $(wc -c < "$RUNNER_TEMP/pr.diff") bytes"
 
+      # Quem julga o PR é o portão da BASE, nunca a cópia do PR. `pull_request`
+      # faz checkout do merge do PR, e este job recebe os secrets: rodar
+      # `scripts/porteiro.py` do checkout significa executar código do PR com as
+      # chaves na mão. PR de fork não recebe secret, mas PR interno recebe — e um
+      # agente com acesso de escrita abre PR interno. Com o passo abaixo, o código
+      # do PR vira só DADO (o diff), e quem lê é o script já revisado da base.
+      # `git show` falha => o passo falha => check vermelho (fail-closed).
+      # SEM timeout-minutes de propósito: test_E toma o MENOR timeout-minutes do
+      # arquivo como teto da cadeia. E o destino não pode ser "$RUNNER_TEMP/pr.*":
+      # comandos_do_workflow() casa esse padrão para rodar o diff de verdade.
+      # Não fecha sozinho o furo: este arquivo ainda é a cópia do PR (ver o PR).
+      - name: Extrai o portão da base
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/portao-da-base"
+          git show "$BASE:scripts/porteiro.py" > "$RUNNER_TEMP/portao-da-base/porteiro.py"
+          echo "portão da base: $(wc -c < "$RUNNER_TEMP/portao-da-base/porteiro.py") bytes"
+
       # continue-on-error: o placar precisa ser publicado mesmo quando o
       # veredito é "não analisado" ou "bloqueante". O passo final replica a falha.
       # Cadeia de reserva: sem veredito do GLM (sem saldo, chave recusada,
@@ -93,7 +113,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           REPO: ${{ github.repository }}
-        run: python3 scripts/porteiro.py --diff "$RUNNER_TEMP/pr.diff" --nomes "$RUNNER_TEMP/pr.names" --placar "$RUNNER_TEMP/placar.md"
+        run: python3 "$RUNNER_TEMP/portao-da-base/porteiro.py" --diff "$RUNNER_TEMP/pr.diff" --nomes "$RUNNER_TEMP/pr.names" --placar "$RUNNER_TEMP/placar.md"
 
       # Um comentário só por PR, atualizado a cada push (--edit-last edita o
       # último comentário do próprio bot; se não existe, cria).
