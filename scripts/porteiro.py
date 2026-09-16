@@ -131,7 +131,12 @@ def le_cadeia(env) -> list[Provedor]:
 CAMINHOS_DE_RISCO = (
     "src/lib/payments/*", "src/app/api/*", "src/proxy.ts", "supabase/*",
     "*auth*", "*policy*", "*policies*", "src/lib/ops/*", "src/lib/supabase/*",
-    ".github/workflows/*", "scripts/porteiro.py", "scripts/test_porteiro.py",
+    ".github/workflows/*",
+    # Todo scripts/*, não só os dois do portão: o CI executa vários (o
+    # backup-supabase.sh roda no backup.yml com o acesso do banco; o ci.yml roda
+    # build-test-db.sh e os check-*.mjs) e os setup-*/create-*.mjs mexem na
+    # Stripe. Fora da lista, num diff grande, nenhum deles chegava ao modelo.
+    "scripts/*",
 )
 # Lockfile decide de onde vem o código instalado ("resolved"/"integrity"):
 # é caminho de risco, lido pelo nome do arquivo em qualquer pasta.
