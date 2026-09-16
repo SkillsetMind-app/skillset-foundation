@@ -422,6 +422,14 @@ class CadeiaDeReservaTest(unittest.TestCase):
         for caminho in ("scripts/porteiro.py", "scripts/test_porteiro.py", ".github/workflows/porteiro.yml"):
             self.assertTrue(porteiro.eh_de_risco(caminho), caminho)
 
+    def test_F2_scripts_que_o_ci_executa_sao_caminho_de_risco(self):
+        # O backup.yml roda backup-supabase.sh com o acesso do banco; o ci.yml roda
+        # build-test-db.sh; os setup-*.mjs mexem na Stripe. Fora da lista, num diff
+        # grande, o modelo não lê. json.py: um PR que só planta um módulo em scripts/.
+        for caminho in ("scripts/backup-supabase.sh", "scripts/build-test-db.sh",
+                        "scripts/setup-stripe-billing.mjs", "scripts/json.py"):
+            self.assertTrue(porteiro.eh_de_risco(caminho), caminho)
+
     # ---- Round 3: quoted paths (major 1) ---------------------------------
     @unittest.skipUnless(shutil.which("git"), "git not installed")
     def test_G_cabecalho_entre_aspas_do_git_de_verdade(self):
