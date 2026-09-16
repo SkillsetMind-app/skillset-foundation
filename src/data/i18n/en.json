@@ -196,7 +196,7 @@
         "learner": {
           "eyebrow": "SkillsetMind for learners",
           "title": "Learn from people who do the work.",
-          "description": "Every program comes from an independent professional, verified where required, and remains subject to marketplace compliance monitoring. Pay in your currency, learn at your pace, and earn certificates anyone can verify.",
+          "description": "Every program comes from an independent professional, verified where required. Pay in your currency, learn at your pace, and earn certificates anyone can verify.",
           "point1Title": "Verified experts",
           "point1Desc": "Professional eligibility is checked before a creator can publish.",
           "point2Title": "Pay in your currency",
@@ -376,10 +376,10 @@
     "hero": {
       "eyebrow": "For coaches, facilitators & mentors",
       "title1": "Your knowledge changes lives.",
-      "title2": "Now let it reach thousands.",
+      "title2": "Now turn it into a course.",
       "sub": "For coaches, facilitators and mentors who already teach live and want to sell their method as a course with a paid community, with no monthly fee. We run the checkout and the classroom — your buyers pay your own Stripe account, so we never hold a cent of your money. You teach.",
       "trust1Title": "Verified",
-      "trust1Desc": "Where required, professionals are verified before they can publish, and live programs are monitored for compliance.",
+      "trust1Desc": "Where required, professionals are verified before they can publish, and courses that break marketplace standards can be paused or removed.",
       "trust2Title": "Global",
       "trust2Desc": "Multi-currency checkout in 30 currencies via Stripe.",
       "trust3Title": "Verifiable",
@@ -398,12 +398,12 @@
       "step2Title": "Build and publish",
       "step2Desc": "Build your modules and lessons in Course Builder. Set your price, complete the launch checks, and publish when ready.",
       "step3Title": "Reach people anywhere",
-      "step3Desc": "Once your launch checks are complete (and your professional verification is approved, where required), your course goes live when you publish. Compliance monitoring continues without holding up enrollment. Sell in 30 currencies, with every buyer charged on your own Stripe account — no platform hold."
+      "step3Desc": "Once your launch checks are complete (and your professional verification is approved, where required), your course goes live when you publish. Sell in 30 currencies, with every buyer charged on your own Stripe account — no platform hold."
     },
     "marketplace": {
       "kicker": "The marketplace",
       "title": "Courses by verified experts, ready to learn.",
-      "sub": "Every course is built by an independent professional, verified by SkillsetMind where required, with live programs monitored for marketplace compliance.",
+      "sub": "Every course is built by an independent professional, verified by SkillsetMind where required.",
       "browseAll": "Browse all courses",
       "viewCourse": "View course",
       "emptyTitle": "Marketplace opens soon — be one of the first teachers.",
@@ -445,7 +445,7 @@
     },
     "creators": {
       "eyebrow": "For coaches, facilitators & mentors",
-      "title": "Reach more people than your live sessions ever could.",
+      "title": "Teach beyond the limits of your live sessions.",
       "ctaStart": "Start teaching",
       "ctaPromise": "Read the Creator Promise",
       "bullet1": "Keep {keep}% on Free, before Stripe processing fees. Scale to Plus and your commission can drop to 2%.",
@@ -2598,7 +2598,7 @@
     "clearFilters": "Clear filters",
     "openingSoon": "Marketplace opening soon",
     "firstCourses": "The first courses are on the way.",
-    "openingBody": "SkillsetMind reviews every course in the catalog to keep quality high. Want to be among the first educators to publish here? You can start today.",
+    "openingBody": "Every course here comes from an independent professional, verified where required. Want to be among the first educators to publish here? You can start today.",
     "startTeaching": "Start teaching",
     "creatorOverview": "Creator overview",
     "loadCoursesError": "Courses could not load right now. Refresh the page to try again.",
@@ -2718,7 +2718,7 @@
     "browseLive": "Browse live courses to enroll",
     "sampleMember": "“{title}” is a sample program from the SkillsetMind catalog. Open the live marketplace to enroll in courses published by independent experts.",
     "browseTitle": "Browse courses",
-    "browseDescription": "Browse professional courses on SkillsetMind. Every course is reviewed by our team, with course communities, live sessions, and SkillsetMind Verified certificates.",
+    "browseDescription": "Browse professional courses on SkillsetMind, with course communities, live sessions, and SkillsetMind Verified certificates.",
     "marketplace": "Marketplace",
     "findCourse": "Find the right course.",
     "browseBody": "Browse professional courses, filter by category, preview free lessons, and enroll when you find the right fit.",
@@ -2887,10 +2887,10 @@
       "protected_student_workspace_with_progress_files": "Protected student workspace with progress, files, and certificates.",
       "course_linked_community_events_and_future": "Course-linked community, events, and future notifications.",
       "stripe_connect_onboarding_refund_controls_and": "Stripe Connect onboarding, refund controls, and a full earnings ledger — the record lives here, the money lives in your Stripe account.",
-      "professional_verification_up_front_then_automated": "Professional verification up front where required, then automated compliance checks that never block your launch.",
+      "professional_verification_up_front_then_automated": "Professional verification up front where required, then publishing that never waits for a manual course review.",
       "shareable_course_links_for_simple_launch": "Shareable course links for simple launch campaigns.",
       "teach_on_skillsetmind": "Teach on SkillsetMind",
-      "publish_professional_courses_to_a_global": "Publish professional courses to a global audience. Start on the Free plan (no monthly fee) at {value0}% commission, buyers pay your Stripe account directly, course community and certificates included on every plan.",
+      "publish_professional_courses_to_a_global": "Publish professional courses from your own studio. Start on the Free plan (no monthly fee) at {value0}% commission, buyers pay your Stripe account directly, course community and certificates included on every plan.",
       "for_creators": "For creators",
       "teach_with_a_real_course_operating": "Teach with a real course operating system.",
       "skillsetmind_is_designed_for_experts_who": "For coaches, facilitators and mentors who already teach live and want to sell their method as a course with a paid community, with no monthly fee.",
@@ -3051,15 +3051,13 @@
         "tagline": "A lower commission for established catalogs.",
         "audience": "Creators with an established catalog.",
         "highlight0": "Everything in Starter",
-        "highlight1": "Commission drops to 3%",
-        "highlight2": "Priority human support"
+        "highlight1": "Commission drops to 3%"
       },
       "plus": {
         "tagline": "The lowest commission for high-volume creators.",
         "audience": "Creators with a large catalog and steady sales.",
         "highlight0": "Everything in Pro",
-        "highlight1": "Lowest commission — 2% per sale",
-        "highlight2": "Dedicated launch reviews"
+        "highlight1": "Lowest commission — 2% per sale"
       }
     },
     "help": {
@@ -3091,7 +3089,7 @@
       "trust_and_safety": "Trust and safety",
       "skillsetmind_is_built_around_controlled_course": "SkillsetMind is built around controlled course publication, protected student access, course payments that go straight to the creator's own Stripe account, moderation, and verifiable learning outcomes.",
       "verified_professionals": "Verified professionals",
-      "skillsetmind_verifies_professional_eligibility_before_publication": "Where required, SkillsetMind verifies professional eligibility before publication, and it monitors live programs for marketplace compliance.",
+      "skillsetmind_verifies_professional_eligibility_before_publication": "Where required, SkillsetMind verifies professional eligibility before publication, and it can pause or remove courses that break marketplace standards.",
       "protected_access": "Protected access",
       "learning_workspaces_open_only_after_enrollment": "Learning workspaces open only after enrollment — no public links bypass paid access.",
       "refund_controls": "Refund controls",
@@ -3196,7 +3194,7 @@
           },
           "4": {
             "q": "How does publishing work?",
-            "a": "SkillsetMind verifies the professional, where required, rather than manually approving every course. Creators publish directly after the builder checks the course structure, price, payout setup, and public preview reference. Automated compliance checks may flag exceptional cases after publication without silently taking a product down."
+            "a": "SkillsetMind verifies the professional, where required, rather than manually approving every course. Creators publish directly after the builder checks the course structure, price, payout setup, and public preview reference. After publication, SkillsetMind can pause or remove a course that breaks marketplace standards."
           }
         }
       },
@@ -5211,7 +5209,7 @@
   "legalPages": {
     "common": {
       "kicker": "Legal",
-      "effectiveDate": "September 15, 2026",
+      "effectiveDate": "September 16, 2026",
       "effectiveLabel": "Effective {date}"
     },
     "privacy": {
@@ -5284,7 +5282,7 @@
       "text5": "SkillsetMind uses a single account with up to two roles: learner (enrolling in courses) and educator (publishing courses). You choose your role after registration and may hold both under the same account. Registration requires a valid email address and password; authentication is provided through our infrastructure provider, Supabase.",
       "text6": "You are responsible for all activity under your account and for keeping your credentials secure. Accounts are personal and non-transferable. Notify us promptly at <support>support@skillsetmind.com</support> if you believe your account has been accessed without authorization. You must provide accurate information and keep it current.",
       "text7": "SkillsetMind provides the technology to host and deliver courses: video classrooms, private per-course communities, live sessions, publicly verifiable certificates, and course reviews by enrolled learners. Courses are created by independent educators, not by SkillsetMind.",
-      "text8": "Educators must complete professional verification before publishing. SkillsetMind monitors live programs and may review reported content for policy compliance. Verification and monitoring are not an endorsement, certification, or guarantee of any course's accuracy, effectiveness, or fitness for your needs.",
+      "text8": "Where SkillsetMind requires it, educators must complete professional verification before publishing. SkillsetMind may review content reported to it for policy compliance, and may pause or remove courses that break marketplace standards. Verification and review are not an endorsement, certification, or guarantee of any course's accuracy, effectiveness, or fitness for your needs.",
       "text9": "Enrolling in a course grants you a personal, non-transferable, non-exclusive, revocable license to access that course's content for your own learning. You may not resell, redistribute, publicly display, record, or share paid course materials, or grant access to anyone else. Course availability, structure, and pricing are set by the educator and may change over time.",
       "text10": "Courses on SkillsetMind are instructional products. They are <strong>not psychotherapy, counseling, medical care, or a substitute for treatment</strong>, and no therapist-client or doctor-patient relationship is created by enrolling in a course or participating in a community or live session. If you are experiencing a mental-health crisis, contact local emergency services or a crisis hotline immediately. Decisions about your health should be made with a qualified professional who treats you individually.",
       "text11": "Paid enrollments and educator subscriptions are processed by Stripe. SkillsetMind does not store full payment card numbers. Prices are shown at checkout in the listed currency, and you authorize the charge when you confirm a purchase. You are responsible for any taxes, duties, or bank fees that apply to your purchase under your local law.",
@@ -5344,7 +5342,7 @@
       "text6": "You retain full ownership of the intellectual property in the content you create. By publishing on SkillsetMind you grant us a non-exclusive, worldwide license to host, encode, display, and deliver your content to your enrolled students, and to use your course title, description, cover image, and public profile to promote your course on and off the platform. This license ends for a course when you remove it, except for students already enrolled, who keep the access they paid for.",
       "text7": "There is no exclusivity. You may sell the same or similar content anywhere else.",
       "text8": "You are solely responsible for the accuracy, originality, legality, and student safety of everything you publish — videos, materials, community posts, and live sessions. You must own or have the rights to everything in your course, including music, images, and excerpts.",
-      "text9": "You must complete professional verification before publishing. SkillsetMind monitors live programs and may review reported content for policy compliance; this does not transfer responsibility for your content to SkillsetMind. Automated compliance signals do not automatically unpublish a course. After a human operations decision, courses may be paused or removed if they fail trust, payment, safety, or content standards.",
+      "text9": "Where SkillsetMind requires it, you must complete professional verification before publishing. SkillsetMind may review content reported to it for policy compliance; this does not transfer responsibility for your content to SkillsetMind. Automated compliance signals do not automatically unpublish a course. After a human operations decision, courses may be paused or removed if they fail trust, payment, safety, or content standards.",
       "text10": "SkillsetMind serves coaches, facilitators, and personal-development professionals. It is not a venue for licensed clinical practice, so this boundary is strict:",
       "text11": "Courses must be instructional. A course may teach methods, frameworks, and skills; it may not deliver individualized clinical care, diagnosis, or treatment disguised as a course.",
       "text12": "You may not use courses, communities, or live sessions to create a therapist-client, counselor-client, or practitioner-patient relationship with students, nor present course participation as a substitute for therapy or medical treatment.",

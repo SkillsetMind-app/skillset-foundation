@@ -76,7 +76,7 @@ const PLANS = [
     id: "starter",
     name: "Skillset Starter",
     description:
-      "Lower commission as sales grow. 4% per sale. Every Skillset feature included.",
+      "Lower commission as sales grow: 5% per sale.",
     monthlyUsd: 19,
     yearlyUsd: 190,
   },
@@ -84,14 +84,14 @@ const PLANS = [
     id: "pro",
     name: "Skillset Pro",
     description:
-      "Almost zero commission for established catalogs. 1% per sale. Priority support.",
+      "A lower commission for established catalogs: 3% per sale.",
     monthlyUsd: 89,
     yearlyUsd: 890,
   },
   {
     id: "plus",
     name: "Skillset Plus",
-    description: "Zero commission for high-volume creators. Dedicated launch reviews.",
+    description: "The lowest commission for high-volume creators: 2% per sale.",
     monthlyUsd: 199,
     yearlyUsd: 1990,
   },

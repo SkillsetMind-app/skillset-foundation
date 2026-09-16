@@ -118,7 +118,6 @@ export const plans: ReadonlyArray<Plan> = [
     highlights: [
       "Everything in Starter",
       "Commission drops to 3%",
-      "Priority human support",
     ],
   },
   {
@@ -136,7 +135,6 @@ export const plans: ReadonlyArray<Plan> = [
     highlights: [
       "Everything in Pro",
       "Lowest commission — 2% per sale",
-      "Dedicated launch reviews",
     ],
   },
 ];

@@ -179,7 +179,7 @@ describe("seções de marketing viraram servidor", () => {
     ["how it works", HowItWorksStrip, "Three steps from your method to a published program."],
     ["capabilities", CapabilitiesGrid, "Everything your program needs is already built in."],
     ["promise", PromisePreviewBand, "Six commitments. Written down. Public."],
-    ["for creators", ForCreatorsBand, "Reach more people than your live sessions ever could."],
+    ["for creators", ForCreatorsBand, "Teach beyond the limits of your live sessions."],
   ])(
     "%s continua renderizando o texto traduzido",
     async (_name, Section, text) => {

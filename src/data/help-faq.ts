@@ -61,7 +61,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       {
         id: "course-publishing",
         q: "How does publishing work?",
-        a: "SkillsetMind verifies the professional, where required, rather than manually approving every course. Creators publish directly after the builder checks the course structure, price, payout setup, and public preview reference. Automated compliance checks may flag exceptional cases after publication without silently taking a product down.",
+        a: "SkillsetMind verifies the professional, where required, rather than manually approving every course. Creators publish directly after the builder checks the course structure, price, payout setup, and public preview reference. After publication, SkillsetMind can pause or remove a course that breaks marketplace standards.",
       },
     ],
   },
