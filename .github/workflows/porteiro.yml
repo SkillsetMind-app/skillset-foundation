@@ -79,7 +79,10 @@ jobs:
       # apontar para um branch próprio com um portão falso. E base antiga (sem o
       # arquivo, ou de antes do --nomes) deixava o PR vermelho sem análise.
       # O nome do branch padrão vem dos metadados do repositório, que o PR não
-      # controla. O fetch nomeado garante a ref (nunca FETCH_HEAD).
+      # controla. O fetch nomeado garante a ref (nunca FETCH_HEAD), e a leitura usa
+      # o NOME COMPLETO refs/remotes/origin/...: com fetch-depth 0 o checkout baixa
+      # todas as tags, e uma tag "origin/main" venceria o nome curto "origin/main"
+      # (o git só avisa "ambiguous") — trocando o portão de todos os PRs.
       # `cat-file blob`, não `show`: é o comando de encanamento cuja saída é o
       # blob cru, sem textconv, filtro ou conversão de fim de linha (isso só com
       # --filters/--textconv, que não usamos). O .gitattributes do PR não tem
@@ -96,8 +99,8 @@ jobs:
           set -euo pipefail
           git fetch --no-tags origin "+refs/heads/$PADRAO:refs/remotes/origin/$PADRAO"
           mkdir -p "$RUNNER_TEMP/portao-do-padrao"
-          git cat-file blob "origin/$PADRAO:scripts/porteiro.py" > "$RUNNER_TEMP/portao-do-padrao/porteiro.py"
-          echo "portão de origin/$PADRAO ($(git rev-parse --short "origin/$PADRAO")): $(wc -c < "$RUNNER_TEMP/portao-do-padrao/porteiro.py") bytes"
+          git cat-file blob "refs/remotes/origin/$PADRAO:scripts/porteiro.py" > "$RUNNER_TEMP/portao-do-padrao/porteiro.py"
+          echo "portão de origin/$PADRAO ($(git rev-parse --short "refs/remotes/origin/$PADRAO")): $(wc -c < "$RUNNER_TEMP/portao-do-padrao/porteiro.py") bytes"
 
       # continue-on-error: o placar precisa ser publicado mesmo quando o
       # veredito é "não analisado" ou "bloqueante". O passo final replica a falha.
