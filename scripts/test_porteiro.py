@@ -446,6 +446,18 @@ class CadeiaDeReservaTest(unittest.TestCase):
         self.assertIn("1 bloqueante", placar)
         self.assertIn("core.quotePath=false diff", WORKFLOW.read_text(encoding="utf-8"))
 
+    def test_G1_workflow_pega_o_portao_do_branch_padrao_pelo_nome_completo(self):
+        # Quem julga o PR é o portão do branch padrão, nunca a cópia do PR nem a base
+        # (o autor escolhe a base). Nome COMPLETO da ref: com fetch-depth 0 o checkout
+        # baixa as tags, e uma tag "origin/main" venceria o nome curto.
+        yml = WORKFLOW.read_text(encoding="utf-8")
+        extrai = [l.strip() for l in yml.splitlines() if l.strip().startswith("git cat-file blob")]
+        self.assertEqual(len(extrai), 1, extrai)
+        self.assertIn('"refs/remotes/origin/$PADRAO:scripts/porteiro.py"', extrai[0])
+        self.assertIn("${{ github.event.repository.default_branch }}", yml)
+        self.assertIn('python3 "$RUNNER_TEMP/portao-do-padrao/porteiro.py"', yml)
+        self.assertNotIn("python3 scripts/porteiro.py --diff", yml)
+
     def test_G2_diff_com_conteudo_sem_cabecalho_lido_da_3(self):
         for diff in ("+x\n-y\n", "diff --git c/x d/x\n+x\n", 'diff --git a/a b/a\n+x\ndiff --git "a/q\n+y\n'):
             for modo in ("avisa", "barra"):
