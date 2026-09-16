@@ -102,7 +102,7 @@ describe("legal document translation from the request cookie", () => {
       request.locale = cookie;
       const view = render(await Page());
       expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(englishReference[key].title);
-      expect(screen.getByText("Effective September 15, 2026")).toBeInTheDocument();
+      expect(screen.getByText("Effective September 16, 2026")).toBeInTheDocument();
       view.unmount();
     }
   });
@@ -127,7 +127,7 @@ describe("legal document translation from the request cookie", () => {
         expect(translated).not.toMatch(/<[^>]+\s[^>]*>|<\/?(?:script|iframe|img|Link|a)\b/);
       }
     }
-    expect(es.common.effectiveDate).toBe("15 de septiembre de 2026");
+    expect(es.common.effectiveDate).toBe("16 de septiembre de 2026");
   });
 
   it.each(["en", "es"] as const)("discloses provider data and conditional use in %s, without promising prompt redaction", async (locale) => {
