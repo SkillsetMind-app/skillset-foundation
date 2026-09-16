@@ -95,7 +95,17 @@ PROVEDORES = {
 # Só entra aqui reserva que passou no controle adversarial do portão (15/09/2026:
 # as quatro, 8/8 cada; glm-5 20/20 em 02/09). gpt-5.5 fica por último caso o
 # gpt-6-astra saia do preview. Ordem diferente: PORTEIRO_CADEIA, sem mexer no código.
+# Produção (decisão de 15/09/2026, 72 análises reais em
+# skillset-ops/protecao-glm/avaliacao-modelo-openai-2026-09-15/DECISAO.md): quem
+# manda é a variável, com openai:gpt-5.6-terra na frente, depois gpt-6-astra,
+# kimi-k3 e kimi-k2.6. Esta padrão só vale com a variável vazia ou só com RECUSAM.
 CADEIA_PADRAO = "zai:{primario},kimi:kimi-k3,kimi:kimi-k2.6,openai:gpt-6-astra,openai:gpt-5.5"
+# Modelos medidos que RECUSAM analisar diff real (erro de política de conteúdo).
+# Recusa é fail-closed (FILTRO): encerra a cadeia e o placar sai "NÃO ANALISADO",
+# sem reserva. Um deles na fila deixa PR grande vermelho sem ninguém ter lido — e
+# o check não é obrigatório. gpt-5.6-sol recusou 2 de 3 no diff real de 71 KB
+# (15/09/2026). Ignorado venha do código ou da PORTEIRO_CADEIA, em qualquer caixa.
+RECUSAM = {"gpt-5.6-sol"}
 # Sem saldo/cota: repetir não adianta, vai direto para a próxima IA.
 SEM_SALDO = {"1113", "insufficient_quota", "exceeded_current_quota_error"}
 # Filtro de conteúdo / recusa de segurança: fail-closed, nunca a próxima IA.
@@ -119,7 +129,9 @@ def le_cadeia(env) -> list[Provedor]:
         fora = []
         for item in texto.split(","):
             pid, _, modelo = (x.strip() for x in item.partition(":"))
-            if pid in PROVEDORES and modelo:
+            if pid in PROVEDORES and modelo.lower() in RECUSAM:
+                print(f"cadeia: {pid}:{modelo[:40]} fora (recusa analisar diff real)")
+            elif pid in PROVEDORES and modelo:
                 fora.append(Provedor(pid, *PROVEDORES[pid], modelo))
             elif item.strip():
                 print(f"cadeia: item ignorado ({item.strip()[:40]})")

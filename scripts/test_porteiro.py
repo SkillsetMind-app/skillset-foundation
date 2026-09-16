@@ -333,6 +333,18 @@ class CadeiaDeReservaTest(unittest.TestCase):
                          ["z.ai glm-5", "Kimi kimi-k3", "Kimi kimi-k2.6",
                           "OpenAI gpt-6-astra", "OpenAI gpt-5.5"])
 
+    def test_cadeia_ignora_modelo_que_recusa_analisar(self):
+        # 15/09/2026: gpt-5.6-sol recusou analisar diff real, e recusa encerra a cadeia.
+        rotulos = lambda env: [p.rotulo for p in porteiro.le_cadeia(env)]
+        self.assertEqual(rotulos({"PORTEIRO_CADEIA": "openai:gpt-5.6-sol, openai:gpt-5.6-terra"}),
+                         ["OpenAI gpt-5.6-terra"])
+        # Variável só com recusados (em qualquer caixa): cai na fila padrão do código.
+        self.assertEqual(rotulos({"PORTEIRO_CADEIA": "openai:GPT-5.6-Sol"}), rotulos({}))
+        # A fila de produção decidida em 15/09 é lida inteira e na ordem.
+        producao = "openai:gpt-5.6-terra,openai:gpt-6-astra,kimi:kimi-k3,kimi:kimi-k2.6"
+        self.assertEqual(rotulos({"PORTEIRO_CADEIA": producao}),
+                         ["OpenAI gpt-5.6-terra", "OpenAI gpt-6-astra", "Kimi kimi-k3", "Kimi kimi-k2.6"])
+
     def test_cadeia_e_modelo_primario_configuraveis(self):
         _, _, modelos, _ = self.roda({"glm-4.6": VAZIO_JSON},
                                      env=dict(TODAS, PORTEIRO_MODELO="glm-4.6"))
