@@ -294,10 +294,12 @@ describe("pagina da aula no builder", () => {
   // Com o modal virando pagina, voltar/avancar ou outra aba desmontavam o
   // estudio no meio de um envio: o envio ficava sem dono e reabrir a aula
   // comecava outro.
-  it("envio em curso segura a pagina da aula no voltar e na troca de aba, e depois segue a URL", async () => {
+  it.each([false, true])("envio segura a aula ao mudar parametros no mesmo editor (Bunny: %s)", async (bunnyConfigured) => {
     mocks.course = withIntro();
+    mocks.bunnyConfigured = bunnyConfigured;
+    const transport = bunnyConfigured ? uploadLessonVideoToBunny : uploadCourseAsset;
     let finishUpload: (assetId: string) => void = () => {};
-    vi.mocked(uploadCourseAsset).mockImplementationOnce(
+    vi.mocked(transport).mockImplementationOnce(
       () => new Promise<string>((resolve) => { finishUpload = resolve; }),
     );
     openAt(introUrl);
@@ -307,7 +309,7 @@ describe("pagina da aula no builder", () => {
       target: { files: [new File(["video-bytes"], "aula.mp4", { type: "video/mp4" })] },
     });
     fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
-    expect(uploadCourseAsset).toHaveBeenCalledTimes(1);
+    expect(transport).toHaveBeenCalledTimes(1);
 
     // Voltar do navegador no meio do envio: a pagina da aula continua.
     navigateTo(moduleUrl);
@@ -321,7 +323,7 @@ describe("pagina da aula no builder", () => {
     // O envio acaba: a tela volta a seguir a URL, e nao ha segundo envio.
     await act(async () => finishUpload("asset-intro"));
     expect(within(card()).getByRole("heading", { name: "Start here" })).toBeInTheDocument();
-    expect(uploadCourseAsset).toHaveBeenCalledTimes(1);
+    expect(transport).toHaveBeenCalledTimes(1);
   }, 10000);
 
   it("depois do envio a prontidao do Publish ve o arquivo, e Continue sai sem ?lesson", async () => {
@@ -392,10 +394,12 @@ describe("pagina da aula no builder", () => {
 
   // O erro caia na pagina da aula no mesmo instante em que ela saia da tela
   // (a URL ja estava no modulo): a falha ficava invisivel.
-  it("envio que falha depois do voltar mostra o erro na pagina da aula", async () => {
+  it.each([false, true])("falha depois de mudar parametros mantem o erro na aula (Bunny: %s)", async (bunnyConfigured) => {
     mocks.course = withIntro();
+    mocks.bunnyConfigured = bunnyConfigured;
+    const transport = bunnyConfigured ? uploadLessonVideoToBunny : uploadCourseAsset;
     let failUpload: (error: Error) => void = () => {};
-    vi.mocked(uploadCourseAsset).mockImplementationOnce(
+    vi.mocked(transport).mockImplementationOnce(
       () => new Promise<string>((_resolve, reject) => { failUpload = reject; }),
     );
     openAt(introUrl);
