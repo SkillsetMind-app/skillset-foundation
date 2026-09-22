@@ -1,4 +1,9 @@
 {
+  "lessonUpload": {
+    "title": "Lesson upload", "uploading": "Uploading file...", "connecting": "Saving lesson media...", "close": "Dismiss upload status",
+    "success": "File saved.", "error": "Upload needs attention. Open the lesson to review it.", "cancelled": "Upload cancelled.",
+    "open": "Open lesson", "cancel": "Cancel upload", "retry": "Retry saving"
+  },
   "accountControls": {
     "title": "Account access",
     "close": "Close",

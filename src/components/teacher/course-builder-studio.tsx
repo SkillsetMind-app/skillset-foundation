@@ -45,6 +45,8 @@ import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { CourseAssetUploader } from "@/components/teacher/course-asset-uploader";
 import { CourseCategorySelect } from "@/components/teacher/course-category-select";
 import { LessonContentModal } from "@/components/teacher/lesson-content-modal";
+import { useLessonUpload } from "@/components/teacher/lesson-upload-provider";
+import { clearLessonVideoSelection, reconcileLessonVideoSelections } from "@/lib/data/course-write-queue";
 import type { DripStrategy } from "@/domain/drip-policy";
 import { DEFAULT_PLATFORM_FEE_BPS } from "@/lib/payments/rules";
 import type {
@@ -453,6 +455,7 @@ export function CourseBuilderStudio() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const courseId = searchParams.get("courseId");
+  const uploadManager = useLessonUpload();
   const requestedTab = searchParams.get("tab");
   // Aula com envio em curso: a pagina dela continua na tela (mesma instancia,
   // barra de progresso intacta) e a aba de conteudo fica ativa ate o envio
@@ -460,6 +463,11 @@ export function CourseBuilderStudio() {
   const [uploadingLesson, setUploadingLesson] = useState<
     { moduleId: string; lessonId: string; failed?: boolean } | null
   >(null);
+  // History can switch courses without remounting this builder. The root
+  // upload remains alive, but must not lock the next course's navigation.
+  if (uploadingLesson && uploadManager && uploadManager.job?.courseId !== courseId) {
+    setUploadingLesson(null);
+  }
   const activeTab: BuilderTab = uploadingLesson
     ? "content"
     : isBuilderTab(requestedTab)
@@ -1120,6 +1128,10 @@ export function CourseBuilderStudio() {
   useEffect(() => {
     localModulesRef.current = modules;
   }, [modules]);
+  if (courseId && uploadManager?.job?.courseId === courseId && uploadManager.job.status === "success") {
+    const reconciled = reconcileLessonVideoSelections(courseId, modules);
+    if (JSON.stringify(reconciled) !== JSON.stringify(modules)) setModules(reconciled);
+  }
   // Preço e parcelas só ficam inválidos por digitação (a hidratação sempre
   // produz valor válido ou vazio). Um preço inválido que normaliza para o mesmo
   // valor da base ("invalid" e vazio viram null) não muda a assinatura, e o
@@ -1403,6 +1415,9 @@ export function CourseBuilderStudio() {
       return;
     }
 
+    if (courseId && Object.prototype.hasOwnProperty.call(patch, "videoSource")) {
+      clearLessonVideoSelection(courseId, lessonId);
+    }
     const applyPatch = (currentModules: TeacherCourseModule[]) =>
       currentModules.map((module) =>
         module.id === moduleId

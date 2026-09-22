@@ -62,6 +62,8 @@ import {
 } from "@/lib/data/course-assets";
 import { isBunnyConfigured } from "@/lib/bunny/config";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
+import { useLessonUpload, startLessonUpload, cancelLessonUpload } from "@/components/teacher/lesson-upload-provider";
+import { lessonUploadIsBusy } from "@/lib/data/lesson-upload";
 import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 
 type LessonContentModalProps = {
@@ -221,6 +223,13 @@ export function LessonContentModal({
   onAssetsChanged,
 }: LessonContentModalProps) {
   const { t } = useTranslation();
+  const uploadManager = useLessonUpload();
+  const sharedUpload = uploadManager?.job?.courseId === course.id && uploadManager.job.lessonId === lesson.id ? uploadManager.job : null;
+  const mountedRef = useRef(true);
+  useLayoutEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
   const [tab, setTab] = useState<LessonModalTab>("video");
   // Decidido uma vez ao abrir a aula (o builder monta uma instancia por aula):
   // se dependesse do valor vivo, apagar a nota desmontava o campo no mesmo
@@ -231,10 +240,13 @@ export function LessonContentModal({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [isPreviewAsset, setIsPreviewAsset] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const [localUploading, setIsUploading] = useState(false);
+  const isUploading = localUploading || lessonUploadIsBusy(sharedUpload);
   // Guarda o cancelador entregue pelo uploader enquanto o envio corre.
-  const [cancelUpload, setCancelUpload] = useState<(() => void) | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<UploadCourseAssetProgress | null>(null);
+  const [localCancelUpload, setCancelUpload] = useState<(() => void) | null>(null);
+  const cancelUpload = sharedUpload?.status === "uploading" ? cancelLessonUpload : localCancelUpload;
+  const [localUploadProgress, setUploadProgress] = useState<UploadCourseAssetProgress | null>(null);
+  const uploadProgress = sharedUpload?.progress ?? localUploadProgress;
   const [error, setError] = useState<LessonError | null>(null);
   const [success, setSuccess] = useState<"uploaded" | "deleted" | "oldLinkRemoved" | null>(null);
   const [assetsLoaded, setAssetsLoaded] = useState(false);
@@ -282,7 +294,7 @@ export function LessonContentModal({
   // aluno recebe". Amarrar a primeira ao campo salvo deixava o único caminho de
   // envio inalcançável numa aula nova — a fonte só vira "upload" no sucesso do
   // envio, e o envio só aparecia se a fonte já fosse "upload".
-  const isUploadPanelOpen = resolvedSource === "upload" || selectedFile !== null || success === "uploaded";
+  const isUploadPanelOpen = resolvedSource === "upload" || selectedFile !== null || success === "uploaded" || lessonUploadIsBusy(sharedUpload);
   // Um video por aula: a aba mostra OU o envio OU o link. A aba abre como
   // resolveLessonVideoSource decide (aula que hoje tem os dois continua como
   // esta) e essa escolha e fixada UMA vez, quando os arquivos da aula chegam.
@@ -561,7 +573,13 @@ export function LessonContentModal({
     let failed = false;
 
     try {
-      if (useBunny) {
+      if (uploadManager) {
+        await startLessonUpload({
+          actorId: uploadManager.actorId, courseId: course.id, ownerId: course.ownerId,
+          lessonId: lesson.id, moduleId: module.id, kind: uploadKind,
+          file: selectedFile, isPreview: uploadAsPreview, useBunny,
+        });
+      } else if (useBunny) {
         await uploadLessonVideoToBunny({
           courseId: course.id,
           ownerId: course.ownerId,
@@ -585,6 +603,7 @@ export function LessonContentModal({
           onProgress: setUploadProgress,
         });
       }
+      if (!mountedRef.current) return;
       // A fonte da aula passa a ser "upload" AQUI, e não na escolha do arquivo:
       // agora existe de fato um vídeo para tocar. Declarar antes do envio
       // deixava a aula vazia para o aluno pagante enquanto o professor lia
@@ -599,6 +618,7 @@ export function LessonContentModal({
       setFileInputKey((current) => current + 1);
       onAssetsChanged?.();
     } catch (caughtError) {
+      if (!mountedRef.current) return;
       // Cancelar é desfecho normal, não falha: limpa a tela sem caixa vermelha.
       if (caughtError instanceof CourseAssetUploadCancelled) {
         setUploadProgress(null);
@@ -613,9 +633,11 @@ export function LessonContentModal({
         setError({ kind: "upload", cause: caughtError, limitBytes: useBunny ? bunnyVideoMaxBytes : supabaseUploadLimitBytes });
       }
     } finally {
-      setCancelUpload(null);
-      setIsUploading(false);
-      uploadingChangeRef.current?.(false, failed);
+      if (mountedRef.current) {
+        setCancelUpload(null);
+        setIsUploading(false);
+        uploadingChangeRef.current?.(false, failed);
+      }
     }
   }
 

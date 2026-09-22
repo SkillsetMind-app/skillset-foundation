@@ -3,10 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { CourseBuilderStudio } from "@/components/teacher/course-builder-studio";
+import { LessonUploadProvider } from "@/components/teacher/lesson-upload-provider";
 import type { CourseAsset } from "@/domain/course-asset";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToTeacherCourse, updateTeacherCourseBuilder } from "@/lib/data/teacher-courses";
 import { fetchCourseAssets, uploadCourseAsset, uploadLessonVideoToBunny } from "@/lib/data/course-assets";
+import { activateUploadedLessonVideo } from "@/lib/data/lesson-video-selection";
 
 // Pagina da aula: Curso > Modulo > Aula, no lugar do modal. A aula mora na URL
 // (?module=M&lesson=L), igual ao modulo (#373), e o voltar do navegador funciona.
@@ -15,6 +17,7 @@ const youtube = "https://www.youtube.com/watch?v=abc";
 const vimeo = "https://vimeo.com/123456";
 
 const mocks = vi.hoisted(() => ({
+  onAuthChange: null as ((event: string, session: { user: { id: string } } | null) => void) | null,
   bunnyConfigured: false,
   course: null as TeacherCourse | null,
   // Lista de arquivos do curso: a busca do builder e o realtime do estudio.
@@ -69,6 +72,13 @@ vi.mock("@/lib/data/course-assets", () => ({
 vi.mock("@/lib/bunny/config", () => ({
   get isBunnyConfigured() { return mocks.bunnyConfigured; },
 }));
+vi.mock("@/lib/data/lesson-video-selection", () => ({ activateUploadedLessonVideo: vi.fn() }));
+vi.mock("@/lib/supabase/client", () => ({ getSupabaseBrowserClient: () => ({ auth: {
+  onAuthStateChange: (callback: NonNullable<typeof mocks.onAuthChange>) => {
+    mocks.onAuthChange = callback;
+    return { data: { subscription: { unsubscribe: () => { mocks.onAuthChange = null; } } } };
+  },
+} }) }));
 vi.mock("@/components/teacher/course-asset-uploader", () => ({ CourseAssetUploader: () => null }));
 vi.mock("@/components/courses/bunny-video-player", () => ({ BunnyVideoPlayer: () => null }));
 vi.mock("@/components/shared/protected-asset-preview", () => ({ ProtectedAssetPreview: () => null }));
@@ -133,7 +143,7 @@ let view: RenderResult;
 function tree() {
   return (
     <I18nProvider initialLocale="en">
-      <CourseBuilderStudio />
+      <LessonUploadProvider><CourseBuilderStudio /></LessonUploadProvider>
     </I18nProvider>
   );
 }
@@ -177,6 +187,72 @@ describe("pagina da aula no builder", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+  });
+
+  it("keeps upload status and original lesson persistence after the entire editor unmounts", async () => {
+    mocks.course = withIntro();
+    mocks.bunnyConfigured = true;
+    let finish!: (assetId: string) => void;
+    vi.mocked(uploadLessonVideoToBunny).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    openAt(introUrl);
+    await renderBuilder();
+    startUpload();
+    view.rerender(<I18nProvider initialLocale="en"><LessonUploadProvider><h1>Another page</h1></LessonUploadProvider></I18nProvider>);
+    expect(screen.queryByRole("heading", { name: "Intro" })).not.toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Lesson upload" })).toHaveTextContent("Uploading file...");
+    await act(async () => finish("asset-intro"));
+    expect(activateUploadedLessonVideo).toHaveBeenCalledWith("course-1", "l2", "asset-intro", expect.any(Function));
+    expect(screen.getByRole("complementary", { name: "Lesson upload" })).toHaveTextContent("File saved.");
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+  });
+
+  it("shows an upload error after leaving the editor", async () => {
+    mocks.course = withIntro();
+    mocks.bunnyConfigured = true;
+    let fail!: (error: Error) => void;
+    vi.mocked(uploadLessonVideoToBunny).mockImplementationOnce(() => new Promise((_resolve, reject) => { fail = reject; }));
+    openAt(introUrl);
+    await renderBuilder();
+    startUpload();
+    view.rerender(<I18nProvider initialLocale="en"><LessonUploadProvider><h1>Another page</h1></LessonUploadProvider></I18nProvider>);
+    await act(async () => fail(new Error("network")));
+    expect(screen.getByRole("alert")).toHaveTextContent("Upload needs attention.");
+    expect(activateUploadedLessonVideo).not.toHaveBeenCalled();
+    expect(screen.getByRole("link", { name: "Open lesson" })).toHaveAttribute("href", introUrl);
+  });
+
+  it("does not lock or update another course reached through history", async () => {
+    mocks.course = withIntro();
+    mocks.bunnyConfigured = true;
+    let finish!: (assetId: string) => void;
+    vi.mocked(uploadLessonVideoToBunny).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    openAt(introUrl);
+    await renderBuilder();
+    startUpload();
+    mocks.course = { ...withIntro(), id: "course-2", title: "Another course" };
+    navigateTo("/teach/builder?courseId=course-2&tab=content");
+    await screen.findByRole("heading", { name: "Another course" });
+    mocks.router.push.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: /^Continue to/ }));
+    expect(mocks.router.push).toHaveBeenCalled();
+    await act(async () => finish("asset-intro"));
+    expect(activateUploadedLessonVideo).toHaveBeenCalledWith("course-1", "l2", "asset-intro", expect.any(Function));
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+  });
+
+  it("invalidates upload on the raw sign-out event before auth context updates", async () => {
+    mocks.course = withIntro();
+    mocks.bunnyConfigured = true;
+    let finish!: (assetId: string) => void;
+    vi.mocked(uploadLessonVideoToBunny).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    openAt(introUrl);
+    await renderBuilder();
+    startUpload();
+    act(() => mocks.onAuthChange?.("SIGNED_OUT", null));
+    expect(screen.queryByRole("complementary", { name: "Lesson upload" })).not.toBeInTheDocument();
+    await act(async () => finish("asset-intro"));
+    expect(activateUploadedLessonVideo).not.toHaveBeenCalled();
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   });
 
   it.each([false, true].flatMap((bunnyConfigured) => [
@@ -411,7 +487,7 @@ describe("pagina da aula no builder", () => {
 
     expect(mocks.router.replace).toHaveBeenLastCalledWith(introUrl, { scroll: false });
     expect(screen.getByRole("heading", { name: "Intro" })).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(within(card()).getByRole("alert")).toBeInTheDocument();
   });
 
   it("link direto na pagina da aula carrega a lista de arquivos do curso", async () => {

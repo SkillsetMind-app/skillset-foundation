@@ -22,6 +22,7 @@ import { rowToTeacherCourse } from "@/lib/data/published-courses";
 import { resolveLessonContent } from "@/lib/data/lesson-content";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Json } from "@/lib/supabase/database.types";
+import { reconcileLessonVideoSelections, runCourseWrite } from "./course-write-queue";
 
 const coursesTable = "courses";
 
@@ -91,14 +92,14 @@ export async function updateTeacherCourseBuilder(
     communityEnabled: input.communityEnabled === true,
   };
 
-  const { error } = await supabase.rpc("update_teacher_course_builder", {
-    p_course_id: courseId,
-    p_payload: payload as unknown as Json,
+  await runCourseWrite(courseId, async () => {
+    payload.modules = reconcileLessonVideoSelections(courseId, payload.modules);
+    const { error } = await supabase.rpc("update_teacher_course_builder", {
+      p_course_id: courseId,
+      p_payload: payload as unknown as Json,
+    });
+    if (error) throw error;
   });
-
-  if (error) {
-    throw error;
-  }
 }
 
 export async function publishTeacherCourse(courseId: string) {

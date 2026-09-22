@@ -1,4 +1,9 @@
 {
+  "lessonUpload": {
+    "title": "Carga de la lección", "uploading": "Subiendo archivo...", "connecting": "Guardando el contenido...", "close": "Cerrar estado de carga",
+    "success": "Archivo guardado.", "error": "La carga necesita atención. Abre la lección para revisarla.", "cancelled": "Carga cancelada.",
+    "open": "Abrir lección", "cancel": "Cancelar carga", "retry": "Reintentar guardado"
+  },
   "accountControls": {
     "title": "Acceso a la cuenta",
     "close": "Cerrar",
