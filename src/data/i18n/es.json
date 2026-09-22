@@ -3697,6 +3697,7 @@
       },
       "confirm": {
         "leave": "Este curso tiene cambios sin guardar. ¿Quieres salir y perderlos?",
+        "uploadInProgress": "Hay un envío en curso. Espera a que termine antes de salir de esta página.",
         "deleteModuleEmpty": "¿Eliminar el módulo \"{title}\"? No se podrá deshacer después del guardado automático.",
         "deleteModuleOne": "¿Eliminar el módulo \"{title}\" y su {count} lección? No se podrá deshacer después del guardado automático.",
         "deleteModuleMany": "¿Eliminar el módulo \"{title}\" y sus {count} lecciones? No se podrá deshacer después del guardado automático.",

@@ -1,6 +1,16 @@
 "use client";
 
-import { useEffect, useImperativeHandle, useRef, useState, type FormEvent, type Ref } from "react";
+import Link from "next/link";
+import {
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type MouseEvent as ReactMouseEvent,
+  type Ref,
+} from "react";
 import {
   CheckCircle2,
   FileText,
@@ -55,6 +65,24 @@ import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 
 type LessonContentModalProps = {
+  // "page": o corpo do estudio na propria pagina do builder (?lesson=L), sem
+  // camada escura, sem foco preso e sem Esc para fechar; a trilha
+  // Curso > Modulo > Aula fica no lugar do cabecalho.
+  variant?: "dialog" | "page";
+  crumbs?: {
+    courseLabel: string;
+    courseHref: string;
+    moduleLabel: string;
+    moduleHref: string;
+    // Sair pela trilha do curso: o builder guarda para onde devolver o foco.
+    onCourseNavigate?: () => void;
+  };
+  // Envio em curso: o builder mantem esta pagina montada ate o envio acabar,
+  // mesmo que a URL mude (voltar do navegador, outra aba).
+  onUploadingChange?: (uploading: boolean, failed?: boolean) => void;
+  // Arquivo enviado ou apagado: o builder busca de novo a lista do curso, e a
+  // prontidao do Publish ve o que mudou.
+  onAssetsChanged?: () => void;
   // Builder saindo da pagina: grava, sem prompt, o link digitado e sem blur.
   leaveFlushRef?: Ref<() => void>;
   course: TeacherCourse;
@@ -187,6 +215,10 @@ export function LessonContentModal({
   onSetFreePreview,
   onUpdateLesson,
   leaveFlushRef,
+  variant = "dialog",
+  crumbs,
+  onUploadingChange,
+  onAssetsChanged,
 }: LessonContentModalProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<LessonModalTab>("video");
@@ -220,6 +252,12 @@ export function LessonContentModal({
   const uploadChosenBeforeLoadRef = useRef(false);
   const replaceButtonRef = useRef<HTMLButtonElement>(null);
   const linkHandleRef = useRef<LessonVideoSourcePickerHandle>(null);
+  // O fim do envio chama a versao mais recente do callback: a URL pode ter
+  // mudado desde o comeco (voltar do navegador) e o builder decide com a atual.
+  const uploadingChangeRef = useRef(onUploadingChange);
+  useEffect(() => {
+    uploadingChangeRef.current = onUploadingChange;
+  });
   useImperativeHandle(leaveFlushRef, () => () => {
     linkHandleRef.current?.flushLink({ silent: true });
   });
@@ -273,7 +311,7 @@ export function LessonContentModal({
 
   const dialogRef = useRef<HTMLElement>(null);
 
-  useModalFocus(dialogRef, true);
+  useModalFocus(dialogRef, variant === "dialog");
 
   // Closing mid-upload would drop the progress UI while bytes are still
   // flying — every close affordance funnels through requestClose so an
@@ -412,6 +450,11 @@ export function LessonContentModal({
   // Re-binding when isUploading flips is what keeps Escape from dismissing an
   // in-flight upload, matching requestClose below.
   useEffect(() => {
+    // Na pagina nao ha o que fechar com Esc: o voltar e a trilha fazem isso.
+    if (variant === "page") {
+      return;
+    }
+
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && !isUploading && flushLinkAllowsClose(linkHandleRef.current)) {
         onClose();
@@ -421,7 +464,20 @@ export function LessonContentModal({
     document.addEventListener("keydown", handleKeyDown);
 
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isUploading, onClose]);
+  }, [isUploading, onClose, variant]);
+
+  // Na pagina, o voltar do navegador desmonta so esta pagina (o builder fica):
+  // o link digitado e ainda sem blur e gravado antes, sem perguntar. Efeito de
+  // layout porque roda antes de o React soltar o handle do seletor (filho).
+  useLayoutEffect(() => {
+    if (variant !== "page") {
+      return;
+    }
+    const handleRef = linkHandleRef;
+    return () => {
+      handleRef.current?.flushLink({ silent: true });
+    };
+  }, [variant]);
 
   function resetUploadState(nextKind: CourseAssetKind) {
     setUploadKind(nextKind);
@@ -489,6 +545,7 @@ export function LessonContentModal({
     }
 
     setIsUploading(true);
+    onUploadingChange?.(true);
 
     // O vídeo da aula marcada como "prévia gratuita" PRECISA subir com
     // is_preview, senão a página pública de vendas não o encontra: a busca
@@ -501,6 +558,7 @@ export function LessonContentModal({
     // Duas perguntas para a mesma decisão; agora o toggle da aula manda.
     const uploadAsPreview =
       isPreviewAsset || (isFreePreview && isVideoAssetKind(uploadKind));
+    let failed = false;
 
     try {
       if (useBunny) {
@@ -539,6 +597,7 @@ export function LessonContentModal({
       setUploadProgress(null);
       setIsPreviewAsset(false);
       setFileInputKey((current) => current + 1);
+      onAssetsChanged?.();
     } catch (caughtError) {
       // Cancelar é desfecho normal, não falha: limpa a tela sem caixa vermelha.
       if (caughtError instanceof CourseAssetUploadCancelled) {
@@ -550,11 +609,13 @@ export function LessonContentModal({
         // generic message that made failures look random. E sem deixar o
         // progresso antigo na tela ao lado da caixa vermelha.
         setUploadProgress(null);
+        failed = true;
         setError({ kind: "upload", cause: caughtError, limitBytes: useBunny ? bunnyVideoMaxBytes : supabaseUploadLimitBytes });
       }
     } finally {
       setCancelUpload(null);
       setIsUploading(false);
+      uploadingChangeRef.current?.(false, failed);
     }
   }
 
@@ -591,6 +652,7 @@ export function LessonContentModal({
       }
 
       setSuccess("deleted");
+      onAssetsChanged?.();
     } catch {
       setError({ kind: "delete" });
     } finally {
@@ -598,24 +660,68 @@ export function LessonContentModal({
     }
   }
 
-  return (
-    <div className="lesson-modal-overlay" role="presentation" onMouseDown={requestClose}>
+  const isPage = variant === "page";
+
+  // Sair pela trilha passa pelo mesmo cuidado de fechar: envio no ar segura, o
+  // link digitado vai antes, e link recusado ou nao confirmado segura na tela.
+  function guardLeave(event: ReactMouseEvent<HTMLAnchorElement>) {
+    if (isUploading || !flushLinkAllowsClose(linkHandleRef.current)) {
+      event.preventDefault();
+    }
+  }
+
+  const content = (
       <section
         ref={dialogRef}
         tabIndex={-1}
-        aria-modal="true"
+        aria-modal={isPage ? undefined : "true"}
         aria-labelledby="lesson-modal-title"
-        className="lesson-modal"
-        role="dialog"
-        onMouseDown={(event) => event.stopPropagation()}
+        className={isPage ? "lesson-modal lesson-modal--page" : "lesson-modal"}
+        role={isPage ? undefined : "dialog"}
+        onMouseDown={isPage ? undefined : (event) => event.stopPropagation()}
       >
-        <header className="lesson-modal__header">
-          <p className="lesson-modal__crumb">{t("creatorEditor.lesson.number").replace("{lessonIndex}", () => String(lessonIndex + 1))}</p>
-          <button type="button" className="lesson-modal__close" onClick={requestClose}>
-            <X aria-hidden="true" size={18} />
-            <span className="sr-only">{t("creatorEditor.lesson.close")}</span>
-          </button>
-        </header>
+        {isPage && crumbs ? (
+          <nav className="lesson-modal__header" aria-label={t("creatorEditor.builder.curriculum.breadcrumb")}>
+            <ol className="lesson-modal__trail">
+              <li>
+                <Link
+                  href={crumbs.courseHref}
+                  scroll={false}
+                  onClick={(event) => {
+                    guardLeave(event);
+                    // So o clique simples navega nesta aba (ctrl/cmd abrem outra).
+                    if (
+                      !event.defaultPrevented
+                      && event.button === 0
+                      && !event.metaKey
+                      && !event.ctrlKey
+                      && !event.shiftKey
+                      && !event.altKey
+                    ) {
+                      crumbs.onCourseNavigate?.();
+                    }
+                  }}
+                >
+                  {crumbs.courseLabel}
+                </Link>
+              </li>
+              <li>
+                <Link href={crumbs.moduleHref} scroll={false} onClick={guardLeave}>
+                  {crumbs.moduleLabel}
+                </Link>
+              </li>
+              <li aria-current="page">{lesson.title || t("creatorEditor.lesson.untitled")}</li>
+            </ol>
+          </nav>
+        ) : (
+          <header className="lesson-modal__header">
+            <p className="lesson-modal__crumb">{t("creatorEditor.lesson.number").replace("{lessonIndex}", () => String(lessonIndex + 1))}</p>
+            <button type="button" className="lesson-modal__close" onClick={requestClose}>
+              <X aria-hidden="true" size={18} />
+              <span className="sr-only">{t("creatorEditor.lesson.close")}</span>
+            </button>
+          </header>
+        )}
 
         <nav className="lesson-modal__tabs" aria-label={t("creatorEditor.lesson.setup")}>
           {lessonModalTabs.map((item) => {
@@ -653,7 +759,7 @@ export function LessonContentModal({
 
         <div className="lesson-modal__body">
           <div className="lesson-modal__context">
-            <h3 id="lesson-modal-title">{lesson.title || t("creatorEditor.lesson.untitled")}</h3>
+            <h3 id="lesson-modal-title" tabIndex={-1}>{lesson.title || t("creatorEditor.lesson.untitled")}</h3>
             <p className="lesson-modal__crumb">
               {t("creatorEditor.lesson.context")
                 .replace("{moduleIndex}", () => String(moduleIndex + 1))
@@ -1035,6 +1141,11 @@ export function LessonContentModal({
           </button>
         </footer>
       </section>
+  );
+
+  return isPage ? content : (
+    <div className="lesson-modal-overlay" role="presentation" onMouseDown={requestClose}>
+      {content}
     </div>
   );
 }

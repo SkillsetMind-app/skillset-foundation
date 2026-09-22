@@ -3697,6 +3697,7 @@
       },
       "confirm": {
         "leave": "This course has unsaved changes. Leave and lose them?",
+        "uploadInProgress": "An upload is in progress. Wait for it to finish before leaving this page.",
         "deleteModuleEmpty": "Delete module \"{title}\"? This cannot be undone after autosave.",
         "deleteModuleOne": "Delete module \"{title}\" and its {count} lesson? This cannot be undone after autosave.",
         "deleteModuleMany": "Delete module \"{title}\" and its {count} lessons? This cannot be undone after autosave.",
