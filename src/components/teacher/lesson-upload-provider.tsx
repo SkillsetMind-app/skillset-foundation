@@ -43,13 +43,13 @@ export function LessonUploadProvider({ children }: { children: ReactNode }) {
     <Context.Provider value={actorId ? { actorId, job } : null}>
       {children}
       {job && (
-        <aside aria-label={t("lessonUpload.title")} className="fixed bottom-4 left-4 z-[90] w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4 text-[var(--color-ink)] shadow-lg">
+        <aside aria-label={t("lessonUpload.title")} className="fixed bottom-4 left-4 z-[90] max-h-[calc(100svh-2rem)] w-[min(24rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4 text-[var(--color-ink)] shadow-lg">
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
               <p className="break-words text-sm font-semibold">{job.fileName}</p>
               <p role={job.status === "error" ? "alert" : "status"} className="mt-1 text-sm">{t(`lessonUpload.${job.status}`)}</p>
             </div>
-            {job.status !== "connecting" && (
+            {(!lessonUploadIsBusy(job) || (job.status === "uploading" && job.canCancel)) && (
               <button type="button" className="grid size-11 shrink-0 place-items-center" onClick={job.status === "uploading" ? cancelLessonUpload : dismissLessonUpload} aria-label={t(job.status === "uploading" ? "lessonUpload.cancel" : "lessonUpload.close")} title={t(job.status === "uploading" ? "lessonUpload.cancel" : "lessonUpload.close")}><X size={18} aria-hidden="true" /></button>
             )}
           </div>

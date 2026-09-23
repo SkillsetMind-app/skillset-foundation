@@ -22,7 +22,7 @@ import { rowToTeacherCourse } from "@/lib/data/published-courses";
 import { resolveLessonContent } from "@/lib/data/lesson-content";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Json } from "@/lib/supabase/database.types";
-import { reconcileLessonVideoSelections, runCourseWrite } from "./course-write-queue";
+import { observeLessonVideoSelections, reconcileLessonVideoSelections, runCourseWrite } from "./course-write-queue";
 
 const coursesTable = "courses";
 
@@ -310,6 +310,7 @@ export function subscribeToTeacherCourse(
       externalUrl: row.external_url,
     }]));
     const course = rowToTeacherCourse(data);
+    observeLessonVideoSelections(courseId, course.modules, data.updated_at);
     callback({ ...course, modules: course.modules.map((module) => ({
       ...module,
       lessons: module.lessons.map((lesson) => ({

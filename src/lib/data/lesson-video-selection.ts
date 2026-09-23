@@ -31,10 +31,12 @@ async function connectVideo(courseId: string, lessonId: string, assetId: string,
   // ponytail: three optimistic retries; surface a conflict instead of overwriting.
   for (let attempt = 0; attempt < 3; attempt += 1) {
     assertActive();
-    const current = await client.from("courses").select("modules").eq("id", courseId).single();
+    const current = await client.from("courses").select("modules, updated_at").eq("id", courseId).single();
     assertActive();
     if (current.error) throw current.error;
     const original = current.data.modules;
+    const revision = current.data.updated_at;
+    if (!revision || !Number.isFinite(Date.parse(revision))) throw new Error("The course revision is unavailable.");
     if (!Array.isArray(original)) throw new Error("The course curriculum is unavailable.");
     let matches = 0;
     const modules = original.map((module) => {
@@ -51,14 +53,15 @@ async function connectVideo(courseId: string, lessonId: string, assetId: string,
     if (matches !== 1) throw new Error("The lesson changed while the video was uploading. Reopen the lesson to continue.");
     assertActive();
     const saved = await client.from("courses")
-      .update({ modules })
+      .update({ modules, updated_at: "now" })
       .eq("id", courseId)
-      .eq("modules", JSON.stringify(original))
-      .select("id");
+      .eq("updated_at", revision)
+      .select("id, updated_at");
     assertActive();
     if (saved.error) throw saved.error;
     if (saved.data?.length === 1) {
-      recordLessonVideoSelection(courseId, lessonId, "upload");
+      if (!saved.data[0].updated_at) throw new Error("The saved course revision is unavailable.");
+      recordLessonVideoSelection(courseId, lessonId, "upload", saved.data[0].updated_at);
       return;
     }
   }

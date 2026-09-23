@@ -55,6 +55,17 @@ beforeEach(() => {
 });
 
 describe("the teacher reopens the gated lesson content", () => {
+  it("does not overwrite a newer source selected in another tab after a completed upload", async () => {
+    recordLessonVideoSelection("course", "lesson", "upload", "2026-09-22T12:00:00.000100Z");
+    mocks.course.mockResolvedValue({ data: { ...publicRow, updated_at: "2026-09-22T12:00:00.000200Z", modules: [{ ...publicRow.modules[0], lessons: [{ ...publicRow.modules[0].lessons[0], videoSource: "youtube" }] }] }, error: null });
+    const onCourse = vi.fn();
+    const stop = subscribeToTeacherCourse("course", onCourse, vi.fn());
+    await vi.waitFor(() => expect(onCourse).toHaveBeenCalledOnce());
+    await updateTeacherCourseBuilder("course", { ...onCourse.mock.calls[0][0], title: "New title", learningOutcomes: [], paymentType: "free" });
+    expect(mocks.rpc.mock.calls[0][1].p_payload.modules[0].lessons[0].videoSource).toBe("youtube");
+    stop();
+  });
+
   it("reconciles a queued stale draft after upload without losing title edits or a later explicit selection", async () => {
     const onCourse = vi.fn();
     const stop = subscribeToTeacherCourse("course", onCourse, vi.fn());

@@ -221,6 +221,44 @@ describe("pagina da aula no builder", () => {
     expect(screen.getByRole("link", { name: "Open lesson" })).toHaveAttribute("href", introUrl);
   });
 
+  it.each([false, true])("bounds the panel and hides cancellation without an abort callback (Bunny entry: %s)", async (bunnyConfigured) => {
+    mocks.course = withIntro();
+    mocks.bunnyConfigured = bunnyConfigured;
+    const transport = bunnyConfigured ? uploadLessonVideoToBunny : uploadCourseAsset;
+    let finish!: (assetId: string) => void;
+    vi.mocked(transport).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    openAt(introUrl);
+    await renderBuilder();
+    startUpload();
+    const panel = screen.getByRole("complementary", { name: "Lesson upload" });
+    expect(panel).toHaveClass("max-h-[calc(100svh-2rem)]", "overflow-y-auto");
+    expect(screen.queryByRole("button", { name: /Cancel upload/i })).not.toBeInTheDocument();
+    if (bunnyConfigured) {
+      act(() => vi.mocked(uploadLessonVideoToBunny).mock.calls[0][0].onCancelAvailable?.(vi.fn()));
+      expect(within(panel).getByRole("button", { name: "Cancel upload" })).toBeInTheDocument();
+    }
+    await act(async () => finish("asset-intro"));
+  });
+
+  it("successful connection retry clears the lesson error and file and refreshes readiness without reuploading", async () => {
+    mocks.course = withIntro();
+    vi.mocked(uploadCourseAsset).mockResolvedValueOnce("asset-intro");
+    vi.mocked(activateUploadedLessonVideo).mockRejectedValueOnce(new Error("connection failed"));
+    openAt(introUrl);
+    await renderBuilder();
+    startUpload();
+    await waitFor(() => expect(within(card()).getByRole("alert")).toBeInTheDocument());
+    const callsBeforeRetry = vi.mocked(fetchCourseAssets).mock.calls.length;
+    mocks.assets = [introVideo()];
+    fireEvent.click(screen.getByRole("button", { name: "Retry saving" }));
+    await waitFor(() => expect(within(card()).queryByRole("alert")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText(missingIntro)).not.toBeInTheDocument());
+    expect(vi.mocked(fetchCourseAssets).mock.calls.length).toBeGreaterThan(callsBeforeRetry);
+    expect(screen.getByRole("button", { name: "Upload file" })).toBeDisabled();
+    expect(uploadCourseAsset).toHaveBeenCalledTimes(1);
+    expect(activateUploadedLessonVideo).toHaveBeenCalledTimes(2);
+  });
+
   it("does not lock or update another course reached through history", async () => {
     mocks.course = withIntro();
     mocks.bunnyConfigured = true;

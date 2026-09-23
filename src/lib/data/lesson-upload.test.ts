@@ -58,18 +58,49 @@ it("does not commit or expose a previous account's result after account change",
   expect(getLessonUpload()).toBeNull();
 });
 
-it("cancels even before the transport provides its cancellation callback", async () => {
+it("offers cancellation only after the transport provides an abort callback", async () => {
   let finish!: (id: string) => void;
   vi.mocked(uploadLessonVideoToBunny).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
   const pending = startLessonUpload(input());
   cancelLessonUpload();
+  expect(getLessonUpload()?.status).toBe("uploading");
+  expect(getLessonUpload()?.canCancel).not.toBe(true);
   const abort = vi.fn();
   vi.mocked(uploadLessonVideoToBunny).mock.calls[0][0].onCancelAvailable?.(abort);
+  expect(getLessonUpload()?.canCancel).toBe(true);
+  cancelLessonUpload();
   expect(abort).toHaveBeenCalledOnce();
   finish("asset");
   await expect(pending).rejects.toBeInstanceOf(Error);
   expect(activateUploadedLessonVideo).not.toHaveBeenCalled();
   expect(getLessonUpload()?.status).toBe("cancelled");
+});
+
+it.each([false, true])("does not cancel nonabortable storage or Bunny fallback (Bunny entry: %s)", async (useBunny) => {
+  let finish!: (id: string) => void;
+  const transport = useBunny ? uploadLessonVideoToBunny : uploadCourseAsset;
+  vi.mocked(transport).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+  const pending = startLessonUpload({ ...input(), useBunny });
+  cancelLessonUpload();
+  expect(getLessonUpload()?.status).toBe("uploading");
+  expect(getLessonUpload()?.canCancel).not.toBe(true);
+  finish("asset");
+  await pending;
+  expect(getLessonUpload()?.status).toBe("success");
+  expect(activateUploadedLessonVideo).toHaveBeenCalledOnce();
+});
+
+it("aborts a late transport callback after account invalidation", async () => {
+  let finish!: (id: string) => void;
+  vi.mocked(uploadLessonVideoToBunny).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+  const pending = startLessonUpload(input());
+  setLessonUploadActor(null);
+  const abort = vi.fn();
+  vi.mocked(uploadLessonVideoToBunny).mock.calls[0][0].onCancelAvailable?.(abort);
+  expect(abort).toHaveBeenCalledOnce();
+  finish("asset");
+  await expect(pending).rejects.toBeInstanceOf(Error);
+  expect(getLessonUpload()).toBeNull();
 });
 
 it("rejects a second upload while the first one is active", async () => {
@@ -86,9 +117,14 @@ it("does not report cancellation while the asset is being committed", async () =
   let finish!: (id: string) => void;
   vi.mocked(uploadLessonVideoToBunny).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
   const pending = startLessonUpload(input());
+  const abort = vi.fn();
+  vi.mocked(uploadLessonVideoToBunny).mock.calls[0][0].onCancelAvailable?.(abort);
+  expect(getLessonUpload()?.canCancel).toBe(true);
   vi.mocked(uploadLessonVideoToBunny).mock.calls[0][0].beforeCommit?.();
   expect(getLessonUpload()?.status).toBe("connecting");
+  expect(getLessonUpload()?.canCancel).toBe(false);
   cancelLessonUpload();
+  expect(abort).not.toHaveBeenCalled();
   finish("asset");
   await pending;
   expect(getLessonUpload()?.status).toBe("success");

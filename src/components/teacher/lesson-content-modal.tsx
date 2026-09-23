@@ -244,11 +244,30 @@ export function LessonContentModal({
   const isUploading = localUploading || lessonUploadIsBusy(sharedUpload);
   // Guarda o cancelador entregue pelo uploader enquanto o envio corre.
   const [localCancelUpload, setCancelUpload] = useState<(() => void) | null>(null);
-  const cancelUpload = sharedUpload?.status === "uploading" ? cancelLessonUpload : localCancelUpload;
+  const cancelUpload = sharedUpload
+    ? sharedUpload.status === "uploading" && sharedUpload.canCancel ? cancelLessonUpload : null
+    : localCancelUpload;
   const [localUploadProgress, setUploadProgress] = useState<UploadCourseAssetProgress | null>(null);
   const uploadProgress = sharedUpload?.progress ?? localUploadProgress;
   const [error, setError] = useState<LessonError | null>(null);
   const [success, setSuccess] = useState<"uploaded" | "deleted" | "oldLinkRemoved" | null>(null);
+  const completedAssetId = sharedUpload?.status === "success" ? sharedUpload.assetId : undefined;
+  const [handledAssetId, setHandledAssetId] = useState<string | undefined>();
+  if (completedAssetId && completedAssetId !== handledAssetId) {
+    setHandledAssetId(completedAssetId);
+    setError(null);
+    setSelectedFile(null);
+    setUploadProgress(null);
+    setIsPreviewAsset(false);
+    setFileInputKey((current) => current + 1);
+    setSuccess("uploaded");
+  }
+  const notifiedAssetRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!completedAssetId || notifiedAssetRef.current === completedAssetId) return;
+    notifiedAssetRef.current = completedAssetId;
+    onAssetsChanged?.();
+  }, [completedAssetId, onAssetsChanged]);
   const [assetsLoaded, setAssetsLoaded] = useState(false);
   // Latest Bunny processing answer for the lesson video, and the asset whose
   // duration was already written (only once per video).
@@ -616,7 +635,7 @@ export function LessonContentModal({
       setUploadProgress(null);
       setIsPreviewAsset(false);
       setFileInputKey((current) => current + 1);
-      onAssetsChanged?.();
+      if (!uploadManager) onAssetsChanged?.();
     } catch (caughtError) {
       if (!mountedRef.current) return;
       // Cancelar é desfecho normal, não falha: limpa a tela sem caixa vermelha.

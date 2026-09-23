@@ -20,6 +20,7 @@ export type LessonUpload = {
   kind: CourseAssetKind;
   status: "uploading" | "connecting" | "success" | "error" | "cancelled";
   progress: UploadCourseAssetProgress | null;
+  canCancel?: boolean;
   assetId?: string;
   error?: unknown;
 };
@@ -59,17 +60,17 @@ export function dismissLessonUpload() {
 }
 
 export function cancelLessonUpload() {
-  if (current?.status !== "uploading") return;
+  if (current?.status !== "uploading" || !abort) return;
   generation += 1;
   const cancel = abort;
   abort = null;
-  publish({ ...current, status: "cancelled", progress: null });
+  publish({ ...current, status: "cancelled", progress: null, canCancel: false });
   cancel?.();
 }
 
 async function connect(job: LessonUpload, ticket: number) {
   if (ticket !== generation || actor !== job.actorId) throw new CourseAssetUploadCancelled();
-  publish({ ...job, status: "connecting" });
+  publish({ ...job, status: "connecting", canCancel: false });
   if (job.kind === "lesson_video" || job.kind === "live_recording") {
     await activateUploadedLessonVideo(job.courseId, job.lessonId, job.assetId!, () => {
       if (ticket !== generation || actor !== job.actorId) throw new CourseAssetUploadCancelled();
@@ -111,14 +112,17 @@ export async function startLessonUpload(input: {
     beforeCommit: () => {
       check();
       // Bytes are already sent. Do not offer cancellation during database commit.
-      publish({ ...current!, status: "connecting" });
+      publish({ ...current!, status: "connecting", canCancel: false });
     },
     onProgress: (progress: UploadCourseAssetProgress) => {
       if (ticket === generation) publish({ ...current!, progress });
     },
     onCancelAvailable: (cancel: () => void) => {
       if (ticket !== generation) cancel();
-      else abort = cancel;
+      else {
+        abort = cancel;
+        publish({ ...current!, canCancel: true });
+      }
     },
   };
   try {
