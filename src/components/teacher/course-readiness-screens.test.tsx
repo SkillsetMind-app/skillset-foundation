@@ -173,7 +173,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(title.className).not.toContain("clamp");
     expect(screen.queryByText("Build the course learners will actually experience: details, modules, lessons, media, pricing, drip rules, and publication checks in one guided workspace.")).not.toBeInTheDocument();
     expect(screen.queryByText("Edit, reorder, and clean up modules and lessons")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add module", exact: true })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Add module" })).toBeEnabled();
     expect(container.querySelector("#builder-sec-modules")?.className).not.toMatch(/border|rounded|shadow/);
   });
 
