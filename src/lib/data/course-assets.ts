@@ -50,6 +50,7 @@ function rowToCourseAsset(row: CourseAssetRow): CourseAsset {
 }
 
 type UploadCourseAssetInput = {
+  beforeCommit?: () => void;
   courseId: string;
   ownerId: string;
   kind: CourseAssetKind;
@@ -130,6 +131,7 @@ export async function uploadCourseAsset(input: UploadCourseAssetInput) {
   }
 
   try {
+    input.beforeCommit?.();
     const downloadUrl =
       bucket === "public-media"
         ? supabase.storage.from(bucket).getPublicUrl(storagePath).data.publicUrl
@@ -199,6 +201,7 @@ export class CourseAssetUploadCancelled extends Error {
 }
 
 type UploadBunnyVideoInput = {
+  beforeCommit?: () => void;
   courseId: string;
   ownerId: string;
   kind: "lesson_video" | "live_recording";
@@ -246,6 +249,7 @@ export async function uploadLessonVideoToBunny(
       isPreview: input.isPreview,
       lessonId: input.lessonId,
       onProgress: input.onProgress,
+      beforeCommit: input.beforeCommit,
     });
   }
 
@@ -323,6 +327,7 @@ export async function uploadLessonVideoToBunny(
   });
 
   // 3. Record the asset (no Storage object; storage_path is a marker only).
+  input.beforeCommit?.();
   const supabase = getSupabaseBrowserClient();
   const assetId = createAssetId();
   const { error: insertError } = await supabase.from(courseAssetsTable).insert({
