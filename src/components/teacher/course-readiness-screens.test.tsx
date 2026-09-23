@@ -160,6 +160,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     mocks.searchParams.delete("section");
     mocks.searchParams.delete("tab");
     mocks.searchParams.delete("module");
+    mocks.searchParams.delete("lesson");
     mocks.searchParams.set("courseId", "course-1");
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
@@ -350,7 +351,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     });
     vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(() => new Promise<void>((resolve) => { finishSave = resolve; }));
     mocks.searchParams.set("module", "m1");
-    renderBuilder("content");
+    const view = renderBuilder("content");
     await act(async () => {});
     fireEvent.click(screen.getByRole("button", { name: "Add lesson to module 1" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Lesson title" }), { target: { value: "Aula $$ $&" } });
@@ -366,8 +367,18 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     await act(async () => finishSave());
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     act(() => emitCourse({ ...mocks.course, ...payload }));
-    expect(screen.getAllByRole("dialog")).toHaveLength(1);
-    expect(screen.getByRole("dialog")).toHaveTextContent("Aula $$ $&");
+    // A aula abre como pagina (?lesson=L), nao como modal: segue a URL pedida.
+    const opened = new URL(String(mocks.router.push.mock.calls.at(-1)?.[0]), "https://example.test");
+    expect(opened.searchParams.get("lesson")).toBe(payload.modules?.[0].lessons[0].id);
+    mocks.searchParams.set("lesson", opened.searchParams.get("lesson") ?? "");
+    view.rerender(
+      <I18nProvider initialLocale="en">
+        <SwitchLanguage />
+        <CourseBuilderStudio />
+      </I18nProvider>,
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Aula $$ $&" })).toBeInTheDocument();
     expect(updateTeacherCourseBuilder).toHaveBeenCalledOnce();
     expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
   });
@@ -1048,6 +1059,7 @@ describe("Painel: o que falta para publicar vem primeiro e cada linha leva a alg
     mocks.searchParams.delete("section");
     mocks.searchParams.delete("tab");
     mocks.searchParams.delete("module");
+    mocks.searchParams.delete("lesson");
     vi.restoreAllMocks();
   });
 
