@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { PanelCard } from "@/components/teacher/course-commerce-panels";
 import { CourseShareLink } from "@/components/teacher/course-share-link";
 import { CurrencySelect } from "@/components/teacher/currency-select";
 import type { CoursePricingShape } from "@/domain/product-pricing";
@@ -189,10 +188,10 @@ export function CourseOffersPanel({
   };
 
   return (
-    <PanelCard
-      title={t("creatorPanel.offers.title")}
-      description={t("creatorPanel.offers.description")}
-    >
+    <section aria-labelledby="course-offers-title">
+      <h2 id="course-offers-title" className="text-xl font-semibold text-[var(--color-ink)]">
+        {t("creatorPanel.offers.title")}
+      </h2>
       {/* Com oferta criada, o formulario empurrava a lista real para baixo:
           quem ja precificou vem aqui para conferir ou copiar link, nao para
           criar de novo. */}
@@ -375,6 +374,6 @@ export function CourseOffersPanel({
         <p className="mt-3 text-sm text-[var(--color-ink-soft)]">{notice}</p>
       ) : null}
 
-    </PanelCard>
+    </section>
   );
 }

@@ -42,17 +42,19 @@ export function StatCard({
   label,
   value,
   hint,
+  compact = false,
 }: {
   label: string;
   value: string;
   hint: string;
+  compact?: boolean;
 }) {
   return (
-    <Card padding="lg" tone="surface">
-      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-ink-muted)]">
+    <Card padding={compact ? "sm" : "lg"} tone="surface" shadow={!compact} className={compact ? "min-w-0 rounded-lg border-0" : undefined}>
+      <p className={compact ? "text-xs font-medium text-[var(--color-ink-soft)]" : "text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-ink-muted)]"}>
         {label}
       </p>
-      <p className="mt-2 text-3xl font-bold tracking-[-0.04em] text-[var(--color-primary)]">
+      <p className={compact ? "mt-2 break-words text-xl font-semibold text-[var(--color-ink)]" : "mt-2 text-3xl font-bold tracking-[-0.04em] text-[var(--color-primary)]"}>
         {value}
       </p>
       <p className="mt-2 text-xs leading-5 text-[var(--color-ink-soft)]">{hint}</p>

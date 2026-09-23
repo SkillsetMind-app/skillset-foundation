@@ -844,18 +844,14 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
           ) : null}
 
           {section === "pricing" ? (
-            <div className="grid gap-4">
-              <PanelCard
-                title={t("creatorPanel.hub.pricing.title")}
-                description={t("creatorPanel.hub.pricing.description")}
-              >
-                {/* Era uma lista chave-valor: quatro linhas do mesmo tamanho,
-                    nenhuma delas o preco. Vira o mesmo tile do Painel, com o
-                    numero grande — e o prazo de reembolso, que a pessoa so
-                    achava no Termos, entra como o quarto. Quatro tiles enchem
-                    as quatro colunas, o 2x2 e a coluna unica: nenhum orfao. */}
+            <div className="grid gap-8">
+              <section aria-labelledby="course-pricing-title">
+                <h2 id="course-pricing-title" className="text-xl font-semibold text-[var(--color-ink)]">
+                  {t("creatorPanel.hub.pricing.title")}
+                </h2>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <StatCard
+                    compact
                     label={t("creatorPanel.hub.pricing.price")}
                     value={priceLabel(pricing, t)}
                     hint={t("creatorPanel.hub.pricing.installmentsHint").replace("{value}", () =>
@@ -869,6 +865,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                     )}
                   />
                   <StatCard
+                    compact
                     label={t("creatorPanel.hub.pricing.paymentType")}
                     value={
                       pricing.paymentType
@@ -882,6 +879,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                     }
                   />
                   <StatCard
+                    compact
                     label={t("creatorPanel.hub.pricing.refundWindow")}
                     value={t("creatorPanel.hub.pricing.refundWindowDays").replace("{days}", () =>
                       String(refundWindowDays)
@@ -889,6 +887,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                     hint={t("creatorPanel.hub.pricing.refundWindowHint")}
                   />
                   <StatCard
+                    compact
                     label={t("creatorPanel.hub.links.checkout")}
                     value={t("creatorPanel.hub.pricing.stripeCheckout")}
                     hint={
@@ -918,7 +917,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                     </Link>
                   ) : null}
                 </div>
-              </PanelCard>
+              </section>
               <CourseOffersPanel
                 courseId={course.id}
                 courseTitle={courseTitle}

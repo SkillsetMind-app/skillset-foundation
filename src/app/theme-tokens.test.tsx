@@ -72,6 +72,13 @@ describe("platform theme tokens", () => {
       );
     }
   });
+
+  it("keeps course editing sections unframed instead of nesting decorative cards", () => {
+    for (const selector of [".course-builder-hero", ".course-builder-stepper", ".course-builder-panel"]) {
+      expect(block(selector)).not.toMatch(/border:|border-radius:|box-shadow:|gradient\(/);
+    }
+    expect(css).not.toContain('[data-theme="dark"] .course-builder-hero');
+  });
 });
 
 // The selector list above only guards surfaces someone remembered to add to it,

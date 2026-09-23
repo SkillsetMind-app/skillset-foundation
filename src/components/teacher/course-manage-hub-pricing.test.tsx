@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { CourseManageHub } from "@/components/teacher/course-manage-hub";
@@ -129,4 +129,19 @@ it("o prazo de reembolso aparece no resumo, com os dias", async () => {
 
   const refund = await screen.findByText("Refund window");
   expect(refund.parentElement).toHaveTextContent("7 days");
+});
+
+it("precos tem uma unica camada visual, sem moldura envolvendo os quatro resumos", async () => {
+  render(<CourseManageHub courseId="course-1" />);
+
+  const pricing = await screen.findByRole("region", { name: "Pricing & checkout" });
+  expect(pricing.className).not.toMatch(/border|shadow|rounded/);
+  for (const label of ["Price", "Payment type", "Refund window", "Checkout"]) {
+    const card = within(pricing).getByText(label).parentElement;
+    expect(card).toHaveClass("border-0", "rounded-lg");
+    expect(card?.className).not.toContain("shadow");
+  }
+  expect(within(pricing).getByRole("link", { name: /edit/i })).toHaveAttribute(
+    "href", "/teach/builder?courseId=course-1&tab=pricing",
+  );
 });
