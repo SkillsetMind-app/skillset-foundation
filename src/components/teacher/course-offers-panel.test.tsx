@@ -18,6 +18,9 @@ it("shares checkout by public code or offer ID, never inactive offers", async ()
   expect(await screen.findByRole("link", { name: "Open Launch checkout" })).toHaveAttribute("href", "/courses/course-1/checkout?offer=LAUNCH");
   expect(screen.getByRole("link", { name: "Open Standard checkout" })).toHaveAttribute("href", "/courses/course-1/checkout?offerId=o2");
   expect(screen.queryByRole("link", { name: /Expired/ })).not.toBeInTheDocument();
+  const section = screen.getByRole("heading", { level: 2 }).parentElement;
+  expect(section?.tagName).toBe("SECTION");
+  expect(section?.className).not.toMatch(/border|shadow|rounded/);
 });
 it("publishes offer links on pay.skillsetmind.com in production, code and ID preserved", async () => {
   stubOffers();
