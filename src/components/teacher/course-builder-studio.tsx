@@ -2237,12 +2237,9 @@ export function CourseBuilderStudio() {
               nenhum — quem navega por cabeçalho (leitor de tela, atalho de
               navegação) entrava numa página sem título anunciado, e a árvore
               de headings começava direto no nível 2. */}
-          <h1 className="display-title mt-3 text-[clamp(2rem,4vw,3.2rem)] leading-[1.02] text-[var(--color-primary)]">
+          <h1 className="mt-3 break-words text-2xl font-semibold leading-tight text-[var(--color-ink)] sm:text-3xl">
             {title.trim() || t("creatorEditor.members.untitled")}
           </h1>
-          <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            {t("creatorEditor.builder.shell.help")}
-          </p>
         </div>
         <div className="course-builder-hero__actions">
           <Link
@@ -2342,12 +2339,12 @@ export function CourseBuilderStudio() {
       </nav>
 
       <section className="course-builder-panel">
-          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--color-line)] pb-6">
+          <div className="flex flex-wrap items-start justify-between gap-4 pb-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                 {activeTab === "members" ? t("creatorEditor.members.step") : t(builderTabs[selectedTabIndex]?.label ?? "creatorEditor.builder.shell.shortTitle")}
               </p>
-              <h3 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)]">
+              <h3 className="mt-2 text-xl font-semibold leading-tight text-[var(--color-ink)]">
                 {activeTab === "details"
                   ? t("creatorEditor.builder.steps.details.heading")
                   : activeTab === "members"
@@ -2789,28 +2786,11 @@ export function CourseBuilderStudio() {
               acima dela. */}
           <div
             id="builder-sec-modules"
-            className="scroll-mt-24 rounded-[14px] border fine-rule bg-white p-4"
+            className="scroll-mt-24"
           >
             {activeModule ? renderModulePage(activeModule, activeModuleIndex) : (
             <>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                  {t("creatorEditor.builder.curriculum.editor")}
-                </p>
-                <h4 className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
-                  {t("creatorEditor.builder.curriculum.editorHelp")}
-                </h4>
-                {/* Tamanho do curso e quanto falta em uma linha, aqui em cima:
-                    os dois cartoes do rodape ficam tres telas abaixo. */}
-                <p className="mt-2 text-xs font-semibold text-[var(--color-ink-soft)]">
-                  {t("creatorEditor.builder.summary.structureCount")
-                    .replace("{modules}", () => modulesLabel)
-                    .replace("{lessons}", () => lessonsLabel)}
-                  {" · "}
-                  {t("creatorEditor.builder.summary.percent").replace("{percent}", () => String(readiness.percent))}
-                </p>
-              </div>
+            <div className="flex justify-end">
               {isModuleFormOpen ? null : (
                 <button
                   type="button"

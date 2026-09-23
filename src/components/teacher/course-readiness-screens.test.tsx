@@ -166,6 +166,17 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     vi.useRealTimers();
   });
 
+  it("uses a compact course heading without the repeated introductory paragraph", async () => {
+    const { container } = renderBuilder("content");
+    const title = await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+    expect(title).toHaveClass("text-2xl", "break-words");
+    expect(title.className).not.toContain("clamp");
+    expect(screen.queryByText("Build the course learners will actually experience: details, modules, lessons, media, pricing, drip rules, and publication checks in one guided workspace.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Edit, reorder, and clean up modules and lessons")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add module", exact: true })).toBeEnabled();
+    expect(container.querySelector("#builder-sec-modules")?.className).not.toMatch(/border|rounded|shadow/);
+  });
+
   it.each([
     ["details", "Define las bases del curso."],
     ["pricing", "Presenta la oferta."],

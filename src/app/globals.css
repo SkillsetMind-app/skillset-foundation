@@ -2976,22 +2976,7 @@ body:has([aria-label="Course categories"])
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
   gap: 1.5rem;
-  border: 1px solid var(--color-line);
-  border-radius: 18px;
-  background:
-    radial-gradient(circle at 92% 18%, rgba(178, 34, 52, 0.08), transparent 20rem),
-    linear-gradient(135deg, color-mix(in srgb, var(--color-surface) 96%, transparent), rgba(245, 249, 255, 0.92));
-  box-shadow: var(--shadow-soft);
-  padding: 1.5rem;
-}
-
-/* The gradient's SECOND stop is a near-white (#f5f9ff) that can't be tokenised
-   without shifting light mode, so dark gets the same flat-surface override the
-   marketplace cards already use. */
-[data-theme="dark"] .course-builder-hero {
-  background:
-    radial-gradient(circle at 92% 18%, rgba(178, 34, 52, 0.08), transparent 20rem),
-    linear-gradient(135deg, var(--color-surface), var(--color-surface-soft));
+  padding: 0;
 }
 
 .course-builder-hero__actions {
@@ -3002,11 +2987,7 @@ body:has([aria-label="Course categories"])
 }
 
 .course-builder-stepper {
-  border: 1px solid var(--color-line);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
-  box-shadow: var(--shadow-soft);
-  padding: 1rem 1.25rem 1.1rem;
+  padding: 1rem 0;
   display: grid;
   gap: 0.9rem;
 }
@@ -3162,11 +3143,7 @@ body:has([aria-label="Course categories"])
 }
 
 .course-builder-panel {
-  border: 1px solid var(--color-line);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--color-surface) 96%, transparent);
-  box-shadow: var(--shadow-soft);
-  padding: 1.5rem;
+  padding: 0;
 }
 
 .course-builder-preview {
