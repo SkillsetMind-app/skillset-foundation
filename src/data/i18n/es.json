@@ -203,7 +203,7 @@
           "title": "Aprende de quienes ya lo hacen.",
           "description": "Cada programa proviene de un profesional independiente, verificado cuando se requiere. Paga en tu moneda, estudia a tu ritmo y obtén certificados que cualquiera puede verificar.",
           "point1Title": "Expertos verificados",
-          "point1Desc": "La elegibilidad profesional se comprueba antes de que un creador pueda publicar.",
+          "point1Desc": "Cuando se requiere, la elegibilidad profesional se comprueba antes de que un creador pueda publicar.",
           "point2Title": "Paga en tu moneda",
           "point2Desc": "Checkout vía Stripe en 30 monedas.",
           "point3Title": "Certificados verificables",
@@ -2932,7 +2932,7 @@
       "financial_questions_refunds_payouts_holds_chargebacks": "Las preguntas financieras sobre reembolsos, transferencias, retenciones y contracargos llegan a una persona real, por correo. Intentamos responder en un plazo de 2 días hábiles (de lunes a viernes). Sin barreras de chatbots ni escaladas interminables.",
       "money_issues_do_not_belong_behind": "Los problemas de dinero no deben quedar atrapados detrás de bots.",
       "the_skillsetmind_promise": "La promesa de SkillsetMind",
-      "skillsetmind_commitments_to_creators_and_learners": "Los compromisos de SkillsetMind con creadores y alumnos: calidad revisada, dinero del creador que nunca pasa por SkillsetMind, protección de reembolsos y credenciales verificables.",
+      "skillsetmind_commitments_to_creators_and_learners": "Los compromisos de SkillsetMind con creadores y alumnos: perfiles de creador revisados, dinero del creador que nunca pasa por SkillsetMind, protección de reembolsos y credenciales verificables.",
       "the_skillsetmind_creator_promise": "La promesa de SkillsetMind a los creadores",
       "six_commitments_in_writing_public": "Seis compromisos. Por escrito. Públicos.",
       "these_promises_are_contractual_product_rules": "Estas promesas son reglas contractuales del producto para quienes construyen en SkillsetMind: comisión fija, portabilidad, cancelación, protección y atención humana cuando hay dinero de por medio.",
@@ -2942,7 +2942,7 @@
     },
     "about": {
       "about": "Acerca de nosotros",
-      "skillsetmind_is_an_international_platform_for": "SkillsetMind es una plataforma internacional de cursos en línea de calidad, centrada en la revisión de calidad, los ingresos del creador y el aprendizaje verificable.",
+      "skillsetmind_is_an_international_platform_for": "SkillsetMind es una plataforma internacional de cursos en línea de calidad, centrada en perfiles de creador revisados, los ingresos del creador y el aprendizaje verificable.",
       "skillsetmind_is_a_public_home_for": "SkillsetMind es un espacio público para aprender, enseñar y crecer con confianza.",
       "skillsetmind_is_where_professional_educators_publish": "En SkillsetMind, educadores profesionales publican cursos y los alumnos obtienen certificados SkillsetMind Verified que los empleadores pueden comprobar. La plataforma está diseñada para no retener nunca el dinero del educador: los compradores pagan directamente a su propia cuenta de Stripe. Aquí no hay un saldo que retener ni dinero que debamos liberar.",
       "professional_programs": "Programas profesionales",
@@ -2972,7 +2972,7 @@
     },
     "instructors": {
       "instructors": "Instructores",
-      "independent_experts_publishing_reviewed_professional_courses": "Expertos independientes que publican cursos profesionales revisados en SkillsetMind.",
+      "independent_experts_publishing_reviewed_professional_courses": "Expertos independientes que publican cursos profesionales en SkillsetMind.",
       "learn_from_reviewed_experts": "Aprende de expertos evaluados.",
       "meet_independent_creators_whose_public_profiles": "Conoce a creadores independientes cuyos perfiles públicos se publican después de una revisión. SkillsetMind muestra la identidad real de los instructores, sin perfiles de relleno."
     },
@@ -2982,13 +2982,13 @@
       "course_pages_still_show_verified_instructor": "Las páginas de los cursos siguen mostrando la identidad del instructor, verificada cuando se requiere, si hay un perfil público disponible.",
       "first_cohort": "Primer grupo",
       "public_instructor_profiles_appear_after_review": "Los perfiles públicos de los instructores aparecen después de la revisión.",
-      "skillsetmind_only_lists_real_published_profiles": "SkillsetMind solo muestra perfiles reales publicados. Los nuevos creadores pueden completar su registro y enviar su primer curso a revisión antes de aparecer aquí.",
+      "skillsetmind_only_lists_real_published_profiles": "SkillsetMind solo muestra perfiles reales publicados. Los nuevos creadores aparecen aquí cuando se aprueba su perfil.",
       "start_teaching": "Empieza a enseñar",
       "browse_courses": "Explorar cursos",
       "directory": "Directorio",
       "published_instructors": "Instructores publicados",
       "browse_their_courses": "Explorar sus cursos",
-      "this_instructor_has_published_their_profile": "Este instructor ha publicado su perfil y está preparando experiencias de aprendizaje revisadas en SkillsetMind.",
+      "this_instructor_has_published_their_profile": "Este instructor ha publicado su perfil y está preparando experiencias de aprendizaje en SkillsetMind.",
       "view_profile": "Ver perfil",
       "fallback_name": "Instructor de SkillsetMind"
     },
@@ -3021,7 +3021,7 @@
       "free_enrollment": "Inscripción gratuita",
       "enrollment_soon": "Inscripciones próximamente",
       "metadata_title": "Instructor",
-      "metadata_description": "Un experto independiente que publica cursos profesionales revisados en SkillsetMind."
+      "metadata_description": "Un experto independiente que publica cursos profesionales en SkillsetMind."
     },
     "cookies": {
       "cookie_preferences": "Preferencias de cookies",
@@ -3333,7 +3333,7 @@
       "studentPathDescription": "Explora programas, inscríbete, únete a comunidades y obtén credenciales.",
       "teacherPathDescription": "Crea cursos, publícalos en el catálogo y vende en todo el mundo.",
       "professionTitle": "¿Qué describe mejor tu trabajo?",
-      "professionLead": "Esto ayuda a SkillsetMind a revisar tus cursos y adaptar tu estudio.",
+      "professionLead": "Esto ayuda a SkillsetMind a adaptar tu estudio.",
       "discoveryTitle": "¿Dónde conociste SkillsetMind?",
       "sellingTitle": "¿Ya vendes por internet?",
       "alreadySelling": "Sí, vendo en otra plataforma",
@@ -5215,7 +5215,7 @@
   "legalPages": {
     "common": {
       "kicker": "Legal",
-      "effectiveDate": "16 de septiembre de 2026",
+      "effectiveDate": "24 de septiembre de 2026",
       "effectiveLabel": "En vigor desde el {date}"
     },
     "privacy": {
@@ -5288,7 +5288,7 @@
       "text5": "SkillsetMind utiliza una única cuenta con hasta dos roles: estudiante (inscripción en cursos) y educador (publicación de cursos). Eliges tu rol después del registro y puedes tener ambos en la misma cuenta. El registro requiere una dirección de correo electrónico válida y una contraseña; la autenticación se proporciona a través de nuestro proveedor de infraestructura, Supabase.",
       "text6": "Eres responsable de toda la actividad de tu cuenta y de mantener seguras tus credenciales. Las cuentas son personales e intransferibles. Notifícanos sin demora en <support>support@skillsetmind.com</support> si crees que se ha accedido a tu cuenta sin autorización. Debes proporcionar información exacta y mantenerla actualizada.",
       "text7": "SkillsetMind proporciona la tecnología para alojar e impartir cursos: aulas de video, comunidades privadas por curso, sesiones en vivo, certificados verificables públicamente y reseñas de cursos de estudiantes inscritos. Los cursos son creados por educadores independientes, no por SkillsetMind.",
-      "text8": "Cuando SkillsetMind lo exige, los educadores deben completar la verificación profesional antes de publicar. SkillsetMind puede revisar el contenido que se le denuncie para comprobar el cumplimiento de las políticas, y puede pausar o retirar los cursos que incumplan las normas del catálogo. La verificación y la revisión no constituyen un aval, una certificación ni una garantía de la exactitud, eficacia o idoneidad de ningún curso para tus necesidades.",
+      "text8": "Cuando SkillsetMind lo exija, los educadores deben completar la verificación profesional antes de publicar. SkillsetMind puede revisar el contenido que se le denuncie para comprobar el cumplimiento de las políticas, y puede pausar o retirar los cursos que incumplan las normas del mercado. La verificación y la revisión no constituyen un aval, una certificación ni una garantía de la exactitud, eficacia o idoneidad de ningún curso para tus necesidades.",
       "text9": "La inscripción en un curso te concede una licencia personal, intransferible, no exclusiva y revocable para acceder al contenido de ese curso para tu propio aprendizaje. No puedes revender, redistribuir, exhibir públicamente, grabar ni compartir los materiales de cursos de pago, ni conceder acceso a otras personas. El educador establece la disponibilidad, estructura y precio del curso, que pueden cambiar con el tiempo.",
       "text10": "Los cursos de SkillsetMind son productos formativos. <strong>No son psicoterapia, asesoramiento psicológico, atención médica ni un sustituto del tratamiento</strong>, y la inscripción en un curso o la participación en una comunidad o sesión en vivo no crea ninguna relación terapeuta-cliente o médico-paciente. Si estás atravesando una crisis de salud mental, contacta de inmediato con los servicios de emergencia locales o una línea de atención en crisis. Las decisiones sobre tu salud deben tomarse con un profesional cualificado que te atienda individualmente.",
       "text11": "Stripe procesa las inscripciones de pago y las suscripciones de educadores. SkillsetMind no almacena números completos de tarjetas de pago. Los precios se muestran al pagar en la moneda indicada, y autorizas el cargo al confirmar una compra. Eres responsable de los impuestos, aranceles o comisiones bancarias que se apliquen a tu compra conforme a tu legislación local.",
@@ -5348,7 +5348,7 @@
       "text6": "Conservas la plena titularidad de la propiedad intelectual del contenido que creas. Al publicar en SkillsetMind nos concedes una licencia no exclusiva y mundial para alojar, codificar, mostrar y proporcionar tu contenido a tus estudiantes inscritos, y para utilizar el título, la descripción y la imagen de portada de tu curso y tu perfil público para promocionar tu curso dentro y fuera de la plataforma. Esta licencia finaliza para un curso cuando lo retiras, excepto para los estudiantes ya inscritos, que conservan el acceso por el que pagaron.",
       "text7": "No existe exclusividad. Puedes vender el mismo contenido o uno similar en cualquier otro lugar.",
       "text8": "Eres el único responsable de la exactitud, originalidad, legalidad y seguridad de los estudiantes en relación con todo lo que publicas — videos, materiales, publicaciones en comunidades y sesiones en vivo. Debes ser titular o disponer de los derechos de todo lo incluido en tu curso, como música, imágenes y fragmentos.",
-      "text9": "Cuando SkillsetMind lo exige, debes completar la verificación profesional antes de publicar. SkillsetMind puede revisar el contenido que se le denuncie para comprobar el cumplimiento de las políticas; esto no transfiere a SkillsetMind la responsabilidad por tu contenido. Las señales automatizadas de cumplimiento no retiran automáticamente un curso de la publicación. Tras una decisión humana del equipo de operaciones, los cursos pueden pausarse o retirarse si incumplen las normas de confianza, pago, seguridad o contenido.",
+      "text9": "Cuando SkillsetMind lo exija, debes completar la verificación profesional antes de publicar. SkillsetMind puede revisar el contenido que se le denuncie para comprobar el cumplimiento de las políticas; esto no transfiere a SkillsetMind la responsabilidad por tu contenido. Las señales automatizadas de cumplimiento no retiran automáticamente un curso de la publicación. Tras una decisión humana del equipo de operaciones, los cursos pueden pausarse o retirarse si incumplen las normas de confianza, pago, seguridad o contenido.",
       "text10": "SkillsetMind está al servicio de coaches, facilitadores y profesionales del desarrollo personal. No es un espacio para el ejercicio clínico sujeto a licencia, por lo que este límite es estricto:",
       "text11": "Los cursos deben ser formativos. Un curso puede enseñar métodos, marcos de trabajo y habilidades; no puede proporcionar atención clínica individualizada, diagnóstico o tratamiento disfrazados de curso.",
       "text12": "No puedes utilizar cursos, comunidades ni sesiones en vivo para crear una relación terapeuta-cliente, consejero-cliente o profesional-paciente con los estudiantes, ni presentar la participación en un curso como sustituto de la terapia o del tratamiento médico.",

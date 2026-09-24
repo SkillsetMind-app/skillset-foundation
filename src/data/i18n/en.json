@@ -203,7 +203,7 @@
           "title": "Learn from people who do the work.",
           "description": "Every program comes from an independent professional, verified where required. Pay in your currency, learn at your pace, and earn certificates anyone can verify.",
           "point1Title": "Verified experts",
-          "point1Desc": "Professional eligibility is checked before a creator can publish.",
+          "point1Desc": "Where required, professional eligibility is checked before a creator can publish.",
           "point2Title": "Pay in your currency",
           "point2Desc": "Checkout via Stripe in 30 currencies.",
           "point3Title": "Verifiable certificates",
@@ -2932,7 +2932,7 @@
       "financial_questions_refunds_payouts_holds_chargebacks": "Financial questions — refunds, payouts, holds, chargebacks — go to a real person, by email. We aim to reply within 2 business days (Mon–Fri). No chatbot wall. No escalation maze.",
       "money_issues_do_not_belong_behind": "Money issues do not belong behind a bot maze.",
       "the_skillsetmind_promise": "The SkillsetMind Promise",
-      "skillsetmind_commitments_to_creators_and_learners": "SkillsetMind commitments to creators and learners: reviewed quality, creator money that never passes through SkillsetMind, refund protection, and verifiable credentials.",
+      "skillsetmind_commitments_to_creators_and_learners": "SkillsetMind commitments to creators and learners: reviewed creator profiles, creator money that never passes through SkillsetMind, refund protection, and verifiable credentials.",
       "the_skillsetmind_creator_promise": "The SkillsetMind Creator Promise",
       "six_commitments_in_writing_public": "Six commitments. In writing. Public.",
       "these_promises_are_contractual_product_rules": "These promises are contractual product rules for creators building on SkillsetMind: fee-locked, portable, cancellable, protected, and supported by humans when money is involved.",
@@ -2942,7 +2942,7 @@
     },
     "about": {
       "about": "About",
-      "skillsetmind_is_an_international_platform_for": "SkillsetMind is an international platform for serious online courses, built around reviewed quality, creator income, and verifiable learning.",
+      "skillsetmind_is_an_international_platform_for": "SkillsetMind is an international platform for serious online courses, built around reviewed creator profiles, creator income, and verifiable learning.",
       "skillsetmind_is_a_public_home_for": "SkillsetMind is a public home for learning, teaching, and trusted growth.",
       "skillsetmind_is_where_professional_educators_publish": "SkillsetMind is where professional educators publish courses and learners earn SkillsetMind Verified certificates employers can check. We built it so the platform never sits on an educator's money: buyers are charged directly on the educator's own Stripe account, which means there is no balance here to hold and nothing for us to release.",
       "professional_programs": "Professional programs",
@@ -2972,7 +2972,7 @@
     },
     "instructors": {
       "instructors": "Instructors",
-      "independent_experts_publishing_reviewed_professional_courses": "Independent experts publishing reviewed professional courses on SkillsetMind.",
+      "independent_experts_publishing_reviewed_professional_courses": "Independent experts publishing professional courses on SkillsetMind.",
       "learn_from_reviewed_experts": "Learn from reviewed experts.",
       "meet_independent_creators_whose_public_profiles": "Meet independent creators whose public profiles are published after review. SkillsetMind shows real instructor identity instead of marketplace filler."
     },
@@ -2982,13 +2982,13 @@
       "course_pages_still_show_verified_instructor": "Course pages still show the instructor's identity, verified where required, when a public profile is available.",
       "first_cohort": "First cohort",
       "public_instructor_profiles_appear_after_review": "Public instructor profiles appear after review.",
-      "skillsetmind_only_lists_real_published_profiles": "SkillsetMind only lists real published profiles. New creators can finish onboarding and submit their first reviewed course before they appear here.",
+      "skillsetmind_only_lists_real_published_profiles": "SkillsetMind only lists real published profiles. New creators appear here once their profile is approved.",
       "start_teaching": "Start teaching",
       "browse_courses": "Browse courses",
       "directory": "Directory",
       "published_instructors": "Published instructors",
       "browse_their_courses": "Browse their courses",
-      "this_instructor_has_published_their_profile": "This instructor has published their profile and is preparing reviewed learning experiences on SkillsetMind.",
+      "this_instructor_has_published_their_profile": "This instructor has published their profile and is preparing learning experiences on SkillsetMind.",
       "view_profile": "View profile",
       "fallback_name": "SkillsetMind instructor"
     },
@@ -3021,7 +3021,7 @@
       "free_enrollment": "Free enrollment",
       "enrollment_soon": "Enrollment opening soon",
       "metadata_title": "Instructor",
-      "metadata_description": "An independent expert publishing reviewed professional courses on SkillsetMind."
+      "metadata_description": "An independent expert publishing professional courses on SkillsetMind."
     },
     "cookies": {
       "cookie_preferences": "Cookie preferences",
@@ -3333,7 +3333,7 @@
       "studentPathDescription": "Browse programs, enroll, join communities, earn credentials.",
       "teacherPathDescription": "Build courses, publish to the marketplace, and sell worldwide.",
       "professionTitle": "What best describes your work?",
-      "professionLead": "This helps SkillsetMind review your courses and tailor your studio.",
+      "professionLead": "This helps SkillsetMind tailor your studio.",
       "discoveryTitle": "Where did you hear about SkillsetMind?",
       "sellingTitle": "Are you already selling online?",
       "alreadySelling": "Yes, I sell on another platform",
@@ -5215,7 +5215,7 @@
   "legalPages": {
     "common": {
       "kicker": "Legal",
-      "effectiveDate": "September 16, 2026",
+      "effectiveDate": "September 24, 2026",
       "effectiveLabel": "Effective {date}"
     },
     "privacy": {
