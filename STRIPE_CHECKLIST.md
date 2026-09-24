@@ -95,4 +95,4 @@ Onde: **Connect → Settings**.
 | `STRIPE_SECRET_KEY` | Firebase secret | Stripe → Developers → API keys → Secret key |
 | `STRIPE_WEBHOOK_SECRET` | Firebase secret | Stripe → Webhooks → seu endpoint → Signing secret |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `.env.local` + env do front | Stripe → Developers → API keys → Publishable key |
-| `SKILLSET_APP_URL` (opcional) | env das functions | default já é https://skillsetusaofficial.web.app |
+| `SKILLSET_APP_URL` (opcional) | env das functions | default é o SITE_URL canônico (https://www.skillsetmind.com) |

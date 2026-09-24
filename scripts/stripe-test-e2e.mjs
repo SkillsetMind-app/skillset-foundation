@@ -80,8 +80,8 @@ if (key && key.startsWith("sk_test_")) {
           product_data: { name: "Skillset E2E TEST course" },
         },
       }],
-      success_url: "https://skillsetusaofficial.web.app/?t=ok",
-      cancel_url: "https://skillsetusaofficial.web.app/?t=cancel",
+      success_url: "https://www.skillsetmind.com/?t=ok",
+      cancel_url: "https://www.skillsetmind.com/?t=cancel",
     });
     console.log("LIVE-TEST mode: created TEST Checkout Session", session.id);
     console.log("Open to pay with 4242…:", session.url, "\n");

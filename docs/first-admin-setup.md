@@ -1,5 +1,7 @@
 # First Admin Setup
 
+> **Obsoleto:** descreve o fluxo da época do Firebase, que foi removido do projeto. Produção é https://www.skillsetmind.com; o banco agora é o Supabase.
+
 Last updated: 2026-04-26
 
 Skillset does not allow a user to make themselves admin from the public app.

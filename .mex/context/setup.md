@@ -43,7 +43,7 @@ Client (in `.env.local`, public — `NEXT_PUBLIC_*`):
 Server (Firebase Functions secrets, NEVER in repo/client env):
 - `STRIPE_SECRET_KEY` (required) — `firebase functions:secrets:set STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET` (required) — `firebase functions:secrets:set STRIPE_WEBHOOK_SECRET`
-- `SKILLSET_APP_URL` (optional) — defaults to `https://skillsetusaofficial.web.app`
+- `SKILLSET_APP_URL` (optional) — defaults to the canonical `SITE_URL` (`https://www.skillsetmind.com`)
 
 ## Common Commands
 
