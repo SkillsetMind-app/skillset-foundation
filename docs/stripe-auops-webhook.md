@@ -3,7 +3,7 @@
 Environment: test
 Stripe account email: (e-mail operacional)
 Firebase project: skillsetusaofficial
-Webhook URL: (endpoint antigo do Firebase, desativado)
+Webhook URL: (endpoint antigo do Firebase)
 Webhook endpoint ID: we_…
 Enabled events:
 - checkout.session.completed
