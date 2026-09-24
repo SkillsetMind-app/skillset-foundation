@@ -4,7 +4,7 @@ Atualizado: 2026-05-11 (verificado via Stripe API, read-only)
 
 ## Status verificado da conta LIVE
 
-Conta: `acct_1TUqjLPvg1vJW0Ij` — "SKILLSET USA" (US, USD)
+Conta: `acct_… (conta da plataforma)` — "SKILLSET USA" (US, USD)
 
 - `charges_enabled`: true
 - `payouts_enabled`: true
