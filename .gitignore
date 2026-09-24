@@ -64,6 +64,8 @@ next-env.d.ts
 /.claude/logs/
 /.claude/mission-control/
 /.claude/sessions/
+/.claude/PAYWALL-LESSON-CONTENT-MIGRATION-PLAN.md
+/.claude/improvement-triage.md
 /logs/
 
 # graphify knowledge graph (local tooling output)
