@@ -74,3 +74,7 @@ supabase/schema/parts/
 
 # Supabase CLI link state (holds the project ref and pooler URL)
 supabase/.temp/
+
+# Python
+__pycache__/
+*.pyc
