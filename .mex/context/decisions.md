@@ -15,9 +15,12 @@ edges:
 last_updated: 2026-06-25
 ---
 
-> **PARCIALMENTE OBSOLETO.** Trechos deste contexto ainda citam a era Firebase (Firestore,
-> Functions, `functions/`). A stack atual é Next.js na Vercel + Supabase; onde houver conflito,
-> vale `context/setup.md` e `AGENTS.md`.
+> **PARCIALMENTE OBSOLETO.** As decisões D2 (separate charges and transfers), D18 (tabela de bps),
+> D20 (segredos no Firebase) e D21 (hold de 30 dias) foram substituídas: hoje a venda é direct charge
+> com `application_fee_amount`/`application_fee_percent`, o `payout_ledger` é gravado `settled` sem
+> data de liberação, e as taxas vivem em `src/lib/payments/rules.ts` (ver `STRIPE_CHECKLIST.md`).
+> Outros trechos ainda citam a era Firebase; onde houver conflito, vale o código, `context/setup.md`,
+> `STRIPE_CHECKLIST.md` e `AGENTS.md`.
 
 # Decisions
 
