@@ -3,9 +3,10 @@
  * Stripe TEST end-to-end simulation for the Skillset marketplace.
  *
  * Two modes:
- *  - MATH mode (default, no creds): mirrors the EXACT formulas in
- *    functions/src/index.ts and prints the money split for sample prices.
- *    Use this to sanity-check the fee pass-through + ledger numbers.
+ *  - MATH mode (default, no creds): prints a money split for sample prices
+ *    using a HISTORICAL copy of the Firebase-era formulas. They do NOT track
+ *    the current code (see the note above the formulas below), so do not use
+ *    this table to check real fees or ledger numbers.
  *  - LIVE-TEST mode (when STRIPE_SECRET_KEY=sk_test_... is set): also
  *    creates a real Stripe TEST Checkout Session to prove API wiring.
  *
@@ -15,7 +16,12 @@
  * Card for manual UI test: 4242 4242 4242 4242, any future date, any CVC.
  */
 
-// ---- mirrors functions/src/index.ts (keep in sync) ----
+// ---- HISTORICAL copy of the Firebase-era formulas; does NOT track the code ----
+// The current fee rules live in src/lib/payments/rules.ts
+// (DEFAULT_PLATFORM_FEE_BPS, canonicalPlatformFeeBpsForPlan,
+// stripeProcessingFeeMinor) and the split is computed in
+// src/app/api/webhooks/stripe/route.ts. The constants below differ from them
+// (platform fee bps and the non-USD processing percentage).
 const DEFAULT_PLATFORM_FEE_BPS = 1500; // 15%
 
 function stripeProcessingFeeMinor(grossMinor, currency) {
