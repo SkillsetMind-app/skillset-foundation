@@ -227,6 +227,10 @@ export async function proxy(request: NextRequest) {
     return secure(response);
   }
 
+  // @supabase/ssr hands the anti-cache headers only to the FIRST setAll call
+  // of a client (>= 0.12.6). A refresh followed by a local sign-out calls it
+  // twice, and each call rebuilds the response, so keep every header seen.
+  const sessionHeaders: Record<string, string> = {};
   const supabase = createServerClient(config.url, config.anonKey, {
     cookies: {
       getAll() {
@@ -242,7 +246,8 @@ export async function proxy(request: NextRequest) {
         for (const { name, value, options } of cookiesToSet) {
           response.cookies.set(name, value, options);
         }
-        for (const [name, value] of Object.entries(headersToSet)) {
+        Object.assign(sessionHeaders, headersToSet);
+        for (const [name, value] of Object.entries(sessionHeaders)) {
           response.headers.set(name, value);
         }
       },
