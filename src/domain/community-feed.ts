@@ -22,10 +22,6 @@ export function postKind(post: Pick<CommunityPost, "category">): CommunityPostKi
   return "share";
 }
 
-export function categoryForKind(kind: CommunityPostKind): CommunityPost["category"] {
-  return kind === "question" ? "question" : kind === "update" ? "announcement" : "discussion";
-}
-
 /** Instrutor = quem escreveu com papel de professor/admin, ou o dono do curso. */
 export function isInstructor(
   author: Pick<CommunityPost, "authorId" | "authorRole">,

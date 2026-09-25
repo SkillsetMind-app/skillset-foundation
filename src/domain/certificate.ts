@@ -80,15 +80,3 @@ export function getCredentialCandidate(
     verificationCode: certificate?.verificationCode ?? null,
   };
 }
-
-export function getCertificateStatusLabel(status: CertificateStatus): string {
-  const labels: Record<CertificateStatus, string> = {
-    in_progress: "In progress",
-    eligible: "Ready for review",
-    issued: "Issued",
-    revoked: "Revoked",
-    refund_revoked: "Revoked",
-  };
-
-  return labels[status];
-}

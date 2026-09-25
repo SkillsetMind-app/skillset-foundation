@@ -96,12 +96,6 @@ export type LeaderboardWindow = "all-time" | "30d" | "7d";
 
 export const LEADERBOARD_WINDOWS: LeaderboardWindow[] = ["7d", "30d", "all-time"];
 
-export const leaderboardWindowLabels: Record<LeaderboardWindow, string> = {
-  "7d": "This week",
-  "30d": "This month",
-  "all-time": "All time",
-};
-
 // No raw Auth UID here: the leaderboard is broadcast to every signed-in member,
 // so exposing each ranked member's uid let any account map displayName -> uid
 // for the global top list. The UI keys rows by `rank` (unique per window) and
