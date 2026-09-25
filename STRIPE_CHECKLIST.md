@@ -1,11 +1,18 @@
 # STRIPE GO-LIVE CHECKLIST — campo por campo
 
-> Gerado automaticamente na sessão autônoma de 2026-05-19.
-> Tudo aqui depende de você (acesso ao painel Stripe / Firebase). O código já está pronto.
+> Tudo aqui depende de você (acesso ao painel Stripe / Vercel). O código já está pronto.
 > Quando terminar cada item, marque `[x]`.
 
-Projeto Firebase: **skillsetusaofficial** · Região functions: **us-central1**
-Função de webhook: **stripeWebhook** · Modelo: **separate_charges_and_transfers**
+Hospedagem: **Next.js na Vercel** · Dados: **Supabase (Postgres)**
+Webhook: Route Handler `src/app/api/webhooks/stripe/route.ts` → `POST /api/webhooks/stripe`
+Modelo: **direct charges** — a cobrança nasce na conta conectada do professor e a
+comissão da plataforma sai como `application_fee_amount` (venda avulsa) ou `application_fee_percent`
+(assinatura de curso) (`src/app/api/payments/checkout/route.ts`).
+
+Todas as variáveis de servidor abaixo vão em **Vercel → projeto → Settings → Environment
+Variables** (Production, e Preview se for testar lá). Localmente, em `.env.local`.
+Nunca no git, nunca com prefixo `NEXT_PUBLIC_`. Depois de mudar uma variável, faça um
+redeploy para ela valer.
 
 ---
 
@@ -16,83 +23,97 @@ Caminho: **Developers → API keys**.
 
 | Campo no painel | O que copiar | Onde vai no nosso sistema |
 |---|---|---|
-| **Publishable key** (`pk_test_...` / `pk_live_...`) | a string inteira | `.env.local` → `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=` (e no Vercel/Firebase env do front) |
-| **Secret key** (`sk_test_...` / `sk_live_...`) | clique em **Reveal**, copie | Firebase secret `STRIPE_SECRET_KEY` (NÃO no .env do front, NÃO no git) |
+| **Publishable key** (`pk_test_...` / `pk_live_...`) | a string inteira | variável de ambiente do projeto na Vercel `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (e `.env.local` para dev) |
+| **Secret key** (`sk_test_...` / `sk_live_...`) | clique em **Reveal**, copie | variável de ambiente do projeto na Vercel `STRIPE_SECRET_KEY` (NÃO no git, NÃO com `NEXT_PUBLIC_`) |
 
-Comando para gravar a secret key no Firebase (rodar você, no terminal do projeto):
-```
-firebase functions:secrets:set STRIPE_SECRET_KEY
-# cole o sk_live_... quando pedir
-```
+- [ ] Cole a secret key como **uma linha só**, sem espaço no meio: o código apara espaço/quebra de linha nas pontas, mas recusa uma chave com caractere inválido no meio (`sanitizeStripeSecret`, `src/lib/payments/rules.ts`).
+- [ ] O modo da chave define o modo do webhook: com `sk_test_` o webhook ignora eventos LIVE (responde 503 para que o Stripe reentregue), e com `sk_live_` ignora eventos de teste.
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` também precisa estar configurada: sem ela as rotas de dinheiro (checkout, webhook, reembolsos) falham com erro 500 (`src/lib/supabase/admin.ts`).
 
-## 2. Webhook endpoint
+## 2. Webhook endpoints
 
 Onde: **Developers → Webhooks → + Add endpoint**.
 
-| Campo | Valor exato a preencher |
-|---|---|
-| **Endpoint URL** | `https://us-central1-skillsetusaofficial.cloudfunctions.net/stripeWebhook` |
-| **Description** | `Skillset marketplace — orders & payouts` |
-| **Events to send** | selecione exatamente os 9 abaixo |
+Com direct charges, a venda de curso acontece na conta conectada do professor, então o
+Stripe entrega esses eventos como eventos **Connect** — não chegam a um endpoint só de
+plataforma. São **dois endpoints na mesma URL**, cada um com o seu signing secret; a rota
+verifica a assinatura contra os dois.
 
-Eventos a assinar (clique **Select events** e marque só estes — é o que o código trata).
+| Endpoint | Campo "Listen to" | Endpoint URL | Signing secret vai em |
+|---|---|---|---|
+| Plataforma | Events on your account | `https://www.skillsetmind.com/api/webhooks/stripe` | `STRIPE_WEBHOOK_SECRET` |
+| Connect | Events on Connected accounts | `https://www.skillsetmind.com/api/webhooks/stripe` | `STRIPE_CONNECT_WEBHOOK_SECRET` |
 
-**Compra one-time + reembolso** (rail original):
-- [ ] `checkout.session.completed`
-- [ ] `checkout.session.expired`
-- [ ] `payment_intent.payment_failed`
-- [ ] `charge.refunded`
+> ⚠️ Use o `www`: o domínio sem `www` responde 308 e o Stripe não segue redirect
+> (`scripts/create-connect-webhook.mjs`).
 
-**Assinatura** (curso recorrente + plano SaaS do professor) — **obrigatórios p/ R1**:
-- [ ] `invoice.paid` — fulfillment do ciclo: grava `payoutLedger` (held) + concede/reativa enrollment (`handleCourseSubscriptionInvoicePaid`, `index.ts:3199,3456`)
-- [ ] `invoice.payment_failed` — período de graça (`past_due`, mantém acesso durante o dunning do Stripe) p/ curso; dunning do plano caso contrário (`handleInvoicePaymentFailed`, `index.ts:3195,4415`)
-- [ ] `customer.subscription.created` — lifecycle (`handleCourseSubscriptionLifecycle` → fallback `syncSubscriptionFromStripe`, `index.ts:3168`)
-- [ ] `customer.subscription.updated` — lifecycle: cancel/resume, `past_due`→`active` (revoga/restaura enrollment), `index.ts:3169`
-- [ ] `customer.subscription.deleted` — lifecycle: revoga enrollment ativo→revogado, `index.ts:3186`
+Alternativa para o endpoint Connect: `node scripts/create-connect-webhook.mjs --secret-out <arquivo>`
+(lê `STRIPE_SECRET_KEY` do `.env.local` e cria ou ajusta o endpoint com a lista abaixo. Só quando
+cria um endpoint novo ele grava o signing secret no arquivo, sem imprimi-lo; apague o arquivo depois.
+Se o endpoint já existia, o secret não vem: pegue-o ou gere outro no painel). `--dry-run` só mostra o que faria.
 
-> ⚠️ **Sem os 5 eventos de assinatura, uma assinatura de curso COBRA o aluno mas NÃO concede/revoga acesso** (o webhook nunca dispara o fulfillment). Os mesmos 5 também alimentam o lifecycle do plano SaaS do professor.
+Eventos a assinar — a lista exata de `HANDLED_STRIPE_EVENT_TYPES` na rota. Qualquer outro
+evento é confirmado e ignorado.
 
-Depois de criar o endpoint:
-- Abra o endpoint criado → **Signing secret** → **Reveal** → copie o valor `whsec_...`
-- Grave no Firebase:
-```
-firebase functions:secrets:set STRIPE_WEBHOOK_SECRET
-# cole o whsec_... quando pedir
-```
+**Compra one-time, reembolso e disputa:**
+- [ ] `checkout.session.completed` — venda de curso: grava o pagamento, marca o pedido `paid`, libera o acesso e grava o registro de ganhos. Também confirma a taxa de ativação da vitrine (sessão com `purpose` de ativação).
+- [ ] `checkout.session.async_payment_succeeded` — mesmo tratamento do anterior, para pagamento assíncrono.
+- [ ] `checkout.session.async_payment_failed` — pedido `failed`.
+- [ ] `checkout.session.expired` — pedido `cancelled`.
+- [ ] `payment_intent.payment_failed` — pedido `failed`.
+- [ ] `charge.refunded` — registra o reembolso.
+- [ ] `charge.dispute.created` — registra a disputa.
+- [ ] `charge.dispute.closed` — registra o resultado da disputa.
 
-> ⚠️ A URL acima é o formato padrão Gen2/Firebase. Se o `firebase deploy` mostrar
-> uma URL diferente (ex.: `https://stripewebhook-xxxxx-uc.a.run.app`), use a que o
-> deploy imprimir e atualize o endpoint no Stripe. Está anotado em BLOCKERS.md.
+**Assinatura** (curso recorrente + plano do professor):
+- [ ] `invoice.paid` — fulfillment do ciclo (`handleCourseSubscriptionInvoicePaid`).
+- [ ] `invoice.payment_failed` — falha de cobrança do ciclo (`handleInvoicePaymentFailed`).
+- [ ] `customer.subscription.created` — lifecycle (`handleCourseSubscriptionLifecycle` → fallback `syncSubscriptionFromStripe`).
+- [ ] `customer.subscription.updated` — lifecycle, mesmo caminho.
+- [ ] `customer.subscription.deleted` — lifecycle, mesmo caminho.
+
+**Conta conectada:**
+- [ ] `account.updated` — sincroniza se a conta do professor pode cobrar e receber (`handleConnectedAccountUpdated`).
+
+> ⚠️ **Sem os eventos de assinatura, uma assinatura COBRA mas o acesso não é concedido nem
+> revogado**, e o plano pago do professor não é aplicado — quem pagou continua no Free (`.env.example`).
+
+Depois de criar cada endpoint:
+- Abra o endpoint → **Signing secret** → **Reveal** → copie o `whsec_...`
+- Grave na variável de ambiente do projeto na Vercel correspondente (tabela acima) e faça redeploy.
 
 ## 3. Stripe Connect (pagamentos dos professores)
 
 Onde: **Connect → Settings**.
 - [ ] Connect ativado na conta (se aparecer "Get started", conclua o onboarding da plataforma)
-- [ ] **Branding**: nome público "Skillset", logo, cor — aparece na tela de onboarding do professor
-- [ ] **Payout settings**: confirme schedule padrão das contas conectadas (o hold de **30 dias** é nosso, no código `payoutReleaseDelayDays=30`; o payout interno da conta conectada é separado)
-- [ ] Anote o **Connect client / platform** estar em modo LIVE quando for cutover
+- [ ] **Branding**: nome público, logo, cor — aparece na tela de onboarding do professor
+- [ ] **Payout settings**: o prazo e o calendário de payout são do Stripe, na conta conectada. A plataforma não segura dinheiro nem tem cron de liberação: o registro em `payout_ledger` é gravado já como `settled`, sem data de liberação (`src/app/api/webhooks/stripe/route.ts`).
+- [ ] Confirme que Connect está em modo LIVE quando for o cutover
 
 ## 4. Test mode — validação antes do LIVE
 
-- [ ] Com chaves TEST configuradas, rode o script: `node scripts/stripe-test-e2e.mjs` (ver TEST_RESULTS.md)
+- [ ] Com chaves TEST configuradas, rode `node --env-file=.env.local scripts/stripe-test-e2e.mjs` (o script não carrega o `.env.local` sozinho; sem `--env-file` ele só lê o que já estiver exportado no shell). Ele imprime uma tabela de divisão de valores e, com `STRIPE_SECRET_KEY=sk_test_...`, cria uma Checkout Session de teste de $100 para provar a ligação com a API.
+  - As fórmulas dessa tabela são uma cópia histórica e **não** acompanham o código atual — os valores reais estão em `src/lib/payments/rules.ts`.
+  - A sessão criada pelo script não tem pedido associado. Não a pague contra um endpoint de teste que aponte para o app: a rota exige `orderId`/`courseId`/`userId` no metadata, lança erro e o Stripe fica reentregando o evento.
 - [ ] Use cartão de teste `4242 4242 4242 4242`, qualquer data futura, qualquer CVC/CEP
-- [ ] Confira no Stripe Dashboard (test) → Payments: cobrança de $100 aparece
-- [ ] Confira Firestore: `orders` status `paid`, `payoutLedger` com `skillsetFeeMinor` + `stripeFeeMinor` + `netAmountMinor`
+- [ ] Faça uma compra de curso de verdade pelo app (em test mode) e confira no Supabase: tabela `orders` com status `paid`, e `payout_ledger` com `skillset_fee_minor`, `stripe_fee_minor` e `net_amount_minor`.
+- [ ] Stripe Dashboard (test) → Webhooks → as entregas dos dois endpoints respondem 200.
 
 ## 5. Cutover LIVE (só depois do item 4 verde)
 
-- [ ] Repetir itens 1 e 2 com **Test mode OFF** (chaves `sk_live_` / `pk_live_` / webhook LIVE)
-- [ ] `firebase deploy --only functions,hosting`
-- [ ] Confirmar endpoint LIVE recebendo eventos (Stripe → Webhooks → ver "últimas entregas" 200)
+- [ ] Repetir itens 1 e 2 com **Test mode OFF** (chaves `sk_live_` / `pk_live_` / os dois webhooks LIVE)
+- [ ] Atualizar as variáveis de ambiente do projeto na Vercel (Production) e fazer redeploy
+- [ ] Confirmar os dois endpoints LIVE recebendo eventos (Stripe → Webhooks → últimas entregas com 200)
 - [ ] Primeira venda real de valor baixo como smoke test
-- [ ] (NÃO automatizável por mim — está em BLOCKERS.md)
 
 ---
 
 ### Resumo do que o código espera de você
-| Segredo | Onde configurar | De onde tirar |
+| Variável | Onde configurar | De onde tirar |
 |---|---|---|
-| `STRIPE_SECRET_KEY` | Firebase secret | Stripe → Developers → API keys → Secret key |
-| `STRIPE_WEBHOOK_SECRET` | Firebase secret | Stripe → Webhooks → seu endpoint → Signing secret |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `.env.local` + env do front | Stripe → Developers → API keys → Publishable key |
-| `SKILLSET_APP_URL` (opcional) | env das functions | default é o SITE_URL canônico (https://www.skillsetmind.com) |
+| `STRIPE_SECRET_KEY` | variável de ambiente do projeto na Vercel | Stripe → Developers → API keys → Secret key |
+| `STRIPE_WEBHOOK_SECRET` | variável de ambiente do projeto na Vercel | Stripe → Webhooks → endpoint de plataforma → Signing secret |
+| `STRIPE_CONNECT_WEBHOOK_SECRET` | variável de ambiente do projeto na Vercel | Stripe → Webhooks → endpoint Connect → Signing secret |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | variável de ambiente do projeto na Vercel + `.env.local` | Stripe → Developers → API keys → Publishable key |
+| `SUPABASE_SERVICE_ROLE_KEY` | variável de ambiente do projeto na Vercel | painel do Supabase (chave `service_role`) |
+| `SKILLSET_APP_URL` (opcional) | variável de ambiente do projeto na Vercel | default é o `SITE_URL` canônico (https://www.skillsetmind.com) |

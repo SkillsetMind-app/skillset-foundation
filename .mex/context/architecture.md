@@ -15,6 +15,10 @@ edges:
 last_updated: 2026-06-25
 ---
 
+> **OBSOLETO.** Este contexto descreve a arquitetura da era Firebase (Firestore, Functions,
+> `functions/`) e é mantido apenas como histórico. A stack atual é Next.js na Vercel + Supabase;
+> consulte `context/setup.md` e `AGENTS.md` antes de seguir qualquer caminho citado aqui.
+
 # Architecture
 
 ## System Overview
