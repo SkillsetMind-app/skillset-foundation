@@ -228,17 +228,6 @@ export function lowestPlanWithQuota(
   );
 }
 
-export const quotaLabels: Record<QuotaKey, string> = {
-  publishedProducts: "Published products",
-  activeStudents: "Active students",
-  videoStorageMinutes: "Video storage",
-  featuredSlots: "Marketplace highlights",
-  customDomains: "Custom domains",
-  teamSeats: "Team seats",
-  emailSendsPerMonth: "Email sends per month",
-  landingBlocks: "Sales page blocks",
-};
-
 export function formatLimit(limit: QuotaLimit): string {
   if (limit === null) return "Unlimited";
   if (limit === 0) return "Not included";

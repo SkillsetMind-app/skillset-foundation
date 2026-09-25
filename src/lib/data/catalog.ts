@@ -1,5 +1,5 @@
 import { demoCourses } from "@/data/demo/courses";
-import { demoCommunitySpaces, demoLiveEvents, demoProductSurfaces } from "@/data/demo/platform";
+import { demoProductSurfaces } from "@/data/demo/platform";
 import type { Course } from "@/domain/learning";
 
 export type CourseCard = {
@@ -45,10 +45,6 @@ export type CourseCard = {
   enrollmentCount?: number;
 };
 
-export function getCourses(): Course[] {
-  return demoCourses;
-}
-
 export function getCourseBySlug(slug: string): Course | undefined {
   return demoCourses.find((course) => course.slug === slug);
 }
@@ -75,12 +71,4 @@ export function getFeaturedCourseCards(): CourseCard[] {
 
 export function getProductSurfaces() {
   return demoProductSurfaces;
-}
-
-export function getCommunitySpaces() {
-  return demoCommunitySpaces;
-}
-
-export function getLiveEvents() {
-  return demoLiveEvents;
 }
