@@ -93,15 +93,23 @@ Server-only:
 Postgres 54322, Studio 54323). `supabase db reset` does **not** rebuild the
 schema from `supabase/migrations/`: the migration chain does not replay from
 zero. The replayable schema is the baseline in `supabase/schema/` plus the
-later migrations, applied by `scripts/build-test-db.sh`:
+later migrations, applied by `scripts/build-test-db.sh`. The same sequence the
+`rls` job in `.github/workflows/ci.yml` runs:
 
 ```
-DATABASE_URL='postgresql://...' bash scripts/build-test-db.sh
-DATABASE_URL='postgresql://...' npm run test:db
-```
+# 1. Start an empty Supabase Postgres. Move migrations/ aside first, or
+#    `supabase db start` tries to replay the chain and fails.
+mv supabase/migrations supabase/.migrations-historico
+mkdir supabase/migrations
+supabase db start
+rmdir supabase/migrations
+mv supabase/.migrations-historico supabase/migrations
 
-The `rls` job in `.github/workflows/ci.yml` shows the full sequence (start an
-empty Supabase Postgres with the CLI, then apply the schema, then run the tests).
+# 2. Apply the repository schema, then run the SQL smoke tests.
+eval "$(supabase status -o env | grep '^DB_URL=')"
+DATABASE_URL="$DB_URL" bash scripts/build-test-db.sh
+DATABASE_URL="$DB_URL" npm run test:db
+```
 
 ## Common Issues
 

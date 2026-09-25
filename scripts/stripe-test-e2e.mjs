@@ -53,7 +53,7 @@ function row(label, gross, currency) {
   ].join(" | ");
 }
 
-console.log("\n=== Skillset payment split — MATH mode (mirrors index.ts) ===\n");
+console.log("\n=== Skillset payment split — MATH mode (HISTORICAL formulas, NOT the current fees; see src/lib/payments/rules.ts) ===\n");
 console.log(
   ["scenario".padEnd(22), "gross".padStart(9), "platform15%".padStart(11),
    "stripeFee".padStart(10), "teacherNet".padStart(12), "platformNet".padStart(12)].join(" | "),

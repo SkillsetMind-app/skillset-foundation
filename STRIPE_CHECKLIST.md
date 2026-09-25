@@ -92,7 +92,7 @@ Onde: **Connect → Settings**.
 
 ## 4. Test mode — validação antes do LIVE
 
-- [ ] Com chaves TEST configuradas, rode `node scripts/stripe-test-e2e.mjs`. Ele imprime uma tabela de divisão de valores e, com `STRIPE_SECRET_KEY=sk_test_...`, cria uma Checkout Session de teste de $100 para provar a ligação com a API.
+- [ ] Com chaves TEST configuradas, rode `node --env-file=.env.local scripts/stripe-test-e2e.mjs` (o script não carrega o `.env.local` sozinho; sem `--env-file` ele só lê o que já estiver exportado no shell). Ele imprime uma tabela de divisão de valores e, com `STRIPE_SECRET_KEY=sk_test_...`, cria uma Checkout Session de teste de $100 para provar a ligação com a API.
   - As fórmulas dessa tabela são uma cópia histórica e **não** acompanham o código atual — os valores reais estão em `src/lib/payments/rules.ts`.
   - A sessão criada pelo script não tem pedido associado. Não a pague contra um endpoint de teste que aponte para o app: a rota exige `orderId`/`courseId`/`userId` no metadata, lança erro e o Stripe fica reentregando o evento.
 - [ ] Use cartão de teste `4242 4242 4242 4242`, qualquer data futura, qualquer CVC/CEP

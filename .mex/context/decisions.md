@@ -15,6 +15,10 @@ edges:
 last_updated: 2026-06-25
 ---
 
+> **PARCIALMENTE OBSOLETO.** Trechos deste contexto ainda citam a era Firebase (Firestore,
+> Functions, `functions/`). A stack atual é Next.js na Vercel + Supabase; onde houver conflito,
+> vale `context/setup.md` e `AGENTS.md`.
+
 # Decisions
 
 <!-- HOW TO USE THIS FILE:
