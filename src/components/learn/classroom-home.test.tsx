@@ -143,8 +143,7 @@ vi.mock("@/components/learn/course-messages-panel", () => ({
 vi.mock("@/components/learn/course-review-panel", () => ({
   CourseReviewPanel: () => <div data-testid="review-panel" />,
 }));
-// A aba Community renderiza o feed simplificado (community-feed.tsx); o
-// componente antigo (course-community-feed.tsx) ficou so no hub /learn/community.
+// A aba Community renderiza o feed simplificado (community-feed.tsx).
 vi.mock("@/components/learn/community-feed", () => ({
   CommunityFeed: (props: { instructorName?: string | null; instructorIds?: string[] }) => (
     <div
