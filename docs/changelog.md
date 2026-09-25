@@ -41,7 +41,7 @@
 
 - Verified real state: 31 Fase 6 commits were stuck on `fase-6-organize`; merged into `main` and pushed.
 - Security audit: no secrets committed to repo; `.gitignore` covers `.env*`; clean.
-- Stripe verified via API (read-only): LIVE account `acct_1TUqjLPvg1vJW0Ij` "SKILLSET USA" — Connect ENABLED, LIVE webhook configured with 4 required events. Code stack consistently TEST mode (correct pre-QA).
+- Stripe verified via API (read-only): LIVE account `acct_… (conta da plataforma)` "SKILLSET USA" — Connect ENABLED, LIVE webhook configured with 4 required events. Code stack consistently TEST mode (correct pre-QA).
 - Added `docs/skillset-executor-plan-2026-05-11.md` and `docs/stripe-go-live-runbook.md` (cost answer + cutover steps).
 - Fix: removed teacher double-onboarding loop. Wizard-completed teachers now hit a single streamlined activation (email verification + Teacher Terms) instead of re-answering path/profile/goals. Security role-grant gate preserved.
 - Verified: lint, build (71 routes), 33 tests all green.

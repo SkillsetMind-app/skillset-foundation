@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Cormorant_Garamond, Inter, Manrope } from "next/font/google";
 import { AuthProvider } from "@/components/auth/auth-provider";
+import { LessonUploadProvider } from "@/components/teacher/lesson-upload-provider";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { ConsoleSignature } from "@/components/shared/console-signature";
 import { CookieConsent } from "@/components/site/cookie-consent";
@@ -84,7 +85,7 @@ export default async function RootLayout({
         <ConsoleSignature />
         <PostHogProvider>
           <I18nProvider initialLocale={locale}>
-            <AuthProvider>{children}</AuthProvider>
+            <AuthProvider><LessonUploadProvider>{children}</LessonUploadProvider></AuthProvider>
             <CookieConsent />
           </I18nProvider>
         </PostHogProvider>

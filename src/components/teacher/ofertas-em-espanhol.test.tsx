@@ -101,13 +101,13 @@ describe("painel de ofertas em espanhol", () => {
 
     renderEs();
 
-    // Titulo e descricao do painel.
+    // O titulo identifica a secao sem repetir um paragrafo de instrucoes.
     expect(await screen.findByText("Ofertas y precios")).toBeInTheDocument();
     expect(
-      screen.getByText(
+      screen.queryByText(
         "Crea paquetes de pago único o por suscripción. La oferta predeterminada rige la página principal; cada oferta activa tiene su propio enlace de compra exacto.",
       ),
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
 
     // Marca da oferta padrao e o botao que abre o formulario. A lista chega
     // depois do fetch: esperar, senao a asserção corre na frente do carregamento

@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, type RenderResult } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -98,6 +98,18 @@ async function renderBuilder() {
   return view;
 }
 
+// A aula abre como pagina (?lesson=L): segue a ultima URL que o builder pediu,
+// como o navegador faria.
+function followPush(view: RenderResult) {
+  const href = String(mocks.router.push.mock.calls.at(-1)?.[0]);
+  mocks.searchParams = new URL(href, "https://example.test").searchParams;
+  view.rerender(
+    <I18nProvider initialLocale="en">
+      <CourseBuilderStudio />
+    </I18nProvider>,
+  );
+}
+
 const moduleName = () => screen.getByRole("textbox", { name: "Module 1" });
 const lastPayload = () => vi.mocked(updateTeacherCourseBuilder).mock.calls.at(-1)?.[1];
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -106,6 +118,7 @@ describe("builder grava o rascunho pendente ao sair", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.course = courseWith();
+    mocks.searchParams = new URLSearchParams("courseId=course-1&tab=content&module=m1");
   });
 
   afterEach(() => {
@@ -155,8 +168,10 @@ describe("builder grava o rascunho pendente ao sair", () => {
     mocks.course = courseWith([
       { id: "l1", title: "Welcome", type: "video", description: "", videoSource: "youtube", externalUrl: youtube },
     ]);
-    const { unmount } = await renderBuilder();
+    const view = await renderBuilder();
+    const { unmount } = view;
     fireEvent.click(screen.getByRole("button", { name: "Edit content" }));
+    followPush(view);
     fireEvent.change(screen.getByRole("textbox", { name: "YouTube or Vimeo URL" }), {
       target: { value: vimeo },
     });
@@ -174,8 +189,10 @@ describe("builder grava o rascunho pendente ao sair", () => {
       { id: "l1", title: "Welcome", type: "video", description: "", externalUrl: drive },
     ]);
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
-    const { unmount } = await renderBuilder();
+    const view = await renderBuilder();
+    const { unmount } = view;
     fireEvent.click(screen.getByRole("button", { name: "Add video" }));
+    followPush(view);
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     fireEvent.change(screen.getByRole("textbox", { name: "YouTube or Vimeo URL" }), {
       target: { value: vimeo },
@@ -194,8 +211,9 @@ describe("builder grava o rascunho pendente ao sair", () => {
       { id: "l1", title: "Welcome", type: "video", description: "", externalUrl: drive },
     ]);
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
-    await renderBuilder();
+    const view = await renderBuilder();
     fireEvent.click(screen.getByRole("button", { name: "Add video" }));
+    followPush(view);
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     const field = () => screen.getByRole("textbox", { name: "YouTube or Vimeo URL" });
     fireEvent.change(field(), { target: { value: vimeo } });

@@ -57,7 +57,7 @@ describe("legal acceptance writes must land on a row", () => {
 
     await expect(accept()).resolves.toBeUndefined();
     expect(calls.columns).toBe("uid");
-    expect(calls.payload).toHaveProperty(versionColumn, "2026-09-15");
+    expect(calls.payload).toHaveProperty(versionColumn, "2026-09-24");
   });
 });
 
