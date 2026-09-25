@@ -57,9 +57,9 @@ Public (`NEXT_PUBLIC_*`):
 - `NEXT_PUBLIC_PAYMENTS_CHECKOUT_ENABLED`, `NEXT_PUBLIC_PAYMENTS_CARD_INSTALLMENTS_ENABLED` — payment feature flags.
 - `NEXT_PUBLIC_BUNNY_STREAM_LIBRARY_ID` — optional Bunny Stream video library; unset means video uploads go to Supabase Storage.
 - `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST` — optional analytics.
-- `NEXT_PUBLIC_TEACHER_ADVISOR_ENABLED`, `NEXT_PUBLIC_PLATFORM_ASSISTANT_ENABLED`, `NEXT_PUBLIC_AUTH_MFA_ENABLED`, `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` — feature flags.
-- `NEXT_PUBLIC_TURNSTILE_SITE_KEY` — optional; the Turnstile widget is off when unset.
-- `NEXT_PUBLIC_WHATSAPP_NUMBER` — optional contact link.
+- `NEXT_PUBLIC_TEACHER_ADVISOR_ENABLED`, `NEXT_PUBLIC_PLATFORM_ASSISTANT_ENABLED`, `NEXT_PUBLIC_AUTH_MFA_ENABLED`, `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` — feature flags (Google: `src/lib/auth/providers.ts`).
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY` — optional; the Turnstile widget is off when unset (`src/components/auth/turnstile-widget.tsx`).
+- `NEXT_PUBLIC_WHATSAPP_NUMBER` — optional contact link (`src/components/site/whatsapp-contact.tsx`).
 
 Server-only:
 - `SUPABASE_SERVICE_ROLE_KEY` — service-role client (`src/lib/supabase/admin.ts`); required by the money routes (checkout, webhook, refunds), which fail with a 500 without it.
@@ -69,7 +69,7 @@ Server-only:
 - `CRON_SECRET` — bearer secret for `/api/cron/*`; unset means every cron request is rejected (`src/lib/cron/authorized.ts`).
 - `RATE_LIMIT_PEPPER` — HMAC pepper for hashed-IP rate-limit keys (`src/lib/supabase/rate-limit.ts`).
 - `BUNNY_STREAM_API_KEY`, `BUNNY_STREAM_TOKEN_KEY` — Bunny Stream uploads and signed playback (`src/lib/bunny/server.ts`).
-- `RESEND_API_KEY` — purchase access email; skipped with a warning when unset.
+- `RESEND_API_KEY` — purchase access email; skipped with a warning when unset (`src/lib/payments/server/purchase-access-email.ts`).
 - `KIMI_API_KEY`, `OPENAI_API_KEY`, `ADVISOR_KNOWLEDGE_DOC_URL` — teacher advisor and its retrieval corpus.
 - `N8N_ASSISTANT_WEBHOOK_URL`, `N8N_ASSISTANT_WEBHOOK_SECRET` — public help-center assistant.
 - `OPS_ALERT_WEBHOOK_URL`, `OPS_ALERT_WEBHOOK_SECRET` — ops alerts (`src/lib/ops/alert.ts`); inert when unset.
