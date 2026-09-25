@@ -26,10 +26,10 @@ const nextConfig: NextConfig = {
   },
   // Baseline security response headers on every route. The single most common
   // gap in AI-built SaaS (2026 vibe-coded audits): no clickjacking/HSTS/sniff
-  // protection. A strict enforcing CSP is still a founder follow-up (it must be
-  // tuned against Stripe.js, PostHog, Supabase, Google OAuth, and the
-  // Bunny/YouTube/Vimeo iframes); until then we ship it REPORT-ONLY (below), so
-  // violations are observed without any risk of breaking the site.
+  // protection. The CSP itself is enforcing and per-request (nonce,
+  // strict-dynamic): it is built in src/lib/security/csp.ts and set by
+  // src/proxy.ts as Content-Security-Policy, with violations sent to
+  // /api/csp-report.
   // /lp e o atalho curto para a landing de Founding Creator, que vive em seu
   // proprio dominio (lp.skillsetmind.com, projeto Vercel skillsetmind-landing).
   // E redirect, nao rewrite: a landing e HTML estatico que chama support.js e

@@ -18,7 +18,7 @@ afterEach(() => { cleanup(); state.locale = "es"; });
 it("localizes profile metadata without changing its canonical reference", async () => {
   const metadata = await profileMetadata({ params: Promise.resolve({ slug: "original-author" }) });
   expect(metadata.title).toContain("Instructor");
-  expect(metadata.description).toBe("Un experto independiente que publica cursos profesionales revisados en SkillsetMind.");
+  expect(metadata.description).toBe("Un experto independiente que publica cursos profesionales en SkillsetMind.");
   expect(metadata.alternates?.canonical).toBe("https://www.skillsetmind.com/instructors/original-author");
 });
 

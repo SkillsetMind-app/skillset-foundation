@@ -46,7 +46,7 @@ vi.mock("@/lib/posthog/client", () => ({
 }));
 
 const ACCEPT = "Accept and continue";
-// A teacher who accepted the May Teacher Terms, before the 2026-09-15 bump.
+// A teacher who accepted the May Teacher Terms, older than the current version.
 const OUTDATED_TEACHER = { roles: ["teacher"], teacherTermsAcceptedAt: "2026-05-10T00:00:00.000Z", teacherTermsVersion: "2026-05-10" };
 
 // Lets the profile read resolve and the gate render before asserting absence.

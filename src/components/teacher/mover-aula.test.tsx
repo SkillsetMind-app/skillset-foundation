@@ -192,6 +192,10 @@ describe("mover a aula entre modulos", () => {
     openAt("courseId=course-1&tab=content&module=m2");
     rerender(tree());
     fireEvent.click(within(card()).getAllByRole("button", { name: "Add video" })[1]);
+    // A aula abre como pagina (?lesson=L): segue a URL que o builder pediu.
+    const opened = String(mocks.router.push.mock.calls.at(-1)?.[0]);
+    openAt(opened.slice(opened.indexOf("?") + 1));
+    rerender(tree());
     expect(screen.getByRole("dialog")).toHaveTextContent("m2:Second");
   }, 10000);
 
@@ -302,4 +306,62 @@ describe("mover a aula entre modulos", () => {
     fireEvent.dragStart(within(rowOf("m1")).getByText("Second"), { dataTransfer: lessonDrag });
     expect(fireEvent.dragOver(rowOf("m2"), { dataTransfer: lessonDrag })).toBe(false);
   });
+
+  // O leitor de tela so anuncia mudanca numa regiao que ja existia.
+  it("a regiao de aviso existe antes do primeiro mover, e so o texto muda", async () => {
+    openAt("courseId=course-1&tab=content&module=m1");
+    await renderBuilder();
+    const status = within(card()).getByRole("status");
+    expect(status).toHaveTextContent("");
+
+    chooseAndMove("Second", "m2");
+    expect(within(card()).getByRole("status")).toBe(status);
+    expect(status).toHaveTextContent('"Second" moved to Deep work.');
+  });
+
+  it("trocar de modulo limpa o aviso, e Move so vale para um destino que ainda existe", async () => {
+    mocks.course = {
+      ...courseWith(),
+      modules: [...courseWith().modules, { id: "m3", title: "Wrap up", lessons: [] }],
+    };
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    openAt("courseId=course-1&tab=content&module=m1");
+    const { rerender } = await renderBuilder();
+
+    chooseAndMove("Welcome", "m3");
+    expect(within(card()).getByRole("status")).toHaveTextContent('"Welcome" moved to Wrap up.');
+    openAt("courseId=course-1&tab=content&module=m2");
+    rerender(tree());
+    openAt("courseId=course-1&tab=content&module=m1");
+    rerender(tree());
+    expect(within(card()).getByRole("status")).toHaveTextContent("");
+
+    // Destino marcado e depois apagado: Move nao fica ativo para ele.
+    fireEvent.change(screen.getByRole("combobox", { name: 'Move "Second" to another module' }), {
+      target: { value: "m2" },
+    });
+    expect(screen.getByRole("button", { name: 'Move "Second"' })).toBeEnabled();
+    openAt("courseId=course-1&tab=content");
+    rerender(tree());
+    fireEvent.click(within(rowOf("m2")).getByRole("button", { name: "Delete" }));
+    expect(confirm).toHaveBeenCalled();
+    openAt("courseId=course-1&tab=content&module=m1");
+    rerender(tree());
+    expect(screen.getByRole("button", { name: 'Move "Second"' })).toBeDisabled();
+  });
+
+  it("aula de outro curso (arrastada de outra aba) nao pede confirmacao nem move", async () => {
+    mocks.course = courseWith("sequential_progress");
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    await renderBuilder();
+    const foreign = fakeDataTransfer();
+    foreign.setData("application/x-skillset-lesson", "lesson-from-another-course");
+
+    fireEvent.dragOver(rowOf("m2"), { dataTransfer: foreign });
+    fireEvent.drop(rowOf("m2"), { dataTransfer: foreign });
+
+    expect(confirm).not.toHaveBeenCalled();
+    await wait(2200);
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+  }, 10000);
 });

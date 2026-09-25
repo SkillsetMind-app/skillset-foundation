@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { UpdateTeacherCourseBuilderInput } from "@/domain/teacher-course";
+import { clearLessonVideoSelection, invalidateCourseWrites, recordLessonVideoSelection, runCourseWrite } from "./course-write-queue";
 import {
   deleteOrArchiveCourse,
   subscribeToTeacherCourse,
@@ -45,6 +46,7 @@ const publicRow = {
 };
 
 beforeEach(() => {
+  invalidateCourseWrites();
   vi.clearAllMocks();
   mocks.listeners.clear();
   mocks.course.mockResolvedValue({ data: publicRow, error: null });
@@ -53,6 +55,47 @@ beforeEach(() => {
 });
 
 describe("the teacher reopens the gated lesson content", () => {
+  it("does not overwrite a newer source selected in another tab after a completed upload", async () => {
+    recordLessonVideoSelection("course", "lesson", "upload", "2026-09-22T12:00:00.000100Z");
+    mocks.course.mockResolvedValue({ data: { ...publicRow, updated_at: "2026-09-22T12:00:00.000200Z", modules: [{ ...publicRow.modules[0], lessons: [{ ...publicRow.modules[0].lessons[0], videoSource: "youtube" }] }] }, error: null });
+    const onCourse = vi.fn();
+    const stop = subscribeToTeacherCourse("course", onCourse, vi.fn());
+    await vi.waitFor(() => expect(onCourse).toHaveBeenCalledOnce());
+    await updateTeacherCourseBuilder("course", { ...onCourse.mock.calls[0][0], title: "New title", learningOutcomes: [], paymentType: "free" });
+    expect(mocks.rpc.mock.calls[0][1].p_payload.modules[0].lessons[0].videoSource).toBe("youtube");
+    stop();
+  });
+
+  it("reconciles a queued stale draft after upload without losing title edits or a later explicit selection", async () => {
+    const onCourse = vi.fn();
+    const stop = subscribeToTeacherCourse("course", onCourse, vi.fn());
+    await vi.waitFor(() => expect(onCourse).toHaveBeenCalledOnce());
+    const input = { ...onCourse.mock.calls[0][0], title: "Edited title", learningOutcomes: [], paymentType: "free" } as UpdateTeacherCourseBuilderInput;
+    let finish!: () => void;
+    const upload = runCourseWrite("course", async () => {
+      await new Promise<void>((resolve) => { finish = resolve; });
+      recordLessonVideoSelection("course", "lesson", "upload");
+    });
+    await vi.waitFor(() => expect(finish).toBeDefined());
+    const save = updateTeacherCourseBuilder("course", input);
+    finish();
+    await upload;
+    await save;
+    expect(mocks.rpc.mock.calls[0][1].p_payload).toMatchObject({ title: "Edited title", modules: [{ lessons: [{ videoSource: "upload" }] }] });
+    clearLessonVideoSelection("course", "lesson");
+    input.modules[0].lessons[0].videoSource = "youtube";
+    await updateTeacherCourseBuilder("course", input);
+    expect(mocks.rpc.mock.calls[1][1].p_payload.modules[0].lessons[0].videoSource).toBe("youtube");
+    mocks.rpc.mockResolvedValueOnce({ error: new Error("offline") });
+    await expect(updateTeacherCourseBuilder("course", input)).rejects.toThrow("offline");
+    const reopened = structuredClone(input);
+    reopened.modules[0].lessons[0].videoSource = "upload";
+    reopened.modules[0].lessons[0].externalUrl = null;
+    await updateTeacherCourseBuilder("course", reopened);
+    expect(mocks.rpc.mock.calls[3][1].p_payload.modules[0].lessons[0]).toMatchObject({ videoSource: "upload", externalUrl: null });
+    stop();
+  });
+
   it("loads private content before emitting and preserves it in the next save", async () => {
     let finishContent!: (value: unknown) => void;
     mocks.content.mockImplementationOnce(() => new Promise((resolve) => { finishContent = resolve; }));

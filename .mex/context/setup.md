@@ -13,7 +13,7 @@ edges:
     condition: when specific technology versions or library details are needed
   - target: context/architecture.md
     condition: when understanding how components connect during setup
-last_updated: 2026-06-25
+last_updated: 2026-09-24
 ---
 
 # Setup
@@ -43,7 +43,7 @@ Client (in `.env.local`, public — `NEXT_PUBLIC_*`):
 Server (Firebase Functions secrets, NEVER in repo/client env):
 - `STRIPE_SECRET_KEY` (required) — `firebase functions:secrets:set STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET` (required) — `firebase functions:secrets:set STRIPE_WEBHOOK_SECRET`
-- `SKILLSET_APP_URL` (optional) — defaults to `https://skillsetusaofficial.web.app`
+- `SKILLSET_APP_URL` (optional) — defaults to the canonical `SITE_URL` (`https://www.skillsetmind.com`)
 
 ## Common Commands
 
