@@ -6,7 +6,8 @@
 Hospedagem: **Next.js na Vercel** · Dados: **Supabase (Postgres)**
 Webhook: Route Handler `src/app/api/webhooks/stripe/route.ts` → `POST /api/webhooks/stripe`
 Modelo: **direct charges** — a cobrança nasce na conta conectada do professor e a
-comissão da plataforma sai como `application_fee_amount` (`src/app/api/payments/checkout/route.ts`).
+comissão da plataforma sai como `application_fee_amount` (venda avulsa) ou `application_fee_percent`
+(assinatura de curso) (`src/app/api/payments/checkout/route.ts`).
 
 Todas as variáveis de servidor abaixo vão em **Vercel → projeto → Settings → Environment
 Variables** (Production, e Preview se for testar lá). Localmente, em `.env.local`.
@@ -27,7 +28,7 @@ Caminho: **Developers → API keys**.
 
 - [ ] Cole a secret key como **uma linha só**, sem espaço no meio: o código apara espaço/quebra de linha nas pontas, mas recusa uma chave com caractere inválido no meio (`sanitizeStripeSecret`, `src/lib/payments/rules.ts`).
 - [ ] O modo da chave define o modo do webhook: com `sk_test_` o webhook ignora eventos LIVE (responde 503 para que o Stripe reentregue), e com `sk_live_` ignora eventos de teste.
-- [ ] `SUPABASE_SERVICE_ROLE_KEY` também precisa estar configurada: sem ela as rotas de dinheiro (checkout, webhook, reembolsos) respondem 503 `payments_not_configured` (`.env.example`).
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` também precisa estar configurada: sem ela as rotas de dinheiro (checkout, webhook, reembolsos) falham com erro 500 (`src/lib/supabase/admin.ts`).
 
 ## 2. Webhook endpoints
 
@@ -47,8 +48,9 @@ verifica a assinatura contra os dois.
 > (`scripts/create-connect-webhook.mjs`).
 
 Alternativa para o endpoint Connect: `node scripts/create-connect-webhook.mjs --secret-out <arquivo>`
-(lê `STRIPE_SECRET_KEY` do `.env.local`, cria ou ajusta o endpoint com a lista abaixo e grava
-o signing secret no arquivo, sem imprimi-lo; apague o arquivo depois). `--dry-run` só mostra o que faria.
+(lê `STRIPE_SECRET_KEY` do `.env.local` e cria ou ajusta o endpoint com a lista abaixo. Só quando
+cria um endpoint novo ele grava o signing secret no arquivo, sem imprimi-lo; apague o arquivo depois.
+Se o endpoint já existia, o secret não vem: pegue-o ou gere outro no painel). `--dry-run` só mostra o que faria.
 
 Eventos a assinar — a lista exata de `HANDLED_STRIPE_EVENT_TYPES` na rota. Qualquer outro
 evento é confirmado e ignorado.

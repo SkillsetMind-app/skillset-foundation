@@ -45,8 +45,9 @@ live in the Vercel project environment variables; locally they go in
 
 ## Environment Variables
 
-Names only. `.env.example` documents each one; production values are set in
-the Vercel project environment. `NEXT_PUBLIC_*` values end up in the browser
+Names only. Most are documented in `.env.example`; the rest are only read in
+the file cited next to them. Production values are set in the Vercel project
+environment. `NEXT_PUBLIC_*` values end up in the browser
 bundle; everything else is server-only and must never get that prefix.
 
 Public (`NEXT_PUBLIC_*`):
@@ -61,7 +62,7 @@ Public (`NEXT_PUBLIC_*`):
 - `NEXT_PUBLIC_WHATSAPP_NUMBER` — optional contact link.
 
 Server-only:
-- `SUPABASE_SERVICE_ROLE_KEY` — service-role client (`src/lib/supabase/admin.ts`); the money routes return 503 `payments_not_configured` without it.
+- `SUPABASE_SERVICE_ROLE_KEY` — service-role client (`src/lib/supabase/admin.ts`); required by the money routes (checkout, webhook, refunds), which fail with a 500 without it.
 - `STRIPE_SECRET_KEY` — Stripe server client (`src/lib/payments/server/stripe.ts`).
 - `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET` — signing secrets of the platform and Connect webhook endpoints; `src/app/api/webhooks/stripe/route.ts` accepts either.
 - `SKILLSET_APP_URL` — optional absolute origin for Stripe return URLs; falls back to `SITE_URL` (`src/lib/payments/server/app-url.ts`).
