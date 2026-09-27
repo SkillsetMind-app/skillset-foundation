@@ -27,6 +27,18 @@ declare
   c public.courses%rowtype;
   v_module_count integer;
   v_lesson_count integer;
+  -- A whole http(s) URL, as close to getSafeExternalUrl (new URL() with an
+  -- http/https scheme) as a regex gets: optional user info, a hostname of
+  -- dot-separated labels (localhost and IPv4 included; IDN letters as far as
+  -- the database locale's [:alnum:] reaches) or a bracketed
+  -- IPv6, an optional port up to 65535, then an optional path/query/fragment.
+  -- Surrounding whitespace is allowed because the app trims. Rejects
+  -- "https://%", "https://", a host with spaces and non-http schemes.
+  v_link_pattern constant text :=
+    '^[[:space:]]*https?://([^[:space:]/?#@]*@)?'
+    || '([[:alnum:]_-]+(\.[[:alnum:]_-]+)*\.?|\[[0-9a-f:.]+\])'
+    || '(:([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?'
+    || '([/?#].*)?[[:space:]]*$';
 BEGIN
   PERFORM public.require_strong_session();
   if v_uid is null then
@@ -115,7 +127,7 @@ BEGIN
     where not (
       coalesce(l->>'description', '') ~ '[^[:space:]]'
       or coalesce(l->>'contentText', '') ~ '[^[:space:]]'
-      or coalesce(l->>'externalUrl', '') ~* '^[[:space:]]*https?://[^[:space:]/?#]'
+      or coalesce(l->>'externalUrl', '') ~* v_link_pattern
       or exists (
         select 1
         from public.course_lesson_content lc
@@ -123,7 +135,7 @@ BEGIN
           and lc.course_id = c.id
           and (
             coalesce(lc.content_text, '') ~ '[^[:space:]]'
-            or coalesce(lc.external_url, '') ~* '^[[:space:]]*https?://[^[:space:]/?#]'
+            or coalesce(lc.external_url, '') ~* v_link_pattern
           )
       )
       or exists (

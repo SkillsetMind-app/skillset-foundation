@@ -112,6 +112,18 @@ select pg_temp.save('smoke-empty-lesson-link', 'Smoke empty lesson link', jsonb_
     'externalUrl', 'javascript:alert(1)')));
 select pg_temp.check_gate('non-http link is refused',
   pg_temp.refused(pg_temp.publish('smoke-empty-lesson-link'), :'empty_message'));
+-- The whole value has to be a URL, not just start like one: new URL() in the
+-- player rejects both of these, so the student would get no video and no link.
+select pg_temp.save('smoke-empty-lesson-link', 'Smoke empty lesson link', jsonb_build_array(
+  jsonb_build_object('id', 'smoke-empty-lesson-link-l1', 'title', 'Lesson', 'type', 'video',
+    'externalUrl', 'https://%')));
+select pg_temp.check_gate('link with an invalid host is refused',
+  pg_temp.refused(pg_temp.publish('smoke-empty-lesson-link'), :'empty_message'));
+select pg_temp.save('smoke-empty-lesson-link', 'Smoke empty lesson link', jsonb_build_array(
+  jsonb_build_object('id', 'smoke-empty-lesson-link-l1', 'title', 'Lesson', 'type', 'video',
+    'externalUrl', 'https://www.you tube.com/watch')));
+select pg_temp.check_gate('link with a space in the host is refused',
+  pg_temp.refused(pg_temp.publish('smoke-empty-lesson-link'), :'empty_message'));
 select pg_temp.save('smoke-empty-lesson-link', 'Smoke empty lesson link', jsonb_build_array(
   jsonb_build_object('id', 'smoke-empty-lesson-link-l1', 'title', 'Lesson', 'type', 'video',
     'externalUrl', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')));
@@ -169,7 +181,7 @@ select pg_temp.check_gate('text was read from the private table, not the public 
          jsonb_array_elements(c.modules) m,
          jsonb_array_elements(coalesce(m->'lessons', '[]'::jsonb)) l
     where c.id = 'smoke-empty-lesson-text' and l ? 'contentText'));
-select pg_temp.check_gate('every case ran', (select count(*) = 12 from empty_lesson_checks));
+select pg_temp.check_gate('every case ran', (select count(*) = 14 from empty_lesson_checks));
 
 select name, passed from empty_lesson_checks order by name;
 do $$
