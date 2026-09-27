@@ -320,7 +320,7 @@ type BuilderError = {
   code: "notFound" | "load" | "chooseModule" | "lessonTitle" | "moduleTitleMissing"
     | "lessonTitleMissing" | "price" | "installmentsSave" | "category" | "paidPrice"
     | "installmentsPublish" | "duplicateTitle" | "activation" | "save" | "preview"
-    | "setup" | "verification" | "payouts" | "payment" | "publish";
+    | "setup" | "verification" | "payouts" | "payment" | "lessonContent" | "publish";
   moduleIndex?: number;
   lessonIndex?: number;
 };
@@ -990,9 +990,9 @@ export function CourseBuilderStudio() {
   // cabecalho media outra coisa (estagios): tres numeros para um curso so.
   // Le do payload normalizado, entao um preco digitado errado conta como
   // preco ausente, igual ao que o servidor gravaria.
-  // Aula sem video, texto nem arquivo trava o Publish (so aqui: o servidor
-  // nao cobra, entao uma chamada direta a API passa, e o dano e so no curso
-  // do proprio professor).
+  // Aula sem video, texto nem arquivo trava o Publish. O servidor cobra a
+  // mesma regra em publish_teacher_course (20260927020000); aqui a pessoa ve
+  // antes de clicar quais aulas faltam.
   const lessonIdsWithMedia = useMemo(
     () => (courseAssetsLoaded ? getLessonIdsWithMedia(builderDraftPayload.modules, courseAssets) : undefined),
     [courseAssetsLoaded, builderDraftPayload.modules, courseAssets],
@@ -2116,7 +2116,9 @@ export function CourseBuilderStudio() {
       setSuccess("published");
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "";
-      setError({ code: message.toLowerCase().includes("preview")
+      setError({ code: message.toLowerCase().includes("every lesson needs")
+        ? "lessonContent"
+        : message.toLowerCase().includes("preview")
         ? "preview"
         : message.toLowerCase().includes("teacher setup")
           ? "setup"
