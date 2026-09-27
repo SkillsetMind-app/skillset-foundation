@@ -128,5 +128,7 @@ describe("support and Promise server pages use the cookie and real dictionaries"
     expect(live.filter(([, text]) => /\b(24|72)[- ]?(hours?|h|horas)\b/i.test(text)).map(([path]) => path)).toEqual([]);
     const promise = live.filter(([path]) => path.startsWith("publicPages.promise.") || path.startsWith("home.promise."));
     expect(promise.filter(([, text]) => /one[- ]click|un clic|arbitra/i.test(text)).map(([path]) => path)).toEqual([]);
+    // Nowhere in the product may support be described as "one click away".
+    expect(live.filter(([, text]) => /(support|soporte)[^.]*(one[- ]click|un clic)/i.test(text)).map(([path]) => path)).toEqual([]);
   });
 });
