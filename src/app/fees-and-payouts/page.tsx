@@ -76,7 +76,7 @@ export default async function FeesAndPayoutsPage() {
         {policies.map(([title, detail]) => (
           <article
             key={title}
-            className="rounded-[16px] border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
+            className="rounded-none border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
           >
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {title}
@@ -88,7 +88,7 @@ export default async function FeesAndPayoutsPage() {
         ))}
       </section>
 
-      <div className="mt-10 rounded-[18px] border fine-rule bg-[var(--color-surface-soft)] p-6">
+      <div className="mt-10 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-6">
         <p className="text-sm leading-7 text-[var(--color-ink-soft)]">
           {t("publicPages.fees.full_plan_comparison_sample_breakdowns_and")}{" "}
           <Link

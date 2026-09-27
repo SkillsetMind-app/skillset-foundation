@@ -293,7 +293,7 @@ function CreatorWorkspaceState({
 }) {
   const { t } = useTranslation();
   return (
-    <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         {t("learnWave2.workspace.eyebrow")}
       </p>

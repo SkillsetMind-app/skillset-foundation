@@ -70,7 +70,7 @@ export function ConfirmEmailGate({
 
   return (
     <section
-      className="mt-5 grid gap-3 rounded-[12px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-5 py-6"
+      className="mt-5 grid gap-3 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-5 py-6"
       aria-live="polite"
     >
       <h2 className="text-lg font-semibold text-[var(--color-ink)]">
@@ -87,7 +87,7 @@ export function ConfirmEmailGate({
           type="button"
           onClick={() => void handleResend()}
           disabled={isSending || cooldown > 0}
-          className="rounded-[10px] bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--color-base)] disabled:opacity-60"
+          className="rounded-none bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--color-base)] disabled:opacity-60"
         >
           {cooldown > 0
             ? t("auth.signup.confirmResendIn").replace("{seconds}", String(cooldown))
@@ -99,7 +99,7 @@ export function ConfirmEmailGate({
           <button
             type="button"
             onClick={onChangeEmail}
-            className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-ink)]"
+            className="rounded-none border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-ink)]"
           >
             {t("auth.signup.confirmChangeEmail")}
           </button>

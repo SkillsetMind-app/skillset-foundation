@@ -13,7 +13,7 @@ export function SessionCard({ collapsed = false }: { collapsed?: boolean }) {
 
   if (status === "loading") {
     return (
-      <div className={`mt-3 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] p-2 text-xs text-[var(--color-ink-soft)] ${collapsed ? "text-center" : ""}`}>
+      <div className={`mt-3 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-2 text-xs text-[var(--color-ink-soft)] ${collapsed ? "text-center" : ""}`}>
         {t("platform.session.checking")}
       </div>
     );
@@ -27,7 +27,7 @@ export function SessionCard({ collapsed = false }: { collapsed?: boolean }) {
     return (
       <Link
         href="/account?tab=profile"
-        className="mt-3 grid place-items-center rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] p-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
+        className="mt-3 grid place-items-center rounded-none border fine-rule bg-[var(--color-surface-soft)] p-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
         aria-label={t("platform.session.openProfile")}
       >
         <UserAvatar
@@ -46,7 +46,7 @@ export function SessionCard({ collapsed = false }: { collapsed?: boolean }) {
   return (
     <Link
       href="/account?tab=profile"
-      className="mt-3 flex items-center gap-2 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] p-2 transition-colors hover:bg-[var(--color-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
+      className="mt-3 flex items-center gap-2 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-2 transition-colors hover:bg-[var(--color-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
     >
       <UserAvatar
         name={user.displayName || user.email}

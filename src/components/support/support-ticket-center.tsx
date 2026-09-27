@@ -87,7 +87,7 @@ export function SupportTicketCenter() {
 
   return (
     <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-      <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t(`${copy}.eyebrow`)}
         </p>
@@ -103,7 +103,7 @@ export function SupportTicketCenter() {
             <select
               value={category}
               onChange={(event) => setCategory(event.target.value as SupportTicketCategory)}
-              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
             >
               {categories.map((item) => (
                 <option key={item} value={item}>
@@ -118,7 +118,7 @@ export function SupportTicketCenter() {
               value={subject}
               onChange={(event) => setSubject(event.target.value)}
               placeholder={t(`${copy}.subjectPlaceholder`)}
-              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
             />
           </label>
           <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -128,11 +128,11 @@ export function SupportTicketCenter() {
               onChange={(event) => setMessage(event.target.value)}
               rows={6}
               placeholder={t(`${copy}.detailsPlaceholder`)}
-              className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              className="resize-none rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
             />
           </label>
           {error ? (
-            <p role="alert" className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+            <p role="alert" className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
               {t(`${copy}.${error}`)}
             </p>
           ) : null}
@@ -151,7 +151,7 @@ export function SupportTicketCenter() {
         </form>
       </section>
 
-      <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t(`${copy}.yourTickets`)}
         </p>
@@ -159,14 +159,14 @@ export function SupportTicketCenter() {
           {isLoading ? (
             <p role="status" className="text-sm text-[var(--color-ink-soft)]">{t(`${copy}.loading`)}</p>
           ) : tickets.length === 0 ? (
-            <p className="rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+            <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
               {t(`${copy}.empty`)}
             </p>
           ) : (
             tickets.map((ticket) => (
               <article
                 key={ticket.id}
-                className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+                className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -185,7 +185,7 @@ export function SupportTicketCenter() {
                   {ticket.message}
                 </p>
                 {ticket.adminResponse ? (
-                  <div className="mt-3 rounded-[10px] border border-[rgba(26,54,93,0.14)] bg-white p-3">
+                  <div className="mt-3 rounded-none border border-[rgba(26,54,93,0.14)] bg-white p-3">
                     <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
                       {t(`${copy}.replied`)}
                     </p>

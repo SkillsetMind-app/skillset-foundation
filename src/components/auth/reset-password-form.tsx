@@ -85,7 +85,7 @@ export function ResetPasswordForm() {
           ref={revealFeedback}
           role="alert"
           aria-live="assertive"
-          className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+          className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
           {getAuthErrorMessage(error.cause, t)}
         </p>
@@ -96,7 +96,7 @@ export function ResetPasswordForm() {
           ref={revealFeedback}
           role="status"
           aria-live="polite"
-          className="rounded-[10px] border border-[rgba(26,54,93,0.14)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]"
+          className="rounded-none border border-[rgba(26,54,93,0.14)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]"
         >
           {t(`authFlow.recovery.${success}`)}
           {success === "sent" && isGoogleAuthEnabled ? t("authFlow.recovery.googleHint") : ""}

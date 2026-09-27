@@ -31,7 +31,7 @@ const secondaryCurrencies = supportedStripeCurrencies.filter(
 );
 
 export const currencySelectClassName =
-  "w-full min-w-0 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]";
+  "w-full min-w-0 rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]";
 
 type CurrencySelectProps = {
   value: string;

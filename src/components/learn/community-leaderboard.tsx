@@ -75,7 +75,7 @@ export function CommunityLeaderboard({
     : null;
 
   return (
-    <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Trophy size={18} className="text-[var(--color-primary)]" aria-hidden />
@@ -83,13 +83,13 @@ export function CommunityLeaderboard({
             {t("learnWave2.leaderboard.title")}
           </h3>
         </div>
-        <div className="flex flex-wrap gap-1 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-1">
+        <div className="flex flex-wrap gap-1 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-1">
           {LEADERBOARD_WINDOWS.map((option) => (
             <button
               key={option}
               type="button"
               onClick={() => setWindow(option)}
-              className={`rounded-[8px] px-3 py-1.5 text-xs font-semibold transition-colors ${
+              className={`rounded-none px-3 py-1.5 text-xs font-semibold transition-colors ${
                 window === option
                   ? "bg-[var(--color-primary)] text-[var(--color-base)]"
                   : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-ink)]"
@@ -106,7 +106,7 @@ export function CommunityLeaderboard({
       </p>
 
       {progress ? (
-        <div className="mt-4 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3">
+        <div className="mt-4 rounded-none border fine-rule bg-[var(--color-surface-soft)] px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <LevelBadge level={progress.level} />
@@ -136,10 +136,10 @@ export function CommunityLeaderboard({
                   .replace("{percent}", () => number.format(progress.percentToNext))
                   .replace("{next}", () => number.format(progress.level + 1))
             }
-            className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-line)]"
+            className="mt-2 h-1.5 overflow-hidden rounded-none bg-[var(--color-line)]"
           >
             <div
-              className="h-full rounded-full bg-[var(--color-primary)] transition-[width] duration-300"
+              className="h-full rounded-none bg-[var(--color-primary)] transition-[width] duration-300"
               style={{ width: `${progress.percentToNext}%` }}
             />
           </div>
@@ -152,7 +152,7 @@ export function CommunityLeaderboard({
             {t("learnWave2.leaderboard.loading")}
           </p>
         ) : entries.length === 0 ? (
-          <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
+          <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
             {t("learnWave2.leaderboard.empty")}
           </p>
         ) : (
@@ -161,7 +161,7 @@ export function CommunityLeaderboard({
             return (
               <div
                 key={entry.rank}
-                className={`flex items-center justify-between gap-3 rounded-[14px] border px-4 py-3 ${
+                className={`flex items-center justify-between gap-3 rounded-none border px-4 py-3 ${
                   isCurrent
                     ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)]"
                     : "border-[var(--color-line)] bg-white"
@@ -186,7 +186,7 @@ export function CommunityLeaderboard({
       </div>
 
       {ready && currentUserStats && !currentUserInTop ? (
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-[14px] border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3">
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-none border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3">
           <div className="flex items-center gap-3">
             <p className="text-sm font-semibold text-[var(--color-ink)]">{t("learnWave2.leaderboard.you")}</p>
             <LevelBadge level={currentUserStats.level} />

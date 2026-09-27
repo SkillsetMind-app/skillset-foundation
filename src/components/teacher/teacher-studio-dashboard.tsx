@@ -232,9 +232,9 @@ function StudioNextSteps({
             </div>
           </div>
 
-          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-strong)]">
+          <div className="mt-4 h-1.5 overflow-hidden rounded-none bg-[var(--color-surface-strong)]">
             <div
-              className="h-full rounded-full bg-[var(--color-primary)] transition-[width]"
+              className="h-full rounded-none bg-[var(--color-primary)] transition-[width]"
               style={{ width: coursesLoaded ? `${progress}%` : "0%" }}
             />
           </div>
@@ -357,7 +357,7 @@ function StudioProductsSection({
           {[1, 2, 3, 4].map((item) => (
             <div
               key={item}
-              className="h-32 animate-pulse rounded-[8px] bg-[var(--color-surface-strong)]"
+              className="h-32 animate-pulse rounded-none bg-[var(--color-surface-strong)]"
             />
           ))}
         </div>
@@ -379,13 +379,13 @@ function StudioProductsSection({
             <li key={course.id}>
               <Link
                 href={`/teach/courses/${encodeURIComponent(course.id)}/manage`}
-                className="flex h-full min-h-36 flex-col rounded-[8px] border border-[var(--color-line)] bg-white p-4 transition hover:border-[var(--color-primary-light)] hover:shadow-sm"
+                className="flex h-full min-h-36 flex-col rounded-none border border-[var(--color-line)] bg-white p-4 transition hover:border-[var(--color-primary-light)] hover:shadow-sm"
               >
                 {/* A mesma miniatura 16:9 da lista de produtos (/teach/builder):
                     a capa quando existe, o mesmo icone quando nao existe. Sem a
                     capa o card era so texto e o professor nao reconhecia o
                     proprio produto. */}
-                <div className="mb-3 grid aspect-video w-full place-items-center overflow-hidden rounded-[6px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
+                <div className="mb-3 grid aspect-video w-full place-items-center overflow-hidden rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
                   {course.coverImageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -488,7 +488,7 @@ function StudioSellFormatsSection() {
       >
         {t("creatorPanel.home.formats.title")}
       </h2>
-      <ul className="mt-5 grid gap-px overflow-hidden rounded-[8px] border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="mt-5 grid gap-px overflow-hidden rounded-none border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2 lg:grid-cols-3">
         {formats.map((format) => {
           const Icon = format.icon;
 
@@ -498,7 +498,7 @@ function StudioSellFormatsSection() {
                 href={format.href}
                 className="group flex h-full min-h-44 flex-col p-4 hover:bg-[var(--color-surface-soft)]"
               >
-                <span className="grid size-9 place-items-center rounded-[7px] border border-[var(--color-line)] text-[var(--color-primary)]">
+                <span className="grid size-9 place-items-center rounded-none border border-[var(--color-line)] text-[var(--color-primary)]">
                   <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
                 </span>
                 <h3 className="mt-4 text-sm font-semibold text-[var(--color-ink)]">
@@ -586,7 +586,7 @@ function StudioEvolution({
               className="flex items-center gap-3 border-b border-[var(--color-line)] px-3 py-4 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0"
             >
               <span
-                className={`grid size-9 place-items-center rounded-full ${
+                className={`grid size-9 place-items-center rounded-none ${
                   milestone.done
                     ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
                     : "border border-[var(--color-line)] text-[var(--color-ink-muted)]"

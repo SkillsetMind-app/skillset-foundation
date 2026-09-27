@@ -70,7 +70,7 @@ export function UpgradeModal({
         aria-label={t("billingCheckout.close")}
         onClick={onClose}
       />
-      <div className="modal-panel relative z-[75] flex w-full max-w-5xl flex-col overflow-hidden bg-white shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:rounded-[8px]">
+      <div className="modal-panel relative z-[75] flex w-full max-w-5xl flex-col overflow-hidden bg-white shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:rounded-none">
         <header className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] px-5 py-4 sm:px-6">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
@@ -86,7 +86,7 @@ export function UpgradeModal({
           <button
             type="button"
             onClick={onClose}
-            className="grid size-9 shrink-0 place-items-center rounded-[8px] text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
+            className="grid size-9 shrink-0 place-items-center rounded-none text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
             aria-label={t("billingCheckout.close")}
           >
             <X aria-hidden="true" size={18} strokeWidth={1.8} />

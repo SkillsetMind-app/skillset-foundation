@@ -93,7 +93,7 @@ export function NotificationRow({
   return (
     <div className="flex items-start gap-3 px-3 py-3">
       <span
-        className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-full ${
+        className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-none ${
           notification.read
             ? "bg-[var(--color-surface-soft)] text-[var(--color-ink-soft)]"
             : unreadChipByType[notification.type]

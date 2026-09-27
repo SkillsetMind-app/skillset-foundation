@@ -66,7 +66,7 @@ export function CommunityModerationQueue() {
   const openReports = reports.filter((report) => report.status === "open");
 
   return (
-    <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
@@ -79,14 +79,14 @@ export function CommunityModerationQueue() {
             {t(`${copy}.description`)}
           </p>
         </div>
-        {hasBackendConfig && ready && !loadError ? <span className="rounded-[10px] bg-[var(--color-surface-soft)] px-4 py-2 text-sm font-semibold text-[var(--color-primary)]">{t(`${copy}.${openReports.length === 1 ? "countOne" : "count"}`).replace("{count}", () => String(openReports.length))}</span> : null}
+        {hasBackendConfig && ready && !loadError ? <span className="rounded-none bg-[var(--color-surface-soft)] px-4 py-2 text-sm font-semibold text-[var(--color-primary)]">{t(`${copy}.${openReports.length === 1 ? "countOne" : "count"}`).replace("{count}", () => String(openReports.length))}</span> : null}
       </div>
 
       {loadError ? <InlineAlert tone="error" className="mt-5">{t(`${copy}.loadError`)}</InlineAlert> : null}
       {error ? <InlineAlert tone="error" className="mt-5">{t(`${copy}.updateError`)}</InlineAlert> : null}
 
       {!hasBackendConfig ? (
-        <p className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-ink-soft)]">
+        <p className="mt-5 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-ink-soft)]">
           {t(`${copy}.configurationRequired`)}
         </p>
       ) : !ready ? (
@@ -94,13 +94,13 @@ export function CommunityModerationQueue() {
           {t(`${copy}.loading`)}
         </p>
       ) : reports.length === 0 ? (
-        loadError ? null : <p className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p>
+        loadError ? null : <p className="mt-5 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p>
       ) : (
         <div className="mt-5 grid gap-3">
           {reports.slice(0, 12).map((report) => (
             <article
               key={report.id}
-              className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+              className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">

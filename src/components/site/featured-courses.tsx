@@ -85,7 +85,7 @@ export function FeaturedCourses() {
         </div>
 
         {featuredCourses.length === 0 ? (
-          <div className="mt-10 flex flex-col gap-4 rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-10 flex flex-col gap-4 rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:flex-row sm:items-center sm:justify-between">
             <p className="text-[15px] font-semibold leading-7 text-[var(--color-ink)]">
               {t("home.marketplace.emptyTitle")}
             </p>

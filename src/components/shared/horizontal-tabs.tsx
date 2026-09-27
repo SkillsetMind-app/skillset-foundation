@@ -86,7 +86,7 @@ export function HorizontalTabs({
               {typeof tab.count === "number" ? (
                 <span
                   className={cn(
-                    "ml-2 inline-grid min-w-[20px] place-items-center rounded-full px-1.5 text-[11px] font-bold leading-5 tabular-nums",
+                    "ml-2 inline-grid min-w-[20px] place-items-center rounded-none px-1.5 text-[11px] font-bold leading-5 tabular-nums",
                     tab.count > 0
                       ? "bg-[var(--color-accent)] text-white"
                       : "bg-[var(--color-surface-soft)] text-[var(--color-ink-soft)]",

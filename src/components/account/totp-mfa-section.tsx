@@ -136,7 +136,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
   }
 
   return (
-    <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-4">
+    <div className="rounded-none border border-[var(--color-line)] bg-white p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-semibold text-[var(--color-ink)]">
@@ -147,7 +147,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
           </p>
         </div>
         <span
-          className={`inline-flex items-center gap-1 rounded-[8px] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+          className={`inline-flex items-center gap-1 rounded-none px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
             isEnrolled
               ? "bg-[var(--color-success-soft)] text-[var(--color-success-fg)]"
               : "bg-[rgba(26,54,93,0.08)] text-[var(--color-primary)]"
@@ -160,11 +160,11 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
 
       {/* Flag off: honest unavailable state, never a fake setup. */}
       {!mfaEnabled ? (
-        <p className="mt-4 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+        <p className="mt-4 rounded-none border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
           {t("accountSecurity.mfa.unavailable")}
         </p>
       ) : !emailVerified && !isEnrolled ? (
-        <p className="mt-4 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+        <p className="mt-4 rounded-none border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
           {t("accountSecurity.mfa.verifyEmail")}
         </p>
       ) : isEnrolled ? (
@@ -172,7 +172,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
           {factors.map((factor) => (
             <div
               key={factor.uid}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-none border fine-rule bg-[var(--color-surface-soft)] px-4 py-3"
             >
               <div className="text-sm">
                 <p className="font-semibold text-[var(--color-ink)]">
@@ -252,7 +252,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
             </li>
           </ol>
 
-          <div className="rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] p-3">
+          <div className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-3">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
               {t("accountSecurity.mfa.setupKey")}
             </p>
@@ -284,7 +284,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 aria-label={t("accountSecurity.mfa.codeLabel")}
-                className="w-32 rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-center font-mono text-base tracking-[0.3em] outline-none focus:border-[var(--color-primary-light)]"
+                className="w-32 rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-center font-mono text-base tracking-[0.3em] outline-none focus:border-[var(--color-primary-light)]"
               />
             </label>
             <button
@@ -328,7 +328,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
       {error ? (
         <p
           role="alert"
-          className="mt-3 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+          className="mt-3 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
           {"key" in error ? t(error.key) : getAuthErrorMessage(error.cause, t)}
         </p>

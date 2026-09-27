@@ -43,7 +43,7 @@ export function CertificateVerificationPanel() {
   }
 
   return (
-    <section className="mx-auto max-w-4xl rounded-[20px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] md:p-8">
+    <section className="mx-auto max-w-4xl rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] md:p-8">
       <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         {t("learnWave2.credentials.brand")}
       </p>
@@ -63,7 +63,7 @@ export function CertificateVerificationPanel() {
           onChange={(event) => setVerificationCode(event.target.value)}
           aria-label={t("learnWave2.verification.codeLabel")}
           placeholder="SK-..."
-          className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)]"
+          className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)]"
         />
         <button
           type="submit"
@@ -75,13 +75,13 @@ export function CertificateVerificationPanel() {
       </form>
 
       {error ? (
-        <p role="alert" className="mt-5 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <p role="alert" className="mt-5 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t(error)}
         </p>
       ) : null}
 
       {result?.valid === false ? (
-        <div className="mt-6 rounded-[16px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.05)] p-5">
+        <div className="mt-6 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.05)] p-5">
           <h2 className="text-lg font-semibold text-[var(--color-accent-fg)]">
             {t(result.revoked ? "learnWave2.verification.revoked" : "learnWave2.verification.missing")}
           </h2>
@@ -92,7 +92,7 @@ export function CertificateVerificationPanel() {
       ) : null}
 
       {result?.valid ? (
-        <div className="mt-6 rounded-[16px] border border-[rgba(26,54,93,0.16)] bg-[var(--color-surface-soft)] p-5">
+        <div className="mt-6 rounded-none border border-[rgba(26,54,93,0.16)] bg-[var(--color-surface-soft)] p-5">
           <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             {t("learnWave2.verification.verified")}
           </p>
@@ -113,7 +113,7 @@ export function CertificateVerificationPanel() {
               }
             />
           </div>
-          <p className="mt-4 rounded-[10px] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)]">
+          <p className="mt-4 rounded-none bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)]">
             {t("learnWave2.verification.code").replace("{code}", () => result.certificate.verificationCode)}
           </p>
           <button
@@ -140,7 +140,7 @@ export function CertificateVerificationPanel() {
 
 function VerificationDetail({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[12px] border fine-rule bg-white p-4">
+    <div className="rounded-none border fine-rule bg-white p-4">
       <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
         {label}
       </p>

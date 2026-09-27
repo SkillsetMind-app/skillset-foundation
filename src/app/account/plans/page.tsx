@@ -47,7 +47,7 @@ export default async function AccountPlansPage() {
 
 function PolicyCard({ detail, title }: { detail: string; title: string }) {
   return (
-    <article className="rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
+    <article className="rounded-none border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
         {title}
       </p>

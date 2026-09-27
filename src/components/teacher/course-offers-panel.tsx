@@ -28,7 +28,7 @@ type OfferRow = {
 };
 
 const inputClass =
-  "rounded-[10px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
+  "rounded-none border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
 
 // O tipo de pagamento vem da API como texto livre. So os quatro conhecidos tem
 // traducao; qualquer outro cai no formato antigo em vez de virar chave crua.
